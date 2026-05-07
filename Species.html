@@ -1,0 +1,331 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Species</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <!-- TOP NAVIGATION -->
+  <nav class="navbar">
+    <div class="nav-brand">PROJECT</div>
+    <ul class="nav-links">
+      <li><a href="#">Home</a></li>
+      <li class="dropdown">
+        <a href="#">Module ▾</a>
+        <ul class="dropdown-menu">
+          <li><a href="species.html">Species</a></li>
+        </ul>
+      </li>
+      <li><a href="#">Reports</a></li>
+      <li><a href="#">Settings</a></li>
+      <li><a href="#">Profile</a></li>
+    </ul>
+  </nav>
+
+  <!-- SPECIES PAGE -->
+  <div class="page-container">
+
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+      <h1>Species</h1>
+      <button class="btn btn-primary" id="btn-create-species">+ Create Species</button>
+    </div>
+
+    <!-- SPECIES TABLE -->
+    <table class="species-table">
+      <thead>
+        <tr>
+          <th>Species Name</th>
+          <th>Scientific Name</th>
+          <th>Created Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="species-table-body">
+        <!-- Data will load here -->
+        <tr>
+          <td colspan="4" class="empty-msg">No species found. Click "Create Species" to add one.</td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
+
+  <!-- CREATE / EDIT FORM (hidden by default) -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modal-title">Create Species</h2>
+        <button class="btn-close" id="btn-modal-close">✕</button>
+      </div>
+
+      <form id="species-form">
+      <div class="modal-body">
+
+        <!-- SECTION 1: Basic Information -->
+        <h3 class="section-title">Basic Information</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Species Name</label>
+            <input type="text" id="species_name"  name="species_name" placeholder="Enter species name"/>
+          </div>
+          <div class="form-group">
+            <label>Scientific Name</label>
+            <input type="text" id="scientific_name" name="scientific_name" placeholder="Enter scientific name"/>
+          </div>
+          <div class="form-group">
+            <label>Common / Trade Family Name</label>
+            <input type="text" id="common_trade_family_name" name="common_trade_family_name" placeholder="Enter common name"/>
+          </div>
+          <div class="form-group">
+            <label>AFSIS 3A Code</label>
+            <input type="text" id="afsis_3a_code" name="afsis_3a_code"   placeholder="Enter code"/>
+          </div>
+          <div class="form-group">
+            <label>Taxonomic Code</label>
+            <input type="number" id="taxonomic_code" name="taxonomic_code" placeholder="Enter number"/>
+          </div>
+          <div class="form-group">
+            <label>Alphia ID</label>
+            <input type="number" id="alphia_id" name="alphia_id"  placeholder="Enter number"/>
+          </div>
+          <div class="form-group">
+            <label>ISSCAAP Code</label>
+            <input type="number" id="isscaap_code" name="isscaap_code" placeholder="Enter number"/>
+          </div>
+          <div class="form-group">
+            <label>CAAB Code</label>
+            <input type="number" id="caab_code" name="caab_code" placeholder="Enter number"/>
+          </div>
+        </div>
+
+        <!-- SECTION 2: Classification -->
+        <h3 class="section-title">Classification</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Kingdom</label>
+            <input type="text" id="kingdom" name="kingdom" placeholder="Enter kingdom"/>
+          </div>
+          <div class="form-group">
+            <label>Phylum</label>
+            <input type="text" id="phylum" name="phylum" placeholder="Enter phylum"/>
+          </div>
+          <div class="form-group">
+            <label>Class</label>
+            <input type="text" id="class_name" name="class_name" placeholder="Enter class"/>
+          </div>
+          <div class="form-group">
+            <label>Order</label>
+            <input type="text" id="order_name" name="order_name" placeholder="Enter order"/>
+          </div>
+          <div class="form-group">
+            <label>Family</label>
+            <input type="text" id="family" name="family" placeholder="Enter family"/>
+          </div>
+          <div class="form-group">
+            <label>Genus</label>
+            <input type="text" id="genus" name="genus" placeholder="Enter genus"/>
+          </div>
+        </div>
+
+        <!-- SECTION 3: Dimensions -->
+        <h3 class="section-title">Dimensions</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Maturity (cm)</label>
+            <input type="number" id="maturity_cm" name="maturity_cm" placeholder="0.00" step="0.01"/>
+          </div>
+          <div class="form-group">
+            <label>Maturity Type</label>
+            <input type="text" id="maturity_cm_type" name="maturity_cm_type" placeholder="e.g. cm"/>
+          </div>
+          <div class="form-group">
+            <label>Max Length (cm)</label>
+            <input type="number" id="max_length_cm" name="max_length_cm" placeholder="0.00" step="0.01"/>
+          </div>
+          <div class="form-group">
+            <label>Max Length Type</label>
+            <input type="text" id="max_length_cm_type" name="max_length_cm_type" placeholder="e.g. cm"/>
+          </div>
+          <div class="form-group">
+            <label>Common Length (cm)</label>
+            <input type="number" id="common_length_cm" name="common_length_cm" placeholder="0.00" step="0.01"/>
+          </div>
+          <div class="form-group">
+            <label>Common Length Type</label>
+            <input type="text" id="common_length_cm_type" name="common_length_cm_type" placeholder="e.g. cm"/>
+          </div>
+          <div class="form-group">
+            <label>Max Published Weight</label>
+            <input type="number" id="max_published_weight" name="max_published_weight" placeholder="0.00" step="0.01"/>
+          </div>
+          <div class="form-group">
+            <label>Max Published Weight Type</label>
+            <input type="text" id="max_published_weight_type" name="max_published_weight_type" placeholder="e.g. kg"/>
+          </div>
+          <div class="form-group">
+            <label>Max Reported Age</label>
+            <input type="number" id="max_reported_age" name="max_reported_age" placeholder="0.00" step="0.01"/>
+          </div>
+          <div class="form-group">
+            <label>Max Reported Age Type</label>
+            <input type="text" id="max_reported_age_type" name="max_reported_age_type" placeholder="e.g. Years"/>
+          </div>
+        </div>
+
+        <!-- SECTION 4: Characteristics & Environment -->
+        <h3 class="section-title">Characteristics & Environment</h3>
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label>Short Description</label>
+            <textarea id="short_description" name="short_description" maxlength="300" placeholder="Max 300 characters"></textarea>
+          </div>
+          <div class="form-group full-width">
+            <label>Habitat</label>
+            <textarea id="habitat" name="habitat" maxlength="300" placeholder="Max 300 characters"></textarea>
+          </div>
+          <div class="form-group full-width">
+            <label>Biology</label>
+            <textarea id="biology" name="biology" maxlength="300" placeholder="Max 300 characters"></textarea>
+          </div>
+          <div class="form-group full-width">
+            <label>Distribution</label>
+            <textarea id="distribution" name="distribution" maxlength="300" placeholder="Max 300 characters"></textarea>
+          </div>
+          <div class="form-group full-width">
+            <label>Colour</label>
+            <textarea id="colour" name="colour" maxlength="300" placeholder="Max 300 characters"></textarea>
+          </div>
+          <div class="form-group full-width">
+            <label>DNA Sequence</label>
+            <textarea id="dna_sequence" name="dna_sequence" maxlength="300" placeholder="Max 300 characters"></textarea>
+          </div>
+          <div class="form-group full-width">
+            <label>Reproduction & Lifecycle</label>
+            <textarea id="reproduction_lifecycle" name="reproduction_lifecycle" maxlength="300" placeholder="Max 300 characters"></textarea>
+          </div>
+          <div class="form-group full-width">
+            <label>Temperature</label>
+            <textarea id="temperature" name="temperature" maxlength="300" placeholder="Max 300 characters"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Generation Length</label>
+            <input type="number" id="generation_length" name="generation_length" placeholder="0.00" step="0.01"/>
+          </div>
+          <div class="form-group">
+            <label>Generation Length Type</label>
+            <input type="text" id="generation_length_type" name="generation_length_type" placeholder="e.g. Years"/>
+          </div>
+          <div class="form-group full-width">
+            <label>Behavior</label>
+            <textarea id="behavior" name="behavior" placeholder="Enter behavior"></textarea>
+          </div>
+          <div class="form-group">
+            <label>Swim Speed</label>
+            <input type="text" id="swim_speed" name="swim_speed" placeholder="Enter swim speed"/>
+          </div>
+          <div class="form-group">
+            <label>Short Bursts</label>
+            <input type="text" id="short_bursts" name="short_bursts" placeholder="Enter short bursts"/>
+          </div>
+          <div class="form-group">
+            <label>Predators</label>
+            <input type="text" id="predators" name="predators" maxlength="100" placeholder="Max 100 characters"/>
+          </div>
+          <div class="form-group">
+            <label>Main Prey</label>
+            <input type="text" id="main_prey" name="main_prey" maxlength="100" placeholder="Max 100 characters"/>
+          </div>
+          <div class="form-group">
+            <label>Diet</label>
+            <input type="text" id="diet" name="diet" maxlength="100" placeholder="Max 100 characters"/>
+          </div>
+          <div class="form-group">
+            <label>Depth Range</label>
+            <input type="text" id="depth_range" name="depth_range" maxlength="100" placeholder="Max 100 characters"/>
+          </div>
+          <div class="form-group full-width">
+            <label>FAO Area</label>
+            <select id="fao_area" name="fao_area" multiple>
+              <option value="Arctic Sea">Arctic Sea</option>
+              <option value="America, North - Inland waters">America, North - Inland waters</option>
+              <option value="Atlantic, Northwest">Atlantic, Northwest</option>
+              <option value="Atlantic, Northeast">Atlantic, Northeast</option>
+              <option value="America, South - Inland waters">America, South - Inland waters</option>
+              <option value="Mediterranean and Black Sea">Mediterranean and Black Sea</option>
+              <option value="Atlantic, Southwest">Atlantic, Southwest</option>
+              <option value="Asia - Inland waters">Asia - Inland waters</option>
+              <option value="Europe - Inland waters">Europe - Inland waters</option>
+              <option value="Oceania - Inland waters">Oceania - Inland waters</option>
+              <option value="Pacific, Northeast">Pacific, Northeast</option>
+              <option value="Pacific, Southwest">Pacific, Southwest</option>
+              <option value="Pacific, Southeast">Pacific, Southeast</option>
+            </select>
+            <small>Hold Ctrl (Windows) or Cmd (Mac) to select multiple</small>
+          </div>
+        </div>
+
+        <!-- SECTION 5: Harvest -->
+        <h3 class="section-title">Harvest</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Source Type</label>
+            <input type="text" id="source_type" name="source_type" maxlength="100" placeholder="Enter source type"/>
+          </div>
+          <div class="form-group">
+            <label>Gear Type</label>
+            <select id="gear_type" name="gear_type">
+              <option value="">-- Select --</option>
+              <option value="Purse Seiner">Purse Seiner</option>
+              <option value="Longline">Longline</option>
+              <option value="Pole & Line">Pole & Line</option>
+              <option value="Traps & Pots">Traps & Pots</option>
+            </select>
+          </div>
+        </div>
+
+<!-- SECTION 6: Photo -->
+ <h3 class="section-title">Photo</h3>
+<div class="form-grid cols-1">
+  <div class="form-group">
+    <label>Species Photo</label>
+    <input type="file" id="species_photo" name="species_photo" accept="image/*"/>
+    <small>Accepted formats: JPG, PNG, WEBP. Max 50MB.</small>
+  </div>
+  <div class="form-group" id="photo-preview-group" style="display:none;">
+    <label>Current Photo</label>
+    <img id="photo-preview" src="" style="width:160px; height:120px; object-fit:cover; border-radius:8px; border:1.5px solid #e8e8e8;"/>
+  </div>
+</div>
+      </div>
+      </form>
+
+      <!-- FORM FOOTER -->
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btn-modal-cancel">Cancel</button>
+        <button class="btn btn-primary" id="btn-save-species">Save Species</button>
+      </div>
+
+    </div>
+  </div>
+  <div id="toast-container"></div>
+
+  <script src="script.js"></script>
+
+  <div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <h3 id="confirm-title">Are you sure?</h3>
+    <p id="confirm-message">This cannot be undone.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-secondary" id="confirm-cancel">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok" style="background:#c0392b; color:white; border:none;">Delete</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
