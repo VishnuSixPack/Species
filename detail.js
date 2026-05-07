@@ -8,21 +8,35 @@ const SUPABASE_ANON_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
 const dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // ── GET SPECIES ID FROM URL ──
-// When you click a species name, the URL becomes:
-// species-detail.html?id=5
-// This reads that "5" so we know which species to load
 function getIdFromUrl() {
   const params = new URLSearchParams(window.location.search);
   return params.get('id');
 }
 
 // ── FILL A FIELD ──
-// Finds the element by id and puts the value in it
-// If value is empty, shows a dash "—"
 function fillField(id, value, suffix = '') {
   const el = document.getElementById(id);
   if (!el) return;
   el.textContent = value ? `${value}${suffix}` : '—';
+}
+
+// ── SWITCH TAB ──
+function switchTab(tabName) {
+  // Hide all panels
+  document.querySelectorAll('.tab-panel').forEach(panel => {
+    panel.classList.remove('active');
+  });
+
+  // Remove active from all tabs
+  document.querySelectorAll('.detail-tab').forEach(tab => {
+    tab.classList.remove('active');
+  });
+
+  // Show selected panel
+  document.getElementById(`tab-${tabName}`).classList.add('active');
+
+  // Mark clicked tab as active
+  event.target.classList.add('active');
 }
 
 // ── LOAD SPECIES ──
@@ -48,10 +62,10 @@ async function loadSpecies() {
     return;
   }
 
-  // Store species id for edit button
+  // Store id for edit button
   window.currentSpeciesId = data.id;
 
-  // ── Fill header ──
+  // ── Header ──
   document.getElementById('detail-species-name').textContent = data.species_name || '—';
   document.getElementById('detail-scientific-name').textContent = data.scientific_name || '';
   document.title = data.species_name || 'Species Detail';
@@ -64,7 +78,15 @@ async function loadSpecies() {
     document.getElementById('detail-no-photo').style.display = 'none';
   }
 
-  // ── Basic Information ──
+  // ── Left panel summary ──
+  fillField('s-common_trade_family_name', data.common_trade_family_name);
+  fillField('s-afsis_3a_code', data.afsis_3a_code);
+  fillField('s-taxonomic_code', data.taxonomic_code);
+  fillField('s-maturity_cm', data.maturity_cm, data.maturity_cm_type ? ` ${data.maturity_cm_type}` : ' cm');
+
+  // ── Basic Information tab ──
+  fillField('d-species_name', data.species_name);
+  fillField('d-scientific_name', data.scientific_name);
   fillField('d-common_trade_family_name', data.common_trade_family_name);
   fillField('d-afsis_3a_code', data.afsis_3a_code);
   fillField('d-taxonomic_code', data.taxonomic_code);
@@ -72,7 +94,7 @@ async function loadSpecies() {
   fillField('d-isscaap_code', data.isscaap_code);
   fillField('d-caab_code', data.caab_code);
 
-  // ── Classification ──
+  // ── Classification tab ──
   fillField('d-kingdom', data.kingdom);
   fillField('d-phylum', data.phylum);
   fillField('d-class_name', data.class_name);
@@ -80,28 +102,33 @@ async function loadSpecies() {
   fillField('d-family', data.family);
   fillField('d-genus', data.genus);
 
-  // ── Dimensions ──
+  // ── Dimensions tab ──
   fillField('d-maturity_cm', data.maturity_cm, data.maturity_cm_type ? ` ${data.maturity_cm_type}` : ' cm');
   fillField('d-max_length_cm', data.max_length_cm, data.max_length_cm_type ? ` ${data.max_length_cm_type}` : ' cm');
   fillField('d-common_length_cm', data.common_length_cm, data.common_length_cm_type ? ` ${data.common_length_cm_type}` : ' cm');
   fillField('d-max_published_weight', data.max_published_weight, data.max_published_weight_type ? ` ${data.max_published_weight_type}` : ' kg');
   fillField('d-max_reported_age', data.max_reported_age, data.max_reported_age_type ? ` ${data.max_reported_age_type}` : ' years');
+  fillField('d-generation_length', data.generation_length, data.generation_length_type ? ` ${data.generation_length_type}` : '');
 
-  // ── Characteristics ──
+  // ── Characteristics tab ──
   fillField('d-short_description', data.short_description);
   fillField('d-habitat', data.habitat);
   fillField('d-biology', data.biology);
   fillField('d-distribution', data.distribution);
   fillField('d-colour', data.colour);
+  fillField('d-dna_sequence', data.dna_sequence);
+  fillField('d-reproduction_lifecycle', data.reproduction_lifecycle);
   fillField('d-temperature', data.temperature);
   fillField('d-behavior', data.behavior);
-  fillField('d-diet', data.diet);
+  fillField('d-swim_speed', data.swim_speed);
+  fillField('d-short_bursts', data.short_bursts);
   fillField('d-predators', data.predators);
   fillField('d-main_prey', data.main_prey);
+  fillField('d-diet', data.diet);
   fillField('d-depth_range', data.depth_range);
   fillField('d-fao_area', data.fao_area);
 
-  // ── Harvest ──
+  // ── Harvest tab ──
   fillField('d-source_type', data.source_type);
   fillField('d-gear_type', data.gear_type);
 
@@ -111,9 +138,21 @@ async function loadSpecies() {
 
 // ── EDIT BUTTON ──
 function goToEdit() {
-  // Goes back to species list and opens edit modal
   window.location.href = `Species.html?edit=${window.currentSpeciesId}`;
 }
 
 // ── START ──
 document.addEventListener('DOMContentLoaded', loadSpecies);
+
+// ── SETTINGS MENU ──
+function toggleSettingsMenu() {
+  const menu = document.getElementById('detail-settings-menu');
+  menu.classList.toggle('open');
+}
+
+// Close menu when clicking outside
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.detail-settings-wrap')) {
+    document.getElementById('detail-settings-menu').classList.remove('open');
+  }
+});
