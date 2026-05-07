@@ -68,7 +68,7 @@ function renderTable(data) {
 
     const row = document.createElement('tr');
     row.innerHTML = `
-      <td class="species-name-cell">${escapeHtml(species.species_name || '—')}</td>
+      <td class="species-name-cell"><a href="species-details.html?id=${species.id}" style="color:#0f0f0f; text-decoration:none; font-weight:600;">${escapeHtml(species.species_name || '—')}</a></td>
       <td class="scientific-name-cell">${escapeHtml(species.scientific_name || '—')}</td>
       <td class="date-cell">${date}</td>
       <td>
@@ -113,6 +113,12 @@ function openCreateModal() {
   editingId = null;
   modalTitle.textContent = 'Create New Species';
   speciesForm.reset();
+  
+  // Clear photo preview
+  document.getElementById('photo-preview-group').style.display = 'none';
+  document.getElementById('photo-preview').src = '';
+  document.getElementById('file-name-display').textContent = 'No file chosen';
+  
   modalOverlay.classList.add('open');
 }
 
@@ -227,6 +233,13 @@ async function saveSpecies() {
 
     data['photo_url'] = urlData.publicUrl;
   }
+// If photo was removed, clear the URL
+  const previewGroup = document.getElementById('photo-preview-group');
+  if (previewGroup.dataset.removed === 'true') {
+    data['photo_url'] = null;
+    previewGroup.dataset.removed = 'false';
+  }
+
 
   // Remove photo file from data object — not a DB column
   delete data['species_photo'];
@@ -299,8 +312,6 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-
-
 // ── 12. EVENT LISTENERS ──
 btnOpenCreate.addEventListener('click', openCreateModal);
 btnModalClose.addEventListener('click', closeModal);
@@ -320,3 +331,29 @@ document.addEventListener('keydown', function(e) {
 document.addEventListener('DOMContentLoaded', function() {
   loadSpecies();
 });
+
+// ── FILE NAME DISPLAY ──
+function updateFileName(input) {
+  const display = document.getElementById('file-name-display');
+  display.textContent = input.files[0] ? input.files[0].name : 'No file chosen';
+  
+  // Show preview of selected photo
+  if (input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('photo-preview').src = e.target.result;
+      document.getElementById('photo-preview-group').style.display = 'block';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+// ── REMOVE PHOTO ──
+function removePhoto() {
+  document.getElementById('photo-preview').src = '';
+  document.getElementById('photo-preview-group').style.display = 'none';
+  document.getElementById('file-name-display').textContent = 'No file chosen';
+  document.getElementById('species_photo').value = '';
+  // Flag to remove photo from database on save
+  document.getElementById('photo-preview-group').dataset.removed = 'true';
+}

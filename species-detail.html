@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Species Detail</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <!-- TOP NAVIGATION -->
+  <nav class="navbar">
+    <div class="nav-brand">PROJECT</div>
+    <ul class="nav-links">
+      <li><a href="#">Home</a></li>
+      <li class="dropdown">
+        <a href="#">Module ▾</a>
+        <ul class="dropdown-menu">
+          <li><a href="Species.html">Species</a></li>
+        </ul>
+      </li>
+      <li><a href="#">Reports</a></li>
+      <li><a href="#">Settings</a></li>
+      <li><a href="#">Profile</a></li>
+    </ul>
+  </nav>
+
+  <div class="page-container">
+
+    <!-- BACK BUTTON -->
+    <div style="margin-bottom: 20px;">
+      <a href="Species.html" class="btn btn-secondary">← Back to Species</a>
+    </div>
+
+    <!-- LOADING STATE -->
+    <div id="loading-state">
+      <div class="skeleton" style="height:32px; width:300px; margin-bottom:8px;"></div>
+      <div class="skeleton" style="height:20px; width:200px;"></div>
+    </div>
+
+    <!-- DETAIL CONTENT -->
+    <div id="detail-content" style="display:none;">
+
+      <!-- HEADER -->
+      <div style="display:flex; align-items:flex-start; gap:32px; margin-bottom:36px;">
+        <img id="detail-photo" src="" alt="Species Photo"
+          style="width:220px; height:180px; object-fit:cover; border-radius:10px; border:1.5px solid #e8e8e8; display:none;"/>
+        <div id="detail-no-photo"
+          style="width:220px; height:180px; border-radius:10px; border:1.5px solid #e8e8e8; background:#f5f5f5; display:flex; align-items:center; justify-content:center; font-size:48px;">
+          🐟
+        </div>
+        <div>
+          <h1 id="detail-species-name" style="font-size:28px; font-weight:700; letter-spacing:-0.02em; margin-bottom:6px;"></h1>
+          <p id="detail-scientific-name" style="font-size:16px; font-style:italic; color:#5a5a5a; margin-bottom:16px;"></p>
+          <div style="display:flex; gap:10px;">
+            <button class="btn btn-primary" onclick="goToEdit()">✏️ Edit Species</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SECTIONS -->
+      <div class="detail-grid">
+
+        <!-- Basic Information -->
+        <div class="detail-card">
+          <div class="detail-card-title">Basic Information</div>
+          <div class="detail-fields">
+            <div class="detail-field"><span class="detail-label">Common Name</span><span class="detail-value" id="d-common_trade_family_name"></span></div>
+            <div class="detail-field"><span class="detail-label">AFSIS 3A Code</span><span class="detail-value" id="d-afsis_3a_code"></span></div>
+            <div class="detail-field"><span class="detail-label">Taxonomic Code</span><span class="detail-value" id="d-taxonomic_code"></span></div>
+            <div class="detail-field"><span class="detail-label">Alphia ID</span><span class="detail-value" id="d-alphia_id"></span></div>
+            <div class="detail-field"><span class="detail-label">ISSCAAP Code</span><span class="detail-value" id="d-isscaap_code"></span></div>
+            <div class="detail-field"><span class="detail-label">CAAB Code</span><span class="detail-value" id="d-caab_code"></span></div>
+          </div>
+        </div>
+
+        <!-- Classification -->
+        <div class="detail-card">
+          <div class="detail-card-title">Classification</div>
+          <div class="detail-fields">
+            <div class="detail-field"><span class="detail-label">Kingdom</span><span class="detail-value" id="d-kingdom"></span></div>
+            <div class="detail-field"><span class="detail-label">Phylum</span><span class="detail-value" id="d-phylum"></span></div>
+            <div class="detail-field"><span class="detail-label">Class</span><span class="detail-value" id="d-class_name"></span></div>
+            <div class="detail-field"><span class="detail-label">Order</span><span class="detail-value" id="d-order_name"></span></div>
+            <div class="detail-field"><span class="detail-label">Family</span><span class="detail-value" id="d-family"></span></div>
+            <div class="detail-field"><span class="detail-label">Genus</span><span class="detail-value" id="d-genus"></span></div>
+          </div>
+        </div>
+
+        <!-- Dimensions -->
+        <div class="detail-card">
+          <div class="detail-card-title">Dimensions</div>
+          <div class="detail-fields">
+            <div class="detail-field"><span class="detail-label">Maturity</span><span class="detail-value" id="d-maturity_cm"></span></div>
+            <div class="detail-field"><span class="detail-label">Max Length</span><span class="detail-value" id="d-max_length_cm"></span></div>
+            <div class="detail-field"><span class="detail-label">Common Length</span><span class="detail-value" id="d-common_length_cm"></span></div>
+            <div class="detail-field"><span class="detail-label">Max Weight</span><span class="detail-value" id="d-max_published_weight"></span></div>
+            <div class="detail-field"><span class="detail-label">Max Age</span><span class="detail-value" id="d-max_reported_age"></span></div>
+          </div>
+        </div>
+
+        <!-- Characteristics -->
+        <div class="detail-card full-width-card">
+          <div class="detail-card-title">Characteristics & Environment</div>
+          <div class="detail-fields">
+            <div class="detail-field"><span class="detail-label">Short Description</span><span class="detail-value" id="d-short_description"></span></div>
+            <div class="detail-field"><span class="detail-label">Habitat</span><span class="detail-value" id="d-habitat"></span></div>
+            <div class="detail-field"><span class="detail-label">Biology</span><span class="detail-value" id="d-biology"></span></div>
+            <div class="detail-field"><span class="detail-label">Distribution</span><span class="detail-value" id="d-distribution"></span></div>
+            <div class="detail-field"><span class="detail-label">Colour</span><span class="detail-value" id="d-colour"></span></div>
+            <div class="detail-field"><span class="detail-label">Temperature</span><span class="detail-value" id="d-temperature"></span></div>
+            <div class="detail-field"><span class="detail-label">Behavior</span><span class="detail-value" id="d-behavior"></span></div>
+            <div class="detail-field"><span class="detail-label">Diet</span><span class="detail-value" id="d-diet"></span></div>
+            <div class="detail-field"><span class="detail-label">Predators</span><span class="detail-value" id="d-predators"></span></div>
+            <div class="detail-field"><span class="detail-label">Main Prey</span><span class="detail-value" id="d-main_prey"></span></div>
+            <div class="detail-field"><span class="detail-label">Depth Range</span><span class="detail-value" id="d-depth_range"></span></div>
+            <div class="detail-field"><span class="detail-label">FAO Area</span><span class="detail-value" id="d-fao_area"></span></div>
+          </div>
+        </div>
+
+        <!-- Harvest -->
+        <div class="detail-card">
+          <div class="detail-card-title">Harvest</div>
+          <div class="detail-fields">
+            <div class="detail-field"><span class="detail-label">Source Type</span><span class="detail-value" id="d-source_type"></span></div>
+            <div class="detail-field"><span class="detail-label">Gear Type</span><span class="detail-value" id="d-gear_type"></span></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ERROR STATE -->
+    <div id="error-state" style="display:none;">
+      <div class="empty-state">
+        <div class="empty-icon">⚠️</div>
+        <p>Species not found</p>
+        <small>It may have been deleted.</small>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="detail.js"></script>
+</body>
+</html>
