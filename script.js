@@ -351,9 +351,12 @@ document.addEventListener('keydown', function(e) {
 });
 
 // Search
-document.getElementById('search-input').addEventListener('input', function() {
-  filterSpecies(this.value);
-});
+const searchEl = document.getElementById('search-input');
+if (searchEl) {
+  searchEl.addEventListener('input', function() {
+    filterSpecies(this.value);
+  });
+}
 
 // ── 13. START ──
 document.addEventListener('DOMContentLoaded', function() {
