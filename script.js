@@ -68,7 +68,14 @@ function renderTable(data) {
 
     const row = document.createElement('tr');
     row.innerHTML = `
-      <td class="species-name-cell"><a href="species-details.html?id=${species.id}" style="color:#0f0f0f; text-decoration:none; font-weight:600;">${escapeHtml(species.species_name || '—')}</a></td>
+ <td class="species-name-cell">
+  <div style="display:flex; align-items:center; gap:10px;">
+    <div style="width:36px; height:36px; border-radius:6px; background:#f5f5f5; border:1px solid #e8e8e8; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+      <img src="fish-icon.png" style="width:22px; height:22px; opacity:0.5;"/>
+    </div>
+    <a href="species-detail.html?id=${species.id}" style="color:#0f0f0f; text-decoration:none; font-weight:600;">${escapeHtml(species.species_name || '—')}</a>
+  </div>
+</td>
       <td class="scientific-name-cell">${escapeHtml(species.scientific_name || '—')}</td>
       <td class="date-cell">${date}</td>
       <td>
@@ -312,6 +319,23 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+// ── 11B. SEARCH / FILTER ──
+function filterSpecies(query) {
+  if (!query.trim()) {
+    renderTable(allSpecies);
+    return;
+  }
+
+  const q = query.toLowerCase();
+  const filtered = allSpecies.filter(s =>
+    (s.species_name    || '').toLowerCase().includes(q) ||
+    (s.scientific_name || '').toLowerCase().includes(q) ||
+    (s.common_trade_family_name || '').toLowerCase().includes(q)
+  );
+
+  renderTable(filtered);
+}
+
 // ── 12. EVENT LISTENERS ──
 btnOpenCreate.addEventListener('click', openCreateModal);
 btnModalClose.addEventListener('click', closeModal);
@@ -326,6 +350,10 @@ document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') closeModal();
 });
 
+// Search
+document.getElementById('search-input').addEventListener('input', function() {
+  filterSpecies(this.value);
+});
 
 // ── 13. START ──
 document.addEventListener('DOMContentLoaded', function() {
