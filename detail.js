@@ -16,6 +16,59 @@ async function checkAuth() {
   return session;
 }
 
+
+// ── UPDATE NAV ──
+async function updateNav() {
+  const { data: { session } } = await dbClient.auth.getSession();
+  if (!session) return;
+
+  const email = session.user.email;
+  const profileLink = document.getElementById('detail-profile-link');
+  if (profileLink) {
+    profileLink.innerHTML = `
+      <div class="nav-profile-wrap">
+        <button class="nav-profile-btn" onclick="toggleProfileMenu()">👤 ${email}</button>
+        <div class="nav-profile-menu" id="nav-profile-menu">
+          <div class="nav-profile-email">${email}</div>
+          <button class="nav-profile-logout" onclick="handleLogout()">Logout</button>
+        </div>
+      </div>`;
+  }
+
+  // Enable Edit and Delete in settings menu
+  const editBtn = document.getElementById('detail-edit-btn');
+  const deleteBtn = document.getElementById('detail-delete-btn');
+  if (editBtn) {
+    editBtn.disabled = false;
+    editBtn.style.cursor = 'pointer';
+    editBtn.style.color = '#0f0f0f';
+    editBtn.title = '';
+  }
+  if (deleteBtn) {
+    deleteBtn.disabled = false;
+    deleteBtn.style.cursor = 'pointer';
+    deleteBtn.style.color = '#c0392b';
+    deleteBtn.title = '';
+  }
+}
+
+async function handleLogout() {
+  await dbClient.auth.signOut();
+  window.location.href = 'login.html';
+}
+
+function toggleProfileMenu() {
+  const menu = document.getElementById('nav-profile-menu');
+  menu.classList.toggle('open');
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.nav-profile-wrap')) {
+    const menu = document.getElementById('nav-profile-menu');
+    if (menu) menu.classList.remove('open');
+  }
+});
+
 // ── GET SPECIES ID FROM URL ──
 function getIdFromUrl() {
   const params = new URLSearchParams(window.location.search);
@@ -167,6 +220,7 @@ function goToEdit() {
 document.addEventListener('DOMContentLoaded', async function() {
   const session = await checkAuth();
   if (session) {
+    updateNav();
     loadSpecies();
   }
 });
@@ -183,3 +237,37 @@ document.addEventListener('click', function(e) {
     document.getElementById('detail-settings-menu').classList.remove('open');
   }
 });
+// ── DELETE FROM DETAIL PAGE ──
+async function deleteCurrentSpecies() {
+  const name = document.getElementById('detail-species-name').textContent;
+  const confirmed = await showConfirm(`Delete "${name}"?`, 'This cannot be undone.');
+  if (!confirmed) return;
+
+  const { error } = await dbClient.from('species').delete().eq('id', window.currentSpeciesId);
+
+  if (error) {
+    alert('Delete failed: ' + error.message);
+    return;
+  }
+
+  window.location.href = 'Species.html';
+}
+
+// ── CUSTOM CONFIRM ──
+function showConfirm(title, message) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('confirm-overlay');
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-message').textContent = message;
+    overlay.classList.add('open');
+
+    document.getElementById('confirm-ok').onclick = () => {
+      overlay.classList.remove('open');
+      resolve(true);
+    };
+    document.getElementById('confirm-cancel').onclick = () => {
+      overlay.classList.remove('open');
+      resolve(false);
+    };
+  });
+}

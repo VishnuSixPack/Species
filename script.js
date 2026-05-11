@@ -530,7 +530,14 @@ document.addEventListener('DOMContentLoaded', async function() {
   const session = await checkAuth();
   if (session) {
     updateNav();
-    loadSpecies();
+    await loadSpecies();
+
+    // Check if we need to open edit modal
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get('edit');
+    if (editId) {
+      openEditModal(parseInt(editId));
+    }
   }
 });
 // ── FILE NAME DISPLAY ──
