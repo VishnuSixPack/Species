@@ -23,15 +23,14 @@ async function updateNav() {
   if (!session) return;
 
   const email = session.user.email;
+  const initials = email.substring(0, 2).toUpperCase();
+
   const profileLink = document.getElementById('detail-profile-link');
   if (profileLink) {
     profileLink.innerHTML = `
-      <div class="nav-profile-wrap">
-        <button class="nav-profile-btn" onclick="toggleProfileMenu()">👤 ${email}</button>
-        <div class="nav-profile-menu" id="nav-profile-menu">
-          <div class="nav-profile-email">${email}</div>
-          <button class="nav-profile-logout" onclick="handleLogout()">Logout</button>
-        </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div style="width:32px; height:32px; border-radius:50%; background:#1a6fdb; color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;">${initials}</div>
+        <span style="font-size:12px; color:#6b7280; font-weight:500;">${email}</span>
       </div>`;
   }
 

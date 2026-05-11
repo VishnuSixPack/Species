@@ -162,7 +162,7 @@ async function loadSpecies() {
   const { data, error } = await dbClient
     .from('species')
     .select('id, species_name, scientific_name, afsis_code, taxon_code, source_type, gear_type, fao_area')
-    .order('species_name');
+   .order('species_name', { ascending: true });
 
   if (error) { console.error('Error loading species:', error); return; }
 
@@ -727,9 +727,7 @@ async function saveProduct() {
 }
 
 function cancelProduct() {
-  if (confirm('Discard changes and go back?')) {
-    window.history.back();
-  }
+  document.getElementById('cancelModal').classList.remove('hidden');
 }
 
 // ── TOAST ─────────────────────────────────────────────────────

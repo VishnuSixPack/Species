@@ -24,14 +24,15 @@ async function updateNav() {
   if (!session) return;
 
   const email = session.user.email;
+  const initials = email.substring(0, 2).toUpperCase();
   const profileLink = document.getElementById('nav-profile-link');
   if (profileLink) {
     profileLink.innerHTML = `
-      <div class="nav-profile-wrap">
-        <button class="nav-profile-btn" onclick="toggleProfileMenu()">👤 ${email}</button>
-        <div class="nav-profile-menu" id="nav-profile-menu">
-          <div class="nav-profile-email">${email}</div>
-          <button class="nav-profile-logout" onclick="handleLogout()">Logout</button>
+      <div style="display:flex; align-items:center; gap:8px; cursor:pointer; position:relative;" onclick="toggleProfileMenu()">
+        <div style="width:32px; height:32px; border-radius:50%; background:#1a6fdb; color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;">${initials}</div>
+        <span style="font-size:12px; color:#6b7280; font-weight:500;">${email}</span>
+        <div class="nav-profile-menu" id="nav-profile-menu" style="position:absolute; top:calc(100% + 8px); right:0; background:#fff; border:1px solid #e8eaf0; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.10); min-width:120px; overflow:hidden; display:none;">
+          <button onclick="handleLogout()" style="width:100%; padding:10px 16px; background:none; border:none; text-align:left; font-family:'DM Sans',sans-serif; font-size:13px; color:#e63946; cursor:pointer; font-weight:500;">Logout</button>
         </div>
       </div>`;
   }
@@ -44,7 +45,9 @@ async function handleLogout() {
 
 function toggleProfileMenu() {
   const menu = document.getElementById('nav-profile-menu');
-  menu.classList.toggle('open');
+  if (menu) {
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  }
 }
 
 document.addEventListener('click', function(e) {
