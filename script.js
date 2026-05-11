@@ -125,6 +125,11 @@ function openCreateModal() {
   document.getElementById('photo-preview-group').style.display = 'none';
   document.getElementById('photo-preview').src = '';
   document.getElementById('file-name-display').textContent = 'No file chosen';
+
+  // Reset multi-selects
+  resetMultiSelect('source_type');
+  resetMultiSelect('gear_type');
+  resetMultiSelect('fao_area');
   
   modalOverlay.classList.add('open');
 }
@@ -160,6 +165,9 @@ function openEditModal(id) {
     previewGroup.style.display = 'none';
   }
 
+  setMultiSelect('source_type', species.source_type ? species.source_type.split(',').map(v => v.trim()) : []);
+  setMultiSelect('gear_type', species.gear_type ? species.gear_type.split(',').map(v => v.trim()) : []);
+  setMultiSelect('fao_area', species.fao_area ? species.fao_area.split(',').map(v => v.trim()) : []);
 
   modalOverlay.classList.add('open');
 }
@@ -168,6 +176,10 @@ function closeModal() {
   modalOverlay.classList.remove('open');
   editingId = null;
   speciesForm.reset();
+  
+  // Reset save button
+  btnSave.disabled = false;
+  btnSave.textContent = 'Save Species';
 }
 
 
@@ -180,12 +192,10 @@ function collectFormData() {
     data[key] = value === '' ? null : value;
   }
 
-  // FAO Area multi-select
-  const faoSelect = speciesForm.querySelector('[name="fao_area"]');
-  if (faoSelect) {
-    const selected = Array.from(faoSelect.selectedOptions).map(o => o.value);
-    data['fao_area'] = selected.length > 0 ? selected.join(',') : null;
-  }
+// Multi-select fields — read from hidden inputs
+data['fao_area'] = document.getElementById('fao_area')?.value || null;
+data['source_type'] = document.getElementById('source_type')?.value || null;
+data['gear_type'] = document.getElementById('gear_type')?.value || null;
 
   // Convert numeric fields
   const numericFields = [
@@ -335,6 +345,118 @@ function filterSpecies(query) {
 
   renderTable(filtered);
 }
+
+// ── MULTI-SELECT COMPONENT ──
+const multiSelectState = {};
+
+function toggleMultiSelect(field) {
+  const dropdown = document.getElementById(`ms-dropdown-${field}`);
+  const box = dropdown.previousElementSibling;
+  const isOpen = dropdown.classList.contains('open');
+
+  // Close all other dropdowns first
+  document.querySelectorAll('.multi-select-dropdown.open').forEach(d => {
+    d.classList.remove('open');
+    d.previousElementSibling.classList.remove('open');
+  });
+
+  if (!isOpen) {
+    dropdown.classList.add('open');
+    box.classList.add('open');
+  }
+}
+
+function selectMultiOption(field, value) {
+  if (!multiSelectState[field]) multiSelectState[field] = [];
+
+  const index = multiSelectState[field].indexOf(value);
+  if (index === -1) {
+    multiSelectState[field].push(value);
+  } else {
+    multiSelectState[field].splice(index, 1);
+  }
+
+  updateMultiSelectUI(field);
+  updateMultiSelectHidden(field);
+}
+
+function updateMultiSelectUI(field) {
+  const selected = multiSelectState[field] || [];
+  const box = document.querySelector(`#ms-wrap-${field} .multi-select-box`);
+  const placeholder = document.getElementById(`ms-placeholder-${field}`);
+  const options = document.querySelectorAll(`#ms-options-${field} .multi-select-option`);
+
+  // Update checkboxes
+  options.forEach(option => {
+    const label = option.querySelector('span').textContent;
+    if (selected.includes(label)) {
+      option.classList.add('selected');
+    } else {
+      option.classList.remove('selected');
+    }
+  });
+
+  // Update tags in box
+  // Remove old tags
+  box.querySelectorAll('.multi-select-tag').forEach(t => t.remove());
+
+  if (selected.length === 0) {
+    placeholder.style.display = '';
+  } else {
+    placeholder.style.display = 'none';
+    selected.forEach(val => {
+      const tag = document.createElement('div');
+      tag.className = 'multi-select-tag';
+      tag.innerHTML = `${val} <button type="button" onclick="event.stopPropagation(); removeMultiOption('${field}', '${val}')">✕</button>`;
+      box.insertBefore(tag, box.querySelector('.multi-select-arrow'));
+    });
+  }
+}
+
+function removeMultiOption(field, value) {
+  if (!multiSelectState[field]) return;
+  multiSelectState[field] = multiSelectState[field].filter(v => v !== value);
+  updateMultiSelectUI(field);
+  updateMultiSelectHidden(field);
+}
+
+function updateMultiSelectHidden(field) {
+  const hidden = document.getElementById(field);
+  if (hidden) {
+    hidden.value = (multiSelectState[field] || []).join(',');
+  }
+}
+
+function filterMultiSelect(field, query) {
+  const options = document.querySelectorAll(`#ms-options-${field} .multi-select-option`);
+  const q = query.toLowerCase();
+  options.forEach(option => {
+    const label = option.querySelector('span').textContent.toLowerCase();
+    option.style.display = label.includes(q) ? '' : 'none';
+  });
+}
+
+function resetMultiSelect(field) {
+  multiSelectState[field] = [];
+  updateMultiSelectUI(field);
+  updateMultiSelectHidden(field);
+}
+
+function setMultiSelect(field, values) {
+  multiSelectState[field] = values;
+  updateMultiSelectUI(field);
+  updateMultiSelectHidden(field);
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.multi-select-wrap')) {
+    document.querySelectorAll('.multi-select-dropdown.open').forEach(d => {
+      d.classList.remove('open');
+      d.previousElementSibling.classList.remove('open');
+    });
+  }
+});
 
 // ── 12. EVENT LISTENERS ──
 btnOpenCreate.addEventListener('click', openCreateModal);
