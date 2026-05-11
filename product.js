@@ -47,23 +47,51 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('userAvatar').textContent = initials;
   document.getElementById('userEmail').textContent = email;
 
-  await loadSpecies();
+await loadSpecies();
   initDualModeToggles();
   initNutritionCards();
   initMultiselects();
 
   // Add first allergen row by default
   addAllergenRow();
+
+// Init save button state
+  updateSaveButton();
+
+  // Re-validate on any input change
+  document.addEventListener('input', updateSaveButton);
+  document.addEventListener('change', updateSaveButton);
+
+  // Mandatory field blur validation
+  initMandatoryFieldValidation();
 });
 
 // ── TABS ──────────────────────────────────────────────────────
+// ── TABS ──────────────────────────────────────────────────────
+let previousTab = 0;
+const visitedTabs = new Set();
+
 function switchTab(index) {
-  document.querySelectorAll('.tab-pill').forEach((btn, i) => {
-    btn.classList.toggle('active', i === index);
+  const pills = document.querySelectorAll('.tab-pill');
+  const panels = document.querySelectorAll('.tab-panel');
+
+  // Mark previous tab as visited
+  visitedTabs.add(previousTab);
+
+  pills.forEach((btn, i) => {
+    btn.classList.remove('active', 'completed', 'invalid');
+    if (i === index) {
+      btn.classList.add('active');
+    } else if (visitedTabs.has(i)) {
+      const tabValid = isTabValid(i);
+      btn.classList.add(tabValid ? 'completed' : 'invalid');
+    }
   });
-  document.querySelectorAll('.tab-panel').forEach((panel, i) => {
-    panel.classList.toggle('active', i === index);
-  });
+
+  panels.forEach((panel, i) => panel.classList.toggle('active', i === index));
+
+  previousTab = index;
+  updateSaveButton();
 }
 
 // ── SUMMARY PANEL ─────────────────────────────────────────────
@@ -520,19 +548,118 @@ function collectFormData() {
 }
 
 // ── VALIDATE ──────────────────────────────────────────────────
+// ── VALIDATION ────────────────────────────────────────────────
+function isTabValid(tabIndex) {
+  switch(tabIndex) {
+    case 0: // Product Information
+      return (
+        !!document.getElementById('productName')?.value.trim() &&
+        !!document.getElementById('brand')?.value.trim() &&
+        !!getPackagingValue('productForm') &&
+        !!getPackagingValue('packStyle') &&
+        !!getPackagingValue('packMedium') &&
+        !!document.getElementById('primaryPackaging')?.value
+      );
+    case 1: // Raw Material
+      return (
+        !!document.getElementById('commercialName')?.value &&
+        !!document.getElementById('typeOfCatch')?.value &&
+        !!document.getElementById('harvestMethod')?.value
+      );
+    case 2: // Allergen
+      let allergenValid = false;
+      document.querySelectorAll('[id^="allergenRow_"]').forEach(row => {
+        const idNum = row.id.split('_')[1];
+        const label = document.getElementById(`allergenLabel_${idNum}`)?.value.trim();
+        const level = document.getElementById(`containment_${idNum}`)?.value;
+        if (label && level) allergenValid = true;
+      });
+      return allergenValid;
+    case 3: // Nutrition
+      let nutritionValid = false;
+      document.querySelectorAll('.nutrition-row').forEach(row => {
+        const val = row.querySelectorAll('input')[1]?.value;
+        if (val !== '' && val !== undefined) nutritionValid = true;
+      });
+      return nutritionValid;
+    case 4: // Sustainability
+      return !!document.getElementById('rawMaterialOrigin')?.value;
+    case 5: // Art Work — all optional
+      return true;
+    default:
+      return true;
+  }
+}
+
+function isFormComplete() {
+  for (let i = 0; i <= 5; i++) {
+    if (!isTabValid(i)) return false;
+  }
+  return true;
+}
+
+// ── MANDATORY FIELD BLUR VALIDATION ──────────────────────────
+const mandatoryFields = [
+  { id: 'productName', type: 'input' },
+  { id: 'brand', type: 'input' },
+  { id: 'primaryPackaging', type: 'select' },
+  { id: 'commercialName', type: 'select' },
+  { id: 'rawMaterialOrigin', type: 'select' },
+];
+
+function initMandatoryFieldValidation() {
+  mandatoryFields.forEach(({ id }) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('blur', () => validateMandatoryField(el));
+    el.addEventListener('input', () => validateMandatoryField(el));
+    el.addEventListener('change', () => validateMandatoryField(el));
+  });
+
+  ['productForm', 'packStyle', 'packMedium'].forEach(fieldBase => {
+    const sel = document.getElementById(fieldBase);
+    const custom = document.getElementById(`${fieldBase}Custom`);
+    if (sel) {
+      sel.addEventListener('blur', () => validateDualMode(fieldBase));
+      sel.addEventListener('change', () => validateDualMode(fieldBase));
+    }
+    if (custom) {
+      custom.addEventListener('blur', () => validateDualMode(fieldBase));
+      custom.addEventListener('input', () => validateDualMode(fieldBase));
+    }
+  });
+}
+
+function validateMandatoryField(el) {
+  const empty = !el.value.trim();
+  el.classList.toggle('field-invalid', empty);
+}
+
+function validateDualMode(fieldBase) {
+  const value = getPackagingValue(fieldBase);
+  const toggle = document.querySelector(`.dual-mode-toggle[data-field="${fieldBase}"]`);
+  const content = toggle.nextElementSibling;
+  const activeEl = content.querySelector('.mode-select:not(.hidden), .mode-custom:not(.hidden)');
+  if (activeEl) activeEl.classList.toggle('field-invalid', !value.trim());
+}
+
+function updateSaveButton() {
+  const btn = document.getElementById('btnSave');
+  const complete = isFormComplete();
+  btn.disabled = !complete;
+  btn.style.opacity = complete ? '1' : '0.5';
+  btn.style.cursor = complete ? 'pointer' : 'not-allowed';
+  btn.removeAttribute('title');
+  btn.setAttribute('data-tooltip', complete ? '' : 'Please fill the necessary information to save');
+}
+
 function validateForm(data) {
   const errors = [];
-
-  if (!data.product.product_name) {
-    errors.push('Product Name is required.');
-    focusField('productName');
-  }
-
+  if (!data.product.product_name) errors.push('Product Name is required.');
   if (!data.product.species_id) {
     errors.push('Commercial Name (Species) is required.');
     document.getElementById('errCommercialName').classList.remove('hidden');
   }
-
   return errors;
 }
 
@@ -624,4 +751,10 @@ function showToast(message, type = 'success') {
   document.body.appendChild(toast);
 
   setTimeout(() => toast.remove(), 3500);
+}
+
+function closeBulkModal(event) {
+  if (event.target === document.getElementById('bulkUploadModal')) {
+    document.getElementById('bulkUploadModal').classList.add('hidden');
+  }
 }
