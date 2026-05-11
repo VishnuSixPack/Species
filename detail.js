@@ -20,6 +20,19 @@ function fillField(id, value, suffix = '') {
   el.textContent = value ? `${value}${suffix}` : '—';
 }
 
+function fillPills(id, value) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (!value) {
+    el.textContent = '—';
+    return;
+  }
+  const items = value.split(',').map(v => v.trim()).filter(v => v);
+  el.innerHTML = items.map(item => 
+    `<span style="display:inline-block; background:#f0f5ff; border:1px solid #c0d4f5; color:#1a6fdb; font-size:12px; font-weight:500; padding:3px 10px; border-radius:999px; margin:2px 3px 2px 0;">${item}</span>`
+  ).join('');
+}
+
 // ── SWITCH TAB ──
 function switchTab(tabName) {
   // Hide all panels
@@ -126,11 +139,11 @@ async function loadSpecies() {
   fillField('d-main_prey', data.main_prey);
   fillField('d-diet', data.diet);
   fillField('d-depth_range', data.depth_range);
-  fillField('d-fao_area', data.fao_area);
+  fillPills('d-fao_area', data.fao_area);
 
   // ── Harvest tab ──
-  fillField('d-source_type', data.source_type);
-  fillField('d-gear_type', data.gear_type);
+  fillPills('d-source_type', data.source_type);
+  fillPills('d-gear_type', data.gear_type);
 
   // ── Show content ──
   document.getElementById('detail-content').style.display = 'block';
