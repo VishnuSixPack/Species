@@ -9,6 +9,51 @@ const SUPABASE_ANON_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
 const dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 
+// ── AUTH CHECK ──
+async function checkAuth() {
+  const { data: { session } } = await dbClient.auth.getSession();
+  if (!session) {
+    window.location.href = 'login.html';
+  }
+  return session;
+}
+
+// ── UPDATE NAV FOR LOGGED IN USER ──
+async function updateNav() {
+  const { data: { session } } = await dbClient.auth.getSession();
+  if (!session) return;
+
+  const email = session.user.email;
+  const profileLink = document.getElementById('nav-profile-link');
+  if (profileLink) {
+    profileLink.innerHTML = `
+      <div class="nav-profile-wrap">
+        <button class="nav-profile-btn" onclick="toggleProfileMenu()">👤 ${email}</button>
+        <div class="nav-profile-menu" id="nav-profile-menu">
+          <div class="nav-profile-email">${email}</div>
+          <button class="nav-profile-logout" onclick="handleLogout()">Logout</button>
+        </div>
+      </div>`;
+  }
+}
+
+async function handleLogout() {
+  await dbClient.auth.signOut();
+  window.location.href = 'login.html';
+}
+
+function toggleProfileMenu() {
+  const menu = document.getElementById('nav-profile-menu');
+  menu.classList.toggle('open');
+}
+
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.nav-profile-wrap')) {
+    const menu = document.getElementById('nav-profile-menu');
+    if (menu) menu.classList.remove('open');
+  }
+});
+
 // ── 2. STATE ──
 let allSpecies = [];
 let editingId  = null;
@@ -481,10 +526,13 @@ if (searchEl) {
 }
 
 // ── 13. START ──
-document.addEventListener('DOMContentLoaded', function() {
-  loadSpecies();
+document.addEventListener('DOMContentLoaded', async function() {
+  const session = await checkAuth();
+  if (session) {
+    updateNav();
+    loadSpecies();
+  }
 });
-
 // ── FILE NAME DISPLAY ──
 function updateFileName(input) {
   const display = document.getElementById('file-name-display');

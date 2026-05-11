@@ -18,12 +18,14 @@
     </div>
     <ul class="home-nav-links">
       <li><a href="index.html" class="active">Home</a></li>
-      <li class="home-dropdown">
-        <a href="#">Module</a>
-        <ul class="home-dropdown-menu">
-          <li><a href="Species.html">Species</a></li>
-        </ul>
-      </li>
+
+      <li class="home-dropdown" id="home-module-dropdown">
+  <a href="#">Module</a>
+
+     <ul class="home-dropdown-menu">
+    <li><a href="teaser.html">Our Modules</a></li>
+  </ul>
+</li>
       <li><a href="#">Reports</a></li>
       <li class="dropdown">
   <a href="#">Support</a>
@@ -33,7 +35,9 @@
     <li><a href="#">About</a></li>
   </ul>
 </li>
-      <li><a href="#">Profile</a></li>
+      <li id="home-profile-link">
+  <a href="login.html" class="home-login-btn">Login</a>
+</li>
     </ul>
   </nav>
 
@@ -76,6 +80,51 @@
     <p>Built with years of intense typing skills, groundbreaking Ctrl+C/Ctrl+V technology, and several emotionally charged conversations with A.I. Truly a masterpiece of modern engineering.</p>
     <p>email : info@definitelynotvishnu.com</p>
   </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  const SUPABASE_URL = 'https://enbdaajcromxmhgcverp.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+  const dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  document.addEventListener('DOMContentLoaded', async function() {
+    const { data: { session } } = await dbClient.auth.getSession();
+    
+    if (session) {
+      // Logged in — update nav
+      document.getElementById('home-module-dropdown').innerHTML = `
+        <a href="#">Module ▾</a>
+        <ul class="home-dropdown-menu">
+          <li><a href="Species.html">Species</a></li>
+          <li><a href="#">Product (Coming Soon)</a></li>
+        </ul>`;
+      document.getElementById('home-profile-link').innerHTML = `
+        <div class="home-profile-wrap">
+          <button class="home-profile-btn" onclick="toggleHomeProfile()">👤 ${session.user.email}</button>
+          <div class="home-profile-menu" id="home-profile-menu">
+            <div class="home-profile-email">${session.user.email}</div>
+            <button class="home-profile-logout" onclick="handleHomeLogout()">Logout</button>
+          </div>
+        </div>`;
+    }
+  });
+
+  function toggleHomeProfile() {
+    document.getElementById('home-profile-menu').classList.toggle('open');
+  }
+
+  async function handleHomeLogout() {
+    await dbClient.auth.signOut();
+    window.location.href = 'index.html';
+  }
+
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.home-profile-wrap')) {
+      const menu = document.getElementById('home-profile-menu');
+      if (menu) menu.classList.remove('open');
+    }
+  });
+</script>
 
 </body>
 </html>

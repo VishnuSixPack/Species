@@ -7,6 +7,15 @@ const SUPABASE_URL = 'https://enbdaajcromxmhgcverp.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
 const dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// ── AUTH CHECK ──
+async function checkAuth() {
+  const { data: { session } } = await dbClient.auth.getSession();
+  if (!session) {
+    window.location.href = 'login.html';
+  }
+  return session;
+}
+
 // ── GET SPECIES ID FROM URL ──
 function getIdFromUrl() {
   const params = new URLSearchParams(window.location.search);
@@ -155,7 +164,12 @@ function goToEdit() {
 }
 
 // ── START ──
-document.addEventListener('DOMContentLoaded', loadSpecies);
+document.addEventListener('DOMContentLoaded', async function() {
+  const session = await checkAuth();
+  if (session) {
+    loadSpecies();
+  }
+});
 
 // ── SETTINGS MENU ──
 function toggleSettingsMenu() {
