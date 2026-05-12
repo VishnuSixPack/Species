@@ -161,8 +161,8 @@ let speciesCache = [];
 async function loadSpecies() {
   const { data, error } = await dbClient
     .from('species')
-    .select('id, species_name, scientific_name, afsis_code, taxon_code, source_type, gear_type, fao_area')
-   .order('species_name', { ascending: true });
+    .select('id, species_name, scientific_name, afsis_3a_code, taxonomic_code, source_type, gear_type, fao_area')
+   .order('species_name');
 
   if (error) { console.error('Error loading species:', error); return; }
 
@@ -178,7 +178,7 @@ async function loadSpecies() {
 }
 
 function onSpeciesSelect(speciesId) {
-  const sp = speciesCache.find(s => s.id === speciesId);
+  const sp = speciesCache.find(s => String(s.id) === String(speciesId));
 
   // Clear auto-populated fields if nothing selected
   if (!sp) {
@@ -188,12 +188,16 @@ function onSpeciesSelect(speciesId) {
 
   // Auto-populate Raw Material fields
   setReadonlySelect('scientificName', sp.scientific_name);
-  setReadonlySelect('afisisCode', sp.afsis_code);
-  document.getElementById('taxonCode').value = sp.taxon_code || '';
+  setReadonlySelect('afisisCode', sp.afsis_3a_code);
+  const taxonEl = document.getElementById('taxonCode');
+  taxonEl.value = sp.taxonomic_code || '';
+  taxonEl.readOnly = false;
+  taxonEl.style.background = '#fff';
+  taxonEl.style.color = '#1a1a2e';
 
-  // Auto-populate Fishing Methods
-  setReadonlySelect('typeOfCatch', sp.source_type);
-  setReadonlySelect('harvestMethod', sp.gear_type);
+// Auto-populate Fishing Methods as selectable options
+  setMultiToSingle('typeOfCatch', sp.source_type);
+  setMultiToSingle('harvestMethod', sp.gear_type);
 
   // Auto-populate FAO in Sustainability tab
   autoPopulateFAO(sp.fao_area);
@@ -208,29 +212,79 @@ function onSpeciesSelect(speciesId) {
 
 function setReadonlySelect(selectId, value) {
   const sel = document.getElementById(selectId);
-  if (!sel || !value) return;
+  if (!sel) return;
 
-  // Clear existing options and add the auto-populated value
   sel.innerHTML = '';
-  const opt = document.createElement('option');
-  opt.value = value;
-  opt.textContent = value;
-  sel.appendChild(opt);
-  sel.value = value;
+  if (value) {
+    const opt = document.createElement('option');
+    opt.value = value;
+    opt.textContent = value;
+    sel.appendChild(opt);
+    sel.value = value;
+    sel.disabled = false;
+  } else {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = 'Not available';
+    sel.appendChild(opt);
+    sel.disabled = true;
+  }
+}
+
+function setMultiToSingle(selectId, commaSeparatedValue) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+
+  sel.innerHTML = '';
+  sel.disabled = false;
+
+  if (!commaSeparatedValue) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = 'Not available';
+    sel.appendChild(opt);
+    sel.disabled = true;
+    return;
+  }
+
+  // Add a blank default
+  const blank = document.createElement('option');
+  blank.value = '';
+  blank.textContent = 'Select one...';
+  sel.appendChild(blank);
+
+  // Parse comma-separated values and build options
+  const values = commaSeparatedValue.split(',').map(v => v.trim()).filter(v => v);
+  values.forEach(val => {
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = val;
+    sel.appendChild(opt);
+  });
+
+  // Auto-select if only one option
+  if (values.length === 1) {
+    sel.value = values[0];
+  }
 }
 
 function autoPopulateFAO(faoArea) {
   if (!faoArea) return;
-  const sel = document.getElementById('rawMaterialOrigin');
-  if (!sel) return;
+  const ms = document.getElementById('rawMaterialOriginMulti');
+  if (!ms) return;
 
-  // Try to match FAO area value to existing options
-  const options = Array.from(sel.options);
-  const match = options.find(o =>
-    o.text.toLowerCase().includes((faoArea + '').toLowerCase()) ||
-    o.value.toLowerCase().includes((faoArea + '').toLowerCase())
-  );
-  if (match) sel.value = match.value;
+  // Parse comma-separated FAO values from species
+  const values = faoArea.split(',').map(v => v.trim()).filter(v => v);
+
+  ms.querySelectorAll('.multi-option input[type="checkbox"]').forEach(cb => {
+    const match = values.some(v =>
+      cb.value.toLowerCase().includes(v.toLowerCase()) ||
+      v.toLowerCase().includes(cb.value.toLowerCase())
+    );
+    if (match) cb.checked = true;
+  });
+
+  updateMultiselectTags(ms);
 }
 
 function resetSpeciesFields() {
@@ -539,7 +593,9 @@ function collectFormData() {
       ingredients: document.getElementById('ingredients')?.value || '',
       species_id: document.getElementById('commercialName')?.value || null,
       harvest_method_custom: document.getElementById('harvestMethodCustom')?.value || '',
-      raw_material_origin: document.getElementById('rawMaterialOrigin')?.value || '',
+      raw_material_origin: Array.from(
+        document.querySelectorAll('#rawMaterialOriginMulti .multi-option input:checked')
+      ).map(cb => cb.value).join(','),
       certifications,
     },
     allergens,
