@@ -638,8 +638,9 @@ function isTabValid(tabIndex) {
         if (val !== '' && val !== undefined) nutritionValid = true;
       });
       return nutritionValid;
-    case 4: // Sustainability
-      return !!document.getElementById('rawMaterialOrigin')?.value;
+      case 4: // Sustainability
+      const originChecked = document.querySelectorAll('#rawMaterialOriginMulti .multi-option input:checked');
+      return originChecked.length > 0;
     case 5: // Art Work — all optional
       return true;
     default:
@@ -660,7 +661,6 @@ const mandatoryFields = [
   { id: 'brand', type: 'input' },
   { id: 'primaryPackaging', type: 'select' },
   { id: 'commercialName', type: 'select' },
-  { id: 'rawMaterialOrigin', type: 'select' },
 ];
 
 function initMandatoryFieldValidation() {

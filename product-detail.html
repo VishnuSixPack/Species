@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Product Detail — Project Manhattan</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="brand-logo.png" />
+  <link rel="stylesheet" href="product-detail.css" />
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-brand">
+      <span class="nav-project">PROJECT</span>
+      <span class="nav-manhattan">Manhattan.</span>
+    </div>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li class="nav-dropdown">
+        <a href="#">Module ▾</a>
+        <ul class="nav-dropdown-menu">
+          <li><a href="teaser.html">Our Modules</a></li>
+          <li><a href="Species.html">Species</a></li>
+          <li><a href="product-list.html">Products</a></li>
+        </ul>
+      </li>
+      <li><a href="#">Reports</a></li>
+      <li class="nav-dropdown">
+        <a href="#">Support ▾</a>
+        <ul class="nav-dropdown-menu">
+          <li><a href="#">Contact</a></li>
+          <li><a href="#">Report an Issue</a></li>
+          <li><a href="#">About</a></li>
+        </ul>
+      </li>
+    </ul>
+    <div class="nav-right">
+      <div class="nav-profile" id="navProfile" onclick="toggleNavDropdown()">
+        <div class="nav-avatar" id="navAvatar"></div>
+        <span class="nav-email" id="navEmail"></span>
+        <div class="nav-profile-dropdown hidden" id="navDropdown">
+          <button onclick="handleLogout()">Logout</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- LOADING STATE -->
+  <div class="loading-state" id="loadingState">
+    <div class="spinner"></div>
+    <p>Loading product...</p>
+  </div>
+
+  <!-- ERROR STATE -->
+  <div class="error-state hidden" id="errorState">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d0d4e0" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r="1"/></svg>
+    <h3>Product not found</h3>
+    <p>It may have been deleted.</p>
+    <a href="product-list.html" class="btn-back">← Back to Products</a>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="detail-wrapper hidden" id="detailContent">
+
+    <!-- BACK + ACTIONS -->
+    <div class="detail-topbar">
+      <a href="product-list.html" class="btn-back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+        Back to Products
+      </a>
+      <div class="detail-actions">
+        <button class="btn-edit" id="btnEdit" onclick="editProduct()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Edit Product
+        </button>
+        <button class="btn-delete" onclick="deleteProduct()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          Delete
+        </button>
+      </div>
+    </div>
+
+    <!-- DETAIL LAYOUT -->
+    <div class="detail-layout">
+
+      <!-- LEFT PANEL -->
+      <aside class="detail-left">
+
+        <!-- Photo -->
+        <div class="detail-photo-wrap">
+          <div class="detail-photo" id="detailPhoto">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d0d4e0" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span>No photo</span>
+          </div>
+        </div>
+
+        <!-- Product Name & Brand -->
+        <div class="detail-left-name" id="leftName">—</div>
+        <div class="detail-left-brand" id="leftBrand">—</div>
+
+        <!-- Key Info Cards -->
+        <div class="detail-key-info">
+          <div class="key-info-row">
+            <span class="key-info-label">Species</span>
+            <span class="key-info-value" id="leftSpecies">—</span>
+          </div>
+          <div class="key-info-row">
+            <span class="key-info-label">EAN / GTIN</span>
+            <span class="key-info-value" id="leftEan">—</span>
+          </div>
+          <div class="key-info-row">
+            <span class="key-info-label">Product Form</span>
+            <span class="key-info-value" id="leftForm">—</span>
+          </div>
+          <div class="key-info-row">
+            <span class="key-info-label">Pack Style</span>
+            <span class="key-info-value" id="leftPack">—</span>
+          </div>
+          <div class="key-info-row">
+            <span class="key-info-label">Pack Medium</span>
+            <span class="key-info-value" id="leftMedium">—</span>
+          </div>
+          <div class="key-info-row">
+            <span class="key-info-label">Product Code</span>
+            <span class="key-info-value" id="leftCode">—</span>
+          </div>
+        </div>
+
+        <!-- Certifications -->
+        <div class="detail-certs" id="detailCerts"></div>
+
+      </aside>
+
+      <!-- RIGHT PANEL -->
+      <div class="detail-right">
+
+        <!-- SECTION: General Information -->
+        <div class="detail-section">
+          <div class="detail-section-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+            <h2>General Information</h2>
+          </div>
+          <div class="detail-fields-grid">
+            <div class="detail-field"><span class="detail-label">Product Name</span><span class="detail-value" id="d-product_name">—</span></div>
+            <div class="detail-field"><span class="detail-label">Brand</span><span class="detail-value" id="d-brand">—</span></div>
+            <div class="detail-field"><span class="detail-label">Functional Product Name</span><span class="detail-value" id="d-functional_name">—</span></div>
+            <div class="detail-field"><span class="detail-label">GS1 Product Name</span><span class="detail-value" id="d-gs1_name">—</span></div>
+            <div class="detail-field"><span class="detail-label">Short Description</span><span class="detail-value" id="d-short_desc">—</span></div>
+            <div class="detail-field"><span class="detail-label">EAN / GTIN</span><span class="detail-value" id="d-ean_gtin">—</span></div>
+            <div class="detail-field"><span class="detail-label">Brand Item ID</span><span class="detail-value" id="d-brand_item_id">—</span></div>
+            <div class="detail-field"><span class="detail-label">Product Code</span><span class="detail-value" id="d-product_code">—</span></div>
+            <div class="detail-field full"><span class="detail-label">Description</span><span class="detail-value" id="d-description">—</span></div>
+          </div>
+        </div>
+
+        <!-- SECTION: Physical Measurement -->
+        <div class="detail-section">
+          <div class="detail-section-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+            <h2>Physical Measurement</h2>
+          </div>
+          <div class="detail-fields-grid">
+            <div class="detail-field"><span class="detail-label">Depth</span><span class="detail-value" id="d-depth">—</span></div>
+            <div class="detail-field"><span class="detail-label">Height</span><span class="detail-value" id="d-height">—</span></div>
+            <div class="detail-field"><span class="detail-label">Width</span><span class="detail-value" id="d-width">—</span></div>
+            <div class="detail-field"><span class="detail-label">Gross Weight</span><span class="detail-value" id="d-gross_weight">—</span></div>
+            <div class="detail-field"><span class="detail-label">Net Weight</span><span class="detail-value" id="d-net_weight">—</span></div>
+            <div class="detail-field"><span class="detail-label">Drained Weight</span><span class="detail-value" id="d-drained_weight">—</span></div>
+          </div>
+        </div>
+
+        <!-- SECTION: Packaging -->
+        <div class="detail-section">
+          <div class="detail-section-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            <h2>Packaging Information</h2>
+          </div>
+          <div class="detail-fields-grid">
+            <div class="detail-field"><span class="detail-label">Product Form</span><span class="detail-value" id="d-product_form">—</span></div>
+            <div class="detail-field"><span class="detail-label">Pack Style</span><span class="detail-value" id="d-pack_style">—</span></div>
+            <div class="detail-field"><span class="detail-label">Pack Medium</span><span class="detail-value" id="d-pack_medium">—</span></div>
+            <div class="detail-field"><span class="detail-label">Primary Packaging</span><span class="detail-value" id="d-primary_packaging">—</span></div>
+            <div class="detail-field"><span class="detail-label">Inner Packaging</span><span class="detail-value" id="d-inner_packaging">—</span></div>
+          </div>
+        </div>
+
+        <!-- SECTION: Storage & Temperature -->
+        <div class="detail-section">
+          <div class="detail-section-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z"/></svg>
+            <h2>Storage &amp; Temperature</h2>
+          </div>
+          <div class="detail-fields-grid">
+            <div class="detail-field"><span class="detail-label">Min Temperature</span><span class="detail-value" id="d-min_temp">—</span></div>
+            <div class="detail-field"><span class="detail-label">Max Temperature</span><span class="detail-value" id="d-max_temp">—</span></div>
+            <div class="detail-field"><span class="detail-label">Shelf Life</span><span class="detail-value" id="d-shelf_life">—</span></div>
+          </div>
+        </div>
+
+        <!-- SECTION: Ingredients -->
+        <div class="detail-section">
+          <div class="detail-section-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+            <h2>Ingredients</h2>
+          </div>
+          <div class="ingredients-text" id="d-ingredients">—</div>
+        </div>
+
+        <!-- SECTION: Raw Material -->
+        <div class="detail-section">
+          <div class="detail-section-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
+            <h2>Raw Material Information</h2>
+          </div>
+          <div class="two-col-cards">
+            <div class="info-card">
+              <h3 class="info-card-title">Raw Material</h3>
+              <div class="detail-fields-list">
+                <div class="detail-field-row"><span class="detail-label">Commercial Name</span><span class="detail-value" id="d-commercial_name">—</span></div>
+                <div class="detail-field-row"><span class="detail-label">Scientific Name</span><span class="detail-value" id="d-scientific_name">—</span></div>
+                <div class="detail-field-row"><span class="detail-label">AFSIS Code</span><span class="detail-value" id="d-afsis_code">—</span></div>
+                <div class="detail-field-row"><span class="detail-label">Taxon Code</span><span class="detail-value" id="d-taxon_code">—</span></div>
+              </div>
+            </div>
+            <div class="info-card">
+              <h3 class="info-card-title">Fishing Methods</h3>
+              <div class="detail-fields-list">
+                <div class="detail-field-row"><span class="detail-label">Type of Catch</span><span class="detail-value" id="d-type_of_catch">—</span></div>
+                <div class="detail-field-row"><span class="detail-label">Harvest Method</span><span class="detail-value" id="d-harvest_method">—</span></div>
+                <div class="detail-field-row"><span class="detail-label">Specified Method</span><span class="detail-value" id="d-harvest_custom">—</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION: Allergens -->
+        <div class="detail-section">
+          <div class="detail-section-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <h2>Allergen Specification</h2>
+          </div>
+          <div id="d-allergens">
+            <p class="no-data">No allergens recorded.</p>
+          </div>
+        </div>
+
+        <!-- SECTION: Nutrition -->
+        <div class="detail-section">
+          <div class="detail-section-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+            <h2>Nutrition</h2>
+          </div>
+          <div class="two-col-cards" id="d-nutrition">
+            <div class="info-card">
+              <h3 class="info-card-title">By Serving</h3>
+              <div class="nutrition-table" id="d-nutrition-serving"></div>
+            </div>
+            <div class="info-card">
+              <h3 class="info-card-title">By 100g</h3>
+              <div class="nutrition-table" id="d-nutrition-100g"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION: Sustainability -->
+        <div class="detail-section">
+          <div class="detail-section-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <h2>Sustainability</h2>
+          </div>
+          <div class="detail-fields-grid">
+            <div class="detail-field full"><span class="detail-label">Raw Material Origin</span><div class="detail-value pill-wrap" id="d-raw_origin">—</div></div>
+            <div class="detail-field full"><span class="detail-label">Certifications</span><div class="detail-value pill-wrap" id="d-certifications">—</div></div>
+          </div>
+        </div>
+
+        <!-- SECTION: Art Work -->
+        <div class="detail-section">
+          <div class="detail-section-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <h2>Art Work &amp; Documents</h2>
+          </div>
+          <div id="d-artwork">
+            <p class="no-data">No files uploaded.</p>
+          </div>
+        </div>
+
+      </div><!-- /detail-right -->
+    </div><!-- /detail-layout -->
+  </div><!-- /detail-wrapper -->
+
+  <!-- DELETE MODAL -->
+  <div class="modal-overlay hidden" id="deleteModal">
+    <div class="modal-box">
+      <div class="modal-icon danger">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#e63946" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </div>
+      <h3 class="modal-title">Delete Product</h3>
+      <p class="modal-body">Are you sure you want to delete <strong id="deleteProductName"></strong>? This cannot be undone.</p>
+      <div class="modal-actions">
+        <button class="modal-cancel-btn" onclick="closeDeleteModal()">Cancel</button>
+        <button class="modal-delete-btn" onclick="confirmDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="product-detail.js"></script>
+</body>
+</html>
