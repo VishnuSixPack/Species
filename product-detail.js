@@ -170,12 +170,57 @@ function renderProduct(p, allergens, nutrition, artwork) {
   renderNutrition(nutrition);
 
   // ── Sustainability ──
+const FAO_LABELS = {
+    'FAO01': 'Africa – Inland waters (FAO 01)',
+    'FAO02': 'America, North – Inland waters (FAO 02)',
+    'FAO03': 'America, South – Inland waters (FAO 03)',
+    'FAO21': 'Atlantic, Northwest (FAO 21)',
+    'FAO27': 'Atlantic, Northeast (FAO 27)',
+    'FAO31': 'Atlantic, Western Central (FAO 31)',
+    'FAO34': 'Atlantic, Eastern Central (FAO 34)',
+    'FAO37': 'Mediterranean and Black Sea (FAO 37)',
+    'FAO41': 'Atlantic, Southwest (FAO 41)',
+    'FAO47': 'Atlantic, Southeast (FAO 47)',
+    'FAO48': 'Atlantic, Antarctic (FAO 48)',
+    'FAO51': 'Indian Ocean, Western (FAO 51)',
+    'FAO57': 'Indian Ocean, Eastern (FAO 57)',
+    'FAO58': 'Indian Ocean, Antarctic (FAO 58)',
+    'FAO61': 'Pacific, Northwest (FAO 61)',
+    'FAO67': 'Pacific, Northeast (FAO 67)',
+    'FAO71': 'Pacific, Western Central (FAO 71)',
+    'FAO77': 'Pacific, Eastern Central (FAO 77)',
+    'FAO81': 'Pacific, Southwest (FAO 81)',
+    'FAO87': 'Pacific, Southeast (FAO 87)',
+    'FAO88': 'Pacific, Antarctic (FAO 88)',
+    'NS': 'Not Specified / Unavailable',
+  };
+
+  const CERT_LABELS = {
+    'MSC': 'MSC (Marine Stewardship Council)',
+    'ASC': 'ASC (Aquaculture Stewardship Council)',
+    'BAP': 'BAP (Best Aquaculture Practices)',
+    'GLOBALG.A.P': 'GLOBALG.A.P',
+    'Friend of the Sea': 'Friend of the Sea',
+    'Dolphin Safe': 'Dolphin Safe',
+    'Organic EU': 'Organic EU',
+    'Fairtrade': 'Fairtrade',
+    'RSPO': 'RSPO',
+    'Rainforest Alliance': 'Rainforest Alliance',
+  };
+
   const originEl = document.getElementById('d-raw_origin');
   if (p.raw_material_origin) {
     const origins = p.raw_material_origin.split(',').map(v => v.trim()).filter(v => v);
-    originEl.innerHTML = origins.map(o => `<span class="pill">${o}</span>`).join('');
+    originEl.innerHTML = origins.map(o => `<span class="pill">${FAO_LABELS[o] || o}</span>`).join('');
   } else {
     originEl.textContent = '—';
+  }
+
+  const certEl = document.getElementById('d-certifications');
+  if (p.certifications && p.certifications.length > 0) {
+    certEl.innerHTML = p.certifications.map(c => `<span class="cert-pill">${CERT_LABELS[c] || c}</span>`).join('');
+  } else {
+    certEl.textContent = '—';
   }
 
   const certEl = document.getElementById('d-certifications');

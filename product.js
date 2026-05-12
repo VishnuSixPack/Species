@@ -736,7 +736,24 @@ async function saveProduct() {
   btnSave.textContent = 'Saving...';
   btnSave.disabled = true;
 
-  try {
+try {
+    // ── Upload product photo ──
+    const photoInput = document.getElementById('photoInput');
+    if (photoInput?.files[0]) {
+      const file = photoInput.files[0];
+      const ext = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${ext}`;
+      const { error: uploadError } = await dbClient.storage
+        .from('product-photos')
+        .upload(fileName, file);
+      if (!uploadError) {
+        const { data: urlData } = dbClient.storage
+          .from('product-photos')
+          .getPublicUrl(fileName);
+        formData.product.photo_url = urlData.publicUrl;
+      }
+    }
+
     // Insert product
     const { data: product, error: productError } = await dbClient
       .from('products')
@@ -768,6 +785,73 @@ async function saveProduct() {
         const { error: nutritionError } = await dbClient.from('product_nutrition').insert(nutritionRows);
         if (nutritionError) console.error('Nutrition insert error:', nutritionError);
       }
+    }
+
+    // ── Upload artwork files ──
+    const artworkCategories = [
+      { inputId: 'artLabel',   category: 'label' },
+      { inputId: 'artCarton',  category: 'carton' },
+      { inputId: 'artSpecs',   category: 'specs' },
+      { inputId: 'artPhotos',  category: 'photo' },
+      { inputId: 'artBarcode', category: 'barcode' },
+      { inputId: 'artCerts',   category: 'cert' },
+      { inputId: 'artOther',   category: 'other' },
+    ];
+
+    const artworkRows = [];
+
+    for (const { inputId, category } of artworkCategories) {
+      const input = document.getElementById(inputId);
+      if (!input?.files?.length) continue;
+
+      for (const file of input.files) {
+        const ext = file.name.split('.').pop();
+        const fileName = `${productId}/${category}_${Date.now()}.${ext}`;
+        const { error: uploadError } = await dbClient.storage
+          .from('product-artwork')
+          .upload(fileName, file);
+
+        if (!uploadError) {
+          const { data: urlData } = dbClient.storage
+            .from('product-artwork')
+            .getPublicUrl(fileName);
+          artworkRows.push({
+            product_id: productId,
+            category,
+            file_url: urlData.publicUrl,
+            file_name: file.name,
+          });
+        }
+      }
+    }
+
+    // Upload nutrition file
+    const nutritionInput = document.getElementById('nutritionFileInput');
+    if (nutritionInput?.files?.length) {
+      for (const file of nutritionInput.files) {
+        const ext = file.name.split('.').pop();
+        const fileName = `${productId}/nutrition_${Date.now()}.${ext}`;
+        const { error: uploadError } = await dbClient.storage
+          .from('product-artwork')
+          .upload(fileName, file);
+
+        if (!uploadError) {
+          const { data: urlData } = dbClient.storage
+            .from('product-artwork')
+            .getPublicUrl(fileName);
+          artworkRows.push({
+            product_id: productId,
+            category: 'nutrition',
+            file_url: urlData.publicUrl,
+            file_name: file.name,
+          });
+        }
+      }
+    }
+
+    if (artworkRows.length > 0) {
+      const { error: artworkError } = await dbClient.from('product_artwork').insert(artworkRows);
+      if (artworkError) console.error('Artwork insert error:', artworkError);
     }
 
     showToast('Product saved successfully!', 'success');
