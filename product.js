@@ -36,35 +36,210 @@ document.addEventListener('click', (e) => {
 });
 
 // ── INIT ──────────────────────────────────────────────────────
+let editingProductId = null;
+
 window.addEventListener('DOMContentLoaded', async () => {
   const session = await checkAuth();
   if (!session) return;
 
-  // Set user info in left panel
   const user = session.user;
   const email = user.email || '';
   const initials = email.substring(0, 2).toUpperCase();
   document.getElementById('userAvatar').textContent = initials;
   document.getElementById('userEmail').textContent = email;
 
-await loadSpecies();
+  await loadSpecies();
   initDualModeToggles();
   initNutritionCards();
   initMultiselects();
 
-  // Add first allergen row by default
-  addAllergenRow();
+  // Check if edit mode
+  const params = new URLSearchParams(window.location.search);
+  const editId = params.get('id');
+  if (editId) {
+    editingProductId = editId;
+    document.getElementById('btnSave').textContent = 'Update';
+    await loadProductForEdit(editId);
+  } else {
+    addAllergenRow();
+  }
 
-// Init save button state
   updateSaveButton();
-
-  // Re-validate on any input change
   document.addEventListener('input', updateSaveButton);
   document.addEventListener('change', updateSaveButton);
-
-  // Mandatory field blur validation
   initMandatoryFieldValidation();
 });
+
+// ── LOAD PRODUCT FOR EDIT ─────────────────────────────────────
+async function loadProductForEdit(id) {
+  const { data: p, error } = await dbClient
+    .from('products')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error || !p) { showToast('Failed to load product.', 'error'); return; }
+
+  // Photo preview
+  if (p.photo_url) {
+    document.getElementById('photoPreview').innerHTML = `<img src="${p.photo_url}" alt="Product photo" />`;
+  }
+
+  // General Information
+  setField('productName', p.product_name);
+  setField('brand', p.brand);
+  setField('functionalName', p.functional_product_name);
+  setField('gs1Name', p.gs1_product_name);
+  setField('shortDesc', p.short_description);
+  setField('eanGtin', p.ean_gtin);
+  setField('description', p.description);
+  setField('brandItemId', p.brand_item_id);
+  setField('productCode', p.product_code);
+
+  // Update summary
+  updateSummary('sumProduct', p.product_name);
+  updateSummary('sumBrand', p.brand);
+  updateSummary('sumEan', p.ean_gtin);
+  updateSummary('sumForm', p.product_form);
+
+  // Physical Measurement
+  setField('depth', p.depth_mm);
+  setField('height', p.height_mm);
+  setField('width', p.width_mm);
+  setField('grossWeight', p.gross_weight_g);
+  setField('netWeight', p.net_weight_g);
+  setField('drainedWeight', p.drained_weight_g);
+
+  // Packaging — dual mode fields
+  setDualMode('productForm', p.product_form);
+  setDualMode('packStyle', p.pack_style);
+  setDualMode('packMedium', p.pack_medium);
+  setSelectField('primaryPackaging', p.primary_packaging);
+  if (p.no_inner_packaging) {
+    document.getElementById('noInnerPackaging').checked = true;
+    document.getElementById('innerPackaging').disabled = true;
+  } else {
+    setSelectField('innerPackaging', p.inner_packaging);
+  }
+
+  // Storage
+  setField('minTemp', p.min_temp_c);
+  setField('maxTemp', p.max_temp_c);
+  setField('shelfLifeValue', p.shelf_life_value);
+  setSelectField('shelfLifeUnit', p.shelf_life_unit);
+
+  // Ingredients
+  setField('ingredients', p.ingredients);
+
+  // Species / Raw Material
+  if (p.species_id) {
+    const select = document.getElementById('commercialName');
+    select.value = p.species_id;
+    onSpeciesSelect(String(p.species_id));
+  }
+
+  setField('harvestMethodCustom', p.harvest_method_custom);
+
+  // Sustainability — FAO multiselect
+  if (p.raw_material_origin) {
+    const values = p.raw_material_origin.split(',').map(v => v.trim());
+    const ms = document.getElementById('rawMaterialOriginMulti');
+    ms.querySelectorAll('.multi-option input[type="checkbox"]').forEach(cb => {
+      if (values.includes(cb.value)) cb.checked = true;
+    });
+    updateMultiselectTags(ms);
+  }
+
+  // Certifications multiselect
+  if (p.certifications && p.certifications.length > 0) {
+    const ms = document.getElementById('certificationMulti');
+    ms.querySelectorAll('.multi-option input[type="checkbox"]').forEach(cb => {
+      if (p.certifications.includes(cb.value)) cb.checked = true;
+    });
+    updateMultiselectTags(ms);
+  }
+
+  // Allergens
+  const { data: allergens } = await dbClient
+    .from('product_allergens')
+    .select('*')
+    .eq('product_id', id);
+
+  if (allergens && allergens.length > 0) {
+    allergens.forEach(a => {
+      addAllergenRow();
+      const rowId = allergenCount;
+      setField(`allergenLabel_${rowId}`, a.allergen_label);
+      setField(`allergenCode_${rowId}`, a.allergen_type_code);
+      setSelectField(`containment_${rowId}`, a.containment_level);
+      applyContainmentStyle(document.getElementById(`containment_${rowId}`));
+      setField(`allergenAgency_${rowId}`, a.specification_agency);
+      setField(`allergenAgencyDesc_${rowId}`, a.agency_description);
+    });
+  } else {
+    addAllergenRow();
+  }
+
+  // Nutrition
+  const { data: nutrition } = await dbClient
+    .from('product_nutrition')
+    .select('*')
+    .eq('product_id', id);
+
+  if (nutrition && nutrition.length > 0) {
+    // Clear default rows
+    document.getElementById('nutritionServing').innerHTML = '';
+    document.getElementById('nutrition100g').innerHTML = '';
+
+    nutrition.forEach(n => {
+      addNutritionRowWithName(n.basis, n.nutrient_name);
+      const container = document.getElementById(n.basis === 'serving' ? 'nutritionServing' : 'nutrition100g');
+      const lastRow = container.lastElementChild;
+      const inputs = lastRow.querySelectorAll('input');
+      if (inputs[1]) inputs[1].value = n.value !== null ? n.value : '';
+      if (inputs[2]) inputs[2].value = n.unit || '';
+    });
+  }
+}
+
+function setField(id, value) {
+  const el = document.getElementById(id);
+  if (el && value !== null && value !== undefined) el.value = value;
+}
+
+function setSelectField(id, value) {
+  const el = document.getElementById(id);
+  if (el && value) el.value = value;
+}
+
+function setDualMode(fieldBase, value) {
+  if (!value) return;
+  const toggle = document.querySelector(`.dual-mode-toggle[data-field="${fieldBase}"]`);
+  if (!toggle) return;
+
+  const selectEl = document.getElementById(fieldBase);
+  const customEl = document.getElementById(`${fieldBase}Custom`);
+
+  // Try to match in select options first
+  const options = Array.from(selectEl?.options || []);
+  const match = options.find(o => o.value === value || o.textContent === value);
+
+  if (match) {
+    // Use select mode
+    toggle.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    toggle.querySelector('[data-mode="select"]').classList.add('active');
+    selectEl.classList.remove('hidden');
+    customEl?.classList.add('hidden');
+    selectEl.value = match.value;
+  } else {
+    // Use custom mode
+    toggle.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+    toggle.querySelector('[data-mode="custom"]').classList.add('active');
+    selectEl.classList.add('hidden');
+    customEl?.classList.remove('hidden');
+    if (customEl) customEl.value = value;
+  }
+}
 
 // ── TABS ──────────────────────────────────────────────────────
 // ── TABS ──────────────────────────────────────────────────────
@@ -755,15 +930,30 @@ try {
     }
 
     // Insert product
-    const { data: product, error: productError } = await dbClient
-      .from('products')
-      .insert({ ...formData.product, user_id: session.user.id })
-      .select()
-      .single();
+let productId;
 
-    if (productError) throw productError;
+    if (editingProductId) {
+      // Update existing product
+      const { error: updateError } = await dbClient
+        .from('products')
+        .update(formData.product)
+        .eq('id', editingProductId);
+      if (updateError) throw updateError;
+      productId = editingProductId;
 
-    const productId = product.id;
+      // Delete old allergens and nutrition to replace with new ones
+      await dbClient.from('product_allergens').delete().eq('product_id', productId);
+      await dbClient.from('product_nutrition').delete().eq('product_id', productId);
+    } else {
+      // Insert new product
+      const { data: product, error: productError } = await dbClient
+        .from('products')
+        .insert({ ...formData.product, user_id: session.user.id })
+        .select()
+        .single();
+      if (productError) throw productError;
+      productId = product.id;
+    }
 
     // Insert allergens
     if (formData.allergens.length > 0) {
@@ -854,8 +1044,8 @@ try {
       if (artworkError) console.error('Artwork insert error:', artworkError);
     }
 
-    showToast('Product saved successfully!', 'success');
-    setTimeout(() => { window.location.href = 'product-list.html'; }, 1200);
+showToast(editingProductId ? 'Product updated successfully!' : 'Product saved successfully!', 'success');
+    setTimeout(() => { window.location.href = editingProductId ? `product-detail.html?id=${productId}` : 'product-list.html'; }, 1200);
 
   } catch (err) {
     console.error('Save error:', err);

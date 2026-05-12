@@ -216,18 +216,11 @@ const FAO_LABELS = {
     originEl.textContent = '—';
   }
 
-  const certEl = document.getElementById('d-certifications');
+const certEl2 = document.getElementById('d-certifications');
   if (p.certifications && p.certifications.length > 0) {
-    certEl.innerHTML = p.certifications.map(c => `<span class="cert-pill">${CERT_LABELS[c] || c}</span>`).join('');
+    certEl2.innerHTML = p.certifications.map(c => `<span class="cert-pill">${CERT_LABELS[c] || c}</span>`).join('');
   } else {
-    certEl.textContent = '—';
-  }
-
-  const certEl = document.getElementById('d-certifications');
-  if (p.certifications && p.certifications.length > 0) {
-    certEl.innerHTML = p.certifications.map(c => `<span class="cert-pill">${c}</span>`).join('');
-  } else {
-    certEl.textContent = '—';
+    certEl2.textContent = '—';
   }
 
   // ── Artwork ──
