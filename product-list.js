@@ -140,8 +140,9 @@ function renderProducts(products) {
       <div class="product-card-footer">
         <button class="btn-card-view" onclick="event.stopPropagation(); viewProduct('${p.id}')">View Details</button>
         <button class="btn-card-edit" onclick="event.stopPropagation(); editProduct('${p.id}')">Edit</button>
-        <button class="btn-card-delete" onclick="event.stopPropagation(); openDeleteModal('${p.id}', '${(p.product_name || 'this product').replace(/'/g, "\\'")}')">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        <button class="btn-card-ai" onclick="event.stopPropagation(); openAiModal()" title="AI Summary">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2z"/><path d="M12 8v4l3 3"/></svg>
+          AI
         </button>
       </div>
     `;
@@ -174,6 +175,10 @@ function viewProduct(id) {
 
 function editProduct(id) {
   window.location.href = `product.html?id=${id}`;
+}
+
+function openAiModal() {
+  document.getElementById('aiModal').classList.remove('hidden');
 }
 
 function openDeleteModal(id, name) {
