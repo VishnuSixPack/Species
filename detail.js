@@ -25,12 +25,29 @@ async function updateNav() {
   const email = session.user.email;
   const initials = email.substring(0, 2).toUpperCase();
 
+  const { data: profile } = await dbClient
+    .from('profiles')
+    .select('first_name, avatar_color')
+    .eq('id', session.user.id)
+    .single();
+
+  const firstName = profile?.first_name || email.split('@')[0];
+  const avatarColor = profile?.avatar_color || '#1a6fdb';
+
   const profileLink = document.getElementById('detail-profile-link');
   if (profileLink) {
     profileLink.innerHTML = `
-      <div style="display:flex; align-items:center; gap:8px;">
-        <div style="width:32px; height:32px; border-radius:50%; background:#1a6fdb; color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;">${initials}</div>
+      <div style="display:flex; align-items:center; gap:8px; cursor:pointer; position:relative;" onclick="toggleProfileMenu()">
+        <div style="width:32px; height:32px; border-radius:50%; background:${avatarColor}; color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;">${initials}</div>
         <span style="font-size:12px; color:#6b7280; font-weight:500;">${email}</span>
+        <div class="nav-profile-menu" id="nav-profile-menu" style="position:absolute; top:calc(100% + 8px); right:0; background:#fff; border:1px solid #e8eaf0; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.10); min-width:160px; overflow:hidden; display:none;">
+          <div style="padding:10px 16px 6px; font-size:12px; font-weight:700; color:#1a1a2e; border-bottom:1px solid #f0f2f8;">Hi, ${firstName}!</div>
+          <a href="profile.html" style="display:flex; align-items:center; gap:8px; padding:9px 16px; font-size:13px; color:#4a4e69; text-decoration:none; font-weight:500;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            Profile
+          </a>
+          <button onclick="handleLogout()" style="width:100%; padding:9px 16px; background:none; border:none; border-top:1px solid #f0f2f8; text-align:left; font-family:'DM Sans',sans-serif; font-size:13px; color:#e63946; cursor:pointer; font-weight:500;">Logout</button>
+        </div>
       </div>`;
   }
 

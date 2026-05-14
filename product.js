@@ -42,11 +42,23 @@ window.addEventListener('DOMContentLoaded', async () => {
   const session = await checkAuth();
   if (!session) return;
 
-  const user = session.user;
+const user = session.user;
   const email = user.email || '';
   const initials = email.substring(0, 2).toUpperCase();
+
+  const { data: profile } = await dbClient
+    .from('profiles')
+    .select('first_name, avatar_color')
+    .eq('id', user.id)
+    .single();
+
+  const firstName = profile?.first_name || email.split('@')[0];
+  const avatarColor = profile?.avatar_color || '#1a6fdb';
+
   document.getElementById('userAvatar').textContent = initials;
+  document.getElementById('userAvatar').style.background = avatarColor;
   document.getElementById('userEmail').textContent = email;
+  document.getElementById('profileFirstName').textContent = `Hi, ${firstName}!`;
 
   await loadSpecies();
   initDualModeToggles();
