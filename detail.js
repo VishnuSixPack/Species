@@ -7,6 +7,16 @@ const SUPABASE_URL = 'https://enbdaajcromxmhgcverp.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
 const dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+
+
+function getGreeting(name) {
+  const hour = new Date().getHours();
+  if (hour < 12) return `Good Morning, ${name}! ☀️`;
+  if (hour < 17) return `Good Afternoon, ${name}! 👋`;
+  if (hour < 21) return `Good Evening, ${name}! 🌆`;
+  return `Good Night, ${name}! 🌙`;
+}
+
 // ── AUTH CHECK ──
 async function checkAuth() {
   const { data: { session } } = await dbClient.auth.getSession();
@@ -15,6 +25,7 @@ async function checkAuth() {
   }
   return session;
 }
+
 
 
 // ── UPDATE NAV ──
@@ -41,7 +52,7 @@ async function updateNav() {
         <div style="width:32px; height:32px; border-radius:50%; background:${avatarColor}; color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;">${initials}</div>
         <span style="font-size:12px; color:#6b7280; font-weight:500;">${email}</span>
         <div class="nav-profile-menu" id="nav-profile-menu" style="position:absolute; top:calc(100% + 8px); right:0; background:#fff; border:1px solid #e8eaf0; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.10); min-width:160px; overflow:hidden; display:none;">
-          <div style="padding:10px 16px 6px; font-size:12px; font-weight:700; color:#1a1a2e; border-bottom:1px solid #f0f2f8;">Hi, ${firstName}!</div>
+          <div style="padding:10px 16px 6px; font-size:12px; font-weight:700; color:#1a1a2e; border-bottom:1px solid #f0f2f8;">${getGreeting(firstName)}</div>
           <a href="profile.html" style="display:flex; align-items:center; gap:8px; padding:9px 16px; font-size:13px; color:#4a4e69; text-decoration:none; font-weight:500;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
             Profile

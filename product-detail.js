@@ -9,6 +9,14 @@ const dbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 let currentProductId = null;
 let currentProductName = '';
 
+function getGreeting(name) {
+  const hour = new Date().getHours();
+  if (hour < 12) return `Good Morning, ${name}! ☀️`;
+  if (hour < 17) return `Good Afternoon, ${name}! 👋`;
+  if (hour < 21) return `Good Evening, ${name}! 🌆`;
+  return `Good Night, ${name}! 🌙`;
+}
+
 // ── AUTH ──────────────────────────────────────────────────────
 async function checkAuth() {
   const { data: { session } } = await dbClient.auth.getSession();
@@ -51,7 +59,7 @@ const email = session.user.email || '';
   document.getElementById('navAvatar').textContent = email.substring(0, 2).toUpperCase();
   document.getElementById('navAvatar').style.background = avatarColor;
   document.getElementById('navEmail').textContent = email;
-  document.getElementById('navFirstName').textContent = `Hi, ${firstName}!`;
+  document.getElementById('navFirstName').textContent = getGreeting(firstName);
 
   const params = new URLSearchParams(window.location.search);
   const id = params.get('id');

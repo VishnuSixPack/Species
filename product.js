@@ -7,6 +7,15 @@ const SUPABASE_URL = 'https://enbdaajcromxmhgcverp.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
 const dbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+
+function getGreeting(name) {
+  const hour = new Date().getHours();
+  if (hour < 12) return `Good Morning, ${name}! ☀️`;
+  if (hour < 17) return `Good Afternoon, ${name}! 👋`;
+  if (hour < 21) return `Good Evening, ${name}! 🌆`;
+  return `Good Night, ${name}! 🌙`;
+}
+
 // ── AUTH ──────────────────────────────────────────────────────
 async function checkAuth() {
   const { data: { session } } = await dbClient.auth.getSession();
@@ -58,7 +67,7 @@ const user = session.user;
   document.getElementById('userAvatar').textContent = initials;
   document.getElementById('userAvatar').style.background = avatarColor;
   document.getElementById('userEmail').textContent = email;
-  document.getElementById('profileFirstName').textContent = `Hi, ${firstName}!`;
+  document.getElementById('profileFirstName').textContent = getGreeting(firstName);
 
   await loadSpecies();
   initDualModeToggles();
