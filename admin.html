@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Console — Project Manhattan</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="brand-logo.png" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+
+  <!-- AUTH GUARD — shown while checking -->
+  <div class="auth-guard" id="authGuard">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- MAIN LAYOUT -->
+  <div class="admin-wrapper hidden" id="adminWrapper">
+
+    <!-- SIDEBAR -->
+    <aside class="admin-sidebar">
+      <div class="sidebar-brand">
+        <span class="brand-project">PROJECT</span>
+        <span class="brand-manhattan">Manhattan.</span>
+        <span class="brand-badge">ADMIN</span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" onclick="switchSection('dashboard')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </button>
+        <button class="nav-item" onclick="switchSection('users')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+          User Management
+        </button>
+        <button class="nav-item" onclick="switchSection('activity')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Activity Logs
+        </button>
+        <button class="nav-item" onclick="switchSection('products')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+          Products Overview
+        </button>
+        <button class="nav-item" onclick="switchSection('species')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20"/></svg>
+          Species Overview
+        </button>
+        <button class="nav-item" onclick="switchSection('support')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          Support Tickets
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="admin-avatar" id="adminAvatar">VI</div>
+        <div class="admin-info">
+          <span class="admin-name" id="adminName">Admin</span>
+          <span class="admin-role">Super Admin</span>
+        </div>
+        <button class="sidebar-logout" onclick="handleLogout()" title="Logout">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </button>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="admin-main">
+
+      <!-- TOP BAR -->
+      <div class="admin-topbar">
+        <div class="topbar-breadcrumb">
+          <span>Admin</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+          <span id="breadcrumbCurrent">Dashboard</span>
+        </div>
+        <div class="topbar-right">
+          <div class="search-wrap">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="globalSearch" placeholder="Search users, logs..." oninput="handleGlobalSearch(this.value)" />
+          </div>
+          <button class="btn-refresh" onclick="refreshAll()" title="Refresh">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+          </button>
+          <a href="product-list.html" class="btn-back-app">← Back to App</a>
+        </div>
+      </div>
+
+      <!-- ── DASHBOARD ── -->
+      <section class="admin-section active" id="section-dashboard">
+
+        <!-- Stats -->
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon blue">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">Total Users</span>
+              <span class="stat-value" id="statUsers">—</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon green">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">Total Products</span>
+              <span class="stat-value" id="statProducts">—</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon purple">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20"/></svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">Total Species</span>
+              <span class="stat-value" id="statSpecies">—</span>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon orange">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-label">Actions Today</span>
+              <span class="stat-value" id="statActions">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Two col -->
+        <div class="dashboard-grid">
+
+          <!-- Recent Activity -->
+          <div class="admin-card">
+            <div class="card-header">
+              <h2>Recent Activity</h2>
+              <button class="btn-text" onclick="switchSection('activity')">View all →</button>
+            </div>
+            <div id="recentActivityList">
+              <div class="loading-row"><div class="mini-spinner"></div> Loading...</div>
+            </div>
+          </div>
+
+          <!-- Live Users -->
+          <div class="admin-card">
+            <div class="card-header">
+              <h2>
+                <span class="live-dot"></span>
+                User Overview
+              </h2>
+              <button class="btn-text" onclick="switchSection('users')">View all →</button>
+            </div>
+            <div id="liveUsersList">
+              <div class="loading-row"><div class="mini-spinner"></div> Loading...</div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ── USER MANAGEMENT ── -->
+      <section class="admin-section" id="section-users">
+        <div class="section-topbar">
+          <h1>User Management</h1>
+          <div class="section-actions">
+            <input type="text" class="section-search" placeholder="Search users..." oninput="filterUsers(this.value)" />
+            <select class="section-filter" onchange="filterUsersByRole(this.value)">
+              <option value="">All Roles</option>
+              <option value="admin">Admin</option>
+              <option value="operator">Operator</option>
+              <option value="developer">Developer</option>
+              <option value="supplier">Supplier</option>
+              <option value="buyer">Buyer</option>
+              <option value="partner">Partner</option>
+            </select>
+          </div>
+        </div>
+        <div class="admin-card">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Role</th>
+                <th>Company</th>
+                <th>Last Login</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersTableBody">
+              <tr><td colspan="6" class="loading-cell"><div class="mini-spinner"></div> Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── ACTIVITY LOGS ── -->
+      <section class="admin-section" id="section-activity">
+        <div class="section-topbar">
+          <h1>Activity Logs</h1>
+          <div class="section-actions">
+            <input type="text" class="section-search" placeholder="Search logs..." oninput="filterLogs(this.value)" />
+            <select class="section-filter" onchange="filterLogsByAction(this.value)">
+              <option value="">All Actions</option>
+              <option value="login">Login</option>
+              <option value="logout">Logout</option>
+              <option value="create">Create</option>
+              <option value="update">Update</option>
+              <option value="delete">Delete</option>
+            </select>
+          </div>
+        </div>
+        <div class="admin-card">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Resource</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody id="logsTableBody">
+              <tr><td colspan="5" class="loading-cell"><div class="mini-spinner"></div> Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── PRODUCTS OVERVIEW ── -->
+      <section class="admin-section" id="section-products">
+        <div class="section-topbar">
+          <h1>Products Overview</h1>
+        </div>
+        <div class="admin-card">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Brand</th>
+                <th>Created By</th>
+                <th>Created At</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="productsTableBody">
+              <tr><td colspan="5" class="loading-cell"><div class="mini-spinner"></div> Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── SPECIES OVERVIEW ── -->
+      <section class="admin-section" id="section-species">
+        <div class="section-topbar">
+          <h1>Species Overview</h1>
+        </div>
+        <div class="admin-card">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Species Name</th>
+                <th>Scientific Name</th>
+                <th>Created At</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="speciesTableBody">
+              <tr><td colspan="4" class="loading-cell"><div class="mini-spinner"></div> Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ── SUPPORT TICKETS ── -->
+      <section class="admin-section" id="section-support">
+        <div class="section-topbar">
+          <h1>Support Tickets</h1>
+        </div>
+        <div class="admin-card">
+          <p class="coming-soon">Support ticket management coming soon.</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- SUSPEND MODAL -->
+  <div class="modal-overlay hidden" id="suspendModal">
+    <div class="modal-box">
+      <div class="modal-icon warning">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <h3 class="modal-title" id="suspendModalTitle">Suspend User</h3>
+      <p class="modal-body" id="suspendModalBody">Are you sure you want to suspend this user?</p>
+      <div class="modal-actions">
+        <button class="modal-cancel-btn" onclick="closeSuspendModal()">Cancel</button>
+        <button class="modal-confirm-btn" id="suspendConfirmBtn" onclick="confirmSuspend()">Suspend</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROLE CHANGE MODAL -->
+  <div class="modal-overlay hidden" id="roleModal">
+    <div class="modal-box">
+      <div class="modal-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+      </div>
+      <h3 class="modal-title">Change Role</h3>
+      <p class="modal-body" id="roleModalBody">Select a new role for this user.</p>
+      <select id="roleSelect" style="width:100%; padding:9px 12px; border:1.5px solid #e0e3ed; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:13px; margin-bottom:8px;">
+        <option value="supplier">Supplier</option>
+        <option value="buyer">Buyer</option>
+        <option value="partner">Partner</option>
+        <option value="operator">Operator</option>
+        <option value="developer">Developer</option>
+      </select>
+      <div class="modal-actions">
+        <button class="modal-cancel-btn" onclick="closeRoleModal()">Cancel</button>
+        <button class="modal-confirm-btn" onclick="confirmRoleChange()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
