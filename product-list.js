@@ -226,7 +226,7 @@ async function confirmDelete() {
   await dbClient.from('product_nutrition').delete().eq('product_id', deleteTargetId);
   await dbClient.from('product_artwork').delete().eq('product_id', deleteTargetId);
 
-  const { error } = await dbClient.from('products').delete().eq('id', deleteTargetId);
+const { error } = await dbClient.from('products').delete().eq('id', deleteTargetId);
 
   btn.textContent = 'Delete';
   btn.disabled = false;
@@ -235,6 +235,7 @@ async function confirmDelete() {
   if (error) {
     showToast('Failed to delete product.', 'error');
   } else {
+    await logActivity('delete', 'product', deleteTargetId, `Deleted product`);
     showToast('Product deleted.', 'success');
     await loadProducts();
   }

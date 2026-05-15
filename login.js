@@ -72,13 +72,17 @@ document.addEventListener('DOMContentLoaded', function() {
       password
     });
 
-    if (error) {
+if (error) {
       errorEl.textContent = 'Invalid email or password. Please try again.';
       errorEl.style.display = 'block';
       btn.disabled = false;
       btn.textContent = 'Sign In';
       return;
     }
+
+    // Log login + update last login
+    await logActivity('login', 'auth', data.user.id, `User logged in: ${email}`);
+    await updateLastLogin();
 
     window.location.href = 'index.html';
   }

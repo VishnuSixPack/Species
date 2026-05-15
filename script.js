@@ -334,14 +334,20 @@ async function saveSpecies() {
 
   let error;
 
-  if (editingId === null) {
+if (editingId === null) {
     const result = await dbClient.from('species').insert([data]);
     error = result.error;
-    if (!error) showToast('Species created!', 'success');
+    if (!error) {
+      showToast('Species created!', 'success');
+      await logActivity('create', 'species', null, `Created species: ${data.species_name}`);
+    }
   } else {
     const result = await dbClient.from('species').update(data).eq('id', editingId);
     error = result.error;
-    if (!error) showToast('Species updated!', 'success');
+    if (!error) {
+      showToast('Species updated!', 'success');
+      await logActivity('update', 'species', editingId, `Updated species: ${data.species_name}`);
+    }
   }
 
   btnSave.disabled = false;

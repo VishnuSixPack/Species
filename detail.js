@@ -270,13 +270,14 @@ async function deleteCurrentSpecies() {
   const confirmed = await showConfirm(`Delete "${name}"?`, 'This cannot be undone.');
   if (!confirmed) return;
 
-  const { error } = await dbClient.from('species').delete().eq('id', window.currentSpeciesId);
+const { error } = await dbClient.from('species').delete().eq('id', window.currentSpeciesId);
 
   if (error) {
     alert('Delete failed: ' + error.message);
     return;
   }
 
+  await logActivity('delete', 'species', window.currentSpeciesId, `Deleted species: ${name}`);
   window.location.href = 'Species.html';
 }
 

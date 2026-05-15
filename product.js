@@ -1065,7 +1065,14 @@ let productId;
       if (artworkError) console.error('Artwork insert error:', artworkError);
     }
 
-showToast(editingProductId ? 'Product updated successfully!' : 'Product saved successfully!', 'success');
+await logActivity(
+      editingProductId ? 'update' : 'create',
+      'product',
+      productId,
+      editingProductId ? `Updated product: ${formData.product.product_name}` : `Created product: ${formData.product.product_name}`
+    );
+
+    showToast(editingProductId ? 'Product updated successfully!' : 'Product saved successfully!', 'success');
     setTimeout(() => { window.location.href = editingProductId ? `product-detail.html?id=${productId}` : 'product-list.html'; }, 1200);
 
   } catch (err) {
