@@ -216,14 +216,14 @@ async function uploadCompanyPhoto(companyId) {
   const ext = file.name.split('.').pop();
   const fileName = `${companyId}/logo.${ext}`;
 
-  const { error } = await dbClient.storage
-    .from('company-photos')
+const { error } = await dbClient.storage
+    .from('company-photo')
     .upload(fileName, file, { upsert: true });
 
   if (error) { console.error('Photo upload failed:', error); return null; }
 
   const { data: urlData } = dbClient.storage
-    .from('company-photos')
+    .from('company-photo')
     .getPublicUrl(fileName);
 
   return urlData.publicUrl;
