@@ -508,6 +508,7 @@ async function openCompanyFormModal(companyId) {
   selectedCompanyId = companyId;
 
   document.getElementById('companyFormTitle').textContent = isEditMode ? 'Edit Organisation' : 'Add Organisation';
+  document.getElementById('btnSaveCompanyForm').textContent = isEditMode ? 'Update Organisation' : 'Save Organisation';
   switchFormTab('basic', document.querySelector('.form-tab[data-ftab="basic"]'));
 
   // Show/hide first user section
@@ -633,15 +634,13 @@ async function saveCompanyForm() {
 
   let companyId = selectedCompanyId;
 
-  if (isEditMode) {
+if (isEditMode) {
+    // Upload photo first if new one selected
+    const photoUrl = await uploadCompanyPhoto(companyId);
+    if (photoUrl) payload.photo_url = photoUrl;
+
     const { error } = await dbClient.from('companies').update(payload).eq('id', companyId);
     if (error) { showToast('Failed to update.', 'error'); return; }
-
-    // Upload photo if new one selected
-    const photoUrl = await uploadCompanyPhoto(companyId);
-    if (photoUrl) {
-      await dbClient.from('companies').update({ photo_url: photoUrl }).eq('id', companyId);
-    }
 
     await logActivity('update', 'company', companyId, `Updated: ${name}`);
   } else {
@@ -667,7 +666,7 @@ async function saveCompanyForm() {
   // Save certifications
   await saveCertifications(companyId);
 
-  showToast(isEditMode ? 'Organisation updated!' : 'Organisation created!', 'success');
+showToast(isEditMode ? 'Changes saved successfully!' : 'Organisation created!', 'success');
   closeCompanyFormModal();
   await loadAllCompanies();
 }
