@@ -209,6 +209,7 @@ async function handleCompanyPhotoUpload(event) {
 
 async function uploadCompanyPhoto(companyId) {
   const input = document.getElementById('companyPhotoInput');
+  console.log('Photo input files:', input?.files?.length, input?.files[0]?.name);
   if (!input?.files[0]) return null;
 
   const file = input.files[0];
