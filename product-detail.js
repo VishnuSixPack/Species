@@ -359,37 +359,51 @@ function editProduct() {
   window.location.href = `product.html?id=${currentProductId}`;
 }
 
+let deleteReminderChoice = false;
+
 function deleteProduct() {
   document.getElementById('deleteProductName').textContent = currentProductName;
+  document.getElementById('deleteStep1').classList.remove('hidden');
+  document.getElementById('deleteStep2').classList.add('hidden');
   document.getElementById('deleteModal').classList.remove('hidden');
 }
 
 function closeDeleteModal() {
+  deleteReminderChoice = false;
   document.getElementById('deleteModal').classList.add('hidden');
 }
 
-async function confirmDelete() {
-  const btn = document.querySelector('.modal-delete-btn');
-  btn.textContent = 'Deleting...';
+function proceedToStep2() {
+  document.getElementById('deleteStep1').classList.add('hidden');
+  document.getElementById('deleteStep2').classList.remove('hidden');
+}
+
+async function confirmDelete(reminder) {
+  deleteReminderChoice = reminder;
+  const btn = reminder
+    ? document.querySelector('.modal-remind-btn')
+    : document.querySelector('.modal-no-remind-btn');
+  btn.textContent = 'Moving to Trash...';
   btn.disabled = true;
 
-  await dbClient.from('product_allergens').delete().eq('product_id', currentProductId);
-  await dbClient.from('product_nutrition').delete().eq('product_id', currentProductId);
-  await dbClient.from('product_artwork').delete().eq('product_id', currentProductId);
-
-  const { error } = await dbClient.from('products').delete().eq('id', currentProductId);
+  const { error } = await dbClient
+    .from('products')
+    .update({
+      deleted_at: new Date().toISOString(),
+      reminder: reminder
+    })
+    .eq('id', currentProductId);
 
   if (error) {
-    showToast('Failed to delete product.', 'error');
-    btn.textContent = 'Delete';
+    showToast('Failed to move to Trash.', 'error');
+    btn.textContent = reminder ? 'Yes, remind me' : "No, I'm sure";
     btn.disabled = false;
-    closeDeleteModal();
     return;
   }
 
+  await logActivity('delete', 'product', currentProductId, `Moved product to Trash: ${currentProductName}`);
   window.location.href = 'product-list.html';
 }
-
 // ── HELPERS ───────────────────────────────────────────────────
 function setText(id, value) {
   const el = document.getElementById(id);

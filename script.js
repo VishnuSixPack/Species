@@ -170,9 +170,10 @@ async function loadSpecies() {
       <td><div class="skeleton w-60"></div></td>
     </tr>`).join('');
 
-  const { data, error } = await dbClient
+const { data, error } = await dbClient
     .from('species')
     .select('*')
+    .is('deleted_at', null)
     .order('created_at', { ascending: false });
 
   if (error) {

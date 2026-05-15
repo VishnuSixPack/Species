@@ -267,17 +267,45 @@ document.addEventListener('click', function(e) {
 // ── DELETE FROM DETAIL PAGE ──
 async function deleteCurrentSpecies() {
   const name = document.getElementById('detail-species-name').textContent;
-  const confirmed = await showConfirm(`Delete "${name}"?`, 'This cannot be undone.');
-  if (!confirmed) return;
+  window.deleteSpeciesName = name;
+  document.getElementById('deleteSpeciesName').textContent = name;
+  document.getElementById('speciesDeleteStep1').classList.remove('hidden');
+  document.getElementById('speciesDeleteStep2').classList.add('hidden');
+  document.getElementById('speciesDeleteModal').classList.remove('hidden');
+}
 
-const { error } = await dbClient.from('species').delete().eq('id', window.currentSpeciesId);
+function closeSpeciesDeleteModal() {
+  document.getElementById('speciesDeleteModal').classList.add('hidden');
+}
+
+function proceedToSpeciesStep2() {
+  document.getElementById('speciesDeleteStep1').classList.add('hidden');
+  document.getElementById('speciesDeleteStep2').classList.remove('hidden');
+}
+
+async function confirmSpeciesDelete(reminder) {
+  const btn = reminder
+    ? document.querySelector('.species-remind-btn')
+    : document.querySelector('.species-no-remind-btn');
+  btn.textContent = 'Moving to Trash...';
+  btn.disabled = true;
+
+  const { error } = await dbClient
+    .from('species')
+    .update({
+      deleted_at: new Date().toISOString(),
+      reminder: reminder
+    })
+    .eq('id', window.currentSpeciesId);
 
   if (error) {
     alert('Delete failed: ' + error.message);
+    btn.textContent = reminder ? 'Yes, remind me' : "No, I'm sure";
+    btn.disabled = false;
     return;
   }
 
-  await logActivity('delete', 'species', window.currentSpeciesId, `Deleted species: ${name}`);
+  await logActivity('delete', 'species', window.currentSpeciesId, `Moved species to Trash: ${window.deleteSpeciesName}`);
   window.location.href = 'Species.html';
 }
 

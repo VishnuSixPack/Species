@@ -68,13 +68,14 @@ const email = session.user.email || '';
 async function loadProducts() {
   showLoading(true);
 
-  const { data, error } = await dbClient
+const { data, error } = await dbClient
     .from('products')
     .select(`
       id, product_name, brand, product_form, pack_style, ean_gtin, photo_url,
       species:species_id (species_name),
       product_allergens (allergen_label, containment_level)
     `)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false });
 
   showLoading(false);
@@ -203,40 +204,54 @@ function openAiModal() {
   document.getElementById('aiModal').classList.remove('hidden');
 }
 
+let deleteReminderChoice = false;
+
 function openDeleteModal(id, name) {
   deleteTargetId = id;
   document.getElementById('deleteProductName').textContent = name;
+  // Show step 1
+  document.getElementById('deleteStep1').classList.remove('hidden');
+  document.getElementById('deleteStep2').classList.add('hidden');
   document.getElementById('deleteModal').classList.remove('hidden');
 }
 
 function closeDeleteModal() {
   deleteTargetId = null;
+  deleteReminderChoice = false;
   document.getElementById('deleteModal').classList.add('hidden');
 }
 
-async function confirmDelete() {
-  if (!deleteTargetId) return;
+function proceedToStep2() {
+  document.getElementById('deleteStep1').classList.add('hidden');
+  document.getElementById('deleteStep2').classList.remove('hidden');
+}
 
-  const btn = document.querySelector('.modal-delete-btn');
-  btn.textContent = 'Deleting...';
+async function confirmDelete(reminder) {
+  deleteReminderChoice = reminder;
+  const btn = reminder
+    ? document.querySelector('.modal-remind-btn')
+    : document.querySelector('.modal-no-remind-btn');
+  btn.textContent = 'Moving to Trash...';
   btn.disabled = true;
 
-  // Delete related records first
-  await dbClient.from('product_allergens').delete().eq('product_id', deleteTargetId);
-  await dbClient.from('product_nutrition').delete().eq('product_id', deleteTargetId);
-  await dbClient.from('product_artwork').delete().eq('product_id', deleteTargetId);
+  // Soft delete — set deleted_at instead of hard delete
+  const { error } = await dbClient
+    .from('products')
+    .update({
+      deleted_at: new Date().toISOString(),
+      reminder: reminder
+    })
+    .eq('id', deleteTargetId);
 
-const { error } = await dbClient.from('products').delete().eq('id', deleteTargetId);
-
-  btn.textContent = 'Delete';
+  btn.textContent = reminder ? 'Yes, remind me' : "No, I'm sure";
   btn.disabled = false;
   closeDeleteModal();
 
   if (error) {
-    showToast('Failed to delete product.', 'error');
+    showToast('Failed to move to Trash.', 'error');
   } else {
-    await logActivity('delete', 'product', deleteTargetId, `Deleted product`);
-    showToast('Product deleted.', 'success');
+    await logActivity('delete', 'product', deleteTargetId, `Moved product to Trash`);
+    showToast('Product moved to Trash. It will be deleted after 30 days.', 'success');
     await loadProducts();
   }
 }
