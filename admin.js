@@ -70,7 +70,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('adminWrapper').classList.remove('hidden');
 
   // Load all data
-  await Promise.all([
+await Promise.all([
     loadStats(),
     loadUsers(),
     loadLogs(),
@@ -78,6 +78,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     loadSpecies(),
     loadRecentActivity(),
     loadUserOverview(),
+    loadTrash(),
   ]);
 });
 
@@ -91,10 +92,11 @@ function switchSection(name) {
     if (btn.getAttribute('onclick')?.includes(`'${name}'`)) btn.classList.add('active');
   });
 
-  const labels = {
+const labels = {
     dashboard: 'Dashboard', users: 'User Management',
     activity: 'Activity Logs', products: 'Products Overview',
-    species: 'Species Overview', support: 'Support Tickets'
+    species: 'Species Overview', support: 'Support Tickets',
+    trash: 'Trash'
   };
   document.getElementById('breadcrumbCurrent').textContent = labels[name] || name;
 }
@@ -451,7 +453,177 @@ function refreshAll() {
   loadProducts();
   loadSpecies();
   loadRecentActivity();
+  loadTrash();
   showToast('Refreshed!', 'success');
+}
+
+// ── TRASH ─────────────────────────────────────────────────────
+async function loadTrash() {
+  await Promise.all([loadTrashProducts(), loadTrashSpecies()]);
+}
+
+async function loadTrashProducts() {
+  const { data } = await dbClient
+    .from('products')
+    .select('id, product_name, brand, deleted_at, reminder')
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false });
+
+  const tbody = document.getElementById('trashProductsBody');
+  const count = document.getElementById('trashProductCount');
+
+  if (!data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">No deleted products.</td></tr>';
+    count.textContent = '0 items';
+    return;
+  }
+
+  count.textContent = `${data.length} item${data.length !== 1 ? 's' : ''}`;
+
+  tbody.innerHTML = data.map(p => {
+    const deletedAt = new Date(p.deleted_at);
+    const expiresAt = new Date(deletedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const daysLeft = Math.ceil((expiresAt - Date.now()) / (1000 * 60 * 60 * 24));
+
+    return `
+      <tr>
+        <td style="font-weight:600; color:#e0e2f0;">${p.product_name || '—'}</td>
+        <td>${p.brand || '—'}</td>
+        <td style="color:#4a4e7a;">${formatDate(p.deleted_at)}</td>
+        <td>
+          <span style="color:${daysLeft <= 5 ? '#e63946' : '#f59e0b'}; font-weight:600;">
+            ${daysLeft} day${daysLeft !== 1 ? 's' : ''} left
+          </span>
+        </td>
+        <td>
+          <span style="color:${p.reminder ? '#22c55e' : '#4a4e7a'}; font-size:12px;">
+            ${p.reminder ? '✓ Yes' : '—'}
+          </span>
+        </td>
+        <td>
+          <div class="action-btns">
+            <button class="btn-action activate" onclick="restoreProduct('${p.id}')">Restore</button>
+            <button class="btn-action suspend" onclick="permanentDeleteProduct('${p.id}')">Delete Forever</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function loadTrashSpecies() {
+  const { data } = await dbClient
+    .from('species')
+    .select('id, species_name, scientific_name, deleted_at, reminder')
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false });
+
+  const tbody = document.getElementById('trashSpeciesBody');
+  const count = document.getElementById('trashSpeciesCount');
+
+  if (!data || !data.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">No deleted species.</td></tr>';
+    count.textContent = '0 items';
+    return;
+  }
+
+  count.textContent = `${data.length} item${data.length !== 1 ? 's' : ''}`;
+
+  tbody.innerHTML = data.map(s => {
+    const deletedAt = new Date(s.deleted_at);
+    const expiresAt = new Date(deletedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const daysLeft = Math.ceil((expiresAt - Date.now()) / (1000 * 60 * 60 * 24));
+
+    return `
+      <tr>
+        <td style="font-weight:600; color:#e0e2f0;">${s.species_name || '—'}</td>
+        <td style="font-style:italic; color:#6b7080;">${s.scientific_name || '—'}</td>
+        <td style="color:#4a4e7a;">${formatDate(s.deleted_at)}</td>
+        <td>
+          <span style="color:${daysLeft <= 5 ? '#e63946' : '#f59e0b'}; font-weight:600;">
+            ${daysLeft} day${daysLeft !== 1 ? 's' : ''} left
+          </span>
+        </td>
+        <td>
+          <span style="color:${s.reminder ? '#22c55e' : '#4a4e7a'}; font-size:12px;">
+            ${s.reminder ? '✓ Yes' : '—'}
+          </span>
+        </td>
+        <td>
+          <div class="action-btns">
+            <button class="btn-action activate" onclick="restoreSpecies('${s.id}')">Restore</button>
+            <button class="btn-action suspend" onclick="permanentDeleteSpecies('${s.id}')">Delete Forever</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function restoreProduct(id) {
+  const { error } = await dbClient
+    .from('products')
+    .update({ deleted_at: null, reminder: false })
+    .eq('id', id);
+
+  if (error) { showToast('Failed to restore.', 'error'); return; }
+  await logActivity('restore', 'product', id, 'Product restored from Trash');
+  showToast('Product restored!', 'success');
+  await loadTrashProducts();
+}
+
+async function permanentDeleteProduct(id) {
+  if (!confirm('This will permanently delete the product. This cannot be undone!')) return;
+
+  await dbClient.from('product_allergens').delete().eq('product_id', id);
+  await dbClient.from('product_nutrition').delete().eq('product_id', id);
+  await dbClient.from('product_artwork').delete().eq('product_id', id);
+
+  const { error } = await dbClient.from('products').delete().eq('id', id);
+  if (error) { showToast('Failed to delete permanently.', 'error'); return; }
+
+  await logActivity('permanent_delete', 'product', id, 'Product permanently deleted');
+  showToast('Product permanently deleted.', 'success');
+  await loadTrashProducts();
+}
+
+async function restoreSpecies(id) {
+  const { error } = await dbClient
+    .from('species')
+    .update({ deleted_at: null, reminder: false })
+    .eq('id', id);
+
+  if (error) { showToast('Failed to restore.', 'error'); return; }
+  await logActivity('restore', 'species', id, 'Species restored from Trash');
+  showToast('Species restored!', 'success');
+  await loadTrashSpecies();
+}
+
+async function permanentDeleteSpecies(id) {
+  if (!confirm('This will permanently delete the species. This cannot be undone!')) return;
+
+  const { error } = await dbClient.from('species').delete().eq('id', id);
+  if (error) { showToast('Failed to delete permanently.', 'error'); return; }
+
+  await logActivity('permanent_delete', 'species', id, 'Species permanently deleted');
+  showToast('Species permanently deleted.', 'success');
+  await loadTrashSpecies();
+}
+
+function filterTrashByType(type) {
+  const productsTable = document.getElementById('trashProductsTable').closest('.admin-card');
+  const speciesTable = document.getElementById('trashSpeciesTable').closest('.admin-card');
+
+  if (type === 'products') {
+    productsTable.style.display = 'block';
+    speciesTable.style.display = 'none';
+  } else if (type === 'species') {
+    productsTable.style.display = 'none';
+    speciesTable.style.display = 'block';
+  } else {
+    productsTable.style.display = 'block';
+    speciesTable.style.display = 'block';
+  }
 }
 
 // ── HELPERS ───────────────────────────────────────────────────
