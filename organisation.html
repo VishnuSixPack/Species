@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Organisation — Project Manhattan</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="brand-logo.png" />
+  <link rel="stylesheet" href="organisation.css" />
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav">
+    <div class="nav-brand">
+      <span class="nav-project">PROJECT</span>
+      <span class="nav-manhattan">Manhattan.</span>
+    </div>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li class="nav-dropdown">
+        <a href="#">Module ▾</a>
+        <ul class="nav-dropdown-menu">
+          <li><a href="Species.html">Species</a></li>
+          <li><a href="product-list.html">Products</a></li>
+          <li><a href="organisation.html" class="active">Organisation</a></li>
+        </ul>
+      </li>
+      <li><a href="#">Reports</a></li>
+      <li class="nav-dropdown">
+        <a href="#">Support ▾</a>
+        <ul class="nav-dropdown-menu">
+          <li><a href="#">Contact</a></li>
+          <li><a href="#">Report an Issue</a></li>
+          <li><a href="#">About</a></li>
+        </ul>
+      </li>
+    </ul>
+    <div class="nav-right">
+      <div class="nav-profile" id="navProfile" onclick="toggleNavDropdown()">
+        <div class="nav-avatar" id="navAvatar"></div>
+        <span class="nav-email" id="navEmail"></span>
+        <div class="nav-profile-dropdown hidden" id="navDropdown">
+          <div class="nav-profile-name" id="navFirstName">Hello!</div>
+          <a href="profile.html" class="nav-dropdown-link">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            Profile
+          </a>
+          <button onclick="handleLogout()">Logout</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- LOADING -->
+  <div class="loading-state" id="loadingState">
+    <div class="spinner"></div>
+    <p>Loading...</p>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="page-wrapper hidden" id="pageContent">
+
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1 id="pageTitle">Organisation</h1>
+        <span class="page-subtitle" id="pageSubtitle"></span>
+      </div>
+      <div class="page-header-right">
+        <button class="btn-create hidden" id="btnCreateCompany" onclick="openCompanyFormModal(null)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Organisation
+        </button>
+      </div>
+    </div>
+
+    <div class="info-banner">
+      <div class="info-banner-content">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <p>Want to link multiple organisations? This feature is available on upgraded plans. <strong>Send us a request</strong> and we'll get it set up for you.</p>
+      </div>
+      <button class="btn-request" onclick="openRequestModal()">Send Request</button>
+    </div>
+
+    <!-- ADMIN VIEW -->
+    <div id="adminView" class="hidden">
+      <div class="search-filter-row">
+        <div class="search-wrapper">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" placeholder="Search organisations..." oninput="filterCompanies(this.value)" />
+        </div>
+        <select class="filter-select" onchange="filterCompaniesByStatus(this.value)">
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="pending">Pending</option>
+          <option value="suspended">Suspended</option>
+        </select>
+      </div>
+      <div class="companies-grid" id="companiesGrid"></div>
+    </div>
+
+    <!-- USER VIEW -->
+    <div id="userView" class="hidden">
+      <div class="org-detail-layout">
+        <div class="org-info-card" id="userOrgInfo"></div>
+        <div class="org-members-card">
+          <div class="card-header-row">
+            <h2>Members</h2>
+            <button class="btn-invite hidden" id="btnInviteMember" onclick="openInviteModal()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Invite Member
+            </button>
+          </div>
+          <div id="membersList"></div>
+        </div>
+      </div>
+      <div class="associated-section hidden" id="associatedSection">
+        <div class="card-header-row">
+          <h2>Associated Organisations</h2>
+          <span class="view-only-badge">View Only</span>
+        </div>
+        <div class="associated-grid" id="associatedGrid"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══ COMPANY FORM MODAL (Create & Edit) ══ -->
+  <div class="modal-overlay hidden" id="companyFormModal">
+    <div class="modal-box large">
+      <div class="modal-header">
+        <h3 id="companyFormTitle">Add Organisation</h3>
+        <button class="modal-close-btn" onclick="closeCompanyFormModal()">&times;</button>
+      </div>
+      <div class="modal-body-content">
+
+        <!-- Form Tabs -->
+        <div class="form-tabs">
+          <button class="form-tab active" data-ftab="basic" onclick="switchFormTab('basic', this)">Basic Info</button>
+          <button class="form-tab" data-ftab="location" onclick="switchFormTab('location', this)">Location & Identity</button>
+          <button class="form-tab" data-ftab="certifications" onclick="switchFormTab('certifications', this)">Certifications</button>
+        </div>
+
+        <!-- Basic Info -->
+        <div class="form-tab-panel active" id="ftab-basic">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Organisation Name <span class="required">*</span></label>
+              <input type="text" id="fcName" placeholder="Enter organisation name" />
+            </div>
+            <div class="form-group">
+              <label>Industry</label>
+              <select id="fcIndustry">
+                <option value="">Select industry</option>
+                <option>Seafood Processing</option>
+                <option>Aquaculture</option>
+                <option>Fishing</option>
+                <option>Food & Beverage</option>
+                <option>Retail</option>
+                <option>Distribution & Logistics</option>
+                <option>Cold Chain / Logistics</option>
+                <option>Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="fcEmail" placeholder="company@email.com" />
+            </div>
+            <div class="form-group">
+              <label>Phone</label>
+              <input type="text" id="fcPhone" placeholder="+1 234 567 8900" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Website</label>
+            <input type="text" id="fcWebsite" placeholder="https://company.com" />
+          </div>
+          <div class="form-group">
+            <label>Address</label>
+            <textarea id="fcAddress" placeholder="Enter full address" rows="2"></textarea>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Country</label>
+              <input type="text" id="fcCountry" placeholder="Enter country" />
+            </div>
+            <div class="form-group">
+              <label>Status</label>
+              <select id="fcStatus">
+                <option value="active">Active</option>
+                <option value="pending">Pending</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Internal Notes</label>
+            <textarea id="fcNotes" placeholder="Notes visible to admin only..." rows="2"></textarea>
+          </div>
+        </div>
+
+        <!-- Location & Identity -->
+        <div class="form-tab-panel" id="ftab-location">
+          <div class="form-row">
+            <div class="form-group">
+              <label>GLN (Global Location Number)</label>
+              <input type="text" id="fcGln" placeholder="e.g. 1234567890123" maxlength="13" />
+            </div>
+            <div class="form-group">
+              <label>PGLN (Parent GLN)</label>
+              <input type="text" id="fcPgln" placeholder="If applicable" maxlength="13" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Coordinates</label>
+            <div class="coords-row">
+              <input type="number" id="fcLat" placeholder="Latitude e.g. 51.5074" step="any" oninput="updateMapPreview()" />
+              <input type="number" id="fcLng" placeholder="Longitude e.g. -0.1278" step="any" oninput="updateMapPreview()" />
+            </div>
+            <div class="map-preview" id="mapPreview">
+              <div class="map-placeholder" id="mapPlaceholder">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9aa0b4" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                <span>Enter coordinates to preview location</span>
+              </div>
+              <iframe id="mapFrame" class="map-frame hidden" frameborder="0" allowfullscreen></iframe>
+            </div>
+          </div>
+        </div>
+
+        <!-- Certifications -->
+        <div class="form-tab-panel" id="ftab-certifications">
+          <p class="cert-hint">Select a certification to enter its details. Unselected certifications will not be saved.</p>
+          <div class="cert-list" id="certFormList"></div>
+        </div>
+
+      </div>
+      <div class="modal-footer-actions">
+        <button class="btn-cancel-modal" onclick="closeCompanyFormModal()">Cancel</button>
+        <button class="btn-save-modal" onclick="saveCompanyForm()">Save Organisation</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ COMPANY DETAIL MODAL ══ -->
+  <div class="modal-overlay hidden" id="companyDetailModal">
+    <div class="modal-box large">
+      <div class="modal-header">
+        <h3 id="companyDetailTitle">Organisation Details</h3>
+        <button class="modal-close-btn" onclick="closeCompanyDetailModal()">&times;</button>
+      </div>
+      <div class="modal-body-content" id="companyDetailContent"></div>
+      <div class="modal-footer-actions">
+        <button class="btn-cancel-modal" onclick="closeCompanyDetailModal()">Close</button>
+        <button class="btn-edit-modal" onclick="openEditFromDetail()">✏️ Edit</button>
+        <button class="btn-save-modal" id="btnSuspendCompany" onclick="toggleCompanyStatus()">Suspend</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ CERT HISTORY MODAL ══ -->
+  <div class="modal-overlay hidden" id="certHistoryModal">
+    <div class="modal-box">
+      <h3 class="modal-title" id="certHistoryTitle">Certification History</h3>
+      <div id="certHistoryList" style="width:100%; text-align:left; max-height:320px; overflow-y:auto; margin-top:8px;"></div>
+      <button class="modal-ok-btn" style="width:100%; margin-top:12px;" onclick="document.getElementById('certHistoryModal').classList.add('hidden')">Close</button>
+    </div>
+  </div>
+
+  <!-- ══ INVITE MODAL ══ -->
+  <div class="modal-overlay hidden" id="inviteModal">
+    <div class="modal-box">
+      <div class="modal-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="1.8"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
+      </div>
+      <h3 class="modal-title">Invite Member</h3>
+      <div class="form-group" style="width:100%; text-align:left;">
+        <label>User Email</label>
+        <input type="email" id="inviteEmail" placeholder="Enter user's email" />
+      </div>
+      <div class="form-group" style="width:100%; text-align:left; margin-top:8px;">
+        <label>Role within Organisation</label>
+        <select id="inviteRole">
+          <option value="viewer">Viewer — read only</option>
+          <option value="editor">Editor — create & edit</option>
+          <option value="company_admin">Company Admin — full control</option>
+        </select>
+      </div>
+      <div class="modal-actions" style="margin-top:14px;">
+        <button class="modal-cancel-btn" onclick="closeInviteModal()">Cancel</button>
+        <button class="modal-ok-btn" onclick="inviteMember()">Send Invite</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ REQUEST MODAL ══ -->
+  <div class="modal-overlay hidden" id="requestModal">
+    <div class="modal-box">
+      <div class="modal-icon">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="1.8"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      </div>
+      <h3 class="modal-title">Request Multi-Organisation Access</h3>
+      <p class="modal-body">This feature is available on upgraded plans. Send us a request and our team will get in touch with you shortly.</p>
+      <div class="modal-actions" style="margin-top:8px;">
+        <button class="modal-cancel-btn" onclick="closeRequestModal()">Cancel</button>
+        <button class="modal-ok-btn" onclick="sendRequest()">Send Request</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="utils.js"></script>
+  <script src="organisation.js"></script>
+</body>
+</html>

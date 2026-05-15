@@ -1,0 +1,643 @@
+/* ============================================================
+   PROJECT MANHATTAN — organisation.js
+   ============================================================ */
+
+const SUPABASE_URL = 'https://enbdaajcromxmhgcverp.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const dbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let currentProfile = null;
+let allCompanies = [];
+let selectedCompanyId = null;
+let isEditMode = false;
+
+// All supported certifications
+const CERT_TYPES = [
+  { key: 'MSC_CoC', label: 'MSC CoC (Chain of Custody)' },
+  { key: 'ASC_CoC', label: 'ASC CoC (Chain of Custody)' },
+  { key: 'BRC', label: 'BRC (British Retail Consortium)' },
+  { key: 'IFS', label: 'IFS (International Featured Standards)' },
+  { key: 'EU_Approved', label: 'EU Approved' },
+  { key: 'UK_Approved', label: 'UK Approved' },
+  { key: 'BAP', label: 'BAP (Best Aquaculture Practices)' },
+  { key: 'GLOBALG_AP', label: 'GLOBALG.A.P' },
+  { key: 'Friend_of_Sea', label: 'Friend of the Sea' },
+  { key: 'Halal', label: 'Halal Certified' },
+  { key: 'Kosher', label: 'Kosher Certified' },
+  { key: 'Organic_EU', label: 'Organic EU' },
+  { key: 'Fairtrade', label: 'Fairtrade' },
+];
+
+// ── AUTH ──────────────────────────────────────────────────────
+async function checkAuth() {
+  const { data: { session } } = await dbClient.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return null; }
+  return session;
+}
+
+async function handleLogout() {
+  await dbClient.auth.signOut();
+  window.location.href = 'login.html';
+}
+
+function toggleNavDropdown() {
+  document.getElementById('navDropdown').classList.toggle('hidden');
+}
+
+document.addEventListener('click', (e) => {
+  const dropdown = document.getElementById('navDropdown');
+  if (dropdown && !dropdown.classList.contains('hidden')) {
+    if (!e.target.closest('.nav-profile')) dropdown.classList.add('hidden');
+  }
+});
+
+// ── INIT ──────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  const session = await checkAuth();
+  if (!session) return;
+
+  currentUser = session.user;
+
+  const { data: profile } = await dbClient
+    .from('profiles')
+    .select('*')
+    .eq('id', currentUser.id)
+    .single();
+
+  currentProfile = profile;
+
+  const email = currentUser.email || '';
+  const initials = email.substring(0, 2).toUpperCase();
+  const avatarColor = profile?.avatar_color || '#1a6fdb';
+  const firstName = profile?.first_name || email.split('@')[0];
+
+  document.getElementById('navAvatar').textContent = initials;
+  document.getElementById('navAvatar').style.background = avatarColor;
+  document.getElementById('navEmail').textContent = email;
+  document.getElementById('navFirstName').textContent = getGreeting(firstName);
+
+  const isAdminOrOperator = ['admin', 'operator'].includes(profile?.role);
+
+  if (isAdminOrOperator) {
+    document.getElementById('pageTitle').textContent = 'Organisation';
+    document.getElementById('btnCreateCompany').classList.remove('hidden');
+    document.getElementById('adminView').classList.remove('hidden');
+    await loadAllCompanies();
+  } else {
+    document.getElementById('pageTitle').textContent = 'Your Organisation';
+    document.getElementById('userView').classList.remove('hidden');
+    await loadUserOrganisation(profile);
+  }
+
+  document.getElementById('loadingState').style.display = 'none';
+  document.getElementById('pageContent').classList.remove('hidden');
+
+  // Init cert form list
+  renderCertFormList();
+});
+
+// ── ADMIN VIEW ────────────────────────────────────────────────
+async function loadAllCompanies() {
+  const { data, error } = await dbClient
+    .from('companies')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (error) { console.error(error); return; }
+
+  allCompanies = data || [];
+  document.getElementById('pageSubtitle').textContent = `${allCompanies.length} organisation${allCompanies.length !== 1 ? 's' : ''}`;
+  renderCompaniesGrid(allCompanies);
+}
+
+function renderCompaniesGrid(companies) {
+  const grid = document.getElementById('companiesGrid');
+  if (!companies.length) {
+    grid.innerHTML = '<p class="no-data">No organisations found. Add one to get started.</p>';
+    return;
+  }
+  grid.innerHTML = companies.map(c => `
+    <div class="company-card" onclick="openCompanyDetail('${c.id}')">
+      <div class="company-card-header">
+        <div class="company-card-icon">${(c.company_name || 'O').charAt(0).toUpperCase()}</div>
+        <span class="status-badge ${c.status || 'pending'}">${c.status || 'pending'}</span>
+      </div>
+      <div>
+        <div class="company-card-name">${c.company_name || '—'}</div>
+        <div class="company-card-industry">${c.industry || 'No industry specified'}</div>
+      </div>
+      <div class="company-card-meta">
+        ${c.country ? `<span class="meta-chip">📍 ${c.country}</span>` : ''}
+        ${c.gln ? `<span class="meta-chip">GLN: ${c.gln}</span>` : ''}
+        ${c.email ? `<span class="meta-chip">✉ ${c.email}</span>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function filterCompanies(query) {
+  const q = query.toLowerCase();
+  renderCompaniesGrid(allCompanies.filter(c =>
+    (c.company_name || '').toLowerCase().includes(q) ||
+    (c.industry || '').toLowerCase().includes(q) ||
+    (c.country || '').toLowerCase().includes(q) ||
+    (c.gln || '').toLowerCase().includes(q)
+  ));
+}
+
+function filterCompaniesByStatus(status) {
+  renderCompaniesGrid(status ? allCompanies.filter(c => c.status === status) : allCompanies);
+}
+
+// ── USER VIEW ─────────────────────────────────────────────────
+async function loadUserOrganisation(profile) {
+  if (!profile?.company_id) {
+    document.getElementById('userOrgInfo').innerHTML = '<p class="no-data">You are not assigned to any organisation yet.<br/>Contact your administrator.</p>';
+    return;
+  }
+
+  const { data: company } = await dbClient
+    .from('companies')
+    .select('*')
+    .eq('id', profile.company_id)
+    .single();
+
+  if (!company) return;
+
+  const { data: membership } = await dbClient
+    .from('company_members')
+    .select('company_role')
+    .eq('company_id', profile.company_id)
+    .eq('user_id', currentUser.id)
+    .single();
+
+  if (membership?.company_role === 'company_admin') {
+    document.getElementById('btnInviteMember').classList.remove('hidden');
+  }
+
+  document.getElementById('userOrgInfo').innerHTML = `
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+      <div class="company-card-icon" style="width:52px; height:52px; font-size:22px;">${company.company_name.charAt(0).toUpperCase()}</div>
+      <div>
+        <div class="org-info-name">${company.company_name}</div>
+        <span class="status-badge ${company.status}">${company.status}</span>
+      </div>
+    </div>
+    ${company.industry ? `<div class="org-info-row"><span class="org-info-label">Industry</span><span class="org-info-value">${company.industry}</span></div>` : ''}
+    ${company.gln ? `<div class="org-info-row"><span class="org-info-label">GLN</span><span class="org-info-value">${company.gln}</span></div>` : ''}
+    ${company.pgln ? `<div class="org-info-row"><span class="org-info-label">PGLN</span><span class="org-info-value">${company.pgln}</span></div>` : ''}
+    ${company.email ? `<div class="org-info-row"><span class="org-info-label">Email</span><span class="org-info-value">${company.email}</span></div>` : ''}
+    ${company.phone ? `<div class="org-info-row"><span class="org-info-label">Phone</span><span class="org-info-value">${company.phone}</span></div>` : ''}
+    ${company.website ? `<div class="org-info-row"><span class="org-info-label">Website</span><span class="org-info-value"><a href="${company.website}" target="_blank" style="color:#1a6fdb;">${company.website}</a></span></div>` : ''}
+    ${company.address ? `<div class="org-info-row"><span class="org-info-label">Address</span><span class="org-info-value">${company.address}</span></div>` : ''}
+    ${company.country ? `<div class="org-info-row"><span class="org-info-label">Country</span><span class="org-info-value">${company.country}</span></div>` : ''}
+    ${company.coordinates ? `<div class="org-info-row"><span class="org-info-label">Coordinates</span><span class="org-info-value">${company.coordinates.lat}, ${company.coordinates.lng}</span></div>` : ''}
+  `;
+
+  await loadMembers(profile.company_id);
+  await loadAssociatedOrgs(profile.company_id);
+}
+
+async function loadMembers(companyId) {
+  const { data: members } = await dbClient
+    .from('company_members')
+    .select('*, profiles:user_id(first_name, last_name, avatar_color)')
+    .eq('company_id', companyId);
+
+  const container = document.getElementById('membersList');
+  if (!members?.length) { container.innerHTML = '<p class="no-data">No members yet.</p>'; return; }
+
+  container.innerHTML = members.map(m => {
+    const p = m.profiles;
+    const name = [p?.first_name, p?.last_name].filter(Boolean).join(' ') || 'Unknown';
+    return `
+      <div class="member-row">
+        <div class="member-avatar" style="background:${p?.avatar_color || '#1a6fdb'};">${name.substring(0,2).toUpperCase()}</div>
+        <div class="member-info">
+          <div class="member-name">${name}</div>
+          <div class="member-email">${m.status || 'active'}</div>
+        </div>
+        <span class="member-role-badge ${m.company_role}">${formatRole(m.company_role)}</span>
+      </div>`;
+  }).join('');
+}
+
+async function loadAssociatedOrgs(companyId) {
+  const { data: associations } = await dbClient
+    .from('company_associations')
+    .select('*, associated:associated_company_id(id, company_name, industry, country, status)')
+    .eq('company_id', companyId);
+
+  const section = document.getElementById('associatedSection');
+  const grid = document.getElementById('associatedGrid');
+
+  if (!associations?.length) { section.classList.add('hidden'); return; }
+
+  section.classList.remove('hidden');
+  grid.innerHTML = associations.map(a => {
+    const c = a.associated;
+    return `
+      <div class="company-card" style="cursor:default;">
+        <div class="company-card-header">
+          <div class="company-card-icon">${(c.company_name || 'O').charAt(0).toUpperCase()}</div>
+          <span class="status-badge ${c.status}">${c.status}</span>
+        </div>
+        <div class="company-card-name">${c.company_name}</div>
+        <div class="company-card-industry">${c.industry || '—'}</div>
+      </div>`;
+  }).join('');
+}
+
+// ── COMPANY DETAIL MODAL ──────────────────────────────────────
+async function openCompanyDetail(companyId) {
+  selectedCompanyId = companyId;
+  const company = allCompanies.find(c => c.id === companyId);
+  if (!company) return;
+
+  document.getElementById('companyDetailTitle').textContent = company.company_name;
+
+  // Load members
+  const { data: members } = await dbClient
+    .from('company_members')
+    .select('*, profiles:user_id(first_name, last_name, avatar_color)')
+    .eq('company_id', companyId);
+
+  // Load active certifications
+  const { data: certs } = await dbClient
+    .from('organisation_certifications')
+    .select('*')
+    .eq('company_id', companyId)
+    .eq('is_active', true)
+    .order('cert_type');
+
+  const membersList = members?.length
+    ? members.map(m => {
+        const p = m.profiles;
+        const name = [p?.first_name, p?.last_name].filter(Boolean).join(' ') || 'Unknown';
+        return `<div class="member-row">
+          <div class="member-avatar" style="background:${p?.avatar_color || '#1a6fdb'}; width:32px; height:32px; font-size:11px;">${name.substring(0,2).toUpperCase()}</div>
+          <div class="member-info"><div class="member-name">${name}</div></div>
+          <span class="member-role-badge ${m.company_role}">${formatRole(m.company_role)}</span>
+        </div>`;
+      }).join('')
+    : '<p class="no-data">No members yet.</p>';
+
+  const certsList = certs?.length
+    ? certs.map(cert => {
+        const certLabel = CERT_TYPES.find(c => c.key === cert.cert_type)?.label || cert.cert_type;
+        return `<div style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f0f2f8;">
+          <div>
+            <div style="font-size:13px; font-weight:600; color:#1a1a2e;">${certLabel}</div>
+            <div style="font-size:11px; color:#9aa0b4;">${cert.cert_number || ''} · ${formatCertDate(cert.start_date)} → ${formatCertDate(cert.end_date)}</div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="status-badge active">Active</span>
+            <button class="cert-history-btn" onclick="viewCertHistory('${companyId}', '${cert.cert_type}', '${certLabel}')">View History</button>
+          </div>
+        </div>`;
+      }).join('')
+    : '<p class="no-data">No certifications recorded.</p>';
+
+  document.getElementById('companyDetailContent').innerHTML = `
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <span class="status-badge ${company.status}">${company.status}</span>
+        ${company.industry ? `<span class="meta-chip">${company.industry}</span>` : ''}
+        ${company.country ? `<span class="meta-chip">📍 ${company.country}</span>` : ''}
+        ${company.gln ? `<span class="meta-chip">GLN: ${company.gln}</span>` : ''}
+        ${company.pgln ? `<span class="meta-chip">PGLN: ${company.pgln}</span>` : ''}
+      </div>
+      ${company.email ? `<p style="font-size:13px; color:#4a4e69;">✉ ${company.email}</p>` : ''}
+      ${company.phone ? `<p style="font-size:13px; color:#4a4e69;">📞 ${company.phone}</p>` : ''}
+      ${company.website ? `<p style="font-size:13px;"><a href="${company.website}" target="_blank" style="color:#1a6fdb;">${company.website}</a></p>` : ''}
+      ${company.address ? `<p style="font-size:13px; color:#4a4e69;">📍 ${company.address}</p>` : ''}
+      ${company.coordinates ? `<p style="font-size:13px; color:#4a4e69;">🌍 ${company.coordinates.lat}, ${company.coordinates.lng}</p>` : ''}
+      ${company.notes ? `<div style="background:#f9fafc; border-radius:8px; padding:10px; font-size:12px; color:#6b7280;">${company.notes}</div>` : ''}
+
+      <div>
+        <h4 style="font-size:13px; font-weight:700; margin-bottom:10px; color:#1a1a2e;">Members</h4>
+        ${membersList}
+      </div>
+
+      <div>
+        <h4 style="font-size:13px; font-weight:700; margin-bottom:10px; color:#1a1a2e;">Certifications & Compliance</h4>
+        ${certsList}
+      </div>
+    </div>
+  `;
+
+  const suspendBtn = document.getElementById('btnSuspendCompany');
+  if (company.status === 'suspended') {
+    suspendBtn.textContent = 'Activate';
+    suspendBtn.style.background = '#22c55e';
+  } else {
+    suspendBtn.textContent = 'Suspend';
+    suspendBtn.style.background = '#e63946';
+  }
+
+  document.getElementById('companyDetailModal').classList.remove('hidden');
+}
+
+function closeCompanyDetailModal() {
+  document.getElementById('companyDetailModal').classList.add('hidden');
+  selectedCompanyId = null;
+}
+
+async function toggleCompanyStatus() {
+  if (!selectedCompanyId) return;
+  const company = allCompanies.find(c => c.id === selectedCompanyId);
+  const newStatus = company.status === 'suspended' ? 'active' : 'suspended';
+
+  const { error } = await dbClient.from('companies').update({ status: newStatus }).eq('id', selectedCompanyId);
+  if (error) { showToast('Failed to update.', 'error'); return; }
+
+  await logActivity('update', 'company', selectedCompanyId, `Status changed to ${newStatus}`);
+  showToast(`Organisation ${newStatus}!`, 'success');
+  closeCompanyDetailModal();
+  await loadAllCompanies();
+}
+
+function openEditFromDetail() {
+  closeCompanyDetailModal();
+  const company = allCompanies.find(c => c.id === selectedCompanyId) || allCompanies.find(c => c.id === selectedCompanyId);
+  openCompanyFormModal(selectedCompanyId);
+}
+
+// ── CERT HISTORY ──────────────────────────────────────────────
+async function viewCertHistory(companyId, certType, certLabel) {
+  const { data } = await dbClient
+    .from('organisation_certifications')
+    .select('*')
+    .eq('company_id', companyId)
+    .eq('cert_type', certType)
+    .order('start_date', { ascending: false });
+
+  document.getElementById('certHistoryTitle').textContent = `${certLabel} — History`;
+
+  if (!data?.length) {
+    document.getElementById('certHistoryList').innerHTML = '<p class="no-data">No history found.</p>';
+  } else {
+    document.getElementById('certHistoryList').innerHTML = data.map(cert => `
+      <div class="cert-history-item">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div class="cert-history-period">${formatCertDate(cert.start_date)} → ${formatCertDate(cert.end_date)}</div>
+          <span class="cert-history-status ${cert.is_active ? 'active' : 'expired'}">${cert.is_active ? 'Active' : 'Expired'}</span>
+        </div>
+        ${cert.cert_number ? `<div class="cert-history-number">Cert No: ${cert.cert_number}</div>` : ''}
+        ${cert.url ? `<a href="${cert.url}" target="_blank" style="font-size:11px; color:#1a6fdb;">View Certificate ↗</a>` : ''}
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('certHistoryModal').classList.remove('hidden');
+}
+
+// ── COMPANY FORM (Create & Edit) ──────────────────────────────
+async function openCompanyFormModal(companyId) {
+  isEditMode = !!companyId;
+  selectedCompanyId = companyId;
+
+  document.getElementById('companyFormTitle').textContent = isEditMode ? 'Edit Organisation' : 'Add Organisation';
+  switchFormTab('basic', document.querySelector('.form-tab[data-ftab="basic"]'));
+
+  // Reset form
+  ['fcName','fcEmail','fcPhone','fcWebsite','fcAddress','fcCountry','fcGln','fcPgln','fcLat','fcLng','fcNotes'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  document.getElementById('fcIndustry').value = '';
+  document.getElementById('fcStatus').value = 'active';
+  document.getElementById('mapFrame').classList.add('hidden');
+  document.getElementById('mapPlaceholder').classList.remove('hidden');
+  renderCertFormList();
+
+  if (isEditMode) {
+    const company = allCompanies.find(c => c.id === companyId);
+    if (company) {
+      document.getElementById('fcName').value = company.company_name || '';
+      document.getElementById('fcIndustry').value = company.industry || '';
+      document.getElementById('fcEmail').value = company.email || '';
+      document.getElementById('fcPhone').value = company.phone || '';
+      document.getElementById('fcWebsite').value = company.website || '';
+      document.getElementById('fcAddress').value = company.address || '';
+      document.getElementById('fcCountry').value = company.country || '';
+      document.getElementById('fcStatus').value = company.status || 'active';
+      document.getElementById('fcNotes').value = company.notes || '';
+      document.getElementById('fcGln').value = company.gln || '';
+      document.getElementById('fcPgln').value = company.pgln || '';
+
+      if (company.coordinates) {
+        document.getElementById('fcLat').value = company.coordinates.lat || '';
+        document.getElementById('fcLng').value = company.coordinates.lng || '';
+        updateMapPreview();
+      }
+
+      // Load existing certs
+      const { data: existingCerts } = await dbClient
+        .from('organisation_certifications')
+        .select('*')
+        .eq('company_id', companyId)
+        .eq('is_active', true);
+
+      if (existingCerts?.length) {
+        existingCerts.forEach(cert => {
+          const checkbox = document.getElementById(`cert_${cert.cert_type}`);
+          if (checkbox) {
+            checkbox.checked = true;
+            toggleCertDetails(cert.cert_type, true);
+            document.getElementById(`cert_no_${cert.cert_type}`).value = cert.cert_number || '';
+            document.getElementById(`cert_start_${cert.cert_type}`).value = cert.start_date || '';
+            document.getElementById(`cert_end_${cert.cert_type}`).value = cert.end_date || '';
+            document.getElementById(`cert_url_${cert.cert_type}`).value = cert.url || '';
+          }
+        });
+      }
+    }
+  }
+
+  document.getElementById('companyFormModal').classList.remove('hidden');
+}
+
+function closeCompanyFormModal() {
+  document.getElementById('companyFormModal').classList.add('hidden');
+}
+
+async function saveCompanyForm() {
+  const name = document.getElementById('fcName').value.trim();
+  if (!name) { showToast('Organisation name is required.', 'error'); return; }
+
+  const lat = parseFloat(document.getElementById('fcLat').value);
+  const lng = parseFloat(document.getElementById('fcLng').value);
+  const coordinates = (!isNaN(lat) && !isNaN(lng)) ? { lat, lng } : null;
+
+  const payload = {
+    company_name: name,
+    industry: document.getElementById('fcIndustry').value || null,
+    email: document.getElementById('fcEmail').value.trim() || null,
+    phone: document.getElementById('fcPhone').value.trim() || null,
+    website: document.getElementById('fcWebsite').value.trim() || null,
+    address: document.getElementById('fcAddress').value.trim() || null,
+    country: document.getElementById('fcCountry').value.trim() || null,
+    status: document.getElementById('fcStatus').value || 'active',
+    notes: document.getElementById('fcNotes').value.trim() || null,
+    gln: document.getElementById('fcGln').value.trim() || null,
+    pgln: document.getElementById('fcPgln').value.trim() || null,
+    coordinates,
+  };
+
+  let companyId = selectedCompanyId;
+
+  if (isEditMode) {
+    const { error } = await dbClient.from('companies').update(payload).eq('id', companyId);
+    if (error) { showToast('Failed to update.', 'error'); return; }
+    await logActivity('update', 'company', companyId, `Updated: ${name}`);
+  } else {
+    const { data, error } = await dbClient
+      .from('companies')
+      .insert({ ...payload, created_by: currentUser.id })
+      .select().single();
+    if (error) { showToast('Failed to create.', 'error'); return; }
+    companyId = data.id;
+    await logActivity('create', 'company', companyId, `Created: ${name}`);
+  }
+
+  // Save certifications
+  await saveCertifications(companyId);
+
+  showToast(isEditMode ? 'Organisation updated!' : 'Organisation created!', 'success');
+  closeCompanyFormModal();
+  await loadAllCompanies();
+}
+
+async function saveCertifications(companyId) {
+  for (const cert of CERT_TYPES) {
+    const checkbox = document.getElementById(`cert_${cert.key}`);
+    if (!checkbox?.checked) continue;
+
+    const certNo = document.getElementById(`cert_no_${cert.key}`)?.value.trim();
+    const startDate = document.getElementById(`cert_start_${cert.key}`)?.value;
+    const endDate = document.getElementById(`cert_end_${cert.key}`)?.value;
+    const url = document.getElementById(`cert_url_${cert.key}`)?.value.trim();
+
+    // Mark old active cert as inactive
+    await dbClient
+      .from('organisation_certifications')
+      .update({ is_active: false, removed_at: new Date().toISOString() })
+      .eq('company_id', companyId)
+      .eq('cert_type', cert.key)
+      .eq('is_active', true);
+
+    // Insert new cert record
+    await dbClient.from('organisation_certifications').insert({
+      company_id: companyId,
+      cert_type: cert.key,
+      cert_number: certNo || null,
+      start_date: startDate || null,
+      end_date: endDate || null,
+      url: url || null,
+      is_active: true,
+    });
+  }
+}
+
+// ── CERT FORM LIST ────────────────────────────────────────────
+function renderCertFormList() {
+  const container = document.getElementById('certFormList');
+  container.innerHTML = CERT_TYPES.map(cert => `
+    <div class="cert-item" id="certItem_${cert.key}">
+      <button type="button" class="cert-toggle" onclick="toggleCertItem('${cert.key}')">
+        <input type="checkbox" class="cert-checkbox" id="cert_${cert.key}"
+          onclick="event.stopPropagation(); toggleCertDetails('${cert.key}', this.checked)" />
+        <span class="cert-name">${cert.label}</span>
+      </button>
+      <div class="cert-details" id="certDetails_${cert.key}">
+        <div class="cert-details-grid">
+          <div class="form-group">
+            <label>Certificate Number</label>
+            <input type="text" id="cert_no_${cert.key}" placeholder="e.g. MSC-C-12345" />
+          </div>
+          <div class="form-group">
+            <label>Certificate URL</label>
+            <input type="text" id="cert_url_${cert.key}" placeholder="https://..." />
+          </div>
+          <div class="form-group">
+            <label>Start Date</label>
+            <input type="date" id="cert_start_${cert.key}" />
+          </div>
+          <div class="form-group">
+            <label>End Date</label>
+            <input type="date" id="cert_end_${cert.key}" />
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleCertItem(key) {
+  const checkbox = document.getElementById(`cert_${key}`);
+  checkbox.checked = !checkbox.checked;
+  toggleCertDetails(key, checkbox.checked);
+}
+
+function toggleCertDetails(key, show) {
+  const details = document.getElementById(`certDetails_${key}`);
+  const item = document.getElementById(`certItem_${key}`);
+  if (show) {
+    details.classList.add('open');
+    item.classList.add('selected');
+  } else {
+    details.classList.remove('open');
+    item.classList.remove('selected');
+  }
+}
+
+// ── FORM TABS ─────────────────────────────────────────────────
+function switchFormTab(tab, btn) {
+  document.querySelectorAll('.form-tab').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.form-tab-panel').forEach(p => p.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.getElementById(`ftab-${tab}`)?.classList.add('active');
+}
+
+// ── MAP PREVIEW ───────────────────────────────────────────────
+function updateMapPreview() {
+  const lat = document.getElementById('fcLat').value;
+  const lng = document.getElementById('fcLng').value;
+
+  if (!lat || !lng) return;
+
+  const frame = document.getElementById('mapFrame');
+  const placeholder = document.getElementById('mapPlaceholder');
+
+  frame.src = `https://www.openstreetmap.org/export/embed.html?bbox=${parseFloat(lng)-0.05},${parseFloat(lat)-0.05},${parseFloat(lng)+0.05},${parseFloat(lat)+0.05}&layer=mapnik&marker=${lat},${lng}`;
+  frame.classList.remove('hidden');
+  placeholder.classList.add('hidden');
+}
+
+// ── INVITE ────────────────────────────────────────────────────
+function openInviteModal() { document.getElementById('inviteModal').classList.remove('hidden'); }
+function closeInviteModal() { document.getElementById('inviteModal').classList.add('hidden'); }
+function inviteMember() {
+  showToast('Invite sent! (Full invite system coming soon)', 'success');
+  closeInviteModal();
+}
+
+// ── REQUEST ───────────────────────────────────────────────────
+function openRequestModal() { document.getElementById('requestModal').classList.remove('hidden'); }
+function closeRequestModal() { document.getElementById('requestModal').classList.add('hidden'); }
+function sendRequest() {
+  showToast('Request sent! Our team will contact you shortly.', 'success');
+  closeRequestModal();
+}
+
+// ── HELPERS ───────────────────────────────────────────────────
+function formatRole(role) {
+  return { company_admin: 'Company Admin', editor: 'Editor', viewer: 'Viewer' }[role] || role;
+}
+
+function formatCertDate(dateStr) {
+  if (!dateStr) return '—';
+  return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
