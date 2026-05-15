@@ -11,6 +11,7 @@ let currentProfile = null;
 let allCompanies = [];
 let selectedCompanyId = null;
 let isEditMode = false;
+let allCountries = [];
 
 // All supported certifications
 const CERT_TYPES = [
@@ -83,10 +84,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('pageTitle').textContent = 'Organisation';
     document.getElementById('btnCreateCompany').classList.remove('hidden');
     document.getElementById('adminView').classList.remove('hidden');
+    await loadCountries();
     await loadAllCompanies();
   } else {
     document.getElementById('pageTitle').textContent = 'Your Organisation';
     document.getElementById('userView').classList.remove('hidden');
+    await loadCountries();
     await loadUserOrganisation(profile);
   }
 
@@ -120,7 +123,10 @@ function renderCompaniesGrid(companies) {
   grid.innerHTML = companies.map(c => `
     <div class="company-card" onclick="openCompanyDetail('${c.id}')">
       <div class="company-card-header">
-        <div class="company-card-icon">${(c.company_name || 'O').charAt(0).toUpperCase()}</div>
+        ${c.photo_url
+          ? `<img src="${c.photo_url}" style="width:44px; height:44px; border-radius:50%; object-fit:cover; border:2px solid #e8eaf0;" />`
+          : `<div class="company-card-icon">${(c.company_name || 'O').charAt(0).toUpperCase()}</div>`
+        }
         <span class="status-badge ${c.status || 'pending'}">${c.status || 'pending'}</span>
       </div>
       <div>
@@ -148,6 +154,98 @@ function filterCompanies(query) {
 
 function filterCompaniesByStatus(status) {
   renderCompaniesGrid(status ? allCompanies.filter(c => c.status === status) : allCompanies);
+}
+
+// ── COUNTRIES ─────────────────────────────────────────────────
+async function loadCountries() {
+  const { data } = await dbClient
+    .from('countries')
+    .select('country, alpha2, alpha3, numeric')
+    .order('country');
+  allCountries = data || [];
+  buildCountryDropdown('fcCountry');
+}
+
+function buildCountryDropdown(selectId) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Select country</option>';
+  allCountries.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.alpha2;
+    opt.textContent = `${c.country} (${c.alpha2})`;
+    sel.appendChild(opt);
+  });
+}
+
+// ── INDUSTRY OTHER TOGGLE ─────────────────────────────────────
+function handleIndustryChange(selectEl) {
+  const otherField = document.getElementById('fcIndustryOther');
+  if (!otherField) return;
+  if (selectEl.value === 'Other') {
+    otherField.classList.remove('hidden');
+    otherField.required = true;
+  } else {
+    otherField.classList.add('hidden');
+    otherField.required = false;
+    otherField.value = '';
+  }
+}
+
+// ── COMPANY PHOTO UPLOAD ──────────────────────────────────────
+async function handleCompanyPhotoUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const preview = document.getElementById('companyPhotoPreview');
+    if (preview) {
+      preview.innerHTML = `<img src="${e.target.result}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" />`;
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function uploadCompanyPhoto(companyId) {
+  const input = document.getElementById('companyPhotoInput');
+  if (!input?.files[0]) return null;
+
+  const file = input.files[0];
+  const ext = file.name.split('.').pop();
+  const fileName = `${companyId}/logo.${ext}`;
+
+  const { error } = await dbClient.storage
+    .from('company-photos')
+    .upload(fileName, file, { upsert: true });
+
+  if (error) { console.error('Photo upload failed:', error); return null; }
+
+  const { data: urlData } = dbClient.storage
+    .from('company-photos')
+    .getPublicUrl(fileName);
+
+  return urlData.publicUrl;
+}
+
+// ── FIRST USER ASSIGNMENT ─────────────────────────────────────
+async function assignFirstUser(companyId) {
+  const email = document.getElementById('firstUserEmail')?.value.trim();
+  const password = document.getElementById('firstUserPassword')?.value.trim();
+  const role = document.getElementById('firstUserRole')?.value || 'company_admin';
+
+  if (!email || !password) return;
+
+  // Create user via Supabase Auth (admin only)
+  // Since we can't create users client-side without signup,
+  // we'll find existing user by checking profiles
+  const { data: profiles } = await dbClient
+    .from('profiles')
+    .select('id')
+    .limit(1);
+
+  // For now — show instructions to admin
+  showToast(`First user setup: Share login URL with ${email}. They can register and you can assign them to this company from Admin Console.`, 'success');
 }
 
 // ── USER VIEW ─────────────────────────────────────────────────
@@ -257,6 +355,11 @@ async function openCompanyDetail(companyId) {
 
   document.getElementById('companyDetailTitle').textContent = company.company_name;
 
+  // Build company avatar/photo
+  const photoHtml = company.photo_url
+    ? `<img src="${company.photo_url}" style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:2px solid #e8eaf0;" />`
+    : `<div style="width:48px; height:48px; border-radius:50%; background:#eef4fd; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800; color:#1a6fdb; flex-shrink:0;">${(company.company_name || 'O').charAt(0).toUpperCase()}</div>`;
+
   // Load members
   const { data: members } = await dbClient
     .from('company_members')
@@ -301,12 +404,18 @@ async function openCompanyDetail(companyId) {
 
   document.getElementById('companyDetailContent').innerHTML = `
     <div style="display:flex; flex-direction:column; gap:16px;">
-      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-        <span class="status-badge ${company.status}">${company.status}</span>
-        ${company.industry ? `<span class="meta-chip">${company.industry}</span>` : ''}
-        ${company.country ? `<span class="meta-chip">📍 ${company.country}</span>` : ''}
-        ${company.gln ? `<span class="meta-chip">GLN: ${company.gln}</span>` : ''}
-        ${company.pgln ? `<span class="meta-chip">PGLN: ${company.pgln}</span>` : ''}
+      <div style="display:flex; gap:12px; align-items:center;">
+        ${photoHtml}
+        <div>
+          <div style="font-size:18px; font-weight:800; color:#1a1a2e;">${company.company_name}</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
+            <span class="status-badge ${company.status}">${company.status}</span>
+            ${company.industry ? `<span class="meta-chip">${company.industry}</span>` : ''}
+            ${company.country ? `<span class="meta-chip">📍 ${company.country}</span>` : ''}
+            ${company.gln ? `<span class="meta-chip">GLN: ${company.gln}</span>` : ''}
+            ${company.pgln ? `<span class="meta-chip">PGLN: ${company.pgln}</span>` : ''}
+          </div>
+        </div>
       </div>
       ${company.email ? `<p style="font-size:13px; color:#4a4e69;">✉ ${company.email}</p>` : ''}
       ${company.phone ? `<p style="font-size:13px; color:#4a4e69;">📞 ${company.phone}</p>` : ''}
@@ -359,10 +468,10 @@ async function toggleCompanyStatus() {
 }
 
 function openEditFromDetail() {
+  const idToEdit = selectedCompanyId;
   closeCompanyDetailModal();
-  const company = allCompanies.find(c => c.id === selectedCompanyId) || allCompanies.find(c => c.id === selectedCompanyId);
-  openCompanyFormModal(selectedCompanyId);
-}
+  openCompanyFormModal(idToEdit);
+}s
 
 // ── CERT HISTORY ──────────────────────────────────────────────
 async function viewCertHistory(companyId, certType, certLabel) {
@@ -401,15 +510,25 @@ async function openCompanyFormModal(companyId) {
   document.getElementById('companyFormTitle').textContent = isEditMode ? 'Edit Organisation' : 'Add Organisation';
   switchFormTab('basic', document.querySelector('.form-tab[data-ftab="basic"]'));
 
+  // Show/hide first user section
+  const firstUserSection = document.getElementById('firstUserSection');
+  if (firstUserSection) {
+    firstUserSection.style.display = isEditMode ? 'none' : 'block';
+  }
+
   // Reset form
-  ['fcName','fcEmail','fcPhone','fcWebsite','fcAddress','fcCountry','fcGln','fcPgln','fcLat','fcLng','fcNotes'].forEach(id => {
+['fcName','fcEmail','fcPhone','fcWebsite','fcAddress','fcGln','fcPgln','fcLat','fcLng','fcNotes','fcIndustryOther','firstUserEmail'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
   document.getElementById('fcIndustry').value = '';
+  document.getElementById('fcCountry').value = '';
   document.getElementById('fcStatus').value = 'active';
   document.getElementById('mapFrame').classList.add('hidden');
   document.getElementById('mapPlaceholder').classList.remove('hidden');
+  document.getElementById('fcIndustryOther').classList.add('hidden');
+  document.getElementById('companyPhotoPreview').innerHTML = `
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9aa0b4" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
   renderCertFormList();
 
   if (isEditMode) {
@@ -417,15 +536,33 @@ async function openCompanyFormModal(companyId) {
     if (company) {
       document.getElementById('fcName').value = company.company_name || '';
       document.getElementById('fcIndustry').value = company.industry || '';
+      // Handle Other industry
+      const knownIndustries = ['Seafood Processing','Aquaculture','Fishing','Food & Beverage','Retail','Distribution & Logistics','Cold Chain / Logistics'];
+      if (company.industry && !knownIndustries.includes(company.industry)) {
+        document.getElementById('fcIndustry').value = 'Other';
+        const otherField = document.getElementById('fcIndustryOther');
+        otherField.value = company.industry;
+        otherField.classList.remove('hidden');
+      }
       document.getElementById('fcEmail').value = company.email || '';
       document.getElementById('fcPhone').value = company.phone || '';
       document.getElementById('fcWebsite').value = company.website || '';
       document.getElementById('fcAddress').value = company.address || '';
-      document.getElementById('fcCountry').value = company.country || '';
       document.getElementById('fcStatus').value = company.status || 'active';
       document.getElementById('fcNotes').value = company.notes || '';
       document.getElementById('fcGln').value = company.gln || '';
       document.getElementById('fcPgln').value = company.pgln || '';
+
+      // Set country by matching country name to alpha2
+      if (company.country) {
+        const countryMatch = allCountries.find(c => c.country === company.country);
+        if (countryMatch) document.getElementById('fcCountry').value = countryMatch.alpha2;
+      }
+
+      // Show existing photo
+      if (company.photo_url) {
+        document.getElementById('companyPhotoPreview').innerHTML = `<img src="${company.photo_url}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" />`;
+      }
 
       if (company.coordinates) {
         document.getElementById('fcLat').value = company.coordinates.lat || '';
@@ -467,18 +604,26 @@ async function saveCompanyForm() {
   const name = document.getElementById('fcName').value.trim();
   if (!name) { showToast('Organisation name is required.', 'error'); return; }
 
+  const industrySelect = document.getElementById('fcIndustry').value;
+  const industryOther = document.getElementById('fcIndustryOther')?.value.trim();
+  const industry = industrySelect === 'Other' ? (industryOther || 'Other') : industrySelect;
+
   const lat = parseFloat(document.getElementById('fcLat').value);
   const lng = parseFloat(document.getElementById('fcLng').value);
   const coordinates = (!isNaN(lat) && !isNaN(lng)) ? { lat, lng } : null;
 
+  const countryCode = document.getElementById('fcCountry').value;
+  const countryObj = allCountries.find(c => c.alpha2 === countryCode);
+  const countryName = countryObj ? countryObj.country : countryCode;
+
   const payload = {
     company_name: name,
-    industry: document.getElementById('fcIndustry').value || null,
+    industry: industry || null,
     email: document.getElementById('fcEmail').value.trim() || null,
     phone: document.getElementById('fcPhone').value.trim() || null,
     website: document.getElementById('fcWebsite').value.trim() || null,
     address: document.getElementById('fcAddress').value.trim() || null,
-    country: document.getElementById('fcCountry').value.trim() || null,
+    country: countryName || null,
     status: document.getElementById('fcStatus').value || 'active',
     notes: document.getElementById('fcNotes').value.trim() || null,
     gln: document.getElementById('fcGln').value.trim() || null,
@@ -491,6 +636,13 @@ async function saveCompanyForm() {
   if (isEditMode) {
     const { error } = await dbClient.from('companies').update(payload).eq('id', companyId);
     if (error) { showToast('Failed to update.', 'error'); return; }
+
+    // Upload photo if new one selected
+    const photoUrl = await uploadCompanyPhoto(companyId);
+    if (photoUrl) {
+      await dbClient.from('companies').update({ photo_url: photoUrl }).eq('id', companyId);
+    }
+
     await logActivity('update', 'company', companyId, `Updated: ${name}`);
   } else {
     const { data, error } = await dbClient
@@ -499,7 +651,17 @@ async function saveCompanyForm() {
       .select().single();
     if (error) { showToast('Failed to create.', 'error'); return; }
     companyId = data.id;
+
+    // Upload photo
+    const photoUrl = await uploadCompanyPhoto(companyId);
+    if (photoUrl) {
+      await dbClient.from('companies').update({ photo_url: photoUrl }).eq('id', companyId);
+    }
+
     await logActivity('create', 'company', companyId, `Created: ${name}`);
+
+    // Handle first user
+    await assignFirstUser(companyId);
   }
 
   // Save certifications

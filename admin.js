@@ -79,6 +79,8 @@ await Promise.all([
     loadRecentActivity(),
     loadUserOverview(),
     loadTrash(),
+    loadAdminOrgs(),
+    loadArchives(),
   ]);
 });
 
@@ -96,7 +98,8 @@ const labels = {
     dashboard: 'Dashboard', users: 'User Management',
     activity: 'Activity Logs', products: 'Products Overview',
     species: 'Species Overview', support: 'Support Tickets',
-    trash: 'Trash'
+    trash: 'Trash', organisations: 'Organisations',
+    archives: 'Company Archives'
   };
   document.getElementById('breadcrumbCurrent').textContent = labels[name] || name;
 }
@@ -454,6 +457,8 @@ function refreshAll() {
   loadSpecies();
   loadRecentActivity();
   loadTrash();
+  loadAdminOrgs();
+  loadArchives();
   showToast('Refreshed!', 'success');
 }
 
@@ -644,6 +649,212 @@ function timeAgo(dateStr) {
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}h ago`;
   return `${Math.floor(hours / 24)}d ago`;
+}
+
+// ── ORGANISATIONS ─────────────────────────────────────────────
+let allAdminOrgs = [];
+
+async function loadAdminOrgs() {
+  const { data } = await dbClient
+    .from('companies')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  allAdminOrgs = data || [];
+
+  // Get member and product counts
+  const tbody = document.getElementById('orgsTableBody');
+  if (!allAdminOrgs.length) {
+    tbody.innerHTML = '<tr><td colspan="7" class="loading-cell">No organisations found.</td></tr>';
+    return;
+  }
+
+  // Fetch counts for each org
+  const rows = await Promise.all(allAdminOrgs.map(async org => {
+    const [{ count: memberCount }, { count: productCount }] = await Promise.all([
+      dbClient.from('company_members').select('id', { count: 'exact', head: true }).eq('company_id', org.id),
+      dbClient.from('products').select('id', { count: 'exact', head: true }).eq('company_id', org.id).is('deleted_at', null),
+    ]);
+    return { ...org, memberCount: memberCount || 0, productCount: productCount || 0 };
+  }));
+
+  renderAdminOrgsTable(rows);
+}
+
+function renderAdminOrgsTable(orgs) {
+  const tbody = document.getElementById('orgsTableBody');
+  tbody.innerHTML = orgs.map(org => `
+    <tr>
+      <td>
+        <div style="display:flex; align-items:center; gap:10px;">
+          ${org.photo_url
+            ? `<img src="${org.photo_url}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" />`
+            : `<div style="width:32px; height:32px; border-radius:50%; background:rgba(26,111,219,0.15); color:#1a6fdb; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">${(org.company_name||'O').charAt(0).toUpperCase()}</div>`
+          }
+          <div>
+            <div style="font-weight:600; color:#e0e2f0;">${org.company_name || '—'}</div>
+            <div style="font-size:11px; color:#4a4e7a;">${org.email || '—'}</div>
+          </div>
+        </div>
+      </td>
+      <td style="color:#6b7080;">${org.industry || '—'}</td>
+      <td style="color:#6b7080;">${org.country || '—'}</td>
+      <td><span style="color:#1a6fdb; font-weight:600;">${org.memberCount}</span></td>
+      <td><span style="color:#22c55e; font-weight:600;">${org.productCount}</span></td>
+      <td><span class="status-pill ${org.status === 'active' ? 'active' : 'suspended'}">
+        <span class="status-dot"></span>${org.status}
+      </span></td>
+      <td>
+        <div class="action-btns">
+          <button class="btn-action ${org.status === 'suspended' ? 'activate' : 'suspend'}"
+            onclick="${org.status === 'suspended' ? `activateOrg('${org.id}')` : `suspendOrg('${org.id}')`}">
+            ${org.status === 'suspended' ? 'Activate' : 'Suspend'}
+          </button>
+          <button class="btn-action suspend" onclick="deleteOrgWithArchive('${org.id}', '${(org.company_name||'').replace(/'/g,"\\'")}', ${org.memberCount}, ${org.productCount})">Delete</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function filterAdminOrgs(query) {
+  const q = query.toLowerCase();
+  const filtered = allAdminOrgs.filter(o =>
+    (o.company_name||'').toLowerCase().includes(q) ||
+    (o.country||'').toLowerCase().includes(q) ||
+    (o.industry||'').toLowerCase().includes(q)
+  );
+  renderAdminOrgsTable(filtered);
+}
+
+function filterAdminOrgsByStatus(status) {
+  const filtered = status ? allAdminOrgs.filter(o => o.status === status) : allAdminOrgs;
+  renderAdminOrgsTable(filtered);
+}
+
+async function suspendOrg(id) {
+  await dbClient.from('companies').update({ status: 'suspended' }).eq('id', id);
+  showToast('Organisation suspended.', 'success');
+  await loadAdminOrgs();
+}
+
+async function activateOrg(id) {
+  await dbClient.from('companies').update({ status: 'active' }).eq('id', id);
+  showToast('Organisation activated.', 'success');
+  await loadAdminOrgs();
+}
+
+async function deleteOrgWithArchive(companyId, companyName, memberCount, productCount) {
+  if (!confirm(`Delete "${companyName}"?\n\n⚠️ This will:\n- Delete ${memberCount} user(s)\n- Move ${productCount} product(s) to Trash\n- Create a JSON archive\n\nThis cannot be undone!`)) return;
+
+  showToast('Archiving and deleting...', 'success');
+
+  try {
+    // 1. Collect all data for archive
+    const [
+      { data: company },
+      { data: members },
+      { data: products },
+      { data: certs },
+      { data: logs }
+    ] = await Promise.all([
+      dbClient.from('companies').select('*').eq('id', companyId).single(),
+      dbClient.from('company_members').select('*, profiles:user_id(*)').eq('company_id', companyId),
+      dbClient.from('products').select('*').eq('company_id', companyId),
+      dbClient.from('organisation_certifications').select('*').eq('company_id', companyId),
+      dbClient.from('activity_logs').select('*').eq('resource', 'company').eq('resource_id', companyId),
+    ]);
+
+    // 2. Build archive JSON
+    const archive = {
+      archived_at: new Date().toISOString(),
+      company,
+      members: members || [],
+      products: products || [],
+      certifications: certs || [],
+      activity_logs: logs || [],
+    };
+
+    // 3. Upload JSON to storage
+    const fileName = `${companyId}_${Date.now()}.json`;
+    const blob = new Blob([JSON.stringify(archive, null, 2)], { type: 'application/json' });
+
+    const { error: uploadError } = await dbClient.storage
+      .from('company-archives')
+      .upload(fileName, blob);
+
+    let archiveUrl = null;
+    if (!uploadError) {
+      const { data: urlData } = dbClient.storage
+        .from('company-archives')
+        .getPublicUrl(fileName);
+      archiveUrl = urlData.publicUrl;
+    }
+
+    // 4. Save archive record
+    await dbClient.from('company_archives').insert({
+      company_id: companyId,
+      company_name: companyName,
+      deleted_by: (await dbClient.auth.getSession()).data.session?.user.id,
+      archive_url: archiveUrl,
+      user_count: memberCount,
+      product_count: productCount,
+    });
+
+    // 5. Soft delete products (move to trash)
+    if (products?.length) {
+      await dbClient.from('products')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('company_id', companyId);
+    }
+
+    // 6. Delete users (profiles + auth)
+    if (members?.length) {
+      for (const member of members) {
+        await dbClient.from('profiles').delete().eq('id', member.user_id);
+      }
+    }
+
+    // 7. Delete company (cascades members, certs, associations)
+    await dbClient.from('companies').delete().eq('id', companyId);
+
+    await logActivity('delete', 'company', companyId, `Deleted company with archive: ${companyName}`);
+    showToast(`"${companyName}" deleted and archived!`, 'success');
+    await Promise.all([loadAdminOrgs(), loadArchives(), loadStats(), loadTrash()]);
+
+  } catch (err) {
+    console.error('Delete org error:', err);
+    showToast('Something went wrong during deletion.', 'error');
+  }
+}
+
+// ── ARCHIVES ──────────────────────────────────────────────────
+async function loadArchives() {
+  const { data } = await dbClient
+    .from('company_archives')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  const tbody = document.getElementById('archivesTableBody');
+  if (!data?.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="loading-cell">No archives yet.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = data.map(a => `
+    <tr>
+      <td style="font-weight:600; color:#e0e2f0;">${a.company_name || '—'}</td>
+      <td style="color:#4a4e7a;">${formatDate(a.created_at)}</td>
+      <td style="color:#1a6fdb; font-weight:600;">${a.user_count || 0}</td>
+      <td style="color:#22c55e; font-weight:600;">${a.product_count || 0}</td>
+      <td>
+        ${a.archive_url
+          ? `<a href="${a.archive_url}" target="_blank" class="btn-action view">Download JSON</a>`
+          : '<span style="color:#4a4e7a; font-size:12px;">No file</span>'
+        }
+      </td>
+    </tr>
+  `).join('');
 }
 
 function showToast(message, type = 'success') {
