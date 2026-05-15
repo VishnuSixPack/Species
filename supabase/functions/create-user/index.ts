@@ -40,6 +40,7 @@ serve(async (req) => {
       last_name,
       role: role || 'supplier',
       company_id: company_id || null,
+      email,
     })
 
     // Add to company_members if company provided

@@ -124,11 +124,13 @@ async function loadStats() {
 async function loadUsers() {
   const { data, error } = await dbClient
     .from('profiles')
-    .select('*')
+    .select('*, company:company_id(company_name)')
     .order('created_at', { ascending: false });
 
   if (error) { console.error('Error loading users:', error); return; }
 
+  // Get emails from auth via our edge function isn't possible client-side
+  // So we store email in profiles table — let's add it
   allUsers = data || [];
   renderUsersTable(allUsers);
   renderUserOverview(allUsers);
@@ -148,7 +150,7 @@ function renderUsersTable(users) {
           <div class="user-mini-avatar" style="background:${u.avatar_color || '#1a6fdb'}">${(u.first_name || 'U').charAt(0).toUpperCase()}</div>
           <div>
             <div class="user-mini-name">${[u.first_name, u.last_name].filter(Boolean).join(' ') || '—'}</div>
-            <div class="user-mini-email">${u.id}</div>
+            <div class="user-mini-email">${u.email || u.id}</div>
           </div>
         </div>
       </td>
