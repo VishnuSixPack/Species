@@ -3,8 +3,8 @@
    Shared utilities across all pages
    ============================================================ */
 
-const SUPABASE_URL = 'https://enbdaajcromxmhgcverp.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const UTILS_SUPABASE_URL = 'https://enbdaajcromxmhgcverp.supabase.co';
+const UTILS_SUPABASE_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
 
 // ── GREETING ──────────────────────────────────────────────────
 function getGreeting(name) {
@@ -58,7 +58,7 @@ function timeAgo(dateStr) {
 // ── ACTIVITY LOGGER ───────────────────────────────────────────
 async function logActivity(action, resource, resourceId = null, details = null) {
   try {
-    const dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const dbClient = window.supabase.createClient(UTILS_SUPABASE_URL, UTILS_SUPABASE_KEY);
     const { data: { session } } = await dbClient.auth.getSession();
     if (!session) return;
 
@@ -78,7 +78,7 @@ async function logActivity(action, resource, resourceId = null, details = null) 
 // ── UPDATE LAST LOGIN ─────────────────────────────────────────
 async function updateLastLogin() {
   try {
-    const dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const dbClient = window.supabase.createClient(UTILS_SUPABASE_URL, UTILS_SUPABASE_KEY);
     const { data: { session } } = await dbClient.auth.getSession();
     if (!session) return;
 
