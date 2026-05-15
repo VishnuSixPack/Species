@@ -873,3 +873,73 @@ function showToast(message, type = 'success') {
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
 }
+
+// ── ADD USER ──────────────────────────────────────────────────
+async function openAddUserModal() {
+  // Load companies into dropdown
+  const select = document.getElementById('newUserCompany');
+  select.innerHTML = '<option value="">No company</option>';
+  allAdminOrgs.forEach(org => {
+    const opt = document.createElement('option');
+    opt.value = org.id;
+    opt.textContent = org.company_name;
+    select.appendChild(opt);
+  });
+
+  // Clear fields
+  ['newUserFirstName', 'newUserLastName', 'newUserEmail', 'newUserPassword'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+
+  document.getElementById('addUserModal').classList.remove('hidden');
+}
+
+async function createUser() {
+  const email = document.getElementById('newUserEmail').value.trim();
+  const password = document.getElementById('newUserPassword').value.trim();
+  const firstName = document.getElementById('newUserFirstName').value.trim();
+  const lastName = document.getElementById('newUserLastName').value.trim();
+  const role = document.getElementById('newUserRole').value;
+  const companyId = document.getElementById('newUserCompany').value || null;
+
+  if (!email || !password) { showToast('Email and password are required.', 'error'); return; }
+  if (password.length < 6) { showToast('Password must be at least 6 characters.', 'error'); return; }
+
+  const btn = document.querySelector('#addUserModal .modal-confirm-btn');
+  btn.textContent = 'Creating...';
+  btn.disabled = true;
+
+  try {
+    const { data: { session } } = await dbClient.auth.getSession();
+
+    const response = await fetch(
+      `${SUPABASE_URL}/functions/v1/create-user`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          email, password, first_name: firstName,
+          last_name: lastName, role, company_id: companyId
+        })
+      }
+    );
+
+    const result = await response.json();
+
+    if (result.error) throw new Error(result.error);
+
+    await logActivity('create', 'user', result.user_id, `Created user: ${email}`);
+    showToast(`User ${email} created successfully!`, 'success');
+    document.getElementById('addUserModal').classList.add('hidden');
+    await loadUsers();
+
+  } catch (err) {
+    showToast(err.message || 'Failed to create user.', 'error');
+  } finally {
+    btn.textContent = 'Create User';
+    btn.disabled = false;
+  }
+}
