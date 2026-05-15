@@ -472,7 +472,7 @@ function openEditFromDetail() {
   const idToEdit = selectedCompanyId;
   closeCompanyDetailModal();
   openCompanyFormModal(idToEdit);
-}s
+}
 
 // ── CERT HISTORY ──────────────────────────────────────────────
 async function viewCertHistory(companyId, certType, certLabel) {
