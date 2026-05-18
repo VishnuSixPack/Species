@@ -861,7 +861,7 @@ function formatCertDate(dateStr) {
 async function loadFormMembers(companyId) {
   const { data: members } = await dbClient
     .from('company_members')
-    .select('*, profiles:user_id(first_name, last_name, avatar_color)')
+    .select('*')
     .eq('company_id', companyId);
 
   const container = document.getElementById('formMembersList');
@@ -870,8 +870,18 @@ async function loadFormMembers(companyId) {
     return;
   }
 
-  container.innerHTML = members.map(m => {
-    const p = m.profiles;
+  // Fetch profiles separately
+  const userIds = members.map(m => m.user_id);
+  const { data: profiles } = await dbClient
+    .from('profiles')
+    .select('id, first_name, last_name, avatar_color, email')
+    .in('id', userIds);
+
+  const profileMap = {};
+  profiles?.forEach(p => profileMap[p.id] = p);
+
+ container.innerHTML = members.map(m => {
+    const p = profileMap[m.user_id];
     const name = [p?.first_name, p?.last_name].filter(Boolean).join(' ') || 'Unknown';
     const initials = name.substring(0, 2).toUpperCase();
     const roleLabel = { company_admin: 'Administrator', contributor: 'Contributor', member: 'Member' }[m.company_role] || m.company_role;
