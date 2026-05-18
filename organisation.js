@@ -232,21 +232,59 @@ const { error } = await dbClient.storage
 // ── FIRST USER ASSIGNMENT ─────────────────────────────────────
 async function assignFirstUser(companyId) {
   const email = document.getElementById('firstUserEmail')?.value.trim();
-  const password = document.getElementById('firstUserPassword')?.value.trim();
   const role = document.getElementById('firstUserRole')?.value || 'company_admin';
 
-  if (!email || !password) return;
+  if (!email) return;
 
-  // Create user via Supabase Auth (admin only)
-  // Since we can't create users client-side without signup,
-  // we'll find existing user by checking profiles
-  const { data: profiles } = await dbClient
+  // Check if user already exists
+  const { data: existingProfiles } = await dbClient
     .from('profiles')
     .select('id')
+    .eq('email', email)
     .limit(1);
 
-  // For now — show instructions to admin
-  showToast(`First user setup: Share login URL with ${email}. They can register and you can assign them to this company from Admin Console.`, 'success');
+  let userId = existingProfiles?.[0]?.id;
+
+  if (!userId) {
+    // Need password to create new user
+    const password = document.getElementById('firstUserPassword')?.value.trim();
+    if (!password || password.length < 6) {
+      showToast('Please enter a password (min 6 characters) for the first user.', 'error');
+      return;
+    }
+
+    const { data: { session } } = await dbClient.auth.getSession();
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/create-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        email,
+        password,
+        role: 'supplier',
+        company_id: companyId
+      })
+    });
+
+    const result = await response.json();
+    if (result.error) { showToast(`Failed to create first user: ${result.error}`, 'error'); return; }
+    userId = result.user_id;
+  }
+
+  // Add to company_members as company_admin
+  await dbClient.from('company_members').insert({
+    company_id: companyId,
+    user_id: userId,
+    company_role: 'company_admin',
+    status: 'active'
+  });
+
+  // Update profile company_id
+  await dbClient.from('profiles').update({ company_id: companyId }).eq('id', userId);
+
+  showToast(`First user ${email} added as Company Administrator!`, 'success');
 }
 
 // ── USER VIEW ─────────────────────────────────────────────────
