@@ -259,12 +259,15 @@ async function assignFirstUser(companyId) {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify({
+body: JSON.stringify({
         email, password,
         first_name: firstName,
         last_name: lastName,
         position,
-        role: 'supplier',
+        role: document.getElementById('firstUserSystemRole')?.value || 'supplier',
+        partner_of: document.getElementById('firstUserSystemRole')?.value === 'partner'
+          ? document.getElementById('firstUserPartnerOf')?.value || null
+          : null,
         company_id: companyId
       })
     });
@@ -953,12 +956,15 @@ async function addMemberToOrg() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-            body: JSON.stringify({
+body: JSON.stringify({
             email, password,
             first_name: firstName,
             last_name: lastName,
             position: document.getElementById('addMemberPosition')?.value.trim(),
-            role: 'supplier',
+            role: document.getElementById('addMemberSystemRole')?.value || 'supplier',
+            partner_of: document.getElementById('addMemberSystemRole')?.value === 'partner'
+              ? document.getElementById('addMemberPartnerOf')?.value || null
+              : null,
             company_id: selectedCompanyId
           })
       });
@@ -1013,4 +1019,35 @@ async function removeMember(memberId, name) {
 
   showToast(`${name} removed.`, 'success');
   await loadFormMembers(selectedCompanyId);
+}
+
+function handleFirstUserRoleChange(select) {
+  const partnerGroup = document.getElementById('firstUserPartnerOfGroup');
+  if (select.value === 'partner') {
+    partnerGroup.classList.remove('hidden');
+    populatePartnerOfDropdown('firstUserPartnerOf');
+  } else {
+    partnerGroup.classList.add('hidden');
+  }
+}
+
+function handleAddMemberRoleChange(select) {
+  const partnerGroup = document.getElementById('addMemberPartnerOfGroup');
+  if (select.value === 'partner') {
+    partnerGroup.classList.remove('hidden');
+    populatePartnerOfDropdown('addMemberPartnerOf');
+  } else {
+    partnerGroup.classList.add('hidden');
+  }
+}
+
+function populatePartnerOfDropdown(selectId) {
+  const select = document.getElementById(selectId);
+  select.innerHTML = '<option value="">Select organisation</option>';
+  allCompanies.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.company_name;
+    select.appendChild(opt);
+  });
 }
