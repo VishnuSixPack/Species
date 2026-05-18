@@ -271,11 +271,11 @@ async function deleteCurrentSpecies() {
   document.getElementById('deleteSpeciesName').textContent = name;
   document.getElementById('speciesDeleteStep1').classList.remove('hidden');
   document.getElementById('speciesDeleteStep2').classList.add('hidden');
-  document.getElementById('speciesDeleteModal').classList.remove('hidden');
+  document.getElementById('speciesDeleteModal').style.display = 'flex';
 }
 
 function closeSpeciesDeleteModal() {
-  document.getElementById('speciesDeleteModal').classList.add('hidden');
+  document.getElementById('speciesDeleteModal').style.display = 'none';
 }
 
 function proceedToSpeciesStep2() {
