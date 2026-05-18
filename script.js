@@ -382,18 +382,54 @@ function showConfirm(title, message) {
   });
 }
 // ── 10. DELETE SPECIES ──
-async function deleteSpecies(id, name) {
-  const confirmed = await showConfirm(`Delete "${name}"?`, 'This cannot be undone.');
-  if (!confirmed) return;
+let deleteSpeciesTargetId = null;
+let deleteSpeciesTargetName = null;
 
-  const { error } = await dbClient.from('species').delete().eq('id', id);
+function deleteSpecies(id, name) {
+  deleteSpeciesTargetId = id;
+  deleteSpeciesTargetName = name;
+  document.getElementById('deleteSpeciesListName').textContent = name;
+  document.getElementById('speciesListDeleteStep1').classList.remove('hidden');
+  document.getElementById('speciesListDeleteStep2').classList.add('hidden');
+  document.getElementById('speciesListDeleteModal').style.display = 'flex';
+}
+
+function closeSpeciesListDeleteModal() {
+  document.getElementById('speciesListDeleteModal').style.display = 'none';
+  deleteSpeciesTargetId = null;
+  deleteSpeciesTargetName = null;
+}
+
+function proceedToSpeciesListStep2() {
+  document.getElementById('speciesListDeleteStep1').classList.add('hidden');
+  document.getElementById('speciesListDeleteStep2').classList.remove('hidden');
+}
+
+async function confirmSpeciesListDelete(reminder) {
+  const btn = reminder
+    ? document.querySelector('.species-list-remind-btn')
+    : document.querySelector('.species-list-no-remind-btn');
+  btn.textContent = 'Moving to Trash...';
+  btn.disabled = true;
+
+  const { error } = await dbClient
+    .from('species')
+    .update({
+      deleted_at: new Date().toISOString(),
+      reminder: reminder
+    })
+    .eq('id', deleteSpeciesTargetId);
 
   if (error) {
     showToast('Delete failed: ' + error.message, 'error');
+    btn.textContent = reminder ? 'Yes, remind me' : "No, I'm sure";
+    btn.disabled = false;
     return;
   }
 
-  showToast(`"${name}" deleted.`);
+  await logActivity('delete', 'species', deleteSpeciesTargetId, `Moved species to Trash: ${deleteSpeciesTargetName}`);
+  closeSpeciesListDeleteModal();
+  showToast(`"${deleteSpeciesTargetName}" moved to Trash.`, 'success');
   await loadSpecies();
 }
 
