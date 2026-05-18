@@ -857,6 +857,9 @@ function canManageMembers() {
 
 function openAddMemberModal() {
   document.getElementById('addMemberEmail').value = '';
+  document.getElementById('addMemberPassword').value = '';
+  document.getElementById('addMemberFirstName').value = '';
+  document.getElementById('addMemberLastName').value = '';
   document.getElementById('addMemberRole').value = 'member';
   document.getElementById('addMemberModal').classList.remove('hidden');
 }
@@ -895,7 +898,109 @@ async function addMemberToOrg() {
 
   if (!profile) {
     showToast('User not found. Make sure they have an account first.', 'error');
-    return;
+    async function addMemberToOrg() {
+  const email = document.getElementById('addMemberEmail').value.trim();
+  const password = document.getElementById('addMemberPassword').value.trim();
+  const firstName = document.getElementById('addMemberFirstName').value.trim();
+  const lastName = document.getElementById('addMemberLastName').value.trim();
+  const role = document.getElementById('addMemberRole').value;
+
+  if (!email || !password) { showToast('Email and password are required.', 'error'); return; }
+  if (password.length < 6) { showToast('Password must be at least 6 characters.', 'error'); return; }
+  if (!selectedCompanyId) { showToast('Please save the organisation first.', 'error'); return; }
+
+  // Check admin limit
+  if (role === 'company_admin') {
+    const { count } = await dbClient
+      .from('company_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('company_id', selectedCompanyId)
+      .eq('company_role', 'company_admin');
+
+    if (count >= 2) {
+      showToast('Maximum 2 Administrators allowed per organisation.', 'error');
+      return;
+    }
+  }
+
+  const btn = document.querySelector('#addMemberModal .modal-ok-btn');
+  btn.textContent = 'Adding...';
+  btn.disabled = true;
+
+  try {
+    // Check if user already exists
+    let userId = null;
+    const { data: existingProfile } = await dbClient
+      .from('profiles')
+      .select('id')
+      .eq('email', email)
+      .single();
+
+    if (existingProfile) {
+      // User exists — just add to org
+      userId = existingProfile.id;
+    } else {
+      // Create new user via Edge Function
+      const { data: { session } } = await dbClient.auth.getSession();
+      const response = await fetch(
+        `${SUPABASE_URL}/functions/v1/create-user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            email, password,
+            first_name: firstName,
+            last_name: lastName,
+            role: 'supplier',
+            company_id: selectedCompanyId
+          })
+        }
+      );
+
+      const result = await response.json();
+      if (result.error) throw new Error(result.error);
+      userId = result.user_id;
+    }
+
+    // Check if already a member
+    const { data: existing } = await dbClient
+      .from('company_members')
+      .select('id')
+      .eq('company_id', selectedCompanyId)
+      .eq('user_id', userId)
+      .single();
+
+    if (existing) {
+      showToast('This user is already a member of this organisation.', 'error');
+      return;
+    }
+
+    // Add to company_members
+    await dbClient.from('company_members').insert({
+      company_id: selectedCompanyId,
+      user_id: userId,
+      company_role: role,
+      status: 'active'
+    });
+
+    // Update profile company_id
+    await dbClient.from('profiles').update({ company_id: selectedCompanyId }).eq('id', userId);
+
+    await logActivity('create', 'company_member', selectedCompanyId, `Added ${email} as ${role}`);
+    showToast(`${email} added successfully!`, 'success');
+    closeAddMemberModal();
+    await loadFormMembers(selectedCompanyId);
+
+  } catch (err) {
+    showToast(err.message || 'Failed to add user.', 'error');
+  } finally {
+    btn.textContent = 'Add User';
+    btn.disabled = false;
+  }
+}return;
   }
 
   // Check if already a member
