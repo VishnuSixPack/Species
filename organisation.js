@@ -232,11 +232,17 @@ const { error } = await dbClient.storage
 // ── FIRST USER ASSIGNMENT ─────────────────────────────────────
 async function assignFirstUser(companyId) {
   const email = document.getElementById('firstUserEmail')?.value.trim();
-  const role = document.getElementById('firstUserRole')?.value || 'company_admin';
+  const password = document.getElementById('firstUserPassword')?.value.trim();
+  const firstName = document.getElementById('firstUserFirstName')?.value.trim();
+  const lastName = document.getElementById('firstUserLastName')?.value.trim();
+  const position = document.getElementById('firstUserPosition')?.value.trim();
 
   if (!email) return;
+  if (!password || password.length < 6) {
+    showToast('Please enter a password (min 6 characters) for the first user.', 'error');
+    return;
+  }
 
-  // Check if user already exists
   const { data: existingProfiles } = await dbClient
     .from('profiles')
     .select('id')
@@ -246,13 +252,6 @@ async function assignFirstUser(companyId) {
   let userId = existingProfiles?.[0]?.id;
 
   if (!userId) {
-    // Need password to create new user
-    const password = document.getElementById('firstUserPassword')?.value.trim();
-    if (!password || password.length < 6) {
-      showToast('Please enter a password (min 6 characters) for the first user.', 'error');
-      return;
-    }
-
     const { data: { session } } = await dbClient.auth.getSession();
     const response = await fetch(`${SUPABASE_URL}/functions/v1/create-user`, {
       method: 'POST',
@@ -261,8 +260,10 @@ async function assignFirstUser(companyId) {
         'Authorization': `Bearer ${session.access_token}`,
       },
       body: JSON.stringify({
-        email,
-        password,
+        email, password,
+        first_name: firstName,
+        last_name: lastName,
+        position,
         role: 'supplier',
         company_id: companyId
       })
@@ -273,7 +274,6 @@ async function assignFirstUser(companyId) {
     userId = result.user_id;
   }
 
-  // Add to company_members as company_admin
   await dbClient.from('company_members').insert({
     company_id: companyId,
     user_id: userId,
@@ -281,9 +281,7 @@ async function assignFirstUser(companyId) {
     status: 'active'
   });
 
-  // Update profile company_id
   await dbClient.from('profiles').update({ company_id: companyId }).eq('id', userId);
-
   showToast(`First user ${email} added as Company Administrator!`, 'success');
 }
 
@@ -898,6 +896,7 @@ function openAddMemberModal() {
   document.getElementById('addMemberPassword').value = '';
   document.getElementById('addMemberFirstName').value = '';
   document.getElementById('addMemberLastName').value = '';
+  document.getElementById('addMemberPosition').value = '';
   document.getElementById('addMemberRole').value = 'member';
   document.getElementById('addMemberModal').classList.remove('hidden');
 }
@@ -954,13 +953,14 @@ async function addMemberToOrg() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          email, password,
-          first_name: firstName,
-          last_name: lastName,
-          role: 'supplier',
-          company_id: selectedCompanyId
-        })
+            body: JSON.stringify({
+            email, password,
+            first_name: firstName,
+            last_name: lastName,
+            position: document.getElementById('addMemberPosition')?.value.trim(),
+            role: 'supplier',
+            company_id: selectedCompanyId
+          })
       });
 
       const result = await response.json();
