@@ -339,7 +339,7 @@ function showToast(message, type = 'success') {
   toast.style.cssText = `
     background: ${type === 'success' ? '#22c55e' : '#e63946'};
     color: #fff; padding: 12px 20px; border-radius: 10px;
-    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+    font-family: 'Poppins', 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
     box-shadow: 0 4px 20px rgba(0,0,0,0.15);
   `;
   toast.textContent = message;

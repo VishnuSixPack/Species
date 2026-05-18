@@ -1116,7 +1116,7 @@ function showToast(message, type = 'success') {
     position: fixed; bottom: 28px; right: 28px;
     background: ${type === 'success' ? '#22c55e' : '#e63946'};
     color: #fff; padding: 12px 20px; border-radius: 10px;
-    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+    font-family: 'Poppins', 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
     box-shadow: 0 4px 20px rgba(0,0,0,0.15);
     z-index: 9999; animation: slideUp 0.3s ease;
   `;
