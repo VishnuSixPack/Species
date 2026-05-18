@@ -928,13 +928,15 @@ async function addMemberToOrg() {
   btn.disabled = true;
 
   try {
-    // Check if user already exists
+// Check if user already exists
     let userId = null;
-    const { data: existingProfile } = await dbClient
+    const { data: existingProfiles } = await dbClient
       .from('profiles')
       .select('id')
       .eq('email', email)
-      .single();
+      .limit(1);
+
+    const existingProfile = existingProfiles?.[0];
 
     if (existingProfile) {
       // User exists — just add to org
