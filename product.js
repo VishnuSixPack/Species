@@ -153,13 +153,30 @@ async function loadProductForEdit(id) {
   setField('ingredients', p.ingredients);
 
   // Species / Raw Material
-  if (p.species_id) {
+if (p.species_id) {
     const select = document.getElementById('commercialName');
     select.value = p.species_id;
     onSpeciesSelect(String(p.species_id));
   }
 
-  setField('harvestMethodCustom', p.harvest_method_custom);
+  // Restore harvest method AFTER species select (which overwrites it)
+  if (p.harvest_method_custom) {
+    setTimeout(() => {
+      setField('harvestMethodCustom', p.harvest_method_custom);
+      // Also set the harvestMethod select if it matches
+      const harvestEl = document.getElementById('harvestMethod');
+      if (harvestEl) {
+        const exists = Array.from(harvestEl.options).some(o => o.value === p.harvest_method_custom);
+        if (!exists) {
+          const opt = document.createElement('option');
+          opt.value = p.harvest_method_custom;
+          opt.textContent = p.harvest_method_custom;
+          harvestEl.appendChild(opt);
+        }
+        harvestEl.value = p.harvest_method_custom;
+      }
+    }, 100);
+  }
 
   // Sustainability — FAO multiselect
   if (p.raw_material_origin) {
