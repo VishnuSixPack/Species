@@ -822,7 +822,7 @@ function formatCertDate(dateStr) {
 async function loadFormMembers(companyId) {
   const { data: members } = await dbClient
     .from('company_members')
-    .select('*, profiles:user_id(first_name, last_name, email, avatar_color)')
+    .select('*, profiles:user_id(first_name, last_name, avatar_color)')
     .eq('company_id', companyId);
 
   const container = document.getElementById('formMembersList');
@@ -932,7 +932,7 @@ async function addMemberToOrg() {
     let userId = null;
     const { data: existingProfiles } = await dbClient
       .from('profiles')
-      .select('id')
+      .select('id, email')
       .eq('email', email)
       .limit(1);
 
