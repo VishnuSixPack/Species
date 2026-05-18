@@ -512,10 +512,24 @@ async function openCompanyFormModal(companyId) {
   document.getElementById('btnSaveCompanyForm').textContent = isEditMode ? 'Update Organisation' : 'Save Organisation';
   switchFormTab('basic', document.querySelector('.form-tab[data-ftab="basic"]'));
 
-  // Show/hide first user section
+// Show/hide first user section
   const firstUserSection = document.getElementById('firstUserSection');
   if (firstUserSection) {
     firstUserSection.style.display = isEditMode ? 'none' : 'block';
+  }
+
+  // Users tab
+  if (isEditMode && selectedCompanyId) {
+    document.getElementById('usersTabCreateMsg').classList.add('hidden');
+    document.getElementById('usersTabContent').classList.remove('hidden');
+    // Hide Add User button for non-admin/operator
+    if (!canManageMembers()) {
+      document.getElementById('btnAddMember').classList.add('hidden');
+    }
+    await loadFormMembers(selectedCompanyId);
+  } else {
+    document.getElementById('usersTabCreateMsg').classList.remove('hidden');
+    document.getElementById('usersTabContent').classList.add('hidden');
   }
 
   // Reset form
@@ -802,4 +816,126 @@ function formatRole(role) {
 function formatCertDate(dateStr) {
   if (!dateStr) return '—';
   return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+// ── USERS TAB ─────────────────────────────────────────────────
+async function loadFormMembers(companyId) {
+  const { data: members } = await dbClient
+    .from('company_members')
+    .select('*, profiles:user_id(first_name, last_name, email, avatar_color)')
+    .eq('company_id', companyId);
+
+  const container = document.getElementById('formMembersList');
+  if (!members?.length) {
+    container.innerHTML = '<p class="no-data">No members yet. Add the first user above.</p>';
+    return;
+  }
+
+  container.innerHTML = members.map(m => {
+    const p = m.profiles;
+    const name = [p?.first_name, p?.last_name].filter(Boolean).join(' ') || 'Unknown';
+    const initials = name.substring(0, 2).toUpperCase();
+    const roleLabel = { company_admin: 'Administrator', contributor: 'Contributor', member: 'Member' }[m.company_role] || m.company_role;
+
+    return `
+      <div class="form-member-row">
+        <div class="form-member-avatar" style="background:${p?.avatar_color || '#1a6fdb'}">${initials}</div>
+        <div class="form-member-info">
+          <div class="form-member-name">${name}</div>
+          <div class="form-member-email">${p?.email || '—'}</div>
+        </div>
+        <span class="form-member-role ${m.company_role}">${roleLabel}</span>
+        ${canManageMembers() ? `<button class="btn-remove-member" onclick="removeMember('${m.id}', '${name}')">Remove</button>` : ''}
+      </div>
+    `;
+  }).join('');
+}
+
+function canManageMembers() {
+  return ['admin', 'operator'].includes(currentProfile?.role);
+}
+
+function openAddMemberModal() {
+  document.getElementById('addMemberEmail').value = '';
+  document.getElementById('addMemberRole').value = 'member';
+  document.getElementById('addMemberModal').classList.remove('hidden');
+}
+
+function closeAddMemberModal() {
+  document.getElementById('addMemberModal').classList.add('hidden');
+}
+
+async function addMemberToOrg() {
+  const email = document.getElementById('addMemberEmail').value.trim();
+  const role = document.getElementById('addMemberRole').value;
+
+  if (!email) { showToast('Please enter an email.', 'error'); return; }
+  if (!selectedCompanyId) { showToast('Please save the organisation first.', 'error'); return; }
+
+  // Check admin limit
+  if (role === 'company_admin') {
+    const { count } = await dbClient
+      .from('company_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('company_id', selectedCompanyId)
+      .eq('company_role', 'company_admin');
+
+    if (count >= 2) {
+      showToast('Maximum 2 Administrators allowed per organisation.', 'error');
+      return;
+    }
+  }
+
+  // Find user by email
+  const { data: profile } = await dbClient
+    .from('profiles')
+    .select('id, first_name, last_name')
+    .eq('email', email)
+    .single();
+
+  if (!profile) {
+    showToast('User not found. Make sure they have an account first.', 'error');
+    return;
+  }
+
+  // Check if already a member
+  const { data: existing } = await dbClient
+    .from('company_members')
+    .select('id')
+    .eq('company_id', selectedCompanyId)
+    .eq('user_id', profile.id)
+    .single();
+
+  if (existing) {
+    showToast('This user is already a member of this organisation.', 'error');
+    return;
+  }
+
+  // Add member
+  const { error } = await dbClient.from('company_members').insert({
+    company_id: selectedCompanyId,
+    user_id: profile.id,
+    company_role: role,
+    status: 'active'
+  });
+
+  // Update profile company_id
+  await dbClient.from('profiles').update({ company_id: selectedCompanyId }).eq('id', profile.id);
+
+  if (error) { showToast('Failed to add member.', 'error'); return; }
+
+  await logActivity('create', 'company_member', selectedCompanyId, `Added ${email} as ${role}`);
+  showToast(`${email} added successfully!`, 'success');
+  closeAddMemberModal();
+  await loadFormMembers(selectedCompanyId);
+}
+
+async function removeMember(memberId, name) {
+  if (!confirm(`Remove ${name} from this organisation?`)) return;
+
+  const { error } = await dbClient.from('company_members').delete().eq('id', memberId);
+  if (error) { showToast('Failed to remove member.', 'error'); return; }
+
+  showToast(`${name} removed.`, 'success');
+  await loadFormMembers(selectedCompanyId);
 }
