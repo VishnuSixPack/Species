@@ -81,6 +81,7 @@ await Promise.all([
     loadTrash(),
     loadAdminOrgs(),
     loadArchives(),
+    loadTickets(),
   ]);
 });
 
@@ -461,6 +462,7 @@ function refreshAll() {
   loadTrash();
   loadAdminOrgs();
   loadArchives();
+  loadTickets(),
   showToast('Refreshed!', 'success');
 }
 
@@ -944,4 +946,73 @@ async function createUser() {
     btn.textContent = 'Create User';
     btn.disabled = false;
   }
+
+  // ── SUPPORT TICKETS ───────────────────────────────────────────
+let allTickets = [];
+
+async function loadTickets() {
+  const { data } = await dbClient
+    .from('support_tickets')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  allTickets = data || [];
+  renderTickets(allTickets);
+}
+
+function renderTickets(tickets) {
+  const tbody = document.getElementById('ticketsTableBody');
+  if (!tbody) return;
+  if (!tickets.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">No tickets yet.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = tickets.map(t => `
+    <tr>
+      <td>
+        <div style="font-size:13px; font-weight:600; color:#e0e2f0;">${t.user_name || '—'}</div>
+        <div style="font-size:11px; color:#4a4e7a;">${t.user_email || '—'}</div>
+      </td>
+      <td>
+        <span class="role-pill ${t.type === 'report' ? 'buyer' : 'supplier'}">
+          ${t.type === 'report' ? '🐛 Bug Report' : '✉ Contact'}
+        </span>
+      </td>
+      <td style="color:#c0c2d8; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.subject || '—'}</td>
+      <td style="color:#4a4e7a; font-size:12px;">${formatDate(t.created_at)}</td>
+      <td>
+        <select onchange="updateTicketStatus('${t.id}', this.value)"
+          style="padding:4px 8px; background:#1a1a30; border:1px solid #2a2a4a; border-radius:6px; font-family:'DM Sans',sans-serif; font-size:11px; color:#e0e2f0; outline:none; cursor:pointer;">
+          <option value="open" ${t.status === 'open' ? 'selected' : ''}>Open</option>
+          <option value="in_progress" ${t.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
+          <option value="resolved" ${t.status === 'resolved' ? 'selected' : ''}>Resolved</option>
+        </select>
+      </td>
+      <td>
+        <button class="btn-action view" onclick="viewTicket('${t.id}')">View</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function filterTicketsByType(type) {
+  renderTickets(type ? allTickets.filter(t => t.type === type) : allTickets);
+}
+
+function filterTicketsByStatus(status) {
+  renderTickets(status ? allTickets.filter(t => t.status === status) : allTickets);
+}
+
+async function updateTicketStatus(id, status) {
+  await dbClient.from('support_tickets').update({ status }).eq('id', id);
+  showToast('Status updated!', 'success');
+  await loadTickets();
+}
+
+function viewTicket(id) {
+  const t = allTickets.find(t => t.id === id);
+  if (!t) return;
+  alert(`From: ${t.user_name} (${t.user_email})\n\nSubject: ${t.subject}\n\n${t.message}`);
+}
 }
