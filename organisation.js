@@ -870,36 +870,6 @@ function closeAddMemberModal() {
 
 async function addMemberToOrg() {
   const email = document.getElementById('addMemberEmail').value.trim();
-  const role = document.getElementById('addMemberRole').value;
-
-  if (!email) { showToast('Please enter an email.', 'error'); return; }
-  if (!selectedCompanyId) { showToast('Please save the organisation first.', 'error'); return; }
-
-  // Check admin limit
-  if (role === 'company_admin') {
-    const { count } = await dbClient
-      .from('company_members')
-      .select('id', { count: 'exact', head: true })
-      .eq('company_id', selectedCompanyId)
-      .eq('company_role', 'company_admin');
-
-    if (count >= 2) {
-      showToast('Maximum 2 Administrators allowed per organisation.', 'error');
-      return;
-    }
-  }
-
-  // Find user by email
-  const { data: profile } = await dbClient
-    .from('profiles')
-    .select('id, first_name, last_name')
-    .eq('email', email)
-    .single();
-
-  if (!profile) {
-    showToast('User not found. Make sure they have an account first.', 'error');
-    async function addMemberToOrg() {
-  const email = document.getElementById('addMemberEmail').value.trim();
   const password = document.getElementById('addMemberPassword').value.trim();
   const firstName = document.getElementById('addMemberFirstName').value.trim();
   const lastName = document.getElementById('addMemberLastName').value.trim();
@@ -916,11 +886,7 @@ async function addMemberToOrg() {
       .select('id', { count: 'exact', head: true })
       .eq('company_id', selectedCompanyId)
       .eq('company_role', 'company_admin');
-
-    if (count >= 2) {
-      showToast('Maximum 2 Administrators allowed per organisation.', 'error');
-      return;
-    }
+    if (count >= 2) { showToast('Maximum 2 Administrators allowed per organisation.', 'error'); return; }
   }
 
   const btn = document.querySelector('#addMemberModal .modal-ok-btn');
@@ -928,39 +894,36 @@ async function addMemberToOrg() {
   btn.disabled = true;
 
   try {
-// Check if user already exists
     let userId = null;
+
+    // Check if user already exists
     const { data: existingProfiles } = await dbClient
       .from('profiles')
-      .select('id, email')
+      .select('id')
       .eq('email', email)
       .limit(1);
 
     const existingProfile = existingProfiles?.[0];
 
     if (existingProfile) {
-      // User exists — just add to org
       userId = existingProfile.id;
     } else {
       // Create new user via Edge Function
       const { data: { session } } = await dbClient.auth.getSession();
-      const response = await fetch(
-        `${SUPABASE_URL}/functions/v1/create-user`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            email, password,
-            first_name: firstName,
-            last_name: lastName,
-            role: 'supplier',
-            company_id: selectedCompanyId
-          })
-        }
-      );
+      const response = await fetch(`${SUPABASE_URL}/functions/v1/create-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          email, password,
+          first_name: firstName,
+          last_name: lastName,
+          role: 'supplier',
+          company_id: selectedCompanyId
+        })
+      });
 
       const result = await response.json();
       if (result.error) throw new Error(result.error);
@@ -968,14 +931,14 @@ async function addMemberToOrg() {
     }
 
     // Check if already a member
-    const { data: existing } = await dbClient
+    const { data: existingMember } = await dbClient
       .from('company_members')
       .select('id')
       .eq('company_id', selectedCompanyId)
       .eq('user_id', userId)
-      .single();
+      .limit(1);
 
-    if (existing) {
+    if (existingMember?.[0]) {
       showToast('This user is already a member of this organisation.', 'error');
       return;
     }
@@ -1002,39 +965,6 @@ async function addMemberToOrg() {
     btn.textContent = 'Add User';
     btn.disabled = false;
   }
-}return;
-  }
-
-  // Check if already a member
-  const { data: existing } = await dbClient
-    .from('company_members')
-    .select('id')
-    .eq('company_id', selectedCompanyId)
-    .eq('user_id', profile.id)
-    .single();
-
-  if (existing) {
-    showToast('This user is already a member of this organisation.', 'error');
-    return;
-  }
-
-  // Add member
-  const { error } = await dbClient.from('company_members').insert({
-    company_id: selectedCompanyId,
-    user_id: profile.id,
-    company_role: role,
-    status: 'active'
-  });
-
-  // Update profile company_id
-  await dbClient.from('profiles').update({ company_id: selectedCompanyId }).eq('id', profile.id);
-
-  if (error) { showToast('Failed to add member.', 'error'); return; }
-
-  await logActivity('create', 'company_member', selectedCompanyId, `Added ${email} as ${role}`);
-  showToast(`${email} added successfully!`, 'success');
-  closeAddMemberModal();
-  await loadFormMembers(selectedCompanyId);
 }
 
 async function removeMember(memberId, name) {
