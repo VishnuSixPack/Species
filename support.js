@@ -61,12 +61,14 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 // ── SUBMIT CONTACT ────────────────────────────────────────────
 async function submitContact() {
+  const name = document.getElementById('contactName')?.value.trim();
+  const email = document.getElementById('contactEmail')?.value.trim();
   const subject = document.getElementById('contactSubject')?.value.trim();
   const category = document.getElementById('contactCategory')?.value;
   const message = document.getElementById('contactMessage')?.value.trim();
 
-  if (!subject || !message) {
-    showToast('Please fill in the required fields.', 'error');
+  if (!name || !email || !subject || !message) {
+    showToast('Please fill in all required fields.', 'error');
     return;
   }
 
@@ -74,16 +76,15 @@ async function submitContact() {
   btn.textContent = 'Sending...';
   btn.disabled = true;
 
-  const { error } = await dbClient.from('support_tickets').insert({
+   const { error } = await dbClient.from('support_tickets').insert({
     user_id: currentUser.id,
-    user_email: currentUser.email,
-    user_name: [currentProfile?.first_name, currentProfile?.last_name].filter(Boolean).join(' ') || currentUser.email,
+    user_email: email,
+    user_name: name,
     type: 'contact',
     subject: category ? `[${category}] ${subject}` : subject,
     message,
     status: 'open'
   });
-
   btn.textContent = 'Send Message';
   btn.disabled = false;
 
