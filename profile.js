@@ -28,9 +28,29 @@ window.addEventListener('DOMContentLoaded', async () => {
   const session = await checkAuth();
   if (!session) return;
 
-  currentUser = session.user;
+currentUser = session.user;
+  await loadCountryDropdown();
   await loadProfile();
 });
+
+// ── LOAD COUNTRY DROPDOWN ─────────────────────────────────────
+async function loadCountryDropdown() {
+  const { data } = await dbClient
+    .from('countries')
+    .select('country, alpha2')
+    .order('country');
+
+  const select = document.getElementById('companyCountry');
+  if (!select || !data) return;
+
+  select.innerHTML = '<option value="">Select country</option>';
+  data.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.country;
+    opt.textContent = `${c.country} (${c.alpha2})`;
+    select.appendChild(opt);
+  });
+}
 
 // ── LOAD PROFILE ──────────────────────────────────────────────
 async function loadProfile() {
