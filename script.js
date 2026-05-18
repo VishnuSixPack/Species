@@ -579,7 +579,14 @@ btnModalCancel.addEventListener('click', closeModal);
 btnSave.addEventListener('click', saveSpecies);
 
 modalOverlay.addEventListener('click', function(e) {
-  if (e.target === modalOverlay) closeModal();
+  if (e.target === modalOverlay) {
+    // Shake the modal
+    const modal = document.querySelector('.modal');
+    modal.style.animation = 'none';
+    modal.offsetHeight; // trigger reflow
+    modal.style.animation = 'shake 0.4s ease';
+    showToast('Please complete the form or use the Close button.', 'error');
+  }
 });
 
 document.addEventListener('keydown', function(e) {
