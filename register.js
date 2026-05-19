@@ -6,7 +6,6 @@ const SUPABASE_URL = 'https://enbdaajcromxmhgcverp.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
 const dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let selectedRole = null;
 let currentStep = 1;
 
 // ── STEP NAVIGATION ───────────────────────────────────────────
@@ -27,23 +26,7 @@ function goToStep(step) {
 }
 
 function goToStep1() { goToStep(1); }
-function goToStep3() {
-  if (!selectedRole) {
-    showToast('Please select your role.', 'error');
-    return;
-  }
-  // Show partner of field if partner
-  const partnerGroup = document.getElementById('partnerOfGroup');
-  if (selectedRole === 'partner') {
-    partnerGroup.classList.remove('hidden');
-  } else {
-    partnerGroup.classList.add('hidden');
-  }
-  goToStep(3);
-}
-
-function goToStep2() {
-  // Validate step 1
+function goToCompanyStep() {
   const firstName = document.getElementById('regFirstName').value.trim();
   const lastName = document.getElementById('regLastName').value.trim();
   const email = document.getElementById('regEmail').value.trim();
@@ -57,22 +40,6 @@ function goToStep2() {
   if (password !== confirmPassword) { showToast('Passwords do not match.', 'error'); return; }
 
   goToStep(2);
-}
-
-// ── ROLE SELECTION ────────────────────────────────────────────
-function selectRole(role) {
-  selectedRole = role;
-
-  // Reset all cards
-  document.querySelectorAll('.role-card').forEach(card => {
-    card.classList.remove('selected');
-    card.querySelector('.role-card-check').classList.add('hidden');
-  });
-
-  // Activate selected
-  const selected = document.getElementById(`role-${role}`);
-  selected.classList.add('selected');
-  selected.querySelector('.role-card-check').classList.remove('hidden');
 }
 
 // ── PASSWORD TOGGLE ───────────────────────────────────────────
@@ -171,7 +138,7 @@ async function submitRegistration() {
       first_name: firstName,
       last_name: lastName,
       email,
-      role: selectedRole || 'supplier',
+      role: company.company_type || 'supplier',
       company_id: company.id,
       position: position || null,
       partner_of: partnerCompanyId,
@@ -186,7 +153,6 @@ async function submitRegistration() {
       resource: 'auth',
       resource_id: userId,
       metadata: {
-        role: selectedRole,
         company: company.company_name,
         company_code: companyCode,
         status: 'pending'
