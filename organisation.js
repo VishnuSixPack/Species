@@ -579,14 +579,10 @@ async function openCompanyFormModal(companyId) {
     firstUserSection.style.display = isEditMode ? 'none' : 'block';
   }
 
-  // Users tab
+// Users tab
   if (isEditMode && selectedCompanyId) {
     document.getElementById('usersTabCreateMsg').classList.add('hidden');
     document.getElementById('usersTabContent').classList.remove('hidden');
-    // Hide Add User button for non-admin/operator
-    if (!canManageMembers()) {
-      document.getElementById('btnAddMember').classList.add('hidden');
-    }
     await loadFormMembers(selectedCompanyId);
   } else {
     document.getElementById('usersTabCreateMsg').classList.remove('hidden');
@@ -905,11 +901,31 @@ async function loadFormMembers(companyId) {
   const profileMap = {};
   profiles?.forEach(p => profileMap[p.id] = p);
 
- container.innerHTML = members.map(m => {
+  // Check if current user can manage members
+  const canEdit = await canManageMembers(companyId);
+
+  // Check plan limit (free = max 2 users)
+  const atLimit = members.length >= 2;
+
+  // Update Add User button
+  const btnAdd = document.getElementById('btnAddMember');
+  if (btnAdd) {
+    if (canEdit && !atLimit) {
+      btnAdd.classList.remove('hidden');
+    } else if (atLimit) {
+      btnAdd.classList.add('hidden');
+      document.querySelector('.users-tab-hint').textContent = 'Free plan limit reached (2 users). Upgrade to add more members.';
+    } else {
+      btnAdd.classList.add('hidden');
+    }
+  }
+
+  container.innerHTML = members.map(m => {
     const p = profileMap[m.user_id];
     const name = [p?.first_name, p?.last_name].filter(Boolean).join(' ') || 'Unknown';
     const initials = name.substring(0, 2).toUpperCase();
     const roleLabel = { company_admin: 'Administrator', contributor: 'Contributor', member: 'Member' }[m.company_role] || m.company_role;
+    const isAdmin = m.company_role === 'company_admin';
 
     return `
       <div class="form-member-row">
@@ -918,21 +934,33 @@ async function loadFormMembers(companyId) {
           <div class="form-member-name">${name}</div>
           <div class="form-member-email">${p?.email || '—'}</div>
         </div>
-         ${canManageMembers() ? `
-          <select class="form-member-role-select" onchange="changeMemberRole('${m.id}', this.value, '${name}')">
-            <option value="company_admin" ${m.company_role === 'company_admin' ? 'selected' : ''}>Administrator</option>
+        ${canEdit ? `
+          <select class="form-member-role-select"
+            onchange="changeMemberRole('${m.id}', this.value, '${name}')"
+            ${isAdmin ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
+            <option value="company_admin" ${isAdmin ? 'selected' : ''}>Administrator</option>
             <option value="contributor" ${m.company_role === 'contributor' ? 'selected' : ''}>Contributor</option>
             <option value="member" ${m.company_role === 'member' ? 'selected' : ''}>Member</option>
           </select>
-          <button class="btn-remove-member" onclick="removeMember('${m.id}', '${name}')">Remove</button>
+          ${!isAdmin ? `<button class="btn-remove-member" onclick="removeMember('${m.id}', '${name}')">Remove</button>` : ''}
         ` : `<span class="form-member-role ${m.company_role}">${roleLabel}</span>`}
       </div>
     `;
   }).join('');
 }
 
-function canManageMembers() {
-  return ['admin', 'operator'].includes(currentProfile?.role);
+async function canManageMembers(companyId) {
+  if (['admin', 'operator'].includes(currentProfile?.role)) return true;
+
+  // Check if current user is company_admin of this org
+  const { data } = await dbClient
+    .from('company_members')
+    .select('company_role')
+    .eq('company_id', companyId)
+    .eq('user_id', currentUser.id)
+    .single();
+
+  return data?.company_role === 'company_admin';
 }
 
 function openAddMemberModal() {
