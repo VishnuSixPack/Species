@@ -82,6 +82,7 @@ await Promise.all([
     loadAdminOrgs(),
     loadArchives(),
     loadTickets(),
+    loadPendingRegistrations(),
   ]);
 });
 
@@ -95,12 +96,12 @@ function switchSection(name) {
     if (btn.getAttribute('onclick')?.includes(`'${name}'`)) btn.classList.add('active');
   });
 
-const labels = {
+  const labels = {
     dashboard: 'Dashboard', users: 'User Management',
-    activity: 'Activity Logs', products: 'Products Overview',
-    species: 'Species Overview', support: 'Support Tickets',
-    trash: 'Trash', organisations: 'Organisations',
-    archives: 'Company Archives'
+    pending: 'Pending Registrations', activity: 'Activity Logs',
+    products: 'Products Overview', species: 'Species Overview',
+    support: 'Support Tickets', trash: 'Trash',
+    organisations: 'Organisations', archives: 'Company Archives'
   };
   document.getElementById('breadcrumbCurrent').textContent = labels[name] || name;
 }
@@ -462,7 +463,8 @@ function refreshAll() {
   loadTrash();
   loadAdminOrgs();
   loadArchives();
-  loadTickets(),
+  loadTickets();
+  loadPendingRegistrations();
   showToast('Refreshed!', 'success');
 }
 
@@ -1015,4 +1017,112 @@ function viewTicket(id) {
   if (!t) return;
   alert(`From: ${t.user_name} (${t.user_email})\n\nSubject: ${t.subject}\n\n${t.message}`);
 }
+}
+
+// ── PENDING REGISTRATIONS ─────────────────────────────────────
+async function loadPendingRegistrations() {
+  const { data } = await dbClient
+    .from('profiles')
+    .select('*, company:company_id(company_name, company_code)')
+    .eq('status', 'pending')
+    .order('created_at', { ascending: false });
+
+  const tbody = document.getElementById('pendingTableBody');
+  const badge = document.getElementById('pendingBadge');
+
+  if (!data?.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">No pending registrations.</td></tr>';
+    badge.style.display = 'none';
+    return;
+  }
+
+  // Show badge with count
+  badge.style.display = 'inline-block';
+  badge.textContent = data.length;
+
+  tbody.innerHTML = data.map(u => `
+    <tr>
+      <td>
+        <div class="user-cell">
+          <div class="user-mini-avatar" style="background:#f59e0b; color:#fff;">${(u.first_name || 'U').charAt(0).toUpperCase()}</div>
+          <div>
+            <div class="user-mini-name">${[u.first_name, u.last_name].filter(Boolean).join(' ') || '—'}</div>
+            <div class="user-mini-email">${u.email || '—'}</div>
+          </div>
+        </div>
+      </td>
+      <td><span class="role-pill ${u.role || 'supplier'}">${u.role || 'supplier'}</span></td>
+      <td>
+        <div style="font-size:13px; color:#e0e2f0;">${u.company?.company_name || '—'}</div>
+        <div style="font-size:11px; color:#4a4e7a;">${u.company?.company_code || ''}</div>
+      </td>
+      <td style="color:#6b7080; font-size:13px;">${u.position || '—'}</td>
+      <td style="color:#4a4e7a; font-size:12px;">${formatDate(u.created_at)}</td>
+      <td>
+        <div class="action-btns">
+          <button class="btn-action activate" onclick="approveRegistration('${u.id}', '${[u.first_name, u.last_name].filter(Boolean).join(' ')}')">Approve</button>
+          <button class="btn-action suspend" onclick="rejectRegistration('${u.id}', '${[u.first_name, u.last_name].filter(Boolean).join(' ')}')">Reject</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+async function approveRegistration(userId, name) {
+  if (!confirm(`Approve ${name}? They will be able to login immediately.`)) return;
+
+  // Add to company_members
+  const { data: profile } = await dbClient
+    .from('profiles')
+    .select('company_id, role')
+    .eq('id', userId)
+    .single();
+
+  const { error } = await dbClient
+    .from('profiles')
+    .update({ status: 'active' })
+    .eq('id', userId);
+
+  if (error) { showToast('Failed to approve.', 'error'); return; }
+
+  // Add to company_members if not already there
+  if (profile?.company_id) {
+    const { data: existing } = await dbClient
+      .from('company_members')
+      .select('id')
+      .eq('company_id', profile.company_id)
+      .eq('user_id', userId)
+      .limit(1);
+
+    if (!existing?.length) {
+      await dbClient.from('company_members').insert({
+        company_id: profile.company_id,
+        user_id: userId,
+        company_role: 'member',
+        status: 'active'
+      });
+    }
+  }
+
+  await logActivity('approve', 'profile', userId, `Approved registration: ${name}`);
+  showToast(`${name} approved! They can now login.`, 'success');
+  await loadPendingRegistrations();
+  await loadUsers();
+  await loadStats();
+}
+
+async function rejectRegistration(userId, name) {
+  if (!confirm(`Reject ${name}? They will not be able to login.`)) return;
+
+  const { error } = await dbClient
+    .from('profiles')
+    .update({ status: 'rejected' })
+    .eq('id', userId);
+
+  if (error) { showToast('Failed to reject.', 'error'); return; }
+
+  await logActivity('reject', 'profile', userId, `Rejected registration: ${name}`);
+  showToast(`${name} rejected.`, 'success');
+  await loadPendingRegistrations();
+  await loadUsers();
 }
