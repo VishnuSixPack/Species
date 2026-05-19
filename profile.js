@@ -150,6 +150,8 @@ function switchSection(name) {
       btn.classList.add('active');
     }
   });
+
+  if (name === 'company') loadCompanyInfo();
 }
 
 // ── SAVE GENERAL ──────────────────────────────────────────────
@@ -168,23 +170,52 @@ async function saveGeneral() {
   await loadProfile();
 }
 
-// ── SAVE COMPANY ──────────────────────────────────────────────
-async function saveCompany() {
+// ── LOAD COMPANY INFO ─────────────────────────────────────────
+async function loadCompanyInfo() {
+  const companyId = currentProfile?.company_id;
+
+  if (!companyId) {
+    document.getElementById('noCompanyCard').style.display = 'block';
+    document.getElementById('companyInfoCard').style.display = 'none';
+    return;
+  }
+
+  const { data: company } = await dbClient
+    .from('companies')
+    .select('*')
+    .eq('id', companyId)
+    .single();
+
+  if (!company) {
+    document.getElementById('noCompanyCard').style.display = 'block';
+    document.getElementById('companyInfoCard').style.display = 'none';
+    return;
+  }
+
+  document.getElementById('noCompanyCard').style.display = 'none';
+  document.getElementById('companyInfoCard').style.display = 'block';
+
+  document.getElementById('companyCodeDisplay').textContent = company.company_code || '—';
+  document.getElementById('companyName').value = company.company_name || '';
+  document.getElementById('companyIndustry').value = company.industry || '';
+  document.getElementById('companyCountry').value = company.country || '';
+  document.getElementById('companyGln').value = company.gln || '';
+  document.getElementById('companyWebsite').value = company.website || '';
+  document.getElementById('companyAddress').value = company.address || '';
+  document.getElementById('companyPosition').value = currentProfile?.position || '';
+}
+
+// ── SAVE POSITION ─────────────────────────────────────────────
+async function savePosition() {
+  const position = document.getElementById('companyPosition').value.trim();
   const { error } = await dbClient
     .from('profiles')
-    .update({
-      company_name: document.getElementById('companyName').value.trim(),
-      company_position: document.getElementById('companyPosition').value.trim(),
-      company_website: document.getElementById('companyWebsite').value.trim(),
-      company_address: document.getElementById('companyAddress').value.trim(),
-      company_country: document.getElementById('companyCountry').value.trim(),
-      company_industry: document.getElementById('companyIndustry').value,
-      updated_at: new Date().toISOString()
-    })
+    .update({ position, updated_at: new Date().toISOString() })
     .eq('id', currentUser.id);
 
   if (error) { showToast('Failed to save.', 'error'); return; }
-  showToast('Company info updated!', 'success');
+  showToast('Position updated!', 'success');
+  currentProfile.position = position;
 }
 
 // ── SAVE PREFERENCE ───────────────────────────────────────────
