@@ -131,10 +131,13 @@ function renderCompaniesGrid(companies) {
       </div>
       <div>
         <div class="company-card-name">${c.company_name || '—'}</div>
-        <div class="company-card-industry">${c.industry || 'No industry specified'}</div>
+        <div class="company-card-industry">
+          ${c.company_type ? `<span style="font-size:10px; font-weight:700; padding:2px 8px; border-radius:20px; margin-right:6px; background:${c.company_type === 'supplier' ? '#dcfce7' : c.company_type === 'buyer' ? '#eef4fd' : c.company_type === 'partner' ? '#fef3c7' : '#f4f6fb'}; color:${c.company_type === 'supplier' ? '#16a34a' : c.company_type === 'buyer' ? '#1a6fdb' : c.company_type === 'partner' ? '#d97706' : '#6b7280'};">${c.company_type.toUpperCase()}</span>` : ''}
+          ${c.industry || 'No industry specified'}
+        </div>
       </div>
       <div class="company-card-meta">
-        ${c.company_code ? `<span class="meta-chip" style="font-weight:700; color:#1a6fdb; background:#eef4fd; border-color:#c7dcf8;">🔑 ${c.company_code}</span>` : ''}
+        ${c.company_code ? `<span class="meta-chip" style="font-weight:700; color:#1a6fdb; background:#eef4fd; border-color:#c7dcf8; cursor:pointer;" onclick="event.stopPropagation(); navigator.clipboard.writeText('${c.company_code}'); showToast('Copied!', 'success')" title="Click to copy">🔑 ${c.company_code} 📋</span>` : ''}
         ${c.country ? `<span class="meta-chip">📍 ${c.country}</span>` : ''}
         ${c.gln ? `<span class="meta-chip">GLN: ${c.gln}</span>` : ''}
         ${c.email ? `<span class="meta-chip">✉ ${c.email}</span>` : ''}
@@ -473,7 +476,12 @@ const membersList = members?.length
             <span class="status-badge ${company.status}">${company.status}</span>
             ${company.industry ? `<span class="meta-chip">${company.industry}</span>` : ''}
             ${company.country ? `<span class="meta-chip">📍 ${company.country}</span>` : ''}
-            ${company.company_code ? `<span class="meta-chip" style="font-weight:700; color:#1a6fdb; background:#eef4fd; border-color:#c7dcf8;">🔑 ${company.company_code}</span>` : ''}
+            ${company.company_code ? `
+              <span class="meta-chip" style="font-weight:700; color:#1a6fdb; background:#eef4fd; border-color:#c7dcf8; cursor:pointer;" 
+                onclick="navigator.clipboard.writeText('${company.company_code}'); showToast('Company code copied!', 'success')" 
+                title="Click to copy">
+                🔑 ${company.company_code} 📋
+              </span>` : ''}
             ${company.gln ? `<span class="meta-chip">GLN: ${company.gln}</span>` : ''}
             ${company.pgln ? `<span class="meta-chip">PGLN: ${company.pgln}</span>` : ''}
           </div>
@@ -569,9 +577,29 @@ async function openCompanyFormModal(companyId) {
   isEditMode = !!companyId;
   selectedCompanyId = companyId;
 
-  document.getElementById('companyFormTitle').textContent = isEditMode ? 'Edit Organisation' : 'Add Organisation';
+document.getElementById('companyFormTitle').textContent = isEditMode ? 'Edit Organisation' : 'Add Organisation';
   document.getElementById('btnSaveCompanyForm').textContent = isEditMode ? 'Update Organisation' : 'Save Organisation';
-  switchFormTab('basic', document.querySelector('.form-tab[data-ftab="basic"]'));
+
+  // Check if current user is org admin only (not system admin/operator)
+  const isSystemAdmin = ['admin', 'operator'].includes(currentProfile?.role);
+
+  if (!isSystemAdmin && isEditMode) {
+    // Org admin — only show Users tab
+    document.getElementById('tab-basic').classList.add('hidden');
+    document.getElementById('tab-location').classList.add('hidden');
+    document.getElementById('tab-certifications').classList.add('hidden');
+    document.getElementById('tab-users').classList.remove('hidden');
+    document.getElementById('btnSaveCompanyForm').classList.add('hidden');
+    switchFormTab('users', document.getElementById('tab-users'));
+  } else {
+    // System admin/operator — show all tabs
+    document.getElementById('tab-basic').classList.remove('hidden');
+    document.getElementById('tab-location').classList.remove('hidden');
+    document.getElementById('tab-certifications').classList.remove('hidden');
+    document.getElementById('tab-users').classList.remove('hidden');
+    document.getElementById('btnSaveCompanyForm').classList.remove('hidden');
+    switchFormTab('basic', document.querySelector('.form-tab[data-ftab="basic"]'));
+  }
 
 // Show/hide first user section
   const firstUserSection = document.getElementById('firstUserSection');
@@ -594,6 +622,7 @@ async function openCompanyFormModal(companyId) {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  document.getElementById('fcCompanyType').value = '';
   document.getElementById('fcIndustry').value = '';
   document.getElementById('fcCountry').value = '';
   document.getElementById('fcStatus').value = 'active';
@@ -608,6 +637,7 @@ async function openCompanyFormModal(companyId) {
     const company = allCompanies.find(c => c.id === companyId);
     if (company) {
       document.getElementById('fcName').value = company.company_name || '';
+      document.getElementById('fcCompanyType').value = company.company_type || '';
       document.getElementById('fcIndustry').value = company.industry || '';
       // Handle Other industry
       const knownIndustries = ['Seafood Processing','Aquaculture','Fishing','Food & Beverage','Retail','Distribution & Logistics','Cold Chain / Logistics'];
@@ -689,8 +719,9 @@ async function saveCompanyForm() {
   const countryObj = allCountries.find(c => c.alpha2 === countryCode);
   const countryName = countryObj ? countryObj.country : countryCode;
 
-  const payload = {
+const payload = {
     company_name: name,
+    company_type: document.getElementById('fcCompanyType').value || null,
     industry: industry || null,
     email: document.getElementById('fcEmail').value.trim() || null,
     phone: document.getElementById('fcPhone').value.trim() || null,
@@ -904,8 +935,11 @@ async function loadFormMembers(companyId) {
   // Check if current user can manage members
   const canEdit = await canManageMembers(companyId);
 
-  // Check plan limit (free = max 2 users)
-  const atLimit = members.length >= 2;
+// Free plan: max 2 admins, max 5 total users
+  const adminCount = members.filter(m => m.company_role === 'company_admin').length;
+  const atTotalLimit = members.length >= 5;
+  const atAdminLimit = adminCount >= 2;
+  const atLimit = atTotalLimit;
 
   // Update Add User button
   const btnAdd = document.getElementById('btnAddMember');
@@ -914,7 +948,7 @@ async function loadFormMembers(companyId) {
       btnAdd.classList.remove('hidden');
     } else if (atLimit) {
       btnAdd.classList.add('hidden');
-      document.querySelector('.users-tab-hint').textContent = 'Free plan limit reached (2 users). Upgrade to add more members.';
+      document.querySelector('.users-tab-hint').textContent = 'Free plan limit reached (5 users). Upgrade to add more members.';
     } else {
       btnAdd.classList.add('hidden');
     }
@@ -1130,8 +1164,8 @@ async function changeMemberRole(memberId, newRole, name) {
       .eq('company_id', selectedCompanyId)
       .eq('company_role', 'company_admin');
 
-    if (count >= 2) {
-      showToast('Maximum 2 Administrators allowed per organisation.', 'error');
+      if (count >= 2) {
+      showToast('Maximum 2 Administrators allowed per organisation (free plan).', 'error');
       await loadFormMembers(selectedCompanyId);
       return;
     }

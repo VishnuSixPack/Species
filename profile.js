@@ -104,10 +104,12 @@ function populateUI() {
     photoAvatar.style.background = avatarColor;
   }
 
-  // Role badge
+// Role badge — show org role if available, otherwise system role
   const roleBadge = document.getElementById('roleBadge');
-  roleBadge.textContent = capitalize(p.role || 'supplier');
-  roleBadge.className = `role-badge ${p.role || 'supplier'}`;
+  roleBadge.textContent = capitalize(p.role || 'member');
+  roleBadge.className = `role-badge ${p.role || 'member'}`;
+  // Load org role async
+  loadOrgRole();
 
   // Company tab
   if (p.company_name) document.getElementById('companyName').value = p.company_name;
@@ -376,4 +378,36 @@ function showToast(message, type = 'success') {
   toast.textContent = message;
   document.getElementById('toastContainer').appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
+}
+
+async function loadOrgRole() {
+  if (!currentProfile?.company_id) return;
+
+  const { data } = await dbClient
+    .from('company_members')
+    .select('company_role')
+    .eq('user_id', currentUser.id)
+    .eq('company_id', currentProfile.company_id)
+    .single();
+
+  if (!data) return;
+
+  const roleMap = {
+    company_admin: 'Company Administrator',
+    contributor: 'Contributor',
+    member: 'Member'
+  };
+
+  const roleBadge = document.getElementById('roleBadge');
+  const userRole = document.getElementById('userRole');
+  const orgRole = roleMap[data.company_role] || data.company_role;
+
+  roleBadge.textContent = orgRole;
+  roleBadge.className = `role-badge ${data.company_role}`;
+  userRole.textContent = orgRole;
+
+  // Show position if available
+  if (currentProfile?.position) {
+    userRole.textContent = `${orgRole} — ${currentProfile.position}`;
+  }
 }
