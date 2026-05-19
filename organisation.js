@@ -341,21 +341,30 @@ async function loadUserOrganisation(profile) {
 async function loadMembers(companyId) {
   const { data: members } = await dbClient
     .from('company_members')
-    .select('*, profiles:user_id(first_name, last_name, avatar_color)')
+    .select('*')
     .eq('company_id', companyId);
 
   const container = document.getElementById('membersList');
   if (!members?.length) { container.innerHTML = '<p class="no-data">No members yet.</p>'; return; }
 
+  const userIds = members.map(m => m.user_id);
+  const { data: profiles } = await dbClient
+    .from('profiles')
+    .select('id, first_name, last_name, avatar_color, email')
+    .in('id', userIds);
+
+  const profileMap = {};
+  profiles?.forEach(p => profileMap[p.id] = p);
+
   container.innerHTML = members.map(m => {
-    const p = m.profiles;
+    const p = profileMap[m.user_id];
     const name = [p?.first_name, p?.last_name].filter(Boolean).join(' ') || 'Unknown';
     return `
       <div class="member-row">
         <div class="member-avatar" style="background:${p?.avatar_color || '#1a6fdb'};">${name.substring(0,2).toUpperCase()}</div>
         <div class="member-info">
           <div class="member-name">${name}</div>
-          <div class="member-email">${m.status || 'active'}</div>
+          <div class="member-email">${p?.email || '—'}</div>
         </div>
         <span class="member-role-badge ${m.company_role}">${formatRole(m.company_role)}</span>
       </div>`;
@@ -401,11 +410,22 @@ async function openCompanyDetail(companyId) {
     ? `<img src="${company.photo_url}" style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:2px solid #e8eaf0;" />`
     : `<div style="width:48px; height:48px; border-radius:50%; background:#eef4fd; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800; color:#1a6fdb; flex-shrink:0;">${(company.company_name || 'O').charAt(0).toUpperCase()}</div>`;
 
-  // Load members
-  const { data: members } = await dbClient
+// Load members
+  const { data: rawMembers } = await dbClient
     .from('company_members')
-    .select('*, profiles:user_id(first_name, last_name, avatar_color)')
+    .select('*')
     .eq('company_id', companyId);
+
+  const memberUserIds = rawMembers?.map(m => m.user_id) || [];
+  const { data: memberProfiles } = memberUserIds.length ? await dbClient
+    .from('profiles')
+    .select('id, first_name, last_name, avatar_color')
+    .in('id', memberUserIds) : { data: [] };
+
+  const memberProfileMap = {};
+  memberProfiles?.forEach(p => memberProfileMap[p.id] = p);
+
+  const members = rawMembers?.map(m => ({ ...m, profile: memberProfileMap[m.user_id] })) || [];
 
   // Load active certifications
   const { data: certs } = await dbClient
@@ -415,9 +435,9 @@ async function openCompanyDetail(companyId) {
     .eq('is_active', true)
     .order('cert_type');
 
-  const membersList = members?.length
+const membersList = members?.length
     ? members.map(m => {
-        const p = m.profiles;
+        const p = m.profile;
         const name = [p?.first_name, p?.last_name].filter(Boolean).join(' ') || 'Unknown';
         return `<div class="member-row">
           <div class="member-avatar" style="background:${p?.avatar_color || '#1a6fdb'}; width:32px; height:32px; font-size:11px;">${name.substring(0,2).toUpperCase()}</div>

@@ -157,7 +157,7 @@ function renderUsersTable(users) {
         </div>
       </td>
       <td><span class="role-pill ${u.role || 'supplier'}">${u.role || 'supplier'}</span></td>
-      <td>${u.company_name || '—'}</td>
+      <td>${u.company?.company_name || '—'}</td>
       <td>${u.last_login ? formatDate(u.last_login) : 'Never'}</td>
       <td>
         <span class="status-pill ${u.is_suspended ? 'suspended' : 'active'}">
@@ -167,12 +167,13 @@ function renderUsersTable(users) {
       </td>
       <td>
         <div class="action-btns">
-          ${u.role !== 'admin' ? `
+            ${u.role !== 'admin' ? `
             <button class="btn-action ${u.is_suspended ? 'activate' : 'suspend'}"
               onclick="${u.is_suspended ? `openActivateModal('${u.id}')` : `openSuspendModal('${u.id}')`}">
               ${u.is_suspended ? 'Activate' : 'Suspend'}
             </button>
             <button class="btn-action role" onclick="openRoleModal('${u.id}', '${u.role || 'supplier'}')">Role</button>
+            <button class="btn-action suspend" onclick="deleteUser('${u.id}', '${[u.first_name, u.last_name].filter(Boolean).join(' ') || u.email}')">Delete</button>
           ` : '<span style="color:#4a4e7a; font-size:11px;">God Mode</span>'}
         </div>
       </td>
@@ -1055,7 +1056,6 @@ function viewTicket(id) {
   if (!t) return;
   alert(`From: ${t.user_name} (${t.user_email})\n\nSubject: ${t.subject}\n\n${t.message}`);
 }
-}
 
 // ── PENDING REGISTRATIONS ─────────────────────────────────────
 async function loadPendingRegistrations() {
@@ -1163,4 +1163,21 @@ async function rejectRegistration(userId, name) {
   showToast(`${name} rejected.`, 'success');
   await loadPendingRegistrations();
   await loadUsers();
+}
+
+// ── DELETE USER ───────────────────────────────────────────────
+async function deleteUser(userId, name) {
+  if (!confirm(`Permanently delete ${name}?\n\nThis will:\n- Remove their profile\n- Remove them from all companies\n\nThis cannot be undone!`)) return;
+
+  // Remove from company_members
+  await dbClient.from('company_members').delete().eq('user_id', userId);
+
+  // Delete profile
+  const { error } = await dbClient.from('profiles').delete().eq('id', userId);
+  if (error) { showToast('Failed to delete user.', 'error'); return; }
+
+  await logActivity('delete', 'user', userId, `Deleted user: ${name}`);
+  showToast(`${name} deleted.`, 'success');
+  await loadUsers();
+  await loadStats();
 }
