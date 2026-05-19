@@ -80,6 +80,31 @@ if (error) {
       return;
     }
 
+    // Check profile status
+    const { data: profile } = await dbClient
+      .from('profiles')
+      .select('status, role')
+      .eq('id', data.user.id)
+      .single();
+
+    if (profile?.status === 'pending') {
+      await dbClient.auth.signOut();
+      errorEl.textContent = 'Your account is pending approval. Please wait for your Company Administrator to confirm your account.';
+      errorEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+      return;
+    }
+
+    if (profile?.status === 'rejected') {
+      await dbClient.auth.signOut();
+      errorEl.textContent = 'Your account has been rejected. Please contact your Company Administrator.';
+      errorEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+      return;
+    }
+
     // Log login + update last login
     await logActivity('login', 'auth', data.user.id, `User logged in: ${email}`);
     await updateLastLogin();
