@@ -884,20 +884,43 @@ function showToast(message, type = 'success') {
 async function openAddUserModal() {
   // Load companies into dropdown
   const select = document.getElementById('newUserCompany');
-  select.innerHTML = '<option value="">No company</option>';
+  select.innerHTML = '<option value="">Select company...</option>';
+
+  if (!allAdminOrgs.length) {
+    select.innerHTML = '<option value="">No companies yet — create one first</option>';
+  } else {
+    allAdminOrgs.forEach(org => {
+      const opt = document.createElement('option');
+      opt.value = org.id;
+      opt.textContent = `${org.company_name} (${org.company_code || '—'})`;
+      select.appendChild(opt);
+    });
+  }
+
+  // Load partner of dropdown
+  const partnerSelect = document.getElementById('newUserPartnerOf');
+  partnerSelect.innerHTML = '<option value="">Select organisation...</option>';
   allAdminOrgs.forEach(org => {
     const opt = document.createElement('option');
     opt.value = org.id;
     opt.textContent = org.company_name;
-    select.appendChild(opt);
+    partnerSelect.appendChild(opt);
   });
 
   // Clear fields
-  ['newUserFirstName', 'newUserLastName', 'newUserEmail', 'newUserPassword'].forEach(id => {
-    document.getElementById(id).value = '';
+  ['newUserFirstName', 'newUserLastName', 'newUserEmail', 'newUserPassword', 'newUserPosition'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
   });
 
+  document.getElementById('newUserRole').value = 'supplier';
+  document.getElementById('newUserPartnerOfGroup').style.display = 'none';
   document.getElementById('addUserModal').classList.remove('hidden');
+}
+
+function handleNewUserRoleChange(select) {
+  const partnerGroup = document.getElementById('newUserPartnerOfGroup');
+  partnerGroup.style.display = select.value === 'partner' ? 'flex' : 'none';
 }
 
 async function createUser() {
@@ -907,9 +930,12 @@ async function createUser() {
   const lastName = document.getElementById('newUserLastName').value.trim();
   const role = document.getElementById('newUserRole').value;
   const companyId = document.getElementById('newUserCompany').value || null;
+  const position = document.getElementById('newUserPosition').value.trim();
+  const partnerOf = role === 'partner' ? document.getElementById('newUserPartnerOf').value || null : null;
 
   if (!email || !password) { showToast('Email and password are required.', 'error'); return; }
   if (password.length < 6) { showToast('Password must be at least 6 characters.', 'error'); return; }
+  if (!companyId) { showToast('Please select a company. Every user must belong to an organisation.', 'error'); return; }
 
   const btn = document.querySelector('#addUserModal .modal-confirm-btn');
   btn.textContent = 'Creating...';
@@ -926,9 +952,10 @@ async function createUser() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
+          body: JSON.stringify({
           email, password, first_name: firstName,
-          last_name: lastName, role, company_id: companyId
+          last_name: lastName, role, company_id: companyId,
+          position, partner_of: partnerOf
         })
       }
     );
@@ -936,6 +963,16 @@ async function createUser() {
     const result = await response.json();
 
     if (result.error) throw new Error(result.error);
+
+// Add to company_members
+    if (companyId && result.user_id) {
+      await dbClient.from('company_members').insert({
+        company_id: companyId,
+        user_id: result.user_id,
+        company_role: 'member',
+        status: 'active'
+      });
+    }
 
     await logActivity('create', 'user', result.user_id, `Created user: ${email}`);
     showToast(`User ${email} created successfully!`, 'success');
@@ -948,8 +985,9 @@ async function createUser() {
     btn.textContent = 'Create User';
     btn.disabled = false;
   }
+}
 
-  // ── SUPPORT TICKETS ───────────────────────────────────────────
+// ── SUPPORT TICKETS ───────────────────────────────────────────
 let allTickets = [];
 
 async function loadTickets() {
