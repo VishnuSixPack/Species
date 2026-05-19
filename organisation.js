@@ -898,8 +898,14 @@ async function loadFormMembers(companyId) {
           <div class="form-member-name">${name}</div>
           <div class="form-member-email">${p?.email || '—'}</div>
         </div>
-        <span class="form-member-role ${m.company_role}">${roleLabel}</span>
-        ${canManageMembers() ? `<button class="btn-remove-member" onclick="removeMember('${m.id}', '${name}')">Remove</button>` : ''}
+         ${canManageMembers() ? `
+          <select class="form-member-role-select" onchange="changeMemberRole('${m.id}', this.value, '${name}')">
+            <option value="company_admin" ${m.company_role === 'company_admin' ? 'selected' : ''}>Administrator</option>
+            <option value="contributor" ${m.company_role === 'contributor' ? 'selected' : ''}>Contributor</option>
+            <option value="member" ${m.company_role === 'member' ? 'selected' : ''}>Member</option>
+          </select>
+          <button class="btn-remove-member" onclick="removeMember('${m.id}', '${name}')">Remove</button>
+        ` : `<span class="form-member-role ${m.company_role}">${roleLabel}</span>`}
       </div>
     `;
   }).join('');
@@ -1065,4 +1071,32 @@ function populatePartnerOfDropdown(selectId) {
     opt.textContent = c.company_name;
     select.appendChild(opt);
   });
+}
+
+async function changeMemberRole(memberId, newRole, name) {
+  // Check admin limit if promoting to admin
+  if (newRole === 'company_admin') {
+    const { count } = await dbClient
+      .from('company_members')
+      .select('id', { count: 'exact', head: true })
+      .eq('company_id', selectedCompanyId)
+      .eq('company_role', 'company_admin');
+
+    if (count >= 2) {
+      showToast('Maximum 2 Administrators allowed per organisation.', 'error');
+      await loadFormMembers(selectedCompanyId);
+      return;
+    }
+  }
+
+  const { error } = await dbClient
+    .from('company_members')
+    .update({ company_role: newRole })
+    .eq('id', memberId);
+
+  if (error) { showToast('Failed to update role.', 'error'); return; }
+
+  await logActivity('update', 'company_member', memberId, `Changed ${name} role to ${newRole}`);
+  showToast(`${name} is now ${newRole === 'company_admin' ? 'Administrator' : newRole === 'contributor' ? 'Contributor' : 'Member'}.`, 'success');
+  await loadFormMembers(selectedCompanyId);
 }
