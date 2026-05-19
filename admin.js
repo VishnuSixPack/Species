@@ -1057,6 +1057,7 @@ function viewTicket(id) {
   alert(`From: ${t.user_name} (${t.user_email})\n\nSubject: ${t.subject}\n\n${t.message}`);
 }
 
+
 // ── PENDING REGISTRATIONS ─────────────────────────────────────
 async function loadPendingRegistrations() {
   const { data } = await dbClient
@@ -1167,17 +1168,36 @@ async function rejectRegistration(userId, name) {
 
 // ── DELETE USER ───────────────────────────────────────────────
 async function deleteUser(userId, name) {
-  if (!confirm(`Permanently delete ${name}?\n\nThis will:\n- Remove their profile\n- Remove them from all companies\n\nThis cannot be undone!`)) return;
+  if (!confirm(`Permanently delete ${name}?\n\nThis will:\n- Remove their profile\n- Remove them from all companies\n- Delete their login account\n\nThis cannot be undone!`)) return;
 
-  // Remove from company_members
-  await dbClient.from('company_members').delete().eq('user_id', userId);
+  try {
+    const { data: { session } } = await dbClient.auth.getSession();
 
-  // Delete profile
-  const { error } = await dbClient.from('profiles').delete().eq('id', userId);
-  if (error) { showToast('Failed to delete user.', 'error'); return; }
+    // Remove from company_members first
+    await dbClient.from('company_members').delete().eq('user_id', userId);
 
-  await logActivity('delete', 'user', userId, `Deleted user: ${name}`);
-  showToast(`${name} deleted.`, 'success');
-  await loadUsers();
-  await loadStats();
+    // Delete profile
+    await dbClient.from('profiles').delete().eq('id', userId);
+
+    // Delete auth user via Edge Function
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/delete-user`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ user_id: userId })
+    });
+
+    const result = await response.json();
+    if (result.error) throw new Error(result.error);
+
+    await logActivity('delete', 'user', userId, `Deleted user: ${name}`);
+    showToast(`${name} deleted.`, 'success');
+    await loadUsers();
+    await loadStats();
+
+  } catch (err) {
+    showToast(err.message || 'Failed to delete user.', 'error');
+  }
 }
