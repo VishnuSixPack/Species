@@ -134,6 +134,7 @@ function renderCompaniesGrid(companies) {
         <div class="company-card-industry">${c.industry || 'No industry specified'}</div>
       </div>
       <div class="company-card-meta">
+        ${c.company_code ? `<span class="meta-chip" style="font-weight:700; color:#1a6fdb; background:#eef4fd; border-color:#c7dcf8;">🔑 ${c.company_code}</span>` : ''}
         ${c.country ? `<span class="meta-chip">📍 ${c.country}</span>` : ''}
         ${c.gln ? `<span class="meta-chip">GLN: ${c.gln}</span>` : ''}
         ${c.email ? `<span class="meta-chip">✉ ${c.email}</span>` : ''}
@@ -452,6 +453,7 @@ async function openCompanyDetail(companyId) {
             <span class="status-badge ${company.status}">${company.status}</span>
             ${company.industry ? `<span class="meta-chip">${company.industry}</span>` : ''}
             ${company.country ? `<span class="meta-chip">📍 ${company.country}</span>` : ''}
+            ${company.company_code ? `<span class="meta-chip" style="font-weight:700; color:#1a6fdb; background:#eef4fd; border-color:#c7dcf8;">🔑 ${company.company_code}</span>` : ''}
             ${company.gln ? `<span class="meta-chip">GLN: ${company.gln}</span>` : ''}
             ${company.pgln ? `<span class="meta-chip">PGLN: ${company.pgln}</span>` : ''}
           </div>
@@ -698,9 +700,12 @@ if (isEditMode) {
 
     await logActivity('update', 'company', companyId, `Updated: ${name}`);
   } else {
+// Generate unique company code
+    const code = '#' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    
     const { data, error } = await dbClient
       .from('companies')
-      .insert({ ...payload, created_by: currentUser.id })
+      .insert({ ...payload, created_by: currentUser.id, company_code: code })
       .select().single();
     if (error) { showToast('Failed to create.', 'error'); return; }
     companyId = data.id;
