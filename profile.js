@@ -70,6 +70,11 @@ async function loadProfile() {
   }
 
   populateUI();
+
+  // Show Switch Account for admin/operator
+  if (['admin', 'operator'].includes(currentProfile?.role)) {
+    document.getElementById('switchAccountBtn')?.classList.remove('hidden');
+  }
 }
 
 // ── POPULATE UI ───────────────────────────────────────────────

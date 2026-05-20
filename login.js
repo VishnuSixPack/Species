@@ -109,7 +109,12 @@ if (error) {
     await logActivity('login', 'auth', data.user.id, `User logged in: ${email}`);
     await updateLastLogin();
 
-    window.location.href = 'index.html';
+    // Redirect based on role
+    if (['admin', 'operator'].includes(profile?.role)) {
+      window.location.href = 'index.html';
+    } else {
+      window.location.href = 'home-logged-in.html';
+    }
   }
 
   document.addEventListener('keydown', function(e) {

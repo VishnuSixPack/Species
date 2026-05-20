@@ -170,3 +170,8 @@ async function initDetailPage() {
 
   document.getElementById('detailContent').classList.remove('hidden');
 }
+
+if (['admin', 'operator'].includes(profile?.role)) {
+  const link = document.getElementById('switchAccountLink');
+  if (link) link.style.display = 'flex';
+}

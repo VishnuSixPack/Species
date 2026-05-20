@@ -38,7 +38,7 @@ async function updateNav() {
 
   const { data: profile } = await dbClient
     .from('profiles')
-    .select('first_name, avatar_color')
+    .select('first_name, avatar_color, role')
     .eq('id', session.user.id)
     .single();
 
@@ -57,6 +57,11 @@ async function updateNav() {
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
             Profile
           </a>
+          ${['admin', 'operator'].includes(profile?.role) ? `
+          <a href="#" onclick="openSwitchAccount(); return false;" style="display:flex; align-items:center; gap:8px; padding:9px 16px; font-size:13px; color:#4a4e69; text-decoration:none; font-weight:500;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            Switch Account
+          </a>` : ''}
           <button onclick="handleLogout()" style="width:100%; padding:9px 16px; background:none; border:none; border-top:1px solid #f0f2f8; text-align:left; font-family:'DM Sans',sans-serif; font-size:13px; color:#e63946; cursor:pointer; font-weight:500;">Logout</button>
         </div>
       </div>`;

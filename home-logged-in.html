@@ -80,7 +80,7 @@
       padding: 7px 14px;
       border-radius: 999px;
       font-size: 13px;
-      font-weight: 500;
+      font-weight: 400;
       color: var(--muted);
       text-decoration: none;
       transition: background 0.15s, color 0.15s;
@@ -95,10 +95,12 @@
       flex-shrink: 0;
     }
 
-    .nav-item:hover,
+    .nav-item:hover { background: var(--bg); color: var(--text); }
+
     .nav-item.active {
       background: var(--bg);
       color: var(--text);
+      font-weight: 600;
     }
 
     .nav-item:hover img,
@@ -428,6 +430,61 @@
       color: var(--muted);
       background: var(--white);
     }
+
+    /* ── Nav dropdowns ── */
+    .nav-item-wrap {
+      position: relative;
+    }
+
+    .nav-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+      min-width: 160px;
+      overflow: visible;
+      z-index: 500;
+      padding: 6px;
+    }
+
+    .nav-item-wrap:hover .nav-dropdown { display: block; }
+
+    .nav-dropdown-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      font-size: 13px;
+      color: #4a4e69;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 500;
+      transition: background 0.15s;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .nav-dropdown-item:hover { background: var(--bg); color: var(--primary); }
+
+    .nav-dropdown-sub {
+      display: none;
+      position: absolute;
+      left: calc(100% + 4px);
+      top: 0;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+      min-width: 160px;
+      padding: 6px;
+      z-index: 501;
+    }
+
+    .nav-dropdown-item:hover .nav-dropdown-sub { display: block; }
   </style>
 </head>
 <body>
@@ -444,12 +501,34 @@
         <a href="home-logged-in.html" class="nav-item active">
           <img src="home.png" alt="" /> Home
         </a>
-        <a href="organisation.html" class="nav-item">
-          <img src="my-studio.png" alt="" /> My Studio
-        </a>
-        <a href="Species.html" class="nav-item">
-          <img src="atlas.png" alt="" /> Atlas
-        </a>
+        <div class="nav-item-wrap">
+          <a href="organisation.html" class="nav-item">
+            <img src="my-studio.png" alt="" /> My Studio
+          </a>
+          <div class="nav-dropdown">
+            <a href="product-list.html" class="nav-dropdown-item">Product</a>
+            <a href="organisation.html" class="nav-dropdown-item">Your Company</a>
+          </div>
+        </div>
+        <div class="nav-item-wrap">
+          <a href="Species.html" class="nav-item">
+            <img src="atlas.png" alt="" /> Atlas
+          </a>
+          <div class="nav-dropdown">
+            <a href="Species.html" class="nav-dropdown-item">Species</a>
+            <a href="#" class="nav-dropdown-item">Ports</a>
+            <a href="#" class="nav-dropdown-item">Vessels</a>
+            <a href="country.html" class="nav-dropdown-item">Country</a>
+            <div class="nav-dropdown-item" style="position:relative;">
+              Others
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+              <div class="nav-dropdown-sub">
+                <a href="#" class="nav-dropdown-item">MSC Fisheries</a>
+                <a href="#" class="nav-dropdown-item">ASC Farms</a>
+              </div>
+            </div>
+          </div>
+        </div>
         <a href="#" class="nav-item">
           <img src="features.png" alt="" /> Features
         </a>
@@ -481,6 +560,10 @@
           <a href="profile.html">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
             Profile
+          </a>
+          <a href="#" id="switchAccountLink" onclick="openSwitchAccount(); return false;" style="display:none;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            Switch Account
           </a>
           <button onclick="handleLogout()">Logout</button>
         </div>
@@ -675,9 +758,14 @@
 
       const { data: p } = await dbClient
         .from('profiles')
-        .select('first_name, last_name, avatar_color')
+        .select('first_name, last_name, avatar_color, role')
         .eq('id', session.user.id)
         .single();
+
+      // Show Switch Account for admin/operator
+      if (['admin', 'operator'].includes(p?.role)) {
+        document.getElementById('switchAccountLink').style.display = 'flex';
+      }
 
       const firstName = p?.first_name || session.user.email.split('@')[0];
       const lastName = p?.last_name || '';
@@ -695,5 +783,6 @@
       setInterval(nextFact, 3600000);
     });
   </script>
+  <script src="switch-account.js"></script>
 </body>
 </html>

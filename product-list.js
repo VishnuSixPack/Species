@@ -280,3 +280,8 @@ function showToast(message, type = 'success') {
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
 }
+
+if (['admin', 'operator'].includes(profile?.role)) {
+  const link = document.getElementById('switchAccountLink');
+  if (link) link.style.display = 'flex';
+}

@@ -62,7 +62,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   const { data: profile } = await dbClient
     .from('profiles')
-    .select('first_name, avatar_color')
+    .select('first_name, avatar_color, role')
     .eq('id', currentUser.id)
     .single();
 
@@ -77,6 +77,12 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('navAvatar').style.background = avatarColor;
   document.getElementById('navEmail').textContent = email;
   document.getElementById('navFirstName').textContent = getGreeting(firstName);
+
+  // Show Switch Account for admin/operator
+  if (['admin', 'operator'].includes(profile?.role)) {
+    const link = document.getElementById('switchAccountLink');
+    if (link) link.style.display = 'flex';
+  }
 });
 
 // ── SUBMIT CONTACT ────────────────────────────────────────────

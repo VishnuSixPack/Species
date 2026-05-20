@@ -80,6 +80,12 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   const isAdminOrOperator = ['admin', 'operator'].includes(profile?.role);
 
+  // Show Switch Account for admin/operator
+  if (isAdminOrOperator) {
+    const link = document.getElementById('switchAccountLink');
+    if (link) link.style.display = 'flex';
+  }
+
   if (isAdminOrOperator) {
     document.getElementById('pageTitle').textContent = 'Organisation';
     document.getElementById('btnCreateCompany').classList.remove('hidden');
