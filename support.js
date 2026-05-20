@@ -45,9 +45,16 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   if (!session) {
-    // Guest mode — hide nav profile, show login button
+    // Guest mode — hide nav profile and Report an Issue link
     const navProfile = document.getElementById('navProfile');
     if (navProfile) navProfile.style.display = 'none';
+
+    // Hide Report an Issue from nav
+    document.querySelectorAll('.nav-dropdown-menu a').forEach(link => {
+      if (link.href.includes('report.html')) {
+        link.parentElement.style.display = 'none';
+      }
+    });
     return;
   }
 
