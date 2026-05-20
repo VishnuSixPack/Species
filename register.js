@@ -205,3 +205,11 @@ window.addEventListener('DOMContentLoaded', async () => {
   const { data: { session } } = await dbClient.auth.getSession();
   if (session) window.location.href = 'index.html';
 });
+
+function autoHashPrefix(input) {
+  let val = input.value.toUpperCase();
+  if (val && !val.startsWith('#')) {
+    val = '#' + val.replace(/#/g, '');
+  }
+  input.value = val;
+}
