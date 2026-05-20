@@ -45,6 +45,9 @@ async function updateNav() {
   const firstName = profile?.first_name || email.split('@')[0];
   const avatarColor = profile?.avatar_color || '#1a6fdb';
 
+  // Set home link based on role
+  setHomeLink(profile?.role);
+
   const profileLink = document.getElementById('detail-profile-link');
   if (profileLink) {
     profileLink.innerHTML = `

@@ -78,7 +78,7 @@ async function submitRegistration() {
     // Validate company code
     const { data: companies, error: codeError } = await dbClient
       .from('companies')
-      .select('id, company_name, status')
+      .select('id, company_name, status, company_type')
       .eq('company_code', companyCode)
       .limit(1);
 
@@ -98,9 +98,9 @@ async function submitRegistration() {
       return;
     }
 
-    // Validate partner code if partner role
+    // Validate partner code if provided
     let partnerCompanyId = null;
-    if (selectedRole === 'partner' && partnerCode) {
+    if (partnerCode) {
       const { data: partnerCompanies } = await dbClient
         .from('companies')
         .select('id, company_name')

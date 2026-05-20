@@ -78,6 +78,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('navEmail').textContent = email;
   document.getElementById('navFirstName').textContent = getGreeting(firstName);
 
+  // Set home link based on role
+  setHomeLink(profile?.role);
+
   // Show Switch Account for admin/operator
   if (['admin', 'operator'].includes(profile?.role)) {
     const link = document.getElementById('switchAccountLink');

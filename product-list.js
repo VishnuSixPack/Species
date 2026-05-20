@@ -48,7 +48,7 @@ const email = session.user.email || '';
   // Load profile for first name and avatar color
   const { data: profile } = await dbClient
     .from('profiles')
-    .select('first_name, avatar_color')
+    .select('first_name, avatar_color, role')
     .eq('id', session.user.id)
     .single();
 
@@ -60,6 +60,13 @@ const email = session.user.email || '';
   document.getElementById('navAvatar').style.background = avatarColor;
   document.getElementById('navEmail').textContent = email;
   document.getElementById('navFirstName').textContent = getGreeting(firstName);
+
+  // Set home link and Switch Account based on role
+  setHomeLink(profile?.role);
+  if (['admin', 'operator'].includes(profile?.role)) {
+    const link = document.getElementById('switchAccountLink');
+    if (link) link.style.display = 'flex';
+  }
 
   await loadProducts();
 });
@@ -279,9 +286,4 @@ function showToast(message, type = 'success') {
   toast.textContent = message;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
-}
-
-if (['admin', 'operator'].includes(profile?.role)) {
-  const link = document.getElementById('switchAccountLink');
-  if (link) link.style.display = 'flex';
 }

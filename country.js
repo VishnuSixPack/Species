@@ -39,7 +39,7 @@ async function initNav(session) {
 
   const { data: profile } = await dbClient
     .from('profiles')
-    .select('first_name, avatar_color')
+    .select('first_name, avatar_color, role')
     .eq('id', session.user.id)
     .single();
 
@@ -50,6 +50,13 @@ async function initNav(session) {
   document.getElementById('navAvatar').style.background = avatarColor;
   document.getElementById('navEmail').textContent = email;
   document.getElementById('navFirstName').textContent = getGreeting(firstName);
+
+  // Set home link and Switch Account based on role
+  setHomeLink(profile?.role);
+  if (['admin', 'operator'].includes(profile?.role)) {
+    const link = document.getElementById('switchAccountLink');
+    if (link) link.style.display = 'flex';
+  }
 }
 
 // ── DETERMINE WHICH PAGE ──────────────────────────────────────
@@ -171,7 +178,3 @@ async function initDetailPage() {
   document.getElementById('detailContent').classList.remove('hidden');
 }
 
-if (['admin', 'operator'].includes(profile?.role)) {
-  const link = document.getElementById('switchAccountLink');
-  if (link) link.style.display = 'flex';
-}

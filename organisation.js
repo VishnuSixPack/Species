@@ -80,6 +80,9 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   const isAdminOrOperator = ['admin', 'operator'].includes(profile?.role);
 
+  // Set home link based on role
+  setHomeLink(profile?.role);
+
   // Show Switch Account for admin/operator
   if (isAdminOrOperator) {
     const link = document.getElementById('switchAccountLink');

@@ -81,7 +81,6 @@ async function updateLastLogin() {
     const dbClient = window.supabase.createClient(UTILS_SUPABASE_URL, UTILS_SUPABASE_KEY);
     const { data: { session } } = await dbClient.auth.getSession();
     if (!session) return;
-
     await dbClient
       .from('profiles')
       .update({ last_login: new Date().toISOString() })
@@ -89,4 +88,12 @@ async function updateLastLogin() {
   } catch (err) {
     console.warn('Last login update failed:', err);
   }
+}
+// ── SET HOME LINK ─────────────────────────────────────────────
+function setHomeLink(role) {
+  document.querySelectorAll('a[href="index.html"]').forEach(link => {
+    if (!['admin', 'operator'].includes(role)) {
+      link.href = 'home-logged-in.html';
+    }
+  });
 }
