@@ -132,8 +132,11 @@ async function submitRegistration() {
     const userId = data.user?.id;
     if (!userId) throw new Error('Failed to create account. Please try again.');
 
-    // Create profile as PENDING
-    const { error: profileError } = await dbClient.from('profiles').upsert({
+  
+    // Delete any existing ghost profile first
+    await dbClient.from('profiles').delete().eq('id', userId);
+
+    const { error: profileError } = await dbClient.from('profiles').insert({
       id: userId,
       first_name: firstName,
       last_name: lastName,
@@ -143,7 +146,7 @@ async function submitRegistration() {
       position: position || null,
       partner_of: partnerCompanyId,
       status: 'pending',
-    }, { onConflict: 'id' });
+    });
 
     if (profileError) throw new Error('Failed to create profile: ' + profileError.message);
 
