@@ -1064,10 +1064,7 @@ body: JSON.stringify({
             first_name: firstName,
             last_name: lastName,
             position: document.getElementById('addMemberPosition')?.value.trim(),
-            role: document.getElementById('addMemberSystemRole')?.value || 'supplier',
-            partner_of: document.getElementById('addMemberSystemRole')?.value === 'partner'
-              ? document.getElementById('addMemberPartnerOf')?.value || null
-              : null,
+            role: 'supplier',
             company_id: selectedCompanyId
           })
       });

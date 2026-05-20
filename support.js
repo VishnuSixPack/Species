@@ -35,8 +35,21 @@ document.addEventListener('click', (e) => {
 
 // ── INIT ──────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
-  const session = await checkAuth();
-  if (!session) return;
+  const isReportPage = window.location.pathname.includes('report.html');
+  
+  const { data: { session } } = await dbClient.auth.getSession();
+
+  if (isReportPage && !session) {
+    window.location.href = 'login.html';
+    return;
+  }
+
+  if (!session) {
+    // Guest mode — hide nav profile, show login button
+    const navProfile = document.getElementById('navProfile');
+    if (navProfile) navProfile.style.display = 'none';
+    return;
+  }
 
   currentUser = session.user;
 
