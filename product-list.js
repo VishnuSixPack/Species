@@ -64,13 +64,15 @@ const email = session.user.email || '';
   // Set home link based on role
   setHomeLink(profile?.role);
 
+  // Get org role for UI permissions
+  allOrgRole = await getUserOrgRole();
+  const orgRole = allOrgRole;
+
   // Hide Add Product button for members
   if (!canEdit(orgRole)) {
     document.querySelector('.btn-add-product')?.style.setProperty('display', 'none');
   }
 
-  // Get org role for UI permissions
-  const orgRole = await getUserOrgRole();
   await loadProducts(orgRole);
 });
 
@@ -198,7 +200,7 @@ function filterProducts(query) {
     (p.product_form || '').toLowerCase().includes(q)
   );
 
-  renderProducts(filtered, await getUserOrgRole());
+  renderProducts(filtered, allOrgRole);
 }
 
 // ── ACTIONS ───────────────────────────────────────────────────
