@@ -64,11 +64,18 @@ const email = session.user.email || '';
   // Set home link based on role
   setHomeLink(profile?.role);
 
-  await loadProducts();
+  // Hide Add Product button for members
+  if (!canEdit(orgRole)) {
+    document.querySelector('.btn-add-product')?.style.setProperty('display', 'none');
+  }
+
+  // Get org role for UI permissions
+  const orgRole = await getUserOrgRole();
+  await loadProducts(orgRole);
 });
 
 // ── LOAD PRODUCTS ─────────────────────────────────────────────
-async function loadProducts() {
+async function loadProducts(orgRole) {
   showLoading(true);
 
 const { data, error } = await dbClient
@@ -86,11 +93,11 @@ const { data, error } = await dbClient
   if (error) { console.error('Error loading products:', error); return; }
 
   allProducts = data || [];
-  renderProducts(allProducts);
+  renderProducts(allProducts, orgRole);
 }
 
 // ── RENDER ────────────────────────────────────────────────────
-function renderProducts(products) {
+function renderProducts(products, orgRole) {
   const grid = document.getElementById('productGrid');
   const empty = document.getElementById('emptyState');
 
@@ -165,7 +172,7 @@ function renderProducts(products) {
       </div>
       <div class="product-card-footer">
         <button class="btn-card-view" onclick="event.stopPropagation(); viewProduct('${p.id}')">View Details</button>
-        <button class="btn-card-edit" onclick="event.stopPropagation(); editProduct('${p.id}')">Edit</button>
+        ${canEdit(orgRole) ? `<button class="btn-card-edit" onclick="event.stopPropagation(); editProduct('${p.id}')">Edit</button>` : ''}
         <button class="btn-card-ai" onclick="event.stopPropagation(); openAiModal()" title="AI Summary">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 100 20A10 10 0 0012 2z"/><path d="M12 8v4l3 3"/></svg>
           AI
@@ -191,7 +198,7 @@ function filterProducts(query) {
     (p.product_form || '').toLowerCase().includes(q)
   );
 
-  renderProducts(filtered);
+  renderProducts(filtered, await getUserOrgRole());
 }
 
 // ── ACTIONS ───────────────────────────────────────────────────
