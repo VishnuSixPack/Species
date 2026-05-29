@@ -92,8 +92,6 @@ async function updateLastLogin() {
 // ── SET HOME LINK ─────────────────────────────────────────────
 function setHomeLink(role) {
   document.querySelectorAll('a[href="index.html"]').forEach(link => {
-    if (!['admin', 'operator'].includes(role)) {
-      link.href = 'home-logged-in.html';
-    }
+    link.href = 'home-logged-in.html';
   });
 }
