@@ -258,28 +258,83 @@ function selectTheme(el) {
 }
 
 // ── PHOTO UPLOAD ──────────────────────────────────────────────
-async function handlePhotoUpload(event) {
+let cropper = null;
+
+function handlePhotoUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
 
-  const ext = file.name.split('.').pop();
-  const fileName = `${currentUser.id}/avatar.${ext}`;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    document.getElementById('cropImage').src = e.target.result;
+    document.getElementById('cropModal').classList.remove('hidden');
 
-  const { error: uploadError } = await dbClient.storage
-    .from('product-photos')
-    .upload(fileName, file, { upsert: true });
+    if (cropper) cropper.destroy();
+    cropper = new Cropper(document.getElementById('cropImage'), {
+      aspectRatio: 1,
+      viewMode: 1,
+      dragMode: 'move',
+      autoCropArea: 1,
+      restore: false,
+      guides: true,
+      center: true,
+      highlight: false,
+      cropBoxMovable: true,
+      cropBoxResizable: true,
+      toggleDragModeOnDblclick: false,
+    });
+  };
+  reader.readAsDataURL(file);
+}
 
-  if (uploadError) { showToast('Photo upload failed.', 'error'); return; }
+function closeCropModal() {
+  document.getElementById('cropModal').classList.add('hidden');
+  if (cropper) { cropper.destroy(); cropper = null; }
+  document.getElementById('photoFileInput').value = '';
+}
 
-  const { data: urlData } = dbClient.storage.from('product-photos').getPublicUrl(fileName);
-  const photoUrl = urlData.publicUrl;
+async function applyCrop() {
+  if (!cropper) return;
 
-  await dbClient.from('profiles').update({ photo_url: photoUrl }).eq('id', currentUser.id);
+  const btn = document.getElementById('btnApplyCrop');
+  btn.textContent = 'Uploading...';
+  btn.disabled = true;
 
-  const photoAvatar = document.getElementById('photoAvatar');
-  photoAvatar.innerHTML = `<img src="${photoUrl}" alt="Profile photo" />`;
+  const canvas = cropper.getCroppedCanvas({ width: 300, height: 300 });
 
-  showToast('Photo updated!', 'success');
+  canvas.toBlob(async (blob) => {
+    const fileName = `${currentUser.id}/avatar.jpg`;
+
+    const { error: uploadError } = await dbClient.storage
+      .from('profile-photos')
+      .upload(fileName, blob, { upsert: true, contentType: 'image/jpeg' });
+
+    if (uploadError) {
+      showToast('Photo upload failed.', 'error');
+      btn.textContent = 'Use Photo';
+      btn.disabled = false;
+      return;
+    }
+
+    const { data: urlData } = dbClient.storage
+      .from('profile-photos')
+      .getPublicUrl(fileName);
+
+    const photoUrl = urlData.publicUrl + '?t=' + Date.now();
+
+    await dbClient.from('profiles')
+      .update({ photo_url: photoUrl })
+      .eq('id', currentUser.id);
+
+    currentProfile.photo_url = photoUrl;
+
+    // Update all avatar displays on this page
+    document.getElementById('photoAvatar').innerHTML = `<img src="${photoUrl}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" />`;
+    document.getElementById('sidebarAvatar').innerHTML = `<img src="${photoUrl}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" />`;
+
+    closeCropModal();
+    showToast('Photo updated!', 'success');
+  }, 'image/jpeg', 0.9);
 }
 
 // ── CHANGE PASSWORD ───────────────────────────────────────────
