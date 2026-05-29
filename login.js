@@ -87,34 +87,21 @@ if (error) {
       .eq('id', data.user.id)
       .single();
 
-    if (profile?.status === 'pending') {
+if (profile?.is_suspended) {
       await dbClient.auth.signOut();
-      errorEl.textContent = 'Your account is pending approval. Please wait for your Company Administrator to confirm your account.';
+      errorEl.textContent = 'Your account has been suspended. Please contact your administrator.';
       errorEl.style.display = 'block';
       btn.disabled = false;
       btn.textContent = 'Sign In';
       return;
     }
 
-    if (profile?.status === 'rejected') {
-      await dbClient.auth.signOut();
-      errorEl.textContent = 'Your account has been rejected. Please contact your Company Administrator.';
-      errorEl.style.display = 'block';
-      btn.disabled = false;
-      btn.textContent = 'Sign In';
-      return;
-    }
-
-    // Log login + update last login
+// Log login + update last login
     await logActivity('login', 'auth', data.user.id, `User logged in: ${email}`);
     await updateLastLogin();
 
-    // Redirect based on role
-    if (['admin', 'operator'].includes(profile?.role)) {
-      window.location.href = 'index.html';
-    } else {
-      window.location.href = 'home-logged-in.html';
-    }
+    // Everyone goes to home
+    window.location.href = 'home-logged-in.html';
   }
 
   document.addEventListener('keydown', function(e) {
