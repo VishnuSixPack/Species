@@ -267,7 +267,7 @@ function handlePhotoUpload(event) {
   const reader = new FileReader();
   reader.onload = (e) => {
     document.getElementById('cropImage').src = e.target.result;
-    document.getElementById('cropModal').classList.remove('hidden');
+    document.getElementById('cropModal').style.display = 'flex';
 
     if (cropper) cropper.destroy();
     cropper = new Cropper(document.getElementById('cropImage'), {
@@ -288,7 +288,7 @@ function handlePhotoUpload(event) {
 }
 
 function closeCropModal() {
-  document.getElementById('cropModal').classList.add('hidden');
+  document.getElementById('cropModal').style.display = 'none';
   if (cropper) { cropper.destroy(); cropper = null; }
   document.getElementById('photoFileInput').value = '';
 }
