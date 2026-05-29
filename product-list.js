@@ -80,7 +80,17 @@ const email = session.user.email || '';
 async function loadProducts(orgRole) {
   showLoading(true);
 
-const { data, error } = await dbClient
+// Get user's company_id first
+  const { data: profileData } = await dbClient
+    .from('profiles')
+    .select('company_id, role')
+    .eq('id', (await dbClient.auth.getSession()).data.session.user.id)
+    .single();
+
+  // Admin/Operator see all products, others see only their company's
+  const isAdminOrOperator = ['admin', 'operator'].includes(profileData?.role);
+
+  let query = dbClient
     .from('products')
     .select(`
       id, product_name, brand, product_form, pack_style, ean_gtin, photo_url,
@@ -89,6 +99,13 @@ const { data, error } = await dbClient
     `)
     .is('deleted_at', null)
     .order('created_at', { ascending: false });
+
+  // Filter by company unless admin/operator
+  if (!isAdminOrOperator && profileData?.company_id) {
+    query = query.eq('company_id', profileData.company_id);
+  }
+
+  const { data, error } = await query;
 
   showLoading(false);
 
