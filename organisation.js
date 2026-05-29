@@ -73,8 +73,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const avatarColor = profile?.avatar_color || '#1a6fdb';
   const firstName = profile?.first_name || email.split('@')[0];
 
-  document.getElementById('navAvatar').textContent = initials;
-  document.getElementById('navAvatar').style.background = avatarColor;
+  setNavAvatar(document.getElementById('navAvatar'), profile?.photo_url, initials, avatarColor);
   document.getElementById('navEmail').textContent = email;
   document.getElementById('navFirstName').textContent = getGreeting(firstName);
 
@@ -319,7 +318,10 @@ async function loadUserOrganisation(profile) {
 
   document.getElementById('userOrgInfo').innerHTML = `
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
-      <div class="company-card-icon" style="width:52px; height:52px; font-size:22px;">${company.company_name.charAt(0).toUpperCase()}</div>
+      ${company.photo_url
+        ? `<img src="${company.photo_url}" style="width:52px; height:52px; border-radius:50%; object-fit:cover; border:2px solid #e8eaf0;" />`
+        : `<div class="company-card-icon" style="width:52px; height:52px; font-size:22px;">${company.company_name.charAt(0).toUpperCase()}</div>`
+      }
       <div>
         <div class="org-info-name">${company.company_name}</div>
         <span class="status-badge ${company.status}">${company.status}</span>
@@ -897,9 +899,12 @@ function sendRequest() {
 
 // ── HELPERS ───────────────────────────────────────────────────
 function formatRole(role) {
-  return { company_admin: 'Company Admin', editor: 'Editor', viewer: 'Viewer' }[role] || role;
+  return {
+    company_admin: 'Company Admin',
+    contributor: 'Contributor',
+    member: 'Member'
+  }[role] || role;
 }
-
 function formatCertDate(dateStr) {
   if (!dateStr) return '—';
   return new Date(dateStr).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });

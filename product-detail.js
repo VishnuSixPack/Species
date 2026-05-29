@@ -49,15 +49,15 @@ const email = session.user.email || '';
 
   const { data: profile } = await dbClient
     .from('profiles')
-    .select('first_name, avatar_color, role')
+    .select('first_name, avatar_color, role, photo_url')
     .eq('id', session.user.id)
     .single();
 
   const firstName = profile?.first_name || email.split('@')[0];
   const avatarColor = profile?.avatar_color || '#1a6fdb';
+  const initials = email.substring(0, 2).toUpperCase();
 
-  document.getElementById('navAvatar').textContent = email.substring(0, 2).toUpperCase();
-  document.getElementById('navAvatar').style.background = avatarColor;
+  setNavAvatar(document.getElementById('navAvatar'), profile?.photo_url, initials, avatarColor);
   document.getElementById('navEmail').textContent = email;
   document.getElementById('navFirstName').textContent = getGreeting(firstName);
 

@@ -48,7 +48,7 @@ const email = session.user.email || '';
   // Load profile for first name and avatar color
   const { data: profile } = await dbClient
     .from('profiles')
-    .select('first_name, avatar_color, role')
+    .select('first_name, avatar_color, role, photo_url')
     .eq('id', session.user.id)
     .single();
 
@@ -56,8 +56,7 @@ const email = session.user.email || '';
   const initials = email.substring(0, 2).toUpperCase();
   const avatarColor = profile?.avatar_color || '#1a6fdb';
 
-  document.getElementById('navAvatar').textContent = initials;
-  document.getElementById('navAvatar').style.background = avatarColor;
+  setNavAvatar(document.getElementById('navAvatar'), profile?.photo_url, initials, avatarColor);
   document.getElementById('navEmail').textContent = email;
   document.getElementById('navFirstName').textContent = getGreeting(firstName);
 

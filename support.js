@@ -62,7 +62,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   const { data: profile } = await dbClient
     .from('profiles')
-    .select('first_name, avatar_color, role')
+    .select('first_name, avatar_color, role, photo_url')
     .eq('id', currentUser.id)
     .single();
 
@@ -73,8 +73,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const avatarColor = profile?.avatar_color || '#1a6fdb';
   const firstName = profile?.first_name || email.split('@')[0];
 
-  document.getElementById('navAvatar').textContent = initials;
-  document.getElementById('navAvatar').style.background = avatarColor;
+  setNavAvatar(document.getElementById('navAvatar'), profile?.photo_url, initials, avatarColor);
   document.getElementById('navEmail').textContent = email;
   document.getElementById('navFirstName').textContent = getGreeting(firstName);
 

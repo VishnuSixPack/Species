@@ -755,7 +755,7 @@
 
       const { data: p } = await dbClient
         .from('profiles')
-        .select('first_name, last_name, avatar_color, role')
+        .select('first_name, last_name, avatar_color, role, photo_url')
         .eq('id', session.user.id)
         .single();
 
@@ -767,8 +767,12 @@
       document.getElementById('greetingTime').textContent = greetingTime();
       document.getElementById('greetingName').innerHTML = `<span style="color:#1a6fdb">${firstName}</span>${lastName ? ' ' + lastName : ''}`;
 
-      document.getElementById('avatarBtn').style.background = color;
-      document.getElementById('avatarInitials').textContent = initials;
+      if (p?.photo_url) {
+        document.getElementById('avatarBtn').innerHTML = `<img src="${p.photo_url}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" />`;
+      } else {
+        document.getElementById('avatarBtn').style.background = color;
+        document.getElementById('avatarInitials').textContent = initials;
+      }
       document.getElementById('avatarGreeting').textContent = `${greetingTime()}, ${firstName}!`;
 
       nextFact();

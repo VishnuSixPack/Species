@@ -96,6 +96,17 @@ function setHomeLink(role) {
   });
 }
 
+// ── SET NAV AVATAR ────────────────────────────────────────────
+function setNavAvatar(avatarEl, photoUrl, initials, avatarColor) {
+  if (photoUrl) {
+    avatarEl.innerHTML = `<img src="${photoUrl}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" />`;
+    avatarEl.style.background = 'transparent';
+  } else {
+    avatarEl.textContent = initials;
+    avatarEl.style.background = avatarColor || '#1a6fdb';
+  }
+}
+
 // ── ORG ROLE ──────────────────────────────────────────────────
 async function getUserOrgRole() {
   try {

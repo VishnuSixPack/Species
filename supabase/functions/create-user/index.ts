@@ -44,12 +44,12 @@ serve(async (req) => {
       position: position || null,
     })
 
-    // Add to company_members if company provided
+   // Add to company_members if company provided
     if (company_id) {
       await supabaseAdmin.from('company_members').insert({
         company_id,
         user_id: userId,
-        company_role: 'viewer',
+        company_role: 'member',
         status: 'active'
       })
     }
@@ -72,14 +72,3 @@ serve(async (req) => {
     )
   }
 })
-
-await supabaseAdmin.from('profiles').upsert({
-      id: userId,
-      first_name,
-      last_name,
-      role: role || 'supplier',
-      company_id: company_id || null,
-      email,
-      position: position || null,
-      partner_of: partner_of || null,
-    })
