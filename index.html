@@ -84,109 +84,16 @@
   const SUPABASE_ANON_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
   const dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', async function() {
     const { data: { session } } = await dbClient.auth.getSession();
-    
-if (session) {
-      const email = session.user.email;
-      const initials = email.substring(0, 2).toUpperCase();
 
-      const { data: profile } = await dbClient
-        .from('profiles')
-        .select('first_name, avatar_color')
-        .eq('id', session.user.id)
-        .single();
-
-      const firstName = profile?.first_name || email.split('@')[0];
-      const avatarColor = profile?.avatar_color || '#1a6fdb';
-
-// Hide Plan when logged in
-      const planLink = document.getElementById('home-plan-link');
-      if (planLink) planLink.style.display = 'none';
-
-      // Update Support dropdown with Report an Issue for logged-in users
-      document.getElementById('home-support-dropdown').innerHTML = `
-        <a href="javascript:void(0)">Support</a>
-        <ul class="dropdown-menu">
-          <li><a href="contact.html">Contact</a></li>
-          <li><a href="report.html">Report an Issue</a></li>
-          <li><a href="about.html">About</a></li>
-        </ul>`;
-
-document.getElementById('home-module-dropdown').innerHTML = `
-        <a href="#" class="home-mega-trigger">Module</a>
-        <div class="home-mega-menu">
-          <div class="home-mega-col">
-            <span class="home-mega-heading">Organisation</span>
-            <a href="organisation.html">Company</a>
-          </div>
-          <div class="home-mega-col">
-            <span class="home-mega-heading">My Studio</span>
-            <a href="product-list.html">Products</a>
-          </div>
-          <div class="home-mega-col">
-            <span class="home-mega-heading">Atlas</span>
-            <a href="Species.html">Species</a>
-            <a href="country.html">Country</a>
-            <a href="#" class="home-mega-soon">MSC Fisheries <span class="coming-soon-tag">Soon</span></a>
-            <a href="#" class="home-mega-soon">ASC <span class="coming-soon-tag">Soon</span></a>
-            <a href="#" class="home-mega-soon">Ports <span class="coming-soon-tag">Soon</span></a>
-            <a href="#" class="home-mega-soon">Vessels <span class="coming-soon-tag">Soon</span></a>
-          </div>
-          <div class="home-mega-col">
-            <span class="home-mega-heading">Features</span>
-            <a href="#" class="home-mega-soon">A.I <span class="coming-soon-tag dev">In Dev</span></a>
-            <a href="#" class="home-mega-soon">Load Planner <span class="coming-soon-tag dev">In Dev</span></a>
-            <a href="#" class="home-mega-soon">FDA FSMA <span class="coming-soon-tag dev">In Dev</span></a>
-            <a href="#" class="home-mega-soon">SIMP <span class="coming-soon-tag dev">In Dev</span></a>
-            <a href="#" class="home-mega-soon">EU CATCH <span class="coming-soon-tag dev">In Dev</span></a>
-          </div>
-        </div>`;
-
-      document.getElementById('home-profile-link').innerHTML = `
-        <div class="home-profile-wrap" style="position:relative;">
-          <div onclick="toggleHomeProfile()" style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-            <div style="width:32px; height:32px; border-radius:50%; background:${avatarColor}; color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700;">${initials}</div>
-            <span style="font-size:13px; font-weight:500; color:#4a4e69;">${email}</span>
-          </div>
-          <div class="home-profile-menu" id="home-profile-menu" style="position:absolute; top:calc(100% + 8px); right:0; background:#fff; border:1px solid #e8eaf0; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.10); min-width:160px; overflow:hidden; display:none;">
-            <div style="padding:10px 16px 6px; font-size:12px; font-weight:700; color:#1a1a2e; border-bottom:1px solid #f0f2f8;">${getGreeting(firstName)}</div>
-            <a href="profile.html" style="display:flex; align-items:center; gap:8px; padding:9px 16px; font-size:13px; color:#4a4e69; text-decoration:none; font-weight:500;">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-              Profile
-            </a>
-            <button onclick="handleHomeLogout()" style="width:100%; padding:9px 16px; background:none; border:none; border-top:1px solid #f0f2f8; text-align:left; font-family:'DM Sans',sans-serif; font-size:13px; color:#e63946; cursor:pointer; font-weight:500;">Logout</button>
-          </div>
-        </div>`;
-    }
-  });
-
-    function getGreeting(name) {
-    const hour = new Date().getHours();
-    if (hour < 12) return `Good Morning, ${name}! ☀️`;
-    if (hour < 17) return `Good Afternoon, ${name}! 👋`;
-    if (hour < 21) return `Good Evening, ${name}! 🌆`;
-    return `Good Night, ${name}! 🌙`;
-  }
-
-  function toggleHomeProfile() {
-    const menu = document.getElementById('home-profile-menu');
-    if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
-  }
-
-  async function handleHomeLogout() {
-    await dbClient.auth.signOut();
-    window.location.href = 'index.html';
-  }
-
-  document.addEventListener('click', function(e) {
-    if (!e.target.closest('.home-profile-wrap')) {
-      const menu = document.getElementById('home-profile-menu');
-      if (menu) menu.classList.remove('open');
+    // Redirect logged-in users to dashboard
+    if (session) {
+      window.location.href = 'home-logged-in.html';
+      return;
     }
   });
 
 </script>
-<script src="switch-account.js"></script>
 </body>
 </html>
