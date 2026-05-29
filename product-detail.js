@@ -49,7 +49,7 @@ const email = session.user.email || '';
 
   const { data: profile } = await dbClient
     .from('profiles')
-    .select('first_name, avatar_color')
+    .select('first_name, avatar_color, role')
     .eq('id', session.user.id)
     .single();
 
@@ -60,6 +60,16 @@ const email = session.user.email || '';
   document.getElementById('navAvatar').style.background = avatarColor;
   document.getElementById('navEmail').textContent = email;
   document.getElementById('navFirstName').textContent = getGreeting(firstName);
+
+  // Set home link
+  setHomeLink(profile?.role);
+
+  // Get org role and hide edit/delete for members
+  const orgRole = await getUserOrgRole();
+  if (!canEdit(orgRole)) {
+    document.getElementById('btnEdit')?.style.setProperty('display', 'none');
+    document.getElementById('btnDelete')?.style.setProperty('display', 'none');
+  }
 
   const params = new URLSearchParams(window.location.search);
   const id = params.get('id');
