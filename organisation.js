@@ -43,8 +43,14 @@ async function handleLogout() {
 }
 
 function toggleNavDropdown() {
-  document.getElementById('navDropdown').classList.toggle('hidden');
+  document.getElementById('navDropdown').classList.toggle('open');
 }
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.topbar-right')) {
+    document.getElementById('navDropdown')?.classList.remove('open');
+  }
+});
 
 document.addEventListener('click', (e) => {
   const dropdown = document.getElementById('navDropdown');
