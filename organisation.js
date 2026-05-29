@@ -134,8 +134,7 @@ function renderCompaniesGrid(companies) {
       </div>
       <div>
         <div class="company-card-name">${c.company_name || '—'}</div>
-        <div class="company-card-industry">
-          ${c.company_type ? `<span style="font-size:10px; font-weight:700; padding:2px 8px; border-radius:20px; margin-right:6px; background:${c.company_type === 'supplier' ? '#dcfce7' : c.company_type === 'buyer' ? '#eef4fd' : c.company_type === 'partner' ? '#fef3c7' : '#f4f6fb'}; color:${c.company_type === 'supplier' ? '#16a34a' : c.company_type === 'buyer' ? '#1a6fdb' : c.company_type === 'partner' ? '#d97706' : '#6b7280'};">${c.company_type.toUpperCase()}</span>` : ''}
+        <div class="company-card-industry">  
           ${c.industry || 'No industry specified'}
         </div>
       </div>
@@ -624,8 +623,7 @@ document.getElementById('companyFormTitle').textContent = isEditMode ? 'Edit Org
 ['fcName','fcEmail','fcPhone','fcWebsite','fcAddress','fcGln','fcPgln','fcLat','fcLng','fcNotes','fcIndustryOther','firstUserEmail'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
-  });
-  document.getElementById('fcCompanyType').value = '';
+  }); 
   document.getElementById('fcIndustry').value = '';
   document.getElementById('fcCountry').value = '';
   document.getElementById('fcStatus').value = 'active';
@@ -639,8 +637,7 @@ document.getElementById('companyFormTitle').textContent = isEditMode ? 'Edit Org
   if (isEditMode) {
     const company = allCompanies.find(c => c.id === companyId);
     if (company) {
-      document.getElementById('fcName').value = company.company_name || '';
-      document.getElementById('fcCompanyType').value = company.company_type || '';
+      document.getElementById('fcName').value = company.company_name || '';     
       document.getElementById('fcIndustry').value = company.industry || '';
       // Handle Other industry
       const knownIndustries = ['Seafood Processing','Aquaculture','Fishing','Food & Beverage','Retail','Distribution & Logistics','Cold Chain / Logistics'];
@@ -723,8 +720,7 @@ async function saveCompanyForm() {
   const countryName = countryObj ? countryObj.country : countryCode;
 
 const payload = {
-    company_name: name,
-    company_type: document.getElementById('fcCompanyType').value || null,
+    company_name: name,  
     industry: industry || null,
     email: document.getElementById('fcEmail').value.trim() || null,
     phone: document.getElementById('fcPhone').value.trim() || null,
