@@ -51,12 +51,8 @@ async function initNav(session) {
   document.getElementById('navEmail').textContent = email;
   document.getElementById('navFirstName').textContent = getGreeting(firstName);
 
-  // Set home link and Switch Account based on role
+  // Set home link based on role
   setHomeLink(profile?.role);
-  if (['admin', 'operator'].includes(profile?.role)) {
-    const link = document.getElementById('switchAccountLink');
-    if (link) link.style.display = 'flex';
-  }
 }
 
 // ── DETERMINE WHICH PAGE ──────────────────────────────────────

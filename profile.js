@@ -71,11 +71,8 @@ async function loadProfile() {
 
   populateUI();
 
-  // Set home link and Switch Account based on role
+  // Set home link based on role
   setHomeLink(currentProfile?.role);
-  if (['admin', 'operator'].includes(currentProfile?.role)) {
-    document.getElementById('switchAccountBtn')?.classList.remove('hidden');
-  }
 }
 
 // ── POPULATE UI ───────────────────────────────────────────────

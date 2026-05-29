@@ -80,12 +80,6 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Set home link based on role
   setHomeLink(profile?.role);
-
-  // Show Switch Account for admin/operator
-  if (['admin', 'operator'].includes(profile?.role)) {
-    const link = document.getElementById('switchAccountLink');
-    if (link) link.style.display = 'flex';
-  }
 });
 
 // ── SUBMIT CONTACT ────────────────────────────────────────────

@@ -83,12 +83,6 @@ window.addEventListener('DOMContentLoaded', async () => {
   // Set home link based on role
   setHomeLink(profile?.role);
 
-  // Show Switch Account for admin/operator
-  if (isAdminOrOperator) {
-    const link = document.getElementById('switchAccountLink');
-    if (link) link.style.display = 'flex';
-  }
-
   if (isAdminOrOperator) {
     document.getElementById('pageTitle').textContent = 'Organisation';
     document.getElementById('btnCreateCompany').classList.remove('hidden');
