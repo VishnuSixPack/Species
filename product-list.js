@@ -29,13 +29,14 @@ async function handleLogout() {
   window.location.href = 'login.html';
 }
 
-document.getElementById('navProfile').addEventListener('click', (e) => {
-  e.stopPropagation();
-  document.getElementById('navDropdown').classList.toggle('hidden');
-});
+function toggleNavDropdown() {
+  document.getElementById('navDropdown').classList.toggle('open');
+}
 
-document.addEventListener('click', () => {
-  document.getElementById('navDropdown').classList.add('hidden');
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.topbar-right')) {
+    document.getElementById('navDropdown')?.classList.remove('open');
+  }
 });
 
 // ── INIT ──────────────────────────────────────────────────────
