@@ -354,7 +354,7 @@ async function loadMembers(companyId) {
   const userIds = members.map(m => m.user_id);
   const { data: profiles } = await dbClient
     .from('profiles')
-    .select('id, first_name, last_name, avatar_color, email')
+    .select('id, first_name, last_name, avatar_color, email, photo_url')
     .in('id', userIds);
 
   const profileMap = {};
@@ -365,7 +365,11 @@ async function loadMembers(companyId) {
     const name = [p?.first_name, p?.last_name].filter(Boolean).join(' ') || 'Unknown';
     return `
       <div class="member-row">
-        <div class="member-avatar" style="background:${p?.avatar_color || '#1a6fdb'};">${name.substring(0,2).toUpperCase()}</div>
+        <div class="member-avatar" style="background:${p?.photo_url ? 'transparent' : (p?.avatar_color || '#1a6fdb')}; overflow:hidden;">
+          ${p?.photo_url 
+            ? `<img src="${p.photo_url}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" />`
+            : name.substring(0,2).toUpperCase()}
+        </div>
         <div class="member-info">
           <div class="member-name">${name}</div>
           <div class="member-email">${p?.email || '—'}</div>
@@ -927,7 +931,7 @@ async function loadFormMembers(companyId) {
   const userIds = members.map(m => m.user_id);
   const { data: profiles } = await dbClient
     .from('profiles')
-    .select('id, first_name, last_name, avatar_color, email')
+    .select('id, first_name, last_name, avatar_color, email, photo_url')
     .in('id', userIds);
 
   const profileMap = {};
