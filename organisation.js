@@ -270,10 +270,7 @@ body: JSON.stringify({
         first_name: firstName,
         last_name: lastName,
         position,
-        role: document.getElementById('firstUserSystemRole')?.value || 'supplier',
-        partner_of: document.getElementById('firstUserSystemRole')?.value === 'partner'
-          ? document.getElementById('firstUserPartnerOf')?.value || null
-          : null,
+        role: 'supplier',
         company_id: companyId
       })
     });
@@ -1118,16 +1115,6 @@ async function removeMember(memberId, name) {
 
   showToast(`${name} removed.`, 'success');
   await loadFormMembers(selectedCompanyId);
-}
-
-function handleFirstUserRoleChange(select) {
-  const partnerGroup = document.getElementById('firstUserPartnerOfGroup');
-  if (select.value === 'partner') {
-    partnerGroup.classList.remove('hidden');
-    populatePartnerOfDropdown('firstUserPartnerOf');
-  } else {
-    partnerGroup.classList.add('hidden');
-  }
 }
 
 function handleAddMemberRoleChange(select) {
