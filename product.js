@@ -64,9 +64,9 @@ const user = session.user;
   const firstName = profile?.first_name || email.split('@')[0];
   const avatarColor = profile?.avatar_color || '#1a6fdb';
 
-  document.getElementById('userAvatar').textContent = initials;
-  document.getElementById('userAvatar').style.background = avatarColor;
+  setNavAvatar(document.getElementById('userAvatar'), profile?.photo_url, initials, avatarColor);
   document.getElementById('userEmail').textContent = email;
+  document.getElementById('userName').textContent = [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || email.split('@')[0];
   document.getElementById('profileFirstName').textContent = getGreeting(firstName);
 
   await loadSpecies();
