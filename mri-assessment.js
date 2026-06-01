@@ -346,16 +346,17 @@ function renderKDEStages() {
                     <span class="toggle-slider"></span>
                   </label>
                   <span class="toggle-label" id="toggleLabel-${kde.key}">YES</span>
-                  <label class="kde-na">
-                    <input type="checkbox" id="na-${kde.key}"
-                      onchange="onNaChange('${kde.key}', this.checked)" />
-                    N/A
-                  </label>
                 </div>
                 <div class="kde-evidence">
                   <input type="text" id="evidence-${kde.key}"
                     placeholder="Evidence type, cert no., source..."
                     oninput="kdeState['${kde.key}'].evidence = this.value" />
+                  <label class="kde-na" style="margin-top:6px; display:flex; align-items:center; gap:6px; font-size:11px; color:#9aa0b4; cursor:pointer;">
+                    <input type="checkbox" id="na-${kde.key}"
+                      onchange="onNaChange('${kde.key}', this.checked)"
+                      style="width:13px; height:13px; accent-color:#1a6fdb; cursor:pointer;" />
+                    Mark as Not Applicable — exclude from scoring
+                  </label>
                 </div>
               </div>`;
           }).join('')}
