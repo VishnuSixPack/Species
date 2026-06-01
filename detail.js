@@ -51,11 +51,11 @@ async function updateNav() {
   const profileLink = document.getElementById('detail-profile-link');
   if (profileLink) {
     profileLink.innerHTML = `
-      <div style="display:flex; align-items:center; gap:8px; cursor:pointer; position:relative;" onclick="toggleProfileMenu()">
-        <div style="width:32px; height:32px; border-radius:50%; background:${profile?.photo_url ? 'transparent' : avatarColor}; color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; overflow:hidden; flex-shrink:0;">
+      <div style="display:flex; align-items:center; gap:8px; background:#fff; border-radius:999px; padding:5px 8px 5px 5px; box-shadow:0 1px 6px rgba(0,0,0,0.07); cursor:pointer; position:relative;" onclick="toggleProfileMenu()">
+        <div style="width:30px; height:30px; border-radius:50%; background:${profile?.photo_url ? 'transparent' : avatarColor}; color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; overflow:hidden; flex-shrink:0;">
           ${profile?.photo_url ? `<img src="${profile.photo_url}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" />` : initials}
         </div>
-        <span style="font-size:12px; color:#6b7280; font-weight:500;">${email}</span>
+        <span style="font-size:12px; color:#4a4e69; font-weight:500;">${email}</span>
         <div class="nav-profile-menu" id="nav-profile-menu" style="position:absolute; top:calc(100% + 8px); right:0; background:#fff; border:1px solid #e8eaf0; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.10); min-width:160px; overflow:hidden; display:none;">
           <div style="padding:10px 16px 6px; font-size:12px; font-weight:700; color:#1a1a2e; border-bottom:1px solid #f0f2f8;">${getGreeting(firstName)}</div>
           <a href="profile.html" style="display:flex; align-items:center; gap:8px; padding:9px 16px; font-size:13px; color:#4a4e69; text-decoration:none; font-weight:500;">
