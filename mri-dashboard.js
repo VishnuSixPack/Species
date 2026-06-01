@@ -387,7 +387,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('lastAssessEmpty').classList.add('hidden');
     document.getElementById('lastAssessInfo').classList.remove('hidden');
     document.getElementById('lastAssessDate').textContent = '28 May 2026';
-    document.getElementById('lastAssessBy').textContent = 'Assessed by Vishnu S.';
+    document.getElementById('lastAssessBy').textContent = 'Assessed by Manhattan Analytics';
     document.getElementById('lastAssessScore').textContent = '320 / 2,890';
 
   } else {
