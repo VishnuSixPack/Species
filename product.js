@@ -914,18 +914,25 @@ function validateDualMode(fieldBase) {
 
 function updateSaveButton() {
   const btn = document.getElementById('btnSave');
-  const complete = isFormComplete();
-  btn.disabled = !complete;
-  btn.style.opacity = complete ? '1' : '0.5';
-  btn.style.cursor = complete ? 'pointer' : 'not-allowed';
-  btn.removeAttribute('title');
-  btn.setAttribute('data-tooltip', complete ? '' : 'Please fill the necessary information to save');
+  if (editingProductId) {
+    // In edit mode — only require product name
+    const hasName = !!document.getElementById('productName')?.value.trim();
+    btn.disabled = !hasName;
+    btn.style.opacity = hasName ? '1' : '0.5';
+    btn.style.cursor = hasName ? 'pointer' : 'not-allowed';
+  } else {
+    const complete = isFormComplete();
+    btn.disabled = !complete;
+    btn.style.opacity = complete ? '1' : '0.5';
+    btn.style.cursor = complete ? 'pointer' : 'not-allowed';
+    btn.setAttribute('data-tooltip', complete ? '' : 'Please fill the necessary information to save');
+  }
 }
 
 function validateForm(data) {
   const errors = [];
   if (!data.product.product_name) errors.push('Product Name is required.');
-  if (!data.product.species_id) {
+  if (!editingProductId && !data.product.species_id) {
     errors.push('Commercial Name (Species) is required.');
     document.getElementById('errCommercialName').classList.remove('hidden');
   }
