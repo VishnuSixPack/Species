@@ -865,6 +865,10 @@ function isTabValid(tabIndex) {
 }
 
 function isFormComplete() {
+  if (editingProductId) {
+    // Edit mode — only need product name
+    return !!document.getElementById('productName')?.value.trim();
+  }
   for (let i = 0; i <= 5; i++) {
     if (!isTabValid(i)) return false;
   }
@@ -944,6 +948,7 @@ function validateForm(data) {
 
 // ── SAVE ──────────────────────────────────────────────────────
 async function saveProduct() {
+  console.log('saveProduct called, editingProductId:', editingProductId);
   const { data: { session } } = await dbClient.auth.getSession();
   if (!session) { window.location.href = 'login.html'; return; }
 
