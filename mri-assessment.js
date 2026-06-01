@@ -134,7 +134,7 @@ const kdeState = {}; // key -> { response: true/false, na: false, evidence: '' }
 // Init state
 Object.values(KDE_DATA).forEach(stage => {
   stage.kdes.forEach(kde => {
-    kdeState[kde.key] = { response: true, na: false, evidence: '' };
+    kdeState[kde.key] = { response: true, na: false, evidence: '', points: 0 };
   });
 });
 
@@ -251,6 +251,15 @@ async function loadOrgProducts() {
   }
 }
 
+function onPointsChange(key, value, maxWeight) {
+  let pts = parseInt(value) || 0;
+  pts = Math.max(0, Math.min(pts, maxWeight)); // clamp 0 to max
+  kdeState[key].points = pts;
+  // Cap input visually
+  document.getElementById(`points-${key}`).value = pts || '';
+  updateLiveScore();
+}
+
 // ── LOAD EXISTING ASSESSMENT ──────────────────────────────────
 async function loadExistingAssessment(id) {
   existingAssessmentId = id;
@@ -327,8 +336,9 @@ function renderKDEStages() {
           <div class="kde-row" style="background:#fafbfc; padding:8px 24px; border-bottom:1px solid #f0f2f8;">
             <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px;">#</span>
             <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Key Data Element</span>
-            <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Weight</span>
+            <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Severity</span>
             <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Data Available</span>
+            <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Points</span>
             <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Evidence / Notes</span>
           </div>
           ${stage.kdes.map(kde => {
@@ -347,6 +357,13 @@ function renderKDEStages() {
                   </label>
                   <span class="toggle-label" id="toggleLabel-${kde.key}">YES</span>
                 </div>
+                <div class="kde-points-wrap">
+                  <input type="number" class="kde-points-input" id="points-${kde.key}"
+                    min="0" max="${kde.weight}" value="0"
+                    placeholder="0"
+                    oninput="onPointsChange('${kde.key}', this.value, ${kde.weight})" />
+                  <span>/ ${kde.weight}</span>
+                </div>
                 <div class="kde-evidence">
                   <input type="text" id="evidence-${kde.key}"
                     placeholder="Evidence type, cert no., source..."
@@ -355,7 +372,7 @@ function renderKDEStages() {
                     <input type="checkbox" id="na-${kde.key}"
                       onchange="onNaChange('${kde.key}', this.checked)"
                       style="width:13px; height:13px; accent-color:#1a6fdb; cursor:pointer;" />
-                    Mark as Not Applicable — exclude from scoring
+                    Not Applicable — exclude from scoring
                   </label>
                 </div>
               </div>`;
@@ -422,11 +439,8 @@ function updateLiveScore() {
       if (state.na) return; // N/A doesn't count
       stageMax += kde.weight;
       totalMax += kde.weight;
-      if (!state.response) {
-        // Data NOT available = risk score added
-        stageScore += kde.weight;
-        totalScore += kde.weight;
-      }
+      stageScore += (state.points || 0);
+      totalScore += (state.points || 0);
     });
 
     stageScores[stageCode] = { score: stageScore, max: stageMax };
@@ -484,7 +498,7 @@ async function saveAssessment() {
       stage.kdes.forEach(kde => {
         const state = kdeState[kde.key];
         const isApplicable = !state.na;
-        const score = isApplicable && !state.response ? kde.weight : 0;
+        const score = isApplicable ? (state.points || 0) : 0;
         if (isApplicable) {
           totalMax += kde.weight;
           totalScore += score;
