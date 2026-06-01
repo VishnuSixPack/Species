@@ -992,51 +992,40 @@ try {
     // Insert product
 let productId;
 
-    if (editingProductId) {
-      // Update existing product
+ if (editingProductId) {
       const { error: updateError } = await dbClient
         .from('products')
         .update(formData.product)
         .eq('id', editingProductId);
+      console.log('Product update error:', updateError);
       if (updateError) throw updateError;
       productId = editingProductId;
 
-      // Delete old allergens and nutrition to replace with new ones
-      await dbClient.from('product_allergens').delete().eq('product_id', productId);
-      await dbClient.from('product_nutrition').delete().eq('product_id', productId);
-    } else {
-      // Insert new product
-      const { data: product, error: productError } = await dbClient
-        .from('products')
-        .insert({ ...formData.product, user_id: session.user.id, company_id: currentUserProfile?.company_id || null })
-        .select()
-        .single();
-      if (productError) throw productError;
-      productId = product.id;
+      const { error: delA } = await dbClient.from('product_allergens').delete().eq('product_id', productId);
+      const { error: delN } = await dbClient.from('product_nutrition').delete().eq('product_id', productId);
+      console.log('Delete allergens error:', delA);
+      console.log('Delete nutrition error:', delN);
     }
 
-    // Insert allergens
-    if (formData.allergens.length > 0) {
-      const allergenRows = formData.allergens
-        .filter(a => a.allergen_label)
-        .map(a => ({ ...a, product_id: productId }));
-      if (allergenRows.length > 0) {
-        const { error: allergenError } = await dbClient.from('product_allergens').insert(allergenRows);
-        if (allergenError) console.error('Allergen insert error:', allergenError);
-      }
+    console.log('Allergens collected:', formData.allergens);
+    const allergenRows = formData.allergens
+      .filter(a => a.allergen_label)
+      .map(a => ({ ...a, product_id: productId }));
+    console.log('Allergen rows to insert:', allergenRows);
+    if (allergenRows.length > 0) {
+      const { error: allergenError } = await dbClient.from('product_allergens').insert(allergenRows);
+      console.log('Allergen insert error:', allergenError);
     }
 
-    // Insert nutrition
-    if (formData.nutrition.length > 0) {
-      const nutritionRows = formData.nutrition
-        .filter(n => n.nutrient_name)
-        .map(n => ({ ...n, product_id: productId }));
-      if (nutritionRows.length > 0) {
-        const { error: nutritionError } = await dbClient.from('product_nutrition').insert(nutritionRows);
-        if (nutritionError) console.error('Nutrition insert error:', nutritionError);
-      }
+    console.log('Nutrition collected:', formData.nutrition);
+    const nutritionRows = formData.nutrition
+      .filter(n => n.nutrient_name)
+      .map(n => ({ ...n, product_id: productId }));
+    console.log('Nutrition rows to insert:', nutritionRows);
+    if (nutritionRows.length > 0) {
+      const { error: nutritionError } = await dbClient.from('product_nutrition').insert(nutritionRows);
+      console.log('Nutrition insert error:', nutritionError);
     }
-
     // ── Upload artwork files ──
     const artworkCategories = [
       { inputId: 'artLabel',   category: 'label' },
