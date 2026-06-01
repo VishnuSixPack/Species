@@ -134,7 +134,7 @@ const kdeState = {}; // key -> { response: true/false, na: false, evidence: '' }
 // Init state
 Object.values(KDE_DATA).forEach(stage => {
   stage.kdes.forEach(kde => {
-    kdeState[kde.key] = { response: true, na: false, evidence: '', points: 0 };
+    kdeState[kde.key] = { response: true, na: false, evidence: '', points: 0, selectedWeight: 0 };
   });
 });
 
@@ -149,6 +149,9 @@ function toggleNavDropdown() {
 }
 
 document.addEventListener('click', (e) => {
+  if (!e.target.closest('.kde-severity-select')) {
+    document.querySelectorAll('.kde-severity-select.open').forEach(el => el.classList.remove('open'));
+  }
   if (!e.target.closest('.topbar-right')) {
     document.getElementById('navDropdown')?.classList.remove('open');
   }
@@ -336,19 +339,25 @@ function renderKDEStages() {
           <div class="kde-row" style="background:#fafbfc; padding:8px 24px; border-bottom:1px solid #f0f2f8;">
             <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px;">#</span>
             <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Key Data Element</span>
-            <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Severity</span>
             <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Data Available</span>
             <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Points</span>
-            <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Evidence / Notes</span>
+            <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Severity</span>
+            <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Evidence</span>
           </div>
           ${stage.kdes.map(kde => {
-            const weightClass = `w${kde.weight}`;
             const idx = globalIndex++;
             return `
               <div class="kde-row" id="row-${kde.key}">
                 <span class="kde-number">${String(idx).padStart(2, '0')}</span>
-                <span class="kde-label">${kde.label}</span>
-                <span class="kde-weight ${weightClass}">${kde.weight} pts</span>
+                <div>
+                  <span class="kde-label">${kde.label}</span>
+                  <label style="margin-top:6px; display:flex; align-items:center; gap:6px; font-size:11px; color:#9aa0b4; cursor:pointer;">
+                    <input type="checkbox" id="na-${kde.key}"
+                      onchange="onNaChange('${kde.key}', this.checked)"
+                      style="width:13px; height:13px; accent-color:#1a6fdb; cursor:pointer;" />
+                    Not Applicable — exclude from scoring
+                  </label>
+                </div>
                 <div class="kde-toggle">
                   <label class="toggle-switch">
                     <input type="checkbox" id="toggle-${kde.key}" checked
@@ -357,23 +366,38 @@ function renderKDEStages() {
                   </label>
                   <span class="toggle-label" id="toggleLabel-${kde.key}">YES</span>
                 </div>
-                <div class="kde-points-wrap">
-                  <input type="number" class="kde-points-input" id="points-${kde.key}"
-                    min="0" max="${kde.weight}" value="0"
-                    placeholder="0"
-                    oninput="onPointsChange('${kde.key}', this.value, ${kde.weight})" />
-                  <span>/ ${kde.weight}</span>
+                <div class="kde-severity-select" id="sevSelect-${kde.key}">
+                  <button class="kde-severity-btn none" id="sevBtn-${kde.key}"
+                    onclick="toggleSeverityDropdown('${kde.key}')">
+                    — pts
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                  </button>
+                  <div class="kde-severity-dropdown" id="sevDropdown-${kde.key}">
+                    <div class="kde-severity-option" onclick="selectSeverity('${kde.key}', 0)">
+                      <span style="display:flex; align-items:center; gap:8px;"><span class="opt-dot w0"></span> No risk</span>
+                      <span style="font-family:'DM Mono',monospace; font-size:12px; color:#9aa0b4;">0 pts</span>
+                    </div>
+                    <div class="kde-severity-option" onclick="selectSeverity('${kde.key}', 10)">
+                      <span style="display:flex; align-items:center; gap:8px;"><span class="opt-dot w10"></span> Low</span>
+                      <span style="font-family:'DM Mono',monospace; font-size:12px; color:#1d4ed8;">10 pts</span>
+                    </div>
+                    <div class="kde-severity-option" onclick="selectSeverity('${kde.key}', 30)">
+                      <span style="display:flex; align-items:center; gap:8px;"><span class="opt-dot w30"></span> High</span>
+                      <span style="font-family:'DM Mono',monospace; font-size:12px; color:#d97706;">30 pts</span>
+                    </div>
+                    <div class="kde-severity-option" onclick="selectSeverity('${kde.key}', 50)">
+                      <span style="display:flex; align-items:center; gap:8px;"><span class="opt-dot w50"></span> Critical</span>
+                      <span style="font-family:'DM Mono',monospace; font-size:12px; color:#e63946;">50 pts</span>
+                    </div>
+                  </div>
                 </div>
-                <div class="kde-evidence">
+                <div style="font-size:12px; color:#6b7280; padding-top:6px;">
+                  Max: <span style="font-family:'DM Mono',monospace; font-weight:600; color:#1a1a2e;">${kde.weight} pts</span>
+                </div>
+                <div class="kde-evidence-col">
                   <input type="text" id="evidence-${kde.key}"
-                    placeholder="Evidence type, cert no., source..."
+                    placeholder="Connected documents..."
                     oninput="kdeState['${kde.key}'].evidence = this.value" />
-                  <label class="kde-na" style="margin-top:6px; display:flex; align-items:center; gap:6px; font-size:11px; color:#9aa0b4; cursor:pointer;">
-                    <input type="checkbox" id="na-${kde.key}"
-                      onchange="onNaChange('${kde.key}', this.checked)"
-                      style="width:13px; height:13px; accent-color:#1a6fdb; cursor:pointer;" />
-                    Not Applicable — exclude from scoring
-                  </label>
                 </div>
               </div>`;
           }).join('')}
@@ -382,9 +406,26 @@ function renderKDEStages() {
   });
 
   container.innerHTML = html;
-
-  // Open first stage by default
   document.getElementById('stage-FV')?.classList.add('open');
+}
+
+// ── SEVERITY DROPDOWN ─────────────────────────────────────────
+function toggleSeverityDropdown(key) {
+  document.querySelectorAll('.kde-severity-select.open').forEach(el => {
+    if (el.id !== `sevSelect-${key}`) el.classList.remove('open');
+  });
+  document.getElementById(`sevSelect-${key}`)?.classList.toggle('open');
+}
+
+function selectSeverity(key, pts) {
+  kdeState[key].points = pts;
+  const btn = document.getElementById(`sevBtn-${key}`);
+  const classes = { 0: 'none', 10: 'w10', 30: 'w30', 50: 'w50' };
+  const labels = { 0: '— pts', 10: 'Low — 10', 30: 'High — 30', 50: 'Critical — 50' };
+  btn.className = `kde-severity-btn ${classes[pts]}`;
+  btn.innerHTML = `${labels[pts]} <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>`;
+  document.getElementById(`sevSelect-${key}`)?.classList.remove('open');
+  updateLiveScore();
 }
 
 // ── TOGGLE STAGE ──────────────────────────────────────────────
