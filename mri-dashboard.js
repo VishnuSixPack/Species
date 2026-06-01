@@ -325,7 +325,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   const isDummy = projectStatus === 'medium';
 
   if (isDummy) {
-    const score = 320;
+    const score = 280;
     const maxScore = 2890;
     const stageScores = { FV: 120, CR: 80, FCL: 50, PP: 30, SP: 0, LFP: 0 };
 
@@ -411,7 +411,7 @@ window.addEventListener('DOMContentLoaded', async () => {
           <div class="product-row-name">Skipjack Loin — MSC</div>
           <div class="product-row-brand">Thai Union Frozen</div>
         </div>
-        <div class="product-row-score">320 <span>/ 2,890</span></div>
+       <div class="product-row-score">280 <span>/ 2,890</span></div>
         <div><span class="mri-status-pill medium"><span class="dot"></span> Medium Risk</span></div>
         <div style="font-size:12px; color:#9aa0b4;">28 May 2026</div>
       </div>`;
@@ -427,8 +427,8 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('lastAssessEmpty').classList.add('hidden');
     document.getElementById('lastAssessInfo').classList.remove('hidden');
     document.getElementById('lastAssessDate').textContent = '28 May 2026';
-    document.getElementById('lastAssessBy').textContent = 'Assessed by Vishnu S.';
-    document.getElementById('lastAssessScore').textContent = '320 / 2,890';
+    document.getElementById('lastAssessBy').textContent = 'Assessed by Analyst';
+    document.getElementById('lastAssessScore').textContent = '280 / 2,890';
 
   } else {
     animateGauge(0, 3150);
