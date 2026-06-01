@@ -4,7 +4,7 @@
 
 const SUPABASE_URL = 'https://enbdaajcromxmhgcverp.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
-const dbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const dbClient = window._sharedSupabase || (window._sharedSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY));
 
 let currentProductId = null;
 let currentProductName = '';

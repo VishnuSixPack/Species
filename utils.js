@@ -58,7 +58,7 @@ function timeAgo(dateStr) {
 // ── ACTIVITY LOGGER ───────────────────────────────────────────
 async function logActivity(action, resource, resourceId = null, details = null) {
   try {
-    const dbClient = window.supabase.createClient(UTILS_SUPABASE_URL, UTILS_SUPABASE_KEY);
+    const dbClient = window._sharedSupabase || (window._sharedSupabase = window.supabase.createClient(UTILS_SUPABASE_URL, UTILS_SUPABASE_KEY));
     const { data: { session } } = await dbClient.auth.getSession();
     if (!session) return;
 
@@ -78,7 +78,7 @@ async function logActivity(action, resource, resourceId = null, details = null) 
 // ── UPDATE LAST LOGIN ─────────────────────────────────────────
 async function updateLastLogin() {
   try {
-    const dbClient = window.supabase.createClient(UTILS_SUPABASE_URL, UTILS_SUPABASE_KEY);
+    const dbClient = window._sharedSupabase || (window._sharedSupabase = window.supabase.createClient(UTILS_SUPABASE_URL, UTILS_SUPABASE_KEY));
     const { data: { session } } = await dbClient.auth.getSession();
     if (!session) return;
     await dbClient
@@ -110,7 +110,7 @@ function setNavAvatar(avatarEl, photoUrl, initials, avatarColor) {
 // ── ORG ROLE ──────────────────────────────────────────────────
 async function getUserOrgRole() {
   try {
-    const dbClient = window.supabase.createClient(UTILS_SUPABASE_URL, UTILS_SUPABASE_KEY);
+    const dbClient = window._sharedSupabase || (window._sharedSupabase = window.supabase.createClient(UTILS_SUPABASE_URL, UTILS_SUPABASE_KEY));
     const { data: { session } } = await dbClient.auth.getSession();
     if (!session) return null;
 
