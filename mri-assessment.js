@@ -155,6 +155,9 @@ document.addEventListener('click', (e) => {
   if (!e.target.closest('.kde-severity-select')) {
     document.querySelectorAll('.kde-severity-select.open').forEach(el => el.classList.remove('open'));
   }
+  if (!e.target.closest('.resp-custom')) {
+    document.querySelectorAll('.resp-custom.open').forEach(el => el.classList.remove('open'));
+  }
   if (!e.target.closest('.topbar-right')) {
     document.getElementById('navDropdown')?.classList.remove('open');
   }
@@ -279,6 +282,19 @@ async function loadExistingAssessment(id) {
     });
   }
 
+  function toggleRespDropdown(stageCode) {
+  document.querySelectorAll('.resp-custom.open').forEach(el => {
+    if (el.id !== `respWrap-${stageCode}`) el.classList.remove('open');
+  });
+  document.getElementById(`respWrap-${stageCode}`)?.classList.toggle('open');
+}
+
+function selectResp(stageCode, value) {
+  stageResponsibility[stageCode] = value;
+  updateStageResponsibilityBadge(stageCode, value);
+  document.getElementById(`respWrap-${stageCode}`)?.classList.remove('open');
+}
+
   const { data: responses } = await dbClient
     .from('mri_responses')
     .select('*')
@@ -354,19 +370,21 @@ function renderKDEStages() {
           </div>
           <div class="stage-header-right">
             <!-- Responsibility selector -->
-            <div class="resp-wrap" onclick="event.stopPropagation()">
-              <span style="font-size:11px; color:#9aa0b4; font-weight:500; margin-right:6px;">Responsible:</span>
-              <span class="resp-badge" id="respBadge-${stageCode}"
-                style="background:#dbeafe; color:#1d4ed8; font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px;">
-                Seller
-              </span>
-              <select class="resp-select" id="resp-${stageCode}"
-                onchange="onResponsibilityChange('${stageCode}', this.value)"
-                style="position:absolute; opacity:0; width:100%; height:100%; top:0; left:0; cursor:pointer;">
-                <option value="seller" ${defaultResp === 'seller' ? 'selected' : ''}>Seller</option>
-                <option value="buyer"  ${defaultResp === 'buyer'  ? 'selected' : ''}>Buyer</option>
-                <option value="both"   ${defaultResp === 'both'   ? 'selected' : ''}>Both</option>
-              </select>
+            <div class="resp-custom" id="respWrap-${stageCode}" onclick="event.stopPropagation(); toggleRespDropdown('${stageCode}')">
+              <span style="font-size:11px; color:#9aa0b4; font-weight:500;">Responsible:</span>
+              <span class="resp-badge" id="respBadge-${stageCode}">Seller</span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:#9aa0b4;"><polyline points="6 9 12 15 18 9"/></svg>
+              <div class="resp-dropdown" id="respDropdown-${stageCode}">
+                <div class="resp-option" onclick="event.stopPropagation(); selectResp('${stageCode}', 'seller')">
+                  <span class="resp-opt-dot" style="background:#1d4ed8;"></span> Seller
+                </div>
+                <div class="resp-option" onclick="event.stopPropagation(); selectResp('${stageCode}', 'buyer')">
+                  <span class="resp-opt-dot" style="background:#16a34a;"></span> Buyer
+                </div>
+                <div class="resp-option" onclick="event.stopPropagation(); selectResp('${stageCode}', 'both')">
+                  <span class="resp-opt-dot" style="background:#d97706;"></span> Both
+                </div>
+              </div>
             </div>
             <div class="stage-score-badge" id="stageScore-${stageCode}">0 / ${maxStageScore}</div>
             <svg class="stage-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
@@ -450,6 +468,8 @@ function renderKDEStages() {
     updateStageResponsibilityBadge(code, val);
   });
 }
+
+
 
 // ── TOGGLE STAGE ──────────────────────────────────────────────
 function toggleStage(code) {
