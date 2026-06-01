@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MRI Assessment — Project Manhattan</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="brand-logo.png" />
+  <link rel="stylesheet" href="mri.css" />
+  <style>
+    /* ── ASSESSMENT SPECIFIC ── */
+    .assessment-wrapper {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 28px 60px;
+    }
+
+    .assessment-header {
+      padding: 32px 0 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 28px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .assessment-header-left h1 {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+
+    .assessment-header-left p {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .assessment-header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    /* ── SETUP CARD ── */
+    .setup-card {
+      background: var(--white);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+      align-items: end;
+    }
+
+    .setup-field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 7px;
+    }
+
+    .setup-field select,
+    .setup-field textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 13px;
+      color: var(--text);
+      outline: none;
+      background: var(--white);
+      transition: border-color 0.15s;
+    }
+
+    .setup-field select:focus,
+    .setup-field textarea:focus {
+      border-color: var(--primary);
+    }
+
+    /* ── SCORE LIVE ── */
+    .score-live {
+      background: var(--text);
+      border-radius: 16px;
+      padding: 20px 28px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+    }
+
+    .score-live-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.5);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .score-live-number {
+      font-family: 'DM Mono', monospace;
+      font-size: 36px;
+      font-weight: 500;
+      color: var(--white);
+      line-height: 1;
+    }
+
+    .score-live-max {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      color: rgba(255,255,255,0.4);
+      margin-top: 4px;
+    }
+
+    .score-live-stages {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .stage-score-chip {
+      background: rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 8px 14px;
+      text-align: center;
+    }
+
+    .stage-score-chip-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .stage-score-chip-value {
+      font-family: 'DM Mono', monospace;
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--white);
+    }
+
+    .score-live-status {
+      flex-shrink: 0;
+    }
+
+    /* ── STAGE SECTION ── */
+    .stage-section {
+      background: var(--white);
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+
+    .stage-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+    }
+
+    .stage-header:hover { background: var(--bg); }
+
+    .stage-header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .stage-code {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: #1a1a2e;
+      color: var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      flex-shrink: 0;
+    }
+
+    .stage-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .stage-desc {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .stage-header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .stage-score-badge {
+      font-family: 'DM Mono', monospace;
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .stage-chevron {
+      color: var(--muted);
+      transition: transform 0.2s;
+    }
+
+    .stage-section.open .stage-chevron { transform: rotate(180deg); }
+
+    .stage-kdes {
+      display: none;
+    }
+
+    .stage-section.open .stage-kdes { display: block; }
+
+    /* ── KDE ROW ── */
+    .kde-row {
+      display: grid;
+      grid-template-columns: 40px 1fr 80px 80px 1fr;
+      align-items: center;
+      padding: 14px 24px;
+      border-bottom: 1px solid #f4f6fb;
+      gap: 16px;
+      transition: background 0.1s;
+    }
+
+    .kde-row:last-child { border-bottom: none; }
+    .kde-row:hover { background: #fafbfc; }
+
+    .kde-row.na { opacity: 0.4; }
+
+    .kde-number {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .kde-label {
+      font-size: 13px;
+      color: var(--text);
+      font-weight: 500;
+      line-height: 1.4;
+    }
+
+    .kde-weight {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .kde-weight.w5 { background: #dcfce7; color: #16a34a; }
+    .kde-weight.w10 { background: #dbeafe; color: #1d4ed8; }
+    .kde-weight.w30 { background: #fef3c7; color: #d97706; }
+    .kde-weight.w50 { background: #fee2e2; color: #dc2626; }
+
+    /* ── TOGGLE SWITCH ── */
+    .kde-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: #e63946;
+      border-radius: 999px;
+      transition: 0.2s;
+    }
+
+    .toggle-slider::before {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      top: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: 0.2s;
+    }
+
+    .toggle-switch input:checked + .toggle-slider { background: #22c55e; }
+    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+    .toggle-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      min-width: 24px;
+    }
+
+    /* ── NA CHECKBOX ── */
+    .kde-na {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .kde-na input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      cursor: pointer;
+      accent-color: var(--primary);
+    }
+
+    /* ── EVIDENCE ── */
+    .kde-evidence input {
+      width: 100%;
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 12px;
+      font-family: 'Poppins', sans-serif;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .kde-evidence input:focus { border-color: var(--primary); }
+    .kde-evidence input::placeholder { color: #c0c4d0; }
+
+    /* ── SAVE BAR ── */
+    .save-bar {
+      position: sticky;
+      bottom: 24px;
+      background: var(--text);
+      border-radius: 16px;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      margin-top: 24px;
+      z-index: 100;
+    }
+
+    .save-bar-info {
+      font-size: 13px;
+      color: rgba(255,255,255,0.6);
+    }
+
+    .save-bar-info strong { color: var(--white); }
+
+    .btn-save-assessment {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 28px;
+      background: #22c55e;
+      color: var(--white);
+      border: none;
+      border-radius: 10px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-save-assessment:hover { background: #16a34a; }
+    .btn-save-assessment:disabled { background: #9ca3af; cursor: not-allowed; }
+
+    .btn-back-mri {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+
+    .btn-back-mri:hover { border-color: var(--text); color: var(--text); }
+
+    .btn-save-new {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 28px;
+      background: var(--primary);
+      color: var(--white);
+      border: none;
+      border-radius: 10px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-save-new:hover { background: #1560c0; }
+  </style>
+</head>
+<body>
+
+  <!-- NAV -->
+  <div class="topbar">
+    <a href="home-logged-in.html" class="topbar-brand">
+      <div>
+        <span class="topbar-brand-project">PROJECT</span>
+        <span class="topbar-brand-name">Manhattan.</span>
+      </div>
+    </a>
+    <div class="topbar-nav">
+      <div class="nav-pill">
+        <a href="home-logged-in.html" class="nav-pill-item">Home</a>
+        <div class="nav-pill-item" style="cursor:default;">
+          My Studio
+          <div class="nav-pill-dropdown">
+            <a href="product-list.html">Products</a>
+            <a href="organisation.html">Your Company</a>
+          </div>
+        </div>
+        <div class="nav-pill-item" style="cursor:default;">
+          Atlas
+          <div class="nav-pill-dropdown">
+            <a href="Species.html">Species</a>
+            <a href="country.html">Country</a>
+            <a href="#">Ports</a>
+            <a href="#">Vessels</a>
+          </div>
+        </div>
+        <a href="mri.html" class="nav-pill-item active">MRI</a>
+        <a href="#" class="nav-pill-item">Reports</a>
+        <div class="nav-pill-item" style="cursor:default;">
+          Support
+          <div class="nav-pill-dropdown">
+            <a href="contact.html">Contact</a>
+            <a href="report.html">Report an Issue</a>
+            <a href="about.html">About</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="topbar-right" onclick="toggleNavDropdown()" style="cursor:pointer;">
+      <div class="topbar-avatar" id="navAvatar"></div>
+      <span class="topbar-email" id="navEmail"></span>
+      <div class="topbar-settings">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        <div class="topbar-profile-dropdown" id="navDropdown">
+          <div class="topbar-profile-name" id="navFirstName">Hello!</div>
+          <a href="profile.html">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            Profile
+          </a>
+          <button onclick="handleLogout()">Logout</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="assessment-wrapper">
+
+    <!-- HEADER -->
+    <div class="assessment-header">
+      <div class="assessment-header-left">
+        <h1>New MRI Assessment</h1>
+        <p>Select organisation and product, then fill in each KDE below.</p>
+      </div>
+      <div class="assessment-header-right">
+        <a href="mri.html" class="btn-back-mri">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          Back to MRI
+        </a>
+      </div>
+    </div>
+
+    <!-- SETUP -->
+    <div class="setup-card">
+      <div class="setup-field">
+        <label>Organisation <span style="color:#e63946;">*</span></label>
+        <select id="selectOrg" onchange="loadOrgProducts()">
+          <option value="">Select organisation...</option>
+        </select>
+      </div>
+      <div class="setup-field">
+        <label>Product <span style="color:#e63946;">*</span></label>
+        <select id="selectProduct">
+          <option value="">Select product...</option>
+        </select>
+      </div>
+      <div class="setup-field">
+        <label>Assessment Notes</label>
+        <textarea id="assessmentNotes" rows="2" placeholder="Optional notes about this assessment..."></textarea>
+      </div>
+    </div>
+
+    <!-- LIVE SCORE -->
+    <div class="score-live">
+      <div>
+        <div class="score-live-label">Live Risk Score</div>
+        <div class="score-live-number" id="liveScore">0</div>
+        <div class="score-live-max" id="liveMax">/ 3,150 max</div>
+      </div>
+      <div class="score-live-stages" id="liveStages">
+        <div class="stage-score-chip"><div class="stage-score-chip-label">FV</div><div class="stage-score-chip-value" id="scoreChip-FV">0</div></div>
+        <div class="stage-score-chip"><div class="stage-score-chip-label">CR</div><div class="stage-score-chip-value" id="scoreChip-CR">0</div></div>
+        <div class="stage-score-chip"><div class="stage-score-chip-label">FCL</div><div class="stage-score-chip-value" id="scoreChip-FCL">0</div></div>
+        <div class="stage-score-chip"><div class="stage-score-chip-label">PP</div><div class="stage-score-chip-value" id="scoreChip-PP">0</div></div>
+        <div class="stage-score-chip"><div class="stage-score-chip-label">SP</div><div class="stage-score-chip-value" id="scoreChip-SP">0</div></div>
+        <div class="stage-score-chip"><div class="stage-score-chip-label">LFP</div><div class="stage-score-chip-value" id="scoreChip-LFP">0</div></div>
+      </div>
+      <div class="score-live-status">
+        <span class="mri-status-pill transparent" id="liveStatusPill">
+          <span class="dot"></span>
+          <span id="liveStatusLabel">Transparent</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- KDE STAGES -->
+    <div id="kdeStages"></div>
+
+    <!-- SAVE BAR -->
+    <div class="save-bar">
+      <div class="save-bar-info">
+        Risk score: <strong id="saveBarScore">0 / 3,150</strong>
+      </div>
+      <button class="btn-save-assessment" id="btnSaveAssessment" onclick="saveAssessment()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save Assessment
+      </button>
+    </div>
+
+  </div>
+
+  <!-- TOAST -->
+  <div id="toastContainer" style="position:fixed; bottom:100px; right:24px; z-index:9999; display:flex; flex-direction:column; gap:10px;"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="utils.js"></script>
+  <script src="mri-assessment.js"></script>
+</body>
+</html>

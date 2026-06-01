@@ -1,0 +1,555 @@
+/* ============================================================
+   PROJECT MANHATTAN — mri-assessment.js
+   MRI Assessment Form — Admin/Operator only
+   ============================================================ */
+
+const SUPABASE_URL = 'https://enbdaajcromxmhgcverp.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const dbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let currentProfile = null;
+let existingAssessmentId = null;
+
+// ── ALL 77 KDEs ───────────────────────────────────────────────
+const KDE_DATA = {
+  FV: {
+    label: 'Fishing Vessel',
+    desc: 'Vessel identification, certification and catch data',
+    kdes: [
+      { key: 'FV_001', label: 'Fishing Method - Gear type', weight: 30 },
+      { key: 'FV_002', label: 'Vessel Name', weight: 50 },
+      { key: 'FV_003', label: 'Vessel VID', weight: 10 },
+      { key: 'FV_004', label: 'Vessel flag', weight: 50 },
+      { key: 'FV_005', label: 'On Register of RFMO of Fishing zone - Certification', weight: 50 },
+      { key: 'FV_006', label: 'Goods standing on FFA register', weight: 50 },
+      { key: 'FV_007', label: 'Flag state registration', weight: 50 },
+      { key: 'FV_008', label: 'Flag state is not considered FOC', weight: 50 },
+      { key: 'FV_009', label: 'Flag state has no EU yellow or Red Card', weight: 30 },
+      { key: 'FV_010', label: 'Previous Flag declared', weight: 30 },
+      { key: 'FV_011', label: 'Previous Name declared', weight: 30 },
+      { key: 'FV_012', label: 'IMO number', weight: 50 },
+      { key: 'FV_013', label: 'IRCS', weight: 30 },
+      { key: 'FV_014', label: 'MMSI', weight: 30 },
+      { key: 'FV_015', label: 'Fishing permit number - Fishing Authorization', weight: 50 },
+      { key: 'FV_016', label: 'EU Facility Approval #', weight: 50 },
+      { key: 'FV_017', label: 'Name of Captain provided', weight: 30 },
+      { key: 'FV_018', label: 'Crew list provided', weight: 30 },
+      { key: 'FV_019', label: 'Flag state approval for HS incl. tranship at sea and other EEZ', weight: 50 },
+      { key: 'FV_020', label: 'Only transshipment in port unless monitored by observers', weight: 50 },
+      { key: 'FV_021', label: 'Catch Area - FAO Fishing Zones', weight: 50 },
+      { key: 'FV_022', label: 'Port of Departure', weight: 50 },
+      { key: 'FV_023', label: 'Port of Arrival', weight: 50 },
+      { key: 'FV_024', label: 'Vessel Trip - Capture Dates Start + End', weight: 30 },
+      { key: 'FV_025', label: 'Date of Discharge - Landing or Transshipment', weight: 50 },
+      { key: 'FV_026', label: 'Species scientific name of Target Species', weight: 50 },
+    ]
+  },
+  CR: {
+    label: 'Carrier / Transshipment Vessel',
+    desc: 'Carrier vessel identification and compliance',
+    kdes: [
+      { key: 'CR_001', label: 'Name of vessel', weight: 50 },
+      { key: 'CR_002', label: 'Vessel VID', weight: 10 },
+      { key: 'CR_003', label: 'Vessel flag', weight: 50 },
+      { key: 'CR_004', label: 'Flag state registration', weight: 50 },
+      { key: 'CR_005', label: 'IMO number', weight: 50 },
+      { key: 'CR_006', label: 'IRCS', weight: 30 },
+      { key: 'CR_007', label: 'MMSI', weight: 30 },
+      { key: 'CR_008', label: 'Carrier on RFMO register', weight: 50 },
+      { key: 'CR_009', label: 'Flag state is not considered FOC', weight: 50 },
+      { key: 'CR_010', label: 'Flag state has no EU yellow or Red Card', weight: 30 },
+      { key: 'CR_011', label: 'Previous Flag declared', weight: 30 },
+    ]
+  },
+  FCL: {
+    label: 'Reefer Container Loading',
+    desc: 'Port, container and logistics data',
+    kdes: [
+      { key: 'FCL_001', label: 'Port Name + Wharf LOADING', weight: 50 },
+      { key: 'FCL_002', label: 'Geo-location - GLN - Lat-Lon - LOADING WHARF', weight: 10 },
+      { key: 'FCL_003', label: 'Port state has EU competence', weight: 50 },
+      { key: 'FCL_004', label: 'Loading Wharf is covered under MSC COC certificate if MSC', weight: 50 },
+      { key: 'FCL_005', label: 'Independently monitored by port state CA', weight: 50 },
+      { key: 'FCL_006', label: 'Bill of Lading, noting MSC is applicable', weight: 50 },
+      { key: 'FCL_007', label: 'Product Ownership', weight: 50 },
+      { key: 'FCL_008', label: 'Consignee', weight: 50 },
+      { key: 'FCL_009', label: 'Date of loading', weight: 50 },
+      { key: 'FCL_010', label: 'Container number', weight: 50 },
+    ]
+  },
+  PP: {
+    label: 'Primary Processor',
+    desc: 'First processing facility data',
+    kdes: [
+      { key: 'PP_001', label: 'Name of Primary Processor', weight: 50 },
+      { key: 'PP_002', label: 'Geo-location - GLN - Lat-Lon', weight: 10 },
+      { key: 'PP_003', label: 'EU Facility Approval #', weight: 50 },
+      { key: 'PP_004', label: 'Coldstore used has MSC COC or marked as part of PP CoC', weight: 50 },
+      { key: 'PP_005', label: 'Holding Facility if not processor', weight: 50 },
+      { key: 'PP_006', label: 'Geo-location - GLN - Lat-Lon of holding or storage facility', weight: 10 },
+      { key: 'PP_007', label: 'Date received raw material', weight: 50 },
+    ]
+  },
+  SP: {
+    label: 'Secondary Processor',
+    desc: 'Second processing, lot codes and compliance',
+    kdes: [
+      { key: 'SP_001', label: 'Name of Secondary Processor', weight: 50 },
+      { key: 'SP_002', label: 'Geo-location - GLN - Lat-Lon', weight: 10 },
+      { key: 'SP_003', label: 'EU Facility Approval #', weight: 50 },
+      { key: 'SP_004', label: 'Coldstore used has MSC COC or marked as part of SP CoC', weight: 30 },
+      { key: 'SP_005', label: 'Geo-location - GLN - Lat-Lon of holding or storage facility', weight: 10 },
+      { key: 'SP_006', label: 'Verified if Broker/secondary processor has Valid MSC COC', weight: 50 },
+      { key: 'SP_007', label: 'Container Discharge/Arrival Date Raw Material', weight: 30 },
+      { key: 'SP_008', label: 'Full catch data received from primary processor', weight: 50 },
+      { key: 'SP_009', label: 'Lot Code - TLC - Batch number of PP matched to Own Lot code', weight: 50 },
+      { key: 'SP_010', label: 'Uses single batch of primary processor per Prod/Lotcode', weight: 50 },
+      { key: 'SP_011', label: 'Provides full data timely', weight: 30 },
+      { key: 'SP_012', label: 'Passes Pacifical audits on CoC and reporting', weight: 30 },
+      { key: 'SP_013', label: 'Product subject to MSC CoC', weight: 30 },
+    ]
+  },
+  LFP: {
+    label: 'Logistics - Final Product',
+    desc: 'Final shipment to end market',
+    kdes: [
+      { key: 'LFP_001', label: 'Name of the Shipper - End Buyer - GLN', weight: 50 },
+      { key: 'LFP_002', label: 'MSC COC # Shipper', weight: 30 },
+      { key: 'LFP_003', label: 'Name of Receiver - End Buyer - GLN - Lat-Lon', weight: 50 },
+      { key: 'LFP_004', label: 'Buyers purchase order', weight: 50 },
+      { key: 'LFP_005', label: 'Container number', weight: 50 },
+      { key: 'LFP_006', label: 'Seal number', weight: 30 },
+      { key: 'LFP_007', label: 'Bill of Lading, noting MSC if applicable', weight: 50 },
+      { key: 'LFP_008', label: 'Commercial invoice, noting MSC if applicable', weight: 50 },
+      { key: 'LFP_009', label: 'Packing list, noting MSC if applicable', weight: 50 },
+      { key: 'LFP_010', label: 'Port state IUU Risk index CR', weight: 30 },
+    ]
+  }
+};
+
+// ── STATE ─────────────────────────────────────────────────────
+const kdeState = {}; // key -> { response: true/false, na: false, evidence: '' }
+
+// Init state
+Object.values(KDE_DATA).forEach(stage => {
+  stage.kdes.forEach(kde => {
+    kdeState[kde.key] = { response: true, na: false, evidence: '' };
+  });
+});
+
+// ── AUTH ──────────────────────────────────────────────────────
+async function handleLogout() {
+  await dbClient.auth.signOut();
+  window.location.href = 'login.html';
+}
+
+function toggleNavDropdown() {
+  document.getElementById('navDropdown').classList.toggle('open');
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.topbar-right')) {
+    document.getElementById('navDropdown')?.classList.remove('open');
+  }
+});
+
+function showToast(message, type = 'success') {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    background:${type === 'success' ? '#22c55e' : '#e63946'};
+    color:#fff; padding:12px 20px; border-radius:10px;
+    font-family:'Poppins',sans-serif; font-size:13px; font-weight:600;
+    box-shadow:0 4px 20px rgba(0,0,0,0.15);
+  `;
+  toast.textContent = message;
+  container.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', async () => {
+  const { data: { session } } = await dbClient.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+
+  currentUser = session.user;
+
+  const { data: profile } = await dbClient
+    .from('profiles')
+    .select('first_name, avatar_color, role, photo_url')
+    .eq('id', currentUser.id)
+    .single();
+
+  currentProfile = profile;
+
+  // Guard — only admin/operator
+  if (!['admin', 'operator'].includes(profile?.role)) {
+    window.location.href = 'mri.html';
+    return;
+  }
+
+  const email = currentUser.email || '';
+  const initials = email.substring(0, 2).toUpperCase();
+  setNavAvatar(document.getElementById('navAvatar'), profile?.photo_url, initials, profile?.avatar_color || '#1a6fdb');
+  document.getElementById('navEmail').textContent = email;
+  document.getElementById('navFirstName').textContent = getGreeting(profile?.first_name || email.split('@')[0]);
+
+  await loadOrganisations();
+  renderKDEStages();
+
+  // Check if editing existing assessment
+  const params = new URLSearchParams(window.location.search);
+  const assessmentId = params.get('id');
+  if (assessmentId) {
+    await loadExistingAssessment(assessmentId);
+  }
+
+  updateLiveScore();
+});
+
+// ── LOAD ORGS ─────────────────────────────────────────────────
+async function loadOrganisations() {
+  const { data } = await dbClient
+    .from('companies')
+    .select('id, company_name')
+    .eq('status', 'active')
+    .order('company_name');
+
+  const select = document.getElementById('selectOrg');
+  if (data?.length) {
+    data.forEach(org => {
+      const opt = document.createElement('option');
+      opt.value = org.id;
+      opt.textContent = org.company_name;
+      select.appendChild(opt);
+    });
+  }
+}
+
+// ── LOAD PRODUCTS FOR ORG ─────────────────────────────────────
+async function loadOrgProducts() {
+  const orgId = document.getElementById('selectOrg').value;
+  const select = document.getElementById('selectProduct');
+  select.innerHTML = '<option value="">Select product...</option>';
+  if (!orgId) return;
+
+  const { data } = await dbClient
+    .from('products')
+    .select('id, product_name, brand')
+    .eq('company_id', orgId)
+    .is('deleted_at', null)
+    .order('product_name');
+
+  if (data?.length) {
+    data.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = `${p.product_name}${p.brand ? ` — ${p.brand}` : ''}`;
+      select.appendChild(opt);
+    });
+  }
+}
+
+// ── LOAD EXISTING ASSESSMENT ──────────────────────────────────
+async function loadExistingAssessment(id) {
+  existingAssessmentId = id;
+  document.querySelector('.assessment-header-left h1').textContent = 'Edit MRI Assessment';
+
+  const { data: assessment } = await dbClient
+    .from('mri_assessments')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (!assessment) return;
+
+  // Set org and product
+  document.getElementById('selectOrg').value = assessment.company_id;
+  await loadOrgProducts();
+  document.getElementById('selectProduct').value = assessment.product_id;
+  document.getElementById('assessmentNotes').value = assessment.notes || '';
+
+  // Load responses
+  const { data: responses } = await dbClient
+    .from('mri_responses')
+    .select('*')
+    .eq('assessment_id', id);
+
+  if (responses?.length) {
+    responses.forEach(r => {
+      if (kdeState[r.kde_key] !== undefined) {
+        kdeState[r.kde_key] = {
+          response: r.response,
+          na: !r.is_applicable,
+          evidence: r.evidence_type || ''
+        };
+      }
+    });
+    // Update UI
+    Object.keys(kdeState).forEach(key => {
+      const toggle = document.getElementById(`toggle-${key}`);
+      const naCheck = document.getElementById(`na-${key}`);
+      const evidenceInput = document.getElementById(`evidence-${key}`);
+      if (toggle) toggle.checked = kdeState[key].response;
+      if (naCheck) naCheck.checked = kdeState[key].na;
+      if (evidenceInput) evidenceInput.value = kdeState[key].evidence;
+      updateRowStyle(key);
+    });
+    updateLiveScore();
+  }
+}
+
+// ── RENDER KDE STAGES ─────────────────────────────────────────
+function renderKDEStages() {
+  const container = document.getElementById('kdeStages');
+  let html = '';
+  let globalIndex = 1;
+
+  Object.entries(KDE_DATA).forEach(([stageCode, stage]) => {
+    const maxStageScore = stage.kdes.reduce((sum, k) => sum + k.weight, 0);
+    html += `
+      <div class="stage-section" id="stage-${stageCode}">
+        <div class="stage-header" onclick="toggleStage('${stageCode}')">
+          <div class="stage-header-left">
+            <div class="stage-code">${stageCode}</div>
+            <div>
+              <div class="stage-name">${stage.label}</div>
+              <div class="stage-desc">${stage.desc} · ${stage.kdes.length} KDEs · Max ${maxStageScore} pts</div>
+            </div>
+          </div>
+          <div class="stage-header-right">
+            <div class="stage-score-badge" id="stageScore-${stageCode}">0 / ${maxStageScore}</div>
+            <svg class="stage-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="stage-kdes">
+          <div class="kde-row" style="background:#fafbfc; padding:8px 24px; border-bottom:1px solid #f0f2f8;">
+            <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px;">#</span>
+            <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Key Data Element</span>
+            <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Weight</span>
+            <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Data Available</span>
+            <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Evidence / Notes</span>
+          </div>
+          ${stage.kdes.map(kde => {
+            const weightClass = `w${kde.weight}`;
+            const idx = globalIndex++;
+            return `
+              <div class="kde-row" id="row-${kde.key}">
+                <span class="kde-number">${String(idx).padStart(2, '0')}</span>
+                <span class="kde-label">${kde.label}</span>
+                <span class="kde-weight ${weightClass}">${kde.weight} pts</span>
+                <div class="kde-toggle">
+                  <label class="toggle-switch">
+                    <input type="checkbox" id="toggle-${kde.key}" checked
+                      onchange="onToggleChange('${kde.key}', this.checked)" />
+                    <span class="toggle-slider"></span>
+                  </label>
+                  <span class="toggle-label" id="toggleLabel-${kde.key}">YES</span>
+                  <label class="kde-na">
+                    <input type="checkbox" id="na-${kde.key}"
+                      onchange="onNaChange('${kde.key}', this.checked)" />
+                    N/A
+                  </label>
+                </div>
+                <div class="kde-evidence">
+                  <input type="text" id="evidence-${kde.key}"
+                    placeholder="Evidence type, cert no., source..."
+                    oninput="kdeState['${kde.key}'].evidence = this.value" />
+                </div>
+              </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  });
+
+  container.innerHTML = html;
+
+  // Open first stage by default
+  document.getElementById('stage-FV')?.classList.add('open');
+}
+
+// ── TOGGLE STAGE ──────────────────────────────────────────────
+function toggleStage(code) {
+  document.getElementById(`stage-${code}`)?.classList.toggle('open');
+}
+
+// ── KDE CHANGE HANDLERS ───────────────────────────────────────
+function onToggleChange(key, checked) {
+  kdeState[key].response = checked;
+  document.getElementById(`toggleLabel-${key}`).textContent = checked ? 'YES' : 'NO';
+  updateRowStyle(key);
+  updateLiveScore();
+}
+
+function onNaChange(key, checked) {
+  kdeState[key].na = checked;
+  const row = document.getElementById(`row-${key}`);
+  const toggle = document.getElementById(`toggle-${key}`);
+  const evidence = document.getElementById(`evidence-${key}`);
+  if (checked) {
+    row.classList.add('na');
+    toggle.disabled = true;
+    evidence.disabled = true;
+  } else {
+    row.classList.remove('na');
+    toggle.disabled = false;
+    evidence.disabled = false;
+  }
+  updateLiveScore();
+}
+
+function updateRowStyle(key) {
+  const label = document.getElementById(`toggleLabel-${key}`);
+  if (label) {
+    label.textContent = kdeState[key].response ? 'YES' : 'NO';
+  }
+}
+
+// ── LIVE SCORE ────────────────────────────────────────────────
+function updateLiveScore() {
+  let totalScore = 0;
+  let totalMax = 0;
+  const stageScores = {};
+
+  Object.entries(KDE_DATA).forEach(([stageCode, stage]) => {
+    let stageScore = 0;
+    let stageMax = 0;
+
+    stage.kdes.forEach(kde => {
+      const state = kdeState[kde.key];
+      if (state.na) return; // N/A doesn't count
+      stageMax += kde.weight;
+      totalMax += kde.weight;
+      if (!state.response) {
+        // Data NOT available = risk score added
+        stageScore += kde.weight;
+        totalScore += kde.weight;
+      }
+    });
+
+    stageScores[stageCode] = { score: stageScore, max: stageMax };
+  });
+
+  // Update UI
+  document.getElementById('liveScore').textContent = totalScore.toLocaleString();
+  document.getElementById('liveMax').textContent = `/ ${totalMax.toLocaleString()} max`;
+  document.getElementById('saveBarScore').textContent = `${totalScore.toLocaleString()} / ${totalMax.toLocaleString()}`;
+
+  // Stage chips
+  Object.entries(stageScores).forEach(([code, s]) => {
+    const chip = document.getElementById(`scoreChip-${code}`);
+    if (chip) chip.textContent = s.score;
+
+    const badge = document.getElementById(`stageScore-${code}`);
+    if (badge) badge.textContent = `${s.score} / ${s.max}`;
+  });
+
+  // Status
+  const status = getMriStatus(totalScore);
+  const pill = document.getElementById('liveStatusPill');
+  const label = document.getElementById('liveStatusLabel');
+  pill.className = `mri-status-pill ${status.cls}`;
+  label.textContent = status.label;
+}
+
+function getMriStatus(score) {
+  if (score === 0) return { label: 'Transparent', cls: 'transparent' };
+  if (score < 100) return { label: 'Low Risk', cls: 'low' };
+  if (score < 500) return { label: 'Medium Risk', cls: 'medium' };
+  return { label: 'Critical', cls: 'critical' };
+}
+
+// ── SAVE ASSESSMENT ───────────────────────────────────────────
+async function saveAssessment() {
+  const orgId = document.getElementById('selectOrg').value;
+  const productId = document.getElementById('selectProduct').value;
+  const notes = document.getElementById('assessmentNotes').value.trim();
+
+  if (!orgId) { showToast('Please select an organisation.', 'error'); return; }
+  if (!productId) { showToast('Please select a product.', 'error'); return; }
+
+  const btn = document.getElementById('btnSaveAssessment');
+  btn.textContent = 'Saving...';
+  btn.disabled = true;
+
+  try {
+    // Calculate scores
+    let totalScore = 0;
+    let totalMax = 0;
+    const responses = [];
+
+    Object.entries(KDE_DATA).forEach(([stageCode, stage]) => {
+      stage.kdes.forEach(kde => {
+        const state = kdeState[kde.key];
+        const isApplicable = !state.na;
+        const score = isApplicable && !state.response ? kde.weight : 0;
+        if (isApplicable) {
+          totalMax += kde.weight;
+          totalScore += score;
+        }
+        responses.push({
+          stage: stageCode,
+          kde_key: kde.key,
+          kde_label: kde.label,
+          weight: kde.weight,
+          is_applicable: isApplicable,
+          response: state.response,
+          evidence_type: state.evidence || null,
+          score
+        });
+      });
+    });
+
+    const statusObj = getMriStatus(totalScore);
+
+    if (existingAssessmentId) {
+      // Update existing
+      await dbClient.from('mri_assessments').update({
+        company_id: orgId,
+        product_id: productId,
+        assessed_by: currentUser.id,
+        assessed_at: new Date().toISOString(),
+        total_score: totalScore,
+        max_score: totalMax,
+        status: statusObj.cls,
+        notes: notes || null
+      }).eq('id', existingAssessmentId);
+
+      await dbClient.from('mri_responses').delete().eq('assessment_id', existingAssessmentId);
+
+      const responsesWithId = responses.map(r => ({ ...r, assessment_id: existingAssessmentId }));
+      await dbClient.from('mri_responses').insert(responsesWithId);
+
+    } else {
+      // Create new
+      const { data: assessment, error } = await dbClient.from('mri_assessments').insert({
+        company_id: orgId,
+        product_id: productId,
+        assessed_by: currentUser.id,
+        assessed_at: new Date().toISOString(),
+        total_score: totalScore,
+        max_score: totalMax,
+        status: statusObj.cls,
+        notes: notes || null
+      }).select().single();
+
+      if (error) throw error;
+
+      const responsesWithId = responses.map(r => ({ ...r, assessment_id: assessment.id }));
+      await dbClient.from('mri_responses').insert(responsesWithId);
+      existingAssessmentId = assessment.id;
+    }
+
+    await logActivity('create', 'mri_assessment', existingAssessmentId, `MRI assessment saved — Score: ${totalScore}/${totalMax}`);
+    showToast(`Assessment saved! Score: ${totalScore} / ${totalMax}`, 'success');
+
+    setTimeout(() => { window.location.href = 'mri.html'; }, 1500);
+
+  } catch (err) {
+    console.error('Save error:', err);
+    showToast('Failed to save assessment.', 'error');
+    btn.textContent = 'Save Assessment';
+    btn.disabled = false;
+  }
+}
