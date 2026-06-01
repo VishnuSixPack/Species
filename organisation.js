@@ -275,7 +275,7 @@ body: JSON.stringify({
         first_name: firstName,
         last_name: lastName,
         position,
-        role: 'supplier',
+        role: 'user',
         company_id: companyId
       })
     });
@@ -1075,7 +1075,7 @@ body: JSON.stringify({
             first_name: firstName,
             last_name: lastName,
             position: document.getElementById('addMemberPosition')?.value.trim(),
-            role: 'supplier',
+            role: 'user',
             company_id: selectedCompanyId
           })
       });
