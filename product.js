@@ -46,6 +46,7 @@ document.addEventListener('click', (e) => {
 
 // ── INIT ──────────────────────────────────────────────────────
 let editingProductId = null;
+let currentUserProfile = null;
 
 window.addEventListener('DOMContentLoaded', async () => {
   const session = await checkAuth();
@@ -60,6 +61,8 @@ const user = session.user;
     .select('first_name, last_name, avatar_color, photo_url, company_id')
     .eq('id', user.id)
     .single();
+
+  currentUserProfile = profile;
 
   const firstName = profile?.first_name || email.split('@')[0];
   const avatarColor = profile?.avatar_color || '#1a6fdb';
@@ -299,8 +302,12 @@ function switchTab(index) {
     if (i === index) {
       btn.classList.add('active');
     } else if (visitedTabs.has(i)) {
-      const tabValid = isTabValid(i);
-      btn.classList.add(tabValid ? 'completed' : 'invalid');
+      if (!editingProductId) {
+        const tabValid = isTabValid(i);
+        btn.classList.add(tabValid ? 'completed' : 'invalid');
+      } else {
+        btn.classList.add('completed');
+      }
     }
   });
 
@@ -1001,7 +1008,7 @@ let productId;
       // Insert new product
       const { data: product, error: productError } = await dbClient
         .from('products')
-        .insert({ ...formData.product, user_id: session.user.id, company_id: profile?.company_id || null })
+        .insert({ ...formData.product, user_id: session.user.id, company_id: currentUserProfile?.company_id || null })
         .select()
         .single();
       if (productError) throw productError;
@@ -1022,7 +1029,7 @@ let productId;
     // Insert nutrition
     if (formData.nutrition.length > 0) {
       const nutritionRows = formData.nutrition
-        .filter(n => n.nutrient_name && n.value !== null)
+        .filter(n => n.nutrient_name)
         .map(n => ({ ...n, product_id: productId }));
       if (nutritionRows.length > 0) {
         const { error: nutritionError } = await dbClient.from('product_nutrition').insert(nutritionRows);
