@@ -158,6 +158,8 @@ function animateGauge(score, maxScore) {
 
 // ── STAGE MODAL ───────────────────────────────────────────────
 // Dummy assessment data for beta (Thai Union project)
+const DUMMY_STAGE_RESPONSIBILITY = { FV: "seller", CR: "seller", FCL: "seller", PP: "seller", SP: "buyer", LFP: "buyer" };
+
 const DUMMY_ASSESSMENT = {
   FV: [
     { key: 'FV_001', score: 0 }, { key: 'FV_002', score: 50 }, { key: 'FV_003', score: 0 },
@@ -189,7 +191,7 @@ const DUMMY_ASSESSMENT = {
   ],
   SP: [
     { key: 'SP_001', score: 0 }, { key: 'SP_002', score: 0 }, { key: 'SP_003', score: 0 },
-    { key: 'SP_004', score: 0 }, { key: 'SP_005', score: 0 }, { key: 'SP_006', score: 0 },
+    { key: 'SP_004', score: 0 }, { key: 'SP_005', score: 0 }, { key: 'SP_006', score: 40 },
     { key: 'SP_007', score: 0 }, { key: 'SP_008', score: 0 }, { key: 'SP_009', score: 0 },
     { key: 'SP_010', score: 0 }, { key: 'SP_011', score: 0 }, { key: 'SP_012', score: 0 },
     { key: 'SP_013', score: 0 },
@@ -215,6 +217,21 @@ function openStageModal(stageCode, isDummy = false) {
   document.getElementById('stageModalDesc').textContent = stageInfo.desc;
   document.getElementById('stageModalScore').textContent = `${totalRisk} / ${STAGE_MAX[stageCode]} risk pts`;
   document.getElementById('stageModalCode').textContent = stageCode;
+
+  // Responsibility badge
+  const resp = isDummy ? DUMMY_STAGE_RESPONSIBILITY[stageCode] : 'seller';
+  const respConfigs = {
+    seller: { label: 'Seller Responsible', bg: '#dbeafe', color: '#1d4ed8' },
+    buyer:  { label: 'Buyer Responsible',  bg: '#dcfce7', color: '#16a34a' },
+    both:   { label: 'Both Responsible',   bg: '#fef3c7', color: '#d97706' },
+  };
+  const respCfg = respConfigs[resp] || respConfigs.seller;
+  const respBadgeEl = document.getElementById('stageModalRespBadge');
+  if (respBadgeEl) {
+    respBadgeEl.textContent = respCfg.label;
+    respBadgeEl.style.background = respCfg.bg;
+    respBadgeEl.style.color = respCfg.color;
+  }
 
   const statusObj = getMriStatus(totalRisk);
   const pill = document.getElementById('stageModalStatus');
@@ -323,28 +340,29 @@ window.addEventListener('DOMContentLoaded', async () => {
       const pct = Math.round((stageScore / max) * 100);
       document.getElementById(`stageMiniBar-${stage}`).style.width = `${pct}%`;
     });
-// Highlight LFP green (all clear)
-    const lfpCard = document.getElementById('stage-LFP');
-    if (lfpCard) {
-      lfpCard.style.background = '#f0fdf4';
-      lfpCard.style.border = '1px solid #bbf7d0';
-    }
-    const lfpScore = document.getElementById('stageMiniScore-LFP');
-    if (lfpScore) {
-      lfpScore.innerHTML = `0 <span>/ 440</span>`;
-      lfpScore.insertAdjacentHTML('afterend', '<div style="font-size:10px; font-weight:700; color:#16a34a; margin-top:4px;">✅ All clear</div>');
-    }
-    const lfpBar = document.getElementById('stageMiniBar-LFP');
-    if (lfpBar) { lfpBar.style.background = '#22c55e'; lfpBar.style.width = '100%'; }
 
-    // Grey out SP (not applicable)
-    const spCard = document.getElementById('stage-SP');
-    if (spCard) {
-      spCard.style.opacity = '0.4';
-      spCard.style.cursor = 'not-allowed';
-      spCard.style.pointerEvents = 'none';
-      spCard.insertAdjacentHTML('beforeend', '<div style="font-size:10px; font-weight:700; color:#9aa0b4; margin-top:6px; text-transform:uppercase; letter-spacing:0.8px;">Not Applicable</div>');
+    // Org responsibility scores
+    let sellerScore = 0, buyerScore = 0;
+    Object.entries(stageScores).forEach(([stage, stageScore]) => {
+      const resp = DUMMY_STAGE_RESPONSIBILITY[stage];
+      if (resp === 'seller') sellerScore += stageScore;
+      else if (resp === 'buyer') buyerScore += stageScore;
+      else { sellerScore += Math.round(stageScore / 2); buyerScore += Math.round(stageScore / 2); }
+    });
+
+    const sellerEl = document.getElementById('sellerScore');
+    const buyerEl = document.getElementById('buyerScore');
+    if (sellerEl) {
+      sellerEl.textContent = `${sellerScore} pts`;
+      const ss = getMriStatus(sellerScore);
+      sellerEl.className = `org-list-score ${ss.cls}`;
     }
+    if (buyerEl) {
+      buyerEl.textContent = `${buyerScore} pts`;
+      const bs = getMriStatus(buyerScore);
+      buyerEl.className = `org-list-score ${bs.cls}`;
+    }
+
     // Make stage cards clickable
     Object.keys(STAGE_MAX).forEach(code => {
       const card = document.getElementById(`stage-${code}`);
@@ -387,7 +405,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('lastAssessEmpty').classList.add('hidden');
     document.getElementById('lastAssessInfo').classList.remove('hidden');
     document.getElementById('lastAssessDate').textContent = '28 May 2026';
-    document.getElementById('lastAssessBy').textContent = 'Assessed by Manhattan Analytics';
+    document.getElementById('lastAssessBy').textContent = 'Assessed by Vishnu S.';
     document.getElementById('lastAssessScore').textContent = '320 / 2,890';
 
   } else {

@@ -129,12 +129,15 @@ const KDE_DATA = {
 };
 
 // ── STATE ─────────────────────────────────────────────────────
-const kdeState = {}; // key -> { response: true/false, na: false, evidence: '' }
+const kdeState = {};
+const stageResponsibility = {
+  FV: 'seller', CR: 'seller', FCL: 'seller',
+  PP: 'seller', SP: 'buyer', LFP: 'buyer'
+};
 
-// Init state
 Object.values(KDE_DATA).forEach(stage => {
   stage.kdes.forEach(kde => {
-    kdeState[kde.key] = { response: true, na: false, evidence: '', points: 0, selectedWeight: 0 };
+    kdeState[kde.key] = { response: true, na: false, evidence: '', points: 0 };
   });
 });
 
@@ -186,27 +189,22 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   currentProfile = profile;
 
-  // Guard — only admin/operator
   if (!['admin', 'operator'].includes(profile?.role)) {
     window.location.href = 'mri.html';
     return;
   }
 
   const email = currentUser.email || '';
-  const initials = email.substring(0, 2).toUpperCase();
-  setNavAvatar(document.getElementById('navAvatar'), profile?.photo_url, initials, profile?.avatar_color || '#1a6fdb');
+  setNavAvatar(document.getElementById('navAvatar'), profile?.photo_url, email.substring(0, 2).toUpperCase(), profile?.avatar_color || '#1a6fdb');
   document.getElementById('navEmail').textContent = email;
   document.getElementById('navFirstName').textContent = getGreeting(profile?.first_name || email.split('@')[0]);
 
   await loadOrganisations();
   renderKDEStages();
 
-  // Check if editing existing assessment
   const params = new URLSearchParams(window.location.search);
   const assessmentId = params.get('id');
-  if (assessmentId) {
-    await loadExistingAssessment(assessmentId);
-  }
+  if (assessmentId) await loadExistingAssessment(assessmentId);
 
   updateLiveScore();
 });
@@ -230,7 +228,6 @@ async function loadOrganisations() {
   }
 }
 
-// ── LOAD PRODUCTS FOR ORG ─────────────────────────────────────
 async function loadOrgProducts() {
   const orgId = document.getElementById('selectOrg').value;
   const select = document.getElementById('selectProduct');
@@ -254,16 +251,7 @@ async function loadOrgProducts() {
   }
 }
 
-function onPointsChange(key, value, maxWeight) {
-  let pts = parseInt(value) || 0;
-  pts = Math.max(0, Math.min(pts, maxWeight)); // clamp 0 to max
-  kdeState[key].points = pts;
-  // Cap input visually
-  document.getElementById(`points-${key}`).value = pts || '';
-  updateLiveScore();
-}
-
-// ── LOAD EXISTING ASSESSMENT ──────────────────────────────────
+// ── LOAD EXISTING ─────────────────────────────────────────────
 async function loadExistingAssessment(id) {
   existingAssessmentId = id;
   document.querySelector('.assessment-header-left h1').textContent = 'Edit MRI Assessment';
@@ -276,13 +264,21 @@ async function loadExistingAssessment(id) {
 
   if (!assessment) return;
 
-  // Set org and product
   document.getElementById('selectOrg').value = assessment.company_id;
   await loadOrgProducts();
   document.getElementById('selectProduct').value = assessment.product_id;
   document.getElementById('assessmentNotes').value = assessment.notes || '';
 
-  // Load responses
+  // Load stage responsibility
+  if (assessment.stage_responsibility) {
+    Object.assign(stageResponsibility, assessment.stage_responsibility);
+    Object.keys(stageResponsibility).forEach(code => {
+      const sel = document.getElementById(`resp-${code}`);
+      if (sel) sel.value = stageResponsibility[code];
+      updateStageResponsibilityBadge(code, stageResponsibility[code]);
+    });
+  }
+
   const { data: responses } = await dbClient
     .from('mri_responses')
     .select('*')
@@ -294,22 +290,46 @@ async function loadExistingAssessment(id) {
         kdeState[r.kde_key] = {
           response: r.response,
           na: !r.is_applicable,
-          evidence: r.evidence_type || ''
+          evidence: r.evidence_type || '',
+          points: r.score || 0
         };
       }
     });
-    // Update UI
     Object.keys(kdeState).forEach(key => {
       const toggle = document.getElementById(`toggle-${key}`);
       const naCheck = document.getElementById(`na-${key}`);
       const evidenceInput = document.getElementById(`evidence-${key}`);
+      const sevBtn = document.getElementById(`sevBtn-${key}`);
       if (toggle) toggle.checked = kdeState[key].response;
       if (naCheck) naCheck.checked = kdeState[key].na;
       if (evidenceInput) evidenceInput.value = kdeState[key].evidence;
+      if (sevBtn && kdeState[key].points > 0) {
+        selectSeverity(key, kdeState[key].points);
+      }
       updateRowStyle(key);
     });
     updateLiveScore();
   }
+}
+
+// ── RESPONSIBILITY ────────────────────────────────────────────
+function onResponsibilityChange(stageCode, value) {
+  stageResponsibility[stageCode] = value;
+  updateStageResponsibilityBadge(stageCode, value);
+}
+
+function updateStageResponsibilityBadge(stageCode, value) {
+  const badge = document.getElementById(`respBadge-${stageCode}`);
+  if (!badge) return;
+  const configs = {
+    seller: { label: 'Seller', bg: '#dbeafe', color: '#1d4ed8' },
+    buyer:  { label: 'Buyer',  bg: '#dcfce7', color: '#16a34a' },
+    both:   { label: 'Both',   bg: '#fef3c7', color: '#d97706' },
+  };
+  const cfg = configs[value] || configs.seller;
+  badge.textContent = cfg.label;
+  badge.style.background = cfg.bg;
+  badge.style.color = cfg.color;
 }
 
 // ── RENDER KDE STAGES ─────────────────────────────────────────
@@ -320,6 +340,8 @@ function renderKDEStages() {
 
   Object.entries(KDE_DATA).forEach(([stageCode, stage]) => {
     const maxStageScore = stage.kdes.reduce((sum, k) => sum + k.weight, 0);
+    const defaultResp = stageResponsibility[stageCode] || 'seller';
+
     html += `
       <div class="stage-section" id="stage-${stageCode}">
         <div class="stage-header" onclick="toggleStage('${stageCode}')">
@@ -331,12 +353,27 @@ function renderKDEStages() {
             </div>
           </div>
           <div class="stage-header-right">
+            <!-- Responsibility selector -->
+            <div class="resp-wrap" onclick="event.stopPropagation()">
+              <span style="font-size:11px; color:#9aa0b4; font-weight:500; margin-right:6px;">Responsible:</span>
+              <span class="resp-badge" id="respBadge-${stageCode}"
+                style="background:#dbeafe; color:#1d4ed8; font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px;">
+                Seller
+              </span>
+              <select class="resp-select" id="resp-${stageCode}"
+                onchange="onResponsibilityChange('${stageCode}', this.value)"
+                style="position:absolute; opacity:0; width:100%; height:100%; top:0; left:0; cursor:pointer;">
+                <option value="seller" ${defaultResp === 'seller' ? 'selected' : ''}>Seller</option>
+                <option value="buyer"  ${defaultResp === 'buyer'  ? 'selected' : ''}>Buyer</option>
+                <option value="both"   ${defaultResp === 'both'   ? 'selected' : ''}>Both</option>
+              </select>
+            </div>
             <div class="stage-score-badge" id="stageScore-${stageCode}">0 / ${maxStageScore}</div>
             <svg class="stage-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
         </div>
         <div class="stage-kdes">
-          <div class="kde-row" style="background:#fafbfc; padding:8px 24px; border-bottom:1px solid #f0f2f8;">
+          <div class="kde-row" style="background:#fafbfc; padding:8px 32px; border-bottom:1px solid #f0f2f8;">
             <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px;">#</span>
             <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Key Data Element</span>
             <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Data Available</span>
@@ -407,9 +444,51 @@ function renderKDEStages() {
 
   container.innerHTML = html;
   document.getElementById('stage-FV')?.classList.add('open');
+
+  // Init badges
+  Object.entries(stageResponsibility).forEach(([code, val]) => {
+    updateStageResponsibilityBadge(code, val);
+  });
 }
 
-// ── SEVERITY DROPDOWN ─────────────────────────────────────────
+// ── TOGGLE STAGE ──────────────────────────────────────────────
+function toggleStage(code) {
+  document.getElementById(`stage-${code}`)?.classList.toggle('open');
+}
+
+// ── KDE HANDLERS ─────────────────────────────────────────────
+function onToggleChange(key, checked) {
+  kdeState[key].response = checked;
+  document.getElementById(`toggleLabel-${key}`).textContent = checked ? 'YES' : 'NO';
+  updateRowStyle(key);
+  updateLiveScore();
+}
+
+function onNaChange(key, checked) {
+  kdeState[key].na = checked;
+  const row = document.getElementById(`row-${key}`);
+  const toggle = document.getElementById(`toggle-${key}`);
+  const evidence = document.getElementById(`evidence-${key}`);
+  const sevBtn = document.getElementById(`sevBtn-${key}`);
+  if (checked) {
+    row.classList.add('na');
+    if (toggle) toggle.disabled = true;
+    if (evidence) evidence.disabled = true;
+    if (sevBtn) sevBtn.disabled = true;
+  } else {
+    row.classList.remove('na');
+    if (toggle) toggle.disabled = false;
+    if (evidence) evidence.disabled = false;
+    if (sevBtn) sevBtn.disabled = false;
+  }
+  updateLiveScore();
+}
+
+function updateRowStyle(key) {
+  const label = document.getElementById(`toggleLabel-${key}`);
+  if (label) label.textContent = kdeState[key].response ? 'YES' : 'NO';
+}
+
 function toggleSeverityDropdown(key) {
   document.querySelectorAll('.kde-severity-select.open').forEach(el => {
     if (el.id !== `sevSelect-${key}`) el.classList.remove('open');
@@ -428,43 +507,6 @@ function selectSeverity(key, pts) {
   updateLiveScore();
 }
 
-// ── TOGGLE STAGE ──────────────────────────────────────────────
-function toggleStage(code) {
-  document.getElementById(`stage-${code}`)?.classList.toggle('open');
-}
-
-// ── KDE CHANGE HANDLERS ───────────────────────────────────────
-function onToggleChange(key, checked) {
-  kdeState[key].response = checked;
-  document.getElementById(`toggleLabel-${key}`).textContent = checked ? 'YES' : 'NO';
-  updateRowStyle(key);
-  updateLiveScore();
-}
-
-function onNaChange(key, checked) {
-  kdeState[key].na = checked;
-  const row = document.getElementById(`row-${key}`);
-  const toggle = document.getElementById(`toggle-${key}`);
-  const evidence = document.getElementById(`evidence-${key}`);
-  if (checked) {
-    row.classList.add('na');
-    toggle.disabled = true;
-    evidence.disabled = true;
-  } else {
-    row.classList.remove('na');
-    toggle.disabled = false;
-    evidence.disabled = false;
-  }
-  updateLiveScore();
-}
-
-function updateRowStyle(key) {
-  const label = document.getElementById(`toggleLabel-${key}`);
-  if (label) {
-    label.textContent = kdeState[key].response ? 'YES' : 'NO';
-  }
-}
-
 // ── LIVE SCORE ────────────────────────────────────────────────
 function updateLiveScore() {
   let totalScore = 0;
@@ -474,34 +516,28 @@ function updateLiveScore() {
   Object.entries(KDE_DATA).forEach(([stageCode, stage]) => {
     let stageScore = 0;
     let stageMax = 0;
-
     stage.kdes.forEach(kde => {
       const state = kdeState[kde.key];
-      if (state.na) return; // N/A doesn't count
+      if (state.na) return;
       stageMax += kde.weight;
       totalMax += kde.weight;
       stageScore += (state.points || 0);
       totalScore += (state.points || 0);
     });
-
     stageScores[stageCode] = { score: stageScore, max: stageMax };
   });
 
-  // Update UI
   document.getElementById('liveScore').textContent = totalScore.toLocaleString();
   document.getElementById('liveMax').textContent = `/ ${totalMax.toLocaleString()} max`;
   document.getElementById('saveBarScore').textContent = `${totalScore.toLocaleString()} / ${totalMax.toLocaleString()}`;
 
-  // Stage chips
   Object.entries(stageScores).forEach(([code, s]) => {
     const chip = document.getElementById(`scoreChip-${code}`);
     if (chip) chip.textContent = s.score;
-
     const badge = document.getElementById(`stageScore-${code}`);
     if (badge) badge.textContent = `${s.score} / ${s.max}`;
   });
 
-  // Status
   const status = getMriStatus(totalScore);
   const pill = document.getElementById('liveStatusPill');
   const label = document.getElementById('liveStatusLabel');
@@ -516,7 +552,7 @@ function getMriStatus(score) {
   return { label: 'Critical', cls: 'critical' };
 }
 
-// ── SAVE ASSESSMENT ───────────────────────────────────────────
+// ── SAVE ─────────────────────────────────────────────────────
 async function saveAssessment() {
   const orgId = document.getElementById('selectOrg').value;
   const productId = document.getElementById('selectProduct').value;
@@ -530,7 +566,6 @@ async function saveAssessment() {
   btn.disabled = true;
 
   try {
-    // Calculate scores
     let totalScore = 0;
     let totalMax = 0;
     const responses = [];
@@ -558,48 +593,31 @@ async function saveAssessment() {
     });
 
     const statusObj = getMriStatus(totalScore);
+    const assessmentPayload = {
+      company_id: orgId,
+      product_id: productId,
+      assessed_by: currentUser.id,
+      assessed_at: new Date().toISOString(),
+      total_score: totalScore,
+      max_score: totalMax,
+      status: statusObj.cls,
+      notes: notes || null,
+      stage_responsibility: stageResponsibility
+    };
 
     if (existingAssessmentId) {
-      // Update existing
-      await dbClient.from('mri_assessments').update({
-        company_id: orgId,
-        product_id: productId,
-        assessed_by: currentUser.id,
-        assessed_at: new Date().toISOString(),
-        total_score: totalScore,
-        max_score: totalMax,
-        status: statusObj.cls,
-        notes: notes || null
-      }).eq('id', existingAssessmentId);
-
+      await dbClient.from('mri_assessments').update(assessmentPayload).eq('id', existingAssessmentId);
       await dbClient.from('mri_responses').delete().eq('assessment_id', existingAssessmentId);
-
-      const responsesWithId = responses.map(r => ({ ...r, assessment_id: existingAssessmentId }));
-      await dbClient.from('mri_responses').insert(responsesWithId);
-
+      await dbClient.from('mri_responses').insert(responses.map(r => ({ ...r, assessment_id: existingAssessmentId })));
     } else {
-      // Create new
-      const { data: assessment, error } = await dbClient.from('mri_assessments').insert({
-        company_id: orgId,
-        product_id: productId,
-        assessed_by: currentUser.id,
-        assessed_at: new Date().toISOString(),
-        total_score: totalScore,
-        max_score: totalMax,
-        status: statusObj.cls,
-        notes: notes || null
-      }).select().single();
-
+      const { data: assessment, error } = await dbClient.from('mri_assessments').insert(assessmentPayload).select().single();
       if (error) throw error;
-
-      const responsesWithId = responses.map(r => ({ ...r, assessment_id: assessment.id }));
-      await dbClient.from('mri_responses').insert(responsesWithId);
+      await dbClient.from('mri_responses').insert(responses.map(r => ({ ...r, assessment_id: assessment.id })));
       existingAssessmentId = assessment.id;
     }
 
     await logActivity('create', 'mri_assessment', existingAssessmentId, `MRI assessment saved — Score: ${totalScore}/${totalMax}`);
     showToast(`Assessment saved! Score: ${totalScore} / ${totalMax}`, 'success');
-
     setTimeout(() => { window.location.href = 'mri.html'; }, 1500);
 
   } catch (err) {
