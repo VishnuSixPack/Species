@@ -373,6 +373,28 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
     });
 
+    // Highlight LFP green (all clear)
+    const lfpCard = document.getElementById('stage-LFP');
+    if (lfpCard) {
+      lfpCard.style.background = '#f0fdf4';
+      lfpCard.style.border = '1px solid #bbf7d0';
+    }
+    const lfpScoreEl = document.getElementById('stageMiniScore-LFP');
+    if (lfpScoreEl) {
+      lfpScoreEl.insertAdjacentHTML('afterend', '<div style="font-size:10px; font-weight:700; color:#16a34a; margin-top:4px;">✅ All clear</div>');
+    }
+    const lfpBar = document.getElementById('stageMiniBar-LFP');
+    if (lfpBar) { lfpBar.style.background = '#22c55e'; lfpBar.style.width = '0%'; }
+
+    // Grey out SP (not applicable)
+    const spCard = document.getElementById('stage-SP');
+    if (spCard) {
+      spCard.style.opacity = '0.4';
+      spCard.style.cursor = 'not-allowed';
+      spCard.style.pointerEvents = 'none';
+      spCard.insertAdjacentHTML('beforeend', '<div style="font-size:10px; font-weight:700; color:#9aa0b4; text-align:center; padding:6px 0; text-transform:uppercase; letter-spacing:0.8px;">Not Applicable</div>');
+    }
+
     // Products
     document.getElementById('productsEmpty').classList.add('hidden');
     const table = document.getElementById('productsTable');
