@@ -189,7 +189,7 @@ const DUMMY_ASSESSMENT = {
   ],
   SP: [
     { key: 'SP_001', score: 0 }, { key: 'SP_002', score: 0 }, { key: 'SP_003', score: 0 },
-    { key: 'SP_004', score: 0 }, { key: 'SP_005', score: 0 }, { key: 'SP_006', score: 40 },
+    { key: 'SP_004', score: 0 }, { key: 'SP_005', score: 0 }, { key: 'SP_006', score: 0 },
     { key: 'SP_007', score: 0 }, { key: 'SP_008', score: 0 }, { key: 'SP_009', score: 0 },
     { key: 'SP_010', score: 0 }, { key: 'SP_011', score: 0 }, { key: 'SP_012', score: 0 },
     { key: 'SP_013', score: 0 },
@@ -310,7 +310,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   if (isDummy) {
     const score = 320;
     const maxScore = 2890;
-    const stageScores = { FV: 120, CR: 80, FCL: 50, PP: 30, SP: 40, LFP: 0 };
+    const stageScores = { FV: 120, CR: 80, FCL: 50, PP: 30, SP: 0, LFP: 0 };
 
     document.getElementById('gaugeMax').textContent = `/ ${maxScore.toLocaleString()}`;
     const s = getMriStatus(score);
@@ -323,7 +323,28 @@ window.addEventListener('DOMContentLoaded', async () => {
       const pct = Math.round((stageScore / max) * 100);
       document.getElementById(`stageMiniBar-${stage}`).style.width = `${pct}%`;
     });
+// Highlight LFP green (all clear)
+    const lfpCard = document.getElementById('stage-LFP');
+    if (lfpCard) {
+      lfpCard.style.background = '#f0fdf4';
+      lfpCard.style.border = '1px solid #bbf7d0';
+    }
+    const lfpScore = document.getElementById('stageMiniScore-LFP');
+    if (lfpScore) {
+      lfpScore.innerHTML = `0 <span>/ 440</span>`;
+      lfpScore.insertAdjacentHTML('afterend', '<div style="font-size:10px; font-weight:700; color:#16a34a; margin-top:4px;">✅ All clear</div>');
+    }
+    const lfpBar = document.getElementById('stageMiniBar-LFP');
+    if (lfpBar) { lfpBar.style.background = '#22c55e'; lfpBar.style.width = '100%'; }
 
+    // Grey out SP (not applicable)
+    const spCard = document.getElementById('stage-SP');
+    if (spCard) {
+      spCard.style.opacity = '0.4';
+      spCard.style.cursor = 'not-allowed';
+      spCard.style.pointerEvents = 'none';
+      spCard.insertAdjacentHTML('beforeend', '<div style="font-size:10px; font-weight:700; color:#9aa0b4; margin-top:6px; text-transform:uppercase; letter-spacing:0.8px;">Not Applicable</div>');
+    }
     // Make stage cards clickable
     Object.keys(STAGE_MAX).forEach(code => {
       const card = document.getElementById(`stage-${code}`);
