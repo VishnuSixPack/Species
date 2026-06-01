@@ -276,24 +276,9 @@ async function loadExistingAssessment(id) {
   if (assessment.stage_responsibility) {
     Object.assign(stageResponsibility, assessment.stage_responsibility);
     Object.keys(stageResponsibility).forEach(code => {
-      const sel = document.getElementById(`resp-${code}`);
-      if (sel) sel.value = stageResponsibility[code];
       updateStageResponsibilityBadge(code, stageResponsibility[code]);
     });
   }
-
-  function toggleRespDropdown(stageCode) {
-  document.querySelectorAll('.resp-custom.open').forEach(el => {
-    if (el.id !== `respWrap-${stageCode}`) el.classList.remove('open');
-  });
-  document.getElementById(`respWrap-${stageCode}`)?.classList.toggle('open');
-}
-
-function selectResp(stageCode, value) {
-  stageResponsibility[stageCode] = value;
-  updateStageResponsibilityBadge(stageCode, value);
-  document.getElementById(`respWrap-${stageCode}`)?.classList.remove('open');
-}
 
   const { data: responses } = await dbClient
     .from('mri_responses')
@@ -346,6 +331,19 @@ function updateStageResponsibilityBadge(stageCode, value) {
   badge.textContent = cfg.label;
   badge.style.background = cfg.bg;
   badge.style.color = cfg.color;
+}
+
+function toggleRespDropdown(stageCode) {
+  document.querySelectorAll('.resp-custom.open').forEach(el => {
+    if (el.id !== `respWrap-${stageCode}`) el.classList.remove('open');
+  });
+  document.getElementById(`respWrap-${stageCode}`)?.classList.toggle('open');
+}
+
+function selectResp(stageCode, value) {
+  stageResponsibility[stageCode] = value;
+  updateStageResponsibilityBadge(stageCode, value);
+  document.getElementById(`respWrap-${stageCode}`)?.classList.remove('open');
 }
 
 // ── RENDER KDE STAGES ─────────────────────────────────────────
