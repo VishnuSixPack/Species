@@ -57,7 +57,7 @@ const user = session.user;
 
   const { data: profile } = await dbClient
     .from('profiles')
-    .select('first_name, avatar_color')
+    .select('first_name, last_name, avatar_color, photo_url, company_id')
     .eq('id', user.id)
     .single();
 
@@ -80,6 +80,9 @@ const user = session.user;
   if (editId) {
     editingProductId = editId;
     document.getElementById('btnSave').textContent = 'Update';
+    document.getElementById('btnSave').disabled = false;
+    document.getElementById('btnSave').style.opacity = '1';
+    document.getElementById('btnSave').style.cursor = 'pointer';
     await loadProductForEdit(editId);
   } else {
     addAllergenRow();
@@ -993,7 +996,7 @@ let productId;
       // Insert new product
       const { data: product, error: productError } = await dbClient
         .from('products')
-        .insert({ ...formData.product, user_id: session.user.id })
+        .insert({ ...formData.product, user_id: session.user.id, company_id: profile?.company_id || null })
         .select()
         .single();
       if (productError) throw productError;
