@@ -912,7 +912,7 @@ async function openAddUserModal() {
     if (el) el.value = '';
   });
 
-  document.getElementById('newUserRole').value = 'supplier';
+  document.getElementById('newUserRole').value = 'user';
   document.getElementById('newUserPartnerOfGroup').style.display = 'none';
   document.getElementById('addUserModal').classList.remove('hidden');
 }
