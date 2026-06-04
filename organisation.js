@@ -220,16 +220,25 @@ async function handleCompanyPhotoUpload(event) {
 
 async function uploadCompanyPhoto(companyId) {
   const input = document.getElementById('companyPhotoInput');
-  console.log('Photo input files:', input?.files?.length, input?.files[0]?.name);
   if (!input?.files[0]) return null;
 
   const file = input.files[0];
   const ext = file.name.split('.').pop();
-  const fileName = `${companyId}/logo.${ext}`;
+  const fileName = `${companyId}/logo_${Date.now()}.${ext}`;
 
-const { error } = await dbClient.storage
+  // Remove old photos first
+  const { data: oldFiles } = await dbClient.storage
     .from('company-photo')
-    .upload(fileName, file, { upsert: true });
+    .list(companyId);
+  if (oldFiles?.length) {
+    await dbClient.storage
+      .from('company-photo')
+      .remove(oldFiles.map(f => `${companyId}/${f.name}`));
+  }
+
+  const { error } = await dbClient.storage
+    .from('company-photo')
+    .upload(fileName, file);
 
   if (error) { console.error('Photo upload failed:', error); return null; }
 
