@@ -385,7 +385,8 @@ async function loadSpecies() {
   const { data, error } = await dbClient
     .from('species')
     .select('id, species_name, scientific_name, afsis_3a_code, taxonomic_code, source_type, gear_type, fao_area')
-   .order('species_name');
+    .is('deleted_at', null)
+    .order('species_name');
 
   if (error) { console.error('Error loading species:', error); return; }
 
@@ -997,14 +998,19 @@ let productId;
         .from('products')
         .update(formData.product)
         .eq('id', editingProductId);
-      console.log('Product update error:', updateError);
       if (updateError) throw updateError;
       productId = editingProductId;
 
-      const { error: delA } = await dbClient.from('product_allergens').delete().eq('product_id', productId);
-      const { error: delN } = await dbClient.from('product_nutrition').delete().eq('product_id', productId);
-      console.log('Delete allergens error:', delA);
-      console.log('Delete nutrition error:', delN);
+      await dbClient.from('product_allergens').delete().eq('product_id', productId);
+      await dbClient.from('product_nutrition').delete().eq('product_id', productId);
+    } else {
+      const { data: newProduct, error: insertError } = await dbClient
+        .from('products')
+        .insert({ ...formData.product, company_id: currentUserProfile?.company_id })
+        .select()
+        .single();
+      if (insertError) throw insertError;
+      productId = newProduct.id;
     }
 
     console.log('Allergens collected:', formData.allergens);
