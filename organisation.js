@@ -1168,14 +1168,16 @@ function populatePartnerOfDropdown(selectId) {
 
 async function changeMemberRole(memberId, newRole, name) {
   // Check admin limit if promoting to admin
-  if (newRole === 'company_admin') {
+  const PROJECT_MANHATTAN_ID = '9fe5a1d1-6666-4e83-98ed-639b27be218a';
+  const isEnterprise = selectedCompanyId === PROJECT_MANHATTAN_ID;
+  if (newRole === 'company_admin' && !isEnterprise) {
     const { count } = await dbClient
       .from('company_members')
       .select('id', { count: 'exact', head: true })
       .eq('company_id', selectedCompanyId)
       .eq('company_role', 'company_admin');
 
-      if (count >= 2) {
+    if (count >= 2) {
       showToast('Maximum 2 Administrators allowed per organisation (free plan).', 'error');
       await loadFormMembers(selectedCompanyId);
       return;
