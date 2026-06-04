@@ -957,8 +957,10 @@ async function loadFormMembers(companyId) {
 
 // Free plan: max 2 admins, max 5 total users
   const adminCount = members.filter(m => m.company_role === 'company_admin').length;
-  const atTotalLimit = members.length >= 5;
-  const atAdminLimit = adminCount >= 2;
+  const PROJECT_MANHATTAN_ID = '9fe5a1d1-6666-4e83-98ed-639b27be218a';
+  const isEnterprise = companyId === PROJECT_MANHATTAN_ID;
+  const atTotalLimit = !isEnterprise && members.length >= 5;
+  const atAdminLimit = !isEnterprise && adminCount >= 2;
   const atLimit = atTotalLimit;
 
   // Update Add User button
@@ -1043,7 +1045,9 @@ async function addMemberToOrg() {
   if (!selectedCompanyId) { showToast('Please save the organisation first.', 'error'); return; }
 
   // Check admin limit
-  if (role === 'company_admin') {
+  const PROJECT_MANHATTAN_ID = '9fe5a1d1-6666-4e83-98ed-639b27be218a';
+  const isEnterprise = selectedCompanyId === PROJECT_MANHATTAN_ID;
+  if (role === 'company_admin' && !isEnterprise) {
     const { count } = await dbClient
       .from('company_members')
       .select('id', { count: 'exact', head: true })
