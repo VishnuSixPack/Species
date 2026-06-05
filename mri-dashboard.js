@@ -157,7 +157,9 @@ function animateGauge(score, maxScore) {
 }
 
 // ── STAGE MODAL ───────────────────────────────────────────────
-// Dummy assessment data for beta (Thai Union project)
+
+// ── STAGE MODAL ───────────────────────────────────────────────
+// Dummy assessment data for beta (Trident proj-002)
 const DUMMY_STAGE_RESPONSIBILITY = { FV: "seller", CR: "seller", FCL: "seller", PP: "seller", SP: "buyer", LFP: "buyer" };
 
 const DUMMY_ASSESSMENT = {
@@ -203,10 +205,58 @@ const DUMMY_ASSESSMENT = {
     { key: 'LFP_010', score: 0 },
   ],
 };
+// ── LOW RISK DUMMY (Cermaq proj-003) ─────────────────────────
+const DUMMY_LOW_STAGE_RESPONSIBILITY = { FV: "seller", CR: "seller", FCL: "seller", PP: "seller", SP: "seller", LFP: "buyer" };
 
-function openStageModal(stageCode, isDummy = false) {
+const DUMMY_LOW_ASSESSMENT = {
+  FV: [
+    { key: 'FV_001', score: 0 }, { key: 'FV_002', score: 0 }, { key: 'FV_003', score: 0 },
+    { key: 'FV_004', score: 0 }, { key: 'FV_005', score: 0 }, { key: 'FV_006', score: 0 },
+    { key: 'FV_007', score: 0 }, { key: 'FV_008', score: 0 }, { key: 'FV_009', score: 0 },
+    { key: 'FV_010', score: 30 }, { key: 'FV_011', score: 0 }, { key: 'FV_012', score: 0 },
+    { key: 'FV_013', score: 0 }, { key: 'FV_014', score: 0 }, { key: 'FV_015', score: 0 },
+    { key: 'FV_016', score: 0 }, { key: 'FV_017', score: 0 }, { key: 'FV_018', score: 0 },
+    { key: 'FV_019', score: 0 }, { key: 'FV_020', score: 0 }, { key: 'FV_021', score: 0 },
+    { key: 'FV_022', score: 0 }, { key: 'FV_023', score: 0 }, { key: 'FV_024', score: 0 },
+    { key: 'FV_025', score: 0 }, { key: 'FV_026', score: 0 },
+  ],
+  CR: [
+    { key: 'CR_001', score: 0 }, { key: 'CR_002', score: 0 }, { key: 'CR_003', score: 0 },
+    { key: 'CR_004', score: 0 }, { key: 'CR_005', score: 0 }, { key: 'CR_006', score: 0 },
+    { key: 'CR_007', score: 35 }, { key: 'CR_008', score: 0 }, { key: 'CR_009', score: 0 },
+    { key: 'CR_010', score: 0 }, { key: 'CR_011', score: 0 },
+  ],
+  FCL: [
+    { key: 'FCL_001', score: 0 }, { key: 'FCL_002', score: 0 }, { key: 'FCL_003', score: 0 },
+    { key: 'FCL_004', score: 0 }, { key: 'FCL_005', score: 0 }, { key: 'FCL_006', score: 0 },
+    { key: 'FCL_007', score: 0 }, { key: 'FCL_008', score: 0 }, { key: 'FCL_009', score: 0 },
+    { key: 'FCL_010', score: 0 },
+  ],
+  PP: [
+    { key: 'PP_001', score: 0 }, { key: 'PP_002', score: 0 }, { key: 'PP_003', score: 0 },
+    { key: 'PP_004', score: 0 }, { key: 'PP_005', score: 0 }, { key: 'PP_006', score: 0 },
+    { key: 'PP_007', score: 0 },
+  ],
+  SP: [
+    { key: 'SP_001', score: 0 }, { key: 'SP_002', score: 0 }, { key: 'SP_003', score: 0 },
+    { key: 'SP_004', score: 0 }, { key: 'SP_005', score: 0 }, { key: 'SP_006', score: 0 },
+    { key: 'SP_007', score: 0 }, { key: 'SP_008', score: 0 }, { key: 'SP_009', score: 0 },
+    { key: 'SP_010', score: 0 }, { key: 'SP_011', score: 0 }, { key: 'SP_012', score: 0 },
+    { key: 'SP_013', score: 0 },
+  ],
+  LFP: [
+    { key: 'LFP_001', score: 0 }, { key: 'LFP_002', score: 0 }, { key: 'LFP_003', score: 0 },
+    { key: 'LFP_004', score: 0 }, { key: 'LFP_005', score: 0 }, { key: 'LFP_006', score: 0 },
+    { key: 'LFP_007', score: 0 }, { key: 'LFP_008', score: 0 }, { key: 'LFP_009', score: 0 },
+    { key: 'LFP_010', score: 0 },
+  ],
+};
+
+function openStageModal(stageCode, isDummy = false, isLow = false) {
   const stageInfo = STAGE_INFO[stageCode];
-  const stageData = isDummy ? DUMMY_ASSESSMENT[stageCode] : [];
+  const assessment = isLow ? DUMMY_LOW_ASSESSMENT : DUMMY_ASSESSMENT;
+  const stageData = isDummy ? assessment[stageCode] : [];
+  const resp = isDummy ? (isLow ? DUMMY_LOW_STAGE_RESPONSIBILITY[stageCode] : DUMMY_STAGE_RESPONSIBILITY[stageCode]) : 'seller';
 
   const missing = stageData.filter(k => k.score > 0);
   const ok = stageData.filter(k => k.score === 0);
@@ -219,7 +269,6 @@ function openStageModal(stageCode, isDummy = false) {
   document.getElementById('stageModalCode').textContent = stageCode;
 
   // Responsibility badge
-  const resp = isDummy ? DUMMY_STAGE_RESPONSIBILITY[stageCode] : 'seller';
   const respConfigs = {
     seller: { label: 'Seller Responsible', bg: '#dbeafe', color: '#1d4ed8' },
     buyer:  { label: 'Buyer Responsible',  bg: '#dcfce7', color: '#16a34a' },
@@ -290,6 +339,140 @@ document.addEventListener('click', (e) => {
   if (modal && e.target === modal) closeStageModal();
 });
 
+// ── TOP 10 CRITICAL KDEs ──────────────────────────────────────
+function renderTop10KDEs(assessmentData) {
+  const container = document.getElementById('top10KDEs');
+  if (!container) return;
+
+  // Flatten all KDEs with scores > 0
+  const allMissing = [];
+  Object.entries(assessmentData).forEach(([stage, kdes]) => {
+    kdes.forEach(kde => {
+      if (kde.score > 0) {
+        allMissing.push({
+          key: kde.key,
+          stage,
+          score: kde.score,
+          label: KDE_DESCRIPTIONS[kde.key]?.label || kde.key,
+        });
+      }
+    });
+  });
+
+  // Sort by score descending, take top 10
+  const top10 = allMissing.sort((a, b) => b.score - a.score).slice(0, 10);
+
+  if (!top10.length) {
+    container.innerHTML = '<div style="text-align:center; padding:24px; color:#16a34a; font-size:13px; font-weight:600;">✅ No critical KDEs missing</div>';
+    return;
+  }
+
+  const maxScore = top10[0].score;
+  const stageColors = { FV: '#1a6fdb', CR: '#7c3aed', FCL: '#0d9488', PP: '#f59e0b', SP: '#e63946', LFP: '#64748b' };
+
+  container.innerHTML = top10.map((kde, i) => {
+    const barWidth = Math.round((kde.score / maxScore) * 100);
+    const color = stageColors[kde.stage] || '#1a6fdb';
+    const wLabel = kde.score >= 50 ? 'Critical' : kde.score >= 30 ? 'High' : 'Medium';
+    const wClass = kde.score >= 50 ? 'w50' : kde.score >= 30 ? 'w30' : 'w10';
+    return `
+      <div style="display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid #f0f2f8;">
+        <div style="font-family:'DM Mono',monospace; font-size:11px; color:#9aa0b4; width:20px; text-align:right; flex-shrink:0;">${i + 1}</div>
+        <div style="flex:1; min-width:0;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+            <div style="font-size:12px; font-weight:600; color:#1a1a2e; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px;">${kde.label}</div>
+            <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+              <span style="font-size:10px; font-weight:700; color:${color}; background:${color}18; padding:2px 7px; border-radius:20px;">${kde.stage}</span>
+              <span class="kde-weight ${wClass}" style="font-size:10px; padding:2px 7px;">${wLabel}</span>
+            </div>
+          </div>
+          <div style="height:5px; background:#f0f2f8; border-radius:999px; overflow:hidden;">
+            <div style="height:100%; width:${barWidth}%; background:${color}; border-radius:999px; transition:width 0.6s ease;"></div>
+          </div>
+        </div>
+        <div style="font-family:'DM Mono',monospace; font-size:13px; font-weight:500; color:#1a1a2e; width:40px; text-align:right; flex-shrink:0;">${kde.score}</div>
+      </div>`;
+  }).join('');
+}
+
+// ── CTE PIE CHART ─────────────────────────────────────────────
+function renderStagePieChart(stageScores) {
+  const canvas = document.getElementById('stagePieChart');
+  if (!canvas) return;
+
+  const ctx = canvas.getContext('2d');
+  const cx = canvas.width / 2;
+  const cy = canvas.height / 2;
+  const radius = Math.min(cx, cy) - 20;
+
+  const stageColors = {
+    FV: '#1a6fdb', CR: '#7c3aed', FCL: '#0d9488',
+    PP: '#f59e0b', SP: '#e63946', LFP: '#64748b'
+  };
+
+  const stages = Object.keys(stageScores);
+  const total = stages.reduce((s, k) => s + (stageScores[k] || 0), 0);
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (total === 0) {
+    // Draw full green circle for transparent
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.fillStyle = '#22c55e';
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 13px Poppins';
+    ctx.textAlign = 'center';
+    ctx.fillText('Transparent', cx, cy);
+    return;
+  }
+
+  let startAngle = -Math.PI / 2;
+  stages.forEach(stage => {
+    const score = stageScores[stage] || 0;
+    if (score === 0) return;
+    const slice = (score / total) * Math.PI * 2;
+
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, radius, startAngle, startAngle + slice);
+    ctx.closePath();
+    ctx.fillStyle = stageColors[stage];
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Label
+    const midAngle = startAngle + slice / 2;
+    const lx = cx + (radius * 0.65) * Math.cos(midAngle);
+    const ly = cy + (radius * 0.65) * Math.sin(midAngle);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px DM Mono';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(stage, lx, ly);
+
+    startAngle += slice;
+  });
+
+  // Center hole (donut)
+  ctx.beginPath();
+  ctx.arc(cx, cy, radius * 0.45, 0, Math.PI * 2);
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+
+  // Center text
+  ctx.fillStyle = '#1a1a2e';
+  ctx.font = 'bold 14px DM Mono';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(total, cx, cy - 8);
+  ctx.font = '10px Poppins';
+  ctx.fillStyle = '#9aa0b4';
+  ctx.fillText('risk pts', cx, cy + 8);
+}
 // ── INIT ──────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
   const { data: { session } } = await dbClient.auth.getSession();
@@ -318,16 +501,21 @@ window.addEventListener('DOMContentLoaded', async () => {
   document.title = `${projectName} — MRI`;
 
   const statusBadge = document.getElementById('dashStatusBadge');
-  statusBadge.textContent = projectStatus === 'medium' ? 'Medium Risk' : 'Transparent';
-  statusBadge.style.background = projectStatus === 'medium' ? '#fef3c7' : '#dcfce7';
-  statusBadge.style.color = projectStatus === 'medium' ? '#d97706' : '#16a34a';
+  statusBadge.textContent = projectStatus === 'medium' ? 'Medium Risk' : projectStatus === 'low' ? 'Low Risk' : 'Transparent';
+  statusBadge.style.background = projectStatus === 'medium' ? '#fef3c7' : projectStatus === 'low' ? '#dbeafe' : '#dcfce7';
+  statusBadge.style.color = projectStatus === 'medium' ? '#d97706' : projectStatus === 'low' ? '#1d4ed8' : '#16a34a';
 
-  const isDummy = projectStatus === 'medium';
+  const isLow = projectStatus === 'low';
+  const isDummy = projectStatus === 'medium' || isLow;
 
   if (isDummy) {
-    const score = 280;
+    const score = isLow ? 65 : 280;
     const maxScore = 2890;
-    const stageScores = { FV: 120, CR: 80, FCL: 50, PP: 30, SP: 0, LFP: 0 };
+    const stageScores = isLow
+      ? { FV: 30, CR: 35, FCL: 0, PP: 0, SP: 0, LFP: 0 }
+      : { FV: 120, CR: 80, FCL: 50, PP: 30, SP: 0, LFP: 0 };
+    const activeAssessment = isLow ? DUMMY_LOW_ASSESSMENT : DUMMY_ASSESSMENT;
+    const activeResp = isLow ? DUMMY_LOW_STAGE_RESPONSIBILITY : DUMMY_STAGE_RESPONSIBILITY;
 
     document.getElementById('gaugeMax').textContent = `/ ${maxScore.toLocaleString()}`;
     const s = getMriStatus(score);
@@ -344,7 +532,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     // Org responsibility scores
     let sellerScore = 0, buyerScore = 0;
     Object.entries(stageScores).forEach(([stage, stageScore]) => {
-      const resp = DUMMY_STAGE_RESPONSIBILITY[stage];
+      const resp = activeResp[stage];
       if (resp === 'seller') sellerScore += stageScore;
       else if (resp === 'buyer') buyerScore += stageScore;
       else { sellerScore += Math.round(stageScore / 2); buyerScore += Math.round(stageScore / 2); }
@@ -363,13 +551,32 @@ window.addEventListener('DOMContentLoaded', async () => {
       buyerEl.className = `org-list-score ${bs.cls}`;
     }
 
+    // Update org names based on project
+    if (document.getElementById('sellerName')) {
+      if (isLow) {
+        document.getElementById('sellerName').textContent = 'Cermaq Group';
+        document.getElementById('sellerAvatar').textContent = 'C';
+        document.getElementById('sellerAvatar').style.background = '#7c3aed';
+        document.getElementById('buyerName').textContent = 'Maruha Nichiro';
+        document.getElementById('buyerAvatar').textContent = 'M';
+        document.getElementById('buyerAvatar').style.background = '#b45309';
+      } else {
+        document.getElementById('sellerName').textContent = 'Trident Seafoods';
+        document.getElementById('sellerAvatar').textContent = 'T';
+        document.getElementById('sellerAvatar').style.background = '#1a6fdb';
+        document.getElementById('buyerName').textContent = 'Nippon Suisan';
+        document.getElementById('buyerAvatar').textContent = 'N';
+        document.getElementById('buyerAvatar').style.background = '#0d9488';
+      }
+    }
+
     // Make stage cards clickable
     Object.keys(STAGE_MAX).forEach(code => {
       const card = document.getElementById(`stage-${code}`);
       if (card) {
         card.style.cursor = 'pointer';
         card.title = `Click to see ${STAGE_INFO[code].label} KDE details`;
-        card.onclick = () => openStageModal(code, true);
+        card.onclick = () => openStageModal(code, true, isLow);
       }
     });
 
@@ -408,39 +615,56 @@ window.addEventListener('DOMContentLoaded', async () => {
       </div>
       <div class="product-row">
         <div>
-          <div class="product-row-name">Skipjack Loin — MSC</div>
-          <div class="product-row-brand">Thai Union Frozen</div>
+          <div class="product-row-name">${isLow ? 'Atlantic Salmon Fillet — ASC' : 'Pacific Cod Loin — MSC'}</div>
+          <div class="product-row-brand">${isLow ? 'Cermaq Norway' : 'Trident Seafoods'}</div>
         </div>
-       <div class="product-row-score">280 <span>/ 2,890</span></div>
-        <div><span class="mri-status-pill medium"><span class="dot"></span> Medium Risk</span></div>
-        <div style="font-size:12px; color:#9aa0b4;">28 May 2026</div>
+        <div class="product-row-score">${isLow ? '65' : '280'} <span>/ 2,890</span></div>
+        <div><span class="mri-status-pill ${isLow ? 'low' : 'medium'}"><span class="dot"></span> ${isLow ? 'Low Risk' : 'Medium Risk'}</span></div>
+        <div style="font-size:12px; color:#9aa0b4;">${isLow ? '15 May 2026' : '28 May 2026'}</div>
       </div>`;
 
-    document.getElementById('kdeCovData').textContent = '54';
-    document.getElementById('kdeCovMissing').textContent = '18';
-    document.getElementById('kdeCovNA').textContent = '5';
-    document.getElementById('kdeCovBarGreen').style.width = '70%';
-    document.getElementById('kdeCovBarRed').style.width = '23%';
-    document.getElementById('kdeCovBarGrey').style.width = '7%';
-    document.querySelector('.kde-cov-note').textContent = '70% data coverage across 77 KDEs';
+    document.getElementById('kdeCovData').textContent = isLow ? '72' : '54';
+    document.getElementById('kdeCovMissing').textContent = isLow ? '3' : '18';
+    document.getElementById('kdeCovNA').textContent = isLow ? '2' : '5';
+    document.getElementById('kdeCovBarGreen').style.width = isLow ? '93%' : '70%';
+    document.getElementById('kdeCovBarRed').style.width = isLow ? '4%' : '23%';
+    document.getElementById('kdeCovBarGrey').style.width = isLow ? '3%' : '7%';
+    document.querySelector('.kde-cov-note').textContent = isLow ? '93% data coverage across 77 KDEs' : '70% data coverage across 77 KDEs';
 
     document.getElementById('lastAssessEmpty').classList.add('hidden');
     document.getElementById('lastAssessInfo').classList.remove('hidden');
-    document.getElementById('lastAssessDate').textContent = '28 May 2026';
+    document.getElementById('lastAssessDate').textContent = isLow ? '15 May 2026' : '28 May 2026';
     document.getElementById('lastAssessBy').textContent = 'Assessed by Analyst';
-    document.getElementById('lastAssessScore').textContent = '280 / 2,890';
+    document.getElementById('lastAssessScore').textContent = isLow ? '65 / 2,890' : '280 / 2,890';
+
+    // Top 10 KDEs
+    renderTop10KDEs(activeAssessment);
+
+    // Pie chart
+    renderStagePieChart(stageScores);
 
   } else {
     animateGauge(0, 3150);
     document.getElementById('gaugeStatus').textContent = '🟢 Transparent';
+
+    if (document.getElementById('sellerName')) {
+      document.getElementById('sellerName').textContent = 'Mowi ASA';
+      document.getElementById('sellerAvatar').textContent = 'M';
+      document.getElementById('sellerAvatar').style.background = '#0369a1';
+      document.getElementById('buyerName').textContent = 'Maruha Nichiro';
+      document.getElementById('buyerAvatar').textContent = 'M';
+      document.getElementById('buyerAvatar').style.background = '#b45309';
+    }
+
     Object.keys(STAGE_MAX).forEach(code => {
       document.getElementById(`stageMiniScore-${code}`).innerHTML = `0 <span>/ ${STAGE_MAX[code]}</span>`;
-      // Still clickable but show empty state
       const card = document.getElementById(`stage-${code}`);
       if (card) {
         card.style.cursor = 'pointer';
         card.onclick = () => openStageModal(code, false);
       }
     });
+    renderTop10KDEs({ FV: [], CR: [], FCL: [], PP: [], SP: [], LFP: [] });
+    renderStagePieChart({ FV: 0, CR: 0, FCL: 0, PP: 0, SP: 0, LFP: 0 });
   }
 });
