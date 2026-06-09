@@ -1,1386 +1,827 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Company Assessment — Project Manhattan</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="icon" type="image/png" href="brand-logo.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="icon" type="image/png" href="brand-logo.png"/>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --primary: #1a6fdb;
-      --purple: #7c3aed;
-      --teal: #0d9488;
-      --amber: #f59e0b;
-      --red: #e63946;
-      --text: #1a1a2e;
-      --muted: #6b7280;
-      --border: #e0e3ed;
-      --bg: #f0f2f7;
-      --white: #ffffff;
-    }
-
-    body {
-      font-family: 'Poppins', sans-serif;
-      background: var(--bg);
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
-    }
-
-    /* ── VIEWPORT BLUR BG ── */
-    .ca-viewport {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      z-index: 1;
-    }
-
-    .ca-bg {
-      position: fixed;
-      inset: 0;
-      background: linear-gradient(135deg, #c8d8f0 0%, #dce5f5 30%, #d5e0f8 60%, #ddd5f5 100%);
-      filter: blur(16px);
-      transform: scale(1.1);
-      z-index: 0;
-    }
-
-    .ca-bg-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(235, 240, 250, 0.45);
-      z-index: 0;
-    }
-
-    /* ── SCREEN SYSTEM ── */
-    .screen {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-      z-index: 10;
-      opacity: 0;
-      transform: scale(0.97) translateY(8px);
-      transition: opacity 0.45s ease, transform 0.45s ease;
-      pointer-events: none;
-    }
-
-    .screen.active {
-      opacity: 1;
-      transform: scale(1) translateY(0);
-      pointer-events: auto;
-    }
-
-    .screen.exit-left {
-      opacity: 0;
-      transform: scale(0.96) translateX(-20px);
-      pointer-events: none;
-    }
-
-    /* ── MODAL CARD ── */
-    .modal-outer {
-      position: relative;
-      border-radius: 33px;
-      padding: 2px;
-      width: 100%;
-      max-width: 720px;
-      max-height: calc(100vh - 48px);
-      overflow: hidden;
-    }
-
-    .modal-outer::before {
-      content: '';
-      position: absolute;
-      inset: -10px;
-      border-radius: 44px;
-      background: var(--glow-colors, linear-gradient(135deg, #0ea5e9, #06b6d4, #0d9488, #1a6fdb));
-      background-size: 300% 300%;
-      animation: glowShift 4s ease infinite;
-      filter: blur(22px);
-      opacity: var(--glow-opacity, 0.7);
-      z-index: -1;
-      transition: opacity 1.5s ease;
-    }
-
-    .modal-outer::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: 33px;
-      background: var(--glow-colors, linear-gradient(135deg, #0ea5e9, #06b6d4, #0d9488, #1a6fdb));
-      background-size: 300% 300%;
-      animation: glowShift 4s ease infinite;
-      z-index: -1;
-    }
-
-    @keyframes glowShift {
-      0%   { background-position: 0% 50%; }
-      50%  { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
-
-    .modal-inner {
-      background: #fff;
-      border-radius: 31px;
-      padding: 36px 44px 32px;
-      overflow-y: auto;
-      max-height: calc(100vh - 52px);
-    }
-
-    /* ── LOGO & HEADER ── */
-    .modal-topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 28px;
-    }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .logo-icon {
-      width: 28px; height: 28px;
-      background: var(--primary);
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-    }
-
-    .logo-project { display: block; font-size: 8px; font-weight: 700; letter-spacing: 2px; color: #9aa0b4; text-transform: uppercase; line-height: 1.1; }
-    .logo-name { display: block; font-size: 13px; font-weight: 800; color: var(--text); line-height: 1.1; }
-
-    .next-btn {
-      background: var(--text);
-      color: #fff;
-      border: none;
-      border-radius: 999px;
-      padding: 8px 22px;
-      font-family: 'Poppins', sans-serif;
-      font-size: 13px; font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s, transform 0.15s;
-    }
-
-    .next-btn:hover { background: var(--primary); transform: translateY(-1px); }
-    .next-btn.proceed { background: var(--purple); }
-
-    .company-badge {
-      display: flex; align-items: center; gap: 8px;
-      background: #f4f6fb; border-radius: 999px;
-      padding: 5px 12px 5px 5px;
-    }
-
-    .company-badge-avatar {
-      width: 26px; height: 26px; border-radius: 50%;
-      background: #eef4fd; border: 1.5px solid #c7dcf8;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 10px; font-weight: 800; color: var(--primary);
-      overflow: hidden;
-    }
-
-    .company-badge-avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-    .company-badge-label { font-size: 9px; color: #9aa0b4; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-    .company-badge-name { font-size: 12px; font-weight: 700; color: var(--text); }
-
-    /* ── SLIDE SYSTEM ── */
-    .slides-wrap { position: relative; overflow: hidden; min-height: 300px; }
-
-    .slide {
-      position: absolute;
-      inset: 0;
-      opacity: 0;
-      transform: translateX(40px);
-      transition: opacity 0.4s ease, transform 0.4s ease;
-      pointer-events: none;
-    }
-
-    .slide.active {
-      opacity: 1;
-      transform: translateX(0);
-      pointer-events: auto;
-      position: relative;
-    }
-
-    .slide.exit { opacity: 0; transform: translateX(-40px); position: absolute; }
-
-    /* ── SCREEN 1 — IUU SLIDES ── */
-    .iuu-title { font-size: 28px; font-weight: 800; color: var(--text); letter-spacing: -0.8px; line-height: 1.2; margin-bottom: 8px; }
-    .iuu-title strong { color: var(--primary); }
-    .iuu-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
-
-    .iuu-cards-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .iuu-cards-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-
-    .iuu-card {
-      border-radius: 14px;
-      overflow: hidden;
-      position: relative;
-      height: 180px;
-      background: #1a1a2e;
-    }
-
-    .iuu-card-img {
-      width: 100%; height: 100%;
-      object-fit: cover; opacity: 0.7;
-    }
-
-    .iuu-card-label {
-      position: absolute;
-      bottom: 0; left: 0; right: 0;
-      padding: 24px 14px 12px;
-      background: linear-gradient(to top, rgba(10,16,40,0.85) 0%, transparent 100%);
-      font-size: 12px; font-weight: 600; color: #fff; line-height: 1.4;
-    }
-
-    .iuu-card-placeholder {
-      width: 100%; height: 100%;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 8px; background: #f4f6fb;
-    }
-
-    .iuu-card-placeholder-icon { font-size: 28px; }
-    .iuu-card-placeholder-text { font-size: 11px; color: #c0c4d0; font-weight: 600; text-align: center; padding: 0 12px; }
-
-    /* ── SCREEN 1B — WHAT IS MRI ── */
-    .mri-title { font-size: 26px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; line-height: 1.2; margin-bottom: 6px; }
-    .mri-sub { font-size: 12px; color: var(--muted); margin-bottom: 20px; }
-
-    .split-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; min-height: 240px; }
-    .split-layout.reverse { direction: rtl; }
-    .split-layout.reverse > * { direction: ltr; }
-
-    .split-tag { font-size: 11px; font-weight: 700; color: var(--primary); letter-spacing: 0.5px; margin-bottom: 8px; }
-    .split-heading { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
-    .split-body { font-size: 12.5px; color: #4a4e69; line-height: 1.75; }
-
-    .info-chips { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
-    .info-chip { display: flex; align-items: center; gap: 10px; background: #f4f6fb; border-radius: 10px; padding: 7px 12px; }
-    .chip-text { font-size: 12px; color: var(--text); font-weight: 500; }
-
-    .split-image {
-      border-radius: 16px;
-      height: 200px;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 8px;
-      background: #f4f6fb;
-    }
-
-    .split-image img { width: 100%; height: 100%; object-fit: cover; border-radius: 16px; }
-    .split-image-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; width: 100%; height: 100%; }
-    .split-img-icon { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; }
-    .split-img-label { font-size: 11px; font-weight: 600; color: #c0c4d0; }
-
-    /* ── DOTS ── */
-    .dots {
-      display: flex; align-items: center; justify-content: center;
-      gap: 7px; margin-top: 20px;
-    }
-
-    .dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: #e0e3ed; cursor: pointer;
-      transition: background 0.2s, transform 0.2s;
-    }
-
-    .dot.active { background: var(--text); transform: scale(1.25); }
-
-    /* ── SCREEN 2 — CODE ENTRY ── */
-    .big-title { font-size: 34px; font-weight: 800; color: var(--text); letter-spacing: -1px; margin-bottom: 8px; }
-    .big-sub { font-size: 13px; color: var(--muted); margin-bottom: 32px; max-width: 460px; line-height: 1.6; }
-
-    .code-label { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 14px; }
-
-    .code-inputs {
-      display: flex; align-items: center; gap: 5px;
-      margin-bottom: 28px;
-    }
-
-    .code-box {
-      width: 38px; height: 42px;
-      border: 1px solid var(--border);
-      border-radius: 9px;
-      font-size: 17px; font-weight: 700;
-      font-family: 'DM Mono', monospace;
-      color: var(--text); text-align: center;
-      outline: none; background: #fff;
-      transition: border-color 0.2s, box-shadow 0.2s;
-      text-transform: uppercase;
-    }
-
-    .code-box:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(124,58,237,0.1); }
-
-    .code-sep { font-size: 14px; color: #d0d4e0; margin: 0 2px; user-select: none; }
-
-    .btn-purple {
-      background: var(--purple); color: #fff;
-      border: none; border-radius: 999px;
-      padding: 10px 28px;
-      font-family: 'Poppins', sans-serif;
-      font-size: 13px; font-weight: 600;
-      cursor: pointer;
-      transition: background 0.2s, transform 0.15s;
-      margin-bottom: 60px;
-    }
-
-    .btn-purple:hover { background: #6d28d9; transform: translateY(-1px); }
-
-    .code-footer { font-size: 11.5px; color: #b0b4c4; text-align: center; }
-
-    /* ── SCREEN 3 — WELCOME ── */
-    .welcome-title { font-size: 36px; font-weight: 800; color: var(--text); letter-spacing: -1px; margin-bottom: 6px; }
-    .welcome-title span { font-weight: 300; color: #4a4e69; }
-    .confirm-title { font-size: 14px; font-weight: 700; color: var(--text); margin-top: 20px; margin-bottom: 5px; }
-    .confirm-body { font-size: 12.5px; color: var(--muted); line-height: 1.65; margin-bottom: 22px; max-width: 500px; }
-
-    .company-card {
-      display: flex; align-items: center; gap: 16px;
-      background: #f9fafc; border: 1px solid #e8eaf0;
-      border-radius: 14px; padding: 16px 20px;
-      margin-bottom: 36px;
-    }
-
-    .company-logo {
-      width: 52px; height: 52px; border-radius: 50%;
-      background: #eef4fd; border: 2px solid #e0e8f8;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px; font-weight: 800; color: var(--primary);
-      flex-shrink: 0; overflow: hidden;
-    }
-
-    .company-logo img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
-    .company-name { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
-    .company-industry { font-size: 12px; color: #9aa0b4; margin-bottom: 6px; }
-    .company-gln {
-      display: inline-flex; align-items: center; gap: 5px;
-      font-size: 11px; font-weight: 600; color: var(--primary);
-      background: #eef4fd; padding: 3px 10px; border-radius: 20px;
-      border: 1px solid #c7dcf8;
-    }
-
-    .row-actions { display: flex; justify-content: flex-end; gap: 10px; }
-
-    .btn-outline {
-      background: #fff; color: #4a4e69;
-      border: 1.5px solid var(--border);
-      border-radius: 999px; padding: 9px 22px;
-      font-family: 'Poppins', sans-serif;
-      font-size: 13px; font-weight: 600; cursor: pointer;
-      transition: border-color 0.2s;
-    }
-
-    .btn-outline:hover { border-color: var(--text); color: var(--text); }
-
-    /* ── SCREEN 4 — PRODUCTS ── */
-    .products-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 12px;
-      margin-bottom: 24px;
-    }
-
-    .product-slot {
-      aspect-ratio: 1;
-      border: 1.5px dashed #d0d4e0;
-      border-radius: 14px;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 8px; cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-      background: #f9fafc;
-      position: relative;
-    }
-
-    .product-slot:hover { border-color: var(--purple); background: #faf5ff; }
-
-    .product-slot.filled { border-style: solid; border-color: var(--primary); background: #eef4fd; cursor: default; }
-
-    .product-slot-icon { font-size: 24px; color: #c0c4d0; }
-    .product-slot-label { font-size: 11px; font-weight: 600; color: #c0c4d0; }
-    .product-slot-name { font-size: 11px; font-weight: 700; color: var(--primary); text-align: center; padding: 0 6px; line-height: 1.3; }
-    .product-slot-type { font-size: 10px; color: #9aa0b4; text-align: center; }
-
-    .product-slot-edit {
-      position: absolute; top: 6px; right: 6px;
-      width: 20px; height: 20px; border-radius: 50%;
-      background: var(--primary); color: #fff;
-      border: none; font-size: 10px; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-    }
-
-    /* ── PRODUCT FORM OVERLAY ── */
-    .overlay {
-      display: none; position: fixed; inset: 0;
-      background: rgba(10,16,40,0.55);
-      backdrop-filter: blur(6px);
-      z-index: 100;
-      align-items: center; justify-content: center;
-      padding: 24px;
-    }
-
-    .overlay.open { display: flex; }
-
-    .overlay-card {
-      background: #fff; border-radius: 24px;
-      width: 100%; max-width: 780px;
-      max-height: 90vh; overflow-y: auto;
-      box-shadow: 0 24px 64px rgba(0,0,0,0.18);
-      padding: 32px 36px 28px;
-    }
-
-    .overlay-title { font-size: 20px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
-    .overlay-sub { font-size: 12px; color: #9aa0b4; margin-bottom: 22px; }
-
-    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 24px; margin-bottom: 18px; }
-    .form-group { display: flex; flex-direction: column; gap: 5px; }
-    .form-label { font-size: 11px; font-weight: 600; color: var(--muted); }
-
-    .form-input {
-      padding: 8px 12px; border: 1px solid var(--border);
-      border-radius: 8px;
-      font-family: 'Poppins', sans-serif;
-      font-size: 12px; color: var(--text);
-      outline: none; background: #fff;
-      transition: border-color 0.2s; width: 100%;
-    }
-
-    .form-input:focus { border-color: var(--purple); }
-
-    /* Species searchable */
-    .species-wrap { position: relative; }
-    .species-dropdown {
-      position: absolute; top: 100%; left: 0; right: 0;
-      background: #fff; border: 1px solid var(--border);
-      border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-      max-height: 180px; overflow-y: auto; z-index: 200; display: none;
-    }
-    .species-dropdown.open { display: block; }
-    .species-option { padding: 8px 12px; cursor: pointer; transition: background 0.15s; }
-    .species-option:hover { background: #f4f6fb; }
-    .species-name { font-size: 12px; font-weight: 600; color: var(--text); }
-    .species-sci { font-size: 10px; color: #9aa0b4; font-style: italic; }
-
-    /* Market multi-select */
-    .market-wrap { position: relative; }
-    .market-selected {
-      min-height: 36px; border: 1px solid var(--border);
-      border-radius: 8px; padding: 4px 8px;
-      display: flex; flex-wrap: wrap; gap: 4px;
-      cursor: pointer; background: #fff;
-      align-items: center; transition: border-color 0.2s;
-    }
-    .market-selected:hover { border-color: var(--purple); }
-    .market-chip {
-      display: inline-flex; align-items: center; gap: 4px;
-      background: #eef4fd; border-radius: 6px;
-      padding: 2px 8px; font-size: 11px; font-weight: 600; color: var(--primary);
-    }
-    .market-chip-x { cursor: pointer; color: #9aa0b4; font-size: 12px; }
-    .market-chip-x:hover { color: var(--red); }
-    .market-placeholder { font-size: 12px; color: #c0c4d0; padding: 2px 4px; }
-    .market-dropdown {
-      position: absolute; top: 100%; left: 0; right: 0;
-      background: #fff; border: 1px solid var(--border);
-      border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-      max-height: 200px; overflow-y: auto; z-index: 200; display: none;
-    }
-    .market-dropdown.open { display: block; }
-    .market-search { padding: 8px 12px; border-bottom: 1px solid #f0f2f8; }
-    .market-search input { width: 100%; border: none; outline: none; font-family: 'Poppins', sans-serif; font-size: 12px; color: var(--text); background: transparent; }
-    .market-option {
-      display: flex; align-items: center; gap: 8px;
-      padding: 8px 12px; cursor: pointer;
-      font-size: 12px; color: var(--text);
-      transition: background 0.15s;
-    }
-    .market-option:hover { background: #f4f6fb; }
-    .market-option.selected { background: #eef4fd; color: var(--primary); font-weight: 600; }
-
-    /* Supply chain section */
-    .sc-section {
-      background: #f9fafc; border: 1px solid #e8eaf0;
-      border-radius: 12px; padding: 14px 16px; margin-bottom: 20px;
-    }
-    .sc-section-label { font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .sc-preview { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-height: 32px; margin-bottom: 10px; }
-    .sc-node-chip { display: inline-flex; align-items: center; gap: 4px; background: #eef4fd; border: 1px solid #c7dcf8; border-radius: 8px; padding: 4px 10px; font-size: 11px; font-weight: 600; color: var(--primary); }
-    .sc-empty-text { font-size: 12px; color: #c0c4d0; font-style: italic; }
-    .sc-arrow { color: #c0c4d0; font-size: 14px; }
-
-    .btn-build-sc {
-      background: var(--primary); color: #fff;
-      border: none; border-radius: 8px;
-      padding: 9px 18px;
-      font-family: 'Poppins', sans-serif;
-      font-size: 12px; font-weight: 600;
-      cursor: pointer; width: 100%;
-      transition: background 0.2s;
-    }
-    .btn-build-sc:hover { background: #1558b0; }
-
-    .overlay-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 4px; }
-
-    /* ── SC BUILDER OVERLAY ── */
-    .sc-builder-overlay {
-      display: none; position: fixed; inset: 0;
-      background: rgba(10,16,40,0.6);
-      backdrop-filter: blur(8px);
-      z-index: 200; align-items: center; justify-content: center;
-      padding: 24px;
-    }
-    .sc-builder-overlay.open { display: flex; }
-
-    .sc-builder {
-      background: #fff; border-radius: 24px;
-      width: 100%; max-width: 900px; height: 82vh;
-      display: flex; flex-direction: column;
-      box-shadow: 0 24px 64px rgba(0,0,0,0.2);
-      overflow: hidden;
-    }
-
-    .sc-builder-header {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 18px 24px 14px; border-bottom: 1px solid #f0f2f8;
-    }
-
-    .sc-builder-title { font-size: 16px; font-weight: 800; color: var(--text); }
-    .sc-builder-sub { font-size: 12px; color: #9aa0b4; margin-top: 2px; }
-
-    .sc-close-btn {
-      width: 32px; height: 32px; border-radius: 50%;
-      background: #f4f6fb; border: none; cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px; color: var(--muted);
-      transition: background 0.15s;
-    }
-    .sc-close-btn:hover { background: #e8eaf0; }
-
-    .sc-builder-body { display: flex; flex: 1; overflow: hidden; }
-
-    .sc-palette {
-      width: 185px; flex-shrink: 0;
-      border-right: 1px solid #f0f2f8;
-      padding: 14px 12px; overflow-y: auto;
-    }
-
-    .sc-palette-title { font-size: 10px; font-weight: 700; color: #9aa0b4; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px; }
-
-    .palette-node {
-      display: flex; align-items: center; gap: 8px;
-      background: #f9fafc; border: 1px solid #e8eaf0;
-      border-radius: 10px; padding: 8px 10px; margin-bottom: 7px;
-      cursor: grab; user-select: none;
-      transition: box-shadow 0.15s, transform 0.15s;
-    }
-    .palette-node:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.08); transform: translateY(-1px); }
-    .palette-node-icon { width: 26px; height: 26px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
-    .palette-node-label { font-size: 11px; font-weight: 600; color: var(--text); line-height: 1.3; }
-
-    .sc-canvas {
-      flex: 1; position: relative;
-      background: #fafbfc;
-      background-image: radial-gradient(circle, #d0d4e0 1px, transparent 1px);
-      background-size: 24px 24px;
-      overflow: hidden;
-    }
-
-    .sc-canvas-hint {
-      position: absolute; inset: 0;
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 8px;
-      pointer-events: none; transition: opacity 0.3s;
-    }
-    .sc-canvas-hint.hidden { opacity: 0; }
-    .sc-hint-icon { font-size: 32px; }
-    .sc-hint-text { font-size: 13px; color: #c0c4d0; font-weight: 500; }
-
-    .connections-svg { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
-
-    .canvas-node {
-      position: absolute; background: #fff;
-      border: 2px solid var(--border); border-radius: 12px;
-      padding: 10px 14px; min-width: 140px;
-      cursor: move; user-select: none;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08); z-index: 10;
-      transition: border-color 0.15s;
-    }
-    .canvas-node:hover { border-color: var(--purple); }
-
-    .canvas-node-inner { display: flex; align-items: center; gap: 8px; }
-    .canvas-node-icon { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
-    .canvas-node-label { font-size: 11px; font-weight: 700; color: var(--text); line-height: 1.3; }
-    .node-owner-badge { margin-top: 6px; margin-left: 36px; font-size: 10px; font-weight: 600; color: var(--purple); background: #f4f0ff; border-radius: 6px; padding: 2px 7px; display: none; }
-    .node-owner-badge.show { display: inline-block; }
-
-    .node-delete {
-      position: absolute; top: -7px; right: -7px;
-      width: 18px; height: 18px; background: var(--red); color: #fff;
-      border-radius: 50%; border: none; font-size: 11px;
-      cursor: pointer; display: none; align-items: center; justify-content: center;
-    }
-    .canvas-node:hover .node-delete { display: flex; }
-
-    .port {
-      position: absolute; width: 11px; height: 11px; border-radius: 50%;
-      background: #fff; border: 2px solid #c0c4d0; cursor: crosshair; z-index: 15;
-      transition: border-color 0.15s;
-    }
-    .port:hover { border-color: var(--purple); }
-    .port.right { right: -6px; top: 50%; transform: translateY(-50%); }
-    .port.left { left: -6px; top: 50%; transform: translateY(-50%); }
-
-    /* Owner popup */
-    .owner-popup {
-      position: absolute; background: #fff;
-      border: 1px solid var(--border); border-radius: 14px;
-      padding: 14px 16px; box-shadow: 0 8px 28px rgba(0,0,0,0.14);
-      z-index: 50; min-width: 200px; display: none;
-    }
-    .owner-popup.open { display: block; }
-    .owner-popup-title { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
-    .owner-option { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; cursor: pointer; transition: background 0.15s; margin-bottom: 3px; }
-    .owner-option:hover { background: #f4f6fb; }
-    .owner-option input[type="radio"] { accent-color: var(--purple); cursor: pointer; }
-    .owner-option label { font-size: 12px; color: #4a4e69; font-weight: 500; cursor: pointer; }
-    .owner-popup-done { width: 100%; margin-top: 10px; background: var(--purple); color: #fff; border: none; border-radius: 8px; padding: 7px; font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; }
-
-    .sc-builder-footer {
-      padding: 12px 24px; border-top: 1px solid #f0f2f8;
-      display: flex; align-items: center; justify-content: space-between;
-    }
-    .chain-summary { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; flex: 1; margin-right: 16px; }
-    .sc-footer-actions { display: flex; gap: 10px; }
-    .btn-clear-sc { background: #fff; color: var(--red); border: 1.5px solid #fecaca; border-radius: 999px; padding: 7px 16px; font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .btn-save-sc { background: var(--purple); color: #fff; border: none; border-radius: 999px; padding: 7px 20px; font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; }
-    .btn-cancel-sc { background: #fff; color: var(--muted); border: 1.5px solid var(--border); border-radius: 999px; padding: 7px 16px; font-family: 'Poppins', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; }
-
-    /* ── SCREEN 5 — KDE QUESTIONS ── */
-    .kde-progress-bar {
-      display: flex; align-items: center; gap: 10px;
-      margin-bottom: 24px;
-    }
-    .kde-progress-track {
-      flex: 1; height: 4px; background: #f0f2f7; border-radius: 999px; overflow: hidden;
-    }
-    .kde-progress-fill { height: 100%; background: var(--purple); border-radius: 999px; transition: width 0.4s ease; }
-    .kde-progress-label { font-size: 11px; font-weight: 600; color: #9aa0b4; white-space: nowrap; }
-
-    .kde-stage-header { margin-bottom: 20px; }
-    .kde-stage-badge {
-      display: inline-flex; align-items: center; gap: 6px;
-      background: #f4f0ff; border-radius: 8px; padding: 4px 12px;
-      font-size: 11px; font-weight: 700; color: var(--purple);
-      margin-bottom: 8px;
-    }
-    .kde-stage-title { font-size: 22px; font-weight: 800; color: var(--text); margin-bottom: 4px; }
-    .kde-stage-sub { font-size: 12px; color: var(--muted); }
-
-    .kde-question {
-      background: #f9fafc; border: 1px solid #e8eaf0;
-      border-radius: 12px; padding: 16px 18px; margin-bottom: 12px;
-      transition: border-color 0.2s;
-    }
-    .kde-question.answered { border-color: #c7dcf8; background: #fafcff; }
-
-    .kde-q-text { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 12px; line-height: 1.5; }
-
-    .kde-options { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 0; }
-
-    .kde-option {
-      display: flex; align-items: center; gap: 6px;
-      padding: 7px 14px; border-radius: 999px;
-      border: 1.5px solid var(--border);
-      font-size: 12px; font-weight: 600; color: var(--muted);
-      cursor: pointer; transition: all 0.15s; background: #fff;
-      user-select: none;
-    }
-    .kde-option:hover { border-color: var(--purple); color: var(--purple); }
-    .kde-option.selected-available { border-color: #16a34a; color: #16a34a; background: #f0fdf4; }
-    .kde-option.selected-partial { border-color: var(--amber); color: #92400e; background: #fffbeb; }
-    .kde-option.selected-unavailable { border-color: var(--red); color: var(--red); background: #fff5f5; }
-
-    .kde-partial-box {
-      margin-top: 10px;
-      display: none;
-    }
-    .kde-partial-box.show { display: block; }
-    .kde-partial-input {
-      width: 100%; padding: 8px 12px;
-      border: 1px solid var(--border); border-radius: 8px;
-      font-family: 'Poppins', sans-serif; font-size: 12px; color: var(--text);
-      outline: none; resize: none;
-      transition: border-color 0.2s;
-    }
-    .kde-partial-input:focus { border-color: var(--amber); }
-
-    .kde-evidence-row {
-      display: flex; align-items: center; gap: 8px; margin-top: 10px;
-      display: none;
-    }
-    .kde-evidence-row.show { display: flex; }
-    .kde-evidence-btn {
-      display: flex; align-items: center; gap: 5px;
-      padding: 5px 12px; border-radius: 8px;
-      background: #f4f6fb; border: 1px solid var(--border);
-      font-size: 11px; font-weight: 600; color: var(--muted);
-      cursor: pointer; transition: background 0.15s;
-    }
-    .kde-evidence-btn:hover { background: #eef4fd; border-color: var(--primary); color: var(--primary); }
-
-    .kde-nav-row { display: flex; align-items: center; justify-content: space-between; margin-top: 24px; }
-    .btn-kde-back { background: #fff; color: var(--muted); border: 1.5px solid var(--border); border-radius: 999px; padding: 10px 22px; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; }
-    .btn-kde-next { background: var(--purple); color: #fff; border: none; border-radius: 999px; padding: 10px 26px; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; }
-    .btn-kde-next:hover { background: #6d28d9; }
-
-    /* ── SCREEN 6 — PREFERENCES ── */
-    .pref-title { font-size: 24px; font-weight: 800; color: var(--text); margin-bottom: 6px; }
-    .pref-sub { font-size: 13px; color: var(--muted); margin-bottom: 28px; line-height: 1.6; max-width: 480px; }
-
-    .pref-options { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
-
-    .pref-card {
-      display: flex; align-items: center; gap: 16px;
-      border: 2px solid var(--border); border-radius: 14px;
-      padding: 16px 20px; cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
-    }
-    .pref-card:hover { border-color: var(--purple); }
-    .pref-card.selected { border-color: var(--purple); background: #faf5ff; }
-    .pref-card-icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
-    .pref-card-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
-    .pref-card-desc { font-size: 12px; color: var(--muted); }
-    .pref-radio { margin-left: auto; width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: border-color 0.2s; }
-    .pref-card.selected .pref-radio { border-color: var(--purple); background: var(--purple); }
-    .pref-card.selected .pref-radio::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #fff; }
-
-    .disclaimer {
-      background: #f9fafc; border: 1px solid #e8eaf0;
-      border-radius: 12px; padding: 14px 16px; margin-bottom: 28px;
-      font-size: 12px; color: #6b7280; line-height: 1.7;
-    }
-    .disclaimer strong { color: var(--text); }
-
-    /* ── SCREEN 7 — THANK YOU ── */
-    .thankyou-wrap { text-align: center; padding: 20px 0; }
-    .thankyou-icon { font-size: 56px; margin-bottom: 16px; }
-    .thankyou-title { font-size: 28px; font-weight: 800; color: var(--text); margin-bottom: 8px; }
-    .thankyou-sub { font-size: 14px; color: var(--muted); line-height: 1.7; max-width: 420px; margin: 0 auto 28px; }
-    .thankyou-badge {
-      display: inline-flex; align-items: center; gap: 8px;
-      background: #f4f0ff; border-radius: 999px; padding: 8px 20px;
-      font-size: 13px; font-weight: 700; color: var(--purple); margin-bottom: 28px;
-    }
-    .btn-back-home { background: var(--primary); color: #fff; border: none; border-radius: 999px; padding: 12px 32px; font-family: 'Poppins', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; }
-
-    /* ── UTILS ── */
-    .hidden { display: none !important; }
-    .loading-text { font-size: 12px; color: #c0c4d0; font-style: italic; padding: 12px; }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{
+      font-family:'Poppins',sans-serif;
+      background:#d4dfe8;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+
+    /* ── SCREEN SYSTEM ───────────────────────── */
+    .screen{
+      position:fixed;inset:0;
+      display:flex;align-items:center;justify-content:center;
+      padding:24px 32px;
+      z-index:10;
+      opacity:0;pointer-events:none;
+      transition:opacity 0.4s ease;
+    }
+    .screen.active{opacity:1;pointer-events:auto;}
+
+    /* ── MODAL WRAPPER (controls glow) ───────── */
+    .mw{
+      position:relative;
+      width:100%;
+      max-width:calc(100vw - 48px);
+      border-radius:33px;
+    }
+
+    /* OUTER GLOW — bleeds outward */
+    .glow-ocean .mw::before{
+      content:'';
+      position:absolute;
+      inset:-20px;
+      border-radius:52px;
+      background:linear-gradient(135deg,#0ea5e9,#06b6d4,#0d9488,#22d3ee,#0ea5e9);
+      background-size:300% 300%;
+      animation:glowPulse 5s ease infinite;
+      filter:blur(28px);
+      opacity:0.72;
+      z-index:-1;
+    }
+    .glow-manhattan .mw::before{
+      content:'';
+      position:absolute;
+      inset:-20px;
+      border-radius:52px;
+      background:linear-gradient(135deg,#1a6fdb,#7c3aed,#0d9488,#1a6fdb);
+      background-size:300% 300%;
+      animation:glowPulse 5s ease infinite;
+      filter:blur(28px);
+      opacity:0.65;
+      z-index:-1;
+    }
+    @keyframes glowPulse{
+      0%{background-position:0% 50%;}
+      50%{background-position:100% 50%;}
+      100%{background-position:0% 50%;}
+    }
+
+    /* KDE content scrolls internally */
+    #kcontent{
+      flex:1;
+      overflow-y:auto;
+      min-height:0;
+      padding-right:2px;
+    }
+    #kcontent::-webkit-scrollbar{width:3px;}
+    #kcontent::-webkit-scrollbar-thumb{background:#e0e3ed;border-radius:999px;}
+    #kcontent::-webkit-scrollbar-track{background:transparent;}
+
+    /* Slides area fills available space */
+    .slides-area{
+      position:relative;
+      overflow:hidden;
+      flex:1;
+      min-height:0;
+    }
+    .slide{
+      position:absolute;inset:0;
+      opacity:0;transform:translateX(40px);
+      transition:opacity 0.38s ease,transform 0.38s ease;
+      pointer-events:none;
+      overflow-y:auto;
+    }
+    .slide::-webkit-scrollbar{display:none;}
+    .slide.active{
+      opacity:1;transform:translateX(0);
+      pointer-events:auto;position:relative;
+      height:100%;
+    }
+    .slide.out{opacity:0;transform:translateX(-40px);position:absolute;}
+
+    /* Nav and dots stay fixed at bottom */
+    .dots{flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;}
+    .knav{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;margin-top:16px;}
+    .kprog{flex-shrink:0;}
+    .brow{flex-shrink:0;}
+
+    /* Thin border ring */
+    .glow-ocean .mw::after{
+      content:'';position:absolute;inset:0;border-radius:33px;
+      background:linear-gradient(135deg,#0ea5e9,#06b6d4,#0d9488,#38bdf8);
+      background-size:300% 300%;animation:glowShift 4s ease infinite;
+      -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+      -webkit-mask-composite:xor;mask-composite:exclude;
+      padding:1.5px;z-index:-1;
+    }
+    .glow-manhattan .mw::after{
+      content:'';position:absolute;inset:0;border-radius:33px;
+      background:linear-gradient(135deg,#1a6fdb,#7c3aed,#0d9488);
+      background-size:300% 300%;animation:glowShift 4s ease infinite;
+      -webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);
+      -webkit-mask-composite:xor;mask-composite:exclude;
+      padding:1.5px;z-index:-1;
+    }
+    @keyframes glowShift{
+      0%{background-position:0% 50%;}
+      50%{background-position:100% 50%;}
+      100%{background-position:0% 50%;}
+    }
+
+    /* ── MODAL CARD ───────────────────────────── */
+    .mc{
+      background:#fff;
+      border-radius:33px;
+      padding:28px 40px 24px;
+      width:100%;
+      height:calc(100vh - 48px);
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+    .no-glow .mw::before,.no-glow .mw::after{display:none;}
+    .no-glow .mc{box-shadow:0 4px 32px rgba(0,0,0,0.1);}
+
+    /* ── TOPBAR ───────────────────────────────── */
+    .tb{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px;}
+
+    .logo{display:flex;align-items:center;gap:10px;}
+    .logo-icon{
+      width:36px;height:36px;background:#1a6fdb;
+      border-radius:10px;display:flex;align-items:center;justify-content:center;
+    }
+    .logo-text{display:flex;flex-direction:column;line-height:1.1;}
+    .logo-project{font-size:9px;font-weight:700;letter-spacing:2.5px;color:#9aa0b4;text-transform:uppercase;}
+    .logo-name{font-size:16px;font-weight:800;color:#1a1a2e;}
+
+    .btn-next{
+      background:#1a1a2e;color:#fff;border:none;
+      border-radius:999px;padding:10px 26px;
+      font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;
+      cursor:pointer;transition:background 0.2s;
+    }
+    .btn-next:hover{background:#2d2d50;}
+    .btn-next.proceed{background:#8b5cf6;}
+    .btn-next.proceed:hover{background:#7c3aed;}
+
+    /* ── SLIDES ───────────────────────────────── */
+    .slides-area{position:relative;overflow:hidden;}
+    .slide{
+      position:absolute;inset:0;
+      opacity:0;transform:translateX(40px);
+      transition:opacity 0.38s ease,transform 0.38s ease;
+      pointer-events:none;
+    }
+    .slide.active{opacity:1;transform:translateX(0);pointer-events:auto;position:relative;}
+    .slide.out{opacity:0;transform:translateX(-40px);position:absolute;}
+
+    /* ── DOTS ─────────────────────────────────── */
+    .dots{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:20px;}
+    .dot{
+      width:8px;height:8px;border-radius:50%;
+      background:#dde3ef;cursor:pointer;
+      transition:background 0.2s,transform 0.2s;
+    }
+    .dot.on{background:#1a1a2e;transform:scale(1.3);}
+
+    /* ── IUU SLIDES ───────────────────────────── */
+    .iuu-h{font-size:28px;font-weight:800;color:#1a1a2e;letter-spacing:-0.5px;line-height:1.2;margin-bottom:7px;}
+    .iuu-sub{font-size:13px;color:#6b7280;margin-bottom:22px;line-height:1.6;}
+    .iuu-g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+    .iuu-g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+    .iuu-card{
+      border-radius:16px;overflow:hidden;
+      position:relative;height:190px;
+      background:#14172a;
+    }
+    .iuu-ph{
+      width:100%;height:100%;
+      display:flex;flex-direction:column;
+      align-items:center;justify-content:center;gap:8px;
+      padding:16px;
+    }
+    .iuu-ph-icon{font-size:30px;opacity:0.6;}
+    .iuu-ph-txt{font-size:11px;font-weight:600;color:rgba(255,255,255,0.35);text-align:center;}
+    .iuu-cap{
+      position:absolute;bottom:0;left:0;right:0;
+      padding:28px 14px 14px;
+      background:linear-gradient(to top,rgba(5,8,22,0.92),transparent);
+      font-size:12px;font-weight:700;color:#fff;line-height:1.45;
+    }
+
+    /* ── SPLIT LAYOUT (1B/1C) ─────────────────── */
+    .split{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:center;min-height:260px;}
+    .split.flip{direction:rtl;}
+    .split.flip>*{direction:ltr;}
+    .stag{font-size:11px;font-weight:700;color:#1a6fdb;margin-bottom:8px;letter-spacing:0.3px;}
+    .sh{font-size:16px;font-weight:700;color:#1a1a2e;margin-bottom:9px;line-height:1.35;}
+    .sp{font-size:13px;color:#4a4e69;line-height:1.75;}
+    .schips{display:flex;flex-direction:column;gap:7px;margin-top:13px;}
+    .schip{display:flex;align-items:center;gap:10px;background:#f4f6fb;border-radius:10px;padding:8px 13px;font-size:12px;color:#1a1a2e;font-weight:500;}
+    .simg{border-radius:18px;height:210px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;}
+    .simg-icon{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;}
+    .simg-lbl{font-size:11px;font-weight:600;color:#c0c4d0;}
+    .mri-title{font-size:26px;font-weight:800;color:#1a1a2e;margin-bottom:5px;}
+    .mri-sub{font-size:12px;color:#9aa0b4;margin-bottom:20px;}
+
+    /* ── CODE SCREEN ──────────────────────────── */
+    .big-h{font-size:34px;font-weight:800;color:#1a1a2e;letter-spacing:-0.8px;margin-bottom:7px;}
+    .big-sub{font-size:13px;color:#6b7280;margin-bottom:32px;line-height:1.6;max-width:450px;}
+    .code-lbl{font-size:13px;font-weight:600;color:#1a1a2e;margin-bottom:14px;}
+    .code-row{display:flex;align-items:center;gap:6px;margin-bottom:28px;}
+    .cbox{
+      width:40px;height:46px;border:1px solid #dde1ed;
+      border-radius:10px;font-size:18px;font-weight:700;
+      font-family:'DM Mono',monospace;color:#1a1a2e;
+      text-align:center;outline:none;background:#fff;
+      transition:border-color 0.2s,box-shadow 0.2s;
+      text-transform:uppercase;
+    }
+    .cbox:focus{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,0.1);}
+    .csep{font-size:15px;color:#d0d4e0;user-select:none;}
+
+    /* ── BUTTONS ──────────────────────────────── */
+    .btn-purple{
+      background:#8b5cf6;color:#fff;border:none;
+      border-radius:999px;padding:11px 30px;
+      font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;
+      cursor:pointer;transition:background 0.2s;
+    }
+    .btn-purple:hover{background:#7c3aed;}
+    .btn-ghost{
+      background:#f4f6fb;color:#6b7280;border:none;
+      border-radius:999px;padding:11px 24px;
+      font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;
+      cursor:pointer;transition:background 0.2s;
+    }
+    .btn-ghost:hover{background:#e8eaf0;}
+    .brow{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:26px;}
+    .code-footer{font-size:12px;color:#b8bcc9;text-align:center;}
+
+    /* ── WELCOME ──────────────────────────────── */
+    .wh{font-size:36px;font-weight:800;color:#1a1a2e;letter-spacing:-0.8px;margin-bottom:24px;}
+    .wh span{font-weight:300;}
+    .clbl{font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:5px;}
+    .csub{font-size:13px;color:#6b7280;line-height:1.65;margin-bottom:22px;max-width:500px;}
+    .ccard{
+      display:flex;align-items:center;gap:16px;
+      background:#f9fafc;border:1px solid #e8eaf0;
+      border-radius:14px;padding:18px 22px;
+    }
+    .clogo{
+      width:56px;height:56px;border-radius:50%;
+      background:#eef4fd;border:2px solid #e0e8f8;
+      display:flex;align-items:center;justify-content:center;
+      font-size:20px;font-weight:800;color:#1a6fdb;
+      flex-shrink:0;overflow:hidden;
+    }
+    .clogo img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+    .cname{font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:2px;}
+    .cind{font-size:12px;color:#9aa0b4;margin-bottom:7px;}
+    .cgln{
+      display:inline-flex;align-items:center;gap:5px;
+      font-size:11px;font-weight:600;color:#1a6fdb;
+      background:#eef4fd;padding:3px 11px;
+      border-radius:20px;border:1px solid #c7dcf8;
+    }
+
+    /* ── PRODUCTS ─────────────────────────────── */
+    .pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+    .pslot{
+      aspect-ratio:1;border:1.5px dashed #cdd1de;
+      border-radius:14px;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;
+      gap:7px;cursor:pointer;background:#f9fafc;
+      transition:border-color 0.2s,background 0.2s;position:relative;
+    }
+    .pslot:hover{border-color:#8b5cf6;background:#faf5ff;}
+    .pslot.filled{border-style:solid;border-color:#1a6fdb;background:#eef4fd;}
+    .pplus{font-size:24px;color:#c8ccd8;}
+    .plbl{font-size:11px;font-weight:600;color:#c8ccd8;}
+    .pname{font-size:11px;font-weight:700;color:#1a6fdb;text-align:center;padding:0 6px;line-height:1.3;}
+    .ptype{font-size:10px;color:#9aa0b4;text-align:center;}
+    .pedit{position:absolute;top:7px;right:7px;width:20px;height:20px;border-radius:50%;background:#1a6fdb;color:#fff;border:none;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+
+    /* ── OVERLAY ──────────────────────────────── */
+    .ov{display:none;position:fixed;inset:0;background:rgba(8,12,32,0.5);backdrop-filter:blur(6px);z-index:200;align-items:center;justify-content:center;padding:24px;}
+    .ov.open{display:flex;}
+    .ovc{background:#fff;border-radius:24px;width:100%;max-width:780px;max-height:90vh;overflow-y:auto;padding:30px 36px 26px;box-shadow:0 20px 60px rgba(0,0,0,0.16);}
+    .ovhd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;}
+    .ovtitle{font-size:20px;font-weight:800;color:#1a1a2e;}
+    .ovsub{font-size:12px;color:#9aa0b4;margin-top:3px;}
+    .ovcls{width:30px;height:30px;border-radius:50%;background:#f4f6fb;border:none;cursor:pointer;font-size:17px;color:#6b7280;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .ovcls:hover{background:#e8eaf0;}
+
+    .fg{display:grid;grid-template-columns:1fr 1fr;gap:13px 22px;margin-bottom:16px;}
+    .fgg{display:flex;flex-direction:column;gap:5px;}
+    .fl{font-size:11px;font-weight:600;color:#6b7280;}
+    .fi{padding:9px 13px;border:1px solid #e0e3ed;border-radius:9px;font-family:'Poppins',sans-serif;font-size:12px;color:#1a1a2e;outline:none;background:#fff;width:100%;transition:border-color 0.2s;}
+    .fi:focus{border-color:#8b5cf6;}
+
+    /* Species */
+    .spw{position:relative;}
+    .spdd{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e0e3ed;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,0.1);max-height:180px;overflow-y:auto;z-index:300;display:none;}
+    .spdd.open{display:block;}
+    .spopt{padding:8px 13px;cursor:pointer;transition:background 0.15s;}
+    .spopt:hover{background:#f4f6fb;}
+    .spn{font-size:12px;font-weight:600;color:#1a1a2e;}
+    .sps{font-size:10px;color:#9aa0b4;font-style:italic;}
+
+    /* Market */
+    .mkw{position:relative;}
+    .mksel{min-height:38px;border:1px solid #e0e3ed;border-radius:9px;padding:4px 9px;display:flex;flex-wrap:wrap;gap:4px;cursor:pointer;background:#fff;align-items:center;}
+    .mksel:hover{border-color:#8b5cf6;}
+    .mkchip{display:inline-flex;align-items:center;gap:4px;background:#eef4fd;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:600;color:#1a6fdb;}
+    .mkx{cursor:pointer;color:#9aa0b4;font-size:12px;}
+    .mkx:hover{color:#e63946;}
+    .mkph{font-size:12px;color:#c0c4d0;padding:2px 4px;}
+    .mkdd{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e0e3ed;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,0.1);max-height:200px;overflow-y:auto;z-index:300;display:none;}
+    .mkdd.open{display:block;}
+    .mksearch{padding:8px 13px;border-bottom:1px solid #f0f2f8;}
+    .mksearch input{width:100%;border:none;outline:none;font-family:'Poppins',sans-serif;font-size:12px;color:#1a1a2e;background:transparent;}
+    .mkopt{display:flex;align-items:center;justify-content:space-between;padding:8px 13px;cursor:pointer;font-size:12px;color:#1a1a2e;transition:background 0.15s;}
+    .mkopt:hover{background:#f4f6fb;}
+    .mkopt.sel{background:#eef4fd;color:#1a6fdb;font-weight:600;}
+
+    /* SC section */
+    .scsec{background:#f9fafc;border:1px solid #e8eaf0;border-radius:12px;padding:14px 17px;margin-bottom:18px;}
+    .scslbl{font-size:11px;font-weight:700;color:#6b7280;margin-bottom:9px;text-transform:uppercase;letter-spacing:0.5px;}
+    .scprev{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:30px;margin-bottom:10px;}
+    .scchip{display:inline-flex;align-items:center;gap:4px;background:#eef4fd;border:1px solid #c7dcf8;border-radius:8px;padding:3px 10px;font-size:11px;font-weight:600;color:#1a6fdb;}
+    .scempty{font-size:12px;color:#c0c4d0;font-style:italic;}
+    .scarrow{color:#c0c4d0;}
+    .btnbuild{background:#1a6fdb;color:#fff;border:none;border-radius:9px;padding:10px 18px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;width:100%;transition:background 0.2s;}
+    .btnbuild:hover{background:#1558b0;}
+
+    /* SC Builder */
+    .scbov{display:none;position:fixed;inset:0;background:rgba(4,8,24,0.65);backdrop-filter:blur(8px);z-index:300;align-items:center;justify-content:center;padding:20px;}
+    .scbov.open{display:flex;}
+    .scb{background:#fff;border-radius:22px;width:100%;max-width:920px;height:82vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 64px rgba(0,0,0,0.22);}
+    .scbhd{display:flex;align-items:center;justify-content:space-between;padding:18px 24px 14px;border-bottom:1px solid #f0f2f8;}
+    .scbht{font-size:15px;font-weight:800;color:#1a1a2e;}
+    .scbhs{font-size:12px;color:#9aa0b4;margin-top:2px;}
+    .scbbody{display:flex;flex:1;overflow:hidden;}
+    .scpal{width:185px;flex-shrink:0;border-right:1px solid #f0f2f8;padding:14px 12px;overflow-y:auto;}
+    .scpalt{font-size:10px;font-weight:700;color:#9aa0b4;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;}
+    .pnode{display:flex;align-items:center;gap:8px;background:#f9fafc;border:1px solid #e8eaf0;border-radius:10px;padding:9px 11px;margin-bottom:7px;cursor:grab;user-select:none;transition:box-shadow 0.15s,transform 0.15s;}
+    .pnode:hover{box-shadow:0 3px 10px rgba(0,0,0,0.07);transform:translateY(-1px);}
+    .pnicon{width:27px;height:27px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+    .pnlbl{font-size:11px;font-weight:600;color:#1a1a2e;line-height:1.3;}
+    .sccanvas{flex:1;position:relative;background:#fafbfc;background-image:radial-gradient(circle,#d0d4e0 1px,transparent 1px);background-size:24px 24px;overflow:hidden;}
+    .cvhint{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;pointer-events:none;transition:opacity 0.3s;}
+    .cvhint.gone{opacity:0;}
+    .hinticon{font-size:32px;}
+    .hinttxt{font-size:13px;color:#c0c4d0;font-weight:500;}
+    .connsvg{position:absolute;inset:0;pointer-events:none;z-index:5;}
+    .cnode{position:absolute;background:#fff;border:2px solid #e0e3ed;border-radius:12px;padding:10px 14px;min-width:140px;cursor:move;user-select:none;box-shadow:0 2px 8px rgba(0,0,0,0.07);z-index:10;transition:border-color 0.15s;}
+    .cnode:hover{border-color:#8b5cf6;}
+    .cni{display:flex;align-items:center;gap:8px;}
+    .cni-icon{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+    .cni-lbl{font-size:11px;font-weight:700;color:#1a1a2e;line-height:1.3;}
+    .cown{margin-top:5px;margin-left:36px;font-size:10px;font-weight:600;color:#7c3aed;background:#f4f0ff;border-radius:6px;padding:2px 7px;display:none;}
+    .cown.show{display:inline-block;}
+    .cdel{position:absolute;top:-7px;right:-7px;width:18px;height:18px;background:#e63946;color:#fff;border-radius:50%;border:none;font-size:10px;cursor:pointer;display:none;align-items:center;justify-content:center;}
+    .cnode:hover .cdel{display:flex;}
+    .port{position:absolute;width:11px;height:11px;border-radius:50%;background:#fff;border:2px solid #c0c4d0;cursor:crosshair;z-index:15;transition:border-color 0.15s;}
+    .port:hover{border-color:#8b5cf6;}
+    .port.r{right:-6px;top:50%;transform:translateY(-50%);}
+    .port.l{left:-6px;top:50%;transform:translateY(-50%);}
+    .ownpop{position:absolute;background:#fff;border:1px solid #e0e3ed;border-radius:14px;padding:14px 16px;box-shadow:0 8px 28px rgba(0,0,0,0.13);z-index:50;min-width:200px;display:none;}
+    .ownpop.open{display:block;}
+    .ownpopt{font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:9px;}
+    .ownopt{display:flex;align-items:center;gap:7px;padding:5px 7px;border-radius:8px;cursor:pointer;margin-bottom:2px;transition:background 0.15s;}
+    .ownopt:hover{background:#f4f6fb;}
+    .ownopt input[type=radio]{accent-color:#8b5cf6;}
+    .ownopt label{font-size:12px;color:#4a4e69;font-weight:500;cursor:pointer;}
+    .owndone{width:100%;margin-top:9px;background:#8b5cf6;color:#fff;border:none;border-radius:8px;padding:7px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;}
+    .scbft{padding:12px 24px;border-top:1px solid #f0f2f8;display:flex;align-items:center;justify-content:space-between;}
+    .chainsum{font-size:12px;color:#6b7280;display:flex;align-items:center;gap:4px;flex-wrap:wrap;flex:1;margin-right:14px;}
+    .scbftacts{display:flex;gap:8px;}
+    .btnsm-ghost{background:#fff;color:#6b7280;border:1.5px solid #e0e3ed;border-radius:999px;padding:7px 15px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;}
+    .btnsm-red{background:#fff;color:#e63946;border:1.5px solid #fecaca;border-radius:999px;padding:7px 15px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;}
+    .btnsm-purple{background:#8b5cf6;color:#fff;border:none;border-radius:999px;padding:7px 19px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;}
+
+    /* ── KDE ──────────────────────────────────── */
+    .kprog{display:flex;align-items:center;gap:10px;margin-bottom:20px;}
+    .ktrack{flex:1;height:4px;background:#f0f2f7;border-radius:999px;overflow:hidden;}
+    .kfill{height:100%;background:#8b5cf6;border-radius:999px;transition:width 0.4s ease;}
+    .klbl{font-size:11px;font-weight:600;color:#9aa0b4;white-space:nowrap;}
+    .ksbadge{display:inline-flex;align-items:center;gap:6px;background:#f4f0ff;border-radius:8px;padding:4px 12px;font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:7px;}
+    .kstitle{font-size:20px;font-weight:800;color:#1a1a2e;margin-bottom:4px;}
+    .kssub{font-size:12px;color:#9aa0b4;margin-bottom:16px;}
+    .kq{background:#f9fafc;border:1px solid #e8eaf0;border-radius:12px;padding:14px 16px;margin-bottom:10px;transition:border-color 0.2s;}
+    .kq.done{border-color:#c7dcf8;background:#fafcff;}
+    .kqtxt{font-size:13px;font-weight:600;color:#1a1a2e;margin-bottom:10px;line-height:1.5;}
+    .kopts{display:flex;gap:7px;flex-wrap:wrap;}
+    .kopt{display:flex;align-items:center;gap:5px;padding:7px 15px;border-radius:999px;border:1.5px solid #e0e3ed;font-size:12px;font-weight:600;color:#9aa0b4;cursor:pointer;background:#fff;transition:all 0.15s;user-select:none;}
+    .kopt:hover{border-color:#8b5cf6;color:#8b5cf6;}
+    .kopt.av{border-color:#16a34a;color:#16a34a;background:#f0fdf4;}
+    .kopt.pa{border-color:#f59e0b;color:#92400e;background:#fffbeb;}
+    .kopt.un{border-color:#e63946;color:#e63946;background:#fff5f5;}
+    .kpartial{margin-top:10px;display:none;}
+    .kpartial.show{display:block;}
+    .kpta{width:100%;padding:8px 12px;border:1px solid #e0e3ed;border-radius:8px;font-family:'Poppins',sans-serif;font-size:12px;color:#1a1a2e;outline:none;resize:none;transition:border-color 0.2s;}
+    .kpta:focus{border-color:#f59e0b;}
+    .kevrow{margin-top:9px;display:none;align-items:center;gap:7px;}
+    .kevrow.show{display:flex;}
+    .kevbtn{display:flex;align-items:center;gap:4px;padding:5px 12px;border-radius:8px;background:#f4f6fb;border:1px solid #e0e3ed;font-size:11px;font-weight:600;color:#6b7280;cursor:pointer;transition:background 0.15s;}
+    .kevbtn:hover{background:#eef4fd;border-color:#1a6fdb;color:#1a6fdb;}
+    .knav{display:flex;align-items:center;justify-content:space-between;margin-top:20px;}
+    .btnkback{background:#f4f6fb;color:#6b7280;border:none;border-radius:999px;padding:10px 22px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+    .btnknext{background:#8b5cf6;color:#fff;border:none;border-radius:999px;padding:10px 25px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+    .btnknext:hover{background:#7c3aed;}
+
+    /* ── PREFS ────────────────────────────────── */
+    .prefcard{display:flex;align-items:center;gap:15px;border:2px solid #e0e3ed;border-radius:14px;padding:16px 19px;cursor:pointer;transition:border-color 0.2s,background 0.2s;margin-bottom:10px;}
+    .prefcard:hover{border-color:#8b5cf6;}
+    .prefcard.sel{border-color:#8b5cf6;background:#faf5ff;}
+    .preficon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;}
+    .preftitle{font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:2px;}
+    .prefdesc{font-size:12px;color:#9aa0b4;}
+    .prefradio{margin-left:auto;width:18px;height:18px;border-radius:50%;border:2px solid #e0e3ed;flex-shrink:0;transition:all 0.2s;display:flex;align-items:center;justify-content:center;}
+    .prefcard.sel .prefradio{border-color:#8b5cf6;background:#8b5cf6;}
+    .prefcard.sel .prefradio::after{content:'';width:7px;height:7px;border-radius:50%;background:#fff;}
+    .disclaimer{background:#f9fafc;border:1px solid #e8eaf0;border-radius:11px;padding:13px 15px;font-size:12px;color:#6b7280;line-height:1.7;margin-bottom:22px;}
+
+    /* ── THANK YOU ────────────────────────────── */
+    .tywrap{text-align:center;padding:18px 0;}
+    .tyicon{font-size:54px;margin-bottom:14px;}
+    .tyh{font-size:27px;font-weight:800;color:#1a1a2e;margin-bottom:8px;}
+    .tysub{font-size:13px;color:#6b7280;line-height:1.7;max-width:400px;margin:0 auto 22px;}
+    .tybadge{display:inline-flex;align-items:center;gap:7px;background:#f4f0ff;border-radius:999px;padding:8px 20px;font-size:13px;font-weight:700;color:#7c3aed;margin-bottom:24px;}
+
+    /* ── COMPANY PILL ─────────────────────────── */
+    .cpill{display:flex;align-items:center;gap:8px;background:#f4f6fb;border-radius:999px;padding:5px 13px 5px 5px;}
+    .cpa{width:28px;height:28px;border-radius:50%;background:#eef4fd;border:1.5px solid #c7dcf8;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#1a6fdb;overflow:hidden;}
+    .cpa img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+    .cpbl{font-size:9px;color:#9aa0b4;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;display:block;line-height:1.1;}
+    .cpbn{font-size:12px;font-weight:700;color:#1a1a2e;display:block;line-height:1.1;}
+
+    .hidden{display:none!important;}
   </style>
 </head>
 <body>
 
-<div class="ca-bg"></div>
-<div class="ca-bg-overlay"></div>
-
-<!-- ══ SCREEN 1 — IUU SLIDES ══════════════════════════════ -->
-<div class="screen active" id="screen-1">
-  <div class="modal-outer" style="--glow-colors: linear-gradient(135deg,#0ea5e9,#06b6d4,#0d9488,#1a6fdb); --glow-opacity:0.7;">
-    <div class="modal-inner">
-      <div class="modal-topbar">
+<!-- S1 — IUU SLIDES -->
+<div class="screen glow-ocean active" id="s1">
+  <div class="mw">
+    <div class="mc">
+      <div class="tb">
         <div class="logo">
-          <div class="logo-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
-          <div style="margin-left:8px;"><span class="logo-project">Project</span><span class="logo-name">Manhattan.</span></div>
+          <div class="logo-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+          <div class="logo-text"><span class="logo-project">Project</span><span class="logo-name">Manhattan.</span></div>
         </div>
-        <button class="next-btn" id="s1Btn" onclick="s1Next()">Next</button>
+        <button class="btn-next" id="s1btn" onclick="s1Next()">Next</button>
       </div>
-      <div class="slides-wrap" id="s1Slides">
-        <!-- Slide 1 -->
-        <div class="slide active" id="s1-0">
-          <div class="iuu-title">Know Your <strong>Risk.</strong> <strong>Prepare</strong> for Tomorrow.</div>
+      <div class="slides-area" id="s1area">
+        <div class="slide active" id="s1s0">
+          <div class="iuu-h">Know Your <strong>Risk.</strong> <strong>Prepare</strong> for Tomorrow.</div>
           <div class="iuu-sub">Complete a quick assessment to identify potential risks and receive personalized recommendations.</div>
-          <div class="iuu-cards-2">
-            <div class="iuu-card">
-              <div class="iuu-card-placeholder"><div class="iuu-card-placeholder-icon">🐟</div><div class="iuu-card-placeholder-text">Your image here</div></div>
-              <div class="iuu-card-label">IUU fishing is estimated to cause economic losses of up to $23 billion annually worldwide.</div>
-            </div>
-            <div class="iuu-card">
-              <div class="iuu-card-placeholder"><div class="iuu-card-placeholder-icon">🌊</div><div class="iuu-card-placeholder-text">Your image here</div></div>
-              <div class="iuu-card-label">$10–23 billion in estimated annual global economic losses.</div>
-            </div>
+          <div class="iuu-g2">
+            <div class="iuu-card"><div class="iuu-ph"><div class="iuu-ph-icon">🐟</div><div class="iuu-ph-txt">Your image here</div></div><div class="iuu-cap">IUU fishing is estimated to cause economic losses of up to $23 billion annually worldwide.</div></div>
+            <div class="iuu-card"><div class="iuu-ph"><div class="iuu-ph-icon">🌊</div><div class="iuu-ph-txt">Your image here</div></div><div class="iuu-cap">$10–23 billion in estimated annual global economic losses.</div></div>
           </div>
         </div>
-        <!-- Slide 2 -->
-        <div class="slide" id="s1-1">
-          <div class="iuu-title">Know Your <strong>Risk.</strong> <strong>Prepare</strong> for Tomorrow.</div>
+        <div class="slide" id="s1s1">
+          <div class="iuu-h">Know Your <strong>Risk.</strong> <strong>Prepare</strong> for Tomorrow.</div>
           <div class="iuu-sub">Complete a quick assessment to identify potential risks and receive personalized recommendations.</div>
-          <div class="iuu-cards-3">
-            <div class="iuu-card">
-              <div class="iuu-card-placeholder"><div class="iuu-card-placeholder-icon">🏛️</div><div class="iuu-card-placeholder-text">Your image here</div></div>
-              <div class="iuu-card-label">Trade fraud, false declarations, and import/export violations.</div>
-            </div>
-            <div class="iuu-card">
-              <div class="iuu-card-placeholder"><div class="iuu-card-placeholder-icon">👥</div><div class="iuu-card-placeholder-text">Your image here</div></div>
-              <div class="iuu-card-label">Vessels engaged in illegal fishing face a higher risk of labor abuse violations.</div>
-            </div>
-            <div class="iuu-card">
-              <div class="iuu-card-placeholder"><div class="iuu-card-placeholder-icon">⚖️</div><div class="iuu-card-placeholder-text">Your image here</div></div>
-              <div class="iuu-card-label">Legal and reputational costs can extend across the entire seafood supply chain.</div>
-            </div>
+          <div class="iuu-g3">
+            <div class="iuu-card"><div class="iuu-ph"><div class="iuu-ph-icon">🏛️</div><div class="iuu-ph-txt">Your image here</div></div><div class="iuu-cap">Trade fraud, false declarations, and import/export violations.</div></div>
+            <div class="iuu-card"><div class="iuu-ph"><div class="iuu-ph-icon">👥</div><div class="iuu-ph-txt">Your image here</div></div><div class="iuu-cap">Vessels engaged in illegal fishing face a higher risk of labor abuse violations.</div></div>
+            <div class="iuu-card"><div class="iuu-ph"><div class="iuu-ph-icon">⚖️</div><div class="iuu-ph-txt">Your image here</div></div><div class="iuu-cap">Legal and reputational costs can extend across the entire seafood supply chain.</div></div>
           </div>
         </div>
-        <!-- Slide 3 -->
-        <div class="slide" id="s1-2">
-          <div class="iuu-title">Know Your <strong>Risk.</strong> <strong>Prepare</strong> for Tomorrow.</div>
+        <div class="slide" id="s1s2">
+          <div class="iuu-h">Know Your <strong>Risk.</strong> <strong>Prepare</strong> for Tomorrow.</div>
           <div class="iuu-sub">Complete a quick assessment to identify potential risks and receive personalized recommendations.</div>
-          <div class="iuu-cards-2">
-            <div class="iuu-card">
-              <div class="iuu-card-placeholder"><div class="iuu-card-placeholder-icon">🛳️</div><div class="iuu-card-placeholder-text">Your image here</div></div>
-              <div class="iuu-card-label">Over 600 million people depend on fisheries for their livelihoods — IUU threatens them all.</div>
-            </div>
-            <div class="iuu-card">
-              <div class="iuu-card-placeholder"><div class="iuu-card-placeholder-icon">📋</div><div class="iuu-card-placeholder-text">Your image here</div></div>
-              <div class="iuu-card-label">SIMP, FSMA 204 and EU Catch Certificate require full supply chain traceability.</div>
-            </div>
+          <div class="iuu-g2">
+            <div class="iuu-card"><div class="iuu-ph"><div class="iuu-ph-icon">🛳️</div><div class="iuu-ph-txt">Your image here</div></div><div class="iuu-cap">Over 600 million people depend on fisheries for their livelihoods.</div></div>
+            <div class="iuu-card"><div class="iuu-ph"><div class="iuu-ph-icon">📋</div><div class="iuu-ph-txt">Your image here</div></div><div class="iuu-cap">SIMP, FSMA 204 and EU Catch Certificate require full supply chain traceability.</div></div>
           </div>
         </div>
-        <!-- Slide 4 -->
-        <div class="slide" id="s1-3">
-          <div class="iuu-title">Know Your <strong>Risk.</strong> <strong>Prepare</strong> for Tomorrow.</div>
+        <div class="slide" id="s1s3">
+          <div class="iuu-h">Know Your <strong>Risk.</strong> <strong>Prepare</strong> for Tomorrow.</div>
           <div class="iuu-sub">Complete a quick assessment to identify potential risks and receive personalized recommendations.</div>
-          <div class="iuu-cards-3">
-            <div class="iuu-card">
-              <div class="iuu-card-placeholder"><div class="iuu-card-placeholder-icon">🔍</div><div class="iuu-card-placeholder-text">Your image here</div></div>
-              <div class="iuu-card-label">Mislabelling affects up to 30% of seafood products in global retail markets.</div>
-            </div>
-            <div class="iuu-card">
-              <div class="iuu-card-placeholder"><div class="iuu-card-placeholder-icon">🌍</div><div class="iuu-card-placeholder-text">Your image here</div></div>
-              <div class="iuu-card-label">Only 35% of the world's fish stocks remain at biologically sustainable levels.</div>
-            </div>
-            <div class="iuu-card">
-              <div class="iuu-card-placeholder"><div class="iuu-card-placeholder-icon">📊</div><div class="iuu-card-placeholder-text">Your image here</div></div>
-              <div class="iuu-card-label">Seafood is the most internationally traded food commodity — worth over $150 billion.</div>
-            </div>
+          <div class="iuu-g3">
+            <div class="iuu-card"><div class="iuu-ph"><div class="iuu-ph-icon">🔍</div><div class="iuu-ph-txt">Your image here</div></div><div class="iuu-cap">Mislabelling affects up to 30% of seafood products in global retail markets.</div></div>
+            <div class="iuu-card"><div class="iuu-ph"><div class="iuu-ph-icon">🌍</div><div class="iuu-ph-txt">Your image here</div></div><div class="iuu-cap">Only 35% of the world's fish stocks remain at biologically sustainable levels.</div></div>
+            <div class="iuu-card"><div class="iuu-ph"><div class="iuu-ph-icon">📊</div><div class="iuu-ph-txt">Your image here</div></div><div class="iuu-cap">Seafood is the most internationally traded food commodity — $150 billion.</div></div>
           </div>
         </div>
       </div>
-      <div class="dots" id="s1Dots">
-        <div class="dot active" onclick="s1Go(0)"></div>
-        <div class="dot" onclick="s1Go(1)"></div>
-        <div class="dot" onclick="s1Go(2)"></div>
-        <div class="dot" onclick="s1Go(3)"></div>
+      <div class="dots" id="s1dots">
+        <div class="dot on" onclick="s1Go(0)"></div><div class="dot" onclick="s1Go(1)"></div>
+        <div class="dot" onclick="s1Go(2)"></div><div class="dot" onclick="s1Go(3)"></div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ══ SCREEN 1B — WHAT IS MRI ════════════════════════════ -->
-<div class="screen" id="screen-1b">
-  <div class="modal-outer" style="--glow-colors: linear-gradient(135deg,#1a6fdb,#7c3aed,#0d9488); --glow-opacity:0.65;">
-    <div class="modal-inner">
-      <div class="modal-topbar">
+<!-- S1B — WHAT IS MRI -->
+<div class="screen glow-manhattan" id="s1b">
+  <div class="mw">
+    <div class="mc">
+      <div class="tb">
         <div class="logo">
-          <div class="logo-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
-          <div style="margin-left:8px;"><span class="logo-project">Project</span><span class="logo-name">Manhattan.</span></div>
+          <div class="logo-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+          <div class="logo-text"><span class="logo-project">Project</span><span class="logo-name">Manhattan.</span></div>
         </div>
-        <button class="next-btn" id="s1bBtn" onclick="s1bNext()">Next</button>
+        <button class="btn-next" id="s1bbtn" onclick="s1bNext()">Next</button>
       </div>
-      <div class="slides-wrap" id="s1bSlides">
-        <!-- Slide 1 -->
-        <div class="slide active" id="s1b-0">
+      <div class="slides-area">
+        <div class="slide active" id="s1bs0">
           <div class="mri-title">What is MRI. What do we do?</div>
-          <div class="mri-sub">Across the seafood industry, companies often struggle with the same challenges — data scattered, compliance unclear.</div>
-          <div class="split-layout">
-            <div>
-              <div class="split-tag">#HelpingIndustry</div>
-              <div class="split-heading">We help seafood companies understand and reduce their IUU risk.</div>
-              <div class="split-body">From fishing vessels to retail shelves, every link in the supply chain carries risk. Manhattan maps that risk, scores it, and shows you exactly where the gaps are — so you can fix them before they become problems.</div>
-            </div>
-            <div class="split-image" style="background:#eef4fd;">
-              <div class="split-image-placeholder"><div class="split-img-icon" style="background:#1a6fdb;">🤝</div><div class="split-img-label">Your image here</div></div>
-            </div>
-          </div>
+          <div class="mri-sub">Across the seafood industry, companies often struggle with the same challenges.</div>
+          <div class="split"><div><div class="stag">#HelpingIndustry</div><div class="sh">We help seafood companies understand and reduce their IUU risk.</div><div class="sp">From fishing vessels to retail shelves, every link in the supply chain carries risk. Manhattan maps that risk, scores it, and shows you exactly where the gaps are.</div></div><div class="simg" style="background:#eef4fd;"><div class="simg-icon" style="background:#1a6fdb;">🤝</div><div class="simg-lbl">Your image here</div></div></div>
         </div>
-        <!-- Slide 2 -->
-        <div class="slide" id="s1b-1">
+        <div class="slide" id="s1bs1">
           <div class="mri-title">What is MRI. What do we do?</div>
           <div class="mri-sub">One vision: one platform that connects every part of the seafood supply chain.</div>
-          <div class="split-layout reverse">
-            <div class="split-image" style="background:#f0fdf4;">
-              <div class="split-image-placeholder"><div class="split-img-icon" style="background:#0d9488;">📋</div><div class="split-img-label">Your image here</div></div>
-            </div>
-            <div>
-              <div class="split-tag">#DigitalAssessment</div>
-              <div class="split-heading">One platform. Every stage. One language.</div>
-              <div class="split-body">From the fishing vessel to the processing plant, from the exporter to the retailer — all in one place, speaking the same language. No more spreadsheets. No more email threads. Just clean, verified data.</div>
-            </div>
-          </div>
+          <div class="split flip"><div class="simg" style="background:#f0fdf4;"><div class="simg-icon" style="background:#0d9488;">📋</div><div class="simg-lbl">Your image here</div></div><div><div class="stag">#DigitalAssessment</div><div class="sh">One platform. Every stage. One language.</div><div class="sp">From fishing vessel to processor, from exporter to retailer — all in one place. No more spreadsheets. Just clean, verified data.</div></div></div>
         </div>
-        <!-- Slide 3 -->
-        <div class="slide" id="s1b-2">
+        <div class="slide" id="s1bs2">
           <div class="mri-title">What is MRI. What do we do?</div>
           <div class="mri-sub">Your Data is Used Only for Analysis and Never Stored Longer Than Necessary.</div>
-          <div class="split-layout">
-            <div>
-              <div class="split-tag">#RespectingDataPrivacy</div>
-              <div class="split-heading">Your data. Your control. Always.</div>
-              <div class="split-body">All documents, PDFs, evidence files, and other information uploaded for risk assessment are used solely for analysis purposes. Uploaded data is automatically removed from active processing systems within 24 hours.</div>
-            </div>
-            <div class="split-image" style="background:#f4f0ff;">
-              <div class="split-image-placeholder"><div class="split-img-icon" style="background:#7c3aed;">🔒</div><div class="split-img-label">Your image here</div></div>
-            </div>
-          </div>
+          <div class="split"><div><div class="stag">#RespectingDataPrivacy</div><div class="sh">Your data. Your control. Always.</div><div class="sp">All documents and evidence files uploaded are used solely for analysis. Data is automatically removed from active systems within 24 hours.</div></div><div class="simg" style="background:#f4f0ff;"><div class="simg-icon" style="background:#7c3aed;">🔒</div><div class="simg-lbl">Your image here</div></div></div>
         </div>
-        <!-- Slide 4 -->
-        <div class="slide" id="s1b-3">
+        <div class="slide" id="s1bs3">
           <div class="mri-title">What is MRI. What do we do?</div>
           <div class="mri-sub">From the fishing vessel to the retailer, every step tells a story.</div>
-          <div class="split-layout reverse">
-            <div class="split-image" style="background:#fff7ed;">
-              <div class="split-image-placeholder"><div class="split-img-icon" style="background:#f97316;">🌊</div><div class="split-img-label">Your image here</div></div>
-            </div>
-            <div>
-              <div class="split-tag">#TransparencyMatters</div>
-              <div class="split-heading">Transparency is your competitive advantage.</div>
-              <div class="split-body">Buyers, regulators, and retailers increasingly demand proof — not promises. Manhattan gives you the verified documentation trail that turns your supply chain transparency into a commercial asset.</div>
-            </div>
-          </div>
+          <div class="split flip"><div class="simg" style="background:#fff7ed;"><div class="simg-icon" style="background:#f97316;">🌊</div><div class="simg-lbl">Your image here</div></div><div><div class="stag">#TransparencyMatters</div><div class="sh">Transparency is your competitive advantage.</div><div class="sp">Buyers, regulators and retailers demand proof — not promises. Manhattan gives you the verified trail that turns transparency into a commercial asset.</div></div></div>
         </div>
-        <!-- Slide 5 -->
-        <div class="slide" id="s1b-4">
+        <div class="slide" id="s1bs4">
           <div class="mri-title">What is MRI. What do we do?</div>
-          <div class="mri-sub">Your Manhattan Score is a single number that tells the world how transparent your supply chain is.</div>
-          <div class="split-layout">
-            <div>
-              <div class="split-tag">#ManhattanScore</div>
-              <div class="split-heading">Score 0 = Fully Transparent. The lower, the better.</div>
-              <div class="split-body">The Manhattan Risk Index (MRI) scores your supply chain across 77 Key Data Elements — from vessel identity to final logistics. A score of 0 means complete transparency. The higher the score, the higher the risk.</div>
-              <div class="info-chips">
-                <div class="info-chip"><span>🟢</span><span class="chip-text">Score 0 — Fully Transparent</span></div>
-                <div class="info-chip"><span>🔴</span><span class="chip-text">Score 500+ — Critical Risk</span></div>
-              </div>
-            </div>
-            <div class="split-image" style="background:#eef4fd;">
-              <div class="split-image-placeholder"><div class="split-img-icon" style="background:#1a6fdb;">📊</div><div class="split-img-label">Your image here</div></div>
-            </div>
-          </div>
+          <div class="mri-sub">Your Manhattan Score is a single number that tells the world how transparent you are.</div>
+          <div class="split"><div><div class="stag">#ManhattanScore</div><div class="sh">Score 0 = Fully Transparent. Lower is better.</div><div class="sp">The Manhattan Risk Index scores your supply chain across 77 Key Data Elements. Score 0 = complete transparency. Higher score = higher risk.</div><div class="schips"><div class="schip">🟢 Score 0 — Fully Transparent</div><div class="schip">🔴 Score 500+ — Critical Risk</div></div></div><div class="simg" style="background:#eef4fd;"><div class="simg-icon" style="background:#1a6fdb;">📊</div><div class="simg-lbl">Your image here</div></div></div>
         </div>
       </div>
-      <div class="dots" id="s1bDots">
-        <div class="dot active" onclick="s1bGo(0)"></div>
-        <div class="dot" onclick="s1bGo(1)"></div>
-        <div class="dot" onclick="s1bGo(2)"></div>
-        <div class="dot" onclick="s1bGo(3)"></div>
-        <div class="dot" onclick="s1bGo(4)"></div>
+      <div class="dots" id="s1bdots">
+        <div class="dot on" onclick="s1bGo(0)"></div><div class="dot" onclick="s1bGo(1)"></div>
+        <div class="dot" onclick="s1bGo(2)"></div><div class="dot" onclick="s1bGo(3)"></div><div class="dot" onclick="s1bGo(4)"></div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ══ SCREEN 1C — WHAT TO EXPECT ════════════════════════ -->
-<div class="screen" id="screen-1c">
-  <div class="modal-outer" id="s1cModal" style="--glow-colors: linear-gradient(135deg,#1a6fdb,#7c3aed,#0d9488); --glow-opacity:0.5;">
-    <div class="modal-inner">
-      <div class="modal-topbar">
+<!-- S1C — WHAT TO EXPECT -->
+<div class="screen glow-manhattan" id="s1c">
+  <div class="mw" id="s1cmw">
+    <div class="mc">
+      <div class="tb">
         <div class="logo">
-          <div class="logo-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
-          <div style="margin-left:8px;"><span class="logo-project">Project</span><span class="logo-name">Manhattan.</span></div>
+          <div class="logo-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+          <div class="logo-text"><span class="logo-project">Project</span><span class="logo-name">Manhattan.</span></div>
         </div>
-        <button class="next-btn" id="s1cBtn" onclick="s1cNext()">Next</button>
+        <button class="btn-next" id="s1cbtn" onclick="s1cNext()">Next</button>
       </div>
-      <div class="slides-wrap">
-        <div class="slide active" id="s1c-0">
-          <div class="split-layout">
-            <div>
-              <div class="split-tag">#YourTime</div>
-              <div class="mri-title">What to Expect</div>
-              <div class="split-body" style="margin-bottom:12px;">This assessment takes approximately 15 minutes. You'll be guided through your supply chain one step at a time — no jargon, no pressure.</div>
-              <div class="info-chips">
-                <div class="info-chip"><span>⏱️</span><span class="chip-text">~15 minutes to complete</span></div>
-                <div class="info-chip"><span>🔒</span><span class="chip-text">Your data is never shared or sold</span></div>
-              </div>
-            </div>
-            <div class="split-image" style="background:#eef4fd;">
-              <div class="split-image-placeholder"><div class="split-img-icon" style="background:#1a6fdb;">⏱️</div><div class="split-img-label">Your image here</div></div>
-            </div>
-          </div>
+      <div class="slides-area">
+        <div class="slide active" id="s1cs0">
+          <div class="split"><div><div class="stag">#YourTime</div><div class="mri-title">What to Expect</div><div class="sp" style="margin-bottom:13px;">This assessment takes approximately 15 minutes. One step at a time — no jargon, no pressure.</div><div class="schips"><div class="schip">⏱️ ~15 minutes to complete</div><div class="schip">🔒 Your data is never shared or sold</div></div></div><div class="simg" style="background:#eef4fd;"><div class="simg-icon" style="background:#1a6fdb;">⏱️</div><div class="simg-lbl">Your image here</div></div></div>
         </div>
-        <div class="slide" id="s1c-1">
-          <div class="split-layout reverse">
-            <div class="split-image" style="background:#f0fdf4;">
-              <div class="split-image-placeholder"><div class="split-img-icon" style="background:#0d9488;">✅</div><div class="split-img-label">Your image here</div></div>
-            </div>
-            <div>
-              <div class="split-tag">#HowItWorks</div>
-              <div class="mri-title">What to Expect</div>
-              <div class="split-body" style="margin-bottom:12px;">Answer each question based on your current operations. Mark items as pending if documentation is in progress. No pressure — every answer is your self-declaration.</div>
-              <div class="info-chips">
-                <div class="info-chip"><span>✍️</span><span class="chip-text">One supply chain stage at a time</span></div>
-                <div class="info-chip"><span>📎</span><span class="chip-text">Upload evidence or mark as pending</span></div>
-              </div>
-            </div>
-          </div>
+        <div class="slide" id="s1cs1">
+          <div class="split flip"><div class="simg" style="background:#f0fdf4;"><div class="simg-icon" style="background:#0d9488;">✅</div><div class="simg-lbl">Your image here</div></div><div><div class="stag">#HowItWorks</div><div class="mri-title">What to Expect</div><div class="sp" style="margin-bottom:13px;">Answer each question based on your operations. Mark items as pending if documentation is in progress.</div><div class="schips"><div class="schip">✍️ One supply chain stage at a time</div><div class="schip">📎 Upload evidence or mark as pending</div></div></div></div>
         </div>
-        <div class="slide" id="s1c-2">
-          <div class="split-layout">
-            <div>
-              <div class="split-tag">#YourResults</div>
-              <div class="mri-title">What to Expect</div>
-              <div class="split-body" style="margin-bottom:12px;">Once submitted, our team reviews your responses and evidence. You'll receive either a <strong>Manhattan Verified</strong> score or a <strong>Self-Declared</strong> score if evidence is pending.</div>
-              <div class="info-chips">
-                <div class="info-chip"><span>🏅</span><span class="chip-text">Manhattan Verified = gold standard</span></div>
-                <div class="info-chip"><span>🕐</span><span class="chip-text">Results within 48 hours of submission</span></div>
-              </div>
-            </div>
-            <div class="split-image" style="background:#f4f0ff;">
-              <div class="split-image-placeholder"><div class="split-img-icon" style="background:#7c3aed;">🔍</div><div class="split-img-label">Your image here</div></div>
-            </div>
-          </div>
+        <div class="slide" id="s1cs2">
+          <div class="split"><div><div class="stag">#YourResults</div><div class="mri-title">What to Expect</div><div class="sp" style="margin-bottom:13px;">Once submitted, our team reviews your responses. You'll receive either a <strong>Manhattan Verified</strong> score or a <strong>Self-Declared</strong> score.</div><div class="schips"><div class="schip">🏅 Manhattan Verified = gold standard</div><div class="schip">🕐 Results within 48 hours</div></div></div><div class="simg" style="background:#f4f0ff;"><div class="simg-icon" style="background:#7c3aed;">🔍</div><div class="simg-lbl">Your image here</div></div></div>
         </div>
       </div>
-      <div class="dots" id="s1cDots">
-        <div class="dot active" onclick="s1cGo(0)"></div>
-        <div class="dot" onclick="s1cGo(1)"></div>
-        <div class="dot" onclick="s1cGo(2)"></div>
+      <div class="dots" id="s1cdots">
+        <div class="dot on" onclick="s1cGo(0)"></div><div class="dot" onclick="s1cGo(1)"></div><div class="dot" onclick="s1cGo(2)"></div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ══ SCREEN 2 — COMPANY CODE ════════════════════════════ -->
-<div class="screen" id="screen-2">
-  <div class="modal-outer" style="--glow-colors: linear-gradient(135deg,#1a6fdb,#7c3aed,#0d9488); --glow-opacity:0.3;">
-    <div class="modal-inner">
+<!-- S2 — CODE -->
+<div class="screen no-glow" id="s2">
+  <div class="mw">
+    <div class="mc">
       <div class="logo" style="margin-bottom:28px;">
-        <div class="logo-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
-        <div style="margin-left:8px;"><span class="logo-project">Project</span><span class="logo-name">Manhattan.</span></div>
+        <div class="logo-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+        <div class="logo-text"><span class="logo-project">Project</span><span class="logo-name">Manhattan.</span></div>
       </div>
-      <div class="big-title">Let's Start</div>
-      <div class="big-sub">Enter your company code to begin. Your administrator provided this when your company was registered on Project Manhattan.</div>
-      <div class="code-label">Enter the 6 digit code</div>
-      <div class="code-inputs">
-        <input class="code-box" id="c0" maxlength="1" />
-        <span class="code-sep">—</span>
-        <input class="code-box" id="c1" maxlength="1" />
-        <span class="code-sep">—</span>
-        <input class="code-box" id="c2" maxlength="1" />
-        <span class="code-sep">—</span>
-        <input class="code-box" id="c3" maxlength="1" />
-        <span class="code-sep">—</span>
-        <input class="code-box" id="c4" maxlength="1" />
-        <span class="code-sep">—</span>
-        <input class="code-box" id="c5" maxlength="1" />
+      <div class="big-h">Let's Start</div>
+      <div class="big-sub">Select the company. The admin at this point must provide the key to login.</div>
+      <div class="code-lbl">Enter the 6 digit code</div>
+      <div class="code-row">
+        <input class="cbox" id="c0" maxlength="1"/><span class="csep">-</span>
+        <input class="cbox" id="c1" maxlength="1"/><span class="csep">-</span>
+        <input class="cbox" id="c2" maxlength="1"/><span class="csep">-</span>
+        <input class="cbox" id="c3" maxlength="1"/><span class="csep">-</span>
+        <input class="cbox" id="c4" maxlength="1"/><span class="csep">-</span>
+        <input class="cbox" id="c5" maxlength="1"/>
       </div>
-      <button class="btn-purple" onclick="proceedFromCode()">Continue</button>
+      <button class="btn-purple" style="margin-bottom:64px;" onclick="doCode()">Continue</button>
       <div class="code-footer">Please contact your administrator if you didn't receive your code.</div>
     </div>
   </div>
 </div>
 
-<!-- ══ SCREEN 3 — WELCOME ═════════════════════════════════ -->
-<div class="screen" id="screen-3">
-  <div class="modal-outer" style="--glow-colors: linear-gradient(135deg,#1a6fdb,#7c3aed,#0d9488); --glow-opacity:0.2;">
-    <div class="modal-inner">
-      <div class="modal-topbar">
-        <div class="logo">
-          <div class="logo-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
-          <div style="margin-left:8px;"><span class="logo-project">Project</span><span class="logo-name">Manhattan.</span></div>
-        </div>
+<!-- S3 — WELCOME -->
+<div class="screen no-glow" id="s3">
+  <div class="mw">
+    <div class="mc">
+      <div class="logo" style="margin-bottom:26px;">
+        <div class="logo-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+        <div class="logo-text"><span class="logo-project">Project</span><span class="logo-name">Manhattan.</span></div>
       </div>
-      <div class="welcome-title">Welcome <span id="welcomeCompanyName">Ocean Fishery Ltd</span></div>
-      <div class="confirm-title">Confirm Your Details and Continue</div>
-      <div class="confirm-body">Please verify that the information below is correct. If everything looks accurate, proceed to the next step.</div>
-      <div class="company-card">
-        <div class="company-logo" id="welcomeLogo">O</div>
+      <div class="wh">Welcome <span id="wn">Ocean Fishery Ltd</span></div>
+      <div class="clbl">Confirm Your Details and Continue</div>
+      <div class="csub">Please verify that the information below is correct. If everything looks accurate, proceed to the next step.</div>
+      <div class="ccard">
+        <div class="clogo" id="wlogo">O</div>
         <div>
-          <div class="company-name" id="welcomeName">Ocean Fishery Ltd</div>
-          <div class="company-industry" id="welcomeIndustry">Seafood Processing</div>
-          <span class="company-gln" id="welcomeGLN">
-            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-            GLN: —
-          </span>
+          <div class="cname" id="wcname">Ocean Fishery Ltd</div>
+          <div class="cind" id="wcind">Seafood Processing</div>
+          <span class="cgln" id="wcgln"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>GLN: —</span>
         </div>
       </div>
-      <div class="row-actions">
-        <button class="btn-outline" onclick="goToScreen('screen-2')">Go back.</button>
-        <button class="btn-purple" onclick="goToScreen('screen-4')">Continue</button>
+      <div class="brow">
+        <button class="btn-ghost" onclick="goTo('s2')">Go back.</button>
+        <button class="btn-purple" onclick="goTo('s4')">Continue</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ══ SCREEN 4 — PRODUCTS ════════════════════════════════ -->
-<div class="screen" id="screen-4">
-  <div class="modal-outer" style="--glow-colors: linear-gradient(135deg,#1a6fdb,#7c3aed,#0d9488); --glow-opacity:0;">
-    <div class="modal-inner">
-      <div class="modal-topbar">
+<!-- S4 — PRODUCTS -->
+<div class="screen no-glow" id="s4">
+  <div class="mw">
+    <div class="mc">
+      <div class="tb">
         <div class="logo">
-          <div class="logo-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
-          <div style="margin-left:8px;"><span class="logo-project">Project</span><span class="logo-name">Manhattan.</span></div>
+          <div class="logo-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+          <div class="logo-text"><span class="logo-project">Project</span><span class="logo-name">Manhattan.</span></div>
         </div>
-        <div class="company-badge">
-          <div class="company-badge-avatar" id="badgeAvatar">O</div>
-          <div><div class="company-badge-label">Currently Assessing</div><div class="company-badge-name" id="badgeName">Ocean Fishery Ltd</div></div>
-        </div>
-      </div>
-      <div style="font-size:20px; font-weight:800; color:var(--text); margin-bottom:4px;">Select your Products</div>
-      <div style="font-size:12px; color:#9aa0b4; margin-bottom:20px;">Please add all your products and their supply chain details.</div>
-      <div class="products-grid" id="productsGrid">
-        <div class="product-slot" onclick="openProductForm(0)" id="slot-0">
-          <div class="product-slot-icon">+</div>
-          <div class="product-slot-label">Add Product</div>
-        </div>
-        <div class="product-slot" onclick="openProductForm(1)" id="slot-1">
-          <div class="product-slot-icon">+</div>
-          <div class="product-slot-label">Add Product</div>
-        </div>
-        <div class="product-slot" onclick="openProductForm(2)" id="slot-2">
-          <div class="product-slot-icon">+</div>
-          <div class="product-slot-label">Add Product</div>
-        </div>
-        <div class="product-slot" onclick="openProductForm(3)" id="slot-3">
-          <div class="product-slot-icon">+</div>
-          <div class="product-slot-label">Add Product</div>
+        <div class="cpill">
+          <div class="cpa" id="s4av">O</div>
+          <div><span class="cpbl">Currently Assessing</span><span class="cpbn" id="s4an">Ocean Fishery Ltd</span></div>
         </div>
       </div>
-      <div class="row-actions">
-        <button class="btn-outline" onclick="goToScreen('screen-3')">Back</button>
-        <button class="btn-purple" onclick="proceedToKDE()">Continue to Assessment</button>
+      <div style="font-size:20px;font-weight:800;color:#1a1a2e;margin-bottom:3px;">Select your Products</div>
+      <div style="font-size:12px;color:#9aa0b4;margin-bottom:18px;">Please add all your products and supply chain details.</div>
+      <div class="pgrid" id="pgrid">
+        <div class="pslot" onclick="openPF(0)" id="ps0"><div class="pplus">+</div><div class="plbl">Add Product</div></div>
+        <div class="pslot" onclick="openPF(1)" id="ps1"><div class="pplus">+</div><div class="plbl">Add Product</div></div>
+        <div class="pslot" onclick="openPF(2)" id="ps2"><div class="pplus">+</div><div class="plbl">Add Product</div></div>
+        <div class="pslot" onclick="openPF(3)" id="ps3"><div class="pplus">+</div><div class="plbl">Add Product</div></div>
+      </div>
+      <div class="brow">
+        <button class="btn-ghost" onclick="goTo('s3')">Go back.</button>
+        <button class="btn-purple" onclick="toKDE()">Continue to Assessment</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ══ SCREEN 5 — KDE QUESTIONS ══════════════════════════ -->
-<div class="screen" id="screen-5">
-  <div class="modal-outer" style="--glow-colors: linear-gradient(135deg,#1a6fdb,#7c3aed); --glow-opacity:0;">
-    <div class="modal-inner">
-      <div class="modal-topbar">
+<!-- S5 — KDE -->
+<div class="screen no-glow" id="s5">
+  <div class="mw">
+    <div class="mc">
+      <div class="tb">
         <div class="logo">
-          <div class="logo-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
-          <div style="margin-left:8px;"><span class="logo-project">Project</span><span class="logo-name">Manhattan.</span></div>
+          <div class="logo-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+          <div class="logo-text"><span class="logo-project">Project</span><span class="logo-name">Manhattan.</span></div>
         </div>
-        <div class="company-badge">
-          <div class="company-badge-avatar" id="kdeBadgeAvatar">O</div>
-          <div><div class="company-badge-label">Currently Assessing</div><div class="company-badge-name" id="kdeBadgeName">Ocean Fishery Ltd</div></div>
+        <div class="cpill">
+          <div class="cpa" id="s5av">O</div>
+          <div><span class="cpbl">Currently Assessing</span><span class="cpbn" id="s5an">Ocean Fishery Ltd</span></div>
         </div>
       </div>
-      <div class="kde-progress-bar">
-        <div class="kde-progress-track"><div class="kde-progress-fill" id="kdeProgressFill" style="width:16%"></div></div>
-        <div class="kde-progress-label" id="kdeProgressLabel">Stage 1 of 6</div>
+      <div class="kprog">
+        <div class="ktrack"><div class="kfill" id="kfill" style="width:16%"></div></div>
+        <div class="klbl" id="klbl">Stage 1 of 6</div>
       </div>
-      <div id="kdeStageContent"></div>
-      <div class="kde-nav-row">
-        <button class="btn-kde-back" id="kdePrevBtn" onclick="kdePrev()">← Back</button>
-        <button class="btn-kde-next" id="kdeNextBtn" onclick="kdeNext()">Next Stage →</button>
+      <div id="kcontent"></div>
+      <div class="knav">
+        <button class="btnkback" id="kback" onclick="kPrev()">← Back</button>
+        <button class="btnknext" id="knext" onclick="kNext()">Next Stage →</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ══ SCREEN 6 — PREFERENCES ════════════════════════════ -->
-<div class="screen" id="screen-6">
-  <div class="modal-outer" style="--glow-colors: linear-gradient(135deg,#1a6fdb,#7c3aed); --glow-opacity:0;">
-    <div class="modal-inner">
-      <div class="logo" style="margin-bottom:28px;">
-        <div class="logo-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
-        <div style="margin-left:8px;"><span class="logo-project">Project</span><span class="logo-name">Manhattan.</span></div>
+<!-- S6 — PREFS -->
+<div class="screen no-glow" id="s6">
+  <div class="mw">
+    <div class="mc">
+      <div class="logo" style="margin-bottom:26px;">
+        <div class="logo-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+        <div class="logo-text"><span class="logo-project">Project</span><span class="logo-name">Manhattan.</span></div>
       </div>
-      <div class="pref-title">Almost there.</div>
-      <div class="pref-sub">We'll need about 15 minutes of your time to fill this out. Your results will only be published once a Manhattan expert has reviewed and verified your submission.</div>
-      <div style="font-size:13px; font-weight:700; color:var(--text); margin-bottom:14px;">How would you like to receive your results?</div>
-      <div class="pref-options">
-        <div class="pref-card selected" id="pref-email" onclick="selectPref('email')">
-          <div class="pref-card-icon" style="background:#eef4fd;">📧</div>
-          <div>
-            <div class="pref-card-title">Via Email</div>
-            <div class="pref-card-desc">We'll send your Manhattan Risk Score report directly to your inbox.</div>
-          </div>
-          <div class="pref-radio"></div>
-        </div>
-        <div class="pref-card" id="pref-meeting" onclick="selectPref('meeting')">
-          <div class="pref-card-icon" style="background:#f4f0ff;">📅</div>
-          <div>
-            <div class="pref-card-title">Schedule a Meeting</div>
-            <div class="pref-card-desc">A Manhattan team member will walk you through your results personally.</div>
-          </div>
-          <div class="pref-radio"></div>
-        </div>
+      <div style="font-size:25px;font-weight:800;color:#1a1a2e;margin-bottom:6px;">Almost there.</div>
+      <div style="font-size:13px;color:#6b7280;margin-bottom:24px;line-height:1.6;max-width:460px;">We'll need about 15 minutes of your time. Your results will only be published once a Manhattan expert has reviewed and verified your submission.</div>
+      <div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:12px;">How would you like to receive your results?</div>
+      <div class="prefcard sel" id="pEmail" onclick="selPref('email')">
+        <div class="preficon" style="background:#eef4fd;">📧</div>
+        <div><div class="preftitle">Via Email</div><div class="prefdesc">We'll send your Manhattan Risk Score report directly to your inbox.</div></div>
+        <div class="prefradio"></div>
       </div>
-      <div class="disclaimer">
-        <strong>Important:</strong> This assessment is based on information voluntarily provided by your company. All responses are treated as self-declarations. Your Manhattan Risk Score will only be published as <strong>Manhattan Verified</strong> once our expert team has reviewed your responses and any supporting evidence you provide. Project Manhattan does not independently verify declarations without evidence.
+      <div class="prefcard" id="pMeeting" onclick="selPref('meeting')">
+        <div class="preficon" style="background:#f4f0ff;">📅</div>
+        <div><div class="preftitle">Schedule a Meeting</div><div class="prefdesc">A Manhattan team member will walk you through your results personally.</div></div>
+        <div class="prefradio"></div>
       </div>
-      <div class="row-actions">
-        <button class="btn-outline" onclick="goToScreen('screen-5')">Back</button>
-        <button class="btn-purple" onclick="submitAssessment()">Submit Assessment</button>
+      <div class="disclaimer" style="margin-top:16px;"><strong>Important:</strong> This assessment is based on information voluntarily provided by your company. All responses are self-declarations. Your score will only be published as <strong>Manhattan Verified</strong> once our expert team has reviewed your submission.</div>
+      <div class="brow">
+        <button class="btn-ghost" onclick="goTo('s5')">Go back.</button>
+        <button class="btn-purple" onclick="doSubmit()">Submit Assessment</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ══ SCREEN 7 — THANK YOU ═══════════════════════════════ -->
-<div class="screen" id="screen-7">
-  <div class="modal-outer" style="--glow-colors: linear-gradient(135deg,#1a6fdb,#7c3aed,#0d9488); --glow-opacity:0;">
-    <div class="modal-inner">
-      <div class="thankyou-wrap">
-        <div class="thankyou-icon">🎉</div>
-        <div class="thankyou-title">Thank You!</div>
-        <div class="thankyou-sub">Your assessment has been submitted successfully. Our team will review your responses and evidence. You'll hear from us within 48 hours.</div>
-        <div class="thankyou-badge">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
-          Pending Manhattan Verification
-        </div>
+<!-- S7 — THANK YOU -->
+<div class="screen no-glow" id="s7">
+  <div class="mw">
+    <div class="mc">
+      <div class="tywrap">
+        <div class="tyicon">🎉</div>
+        <div class="tyh">Thank You!</div>
+        <div class="tysub">Your assessment has been submitted. Our team will review your responses and evidence. You'll hear from us within 48 hours.</div>
+        <div class="tybadge"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>Pending Manhattan Verification</div>
         <br/>
-        <button class="btn-back-home" onclick="window.location.href='mri.html'">← Back to MRI</button>
+        <button class="btn-purple" onclick="window.location.href='mri.html'">← Back to MRI</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ══ PRODUCT FORM OVERLAY ═══════════════════════════════ -->
-<div class="overlay" id="productFormOverlay">
-  <div class="overlay-card">
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
-      <div>
-        <div class="overlay-title">Add Product Details</div>
-        <div class="overlay-sub">Fill in all product information accurately.</div>
-      </div>
-      <button class="sc-close-btn" onclick="closeProductForm()">×</button>
+<!-- PRODUCT FORM -->
+<div class="ov" id="pfov">
+  <div class="ovc">
+    <div class="ovhd">
+      <div><div class="ovtitle">Add Product Details</div><div class="ovsub">Fill in all product information accurately.</div></div>
+      <button class="ovcls" onclick="closePF()">×</button>
     </div>
-    <div class="form-grid">
-      <div class="form-group">
-        <label class="form-label">Product Description <span style="color:var(--red)">*</span></label>
-        <input type="text" class="form-input" id="pfDesc" placeholder="e.g. Skipjack Tuna Loin" />
+    <div class="fg">
+      <div class="fgg"><label class="fl">Product Description *</label><input type="text" class="fi" id="pfd" placeholder="e.g. Skipjack Tuna Loin"/></div>
+      <div class="fgg"><label class="fl">Market *</label>
+        <div class="mkw"><div class="mksel" id="mksel" onclick="toggleMK()"><span class="mkph" id="mkph">Select markets...</span></div>
+        <div class="mkdd" id="mkdd"><div class="mksearch"><input type="text" placeholder="Search country..." oninput="filterMK(this.value)"/></div><div id="mklist"><div style="padding:12px;font-size:12px;color:#c0c4d0;">Loading...</div></div></div></div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Market <span style="color:var(--red)">*</span></label>
-        <div class="market-wrap">
-          <div class="market-selected" id="marketSelected" onclick="toggleMarketDD()">
-            <span class="market-placeholder" id="marketPlaceholder">Select markets...</span>
-          </div>
-          <div class="market-dropdown" id="marketDD">
-            <div class="market-search"><input type="text" placeholder="Search country..." oninput="filterMarkets(this.value)" id="marketSearchInput" /></div>
-            <div id="marketOptionsList"><div class="loading-text">Loading countries...</div></div>
-          </div>
-        </div>
+      <div class="fgg"><label class="fl">Species *</label>
+        <div class="spw"><input type="text" class="fi" id="pfsp" placeholder="Search species..." oninput="filterSp(this.value)" onfocus="openSpDD()" autocomplete="off"/>
+        <div class="spdd" id="spdd"><div style="padding:12px;font-size:12px;color:#c0c4d0;">Loading...</div></div></div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Species <span style="color:var(--red)">*</span></label>
-        <div class="species-wrap">
-          <input type="text" class="form-input" id="pfSpecies" placeholder="Search species..." oninput="filterSpecies(this.value)" onfocus="openSpeciesDD()" autocomplete="off" />
-          <div class="species-dropdown" id="speciesDD"><div class="loading-text">Loading species...</div></div>
-        </div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Certification</label>
-        <select class="form-input" id="pfCert">
-          <option value="">Select certification</option>
-          <option>MSC</option><option>ASC</option><option>Other</option><option>None</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Product Form</label>
-        <select class="form-input" id="pfForm">
-          <option value="">Select form</option>
-          <option>Whole</option><option>Fillet</option><option>Loin</option>
-          <option>Canned</option><option>Frozen</option><option>Smoked</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Does your supplier provide cert. per shipment?</label>
-        <select class="form-input" id="pfSupplierCert">
-          <option value="">Select</option>
-          <option>Yes, always</option><option>Sometimes</option><option>No</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Harvest Method</label>
-        <select class="form-input" id="pfHarvest" onchange="toggleGearField()">
-          <option value="">Select method</option>
-          <option>Wild Catch</option><option>Aquaculture</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">FAO Zone</label>
-        <select class="form-input" id="pfFAO">
-          <option value="">Loading...</option>
-        </select>
-      </div>
-      <div class="form-group hidden" id="gearGroup">
-        <label class="form-label">Gear Type</label>
-        <select class="form-input" id="pfGear">
-          <option value="">Select gear</option>
-          <option>Purse Seine</option><option>Longline</option><option>Trawl</option>
-          <option>Pole & Line</option><option>Trap / Pot</option><option>Gillnet</option>
-          <option>Aquaculture Net Pen</option>
-        </select>
-      </div>
+      <div class="fgg"><label class="fl">Certification</label><select class="fi" id="pfcert"><option value="">Select</option><option>MSC</option><option>ASC</option><option>Other</option><option>None</option></select></div>
+      <div class="fgg"><label class="fl">Product Form</label><select class="fi" id="pfform"><option value="">Select</option><option>Whole</option><option>Fillet</option><option>Loin</option><option>Canned</option><option>Frozen</option><option>Smoked</option></select></div>
+      <div class="fgg"><label class="fl">Supplier provides cert. per shipment?</label><select class="fi" id="pfscert"><option value="">Select</option><option>Yes, always</option><option>Sometimes</option><option>No</option></select></div>
+      <div class="fgg"><label class="fl">Harvest Method</label><select class="fi" id="pfharvest" onchange="toggleGear()"><option value="">Select</option><option>Wild Catch</option><option>Aquaculture</option></select></div>
+      <div class="fgg"><label class="fl">FAO Zone</label><select class="fi" id="pffao"><option value="">Loading...</option></select></div>
+      <div class="fgg hidden" id="geargrp"><label class="fl">Gear Type</label><select class="fi" id="pfgear"><option value="">Select</option><option>Purse Seine</option><option>Longline</option><option>Trawl</option><option>Pole & Line</option><option>Trap / Pot</option><option>Gillnet</option></select></div>
     </div>
-    <div class="sc-section">
-      <div class="sc-section-label">Supply Chain Route</div>
-      <div class="sc-preview" id="scPreviewForm"><span class="sc-empty-text">No supply chain defined yet</span></div>
-      <button class="btn-build-sc" onclick="openSCBuilder()">🔗 Build your Supply Chain</button>
+    <div class="scsec">
+      <div class="scslbl">Supply Chain Route</div>
+      <div class="scprev" id="scprev"><span class="scempty">No supply chain defined yet</span></div>
+      <button class="btnbuild" onclick="openSCB()">🔗 Build your Supply Chain</button>
     </div>
-    <div class="overlay-actions">
-      <button class="btn-outline" onclick="closeProductForm()">Cancel</button>
-      <button class="btn-purple" onclick="saveProduct()">Confirm Product</button>
+    <div class="brow" style="margin-top:0;">
+      <button class="btn-ghost" onclick="closePF()">Cancel</button>
+      <button class="btn-purple" onclick="savePF()">Confirm Product</button>
     </div>
   </div>
 </div>
 
-<!-- ══ SC BUILDER OVERLAY ═════════════════════════════════ -->
-<div class="sc-builder-overlay" id="scBuilderOverlay">
-  <div class="sc-builder">
-    <div class="sc-builder-header">
-      <div>
-        <div class="sc-builder-title">Build Your Supply Chain</div>
-        <div class="sc-builder-sub">Drag CTEs from the left. Click a node to set who operates that stage.</div>
-      </div>
-      <button class="sc-close-btn" onclick="closeSCBuilder()">×</button>
+<!-- SC BUILDER -->
+<div class="scbov" id="scbov">
+  <div class="scb">
+    <div class="scbhd">
+      <div><div class="scbht">Build Your Supply Chain</div><div class="scbhs">Drag CTEs from the left. Click a node to set who operates that stage.</div></div>
+      <button class="ovcls" onclick="closeSCB()">×</button>
     </div>
-    <div class="sc-builder-body">
-      <div class="sc-palette">
-        <div class="sc-palette-title">GDST CTEs</div>
-        <div class="palette-node" draggable="true" ondragstart="onPaletteDrag(event,'harvest')"><div class="palette-node-icon" style="background:#e0f2fe;">🎣</div><div class="palette-node-label">Harvest / Catch</div></div>
-        <div class="palette-node" draggable="true" ondragstart="onPaletteDrag(event,'onvessel')"><div class="palette-node-icon" style="background:#f0fdf4;">🚢</div><div class="palette-node-label">On Vessel Processing</div></div>
-        <div class="palette-node" draggable="true" ondragstart="onPaletteDrag(event,'transshipment')"><div class="palette-node-icon" style="background:#fef3c7;">🔄</div><div class="palette-node-label">Transshipment</div></div>
-        <div class="palette-node" draggable="true" ondragstart="onPaletteDrag(event,'landing')"><div class="palette-node-icon" style="background:#f0fdf4;">⚓</div><div class="palette-node-label">Landing</div></div>
-        <div class="palette-node" draggable="true" ondragstart="onPaletteDrag(event,'aggregation')"><div class="palette-node-icon" style="background:#fdf4ff;">📦</div><div class="palette-node-label">Aggregation / Disagg.</div></div>
-        <div class="palette-node" draggable="true" ondragstart="onPaletteDrag(event,'processing')"><div class="palette-node-icon" style="background:#fff7ed;">🏭</div><div class="palette-node-label">Processing</div></div>
-        <div class="palette-node" draggable="true" ondragstart="onPaletteDrag(event,'shipreceive')"><div class="palette-node-icon" style="background:#eef4fd;">🚛</div><div class="palette-node-label">Ship / Receive</div></div>
+    <div class="scbbody">
+      <div class="scpal">
+        <div class="scpalt">GDST CTEs</div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'harvest')"><div class="pnicon" style="background:#e0f2fe;">🎣</div><div class="pnlbl">Harvest / Catch</div></div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'onvessel')"><div class="pnicon" style="background:#f0fdf4;">🚢</div><div class="pnlbl">On Vessel Processing</div></div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'transshipment')"><div class="pnicon" style="background:#fef3c7;">🔄</div><div class="pnlbl">Transshipment</div></div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'landing')"><div class="pnicon" style="background:#f0fdf4;">⚓</div><div class="pnlbl">Landing</div></div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'aggregation')"><div class="pnicon" style="background:#fdf4ff;">📦</div><div class="pnlbl">Aggregation / Disagg.</div></div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'processing')"><div class="pnicon" style="background:#fff7ed;">🏭</div><div class="pnlbl">Processing</div></div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'shipreceive')"><div class="pnicon" style="background:#eef4fd;">🚛</div><div class="pnlbl">Ship / Receive</div></div>
       </div>
-      <div class="sc-canvas" id="scCanvas" ondragover="onCanvasDragOver(event)" ondrop="onCanvasDrop(event)">
-        <div class="sc-canvas-hint" id="canvasHint">
-          <div class="sc-hint-icon">🔗</div>
-          <div class="sc-hint-text">Drag CTEs here to build your supply chain</div>
-        </div>
-        <svg class="connections-svg" id="connectionsSVG"></svg>
-        <div class="owner-popup" id="ownerPopup">
-          <div class="owner-popup-title" id="ownerPopupTitle">Who operates this stage?</div>
-          <div class="owner-option"><input type="radio" name="ownerR" id="oR1" value="we" /><label for="oR1">We operate this</label></div>
-          <div class="owner-option"><input type="radio" name="ownerR" id="oR2" value="supplier" /><label for="oR2">Our Supplier</label></div>
-          <div class="owner-option"><input type="radio" name="ownerR" id="oR3" value="client" /><label for="oR3">Our Client</label></div>
-          <div class="owner-option"><input type="radio" name="ownerR" id="oR4" value="third" /><label for="oR4">Third Party</label></div>
-          <button class="owner-popup-done" onclick="saveOwnership()">Done</button>
+      <div class="sccanvas" id="sccanvas" ondragover="onCD(event)" ondrop="onCDrop(event)">
+        <div class="cvhint" id="cvhint"><div class="hinticon">🔗</div><div class="hinttxt">Drag CTEs here to build your supply chain</div></div>
+        <svg class="connsvg" id="connsvg"></svg>
+        <div class="ownpop" id="ownpop">
+          <div class="ownpopt" id="ownpopt">Who operates this stage?</div>
+          <div class="ownopt"><input type="radio" name="ow" id="ow1" value="we"><label for="ow1">We operate this</label></div>
+          <div class="ownopt"><input type="radio" name="ow" id="ow2" value="supplier"><label for="ow2">Our Supplier</label></div>
+          <div class="ownopt"><input type="radio" name="ow" id="ow3" value="client"><label for="ow3">Our Client</label></div>
+          <div class="ownopt"><input type="radio" name="ow" id="ow4" value="third"><label for="ow4">Third Party</label></div>
+          <button class="owndone" onclick="saveOwn()">Done</button>
         </div>
       </div>
     </div>
-    <div class="sc-builder-footer">
-      <div class="chain-summary" id="chainSummary"><span style="color:#c0c4d0;">No chain defined yet</span></div>
-      <div class="sc-footer-actions">
-        <button class="btn-cancel-sc" onclick="closeSCBuilder()">Cancel</button>
-        <button class="btn-clear-sc" onclick="clearCanvas()">Clear All</button>
-        <button class="btn-save-sc" onclick="saveSCChain()">Save Chain</button>
+    <div class="scbft">
+      <div class="chainsum" id="chainsum"><span style="color:#c0c4d0;">No chain defined</span></div>
+      <div class="scbftacts">
+        <button class="btnsm-ghost" onclick="closeSCB()">Cancel</button>
+        <button class="btnsm-red" onclick="clearCV()">Clear All</button>
+        <button class="btnsm-purple" onclick="saveSC()">Save Chain</button>
       </div>
     </div>
   </div>
@@ -1388,851 +829,282 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-const SUPABASE_URL = 'https://enbdaajcromxmhgcverp.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
-const db = window._sharedSupabase || (window._sharedSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY));
+const SU='https://enbdaajcromxmhgcverp.supabase.co',SK='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const db=window._sharedSupabase||(window._sharedSupabase=supabase.createClient(SU,SK));
+let company=null,products=[],curPI=0,mkSel=[],allC=[],allSp=[],curChain=[];
+let kIdx=0,kResp={},pref='email';
+const CTE={harvest:{l:'Harvest / Catch',i:'🎣',b:'#e0f2fe'},onvessel:{l:'On Vessel Processing',i:'🚢',b:'#f0fdf4'},transshipment:{l:'Transshipment',i:'🔄',b:'#fef3c7'},landing:{l:'Landing',i:'⚓',b:'#f0fdf4'},aggregation:{l:'Aggregation/Disagg.',i:'📦',b:'#fdf4ff'},processing:{l:'Processing',i:'🏭',b:'#fff7ed'},shipreceive:{l:'Ship / Receive',i:'🚛',b:'#eef4fd'}};
+const OWN={we:'We operate this',supplier:'Our Supplier',client:'Our Client',third:'Third Party'};
+let scN=[],scC=[],sDT=null,sDN=null,sDX=0,sDY=0,sCC=null,sNC=0,aOwn=null;
 
-// ── STATE ──────────────────────────────────────────────────
-let currentCompany = null;
-let products = [];
-let currentProductIdx = 0;
-let selectedMarkets = [];
-let allCountries = [];
-let allSpecies = [];
-let kdeStageIndex = 0;
-let kdeResponses = {};
-let selectedPref = 'email';
+function goTo(id){document.querySelector('.screen.active')?.classList.remove('active');document.getElementById(id).classList.add('active');}
 
-// SC Builder state
-const CTE_CFG = {
-  harvest:       { label: 'Harvest / Catch',       icon: '🎣', bg: '#e0f2fe' },
-  onvessel:      { label: 'On Vessel Processing',  icon: '🚢', bg: '#f0fdf4' },
-  transshipment: { label: 'Transshipment',         icon: '🔄', bg: '#fef3c7' },
-  landing:       { label: 'Landing',               icon: '⚓', bg: '#f0fdf4' },
-  aggregation:   { label: 'Aggregation / Disagg.', icon: '📦', bg: '#fdf4ff' },
-  processing:    { label: 'Processing',            icon: '🏭', bg: '#fff7ed' },
-  shipreceive:   { label: 'Ship / Receive',        icon: '🚛', bg: '#eef4fd' },
-};
-
-const OWNER_LABELS = { we: 'We operate this', supplier: 'Our Supplier', client: 'Our Client', third: 'Third Party' };
-
-let scNodes = [], scConnections = [], scDragType = null;
-let scDraggingNode = null, scDragOffX = 0, scDragOffY = 0;
-let scConnecting = null, scNodeCounter = 0, scActiveOwnerNode = null;
-let currentChain = [];
-
-// ── SCREEN NAVIGATION ─────────────────────────────────────
-function goToScreen(id) {
-  const current = document.querySelector('.screen.active');
-  if (current) {
-    current.classList.add('exit-left');
-    setTimeout(() => current.classList.remove('active', 'exit-left'), 450);
-  }
-  setTimeout(() => document.getElementById(id).classList.add('active'), 50);
+// S1
+let s1C=0,s1T=null;
+function s1Go(i){
+  clearInterval(s1T);
+  const c=document.getElementById('s1s'+s1C),n=document.getElementById('s1s'+i);
+  c.classList.add('out');c.classList.remove('active');setTimeout(()=>c.classList.remove('out'),380);
+  n.style.transform='translateX(40px)';n.style.opacity='0';n.classList.add('active');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{n.style.transform='';n.style.opacity='';}));
+  s1C=i;
+  document.querySelectorAll('#s1dots .dot').forEach((d,j)=>d.classList.toggle('on',j===i));
+  const b=document.getElementById('s1btn');b.textContent=i===3?'Proceed':'Next';b.classList.toggle('proceed',i===3);
+  if(i<3){clearInterval(s1T);s1T=setInterval(()=>{if(s1C<3)s1Go(s1C+1);else clearInterval(s1T);},5000);}
 }
+function s1Next(){if(s1C<3)s1Go(s1C+1);else goTo('s1b');}
+s1T=setInterval(()=>{if(s1C<3)s1Go(s1C+1);else clearInterval(s1T);},5000);
 
-// ── SCREEN 1 — AUTO ADVANCE ───────────────────────────────
-let s1Current = 0, s1Timer = null;
-const S1_TOTAL = 4;
-
-function s1Go(idx) {
-  clearInterval(s1Timer);
-  const cur = document.getElementById('s1-' + s1Current);
-  const nxt = document.getElementById('s1-' + idx);
-  cur.classList.add('exit'); cur.classList.remove('active');
-  setTimeout(() => cur.classList.remove('exit'), 420);
-  nxt.style.transform = 'translateX(40px)'; nxt.style.opacity = '0';
-  nxt.classList.add('active');
-  requestAnimationFrame(() => requestAnimationFrame(() => { nxt.style.transform = ''; nxt.style.opacity = ''; }));
-  s1Current = idx;
-  document.querySelectorAll('#s1Dots .dot').forEach((d,i) => d.classList.toggle('active', i===idx));
-  const btn = document.getElementById('s1Btn');
-  btn.textContent = idx === S1_TOTAL - 1 ? 'Proceed' : 'Next';
-  btn.classList.toggle('proceed', idx === S1_TOTAL - 1);
-  if (idx < S1_TOTAL - 1) s1StartAuto();
+// S1B
+let s1bC=0;
+function s1bGo(i){
+  const c=document.getElementById('s1bs'+s1bC),n=document.getElementById('s1bs'+i);
+  c.classList.add('out');c.classList.remove('active');setTimeout(()=>c.classList.remove('out'),380);
+  n.style.transform='translateX(40px)';n.style.opacity='0';n.classList.add('active');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{n.style.transform='';n.style.opacity='';}));
+  s1bC=i;
+  document.querySelectorAll('#s1bdots .dot').forEach((d,j)=>d.classList.toggle('on',j===i));
+  const b=document.getElementById('s1bbtn');b.textContent=i===4?'Proceed':'Next';b.classList.toggle('proceed',i===4);
 }
+function s1bNext(){if(s1bC<4)s1bGo(s1bC+1);else goTo('s1c');}
 
-function s1Next() {
-  if (s1Current < S1_TOTAL - 1) s1Go(s1Current + 1);
-  else goToScreen('screen-1b');
+// S1C
+let s1cC=0;
+function s1cGo(i){
+  const c=document.getElementById('s1cs'+s1cC),n=document.getElementById('s1cs'+i);
+  c.classList.add('out');c.classList.remove('active');setTimeout(()=>c.classList.remove('out'),380);
+  n.style.transform='translateX(40px)';n.style.opacity='0';n.classList.add('active');
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{n.style.transform='';n.style.opacity='';}));
+  s1cC=i;
+  document.querySelectorAll('#s1cdots .dot').forEach((d,j)=>d.classList.toggle('on',j===i));
+  const b=document.getElementById('s1cbtn');b.textContent=i===2?'Proceed':'Next';b.classList.toggle('proceed',i===2);
+  if(i===2){const s=document.getElementById('s1c');s.classList.remove('glow-manhattan');}
 }
+function s1cNext(){if(s1cC<2)s1cGo(s1cC+1);else goTo('s2');}
 
-function s1StartAuto() {
-  clearInterval(s1Timer);
-  s1Timer = setInterval(() => {
-    if (s1Current < S1_TOTAL - 1) s1Go(s1Current + 1);
-    else clearInterval(s1Timer);
-  }, 5000);
-}
-
-s1StartAuto();
-
-// ── SCREEN 1B ─────────────────────────────────────────────
-let s1bCurrent = 0;
-const S1B_TOTAL = 5;
-
-function s1bGo(idx) {
-  const cur = document.getElementById('s1b-' + s1bCurrent);
-  const nxt = document.getElementById('s1b-' + idx);
-  cur.classList.add('exit'); cur.classList.remove('active');
-  setTimeout(() => cur.classList.remove('exit'), 420);
-  nxt.style.transform = 'translateX(40px)'; nxt.style.opacity = '0';
-  nxt.classList.add('active');
-  requestAnimationFrame(() => requestAnimationFrame(() => { nxt.style.transform = ''; nxt.style.opacity = ''; }));
-  s1bCurrent = idx;
-  document.querySelectorAll('#s1bDots .dot').forEach((d,i) => d.classList.toggle('active', i===idx));
-  const btn = document.getElementById('s1bBtn');
-  btn.textContent = idx === S1B_TOTAL - 1 ? 'Proceed' : 'Next';
-  btn.classList.toggle('proceed', idx === S1B_TOTAL - 1);
-}
-
-function s1bNext() {
-  if (s1bCurrent < S1B_TOTAL - 1) s1bGo(s1bCurrent + 1);
-  else goToScreen('screen-1c');
-}
-
-// ── SCREEN 1C ─────────────────────────────────────────────
-let s1cCurrent = 0;
-const S1C_TOTAL = 3;
-
-function s1cGo(idx) {
-  const cur = document.getElementById('s1c-' + s1cCurrent);
-  const nxt = document.getElementById('s1c-' + idx);
-  cur.classList.add('exit'); cur.classList.remove('active');
-  setTimeout(() => cur.classList.remove('exit'), 420);
-  nxt.style.transform = 'translateX(40px)'; nxt.style.opacity = '0';
-  nxt.classList.add('active');
-  requestAnimationFrame(() => requestAnimationFrame(() => { nxt.style.transform = ''; nxt.style.opacity = ''; }));
-  s1cCurrent = idx;
-  document.querySelectorAll('#s1cDots .dot').forEach((d,i) => d.classList.toggle('active', i===idx));
-  const btn = document.getElementById('s1cBtn');
-  btn.textContent = idx === S1C_TOTAL - 1 ? 'Proceed' : 'Next';
-  btn.classList.toggle('proceed', idx === S1C_TOTAL - 1);
-  // Fade glow on last slide
-  document.getElementById('screen-1c').querySelector('.modal-outer').style.setProperty('--glow-opacity', idx === S1C_TOTAL - 1 ? '0' : '0.4');
-}
-
-function s1cNext() {
-  if (s1cCurrent < S1C_TOTAL - 1) s1cGo(s1cCurrent + 1);
-  else goToScreen('screen-2');
-}
-
-// ── SCREEN 2 — CODE ENTRY ─────────────────────────────────
-document.querySelectorAll('.code-box').forEach((box, i) => {
-  box.addEventListener('input', () => {
-    box.value = box.value.toUpperCase();
-    if (box.value && i < 5) document.getElementById('c' + (i+1)).focus();
-  });
-  box.addEventListener('keydown', (e) => {
-    if (e.key === 'Backspace' && !box.value && i > 0) document.getElementById('c' + (i-1)).focus();
-  });
+// CODE
+document.querySelectorAll('.cbox').forEach((b,i)=>{
+  b.addEventListener('input',()=>{b.value=b.value.toUpperCase();if(b.value&&i<5)document.getElementById('c'+(i+1)).focus();});
+  b.addEventListener('keydown',e=>{if(e.key==='Backspace'&&!b.value&&i>0)document.getElementById('c'+(i-1)).focus();});
 });
-
-async function proceedFromCode() {
-  // Demo mode — any code works
-  const code = ['c0','c1','c2','c3','c4','c5'].map(id => document.getElementById(id).value).join('');
-  if (!code.trim()) {
-    // Still allow in demo mode
-  }
-  // Try to load company by code
-  const cleanCode = '#' + code.toUpperCase().replace(/[^A-Z0-9]/g,'');
-  const { data: companies } = await db.from('companies').select('*').ilike('company_code', `%${code.toUpperCase()}%`).limit(1);
-
-  if (companies && companies.length > 0) {
-    currentCompany = companies[0];
-  } else {
-    // Demo fallback
-    currentCompany = { company_name: 'Ocean Fishery Ltd', industry: 'Seafood Processing', gln: '5412345000013', photo_url: null };
-  }
-  populateWelcomeScreen();
-  goToScreen('screen-3');
+async function doCode(){
+  const code=['c0','c1','c2','c3','c4','c5'].map(id=>document.getElementById(id).value).join('').toUpperCase();
+  const{data}=await db.from('companies').select('*').ilike('company_code','%'+code+'%').limit(1);
+  company=(data&&data.length)?data[0]:{company_name:'Ocean Fishery Ltd',industry:'Seafood Processing',gln:'5412345000013',photo_url:null};
+  fillWelcome();goTo('s3');
+}
+function fillWelcome(){
+  const c=company;
+  document.getElementById('wn').textContent=c.company_name||'Your Company';
+  document.getElementById('wcname').textContent=c.company_name||'—';
+  document.getElementById('wcind').textContent=c.industry||'—';
+  document.getElementById('wcgln').innerHTML=`<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>GLN: ${c.gln||'—'}`;
+  const l=document.getElementById('wlogo');
+  if(c.photo_url)l.innerHTML=`<img src="${c.photo_url}">`;else l.textContent=(c.company_name||'O').charAt(0).toUpperCase();
+  ['s4av','s5av'].forEach(id=>{const el=document.getElementById(id);if(c.photo_url)el.innerHTML=`<img src="${c.photo_url}">`;else el.textContent=(c.company_name||'O').charAt(0).toUpperCase();});
+  ['s4an','s5an'].forEach(id=>document.getElementById(id).textContent=c.company_name||'—');
 }
 
-function populateWelcomeScreen() {
-  const c = currentCompany;
-  document.getElementById('welcomeCompanyName').textContent = c.company_name || 'Your Company';
-  document.getElementById('welcomeName').textContent = c.company_name || '—';
-  document.getElementById('welcomeIndustry').textContent = c.industry || '—';
-  document.getElementById('welcomeGLN').innerHTML = `
-    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-    GLN: ${c.gln || '—'}
-  `;
-  const logo = document.getElementById('welcomeLogo');
-  if (c.photo_url) {
-    logo.innerHTML = `<img src="${c.photo_url}" />`;
-  } else {
-    logo.textContent = (c.company_name || 'O').charAt(0).toUpperCase();
-  }
-  const bAvatar = document.getElementById('badgeAvatar');
-  const kAvatar = document.getElementById('kdeBadgeAvatar');
-  if (c.photo_url) {
-    bAvatar.innerHTML = `<img src="${c.photo_url}" />`;
-    kAvatar.innerHTML = `<img src="${c.photo_url}" />`;
-  } else {
-    bAvatar.textContent = (c.company_name || 'O').charAt(0).toUpperCase();
-    kAvatar.textContent = (c.company_name || 'O').charAt(0).toUpperCase();
-  }
-  document.getElementById('badgeName').textContent = c.company_name || '—';
-  document.getElementById('kdeBadgeName').textContent = c.company_name || '—';
+// PRODUCTS
+function openPF(idx){
+  curPI=idx;const p=products[idx]||{};
+  document.getElementById('pfd').value=p.desc||'';
+  document.getElementById('pfsp').value=p.species||'';
+  document.getElementById('pfcert').value=p.cert||'';
+  document.getElementById('pfform').value=p.form||'';
+  document.getElementById('pfharvest').value=p.harvest||'';
+  document.getElementById('pfgear').value=p.gear||'';
+  toggleGear();mkSel=p.markets?[...p.markets]:[];updateMKChips();
+  curChain=p.chain?[...p.chain]:[];updateSCPrev();
+  document.getElementById('pfov').classList.add('open');
+}
+function closePF(){document.getElementById('pfov').classList.remove('open');clearCV();}
+function savePF(){
+  const d=document.getElementById('pfd').value.trim();
+  if(!d){alert('Please enter a product description.');return;}
+  products[curPI]={desc:d,species:document.getElementById('pfsp').value,cert:document.getElementById('pfcert').value,form:document.getElementById('pfform').value,harvest:document.getElementById('pfharvest').value,gear:document.getElementById('pfgear').value,fao:document.getElementById('pffao').value,markets:[...mkSel],chain:[...curChain]};
+  fillSlot(curPI);clearCV();document.getElementById('pfov').classList.remove('open');
+}
+function fillSlot(i){
+  const p=products[i],s=document.getElementById('ps'+i);if(!p)return;
+  s.classList.add('filled');
+  s.innerHTML=`<button class="pedit" onclick="event.stopPropagation();openPF(${i})">✏️</button><div style="font-size:20px;">${p.cert==='MSC'?'🎣':p.cert==='ASC'?'🐟':'📦'}</div><div class="pname">${p.desc}</div><div class="ptype">${p.harvest||''}</div>`;
+  s.onclick=()=>openPF(i);
+}
+function toggleGear(){document.getElementById('geargrp').classList.toggle('hidden',document.getElementById('pfharvest').value!=='Wild Catch');}
+function toKDE(){if(!products.filter(Boolean).length){alert('Please add at least one product.');return;}kIdx=0;renderKDE();goTo('s5');}
+
+// MARKET
+async function loadCountries(){const{data}=await db.from('countries').select('country,alpha2').order('country');allC=data||[];renderMKOpts(allC);}
+function renderMKOpts(list){document.getElementById('mklist').innerHTML=list.map(c=>`<div class="mkopt ${mkSel.includes(c.alpha2)?'sel':''}" onclick="togMK('${c.alpha2}','${c.country.replace(/'/g,"\\'")}')"><span>${c.country}</span>${mkSel.includes(c.alpha2)?'<span>✓</span>':''}</div>`).join('');}
+function filterMK(q){renderMKOpts(allC.filter(c=>c.country.toLowerCase().includes(q.toLowerCase())));}
+function toggleMK(){document.getElementById('mkdd').classList.toggle('open');}
+function togMK(a2){mkSel.includes(a2)?mkSel=mkSel.filter(m=>m!==a2):mkSel.push(a2);updateMKChips();renderMKOpts(allC);}
+function updateMKChips(){
+  const w=document.getElementById('mksel');w.querySelectorAll('.mkchip').forEach(e=>e.remove());
+  const ph=document.getElementById('mkph');
+  if(!mkSel.length){ph.style.display='block';return;}ph.style.display='none';
+  mkSel.forEach(a2=>{const c=allC.find(c=>c.alpha2===a2);if(!c)return;const ch=document.createElement('span');ch.className='mkchip';ch.innerHTML=`${c.country}<span class="mkx" onclick="event.stopPropagation();rmMK('${a2}')">×</span>`;w.insertBefore(ch,ph);});
+}
+function rmMK(a2){mkSel=mkSel.filter(m=>m!==a2);updateMKChips();renderMKOpts(allC);}
+
+// SPECIES
+async function loadSpecies(){const{data}=await db.from('species').select('species_name,scientific_name').is('deleted_at',null).order('species_name');allSp=data||[];renderSpOpts(allSp);}
+function renderSpOpts(list){const dd=document.getElementById('spdd');if(!list.length){dd.innerHTML='<div style="padding:12px;font-size:12px;color:#c0c4d0;">No species found</div>';return;}dd.innerHTML=list.slice(0,50).map(s=>`<div class="spopt" onclick="selSp('${s.species_name.replace(/'/g,"\\'")}')"><div class="spn">${s.species_name}</div>${s.scientific_name?`<div class="sps">${s.scientific_name}</div>`:''}</div>`).join('');}
+function filterSp(q){renderSpOpts(allSp.filter(s=>s.species_name?.toLowerCase().includes(q.toLowerCase())||s.scientific_name?.toLowerCase().includes(q.toLowerCase())));document.getElementById('spdd').classList.add('open');}
+function openSpDD(){document.getElementById('spdd').classList.add('open');}
+function selSp(n){document.getElementById('pfsp').value=n;document.getElementById('spdd').classList.remove('open');}
+
+// FAO
+async function loadFAO(){
+  const{data}=await db.from('products').select('fao_zone').not('fao_zone','is',null).order('fao_zone');
+  const zones=[...new Set((data||[]).map(d=>d.fao_zone).filter(Boolean))].sort();
+  const sel=document.getElementById('pffao');
+  sel.innerHTML='<option value="">Select FAO zone</option>'+(zones.length?zones.map(z=>`<option>${z}</option>`).join(''):'<option disabled>No zones yet</option>');
 }
 
-// ── SCREEN 4 — PRODUCTS ───────────────────────────────────
-function openProductForm(idx) {
-  currentProductIdx = idx;
-  // Pre-fill if editing
-  const p = products[idx];
-  document.getElementById('pfDesc').value = p?.desc || '';
-  document.getElementById('pfSpecies').value = p?.species || '';
-  document.getElementById('pfCert').value = p?.cert || '';
-  document.getElementById('pfForm').value = p?.form || '';
-  document.getElementById('pfHarvest').value = p?.harvest || '';
-  document.getElementById('pfGear').value = p?.gear || '';
-  toggleGearField();
-  selectedMarkets = p?.markets ? [...p.markets] : [];
-  updateMarketChips();
-  currentChain = p?.chain ? [...p.chain] : [];
-  updateSCPreview();
-  document.getElementById('productFormOverlay').classList.add('open');
+// SC BUILDER
+function openSCB(){document.getElementById('scbov').classList.add('open');}
+function closeSCB(){document.getElementById('scbov').classList.remove('open');document.getElementById('ownpop').classList.remove('open');}
+function onPD(e,t){sDT=t;e.dataTransfer.effectAllowed='copy';}
+function onCD(e){e.preventDefault();}
+function onCDrop(e){e.preventDefault();if(!sDT)return;const cv=document.getElementById('sccanvas'),r=cv.getBoundingClientRect();addN(sDT,e.clientX-r.left-70,e.clientY-r.top-25);sDT=null;}
+function addN(type,x,y){
+  const cfg=CTE[type],id='n'+(++sNC);scN.push({id,type,x,y,cfg,own:null});
+  const el=document.createElement('div');el.className='cnode';el.id=id;
+  el.style.left=Math.max(0,x)+'px';el.style.top=Math.max(0,y)+'px';
+  el.innerHTML=`<button class="cdel" onclick="delN('${id}')">×</button><div class="cni"><div class="cni-icon" style="background:${cfg.b};">${cfg.i}</div><div class="cni-lbl">${cfg.l}</div></div><div class="cown" id="ob${id}"></div><div class="port r" onmousedown="startConn(event,'${id}')"></div><div class="port l"></div>`;
+  el.addEventListener('mousedown',e=>{if(e.target.classList.contains('port')||e.target.classList.contains('cdel'))return;sDN=id;const r=el.getBoundingClientRect();sDX=e.clientX-r.left;sDY=e.clientY-r.top;e.preventDefault();});
+  el.addEventListener('click',e=>{if(e.target.classList.contains('port')||e.target.classList.contains('cdel'))return;openOwn(id,el);});
+  document.getElementById('sccanvas').appendChild(el);
+  document.getElementById('cvhint').classList.add('gone');updateSum();
 }
-
-function closeProductForm() {
-  document.getElementById('productFormOverlay').classList.remove('open');
-  clearCanvas();
+function openOwn(nid,el){
+  aOwn=nid;const node=scN.find(n=>n.id===nid);
+  document.getElementById('ownpopt').textContent=`Who operates "${node.cfg.l}"?`;
+  document.querySelectorAll('input[name="ow"]').forEach(r=>r.checked=false);
+  if(node.own){const r=document.querySelector(`input[name="ow"][value="${node.own}"]`);if(r)r.checked=true;}
+  const cv=document.getElementById('sccanvas'),cr=cv.getBoundingClientRect(),nr=el.getBoundingClientRect();
+  let px=nr.right-cr.left+8,py=nr.top-cr.top;
+  if(px+208>cv.offsetWidth)px=nr.left-cr.left-213;
+  if(py+188>cv.offsetHeight)py=cv.offsetHeight-193;
+  const pop=document.getElementById('ownpop');pop.style.left=px+'px';pop.style.top=Math.max(8,py)+'px';pop.classList.add('open');
 }
-
-function saveProduct() {
-  const desc = document.getElementById('pfDesc').value.trim();
-  if (!desc) { alert('Please enter a product description.'); return; }
-  products[currentProductIdx] = {
-    desc,
-    species: document.getElementById('pfSpecies').value,
-    cert: document.getElementById('pfCert').value,
-    form: document.getElementById('pfForm').value,
-    harvest: document.getElementById('pfHarvest').value,
-    gear: document.getElementById('pfGear').value,
-    fao: document.getElementById('pfFAO').value,
-    markets: [...selectedMarkets],
-    chain: [...currentChain],
-  };
-  updateProductSlot(currentProductIdx);
-  clearCanvas();
-  document.getElementById('productFormOverlay').classList.remove('open');
+function saveOwn(){
+  if(!aOwn)return;const sel=document.querySelector('input[name="ow"]:checked');
+  const node=scN.find(n=>n.id===aOwn);
+  if(sel&&node){node.own=sel.value;const b=document.getElementById('ob'+aOwn);b.textContent=OWN[sel.value];b.classList.add('show');}
+  document.getElementById('ownpop').classList.remove('open');aOwn=null;updateSum();
 }
-
-function updateProductSlot(idx) {
-  const p = products[idx];
-  const slot = document.getElementById('slot-' + idx);
-  if (!p) return;
-  slot.classList.add('filled');
-  slot.innerHTML = `
-    <button class="product-slot-edit" onclick="event.stopPropagation(); openProductForm(${idx})">✏️</button>
-    <div style="font-size:20px;">${p.cert === 'MSC' ? '🎣' : p.cert === 'ASC' ? '🐟' : '📦'}</div>
-    <div class="product-slot-name">${p.desc}</div>
-    <div class="product-slot-type">${p.harvest || ''} ${p.species ? '· ' + p.species.split(' ')[0] : ''}</div>
-  `;
-  slot.onclick = () => openProductForm(idx);
-}
-
-function toggleGearField() {
-  const val = document.getElementById('pfHarvest').value;
-  document.getElementById('gearGroup').classList.toggle('hidden', val !== 'Wild Catch');
-}
-
-function proceedToKDE() {
-  const filled = products.filter(Boolean);
-  if (!filled.length) { alert('Please add at least one product before continuing.'); return; }
-  kdeStageIndex = 0;
-  renderKDEStage();
-  goToScreen('screen-5');
-}
-
-// ── MARKET MULTI-SELECT ───────────────────────────────────
-async function loadCountries() {
-  const { data } = await db.from('countries').select('country,alpha2').order('country');
-  allCountries = data || [];
-  renderMarketOptions(allCountries);
-}
-
-function renderMarketOptions(list) {
-  const el = document.getElementById('marketOptionsList');
-  el.innerHTML = list.map(c => `
-    <div class="market-option ${selectedMarkets.includes(c.alpha2) ? 'selected' : ''}"
-         onclick="toggleMarket('${c.alpha2}','${c.country.replace(/'/g,"\\'")}')">
-      ${c.country}
-      ${selectedMarkets.includes(c.alpha2) ? '<span style="margin-left:auto;">✓</span>' : ''}
-    </div>`).join('');
-}
-
-function filterMarkets(q) {
-  renderMarketOptions(allCountries.filter(c => c.country.toLowerCase().includes(q.toLowerCase())));
-}
-
-function toggleMarketDD() {
-  document.getElementById('marketDD').classList.toggle('open');
-}
-
-function toggleMarket(alpha2, name) {
-  if (selectedMarkets.includes(alpha2)) {
-    selectedMarkets = selectedMarkets.filter(m => m !== alpha2);
-  } else {
-    selectedMarkets.push(alpha2);
-  }
-  updateMarketChips();
-  renderMarketOptions(allCountries);
-}
-
-function updateMarketChips() {
-  const wrap = document.getElementById('marketSelected');
-  wrap.querySelectorAll('.market-chip').forEach(e => e.remove());
-  const ph = document.getElementById('marketPlaceholder');
-  if (!selectedMarkets.length) { ph.style.display = 'block'; return; }
-  ph.style.display = 'none';
-  selectedMarkets.forEach(a2 => {
-    const c = allCountries.find(c => c.alpha2 === a2);
-    if (!c) return;
-    const chip = document.createElement('span');
-    chip.className = 'market-chip';
-    chip.innerHTML = `${c.country} <span class="market-chip-x" onclick="event.stopPropagation();removeMarket('${a2}')">×</span>`;
-    wrap.insertBefore(chip, ph);
-  });
-}
-
-function removeMarket(a2) {
-  selectedMarkets = selectedMarkets.filter(m => m !== a2);
-  updateMarketChips();
-  renderMarketOptions(allCountries);
-}
-
-// ── SPECIES SEARCH ────────────────────────────────────────
-async function loadSpecies() {
-  const { data } = await db.from('species').select('species_name,scientific_name').is('deleted_at', null).order('species_name');
-  allSpecies = data || [];
-  renderSpeciesOptions(allSpecies);
-}
-
-function renderSpeciesOptions(list) {
-  const dd = document.getElementById('speciesDD');
-  if (!list.length) { dd.innerHTML = '<div class="loading-text">No species found</div>'; return; }
-  dd.innerHTML = list.slice(0, 50).map(s => `
-    <div class="species-option" onclick="selectSpecies('${s.species_name.replace(/'/g,"\\'")}')">
-      <div class="species-name">${s.species_name}</div>
-      ${s.scientific_name ? `<div class="species-sci">${s.scientific_name}</div>` : ''}
-    </div>`).join('');
-}
-
-function filterSpecies(q) {
-  const filtered = allSpecies.filter(s =>
-    s.species_name?.toLowerCase().includes(q.toLowerCase()) ||
-    s.scientific_name?.toLowerCase().includes(q.toLowerCase())
-  );
-  renderSpeciesOptions(filtered);
-  document.getElementById('speciesDD').classList.add('open');
-}
-
-function openSpeciesDD() { document.getElementById('speciesDD').classList.add('open'); }
-function selectSpecies(name) { document.getElementById('pfSpecies').value = name; document.getElementById('speciesDD').classList.remove('open'); }
-
-// ── FAO ZONES ─────────────────────────────────────────────
-async function loadFAO() {
-  const { data } = await db.from('products').select('fao_zone').not('fao_zone', 'is', null).order('fao_zone');
-  const zones = [...new Set((data||[]).map(d => d.fao_zone).filter(Boolean))].sort();
-  const sel = document.getElementById('pfFAO');
-  sel.innerHTML = '<option value="">Select FAO zone</option>' +
-    (zones.length ? zones.map(z => `<option>${z}</option>`).join('') : '<option disabled>No zones yet — add in Products module</option>');
-}
-
-// ── SC BUILDER ────────────────────────────────────────────
-function openSCBuilder() { document.getElementById('scBuilderOverlay').classList.add('open'); }
-
-function closeSCBuilder() {
-  document.getElementById('scBuilderOverlay').classList.remove('open');
-  document.getElementById('ownerPopup').classList.remove('open');
-}
-
-function onPaletteDrag(e, type) { scDragType = type; e.dataTransfer.effectAllowed = 'copy'; }
-function onCanvasDragOver(e) { e.preventDefault(); }
-function onCanvasDrop(e) {
-  e.preventDefault();
-  if (!scDragType) return;
-  const canvas = document.getElementById('scCanvas');
-  const rect = canvas.getBoundingClientRect();
-  addSCNode(scDragType, e.clientX - rect.left - 70, e.clientY - rect.top - 25);
-  scDragType = null;
-}
-
-function addSCNode(type, x, y) {
-  const cfg = CTE_CFG[type];
-  const id = 'scn_' + (++scNodeCounter);
-  scNodes.push({ id, type, x, y, cfg, owner: null });
-
-  const el = document.createElement('div');
-  el.className = 'canvas-node';
-  el.id = id;
-  el.style.left = Math.max(0,x) + 'px';
-  el.style.top = Math.max(0,y) + 'px';
-  el.innerHTML = `
-    <button class="node-delete" onclick="deleteSCNode('${id}')">×</button>
-    <div class="canvas-node-inner">
-      <div class="canvas-node-icon" style="background:${cfg.bg};">${cfg.icon}</div>
-      <div class="canvas-node-label">${cfg.label}</div>
-    </div>
-    <div class="node-owner-badge" id="ob_${id}"></div>
-    <div class="port left" onmousedown="startSCConnect(event,'${id}','left')"></div>
-    <div class="port right" onmousedown="startSCConnect(event,'${id}','right')"></div>
-  `;
-
-  el.addEventListener('mousedown', (e) => {
-    if (e.target.classList.contains('port') || e.target.classList.contains('node-delete')) return;
-    scDraggingNode = id;
-    const r = el.getBoundingClientRect();
-    scDragOffX = e.clientX - r.left;
-    scDragOffY = e.clientY - r.top;
-    e.preventDefault();
-  });
-
-  el.addEventListener('click', (e) => {
-    if (e.target.classList.contains('port') || e.target.classList.contains('node-delete')) return;
-    openOwnerPopup(id, el);
-  });
-
-  document.getElementById('scCanvas').appendChild(el);
-  document.getElementById('canvasHint').classList.add('hidden');
-  updateChainSummary();
-}
-
-function openOwnerPopup(nodeId, nodeEl) {
-  scActiveOwnerNode = nodeId;
-  const node = scNodes.find(n => n.id === nodeId);
-  document.getElementById('ownerPopupTitle').textContent = `Who operates "${node.cfg.label}"?`;
-  document.querySelectorAll('input[name="ownerR"]').forEach(r => r.checked = false);
-  if (node.owner) { const r = document.querySelector(`input[name="ownerR"][value="${node.owner}"]`); if (r) r.checked = true; }
-  const canvas = document.getElementById('scCanvas');
-  const cr = canvas.getBoundingClientRect();
-  const nr = nodeEl.getBoundingClientRect();
-  let px = nr.right - cr.left + 8;
-  let py = nr.top - cr.top;
-  if (px + 215 > canvas.offsetWidth) px = nr.left - cr.left - 220;
-  if (py + 190 > canvas.offsetHeight) py = canvas.offsetHeight - 195;
-  const popup = document.getElementById('ownerPopup');
-  popup.style.left = px + 'px';
-  popup.style.top = Math.max(8, py) + 'px';
-  popup.classList.add('open');
-}
-
-function saveOwnership() {
-  if (!scActiveOwnerNode) return;
-  const sel = document.querySelector('input[name="ownerR"]:checked');
-  const node = scNodes.find(n => n.id === scActiveOwnerNode);
-  if (sel && node) {
-    node.owner = sel.value;
-    const badge = document.getElementById('ob_' + scActiveOwnerNode);
-    badge.textContent = OWNER_LABELS[sel.value];
-    badge.classList.add('show');
-  }
-  document.getElementById('ownerPopup').classList.remove('open');
-  scActiveOwnerNode = null;
-  updateChainSummary();
-}
-
-function startSCConnect(e, nodeId, side) { e.stopPropagation(); e.preventDefault(); scConnecting = { nodeId, side, el: e.target }; }
-
-function deleteSCNode(id) {
-  scNodes = scNodes.filter(n => n.id !== id);
-  scConnections = scConnections.filter(c => c.from !== id && c.to !== id);
-  document.getElementById(id)?.remove();
-  if (!scNodes.length) document.getElementById('canvasHint').classList.remove('hidden');
-  drawSVGConnections();
-  updateChainSummary();
-}
-
-function clearCanvas() {
-  scNodes.forEach(n => document.getElementById(n.id)?.remove());
-  scNodes = []; scConnections = [];
-  document.getElementById('canvasHint')?.classList.remove('hidden');
-  drawSVGConnections();
-  updateChainSummary();
-}
-
-document.addEventListener('mousemove', (e) => {
-  if (scDraggingNode) {
-    const canvas = document.getElementById('scCanvas');
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = Math.max(0, e.clientX - rect.left - scDragOffX);
-    const y = Math.max(0, e.clientY - rect.top - scDragOffY);
-    const el = document.getElementById(scDraggingNode);
-    if (el) { el.style.left = x + 'px'; el.style.top = y + 'px'; }
-    const node = scNodes.find(n => n.id === scDraggingNode);
-    if (node) { node.x = x; node.y = y; }
-    drawSVGConnections();
-  }
-  if (scConnecting) {
-    const canvas = document.getElementById('scCanvas');
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    drawSVGConnections(e.clientX - rect.left, e.clientY - rect.top);
-  }
+function startConn(e,id){e.stopPropagation();e.preventDefault();sCC={id,el:e.target};}
+function delN(id){scN=scN.filter(n=>n.id!==id);scC=scC.filter(c=>c.f!==id&&c.t!==id);document.getElementById(id)?.remove();if(!scN.length)document.getElementById('cvhint').classList.remove('gone');drawConn();updateSum();}
+function clearCV(){scN.forEach(n=>document.getElementById(n.id)?.remove());scN=[];scC=[];document.getElementById('cvhint')?.classList.remove('gone');drawConn();updateSum();}
+document.addEventListener('mousemove',e=>{
+  if(sDN){const cv=document.getElementById('sccanvas');if(!cv)return;const r=cv.getBoundingClientRect();const x=Math.max(0,e.clientX-r.left-sDX),y=Math.max(0,e.clientY-r.top-sDY);const el=document.getElementById(sDN);if(el){el.style.left=x+'px';el.style.top=y+'px';}const n=scN.find(n=>n.id===sDN);if(n){n.x=x;n.y=y;}drawConn();}
+  if(sCC){const cv=document.getElementById('sccanvas');if(!cv)return;const r=cv.getBoundingClientRect();drawConn(e.clientX-r.left,e.clientY-r.top);}
 });
-
-document.addEventListener('mouseup', (e) => {
-  if (scDraggingNode) { scDraggingNode = null; drawSVGConnections(); }
-  if (scConnecting) {
-    const target = document.elementFromPoint(e.clientX, e.clientY);
-    if (target?.classList.contains('port')) {
-      const toNode = target.closest('.canvas-node');
-      if (toNode && toNode.id !== scConnecting.nodeId) {
-        const exists = scConnections.find(c => c.from === scConnecting.nodeId && c.to === toNode.id);
-        if (!exists) scConnections.push({ from: scConnecting.nodeId, to: toNode.id });
-      }
-    }
-    scConnecting = null;
-    drawSVGConnections();
-    updateChainSummary();
-  }
+document.addEventListener('mouseup',e=>{
+  if(sDN){sDN=null;drawConn();}
+  if(sCC){const t=document.elementFromPoint(e.clientX,e.clientY);if(t?.classList.contains('port')){const tn=t.closest('.cnode');if(tn&&tn.id!==sCC.id&&!scC.find(c=>c.f===sCC.id&&c.t===tn.id))scC.push({f:sCC.id,t:tn.id});}sCC=null;drawConn();updateSum();}
 });
-
-function getSCPortPos(nodeId, side) {
-  const el = document.getElementById(nodeId);
-  if (!el) return null;
-  const canvas = document.getElementById('scCanvas');
-  const cr = canvas.getBoundingClientRect();
-  const nr = el.getBoundingClientRect();
-  return { x: side === 'right' ? nr.right - cr.left : nr.left - cr.left, y: nr.top + nr.height/2 - cr.top };
+function pp(id,side){const el=document.getElementById(id);if(!el)return null;const cv=document.getElementById('sccanvas'),cr=cv.getBoundingClientRect(),nr=el.getBoundingClientRect();return{x:side==='r'?nr.right-cr.left:nr.left-cr.left,y:nr.top+nr.height/2-cr.top};}
+function drawConn(mx,my){
+  const svg=document.getElementById('connsvg');if(!svg)return;svg.innerHTML='';
+  scC.forEach(c=>{const f=pp(c.f,'r'),t=pp(c.t,'l');if(f&&t)drawCurve(svg,f.x,f.y,t.x,t.y,'#8b5cf6',false);});
+  if(sCC&&mx!==undefined){const f=pp(sCC.id,'r');if(f)drawCurve(svg,f.x,f.y,mx,my,'#c0c4d0',true);}
+}
+function drawCurve(svg,x1,y1,x2,y2,col,dash){
+  const dx=(x2-x1)*0.45,p=document.createElementNS('http://www.w3.org/2000/svg','path');
+  p.setAttribute('d',`M${x1} ${y1} C${x1+dx} ${y1} ${x2-dx} ${y2} ${x2} ${y2}`);
+  p.setAttribute('stroke',col);p.setAttribute('stroke-width','2');p.setAttribute('fill','none');
+  if(dash)p.setAttribute('stroke-dasharray','5,4');
+  const mid='a'+Math.random().toString(36).substr(2,5),defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+  const mk=document.createElementNS('http://www.w3.org/2000/svg','marker');
+  mk.setAttribute('id',mid);mk.setAttribute('markerWidth','8');mk.setAttribute('markerHeight','8');mk.setAttribute('refX','6');mk.setAttribute('refY','3');mk.setAttribute('orient','auto');
+  const arr=document.createElementNS('http://www.w3.org/2000/svg','path');arr.setAttribute('d','M0,0 L0,6 L8,3 z');arr.setAttribute('fill',col);
+  mk.appendChild(arr);defs.appendChild(mk);svg.appendChild(defs);p.setAttribute('marker-end',`url(#${mid})`);svg.appendChild(p);
+}
+function ordN(){
+  if(!scC.length)return scN;
+  const hi=new Set(scC.map(c=>c.t)),starts=scN.filter(n=>!hi.has(n.id));
+  if(!starts.length)return scN;
+  const ord=[],vis=new Set();let cur=starts[0];
+  while(cur&&!vis.has(cur.id)){ord.push(cur);vis.add(cur.id);const nx=scC.find(c=>c.f===cur.id);cur=nx?scN.find(n=>n.id===nx.t):null;}
+  return ord.length===scN.length?ord:scN;
+}
+function updateSum(){
+  const s=document.getElementById('chainsum');if(!s)return;
+  if(!scN.length){s.innerHTML='<span style="color:#c0c4d0;">No chain defined</span>';return;}
+  const ord=ordN();
+  s.innerHTML=ord.map((n,i)=>`${i>0?'<span style="color:#c0c4d0;margin:0 2px;">→</span>':''}<span style="display:inline-flex;align-items:center;gap:3px;background:${n.cfg.b};border-radius:6px;padding:2px 7px;font-size:11px;font-weight:600;color:#1a1a2e;">${n.cfg.i} ${n.cfg.l}${n.own?` <span style="font-size:9px;color:#7c3aed;">(${OWN[n.own]})</span>`:''}</span>`).join('');
+}
+function saveSC(){
+  const ord=ordN();if(!ord.length){alert('Please add at least one CTE.');return;}
+  curChain=ord.map(n=>({type:n.type,l:n.cfg.l,i:n.cfg.i,b:n.cfg.b,own:n.own}));
+  updateSCPrev();closeSCB();
+}
+function updateSCPrev(){
+  const p=document.getElementById('scprev');
+  if(!curChain.length){p.innerHTML='<span class="scempty">No supply chain defined yet</span>';return;}
+  p.innerHTML=curChain.map((n,i)=>`${i>0?'<span class="scarrow">→</span>':''}<span class="scchip">${n.i} ${n.l}</span>`).join('');
 }
 
-function drawSVGConnections(mx, my) {
-  const svg = document.getElementById('connectionsSVG');
-  if (!svg) return;
-  svg.innerHTML = '';
-  scConnections.forEach(c => {
-    const f = getSCPortPos(c.from, 'right');
-    const t = getSCPortPos(c.to, 'left');
-    if (f && t) drawCurveSVG(svg, f.x, f.y, t.x, t.y, '#8b5cf6', false);
-  });
-  if (scConnecting && mx !== undefined) {
-    const f = getSCPortPos(scConnecting.nodeId, 'right');
-    if (f) drawCurveSVG(svg, f.x, f.y, mx, my, '#c0c4d0', true);
-  }
-}
-
-function drawCurveSVG(svg, x1, y1, x2, y2, color, dashed) {
-  const dx = (x2 - x1) * 0.45;
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  path.setAttribute('d', `M${x1} ${y1} C${x1+dx} ${y1} ${x2-dx} ${y2} ${x2} ${y2}`);
-  path.setAttribute('stroke', color);
-  path.setAttribute('stroke-width', '2');
-  path.setAttribute('fill', 'none');
-  if (dashed) path.setAttribute('stroke-dasharray', '5,4');
-  const mid = 'arr_' + Math.random().toString(36).substr(2,5);
-  const defs = document.createElementNS('http://www.w3.org/2000/svg','defs');
-  const marker = document.createElementNS('http://www.w3.org/2000/svg','marker');
-  marker.setAttribute('id', mid); marker.setAttribute('markerWidth','8'); marker.setAttribute('markerHeight','8');
-  marker.setAttribute('refX','6'); marker.setAttribute('refY','3'); marker.setAttribute('orient','auto');
-  const arr = document.createElementNS('http://www.w3.org/2000/svg','path');
-  arr.setAttribute('d','M0,0 L0,6 L8,3 z'); arr.setAttribute('fill', color);
-  marker.appendChild(arr); defs.appendChild(marker); svg.appendChild(defs);
-  path.setAttribute('marker-end', `url(#${mid})`);
-  svg.appendChild(path);
-}
-
-function getOrderedChainNodes() {
-  if (!scConnections.length) return scNodes;
-  const hasIncoming = new Set(scConnections.map(c => c.to));
-  const starts = scNodes.filter(n => !hasIncoming.has(n.id));
-  if (!starts.length) return scNodes;
-  const ordered = []; let current = starts[0]; const visited = new Set();
-  while (current && !visited.has(current.id)) {
-    ordered.push(current); visited.add(current.id);
-    const next = scConnections.find(c => c.from === current.id);
-    current = next ? scNodes.find(n => n.id === next.to) : null;
-  }
-  return ordered.length === scNodes.length ? ordered : scNodes;
-}
-
-function updateChainSummary() {
-  const summary = document.getElementById('chainSummary');
-  if (!summary) return;
-  if (!scNodes.length) { summary.innerHTML = '<span style="color:#c0c4d0;">No chain defined yet</span>'; return; }
-  const ordered = getOrderedChainNodes();
-  summary.innerHTML = ordered.map((n, i) => `
-    ${i > 0 ? '<span style="color:#c0c4d0;margin:0 2px;">→</span>' : ''}
-    <span style="display:inline-flex;align-items:center;gap:3px;background:${n.cfg.bg};border-radius:6px;padding:2px 7px;font-size:11px;font-weight:600;color:#1a1a2e;">
-      ${n.cfg.icon} ${n.cfg.label}
-      ${n.owner ? `<span style="font-size:9px;color:#7c3aed;">(${OWNER_LABELS[n.owner]})</span>` : ''}
-    </span>`).join('');
-}
-
-function saveSCChain() {
-  const ordered = getOrderedChainNodes();
-  if (!ordered.length) { alert('Please add at least one CTE.'); return; }
-  currentChain = ordered.map(n => ({ type: n.type, label: n.cfg.label, icon: n.cfg.icon, bg: n.cfg.bg, owner: n.owner }));
-  updateSCPreview();
-  closeSCBuilder();
-}
-
-function updateSCPreview() {
-  const preview = document.getElementById('scPreviewForm');
-  if (!currentChain.length) {
-    preview.innerHTML = '<span class="sc-empty-text">No supply chain defined yet</span>';
-    return;
-  }
-  preview.innerHTML = currentChain.map((n, i) => `
-    ${i > 0 ? '<span class="sc-arrow">→</span>' : ''}
-    <span class="sc-node-chip">${n.icon} ${n.label}</span>`).join('');
-}
-
-// ── KDE QUESTIONS ─────────────────────────────────────────
-const KDE_STAGES = [
-  {
-    key: 'harvesting',
-    title: 'Harvesting & Catch',
-    icon: '🎣',
-    ctes: ['harvest', 'onvessel'],
-    questions: [
-      { id: 'fv_vessel_name', text: 'Do you have the name of the fishing vessel(s) supplying this product?' },
-      { id: 'fv_imo', text: 'Do you have the IMO number for each fishing vessel?' },
-      { id: 'fv_flag', text: 'Do you know the flag state of each vessel?' },
-      { id: 'fv_rfmo', text: 'Is each vessel registered on the relevant RFMO register for the fishing zone?' },
-      { id: 'fv_permit', text: 'Do you have a valid fishing permit or authorisation number for each vessel?' },
-      { id: 'fv_catch_area', text: 'Do you have the FAO catch area / fishing zone documented?' },
-      { id: 'fv_catch_dates', text: 'Do you have the vessel trip and catch dates recorded?' },
-      { id: 'fv_species_sci', text: 'Is the species recorded using its scientific name?' },
-    ]
-  },
-  {
-    key: 'transshipment',
-    title: 'Transshipment',
-    icon: '🔄',
-    ctes: ['transshipment'],
-    questions: [
-      { id: 'cr_carrier_name', text: 'Do you have the name of the carrier vessel used for transshipment?' },
-      { id: 'cr_imo', text: 'Do you have the IMO number of the carrier vessel?' },
-      { id: 'cr_flag', text: 'Do you know the carrier vessel\'s flag state?' },
-      { id: 'cr_rfmo', text: 'Is the carrier vessel on the relevant RFMO register for transshipment?' },
-      { id: 'cr_flag_approval', text: 'Does your flag state approve transshipment for this vessel/operation?' },
-      { id: 'cr_in_port', text: 'Is transshipment conducted in port or under independent observer monitoring?' },
-    ]
-  },
-  {
-    key: 'landing',
-    title: 'Landing & First Receiver',
-    icon: '⚓',
-    ctes: ['landing'],
-    questions: [
-      { id: 'fcl_port_name', text: 'Do you have the port of landing/arrival documented?' },
-      { id: 'fcl_landing_date', text: 'Do you have the date of discharge or landing recorded?' },
-      { id: 'fcl_port_state', text: 'Does the landing port have EU competent authority status (if EU-bound)?' },
-      { id: 'fcl_bol', text: 'Do you have a Bill of Lading for this shipment?' },
-      { id: 'fcl_consignee', text: 'Is the consignee identified on all shipping documents?' },
-      { id: 'fcl_container', text: 'Do you have the container number documented?' },
-    ]
-  },
-  {
-    key: 'processing',
-    title: 'Processing',
-    icon: '🏭',
-    ctes: ['processing'],
-    questions: [
-      { id: 'pp_name', text: 'Do you have the name and location of your primary processor?' },
-      { id: 'pp_eu_approval', text: 'Does your processor hold an EU Facility Approval number (if EU-bound)?' },
-      { id: 'pp_lot_code', text: 'Is a lot code assigned to each batch at the processing stage?' },
-      { id: 'pp_date_received', text: 'Is the date of raw material receipt recorded at the processing facility?' },
-      { id: 'pp_coldstore_coc', text: 'Is the cold storage facility covered by your MSC/ASC Chain of Custody?' },
-      { id: 'pp_catch_data', text: 'Does your processor receive full catch data from the first receiver?' },
-    ]
-  },
-  {
-    key: 'shipping',
-    title: 'Shipping & Logistics',
-    icon: '🚛',
-    ctes: ['shipreceive'],
-    questions: [
-      { id: 'lfp_shipper_gln', text: 'Do you have the shipper\'s GLN (Global Location Number)?' },
-      { id: 'lfp_receiver_gln', text: 'Do you have the receiver/end buyer\'s GLN?' },
-      { id: 'lfp_purchase_order', text: 'Do you have a buyer\'s purchase order for this shipment?' },
-      { id: 'lfp_seal_number', text: 'Is the container seal number documented?' },
-      { id: 'lfp_commercial_invoice', text: 'Do you have a commercial invoice that references the product\'s certification status?' },
-      { id: 'lfp_packing_list', text: 'Do you have a packing list that matches the invoice and Bill of Lading?' },
-    ]
-  },
-  {
-    key: 'certifications',
-    title: 'Certifications & Compliance',
-    icon: '🏅',
-    ctes: [],
-    questions: [
-      { id: 'cert_msc_coc', text: 'Do you hold a valid MSC Chain of Custody certificate?' },
-      { id: 'cert_asc_coc', text: 'Do you hold a valid ASC Chain of Custody certificate?' },
-      { id: 'cert_eu_approval', text: 'Does your facility hold an EU Facility Approval number?' },
-      { id: 'cert_halal', text: 'Do you hold any Halal or Kosher certifications relevant to your markets?' },
-      { id: 'cert_brc', text: 'Do you hold a BRC or IFS food safety certification?' },
-      { id: 'cert_audit', text: 'Have you passed an independent third-party audit in the last 12 months?' },
-    ]
-  }
+// KDE
+const STAGES=[
+  {k:'harvesting',t:'Harvesting & Catch',i:'🎣',qs:[{id:'fv_name',q:'Do you have the name of the fishing vessel(s) supplying this product?'},{id:'fv_imo',q:'Do you have the IMO number for each fishing vessel?'},{id:'fv_flag',q:'Do you know the flag state of each vessel?'},{id:'fv_rfmo',q:'Is each vessel registered on the relevant RFMO register?'},{id:'fv_permit',q:'Do you have a valid fishing permit for each vessel?'},{id:'fv_area',q:'Do you have the FAO catch area documented?'},{id:'fv_dates',q:'Do you have vessel trip and catch dates recorded?'},{id:'fv_species',q:'Is the species recorded using its scientific name?'}]},
+  {k:'transshipment',t:'Transshipment',i:'🔄',qs:[{id:'cr_name',q:'Do you have the name of the carrier vessel used for transshipment?'},{id:'cr_imo',q:'Do you have the IMO number of the carrier vessel?'},{id:'cr_flag',q:"Do you know the carrier vessel's flag state?"},{id:'cr_rfmo',q:'Is the carrier vessel on the relevant RFMO register?'},{id:'cr_approval',q:'Does the flag state approve transshipment for this vessel?'},{id:'cr_inport',q:'Is transshipment conducted in port or under independent observer monitoring?'}]},
+  {k:'landing',t:'Landing & First Receiver',i:'⚓',qs:[{id:'fcl_port',q:'Do you have the port of landing documented?'},{id:'fcl_date',q:'Do you have the date of discharge or landing recorded?'},{id:'fcl_eu',q:'Does the landing port have EU competent authority status (if EU-bound)?'},{id:'fcl_bol',q:'Do you have a Bill of Lading for this shipment?'},{id:'fcl_consignee',q:'Is the consignee identified on all shipping documents?'},{id:'fcl_container',q:'Do you have the container number documented?'}]},
+  {k:'processing',t:'Processing',i:'🏭',qs:[{id:'pp_name',q:'Do you have the name and location of your processor?'},{id:'pp_eu',q:'Does your processor hold an EU Facility Approval number (if EU-bound)?'},{id:'pp_lot',q:'Is a lot code assigned to each batch at the processing stage?'},{id:'pp_date',q:'Is the date of raw material receipt recorded at the processing facility?'},{id:'pp_cold',q:'Is the cold storage facility covered by your MSC/ASC Chain of Custody?'},{id:'pp_data',q:'Does your processor receive full catch data from the first receiver?'}]},
+  {k:'shipping',t:'Shipping & Logistics',i:'🚛',qs:[{id:'lfp_shipper',q:"Do you have the shipper's GLN (Global Location Number)?"},{id:'lfp_receiver',q:"Do you have the receiver/end buyer's GLN?"},{id:'lfp_po',q:"Do you have a buyer's purchase order for this shipment?"},{id:'lfp_seal',q:'Is the container seal number documented?'},{id:'lfp_invoice',q:"Do you have a commercial invoice referencing the product's certification status?"},{id:'lfp_packing',q:'Do you have a packing list matching the invoice and Bill of Lading?'}]},
+  {k:'certifications',t:'Certifications & Compliance',i:'🏅',qs:[{id:'c_msc',q:'Do you hold a valid MSC Chain of Custody certificate?'},{id:'c_asc',q:'Do you hold a valid ASC Chain of Custody certificate?'},{id:'c_eu',q:'Does your facility hold an EU Facility Approval number?'},{id:'c_brc',q:'Do you hold a BRC or IFS food safety certification?'},{id:'c_audit',q:'Have you passed an independent third-party audit in the last 12 months?'}]},
 ];
+function renderKDE(){
+  const st=STAGES[kIdx],total=STAGES.length,pct=Math.round(((kIdx+1)/total)*100);
+  document.getElementById('kfill').style.width=pct+'%';
+  document.getElementById('klbl').textContent=`Stage ${kIdx+1} of ${total}`;
+  document.getElementById('kback').style.visibility=kIdx===0?'hidden':'visible';
+  document.getElementById('knext').textContent=kIdx===total-1?'Finish →':'Next Stage →';
+  document.getElementById('kcontent').innerHTML=`<div class="ksbadge">${st.i} ${st.t}</div><div class="kstitle">${st.t}</div><div class="kssub">Answer based on your current operations. Mark as partial if you have some information.</div>${st.qs.map(q=>renderQ(q)).join('')}`;
+}
+function renderQ(q){
+  const r=kResp[q.id]||{};
+  return `<div class="kq ${r.ans?'done':''}" id="kq${q.id}"><div class="kqtxt">${q.q}</div><div class="kopts"><div class="kopt ${r.ans==='av'?'av':''}" onclick="setAns('${q.id}','av')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Available</div><div class="kopt ${r.ans==='pa'?'pa':''}" onclick="setAns('${q.id}','pa')">◑ Partial</div><div class="kopt ${r.ans==='un'?'un':''}" onclick="setAns('${q.id}','un')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Not Available</div></div><div class="kpartial ${r.ans==='pa'?'show':''}" id="kp${q.id}"><textarea class="kpta" rows="2" placeholder="Describe what data you currently have..." oninput="saveNote('${q.id}',this.value)">${r.note||''}</textarea></div><div class="kevrow ${r.ans==='av'||r.ans==='pa'?'show':''}" id="ke${q.id}"><button class="kevbtn" onclick="upEv('${q.id}')"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Upload</button><button class="kevbtn" onclick="urlEv('${q.id}')">🔗 URL</button><button class="kevbtn" onclick="isoEv('${q.id}')">📄 ISO/Cert</button>${r.ev?`<span style="font-size:11px;color:#16a34a;font-weight:600;">✓ ${r.ev}</span>`:''}</div></div>`;
+}
+function setAns(id,ans){
+  if(!kResp[id])kResp[id]={};kResp[id].ans=ans;
+  const card=document.getElementById('kq'+id);if(!card)return;
+  card.classList.add('done');
+  card.querySelectorAll('.kopt').forEach(o=>o.classList.remove('av','pa','un'));
+  const opts=[...card.querySelectorAll('.kopt')];
+  if(ans==='av')opts[0].classList.add('av');
+  else if(ans==='pa')opts[1].classList.add('pa');
+  else opts[2].classList.add('un');
+  const pb=document.getElementById('kp'+id),ev=document.getElementById('ke'+id);
+  if(pb)pb.classList.toggle('show',ans==='pa');
+  if(ev)ev.classList.toggle('show',ans==='av'||ans==='pa');
+}
+function saveNote(id,v){if(!kResp[id])kResp[id]={};kResp[id].note=v;}
+function upEv(id){const inp=document.createElement('input');inp.type='file';inp.accept='.pdf,.jpg,.png,.doc,.docx';inp.onchange=()=>{if(inp.files[0]){if(!kResp[id])kResp[id]={};kResp[id].ev=inp.files[0].name;renderKDE();}};inp.click();}
+function urlEv(id){const u=prompt('Enter evidence URL:');if(u){if(!kResp[id])kResp[id]={};kResp[id].ev=u;renderKDE();}}
+function isoEv(id){const r=prompt('Enter ISO standard or certificate reference:');if(r){if(!kResp[id])kResp[id]={};kResp[id].ev=r;renderKDE();}}
+function kPrev(){if(kIdx>0){kIdx--;renderKDE();}else goTo('s4');}
+function kNext(){if(kIdx<STAGES.length-1){kIdx++;renderKDE();}else goTo('s6');}
 
-function renderKDEStage() {
-  const stage = KDE_STAGES[kdeStageIndex];
-  const total = KDE_STAGES.length;
-  const pct = Math.round(((kdeStageIndex + 1) / total) * 100);
-
-  document.getElementById('kdeProgressFill').style.width = pct + '%';
-  document.getElementById('kdeProgressLabel').textContent = `Stage ${kdeStageIndex + 1} of ${total}`;
-  document.getElementById('kdePrevBtn').style.display = kdeStageIndex === 0 ? 'none' : 'flex';
-  document.getElementById('kdeNextBtn').textContent = kdeStageIndex === total - 1 ? 'Finish →' : 'Next Stage →';
-
-  document.getElementById('kdeStageContent').innerHTML = `
-    <div class="kde-stage-header">
-      <div class="kde-stage-badge">${stage.icon} ${stage.title}</div>
-      <div class="kde-stage-title">${stage.title}</div>
-      <div class="kde-stage-sub">Answer based on your current operations. Mark as partial if you have some information.</div>
-    </div>
-    ${stage.questions.map(q => renderKDEQuestion(q)).join('')}
-  `;
+// PREFS
+function selPref(v){pref=v;document.getElementById('pEmail').classList.toggle('sel',v==='email');document.getElementById('pMeeting').classList.toggle('sel',v==='meeting');}
+async function doSubmit(){
+  try{await db.from('company_assessments').insert({company_id:company?.id||null,company_name:company?.company_name||'Unknown',products:JSON.stringify(products.filter(Boolean)),kde_responses:JSON.stringify(kResp),delivery_preference:pref,status:'pending'});}catch(e){console.log(e.message);}
+  goTo('s7');
 }
 
-function renderKDEQuestion(q) {
-  const saved = kdeResponses[q.id] || {};
-  return `
-    <div class="kde-question ${saved.answer ? 'answered' : ''}" id="kdq_${q.id}">
-      <div class="kde-q-text">${q.text}</div>
-      <div class="kde-options">
-        <div class="kde-option ${saved.answer === 'available' ? 'selected-available' : ''}"
-             onclick="setKDE('${q.id}', 'available')">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-          Available
-        </div>
-        <div class="kde-option ${saved.answer === 'partial' ? 'selected-partial' : ''}"
-             onclick="setKDE('${q.id}', 'partial')">
-          ◑ Partial
-        </div>
-        <div class="kde-option ${saved.answer === 'unavailable' ? 'selected-unavailable' : ''}"
-             onclick="setKDE('${q.id}', 'unavailable')">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          Not Available
-        </div>
-      </div>
-      <div class="kde-partial-box ${saved.answer === 'partial' ? 'show' : ''}" id="kp_${q.id}">
-        <textarea class="kde-partial-input" rows="2"
-          placeholder="Describe what data you currently have for this..."
-          oninput="savePartialNote('${q.id}', this.value)"
-        >${saved.note || ''}</textarea>
-      </div>
-      <div class="kde-evidence-row ${saved.answer === 'available' || saved.answer === 'partial' ? 'show' : ''}" id="ke_${q.id}">
-        <button class="kde-evidence-btn" onclick="uploadEvidence('${q.id}')">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Upload Evidence
-        </button>
-        <button class="kde-evidence-btn" onclick="addEvidenceURL('${q.id}')">
-          🔗 Add URL
-        </button>
-        <button class="kde-evidence-btn" onclick="addEvidenceISO('${q.id}')">
-          📄 ISO / Cert Ref
-        </button>
-        ${saved.evidence ? `<span style="font-size:11px;color:#16a34a;font-weight:600;">✓ ${saved.evidence}</span>` : ''}
-      </div>
-    </div>
-  `;
-}
-
-function setKDE(id, answer) {
-  if (!kdeResponses[id]) kdeResponses[id] = {};
-  kdeResponses[id].answer = answer;
-  const card = document.getElementById('kdq_' + id);
-  if (!card) return;
-  card.classList.add('answered');
-  card.querySelectorAll('.kde-option').forEach(o => o.classList.remove('selected-available','selected-partial','selected-unavailable'));
-  const clicked = [...card.querySelectorAll('.kde-option')].find(o => o.onclick?.toString().includes(`'${answer}'`));
-  if (clicked) clicked.classList.add(`selected-${answer}`);
-  // Actually easier to re-render just that card
-  card.outerHTML = renderKDEQuestion({ id, text: card.querySelector('.kde-q-text').textContent });
-}
-
-function savePartialNote(id, val) {
-  if (!kdeResponses[id]) kdeResponses[id] = {};
-  kdeResponses[id].note = val;
-}
-
-function uploadEvidence(id) {
-  const input = document.createElement('input');
-  input.type = 'file'; input.accept = '.pdf,.jpg,.png,.doc,.docx';
-  input.onchange = () => {
-    if (input.files[0]) {
-      if (!kdeResponses[id]) kdeResponses[id] = {};
-      kdeResponses[id].evidence = input.files[0].name;
-      renderKDEStage();
-    }
-  };
-  input.click();
-}
-
-function addEvidenceURL(id) {
-  const url = prompt('Enter the URL for this evidence:');
-  if (url) {
-    if (!kdeResponses[id]) kdeResponses[id] = {};
-    kdeResponses[id].evidence = url;
-    renderKDEStage();
-  }
-}
-
-function addEvidenceISO(id) {
-  const ref = prompt('Enter the ISO standard or certificate reference number:');
-  if (ref) {
-    if (!kdeResponses[id]) kdeResponses[id] = {};
-    kdeResponses[id].evidence = ref;
-    renderKDEStage();
-  }
-}
-
-function kdePrev() {
-  if (kdeStageIndex > 0) { kdeStageIndex--; renderKDEStage(); }
-  else goToScreen('screen-4');
-}
-
-function kdeNext() {
-  if (kdeStageIndex < KDE_STAGES.length - 1) { kdeStageIndex++; renderKDEStage(); }
-  else goToScreen('screen-6');
-}
-
-// ── PREFERENCES ───────────────────────────────────────────
-function selectPref(val) {
-  selectedPref = val;
-  document.getElementById('pref-email').classList.toggle('selected', val === 'email');
-  document.getElementById('pref-meeting').classList.toggle('selected', val === 'meeting');
-}
-
-async function submitAssessment() {
-  // Save to DB
-  try {
-    const payload = {
-      company_id: currentCompany?.id || null,
-      company_name: currentCompany?.company_name || 'Unknown',
-      products: JSON.stringify(products.filter(Boolean)),
-      kde_responses: JSON.stringify(kdeResponses),
-      delivery_preference: selectedPref,
-      status: 'pending',
-    };
-    await db.from('company_assessments').insert(payload);
-  } catch(e) {
-    console.log('DB save note:', e.message);
-  }
-  goToScreen('screen-7');
-}
-
-// ── OUTSIDE CLICK CLOSES DROPDOWNS ───────────────────────
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('.market-wrap')) document.getElementById('marketDD')?.classList.remove('open');
-  if (!e.target.closest('.species-wrap')) document.getElementById('speciesDD')?.classList.remove('open');
-  if (!e.target.closest('.owner-popup') && !e.target.closest('.canvas-node')) {
-    document.getElementById('ownerPopup')?.classList.remove('open');
-    scActiveOwnerNode = null;
-  }
+// OUTSIDE CLICK
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.mkw'))document.getElementById('mkdd')?.classList.remove('open');
+  if(!e.target.closest('.spw'))document.getElementById('spdd')?.classList.remove('open');
+  if(!e.target.closest('.ownpop')&&!e.target.closest('.cnode')){document.getElementById('ownpop')?.classList.remove('open');aOwn=null;}
 });
 
-// ── INIT ──────────────────────────────────────────────────
-loadCountries();
-loadSpecies();
-loadFAO();
+loadCountries();loadSpecies();loadFAO();
 </script>
 </body>
 </html>
