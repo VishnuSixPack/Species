@@ -95,6 +95,23 @@
     .kde-ev-chip a:hover{text-decoration:underline!important;}
     .kde-ev-chip:has(a){cursor:pointer;}
     .kde-ev-chip:has(a):hover{background:#ede9fe;border-color:#c4b5fd;}
+    /* Document viewer modal */
+    .doc-viewer{display:none;position:fixed;inset:0;background:rgba(4,8,24,0.75);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;padding:24px;}
+    .doc-viewer.open{display:flex;}
+    .doc-box{background:#fff;border-radius:18px;width:100%;max-width:860px;height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.25);}
+    .doc-hd{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #f0f2f8;flex-shrink:0;}
+    .doc-title{font-size:13px;font-weight:700;color:#1a1a2e;max-width:560px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .doc-hd-r{display:flex;align-items:center;gap:8px;}
+    .doc-open-btn{display:inline-flex;align-items:center;gap:5px;background:#8b5cf6;color:#fff;border:none;border-radius:999px;padding:6px 14px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;}
+    .doc-close{width:28px;height:28px;border-radius:50%;background:#f4f6fb;border:none;cursor:pointer;font-size:15px;color:#6b7280;display:flex;align-items:center;justify-content:center;}
+    .doc-close:hover{background:#e8eaf0;}
+    .doc-body{flex:1;overflow:hidden;background:#f4f6fb;}
+    .doc-body iframe{width:100%;height:100%;border:none;}
+    .doc-body img{width:100%;height:100%;object-fit:contain;}
+    .doc-unsupported{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;color:#9aa0b4;}
+    .doc-unsupported-icon{font-size:40px;}
+    .doc-unsupported-t{font-size:14px;font-weight:600;color:#4a4e69;}
+    .doc-unsupported-s{font-size:12px;}
     .comment-box{background:#f9fafc;border:1px solid #e8eaf0;border-radius:12px;padding:14px 16px;margin-bottom:16px;}
     .comment-lbl{font-size:11px;font-weight:700;color:#6b7280;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;}
     .comment-ta{width:100%;border:1px solid #e0e3ed;border-radius:8px;padding:9px 12px;font-family:'Poppins',sans-serif;font-size:12px;color:#1a1a2e;outline:none;resize:none;background:#fff;transition:border-color 0.2s;}
@@ -187,6 +204,20 @@
         <button class="btn-reject" onclick="updateStatus('rejected')">❌ Reject</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- DOCUMENT VIEWER MODAL -->
+<div class="doc-viewer" id="docViewer" onclick="closeDocViewer(event)">
+  <div class="doc-box">
+    <div class="doc-hd">
+      <div class="doc-title" id="docTitle">Document</div>
+      <div class="doc-hd-r">
+        <a class="doc-open-btn" id="docOpenBtn" href="#" target="_blank">↗ Open in new tab</a>
+        <button class="doc-close" onclick="document.getElementById('docViewer').classList.remove('open')">×</button>
+      </div>
+    </div>
+    <div class="doc-body" id="docBody"></div>
   </div>
 </div>
 
@@ -378,11 +409,9 @@ function openPanel(id){
         ?`<div class="kde-ev-list">${allEv.map(e=>{
           const isUrl=e.value&&e.value.startsWith('http');
           const display=e.name&&e.name!==e.value?e.name:e.value;
-          const disp=display&&display.length>30?display.slice(0,30)+'…':display;
-          return `<span class="kde-ev-chip">${isUrl
-            ?`<a href="${e.value}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;color:#7c3aed;text-decoration:none;" title="${display}"><span class="kde-ev-chip-icon">${evIcons[e.type]||'📎'}</span>${disp}<span class="kde-ev-chip-tag">${e.type||'file'}</span></a>`
-            :`<span class="kde-ev-chip-icon">${evIcons[e.type]||'📎'}</span>${disp}<span class="kde-ev-chip-tag">${e.type||'file'}</span>`
-          }</span>`;
+          const disp=display&&display.length>28?display.slice(0,28)+'…':display;
+          const clickAction=isUrl?`openDocViewer('${e.value}','${(display||'').replace(/'/g,"\\'")}')`:null;
+          return `<span class="kde-ev-chip" ${clickAction?`onclick="${clickAction}" style="cursor:pointer;"`:''}>${evIcons[e.type]||'📎'} ${disp}<span class="kde-ev-chip-tag">${e.type||'file'}</span></span>`;
         }).join('')}</div>`
         :'';
       return `<div class="kde-row">
@@ -468,6 +497,27 @@ document.querySelector('a.logo').addEventListener('mouseleave',()=>{
   document.getElementById('logoMain').textContent='Manhattan.';
 });
 
+function openDocViewer(url, name){
+  document.getElementById('docTitle').textContent=name||'Document';
+  document.getElementById('docOpenBtn').href=url;
+  const body=document.getElementById('docBody');
+  const ext=url.split('?')[0].split('.').pop().toLowerCase();
+  const imgExts=['jpg','jpeg','png','gif','webp','svg'];
+  if(imgExts.includes(ext)){
+    body.innerHTML=`<img src="${url}" alt="${name}" style="width:100%;height:100%;object-fit:contain;"/>`;
+  } else if(ext==='pdf'){
+    body.innerHTML=`<iframe src="${url}" title="${name}"></iframe>`;
+  } else {
+    // For doc/docx/xls use Google Docs viewer
+    const gview=`https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+    body.innerHTML=`<iframe src="${gview}" title="${name}"></iframe>`;
+  }
+  document.getElementById('docViewer').classList.add('open');
+}
+function closeDocViewer(e){
+  if(e.target===document.getElementById('docViewer'))
+    document.getElementById('docViewer').classList.remove('open');
+}
 loadAssessments();
 </script>
 </body>

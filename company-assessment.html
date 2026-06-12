@@ -283,6 +283,8 @@
     .ev-chip:hover{background:#ede9fe;}
     .ev-add-chip{display:inline-flex;align-items:center;gap:4px;background:#f4f6fb;border:1.5px dashed #c0c4d0;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:600;color:#9aa0b4;cursor:pointer;}
     .ev-add-chip:hover{border-color:#8b5cf6;color:#8b5cf6;background:#faf5ff;}
+    .ev-add-chip-done{border-color:#16a34a!important;color:#16a34a!important;background:#f0fdf4!important;border-style:solid!important;}
+    .ev-add-chip-done:hover{border-color:#15803d!important;background:#dcfce7!important;}
     .hidden{display:none!important;}
   </style>
 </head>
@@ -1052,7 +1054,7 @@ function renderQ(q){
   const evs=r.evidence||[];
   const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};
   const evChips=evs.map((e,i)=>`<span class="ev-chip" onclick="openEvMod('${q.id}')" title="${e.value}">${evIcons[e.type]||'📎'} ${e.value.length>22?e.value.slice(0,22)+'…':e.value}</span>`).join('');
-  const addChip=`<span class="ev-add-chip" onclick="openEvMod('${q.id}')">+ Add Evidence</span>`;
+  const addChip=evs.length>0?`<span class="ev-add-chip ev-add-chip-done" onclick="openEvMod('${q.id}')">✓ ${evs.length} Evidence Added</span>`:`<span class="ev-add-chip" onclick="openEvMod('${q.id}')">+ Add Evidence</span>`;
   const showEv=r.ans==='av'||r.ans==='pa';
   return `<div class="kq ${r.ans?'done':''}" id="kq${q.id}">
     <div class="kqtxt">${q.q}</div>
@@ -1200,13 +1202,17 @@ function saveEvidence(){
   kResp[evKdeId].evidence=[...evTempItems];
   closeEvMod();
   const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};
+  const count=evTempItems.length;
   const evChips=evTempItems.map(e=>{
     const display=e.name&&e.name!==e.value?e.name:e.value;
     const disp=display.length>22?display.slice(0,22)+'…':display;
     const isUrl=e.value.startsWith('http');
     return `<span class="ev-chip" onclick="${isUrl?`window.open('${e.value}','_blank')`:`openEvMod('${evKdeId}')`}" title="${display}">${evIcons[e.type]||'📎'} ${disp}</span>`;
   }).join('');
-  const addChip=`<span class="ev-add-chip" onclick="openEvMod('${evKdeId}')">+ Add Evidence</span>`;
+  // Show green count chip if evidence added, else show plain add chip
+  const addChip=count>0
+    ?`<span class="ev-add-chip ev-add-chip-done" onclick="openEvMod('${evKdeId}')">✓ ${count} Evidence Added</span>`
+    :`<span class="ev-add-chip" onclick="openEvMod('${evKdeId}')">+ Add Evidence</span>`;
   const sumEl=document.getElementById('kes'+evKdeId);
   if(sumEl){sumEl.innerHTML=evChips+addChip;sumEl.style.display='flex';}
 }
