@@ -1139,27 +1139,57 @@ function selEvType(type){
   setTimeout(()=>document.getElementById('ev-inp').focus(),50);
 }
 function triggerEvUpload(){document.getElementById('ev-file-inp').click();}
-function onEvFileChange(inp){
+async function onEvFileChange(inp){
   if(!inp.files[0])return;
-  const name=inp.files[0].name;
-  document.getElementById('ev-inp').value=name;
+  const file=inp.files[0];
+  const uploadBtn=document.getElementById('ev-upload-btn');
   const fn=document.getElementById('ev-file-name');
-  fn.textContent='✓ '+name;fn.classList.add('show');
-  document.getElementById('ev-upload-btn').textContent='📎 Change file';
+  uploadBtn.textContent='⏳ Uploading...';
+  uploadBtn.style.pointerEvents='none';
+  fn.classList.remove('show');
+  try{
+    const path=`evidence/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+    const{data,error}=await db.storage.from('assessments').upload(path,file,{upsert:true});
+    if(error)throw error;
+    const{data:{publicUrl}}=db.storage.from('assessments').getPublicUrl(path);
+    document.getElementById('ev-inp').value=publicUrl;
+    fn.innerHTML=`✓ <a href="${publicUrl}" target="_blank" style="color:#16a34a;text-decoration:underline;">${file.name}</a>`;
+    fn.classList.add('show');
+    uploadBtn.textContent='📎 Change file';
+  }catch(e){
+    fn.textContent='❌ Upload failed: '+e.message;
+    fn.classList.add('show');
+    fn.style.color='#e63946';
+    uploadBtn.textContent='📎 Try again';
+  }
+  uploadBtn.style.pointerEvents='auto';
 }
 function addEvItem(){
   if(!evSelType)return;
   const val=document.getElementById('ev-inp').value.trim();
   if(!val){document.getElementById('ev-inp').focus();return;}
-  evTempItems.push({type:evSelType,value:val,icon:evTypeMeta[evSelType].icon});
+  // If value is a URL from upload, store display name from file-name element
+  const fnEl=document.getElementById('ev-file-name');
+  const displayName=fnEl.classList.contains('show')&&fnEl.textContent.startsWith('✓')
+    ?fnEl.textContent.replace('✓ ','').trim()
+    :null;
+  evTempItems.push({type:evSelType,value:val,icon:evTypeMeta[evSelType].icon,name:displayName||val});
   document.getElementById('ev-inp').value='';
+  document.getElementById('ev-file-name').classList.remove('show');
+  document.getElementById('ev-file-name').textContent='';
+  document.getElementById('ev-upload-btn').textContent='📎 Upload file instead';
   renderEvItems();updateEvCount();
 }
 function removeEvItem(i){evTempItems.splice(i,1);renderEvItems();updateEvCount();}
 function renderEvItems(){
   const el=document.getElementById('ev-items');
   if(!evTempItems.length){el.innerHTML='';return;}
-  el.innerHTML=evTempItems.map((e,i)=>`<div class="ev-item"><div class="ev-item-l"><span class="ev-item-icon">${e.icon}</span><span class="ev-item-txt">${e.value}</span><span class="ev-item-tag">${e.type}</span></div><button class="ev-item-del" onclick="removeEvItem(${i})">×</button></div>`).join('');
+  el.innerHTML=evTempItems.map((e,i)=>{
+    const display=e.name&&e.name!==e.value?e.name:e.value;
+    const disp=display.length>32?display.slice(0,32)+'…':display;
+    const isUrl=e.value.startsWith('http');
+    return `<div class="ev-item"><div class="ev-item-l"><span class="ev-item-icon">${e.icon}</span><span class="ev-item-txt">${isUrl?`<a href="${e.value}" target="_blank" style="color:#7c3aed;text-decoration:underline;">${disp}</a>`:disp}</span><span class="ev-item-tag">${e.type}</span></div><button class="ev-item-del" onclick="removeEvItem(${i})">×</button></div>`;
+  }).join('');
 }
 function updateEvCount(){
   document.getElementById('ev-count').textContent=evTempItems.length?`${evTempItems.length} item${evTempItems.length>1?'s':''} added`:'';
@@ -1169,9 +1199,13 @@ function saveEvidence(){
   if(!kResp[evKdeId])kResp[evKdeId]={};
   kResp[evKdeId].evidence=[...evTempItems];
   closeEvMod();
-  // Re-render just the evidence summary for this KDE
   const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};
-  const evChips=evTempItems.map(e=>`<span class="ev-chip" onclick="openEvMod('${evKdeId}')" title="${e.value}">${evIcons[e.type]||'📎'} ${e.value.length>22?e.value.slice(0,22)+'…':e.value}</span>`).join('');
+  const evChips=evTempItems.map(e=>{
+    const display=e.name&&e.name!==e.value?e.name:e.value;
+    const disp=display.length>22?display.slice(0,22)+'…':display;
+    const isUrl=e.value.startsWith('http');
+    return `<span class="ev-chip" onclick="${isUrl?`window.open('${e.value}','_blank')`:`openEvMod('${evKdeId}')`}" title="${display}">${evIcons[e.type]||'📎'} ${disp}</span>`;
+  }).join('');
   const addChip=`<span class="ev-add-chip" onclick="openEvMod('${evKdeId}')">+ Add Evidence</span>`;
   const sumEl=document.getElementById('kes'+evKdeId);
   if(sumEl){sumEl.innerHTML=evChips+addChip;sumEl.style.display='flex';}

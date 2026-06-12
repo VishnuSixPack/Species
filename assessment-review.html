@@ -92,6 +92,9 @@
     .kde-ev-chip{display:inline-flex;align-items:center;gap:5px;background:#f4f0ff;border:1px solid #ddd6fe;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:600;color:#7c3aed;}
     .kde-ev-chip-icon{font-size:12px;}
     .kde-ev-chip-tag{font-size:9px;font-weight:700;color:#a78bfa;background:#ede9fe;border-radius:4px;padding:1px 5px;text-transform:uppercase;letter-spacing:0.3px;}
+    .kde-ev-chip a:hover{text-decoration:underline!important;}
+    .kde-ev-chip:has(a){cursor:pointer;}
+    .kde-ev-chip:has(a):hover{background:#ede9fe;border-color:#c4b5fd;}
     .comment-box{background:#f9fafc;border:1px solid #e8eaf0;border-radius:12px;padding:14px 16px;margin-bottom:16px;}
     .comment-lbl{font-size:11px;font-weight:700;color:#6b7280;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;}
     .comment-ta{width:100%;border:1px solid #e0e3ed;border-radius:8px;padding:9px 12px;font-family:'Poppins',sans-serif;font-size:12px;color:#1a1a2e;outline:none;resize:none;background:#fff;transition:border-color 0.2s;}
@@ -369,10 +372,18 @@ function openPanel(id){
       const clsMap={av:'kde-row-av',pa:'kde-row-pa',un:'kde-row-un'};
       // Build evidence chips — new array format + legacy single string
       const evs=r?.evidence||[];
-      const legacy=(!evs.length&&r?.ev)?[{type:'doc',value:r.ev}]:[];
+      const legacy=(!evs.length&&r?.ev)?[{type:'doc',value:r.ev,name:r.ev}]:[];
       const allEv=[...evs,...legacy];
       const evHtml=allEv.length
-        ?`<div class="kde-ev-list">${allEv.map(e=>`<span class="kde-ev-chip"><span class="kde-ev-chip-icon">${evIcons[e.type]||'📎'}</span>${e.value.length>30?e.value.slice(0,30)+'…':e.value}<span class="kde-ev-chip-tag">${e.type||'file'}</span></span>`).join('')}</div>`
+        ?`<div class="kde-ev-list">${allEv.map(e=>{
+          const isUrl=e.value&&e.value.startsWith('http');
+          const display=e.name&&e.name!==e.value?e.name:e.value;
+          const disp=display&&display.length>30?display.slice(0,30)+'…':display;
+          return `<span class="kde-ev-chip">${isUrl
+            ?`<a href="${e.value}" target="_blank" style="display:inline-flex;align-items:center;gap:5px;color:#7c3aed;text-decoration:none;" title="${display}"><span class="kde-ev-chip-icon">${evIcons[e.type]||'📎'}</span>${disp}<span class="kde-ev-chip-tag">${e.type||'file'}</span></a>`
+            :`<span class="kde-ev-chip-icon">${evIcons[e.type]||'📎'}</span>${disp}<span class="kde-ev-chip-tag">${e.type||'file'}</span>`
+          }</span>`;
+        }).join('')}</div>`
         :'';
       return `<div class="kde-row">
         <div class="kde-row-icon ${ans?clsMap[ans]:'kde-row-na'}">${ans?iconMap[ans]:'—'}</div>
