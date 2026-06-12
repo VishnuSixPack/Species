@@ -12,16 +12,14 @@ serve(async (req) => {
   }
 
   try {
-    const { email, password, first_name, last_name, role, company_id, position, partner_of } = await req.json()
+    const { email, password, first_name, last_name, role, company_id, position } = await req.json()
 
-    // Create admin client with service role key
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { auth: { autoRefreshToken: false, persistSession: false } }
     )
 
-    // Create user in Supabase Auth
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -33,31 +31,14 @@ serve(async (req) => {
 
     const userId = authData.user.id
 
-    // Update profile with role and company
-      await supabaseAdmin.from('profiles').upsert({
+    await supabaseAdmin.from('profiles').upsert({
       id: userId,
       first_name,
       last_name,
-      role: role || 'supplier',
+      role: role || 'user',
       company_id: company_id || null,
       email,
       position: position || null,
-    })
-
-   // Add to company_members if company provided
-    if (company_id) {
-      await supabaseAdmin.from('company_members').insert({
-        company_id,
-        user_id: userId,
-        company_role: 'member',
-        status: 'active'
-      })
-    }
-
-    // Send welcome email via Supabase Auth
-    await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email,
     })
 
     return new Response(
