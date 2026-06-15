@@ -197,6 +197,11 @@
     .klbl{font-size:11px;font-weight:600;color:#9aa0b4;white-space:nowrap;}
     .kde-sticky{position:sticky;top:0;background:#fff;z-index:5;padding-bottom:10px;margin-bottom:14px;border-bottom:1px solid #f0f2f8;}
     .ksbadge{display:inline-flex;align-items:center;gap:6px;background:#f4f0ff;border-radius:8px;padding:4px 12px;font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:6px;}
+    .kdebadge-aqua{background:#f0fdf4;color:#16a34a;}
+    .kdebadge-mixed{background:#fff7ed;color:#c2410c;}
+    .kdebadge-disabled{background:#f4f6fb;color:#9aa0b4;}
+    /* Stage type tag in sticky header */
+    .kstypetag{display:inline-flex;align-items:center;gap:5px;background:#eef4fd;border-radius:6px;padding:2px 10px;font-size:10px;font-weight:700;color:#1a6fdb;margin-left:8px;}
     .kstitle{font-size:20px;font-weight:800;color:#1a1a2e;margin-bottom:2px;}
     .kssub{font-size:12px;color:#9aa0b4;}
     .kq{background:#f9fafc;border:1px solid #e8eaf0;border-radius:12px;padding:14px 16px;margin-bottom:10px;transition:border-color 0.2s;}
@@ -876,7 +881,13 @@ function fillSlot(i){
   s.onclick=()=>openPF(i);
 }
 function toggleGear(){const v=document.getElementById('pfharvest').value;document.getElementById('geargrp').classList.toggle('hidden',v!=='Wild Catch');if(v!=='Wild Catch')clearSingle('gear');}
-function toKDE(){if(!products.filter(Boolean).length){showToast('Please add at least one product.','error');return;}kIdx=0;renderKDE();goTo('s5');}
+function toKDE(){
+  if(!products.filter(Boolean).length){showToast('Please add at least one product.','error');return;}
+  STAGES=buildActiveStages();
+  kIdx=0;
+  renderKDE();
+  goTo('s5');
+}
 
 // MARKET
 // Single-select dropdown helper
@@ -1072,97 +1083,170 @@ function updateSCPrev(){
 }
 
 // KDE — GDST-aligned, rephrased to "Is ... available to you?", sticky header, ISO removed
-const STAGES=[
-  {k:'harvesting',t:'Harvesting & Catch',i:'🎣',qs:[
-    {id:'fv_name',q:'Is the name of every fishing vessel supplying this product available to you?'},
-    {id:'fv_imo',q:'Is the IMO number available for each fishing vessel?'},
-    {id:'fv_uid',q:'Is a unique vessel identification number (beyond IMO) available for each vessel?'},
-    {id:'fv_flag',q:'Is the flag state of each fishing vessel known and documented?'},
-    {id:'fv_registry',q:'Is each vessel listed on a public vessel registry with a hyperlink or reference?'},
-    {id:'fv_tracking',q:'Is satellite vessel tracking (e.g. VMS) in place for each vessel?'},
-    {id:'fv_species',q:'Is the species available using its scientific name at point of catch?'},
-    {id:'fv_gtin',q:'Is an Item/SKU/UPC/GTIN assigned to the product at the harvest stage?'},
-    {id:'fv_linking',q:'Is a linking KDE (batch number, lot number, or serial number) assigned at harvest?'},
-    {id:'fv_weight',q:'Is weight or quantity with unit of measure available at point of catch?'},
-    {id:'fv_area',q:'Is the FAO catch area or fishing zone available and documented?'},
-    {id:'fv_coords',q:'Are catch coordinates (geo-location) available for each fishing event?'},
-    {id:'fv_rfmo',q:'Is each vessel registered on the relevant RFMO register?'},
-    {id:'fv_permit',q:'Is a valid fishing authorization or permit available for each vessel?'},
-    {id:'fv_harvest_cert',q:'Is a harvest certification available for this product (e.g. MSC)?'},
-    {id:'fv_coc',q:'Is a Chain of Custody certification available covering the harvest stage?'},
-    {id:'fv_welfare_policy',q:'Does your organization have a documented Human Welfare Policy?'},
-    {id:'fv_welfare_standards',q:'Do your vessels comply with recognized human welfare standards (e.g. ILO, FISH)?'},
-  ]},
-  {k:'transshipment',t:'Transshipment',i:'🔄',qs:[
-    {id:'cr_name',q:'Is the name of the carrier vessel used for transshipment available to you?'},
-    {id:'cr_imo',q:'Is the IMO number of the carrier vessel available?'},
-    {id:'cr_uid',q:'Is a unique vessel ID available for the carrier vessel?'},
-    {id:'cr_reg',q:'Is the vessel registration number of the carrier available?'},
-    {id:'cr_flag',q:"Is the carrier vessel's flag state known and documented?"},
-    {id:'cr_rfmo',q:'Is the carrier vessel registered on the relevant RFMO register?'},
-    {id:'cr_gtin',q:'Is the Item/SKU/UPC/GTIN carried through to the transshipment record?'},
-    {id:'cr_linking',q:'Is the linking KDE (batch/lot/serial) maintained and available at transshipment?'},
-    {id:'cr_weight',q:'Is weight or quantity with unit of measure available at transshipment?'},
-    {id:'cr_location',q:'Is the geo-location of the transshipment event available?'},
-    {id:'cr_approval',q:'Is formal transshipment authorization from the flag state available?'},
-    {id:'cr_auth_doc',q:'Is a transshipment authorization document available for each event?'},
-    {id:'cr_observer',q:'Is transshipment conducted in port or under independent observer monitoring?'},
-    {id:'cr_coc',q:'Is a Chain of Custody certification available covering the transshipment stage?'},
-    {id:'cr_welfare_policy',q:'Do your transshipment vessels operate under a documented Human Welfare Policy?'},
-    {id:'cr_welfare_standards',q:'Do your carrier vessels comply with recognized human welfare standards?'},
-  ]},
-  {k:'landing',t:'Landing & First Receiver',i:'⚓',qs:[
-    {id:'fcl_species',q:'Is the species (scientific name) carried through and available at the landing record?'},
-    {id:'fcl_gtin',q:'Is the Item/SKU/UPC/GTIN available at the point of landing?'},
-    {id:'fcl_linking',q:'Is the linking KDE (batch/lot/serial) available and maintained at landing?'},
-    {id:'fcl_weight',q:'Is weight or quantity with unit of measure available at landing?'},
-    {id:'fcl_port',q:'Is the port of landing documented and available?'},
-    {id:'fcl_geo',q:'Are the geo-coordinates of the landing location available?'},
-    {id:'fcl_bol',q:'Is a Bill of Lading available for this shipment?'},
-    {id:'fcl_consignee',q:'Is the consignee identified on all shipping documents?'},
-    {id:'fcl_container',q:'Is the container number documented and available?'},
-    {id:'fcl_ownership',q:'Is product ownership clearly identified and documented at the landing stage?'},
-    {id:'fcl_auth',q:'Is a landing authorization available for each landing event?'},
-    {id:'fcl_eu',q:'Does the landing port have EU competent authority approval (if EU-bound)?'},
-    {id:'fcl_coc',q:'Does the landing facility hold a Chain of Custody certification?'},
-    {id:'fcl_welfare',q:'Does the landing entity operate under a documented Human Welfare Policy?'},
-  ]},
-  {k:'processing',t:'Processing',i:'🏭',qs:[
-    {id:'pp_name',q:'Is the name and location of your processing facility available and documented?'},
-    {id:'pp_ownership',q:'Is product ownership clearly identified at the processing stage?'},
-    {id:'pp_origin',q:'Is the product origin (country/region of catch) available at processing?'},
-    {id:'pp_geo',q:'Are the geo-coordinates of the processing facility available?'},
-    {id:'pp_gtin',q:'Is an Item/SKU/UPC/GTIN assigned or carried through at processing?'},
-    {id:'pp_lot',q:'Is a lot code or batch number assigned to each production run?'},
-    {id:'pp_linking',q:'Is the linking KDE (batch/lot/serial) maintained throughout processing?'},
-    {id:'pp_weight',q:'Is weight or quantity with unit of measure available at processing?'},
-    {id:'pp_data',q:'Does your processor receive full catch/harvest data from the first receiver?'},
-    {id:'pp_cold',q:'Is cold chain and storage facility covered by your Chain of Custody certification?'},
-    {id:'pp_eu',q:'Does your processor hold an EU Facility Approval number (if EU-bound)?'},
-    {id:'pp_coc',q:'Does the processing facility hold a Chain of Custody certification?'},
-    {id:'pp_harvest_cert',q:'Does the processing facility hold a valid Harvest Certification?'},
-    {id:'pp_welfare_policy',q:'Does your processing facility have a documented Human Welfare Policy?'},
-    {id:'pp_welfare_standards',q:'Does your processing facility comply with recognized human welfare standards?'},
-  ]},
-  {k:'shipping',t:'Shipping & Logistics',i:'🚛',qs:[
-    {id:'lfp_shipper',q:"Is the shipper's GLN (Global Location Number) available?"},
-    {id:'lfp_receiver',q:"Is the receiver/end buyer's GLN available?"},
-    {id:'lfp_ownership',q:'Is product ownership clearly documented throughout the shipping stage?'},
-    {id:'lfp_gtin',q:'Is the Item/SKU/UPC/GTIN carried through on all shipping documents?'},
-    {id:'lfp_linking',q:'Is the linking KDE (batch/lot/serial) available on shipping documents?'},
-    {id:'lfp_weight',q:'Is weight or quantity with unit of measure available on shipping documents?'},
-    {id:'lfp_source',q:'Is the source location (origin facility) available on shipping documents?'},
-    {id:'lfp_dest',q:'Is the destination location available on shipping documents?'},
-    {id:'lfp_geo',q:'Are geo-location event read points available during transit?'},
-    {id:'lfp_po',q:"Is a buyer's purchase order available referencing this shipment?"},
-    {id:'lfp_seal',q:'Is the container seal number available and documented?'},
-    {id:'lfp_invoice',q:"Is a commercial invoice available referencing the product's certification status?"},
-    {id:'lfp_packing',q:'Is a packing list available matching the invoice and Bill of Lading?'},
-    {id:'lfp_coc',q:'Does your shipping/logistics partner hold a Chain of Custody certification?'},
-  ]},
-  {k:'certifications',t:'Certifications & Compliance',i:'🏅',qs:[
-    {id:'c_msc',q:'Do you hold a valid MSC Chain of Custody certificate?'},
-    {id:'c_asc',q:'Do you hold a valid ASC Chain of Custody certificate?'},
+// ── Wild Catch harvesting questions ──
+const HARVEST_WILD=[
+  {id:'fv_name',q:'Is the name of every fishing vessel supplying this product available to you?'},
+  {id:'fv_imo',q:'Is the IMO number available for each fishing vessel?'},
+  {id:'fv_uid',q:'Is a unique vessel identification number (beyond IMO) available for each vessel?'},
+  {id:'fv_flag',q:'Is the flag state of each fishing vessel known and documented?'},
+  {id:'fv_registry',q:'Is each vessel listed on a public vessel registry with a hyperlink or reference?'},
+  {id:'fv_tracking',q:'Is satellite vessel tracking (e.g. VMS) in place for each vessel?'},
+  {id:'fv_species',q:'Is the species available using its scientific name at point of catch?'},
+  {id:'fv_gtin',q:'Is an Item/SKU/UPC/GTIN assigned to the product at the harvest stage?'},
+  {id:'fv_linking',q:'Is a linking KDE (batch number, lot number, or serial number) assigned at harvest?'},
+  {id:'fv_weight',q:'Is weight or quantity with unit of measure available at point of catch?'},
+  {id:'fv_area',q:'Is the FAO catch area or fishing zone available and documented?'},
+  {id:'fv_coords',q:'Are catch coordinates (geo-location) available for each fishing event?'},
+  {id:'fv_rfmo',q:'Is each vessel registered on the relevant RFMO register?'},
+  {id:'fv_permit',q:'Is a valid fishing authorization or permit available for each vessel?'},
+  {id:'fv_harvest_cert',q:'Is a harvest certification available for this product (e.g. MSC)?'},
+  {id:'fv_coc',q:'Is a Chain of Custody certification available covering the harvest stage?'},
+  {id:'fv_welfare_policy',q:'Does your organization have a documented Human Welfare Policy?'},
+  {id:'fv_welfare_standards',q:'Do your vessels comply with recognized human welfare standards (e.g. ILO, FISH)?'},
+];
+
+// ── Aquaculture/Farm harvesting questions (GDST-aligned) ──
+const HARVEST_AQUA=[
+  {id:'aq_farm_name',q:'Is the name and location of the farm or aquaculture facility documented?'},
+  {id:'aq_farm_license',q:'Is a valid farm registration or aquaculture license available?'},
+  {id:'aq_species',q:'Is the species documented using its scientific name?'},
+  {id:'aq_gtin',q:'Is an Item/SKU/UPC/GTIN assigned to the product at the farm stage?'},
+  {id:'aq_linking',q:'Is a linking KDE (batch/lot/serial number) assigned at the farm stage?'},
+  {id:'aq_weight',q:'Is the harvest weight and unit of measure available per batch?'},
+  {id:'aq_lot',q:'Is a lot code or production batch number assigned at harvest?'},
+  {id:'aq_stocking',q:'Are stocking density and stocking date records available?'},
+  {id:'aq_feed_supplier',q:'Is the feed supplier name and traceability information available?'},
+  {id:'aq_feed_origin',q:'Is the origin of feed ingredients documented?'},
+  {id:'aq_water',q:'Are water quality monitoring records available?'},
+  {id:'aq_disease',q:'Are disease treatment and medication records available?'},
+  {id:'aq_coc',q:'Does the farm hold a Chain of Custody certification (e.g. ASC, BAP)?'},
+  {id:'aq_audit',q:'Has the farm passed a third-party aquaculture standard audit in the last 12 months?'},
+  {id:'aq_welfare',q:'Does the farm operate under a documented animal and worker welfare policy?'},
+];
+
+// ── Mixed harvesting questions (both Wild Catch + Aquaculture products) ──
+const HARVEST_MIXED=[
+  {id:'fv_name',q:'[Wild Catch] Is the name of every fishing vessel available to you?'},
+  {id:'fv_imo',q:'[Wild Catch] Is the IMO number available for each fishing vessel?'},
+  {id:'fv_flag',q:'[Wild Catch] Is the flag state of each vessel known and documented?'},
+  {id:'fv_registry',q:'[Wild Catch] Is each vessel listed on a public vessel registry?'},
+  {id:'fv_tracking',q:'[Wild Catch] Is satellite vessel tracking (VMS) in place?'},
+  {id:'fv_species',q:'[Wild Catch] Is the species available using its scientific name at catch?'},
+  {id:'fv_gtin',q:'[Wild Catch] Is an Item/SKU/UPC/GTIN assigned at harvest?'},
+  {id:'fv_linking',q:'[Wild Catch] Is a linking KDE assigned at the harvest stage?'},
+  {id:'fv_area',q:'[Wild Catch] Is the FAO catch area documented?'},
+  {id:'fv_permit',q:'[Wild Catch] Is a valid fishing authorization or permit available?'},
+  {id:'fv_coc',q:'[Wild Catch] Is a Chain of Custody certification available for the harvest stage?'},
+  {id:'aq_farm_name',q:'[Aquaculture] Is the farm name and location documented?'},
+  {id:'aq_farm_license',q:'[Aquaculture] Is a valid farm registration or license available?'},
+  {id:'aq_species',q:'[Aquaculture] Is the species documented using its scientific name?'},
+  {id:'aq_gtin',q:'[Aquaculture] Is an Item/SKU/UPC/GTIN assigned at the farm stage?'},
+  {id:'aq_linking',q:'[Aquaculture] Is a linking KDE assigned at the farm stage?'},
+  {id:'aq_feed_supplier',q:'[Aquaculture] Is the feed supplier name and traceability available?'},
+  {id:'aq_coc',q:'[Aquaculture] Does the farm hold a Chain of Custody certification?'},
+  {id:'aq_welfare',q:'[Aquaculture] Does the farm have a documented welfare policy?'},
+];
+
+// ── Base stage definitions ──
+const STAGE_TRANSSHIPMENT={k:'transshipment',t:'Transshipment',i:'🔄',qs:[
+  {id:'cr_name',q:'Is the name of the carrier vessel used for transshipment available to you?'},
+  {id:'cr_imo',q:'Is the IMO number of the carrier vessel available?'},
+  {id:'cr_uid',q:'Is a unique vessel ID available for the carrier vessel?'},
+  {id:'cr_reg',q:'Is the vessel registration number of the carrier available?'},
+  {id:'cr_flag',q:"Is the carrier vessel's flag state known and documented?"},
+  {id:'cr_rfmo',q:'Is the carrier vessel registered on the relevant RFMO register?'},
+  {id:'cr_gtin',q:'Is the Item/SKU/UPC/GTIN carried through to the transshipment record?'},
+  {id:'cr_linking',q:'Is the linking KDE (batch/lot/serial) maintained and available at transshipment?'},
+  {id:'cr_weight',q:'Is weight or quantity with unit of measure available at transshipment?'},
+  {id:'cr_location',q:'Is the geo-location of the transshipment event available?'},
+  {id:'cr_approval',q:'Is formal transshipment authorization from the flag state available?'},
+  {id:'cr_auth_doc',q:'Is a transshipment authorization document available for each event?'},
+  {id:'cr_observer',q:'Is transshipment conducted in port or under independent observer monitoring?'},
+  {id:'cr_coc',q:'Is a Chain of Custody certification available covering the transshipment stage?'},
+  {id:'cr_welfare_policy',q:'Do your transshipment vessels operate under a documented Human Welfare Policy?'},
+  {id:'cr_welfare_standards',q:'Do your carrier vessels comply with recognized human welfare standards?'},
+]};
+const STAGE_LANDING={k:'landing',t:'Landing & First Receiver',i:'⚓',qs:[
+  {id:'fcl_species',q:'Is the species (scientific name) carried through and available at the landing record?'},
+  {id:'fcl_gtin',q:'Is the Item/SKU/UPC/GTIN available at the point of landing?'},
+  {id:'fcl_linking',q:'Is the linking KDE (batch/lot/serial) available and maintained at landing?'},
+  {id:'fcl_weight',q:'Is weight or quantity with unit of measure available at landing?'},
+  {id:'fcl_port',q:'Is the port of landing documented and available?'},
+  {id:'fcl_geo',q:'Are the geo-coordinates of the landing location available?'},
+  {id:'fcl_bol',q:'Is a Bill of Lading available for this shipment?'},
+  {id:'fcl_consignee',q:'Is the consignee identified on all shipping documents?'},
+  {id:'fcl_container',q:'Is the container number documented and available?'},
+  {id:'fcl_ownership',q:'Is product ownership clearly identified and documented at the landing stage?'},
+  {id:'fcl_auth',q:'Is a landing authorization available for each landing event?'},
+  {id:'fcl_eu',q:'Does the landing port have EU competent authority approval (if EU-bound)?'},
+  {id:'fcl_coc',q:'Does the landing facility hold a Chain of Custody certification?'},
+  {id:'fcl_welfare',q:'Does the landing entity operate under a documented Human Welfare Policy?'},
+]};
+const STAGE_PROCESSING={k:'processing',t:'Processing',i:'🏭',qs:[
+  {id:'pp_name',q:'Is the name and location of your processing facility available and documented?'},
+  {id:'pp_ownership',q:'Is product ownership clearly identified at the processing stage?'},
+  {id:'pp_origin',q:'Is the product origin (country/region of catch) available at processing?'},
+  {id:'pp_geo',q:'Are the geo-coordinates of the processing facility available?'},
+  {id:'pp_gtin',q:'Is an Item/SKU/UPC/GTIN assigned or carried through at processing?'},
+  {id:'pp_lot',q:'Is a lot code or batch number assigned to each production run?'},
+  {id:'pp_linking',q:'Is the linking KDE (batch/lot/serial) maintained throughout processing?'},
+  {id:'pp_weight',q:'Is weight or quantity with unit of measure available at processing?'},
+  {id:'pp_data',q:'Does your processor receive full catch/harvest data from the first receiver?'},
+  {id:'pp_cold',q:'Is cold chain and storage facility covered by your Chain of Custody certification?'},
+  {id:'pp_eu',q:'Does your processor hold an EU Facility Approval number (if EU-bound)?'},
+  {id:'pp_coc',q:'Does the processing facility hold a Chain of Custody certification?'},
+  {id:'pp_harvest_cert',q:'Does the processing facility hold a valid Harvest Certification?'},
+  {id:'pp_welfare_policy',q:'Does your processing facility have a documented Human Welfare Policy?'},
+  {id:'pp_welfare_standards',q:'Does your processing facility comply with recognized human welfare standards?'},
+]};
+const STAGE_SHIPPING={k:'shipping',t:'Shipping & Logistics',i:'🚛',qs:[
+  {id:'lfp_shipper',q:"Is the shipper's GLN (Global Location Number) available?"},
+  {id:'lfp_receiver',q:"Is the receiver/end buyer's GLN available?"},
+  {id:'lfp_ownership',q:'Is product ownership clearly documented throughout the shipping stage?'},
+  {id:'lfp_gtin',q:'Is the Item/SKU/UPC/GTIN carried through on all shipping documents?'},
+  {id:'lfp_linking',q:'Is the linking KDE (batch/lot/serial) available on shipping documents?'},
+  {id:'lfp_weight',q:'Is weight or quantity with unit of measure available on shipping documents?'},
+  {id:'lfp_source',q:'Is the source location (origin facility) available on shipping documents?'},
+  {id:'lfp_dest',q:'Is the destination location available on shipping documents?'},
+  {id:'lfp_geo',q:'Are geo-location event read points available during transit?'},
+  {id:'lfp_po',q:"Is a buyer's purchase order available referencing this shipment?"},
+  {id:'lfp_seal',q:'Is the container seal number available and documented?'},
+  {id:'lfp_invoice',q:"Is a commercial invoice available referencing the product's certification status?"},
+  {id:'lfp_packing',q:'Is a packing list available matching the invoice and Bill of Lading?'},
+  {id:'lfp_coc',q:'Does your shipping/logistics partner hold a Chain of Custody certification?'},
+]};
+
+// ── Dynamic stage builder — called when entering KDE ──
+function buildActiveStages(){
+  const prods=products.filter(Boolean);
+
+  // 1. Determine harvest type across all products
+  const harvests=prods.map(p=>p.harvest).filter(Boolean);
+  const hasWild=harvests.some(h=>h==='Wild Catch');
+  const hasAqua=harvests.some(h=>h==='Aquaculture');
+  let harvestQs,harvestLabel,harvestIcon,harvestType;
+  if(hasWild&&hasAqua){
+    harvestQs=HARVEST_MIXED;harvestLabel='Harvesting & Catch';harvestIcon='🎣';harvestType='mixed';
+  } else if(hasAqua){
+    harvestQs=HARVEST_AQUA;harvestLabel='Farm & Aquaculture';harvestIcon='🌊';harvestType='aqua';
+  } else {
+    harvestQs=HARVEST_WILD;harvestLabel='Harvesting & Catch';harvestIcon='🎣';harvestType='wild';
+  }
+
+  // 2. Which CTEs appear in any product's chain
+  const allCTEs=new Set();
+  prods.forEach(p=>(p.chain||[]).forEach(c=>allCTEs.add(c.type)));
+  const hasCTE=type=>allCTEs.size===0||allCTEs.has(type);
+
+  // 3. Which certifications exist across products
+  const certs=prods.map(p=>p.cert).filter(Boolean);
+  const hasMSC=certs.includes('MSC');
+  const hasASC=certs.includes('ASC');
+
+  // 4. Build certifications stage questions
+  const certQs=[
+    ...(hasMSC?[{id:'c_msc',q:'Do you hold a valid MSC Chain of Custody certificate?'}]:[]),
+    ...(hasASC?[{id:'c_asc',q:'Do you hold a valid ASC Chain of Custody certificate?'}]:[]),
     {id:'c_brc',q:'Do you hold a BRC Global Standard or IFS food safety certification?'},
     {id:'c_eu',q:'Does your facility hold an EU Facility Approval number?'},
     {id:'c_haccp',q:'Do you operate a certified HACCP food safety plan?'},
@@ -1173,18 +1257,51 @@ const STAGES=[
     {id:'c_interop',q:'Can your traceability data be shared digitally with supply chain partners or regulators?'},
     {id:'c_welfare_org',q:'Does your organization have a documented company-wide Human Welfare Policy?'},
     {id:'c_welfare_audit',q:'Have you been audited against a recognized human welfare standard in the last 2 years?'},
-  ]},
-];
+  ];
+
+  // 5. Assemble stages
+  return [
+    {k:'harvesting',t:harvestLabel,i:harvestIcon,harvestType,qs:harvestQs},
+    {...STAGE_TRANSSHIPMENT,disabled:!hasCTE('transshipment'),disabledReason:'Transshipment is not part of your supply chain.'},
+    {...STAGE_LANDING,disabled:!hasCTE('landing'),disabledReason:'Landing is not part of your supply chain.'},
+    {...STAGE_PROCESSING,disabled:!hasCTE('processing'),disabledReason:'Processing is not part of your supply chain.'},
+    {...STAGE_SHIPPING,disabled:!hasCTE('shipreceive'),disabledReason:'Shipping & Logistics is not part of your supply chain.'},
+    {k:'certifications',t:'Certifications & Compliance',i:'🏅',qs:certQs},
+  ];
+}
+
+// Active stages — rebuilt when toKDE() is called
+let STAGES=[];
+
+
 
 function renderKDE(){
-  const st=STAGES[kIdx],total=STAGES.length,pct=Math.round(((kIdx+1)/total)*100);
+  const st=STAGES[kIdx];
+  const activeCount=STAGES.filter(s=>!s.disabled).length;
+  const activeIdx=STAGES.slice(0,kIdx+1).filter(s=>!s.disabled).length;
+  const pct=Math.round((kIdx+1)/STAGES.length*100);
   document.getElementById('kfill').style.width=pct+'%';
-  document.getElementById('klbl').textContent=`Stage ${kIdx+1} of ${total}`;
+  document.getElementById('klbl').textContent=`Stage ${kIdx+1} of ${STAGES.length}`;
   document.getElementById('kback').style.visibility=kIdx===0?'hidden':'visible';
-  document.getElementById('knext').textContent=kIdx===total-1?'Finish →':'Next Stage →';
-  document.getElementById('kcontent').innerHTML=
-    `<div class="kde-sticky"><div class="ksbadge">${st.i} ${st.t}</div><div class="kstitle">${st.t}</div><div class="kssub">Select the availability of each data element for your operations.</div></div>`
-    +st.qs.map(q=>renderQ(q)).join('');
+  document.getElementById('knext').textContent=kIdx===STAGES.length-1?'Finish →':'Next Stage →';
+
+  // Stage nav pills — show all stages with disabled indicator
+  const navPills=STAGES.map((s,i)=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:10px;font-weight:600;background:${i===kIdx?'#8b5cf6':s.disabled?'#f4f6fb':'#f0f2f7'};color:${i===kIdx?'#fff':s.disabled?'#c0c4d0':'#6b7280'};cursor:${s.disabled?'default':'pointer'};text-decoration:${s.disabled?'line-through':''}" onclick="${s.disabled?'':''}">${s.i} ${s.t.split(' ')[0]}</span>`).join('');
+
+  if(st.disabled){
+    document.getElementById('kcontent').innerHTML=
+      `<div class="kde-sticky"><div class="ksbadge">${st.i} ${st.t}</div><div class="kstitle">${st.t}</div></div>
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 20px;text-align:center;background:#f9fafc;border-radius:14px;border:1.5px dashed #e0e3ed;">
+        <div style="font-size:32px;margin-bottom:12px;">⛔</div>
+        <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:6px;">Not Applicable</div>
+        <div style="font-size:13px;color:#9aa0b4;max-width:340px;line-height:1.6;">${st.disabledReason}</div>
+        <div style="margin-top:16px;display:inline-flex;align-items:center;gap:6px;background:#fff7ed;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#c2410c;">This stage has been skipped based on your supply chain.</div>
+      </div>`;
+  } else {
+    document.getElementById('kcontent').innerHTML=
+      `<div class="kde-sticky"><div class="ksbadge">${st.i} ${st.t}</div><div class="kstitle">${st.t}</div><div class="kssub">Select the availability of each data element for your operations.</div></div>`
+      +st.qs.map(q=>renderQ(q)).join('');
+  }
 }
 function renderQ(q){
   const r=kResp[q.id]||{};

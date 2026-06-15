@@ -244,6 +244,8 @@ const KDE_KEYS={
   processing:['pp_name','pp_ownership','pp_origin','pp_geo','pp_gtin','pp_lot','pp_linking','pp_weight','pp_data','pp_cold','pp_eu','pp_coc','pp_harvest_cert','pp_welfare_policy','pp_welfare_standards'],
   shipping:['lfp_shipper','lfp_receiver','lfp_ownership','lfp_gtin','lfp_linking','lfp_weight','lfp_source','lfp_dest','lfp_geo','lfp_po','lfp_seal','lfp_invoice','lfp_packing','lfp_coc'],
   certifications:['c_msc','c_asc','c_brc','c_iso','c_eu','c_haccp','c_audit','c_internal','c_recall','c_digital','c_interop','c_welfare_org','c_welfare_audit'],
+  // Aquaculture harvesting keys
+  harvesting_aqua:['aq_farm_name','aq_farm_license','aq_species','aq_gtin','aq_linking','aq_weight','aq_lot','aq_stocking','aq_feed_supplier','aq_feed_origin','aq_water','aq_disease','aq_coc','aq_audit','aq_welfare'],
 };
 
 const KDE_LABELS={
@@ -391,12 +393,28 @@ function openPanel(id){
 
   // KDE — renders evidence array (new) + legacy r.ev (old) both
   const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};
+  // Determine which stages to show based on what was asked
+  // Check if aquaculture questions exist in responses (farm questions)
+  const hasAquaResponses=Object.keys(kde).some(k=>k.startsWith('aq_'));
+  const hasWildResponses=Object.keys(kde).some(k=>k.startsWith('fv_'));
+  // Determine harvesting keys to show
+  const getHarvestKeys=()=>{
+    if(hasAquaResponses&&hasWildResponses)return [...KDE_KEYS.harvesting,...KDE_KEYS.harvesting_aqua];
+    if(hasAquaResponses)return KDE_KEYS.harvesting_aqua;
+    return KDE_KEYS.harvesting;
+  };
   document.getElementById('pKDE').innerHTML=STAGES.map(st=>{
-    const keys=KDE_KEYS[st.k]||[];
+    const isHarvest=st.k==='harvesting';
+    const keys=isHarvest?getHarvestKeys():(KDE_KEYS[st.k]||[]);
+    // Check if this stage was disabled (no answers at all)
+    const hasAnyAnswer=keys.some(k=>kde[k]?.ans);
     const stAv=keys.filter(k=>kde[k]?.ans==='av').length;
     const stPa=keys.filter(k=>kde[k]?.ans==='pa').length;
     const stUn=keys.filter(k=>kde[k]?.ans==='un').length;
-    const rows=keys.map(k=>{
+    // If stage disabled (no answers), show N/A block
+    const stageBody=!hasAnyAnswer&&st.k!=='harvesting'
+      ?`<div style="padding:16px;text-align:center;color:#9aa0b4;font-size:12px;font-style:italic;">⛔ Not in supply chain — this stage was not assessed.</div>`
+      :keys.map(k=>{
       const r=kde[k];
       const ans=r?.ans;
       const iconMap={av:'✓',pa:'◑',un:'✗'};
@@ -423,6 +441,7 @@ function openPanel(id){
         </div>
       </div>`;
     }).join('');
+    const stageContent=typeof stageBody==='string'?stageBody:rows;
     return `<div class="kde-stage" id="stage_${st.k}">
       <div class="kde-stage-hd" onclick="toggleStage('${st.k}')">
         <div class="kde-stage-hd-l">
@@ -436,7 +455,7 @@ function openPanel(id){
           <span class="kde-stage-chevron">▼</span>
         </div>
       </div>
-      <div class="kde-stage-body">${rows}</div>
+      <div class="kde-stage-body">${stageContent}</div>
     </div>`;
   }).join('');
 
