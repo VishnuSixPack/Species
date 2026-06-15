@@ -266,8 +266,11 @@ async function initDetailPage() {
 
 // ── COUNTRY MAP ───────────────────────────────────────────────
 let countryMap = null;
-let countryBase = null;   // gray world context
-let countryLayer = null;  // highlighted country
+let countryBase = null;
+let countryLayer = null;
+let worldGeo = null;
+let labelPoints = [];
+let nbrLabels = null;
 
 async function loadCountryMap(alpha3, countryName) {
   const el = document.getElementById('countryMap');
@@ -276,26 +279,13 @@ async function loadCountryMap(alpha3, countryName) {
 
   if (!countryMap) {
     countryMap = L.map('countryMap', {
-      zoomControl: true,
-      attributionControl: true,
-      dragging: true,
-      scrollWheelZoom: false,   // don't hijack page scroll
-      doubleClickZoom: true,
-      touchZoom: true,
-      keyboard: false,
-      minZoom: 1,
-      maxZoom: 7
+      zoomControl: true, attributionControl: true, dragging: true,
+      scrollWheelZoom: true, doubleClickZoom: true, touchZoom: true,
+      keyboard: false, minZoom: 1, maxZoom: 7
     });
     setTimeout(() => countryMap.invalidateSize(), 200);
-
-    // labels layer ABOVE the country fills (neighbour names)
-    countryMap.createPane('labels');
-    countryMap.getPane('labels').style.zIndex = 650;
-    countryMap.getPane('labels').style.pointerEvents = 'none';
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
-      pane: 'labels', subdomains: 'abcd',
-      attribution: '© OpenStreetMap, © CARTO', maxZoom: 18
-    }).addTo(countryMap);
+    nbrLabels = L.layerGroup().addTo(countryMap);
+    countryMap.on('moveend zoomend', renderNeighbourLabels);
   }
 
   if (countryBase)  { countryMap.removeLayer(countryBase);  countryBase = null; }
@@ -304,6 +294,12 @@ async function loadCountryMap(alpha3, countryName) {
 
   try {
     const geo = await (await fetch('countries.geo.json')).json();
+    worldGeo = geo;
+    labelPoints = geo.features.map(f => {
+      let c = null;
+      try { c = L.geoJSON(f).getBounds().getCenter(); } catch (e) {}
+      return c ? { id: f.id, name: f.properties && f.properties.name, center: c } : null;
+    }).filter(Boolean);
 
     countryBase = L.geoJSON(geo, {
       interactive: false,
@@ -317,7 +313,6 @@ async function loadCountryMap(alpha3, countryName) {
         interactive: false,
         style: { color: '#1565c0', weight: 1.2, fillColor: '#1a6fdb', fillOpacity: 0.92 }
       }).addTo(countryMap);
-
       countryMap.fitBounds(countryLayer.getBounds(), { padding: [40, 40], maxZoom: 6 });
 
       const area = feature.properties && feature.properties.area_km2;
@@ -327,13 +322,13 @@ async function loadCountryMap(alpha3, countryName) {
         (areaText ? `<span class="cml-area">${areaText}</span>` : ''),
         { permanent: true, direction: 'right', className: 'country-map-label', offset: [12, 0] }
       ).openTooltip();
+      renderNeighbourLabels();
       return;
     }
 
     const hits = await (await fetch(
       `https://nominatim.openstreetmap.org/search?country=${encodeURIComponent(countryName)}&format=json&limit=1`
     )).json();
-
     if (hits && hits.length) {
       const h = hits[0], bb = h.boundingbox.map(Number);
       countryMap.fitBounds([[bb[0], bb[2]], [bb[1], bb[3]]], { padding: [40, 40], maxZoom: 7 });
@@ -341,6 +336,7 @@ async function loadCountryMap(alpha3, countryName) {
         radius: 8, color: '#1565c0', fillColor: '#1a6fdb', fillOpacity: 0.9, interactive: false
       }).addTo(countryMap);
       document.getElementById('mapNote').textContent = 'Approximate location shown.';
+      renderNeighbourLabels();
     } else {
       document.getElementById('mapNote').textContent = 'Map not available for this country.';
     }
@@ -349,57 +345,77 @@ async function loadCountryMap(alpha3, countryName) {
   }
 }
 
+// neighbour country names (skips the selected country, hides when zoomed far out)
+function renderNeighbourLabels() {
+  if (!countryMap || !nbrLabels) return;
+  nbrLabels.clearLayers();
+  if (countryMap.getZoom() < 3) return;
+  const view = countryMap.getBounds();
+  labelPoints.forEach(p => {
+    if (p.id === currentAlpha3 || !p.name) return;
+    if (!view.contains(p.center)) return;
+    L.marker(p.center, {
+      interactive: false,
+      icon: L.divIcon({ className: 'nbr-label', html: p.name, iconSize: [0, 0] })
+    }).addTo(nbrLabels);
+  });
+}
+
 // ── MARINE OVERLAY LAYERS (live WMS) ──────────────────────────
 let mapLayers = { fao: null, eez: null, highseas: null };
 let eezScope = 'country';
 let currentAlpha3 = null;
 
+const SLD_EEZ = '<?xml version="1.0"?><StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld"><NamedLayer><Name>eez</Name><UserStyle><FeatureTypeStyle><Rule><PolygonSymbolizer><Fill><CssParameter name="fill">#1b9e4b</CssParameter><CssParameter name="fill-opacity">0.12</CssParameter></Fill><Stroke><CssParameter name="stroke">#1b9e4b</CssParameter><CssParameter name="stroke-width">1.3</CssParameter></Stroke></PolygonSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>';
+const SLD_HS = '<?xml version="1.0"?><StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld"><NamedLayer><Name>high_seas</Name><UserStyle><FeatureTypeStyle><Rule><PolygonSymbolizer><Fill><CssParameter name="fill">#6a3d9a</CssParameter><CssParameter name="fill-opacity">0.10</CssParameter></Fill><Stroke><CssParameter name="stroke">#6a3d9a</CssParameter><CssParameter name="stroke-width">1</CssParameter></Stroke></PolygonSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>';
+const SLD_FAO = '<?xml version="1.0"?><StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld"><NamedLayer><Name>fifao:FAO_AREAS</Name><UserStyle><FeatureTypeStyle><Rule><PolygonSymbolizer><Stroke><CssParameter name="stroke">#e6772e</CssParameter><CssParameter name="stroke-width">1.4</CssParameter></Stroke></PolygonSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>';
+
 function eezFilter() {
   return (eezScope === 'all' || !currentAlpha3) ? 'INCLUDE' : `iso_ter1='${currentAlpha3}'`;
 }
 
+function updateLegend() {
+  const set = (id, on) => { const e = document.getElementById(id); if (e) e.classList.toggle('hidden', !on); };
+  set('legendFao', !!mapLayers.fao);
+  set('legendEez', !!mapLayers.eez);
+  set('legendHighseas', !!mapLayers.highseas);
+  const any = mapLayers.fao || mapLayers.eez || mapLayers.highseas;
+  const wrap = document.getElementById('mapLegend');
+  if (wrap) wrap.classList.toggle('hidden', !any);
+}
+
 function toggleFao(btn) {
   if (!countryMap) return;
-  if (mapLayers.fao) {
-    countryMap.removeLayer(mapLayers.fao); mapLayers.fao = null;
-    btn.classList.remove('active'); return;
-  }
+  if (mapLayers.fao) { countryMap.removeLayer(mapLayers.fao); mapLayers.fao = null; btn.classList.remove('active'); updateLegend(); return; }
   mapLayers.fao = L.tileLayer.wms('https://www.fao.org/fishery/geoserver/wms', {
     layers: 'fifao:FAO_AREAS', format: 'image/png', transparent: true, version: '1.1.0',
-    cql_filter: "F_LEVEL='MAJOR'",
+    styles: '', sld_body: SLD_FAO, cql_filter: "F_LEVEL='MAJOR'",
     attribution: 'FAO Major Fishing Areas © FAO'
   }).addTo(countryMap);
-  btn.classList.add('active');
+  btn.classList.add('active'); updateLegend();
 }
 
 function toggleEez(btn) {
   if (!countryMap) return;
   const scope = document.getElementById('eezScopeWrap');
-  if (mapLayers.eez) {
-    countryMap.removeLayer(mapLayers.eez); mapLayers.eez = null;
-    btn.classList.remove('active');
-    if (scope) scope.classList.add('hidden'); return;
-  }
+  if (mapLayers.eez) { countryMap.removeLayer(mapLayers.eez); mapLayers.eez = null; btn.classList.remove('active'); if (scope) scope.classList.add('hidden'); updateLegend(); return; }
   mapLayers.eez = L.tileLayer.wms('https://geo.vliz.be/geoserver/MarineRegions/wms', {
     layers: 'eez', format: 'image/png', transparent: true, version: '1.1.0',
-    cql_filter: eezFilter(),
+    styles: '', sld_body: SLD_EEZ, cql_filter: eezFilter(),
     attribution: 'EEZ © Flanders Marine Institute (CC-BY 4.0)'
   }).addTo(countryMap);
-  btn.classList.add('active');
-  if (scope) scope.classList.remove('hidden');
+  btn.classList.add('active'); if (scope) scope.classList.remove('hidden'); updateLegend();
 }
 
 function toggleHighSeas(btn) {
   if (!countryMap) return;
-  if (mapLayers.highseas) {
-    countryMap.removeLayer(mapLayers.highseas); mapLayers.highseas = null;
-    btn.classList.remove('active'); return;
-  }
+  if (mapLayers.highseas) { countryMap.removeLayer(mapLayers.highseas); mapLayers.highseas = null; btn.classList.remove('active'); updateLegend(); return; }
   mapLayers.highseas = L.tileLayer.wms('https://geo.vliz.be/geoserver/MarineRegions/wms', {
     layers: 'high_seas', format: 'image/png', transparent: true, version: '1.1.0',
+    styles: '', sld_body: SLD_HS,
     attribution: 'High Seas © Flanders Marine Institute (CC-BY 4.0)'
   }).addTo(countryMap);
-  btn.classList.add('active');
+  btn.classList.add('active'); updateLegend();
 }
 
 function setEezScope(scopeVal, btn) {
