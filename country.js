@@ -266,46 +266,65 @@ async function initDetailPage() {
 
 // ── COUNTRY MAP ───────────────────────────────────────────────
 let countryMap = null;
-let countryLayer = null;
+let countryBase = null;   // gray world context
+let countryLayer = null;  // highlighted country
 
 async function loadCountryMap(alpha3, countryName) {
   const el = document.getElementById('countryMap');
   if (!el) return;
 
   if (!countryMap) {
-    countryMap = L.map('countryMap', { scrollWheelZoom: false }).setView([20, 0], 1);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-      attribution: '© OpenStreetMap, © CARTO',
-      subdomains: 'abcd', maxZoom: 18
-    }).addTo(countryMap);
+    countryMap = L.map('countryMap', {
+      zoomControl: false, attributionControl: false, dragging: false,
+      scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false,
+      keyboard: false, touchZoom: false
+    });
     setTimeout(() => countryMap.invalidateSize(), 200);
   }
 
+  if (countryBase)  { countryMap.removeLayer(countryBase);  countryBase = null; }
   if (countryLayer) { countryMap.removeLayer(countryLayer); countryLayer = null; }
   document.getElementById('mapNote').textContent = '';
 
   try {
     const geo = await (await fetch('countries.geo.json')).json();
+
+    // gray base — every country
+    countryBase = L.geoJSON(geo, {
+      interactive: false,
+      style: { color: '#ffffff', weight: 1, fillColor: '#dfe3ea', fillOpacity: 1 }
+    }).addTo(countryMap);
+
     const feature = geo.features.find(f => f.id === alpha3);
 
     if (feature) {
       countryLayer = L.geoJSON(feature, {
-        style: { color: '#1a6fdb', weight: 2, fillColor: '#1a6fdb', fillOpacity: 0.25 }
+        interactive: false,
+        style: { color: '#1565c0', weight: 1.2, fillColor: '#1a6fdb', fillOpacity: 0.92 }
       }).addTo(countryMap);
-      countryMap.fitBounds(countryLayer.getBounds(), { padding: [30, 30], maxZoom: 6 });
+
+      countryMap.fitBounds(countryLayer.getBounds(), { padding: [40, 40], maxZoom: 6 });
+
+      const area = feature.properties && feature.properties.area_km2;
+      const areaText = area ? area.toLocaleString('en-US') + ' km²' : '';
+      countryLayer.bindTooltip(
+        `<span class="cml-name">${countryName.toUpperCase()}</span>` +
+        (areaText ? `<span class="cml-area">${areaText}</span>` : ''),
+        { permanent: true, direction: 'right', className: 'country-map-label', offset: [12, 0] }
+      ).openTooltip();
       return;
     }
 
-    // Fallback for small territories not in the boundary file
+    // fallback for small territories not in the boundary file
     const hits = await (await fetch(
       `https://nominatim.openstreetmap.org/search?country=${encodeURIComponent(countryName)}&format=json&limit=1`
     )).json();
 
     if (hits && hits.length) {
       const h = hits[0], bb = h.boundingbox.map(Number); // [S, N, W, E]
-      countryMap.fitBounds([[bb[0], bb[2]], [bb[1], bb[3]]], { padding: [30, 30], maxZoom: 8 });
-      countryLayer = L.circleMarker([+h.lat, +h.lon], {
-        radius: 8, color: '#1a6fdb', fillColor: '#1a6fdb', fillOpacity: 0.6
+      countryMap.fitBounds([[bb[0], bb[2]], [bb[1], bb[3]]], { padding: [40, 40], maxZoom: 7 });
+      L.circleMarker([+h.lat, +h.lon], {
+        radius: 8, color: '#1565c0', fillColor: '#1a6fdb', fillOpacity: 0.9, interactive: false
       }).addTo(countryMap);
       document.getElementById('mapNote').textContent = 'Approximate location shown.';
     } else {
