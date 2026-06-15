@@ -9,6 +9,8 @@ const dbClient = window._sharedSupabase || (window._sharedSupabase = supabase.cr
 
 let allCountries = [];
 let activeContinent = 'All';
+let euOnly = false;
+const EU27 = ['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE'];
 
 // ── CONTINENT MAP (client-side, alpha2 → continent) ──────────
 const CONTINENT_MAP = {
@@ -88,6 +90,9 @@ function toggleNavDropdown() {
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.topbar-right')) {
     document.getElementById('navDropdown')?.classList.remove('open');
+  }
+  if (!e.target.closest('.filter-wrap')) {
+    document.getElementById('filterMenu')?.classList.add('hidden');
   }
 });
 
@@ -175,12 +180,13 @@ function getFiltered() {
   const q = (document.getElementById('searchInput')?.value || '').toLowerCase();
   return allCountries.filter(c => {
     const matchesContinent = activeContinent === 'All' || CONTINENT_MAP[c.alpha2] === activeContinent;
+    const matchesEU = !euOnly || EU27.includes(c.alpha2);
     const matchesSearch = !q ||
       c.country.toLowerCase().includes(q) ||
       c.alpha2.toLowerCase().includes(q) ||
       c.alpha3.toLowerCase().includes(q) ||
       (c.numeric && c.numeric.includes(q));
-    return matchesContinent && matchesSearch;
+    return matchesContinent && matchesEU && matchesSearch;
   });
 }
 
@@ -471,4 +477,18 @@ function formatTimeZone(iana, multiple) {
   } catch (e) {
     return iana;
   }
+}
+
+// ── FILTER MENU ───────────────────────────────────────────────
+function toggleFilterMenu() {
+  document.getElementById('filterMenu')?.classList.toggle('hidden');
+}
+
+function setEUFilter(on) {
+  euOnly = on;
+  const btn = document.getElementById('filterBtn');
+  const badge = document.getElementById('filterCount');
+  if (btn) btn.classList.toggle('active', on);
+  if (badge) { badge.classList.toggle('hidden', !on); badge.textContent = on ? '1' : ''; }
+  renderCountries(getFiltered());
 }
