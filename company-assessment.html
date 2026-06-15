@@ -1216,6 +1216,18 @@ const STAGE_SHIPPING={k:'shipping',t:'Shipping & Logistics',i:'🚛',qs:[
   {id:'lfp_coc',q:'Does your shipping/logistics partner hold a Chain of Custody certification?'},
 ]};
 
+// ── Market-based question sets ──
+const EU27=['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE'];
+const EU_QIDS=['fcl_eu','pp_eu','c_eu'];
+const US_SHIPPING=[
+  {id:'s_simp',q:'Is a SIMP (Seafood Import Monitoring Program) entry filing available for this shipment? (US-bound)'},
+  {id:'s_fsma_lot',q:'Is an FSMA 204 traceability lot code assigned and carried at each CTE? (US-bound)'},
+];
+const US_COMPLIANCE=[
+  {id:'c_fsma_kde',q:'Is an FSMA 204 Key Data Element (KDE) record maintained for each lot? (US-bound)'},
+  {id:'c_fsvp',q:'Is a Foreign Supplier Verification Program (FSVP) on file for this supplier? (US-bound)'},
+];
+
 // ── Dynamic stage builder — called when entering KDE ──
 function buildActiveStages(){
   const prods=products.filter(Boolean);
@@ -1243,12 +1255,18 @@ function buildActiveStages(){
   const hasMSC=certs.includes('MSC');
   const hasASC=certs.includes('ASC');
 
+  // 3b. Which markets across products → EU (any EU-27 member) / US
+  const markets=new Set();
+  prods.forEach(p=>(p.markets||[]).forEach(m=>markets.add(m)));
+  const hasEU=[...markets].some(m=>EU27.includes(m));
+  const hasUS=markets.has('US');
+
   // 4. Build certifications stage questions
   const certQs=[
     ...(hasMSC?[{id:'c_msc',q:'Do you hold a valid MSC Chain of Custody certificate?'}]:[]),
     ...(hasASC?[{id:'c_asc',q:'Do you hold a valid ASC Chain of Custody certificate?'}]:[]),
     {id:'c_brc',q:'Do you hold a BRC Global Standard or IFS food safety certification?'},
-    {id:'c_eu',q:'Does your facility hold an EU Facility Approval number?'},
+    ...(hasEU?[{id:'c_eu',q:'Does your facility hold an EU Facility Approval number?'}]:[]),
     {id:'c_haccp',q:'Do you operate a certified HACCP food safety plan?'},
     {id:'c_audit',q:'Have you passed an independent third-party traceability audit in the last 12 months?'},
     {id:'c_internal',q:'Do you have an internal traceability system that links every batch from source to sale?'},
@@ -1257,15 +1275,18 @@ function buildActiveStages(){
     {id:'c_interop',q:'Can your traceability data be shared digitally with supply chain partners or regulators?'},
     {id:'c_welfare_org',q:'Does your organization have a documented company-wide Human Welfare Policy?'},
     {id:'c_welfare_audit',q:'Have you been audited against a recognized human welfare standard in the last 2 years?'},
+    ...(hasUS?US_COMPLIANCE:[]),
   ];
 
   // 5. Assemble stages
+  const euFilter=qs=>hasEU?qs:qs.filter(q=>!EU_QIDS.includes(q.id));
+
   return [
     {k:'harvesting',t:harvestLabel,i:harvestIcon,harvestType,qs:harvestQs},
     {...STAGE_TRANSSHIPMENT,disabled:!hasCTE('transshipment'),disabledReason:'Transshipment is not part of your supply chain.'},
-    {...STAGE_LANDING,disabled:!hasCTE('landing'),disabledReason:'Landing is not part of your supply chain.'},
-    {...STAGE_PROCESSING,disabled:!hasCTE('processing'),disabledReason:'Processing is not part of your supply chain.'},
-    {...STAGE_SHIPPING,disabled:!hasCTE('shipreceive'),disabledReason:'Shipping & Logistics is not part of your supply chain.'},
+    {...STAGE_LANDING,qs:euFilter(STAGE_LANDING.qs),disabled:!hasCTE('landing'),disabledReason:'Landing is not part of your supply chain.'},
+    {...STAGE_PROCESSING,qs:euFilter(STAGE_PROCESSING.qs),disabled:!hasCTE('processing'),disabledReason:'Processing is not part of your supply chain.'},
+    {...STAGE_SHIPPING,qs:hasUS?[...STAGE_SHIPPING.qs,...US_SHIPPING]:STAGE_SHIPPING.qs,disabled:!hasCTE('shipreceive'),disabledReason:'Shipping & Logistics is not part of your supply chain.'},
     {k:'certifications',t:'Certifications & Compliance',i:'🏅',qs:certQs},
   ];
 }
