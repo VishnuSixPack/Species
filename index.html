@@ -4,35 +4,103 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Project Manhattan</title>
-  <link rel="icon" type="image/png" href="vi-icon.png"/>
+  <link rel="icon" type="image/png" href="brand-logo.png"/>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="home.css" />
+  <style>
+    /* ── NAV LOGO ── */
+    .home-nav-logo{display:flex;align-items:center;gap:8px;text-decoration:none;}
+    .home-nav-logo img{width:28px;height:28px;object-fit:contain;}
+    .home-nav-brand{display:flex;flex-direction:column;line-height:1.1;}
+
+    /* ── QUICK TEST MODAL ── */
+    .qt-modal{display:none;position:fixed;inset:0;background:rgba(6,10,28,0.6);backdrop-filter:blur(8px);z-index:1000;align-items:center;justify-content:center;padding:20px;}
+    .qt-modal.open{display:flex;}
+    .qt-box{background:#fff;border-radius:22px;width:100%;max-width:520px;padding:32px 32px 28px;box-shadow:0 24px 64px rgba(0,0,0,0.2);position:relative;}
+    .qt-close{position:absolute;top:16px;right:16px;width:28px;height:28px;border-radius:50%;border:none;background:#f4f6fb;cursor:pointer;font-size:15px;color:#6b7280;display:flex;align-items:center;justify-content:center;}
+    .qt-close:hover{background:#e8eaf0;}
+    .qt-header{margin-bottom:24px;}
+    .qt-badge{display:inline-flex;align-items:center;gap:6px;background:#f4f0ff;border-radius:999px;padding:4px 12px;font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:10px;}
+    .qt-title{font-size:20px;font-weight:800;color:#1a1a2e;margin-bottom:4px;}
+    .qt-sub{font-size:13px;color:#9aa0b4;line-height:1.5;}
+    /* Progress */
+    .qt-progress{height:4px;background:#f0f2f7;border-radius:999px;margin-bottom:24px;overflow:hidden;}
+    .qt-progress-fill{height:100%;background:linear-gradient(90deg,#8b5cf6,#1a6fdb);border-radius:999px;transition:width 0.3s;}
+    .qt-step-lbl{font-size:11px;font-weight:600;color:#9aa0b4;margin-bottom:8px;}
+    /* Question */
+    .qt-q{font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:20px;line-height:1.5;}
+    .qt-opts{display:flex;flex-direction:column;gap:10px;margin-bottom:24px;}
+    .qt-opt{display:flex;align-items:center;gap:12px;padding:13px 16px;border-radius:12px;border:1.5px solid #e0e3ed;cursor:pointer;transition:all 0.15s;font-size:13px;font-weight:600;color:#4a4e69;background:#fff;}
+    .qt-opt:hover{border-color:#8b5cf6;background:#faf5ff;color:#7c3aed;}
+    .qt-opt.selected{border-color:#8b5cf6;background:#f4f0ff;color:#7c3aed;}
+    .qt-opt-icon{font-size:16px;flex-shrink:0;}
+    /* Nav */
+    .qt-nav{display:flex;justify-content:space-between;align-items:center;}
+    .qt-btn-back{background:none;border:1.5px solid #e0e3ed;border-radius:999px;padding:9px 20px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:#6b7280;cursor:pointer;}
+    .qt-btn-back:hover{border-color:#1a1a2e;color:#1a1a2e;}
+    .qt-btn-next{background:#8b5cf6;color:#fff;border:none;border-radius:999px;padding:9px 24px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+    .qt-btn-next:hover{background:#7c3aed;}
+    .qt-btn-next:disabled{opacity:0.4;cursor:default;}
+    /* Result */
+    .qt-result{display:none;text-align:center;}
+    .qt-result-icon{font-size:56px;margin-bottom:12px;}
+    .qt-result-title{font-size:22px;font-weight:800;color:#1a1a2e;margin-bottom:6px;}
+    .qt-result-desc{font-size:13px;color:#6b7280;line-height:1.6;margin-bottom:20px;max-width:380px;margin-left:auto;margin-right:auto;}
+    .qt-result-bars{display:flex;flex-direction:column;gap:8px;margin-bottom:24px;text-align:left;}
+    .qt-bar-row{display:flex;align-items:center;gap:10px;}
+    .qt-bar-lbl{font-size:11px;font-weight:600;color:#6b7280;width:100px;flex-shrink:0;}
+    .qt-bar-track{flex:1;height:6px;background:#f0f2f7;border-radius:999px;overflow:hidden;}
+    .qt-bar-fill{height:100%;border-radius:999px;transition:width 0.6s ease;}
+    .qt-bar-pct{font-size:11px;font-weight:700;color:#1a1a2e;width:32px;text-align:right;flex-shrink:0;}
+    .qt-result-cta{display:inline-flex;align-items:center;gap:8px;background:#1a1a2e;color:#fff;border:none;border-radius:999px;padding:12px 28px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;}
+    .qt-result-cta:hover{background:#2d2d50;}
+
+    /* ── WHAT WE DO SECTION ── */
+    .home-wwd{padding:60px 0;background:#fff;}
+    .home-wwd-header{text-align:center;padding:0 40px;margin-bottom:64px;}
+    .home-wwd-header h2{font-size:32px;font-weight:800;color:#1a1a2e;margin-bottom:8px;}
+    .home-wwd-header p{font-size:15px;color:#9aa0b4;}
+
+    .wwd-section{display:flex;align-items:center;gap:0;min-height:420px;}
+    .wwd-section.reverse{flex-direction:row-reverse;}
+    .wwd-section-alt{background:#f9fafc;}
+
+    .wwd-img{flex:1;min-height:420px;overflow:hidden;border-radius:9px;}
+    .wwd-img img{width:100%;height:100%;object-fit:cover;display:block;border-radius:9px;}
+
+    .wwd-text{flex:1;padding:56px 64px;}
+    .wwd-tag{display:inline-flex;align-items:center;gap:6px;background:#f4f0ff;color:#7c3aed;border-radius:999px;padding:5px 14px;font-size:11px;font-weight:700;letter-spacing:0.3px;margin-bottom:16px;}
+    .wwd-text h3{font-size:26px;font-weight:800;color:#1a1a2e;line-height:1.3;margin-bottom:14px;}
+    .wwd-text p{font-size:14px;color:#6b7280;line-height:1.8;margin-bottom:24px;}
+    .wwd-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#1a6fdb;text-decoration:none;}
+    .wwd-link:hover{gap:10px;}
+
+    @media(max-width:768px){
+      .wwd-section,.wwd-section.reverse{flex-direction:column;}
+      .wwd-img{min-height:240px;width:100%;}
+      .wwd-text{padding:36px 28px;}
+    }
+  </style>
 </head>
 <body class="home-page">
 
   <!-- HOME NAVBAR -->
   <nav class="home-nav">
-    <div class="home-nav-brand">
-      <span class="home-nav-project">PROJECT</span>
-      <span class="home-nav-manhattan">Manhattan.</span>
-    </div>
+    <a class="home-nav-logo" href="index.html">
+      <img src="brand-logo.png" alt="Manhattan Logo"/>
+      <div class="home-nav-brand">
+        <span class="home-nav-project">PROJECT</span>
+        <span class="home-nav-manhattan">Manhattan.</span>
+      </div>
+    </a>
     <ul class="home-nav-links">
       <li><a href="index.html" class="active">Home</a></li>
-
-<li class="home-dropdown home-mega-dropdown" id="home-module-dropdown">
-        <a href="teaser.html">Module</a>
-      </li>
-      <li><a href="#">Reports</a></li>
-<li class="dropdown" id="home-support-dropdown">
-        <a href="javascript:void(0)">Support</a>
-        <ul class="dropdown-menu">
-          <li><a href="contact.html">Contact</a></li>
-          <li><a href="about.html">About</a></li>
-        </ul>
-      </li>
-      <li id="home-plan-link"><a href="#">Plan</a></li>
-<li id="home-profile-link">
-        <a href="register.html" class="home-register-btn">Register</a>
+      <li><a href="teaser.html">Platform</a></li>
+      <li><a href="#what-we-do">What do we do?</a></li>
+      <li><a href="contact.html">Contact</a></li>
+      <li><a href="about.html">About</a></li>
+      <li id="home-profile-link">
+        <a href="javascript:void(0)" class="home-register-btn" onclick="openQT()">Take the Test</a>
         <a href="login.html" class="home-login-btn">Login</a>
       </li>
     </ul>
@@ -71,6 +139,66 @@
     <p>Human creativity amplified by AI tools</p>
   </section>
 
+  <!-- WHAT WE DO SECTION -->
+  <section class="home-wwd" id="what-we-do">
+    <div class="home-wwd-header">
+      <h2>What do we do?</h2>
+      <p>Project Manhattan helps seafood companies understand, map and improve their traceability posture.</p>
+    </div>
+
+    <!-- Row 1 — photo left, text right -->
+    <div class="wwd-section">
+      <div class="wwd-img">
+        <img src="wwd-1.jpg" alt="Supply Chain Traceability"/>
+      </div>
+      <div class="wwd-text">
+        <div class="wwd-tag">🔍 Supply Chain</div>
+        <h3>Trace Every Step.<br/>From Ocean to Shelf.</h3>
+        <p>Map your entire supply chain — from the fishing vessel and transshipment through landing, processing and final delivery. Every batch, every link, fully documented.</p>
+        <a href="teaser.html" class="wwd-link">Explore the Platform →</a>
+      </div>
+    </div>
+
+    <!-- Row 2 — text left, photo right -->
+    <div class="wwd-section reverse wwd-section-alt">
+      <div class="wwd-img">
+        <img src="wwd-2.jpg" alt="Manhattan Risk Index"/>
+      </div>
+      <div class="wwd-text">
+        <div class="wwd-tag">📊 Risk Intelligence</div>
+        <h3>Know Your Risk.<br/>Manhattan Risk Index.</h3>
+        <p>Get a data-driven traceability risk score built on GDST, SIMP, FSMA 204 and EU catch certificate standards. Instantly understand where your supply chain stands.</p>
+        <a href="teaser.html" class="wwd-link">Learn about MRI →</a>
+      </div>
+    </div>
+
+    <!-- Row 3 — photo left, text right -->
+    <div class="wwd-section">
+      <div class="wwd-img">
+        <img src="wwd-3.jpg" alt="Verify and Certify"/>
+      </div>
+      <div class="wwd-text">
+        <div class="wwd-tag">🏅 Verification</div>
+        <h3>Submit Evidence.<br/>Get Verified.</h3>
+        <p>Upload certificates, documents and references against each KDE. Our expert team reviews your submission and publishes a verified score your buyers and regulators can trust.</p>
+        <a href="contact.html" class="wwd-link">Request an Assessment →</a>
+      </div>
+    </div>
+
+    <!-- Row 4 — text left, photo right -->
+    <div class="wwd-section reverse wwd-section-alt">
+      <div class="wwd-img">
+        <img src="wwd-4.jpg" alt="Species and Country Atlas"/>
+      </div>
+      <div class="wwd-text">
+        <div class="wwd-tag">🌍 Atlas</div>
+        <h3>Species & Country.<br/>A Living Atlas.</h3>
+        <p>Access a comprehensive database of 3,000+ species and 249 countries with taxonomy, regulatory and trade data — including ISSF stock status for tuna species.</p>
+        <a href="teaser.html" class="wwd-link">Explore the Atlas →</a>
+      </div>
+    </div>
+  </section>
+
   <!-- FOOTER -->
   <footer class="home-footer">
     <p><strong>© 2026 Vishnu's Project Manhattan</strong></p>
@@ -78,22 +206,251 @@
     <p>email : info@definitelynotvishnu.com</p>
   </footer>
 
+  <!-- QUICK TRACE TEST MODAL -->
+  <div class="qt-modal" id="qtModal" onclick="qtOutside(event)">
+    <div class="qt-box">
+      <button class="qt-close" onclick="closeQT()">×</button>
+      <!-- Questions view -->
+      <div id="qtQuestions">
+        <div class="qt-header">
+          <div class="qt-badge">⚡ Quick Trace Test</div>
+          <div class="qt-title">Where do you stand?</div>
+          <div class="qt-sub">10 quick questions to assess your seafood traceability readiness.</div>
+        </div>
+        <div class="qt-progress"><div class="qt-progress-fill" id="qtFill" style="width:10%"></div></div>
+        <div class="qt-step-lbl" id="qtStepLbl">Question 1 of 10</div>
+        <div class="qt-q" id="qtQ"></div>
+        <div class="qt-opts" id="qtOpts"></div>
+        <div class="qt-nav">
+          <button class="qt-btn-back" id="qtBack" onclick="qtPrev()" style="visibility:hidden">← Back</button>
+          <button class="qt-btn-next" id="qtNext" onclick="qtNext()" disabled>Next →</button>
+        </div>
+      </div>
+      <!-- Result view -->
+      <div class="qt-result" id="qtResult">
+        <div class="qt-result-icon" id="qtResultIcon"></div>
+        <div class="qt-result-title" id="qtResultTitle"></div>
+        <div class="qt-result-desc" id="qtResultDesc"></div>
+        <div class="qt-result-bars" id="qtResultBars"></div>
+        <a href="contact.html" class="qt-result-cta">Get Your Full MRI Assessment →</a>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script>
+  <script>
   const SUPABASE_URL = 'https://enbdaajcromxmhgcverp.supabase.co';
   const SUPABASE_ANON_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
   const dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-document.addEventListener('DOMContentLoaded', async function() {
+  document.addEventListener('DOMContentLoaded', async function() {
     const { data: { session } } = await dbClient.auth.getSession();
-
-    // Redirect logged-in users to dashboard
-    if (session) {
-      window.location.href = 'home-logged-in.html';
-      return;
-    }
+    if (session) { window.location.href = 'home-logged-in.html'; return; }
   });
 
-</script>
+  // ── QUICK TRACE TEST ────────────────────────────────────────
+  const QT_QUESTIONS = [
+    {
+      q: 'Do you know the name and registration of every fishing vessel that supplies your seafood?',
+      opts: [
+        {t:'Yes, for all vessels', icon:'✅', score:3},
+        {t:'For some vessels only', icon:'◑', score:1},
+        {t:'No, we don\'t track this', icon:'❌', score:0},
+      ],
+      category:'Vessel Identity'
+    },
+    {
+      q: 'Can you identify which FAO fishing zone your seafood was caught in?',
+      opts: [
+        {t:'Yes, always documented', icon:'✅', score:3},
+        {t:'Sometimes', icon:'◑', score:1},
+        {t:'No', icon:'❌', score:0},
+      ],
+      category:'Catch Data'
+    },
+    {
+      q: 'Does every batch of seafood you handle have a unique lot or batch number?',
+      opts: [
+        {t:'Yes, from catch to delivery', icon:'✅', score:3},
+        {t:'Only at processing stage', icon:'◑', score:1},
+        {t:'No lot tracking', icon:'❌', score:0},
+      ],
+      category:'Batch Traceability'
+    },
+    {
+      q: 'Do you hold a Chain of Custody certification (MSC, ASC, or equivalent)?',
+      opts: [
+        {t:'Yes, currently certified', icon:'✅', score:3},
+        {t:'In progress / pending', icon:'◑', score:1},
+        {t:'No certification', icon:'❌', score:0},
+      ],
+      category:'Certification'
+    },
+    {
+      q: 'Can you trace a product back to its source within 4 hours if a recall is needed?',
+      opts: [
+        {t:'Yes, we have a tested process', icon:'✅', score:3},
+        {t:'Probably, but untested', icon:'◑', score:1},
+        {t:'No, it would take much longer', icon:'❌', score:0},
+      ],
+      category:'Recall Readiness'
+    },
+    {
+      q: 'Is your traceability data captured digitally (not just paper records)?',
+      opts: [
+        {t:'Fully digital', icon:'✅', score:3},
+        {t:'Mix of paper and digital', icon:'◑', score:1},
+        {t:'Mostly paper-based', icon:'❌', score:0},
+      ],
+      category:'Digital Readiness'
+    },
+    {
+      q: 'Do you have a documented Human Welfare / Labour Standards policy for your supply chain?',
+      opts: [
+        {t:'Yes, audited and documented', icon:'✅', score:3},
+        {t:'Policy exists but not audited', icon:'◑', score:1},
+        {t:'No policy', icon:'❌', score:0},
+      ],
+      category:'Human Welfare'
+    },
+    {
+      q: 'Can you share traceability data digitally with buyers or regulators on request?',
+      opts: [
+        {t:'Yes, through a system or portal', icon:'✅', score:3},
+        {t:'We can, but it takes time', icon:'◑', score:1},
+        {t:'No, we can\'t share digitally', icon:'❌', score:0},
+      ],
+      category:'Data Sharing'
+    },
+    {
+      q: 'Does your processor or supplier hold an approved food safety certification (BRC, HACCP, ISO 22000)?',
+      opts: [
+        {t:'Yes, current certification', icon:'✅', score:3},
+        {t:'Some suppliers do', icon:'◑', score:1},
+        {t:'No certifications', icon:'❌', score:0},
+      ],
+      category:'Food Safety'
+    },
+    {
+      q: 'Have you undergone an independent third-party traceability or sustainability audit in the last 12 months?',
+      opts: [
+        {t:'Yes', icon:'✅', score:3},
+        {t:'More than 12 months ago', icon:'◑', score:1},
+        {t:'Never', icon:'❌', score:0},
+      ],
+      category:'Audit'
+    },
+  ];
+
+  let qtIdx = 0;
+  let qtAnswers = new Array(QT_QUESTIONS.length).fill(null);
+
+  function openQT() {
+    qtIdx = 0;
+    qtAnswers = new Array(QT_QUESTIONS.length).fill(null);
+    document.getElementById('qtResult').style.display = 'none';
+    document.getElementById('qtQuestions').style.display = 'block';
+    renderQT();
+    document.getElementById('qtModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeQT() {
+    document.getElementById('qtModal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function qtOutside(e) {
+    if (e.target === document.getElementById('qtModal')) closeQT();
+  }
+
+  function renderQT() {
+    const q = QT_QUESTIONS[qtIdx];
+    const total = QT_QUESTIONS.length;
+    const pct = Math.round(((qtIdx + 1) / total) * 100);
+    document.getElementById('qtFill').style.width = pct + '%';
+    document.getElementById('qtStepLbl').textContent = `Question ${qtIdx + 1} of ${total} — ${q.category}`;
+    document.getElementById('qtQ').textContent = q.q;
+    document.getElementById('qtBack').style.visibility = qtIdx === 0 ? 'hidden' : 'visible';
+    document.getElementById('qtNext').textContent = qtIdx === total - 1 ? 'See Results →' : 'Next →';
+    document.getElementById('qtNext').disabled = qtAnswers[qtIdx] === null;
+
+    document.getElementById('qtOpts').innerHTML = q.opts.map((o, i) => `
+      <div class="qt-opt ${qtAnswers[qtIdx] === i ? 'selected' : ''}" onclick="selectOpt(${i})">
+        <span class="qt-opt-icon">${o.icon}</span>
+        ${o.t}
+      </div>
+    `).join('');
+  }
+
+  function selectOpt(i) {
+    qtAnswers[qtIdx] = i;
+    document.querySelectorAll('.qt-opt').forEach((el, idx) => el.classList.toggle('selected', idx === i));
+    document.getElementById('qtNext').disabled = false;
+  }
+
+  function qtNext() {
+    if (qtAnswers[qtIdx] === null) return;
+    if (qtIdx < QT_QUESTIONS.length - 1) {
+      qtIdx++;
+      renderQT();
+    } else {
+      showQTResult();
+    }
+  }
+  function qtPrev() {
+    if (qtIdx > 0) { qtIdx--; renderQT(); }
+  }
+
+  function showQTResult() {
+    // Calculate score
+    const maxScore = QT_QUESTIONS.length * 3;
+    const score = qtAnswers.reduce((sum, ans, i) => {
+      return sum + (ans !== null ? QT_QUESTIONS[i].opts[ans].score : 0);
+    }, 0);
+    const pct = Math.round((score / maxScore) * 100);
+
+    // Category breakdown
+    const categories = {};
+    QT_QUESTIONS.forEach((q, i) => {
+      const ans = qtAnswers[i];
+      if (!categories[q.category]) categories[q.category] = {score:0,max:3};
+      categories[q.category].score = ans !== null ? q.opts[ans].score : 0;
+    });
+
+    // Determine result tier
+    let icon, title, desc, color;
+    if (pct >= 75) {
+      icon = '🟢'; title = 'Strong Traceability';
+      desc = 'Your supply chain traceability is well developed. A full MRI Assessment will pinpoint remaining gaps and give you a verified score to share with buyers and regulators.';
+      color = '#16a34a';
+    } else if (pct >= 45) {
+      icon = '🟡'; title = 'Developing Traceability';
+      desc = 'You have some traceability systems in place, but there are significant gaps. A full MRI Assessment will show exactly where you stand and what to fix first.';
+      color = '#f59e0b';
+    } else {
+      icon = '🔴'; title = 'High Traceability Risk';
+      desc = 'Your supply chain has critical traceability gaps that could expose you to regulatory risk, buyer rejection or fraud. A full MRI Assessment is strongly recommended.';
+      color = '#e63946';
+    }
+
+    document.getElementById('qtQuestions').style.display = 'none';
+    const result = document.getElementById('qtResult');
+    result.style.display = 'block';
+    document.getElementById('qtResultIcon').textContent = icon;
+    document.getElementById('qtResultTitle').textContent = title;
+    document.getElementById('qtResultTitle').style.color = color;
+    document.getElementById('qtResultDesc').textContent = desc;
+
+    // Bars
+    document.getElementById('qtResultBars').innerHTML = Object.entries(categories).map(([cat, val]) => {
+      const p = Math.round((val.score / val.max) * 100);
+      const c = p >= 75 ? '#16a34a' : p >= 40 ? '#f59e0b' : '#e63946';
+      return `<div class="qt-bar-row">
+        <span class="qt-bar-lbl">${cat}</span>
+        <div class="qt-bar-track"><div class="qt-bar-fill" style="width:${p}%;background:${c}"></div></div>
+        <span class="qt-bar-pct">${p}%</span>
+      </div>`;
+    }).join('');
+  }
+  </script>
 </body>
 </html>
