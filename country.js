@@ -275,11 +275,26 @@ async function loadCountryMap(alpha3, countryName) {
 
   if (!countryMap) {
     countryMap = L.map('countryMap', {
-      zoomControl: false, attributionControl: false, dragging: false,
-      scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false,
-      keyboard: false, touchZoom: false
+      zoomControl: true,
+      attributionControl: true,
+      dragging: true,
+      scrollWheelZoom: false,   // don't hijack page scroll
+      doubleClickZoom: true,
+      touchZoom: true,
+      keyboard: false,
+      minZoom: 1,
+      maxZoom: 7
     });
     setTimeout(() => countryMap.invalidateSize(), 200);
+
+    // labels layer ABOVE the country fills (neighbour names)
+    countryMap.createPane('labels');
+    countryMap.getPane('labels').style.zIndex = 650;
+    countryMap.getPane('labels').style.pointerEvents = 'none';
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+      pane: 'labels', subdomains: 'abcd',
+      attribution: '© OpenStreetMap, © CARTO', maxZoom: 18
+    }).addTo(countryMap);
   }
 
   if (countryBase)  { countryMap.removeLayer(countryBase);  countryBase = null; }
@@ -289,7 +304,6 @@ async function loadCountryMap(alpha3, countryName) {
   try {
     const geo = await (await fetch('countries.geo.json')).json();
 
-    // gray base — every country
     countryBase = L.geoJSON(geo, {
       interactive: false,
       style: { color: '#ffffff', weight: 1, fillColor: '#dfe3ea', fillOpacity: 1 }
@@ -315,13 +329,12 @@ async function loadCountryMap(alpha3, countryName) {
       return;
     }
 
-    // fallback for small territories not in the boundary file
     const hits = await (await fetch(
       `https://nominatim.openstreetmap.org/search?country=${encodeURIComponent(countryName)}&format=json&limit=1`
     )).json();
 
     if (hits && hits.length) {
-      const h = hits[0], bb = h.boundingbox.map(Number); // [S, N, W, E]
+      const h = hits[0], bb = h.boundingbox.map(Number);
       countryMap.fitBounds([[bb[0], bb[2]], [bb[1], bb[3]]], { padding: [40, 40], maxZoom: 7 });
       L.circleMarker([+h.lat, +h.lon], {
         radius: 8, color: '#1565c0', fillColor: '#1a6fdb', fillOpacity: 0.9, interactive: false
