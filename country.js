@@ -258,6 +258,9 @@ async function initDetailPage() {
   const contEl = document.getElementById('d-continent');
   if (contEl) contEl.textContent = continent ? `${CONTINENT_ICONS[continent]} ${continent}` : '—';
 
+  // General Information
+  populateGeneralInfo(data);
+
   document.getElementById('detailContent').classList.remove('hidden');
 
   // show country on map
@@ -423,4 +426,49 @@ function setEezScope(scopeVal, btn) {
   document.querySelectorAll('.eez-scope-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   if (mapLayers.eez) mapLayers.eez.setParams({ cql_filter: eezFilter() });
+}
+
+// ── GENERAL INFORMATION ───────────────────────────────────────
+function populateGeneralInfo(d) {
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = (v && String(v).trim()) ? v : '—'; };
+  set('gi-capital', d.capital);
+  const cur = [d.currency_name, d.currency_symbol ? `(${d.currency_symbol})` : '', d.currency_code ? `· ${d.currency_code}` : '']
+    .filter(Boolean).join(' ');
+  set('gi-currency', cur);
+  set('gi-languages', d.languages);
+  set('gi-region', [d.region, d.subregion].filter(Boolean).join(' · '));
+  set('gi-decimal', d.decimal_example);
+  document.getElementById('gi-timezone').textContent = formatTimeZone(d.timezone_iana, d.tz_multiple);
+}
+
+function utcLabel(min) {
+  const s = min < 0 ? '-' : '+';
+  const a = Math.abs(min), h = Math.floor(a / 60), m = a % 60;
+  return 'UTC' + s + h + (m ? ':' + String(m).padStart(2, '0') : '');
+}
+
+function zoneOffsetMinutes(date, timeZone) {
+  const p = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'shortOffset' }).formatToParts(date);
+  const tn = (p.find(x => x.type === 'timeZoneName') || {}).value || 'GMT';
+  const m = tn.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
+  if (!m) return 0;
+  return (m[1] === '-' ? -1 : 1) * (parseInt(m[2], 10) * 60 + (m[3] ? parseInt(m[3], 10) : 0));
+}
+
+function formatTimeZone(iana, multiple) {
+  if (!iana) return '—';
+  try {
+    const now = new Date();
+    const diff = zoneOffsetMinutes(now, iana) - (-now.getTimezoneOffset());
+    let rel;
+    if (diff === 0) rel = 'same as your time';
+    else {
+      const sign = diff > 0 ? '+' : '−';
+      const a = Math.abs(diff), h = Math.floor(a / 60), m = a % 60;
+      rel = sign + h + 'h' + (m ? ' ' + m + 'm' : '') + ' from you';
+    }
+    return utcLabel(zoneOffsetMinutes(now, iana)) + ' (' + rel + ')' + (multiple ? ' · multiple zones' : '');
+  } catch (e) {
+    return iana;
+  }
 }
