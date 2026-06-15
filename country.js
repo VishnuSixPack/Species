@@ -272,6 +272,7 @@ let countryLayer = null;  // highlighted country
 async function loadCountryMap(alpha3, countryName) {
   const el = document.getElementById('countryMap');
   if (!el) return;
+  currentAlpha3 = alpha3 || null;
 
   if (!countryMap) {
     countryMap = L.map('countryMap', {
@@ -346,4 +347,64 @@ async function loadCountryMap(alpha3, countryName) {
   } catch (e) {
     document.getElementById('mapNote').textContent = 'Map could not be loaded.';
   }
+}
+
+// ── MARINE OVERLAY LAYERS (live WMS) ──────────────────────────
+let mapLayers = { fao: null, eez: null, highseas: null };
+let eezScope = 'country';
+let currentAlpha3 = null;
+
+function eezFilter() {
+  return (eezScope === 'all' || !currentAlpha3) ? 'INCLUDE' : `iso_ter1='${currentAlpha3}'`;
+}
+
+function toggleFao(btn) {
+  if (!countryMap) return;
+  if (mapLayers.fao) {
+    countryMap.removeLayer(mapLayers.fao); mapLayers.fao = null;
+    btn.classList.remove('active'); return;
+  }
+  mapLayers.fao = L.tileLayer.wms('https://www.fao.org/fishery/geoserver/wms', {
+    layers: 'fifao:FAO_AREAS', format: 'image/png', transparent: true, version: '1.1.0',
+    cql_filter: "F_LEVEL='MAJOR'",
+    attribution: 'FAO Major Fishing Areas © FAO'
+  }).addTo(countryMap);
+  btn.classList.add('active');
+}
+
+function toggleEez(btn) {
+  if (!countryMap) return;
+  const scope = document.getElementById('eezScopeWrap');
+  if (mapLayers.eez) {
+    countryMap.removeLayer(mapLayers.eez); mapLayers.eez = null;
+    btn.classList.remove('active');
+    if (scope) scope.classList.add('hidden'); return;
+  }
+  mapLayers.eez = L.tileLayer.wms('https://geo.vliz.be/geoserver/MarineRegions/wms', {
+    layers: 'eez', format: 'image/png', transparent: true, version: '1.1.0',
+    cql_filter: eezFilter(),
+    attribution: 'EEZ © Flanders Marine Institute (CC-BY 4.0)'
+  }).addTo(countryMap);
+  btn.classList.add('active');
+  if (scope) scope.classList.remove('hidden');
+}
+
+function toggleHighSeas(btn) {
+  if (!countryMap) return;
+  if (mapLayers.highseas) {
+    countryMap.removeLayer(mapLayers.highseas); mapLayers.highseas = null;
+    btn.classList.remove('active'); return;
+  }
+  mapLayers.highseas = L.tileLayer.wms('https://geo.vliz.be/geoserver/MarineRegions/wms', {
+    layers: 'high_seas', format: 'image/png', transparent: true, version: '1.1.0',
+    attribution: 'High Seas © Flanders Marine Institute (CC-BY 4.0)'
+  }).addTo(countryMap);
+  btn.classList.add('active');
+}
+
+function setEezScope(scopeVal, btn) {
+  eezScope = scopeVal;
+  document.querySelectorAll('.eez-scope-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (mapLayers.eez) mapLayers.eez.setParams({ cql_filter: eezFilter() });
 }
