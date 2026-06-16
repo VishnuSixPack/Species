@@ -1218,6 +1218,14 @@ const STAGE_SHIPPING={k:'shipping',t:'Shipping & Logistics',i:'🚛',qs:[
 
 // ── Market-based question sets ──
 const EU27=['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE'];
+
+// ── EVIDENCE AUTO-LINKING ─────────────────────────────────────
+const AUTO_LINK={
+  fcl_bol:['fcl_container','fcl_consignee','fcl_weight','fcl_port','lfp_seal','lfp_weight','lfp_source','lfp_dest']
+};
+const AUTO_LINK_LABEL={
+  fcl_bol:'Bill of Lading 📄'
+};
 const EU_QIDS=['fcl_eu','pp_eu','c_eu'];
 const US_SHIPPING=[
   {id:'s_simp',q:'Is a SIMP (Seafood Import Monitoring Program) entry filing available for this shipment? (US-bound)'},
@@ -1330,6 +1338,7 @@ function renderQ(q){
   const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};
   const evChips=evs.map((e,i)=>`<span class="ev-chip" onclick="openEvMod('${q.id}')" title="${e.value}">${evIcons[e.type]||'📎'} ${e.value.length>22?e.value.slice(0,22)+'…':e.value}</span>`).join('');
   const addChip=evs.length>0?`<span class="ev-add-chip ev-add-chip-done" onclick="openEvMod('${q.id}')">✓ ${evs.length} Evidence Added</span>`:`<span class="ev-add-chip" onclick="openEvMod('${q.id}')">+ Add Evidence</span>`;
+  const autoTag=r.autoLinked?`<span style="display:inline-flex;align-items:center;gap:4px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:2px 9px;font-size:10px;font-weight:700;color:#15803d;">⚡ Auto-linked from ${AUTO_LINK_LABEL[r.autoSource]||'document'}</span>`:'';
   const showEv=r.ans==='av'||r.ans==='pa';
   return `<div class="kq ${r.ans?'done':''}" id="kq${q.id}">
     <div class="kqtxt">${q.q}</div>
@@ -1341,6 +1350,7 @@ function renderQ(q){
     <div class="kpartial ${r.ans==='pa'?'show':''}" id="kp${q.id}">
       <textarea class="kpta" rows="2" placeholder="Describe what data you currently have..." oninput="saveNote('${q.id}',this.value)">${r.note||''}</textarea>
     </div>
+    ${autoTag}
     ${showEv?`<div class="ev-summary" id="kes${q.id}">${evChips}${addChip}</div>`:`<div class="ev-summary" id="kes${q.id}" style="display:none;">${addChip}</div>`}
   </div>`;
 }
@@ -1433,6 +1443,26 @@ async function onEvFileChange(inp){
     fn.innerHTML=`✓ <a href="${publicUrl}" target="_blank" style="color:#16a34a;text-decoration:underline;">${file.name}</a>`;
     fn.classList.add('show');
     uploadBtn.textContent='📎 Change file';
+
+    // ── AUTO-LINK: if uploading to an anchor KDE, cascade to linked KDEs ──
+    if(evKdeId && AUTO_LINK[evKdeId]){
+      const label=AUTO_LINK_LABEL[evKdeId];
+      const autoEv={type:'doc',value:publicUrl,icon:'📄',name:`Auto-linked from ${label}`};
+      AUTO_LINK[evKdeId].forEach(linkedId=>{
+        if(!kResp[linkedId])kResp[linkedId]={};
+        // only auto-set if not already manually answered
+        if(!kResp[linkedId].ans){
+          kResp[linkedId].ans='av';
+          kResp[linkedId].autoLinked=true;
+          kResp[linkedId].autoSource=evKdeId;
+          kResp[linkedId].evidence=[...(kResp[linkedId].evidence||[]),autoEv];
+        }
+      });
+      showToast(`✓ ${AUTO_LINK[evKdeId].length} KDEs auto-linked from ${label}`,'success');
+      // re-render current stage to show the green ticks immediately
+      renderKDE();
+    }
+
   }catch(e){
     fn.textContent='❌ Upload failed: '+e.message;
     fn.classList.add('show');
