@@ -740,6 +740,7 @@
         <div class="pnode" draggable="true" ondragstart="onPD(event,'onvessel')"><div class="pnicon" style="background:#f0fdf4;">🚢</div><div class="pnlbl">On Vessel Processing</div></div>
         <div class="pnode" draggable="true" ondragstart="onPD(event,'transshipment')"><div class="pnicon" style="background:#fef3c7;">🔄</div><div class="pnlbl">Transshipment</div></div>
         <div class="pnode" draggable="true" ondragstart="onPD(event,'landing')"><div class="pnicon" style="background:#f0fdf4;">⚓</div><div class="pnlbl">Landing</div></div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'vessel_landing')"><div class="pnicon" style="background:#e0f2fe;">🚢⚓</div><div class="pnlbl">Direct Vessel Landing</div></div>
         <div class="pnode" draggable="true" ondragstart="onPD(event,'aggregation')"><div class="pnicon" style="background:#fdf4ff;">📦</div><div class="pnlbl">Aggregation / Disagg.</div></div>
         <div class="pnode" draggable="true" ondragstart="onPD(event,'processing')"><div class="pnicon" style="background:#fff7ed;">🏭</div><div class="pnlbl">Processing</div></div>
         <div class="pnode" draggable="true" ondragstart="onPD(event,'shipreceive')"><div class="pnicon" style="background:#eef4fd;">🚛</div><div class="pnlbl">Ship / Receive</div></div>
@@ -774,7 +775,7 @@ const SU='https://enbdaajcromxmhgcverp.supabase.co',SK='sb_publishable_NxQj3wE3U
 const db=window._sharedSupabase||(window._sharedSupabase=supabase.createClient(SU,SK));
 let company=null,products=[],curPI=0,mkSel=[],allC=[],allSp=[],curChain=[];
 let kIdx=0,kResp={},pref='email',faoSel=[],allFAO=[],cooSel=[],allCOO=[];
-const CTE={harvest:{l:'Harvest / Catch',i:'🎣',b:'#e0f2fe'},onvessel:{l:'On Vessel Processing',i:'🚢',b:'#f0fdf4'},transshipment:{l:'Transshipment',i:'🔄',b:'#fef3c7'},landing:{l:'Landing',i:'⚓',b:'#f0fdf4'},aggregation:{l:'Aggregation/Disagg.',i:'📦',b:'#fdf4ff'},processing:{l:'Processing',i:'🏭',b:'#fff7ed'},shipreceive:{l:'Ship / Receive',i:'🚛',b:'#eef4fd'}};
+const CTE={harvest:{l:'Harvest / Catch',i:'🎣',b:'#e0f2fe'},onvessel:{l:'On Vessel Processing',i:'🚢',b:'#f0fdf4'},transshipment:{l:'Transshipment',i:'🔄',b:'#fef3c7'},landing:{l:'Landing',i:'⚓',b:'#f0fdf4'},vessel_landing:{l:'Direct Vessel Landing',i:'🚢⚓',b:'#e0f2fe'},aggregation:{l:'Aggregation/Disagg.',i:'📦',b:'#fdf4ff'},processing:{l:'Processing',i:'🏭',b:'#fff7ed'},shipreceive:{l:'Ship / Receive',i:'🚛',b:'#eef4fd'}};
 const OWN={we:'We operate this',supplier:'Our Supplier',client:'Our Client',third:'Third Party'};
 let scN=[],scC=[],sDT=null,sDN=null,sDX=0,sDY=0,sCC=null,sNC=0,aOwn=null;
 
@@ -1253,10 +1254,19 @@ function buildActiveStages(){
     harvestQs=HARVEST_WILD;harvestLabel='Harvesting & Catch';harvestIcon='🎣';harvestType='wild';
   }
 
-  // 2. Which CTEs appear in any product's chain
+  // 2. Which CTEs appear in any product's chain + detect delivery mode
   const allCTEs=new Set();
   prods.forEach(p=>(p.chain||[]).forEach(c=>allCTEs.add(c.type)));
   const hasCTE=type=>allCTEs.size===0||allCTEs.has(type);
+
+  // Delivery mode detection
+  // Mode 1: transshipment node present → carrier vessel delivers
+  // Mode 2: landing node, no transshipment, no vessel_landing → container/reefer
+  // Mode 3: vessel_landing node → FV delivers direct
+  const hasTS   = allCTEs.has('transshipment');
+  const hasVL   = allCTEs.has('vessel_landing');
+  const hasLand = allCTEs.has('landing') || allCTEs.size===0;
+  const deliveryMode = hasVL ? 'vessel' : hasTS ? 'carrier' : 'container';
 
   // 3. Which certifications exist across products
   const certs=prods.map(p=>p.cert).filter(Boolean);
@@ -1289,10 +1299,83 @@ function buildActiveStages(){
   // 5. Assemble stages
   const euFilter=qs=>hasEU?qs:qs.filter(q=>!EU_QIDS.includes(q.id));
 
+  // Transshipment stage — Mode 1 only, with location sub-question
+  const tsStage = deliveryMode==='carrier'
+    ? {...STAGE_TRANSSHIPMENT, hasSubQ:true}
+    : {...STAGE_TRANSSHIPMENT, disabled:true,
+        disabledReason: deliveryMode==='vessel'
+          ? 'Fishing vessel delivers directly to port — no transshipment in this route.'
+          : 'No transshipment in this supply chain route.'};
+
+  // Landing stage — different KDE set per mode
+  const landingStage = (()=>{
+    if(deliveryMode==='vessel'){
+      // Mode 3: FV delivers direct — inherited panel + 4 new KDEs
+      return {
+        k:'landing', t:'Landing & First Receiver', i:'⚓',
+        deliveryMode:'vessel',
+        disabled:!hasCTE('vessel_landing')&&allCTEs.size>0,
+        disabledReason:'Landing is not part of your supply chain.',
+        inheritedFrom:'harvesting',
+        inheritedFields:[
+          {id:'fv_name',   label:'Fishing Vessel Name'},
+          {id:'fv_imo',    label:'IMO Number'},
+          {id:'fv_flag',   label:'Flag State'},
+          {id:'fv_species',label:'Species (Scientific Name)'},
+          {id:'fv_gtin',   label:'GTIN / Item Code'},
+          {id:'fv_linking',label:'Lot / Linking KDE'},
+          {id:'fv_weight', label:'Weight / Quantity'},
+        ],
+        qs: euFilter([
+          {id:'fcl_land_decl', q:'Is a landing declaration submitted to the port authority?'},
+          {id:'fcl_port_receipt',q:'Is a port authority receipt or weigh ticket available at landing?'},
+          {id:'fcl_catch_log',  q:'Is the vessel\'s catch log available and presented at point of landing?'},
+          {id:'fcl_cold_chain', q:'Is cold chain continuity documented from the vessel hold to the landing facility?'},
+          {id:'fcl_port',       q:'Is the port of landing documented and available?'},
+          {id:'fcl_geo',        q:'Are the geo-coordinates of the landing location available?'},
+          {id:'fcl_ownership',  q:'Is product ownership clearly identified and documented at the landing stage?'},
+          {id:'fcl_auth',       q:'Is a landing authorization available for each landing event?'},
+          {id:'fcl_eu',         q:'Does the landing port have EU competent authority approval (if EU-bound)?'},
+          {id:'fcl_coc',        q:'Does the landing facility hold a Chain of Custody certification?'},
+          {id:'fcl_welfare',    q:'Does the landing entity operate under a documented Human Welfare Policy?'},
+        ])
+      };
+    }
+    if(deliveryMode==='carrier'){
+      // Mode 1: carrier delivers — reference carrier vessel details from Transshipment
+      const carrierQs=euFilter([
+        {id:'fcl_species',   q:'Is the species (scientific name) carried through and available at the landing record?'},
+        {id:'fcl_gtin',      q:'Is the Item/SKU/UPC/GTIN available at the point of landing?'},
+        {id:'fcl_linking',   q:'Is the linking KDE (batch/lot/serial) available and maintained at landing?'},
+        {id:'fcl_weight',    q:'Is weight or quantity with unit of measure available at landing?'},
+        {id:'fcl_port',      q:'Is the port of landing documented and available?'},
+        {id:'fcl_geo',       q:'Are the geo-coordinates of the landing location available?'},
+        {id:'fcl_carrier_name',q:'Is the carrier vessel name available at the landing record?'},
+        {id:'fcl_carrier_imo', q:'Is the carrier vessel IMO number recorded at landing?'},
+        {id:'fcl_bol',       q:'Is a Bill of Lading available for this shipment?'},
+        {id:'fcl_consignee', q:'Is the consignee identified on all shipping documents?'},
+        {id:'fcl_container', q:'Is the container number documented and available?'},
+        {id:'fcl_ownership', q:'Is product ownership clearly identified and documented at the landing stage?'},
+        {id:'fcl_auth',      q:'Is a landing authorization available for each landing event?'},
+        {id:'fcl_eu',        q:'Does the landing port have EU competent authority approval (if EU-bound)?'},
+        {id:'fcl_coc',       q:'Does the landing facility hold a Chain of Custody certification?'},
+        {id:'fcl_welfare',   q:'Does the landing entity operate under a documented Human Welfare Policy?'},
+      ]);
+      return {k:'landing',t:'Landing & First Receiver',i:'⚓',deliveryMode:'carrier',
+        disabled:!hasCTE('landing')&&allCTEs.size>0,
+        disabledReason:'Landing is not part of your supply chain.',qs:carrierQs};
+    }
+    // Mode 2: container/reefer — current KDEs as-is (BoL cascade works here)
+    return {...STAGE_LANDING, qs:euFilter(STAGE_LANDING.qs),
+      deliveryMode:'container',
+      disabled:!hasCTE('landing')&&allCTEs.size>0,
+      disabledReason:'Landing is not part of your supply chain.'};
+  })();
+
   return [
     {k:'harvesting',t:harvestLabel,i:harvestIcon,harvestType,qs:harvestQs},
-    {...STAGE_TRANSSHIPMENT,disabled:!hasCTE('transshipment'),disabledReason:'Transshipment is not part of your supply chain.'},
-    {...STAGE_LANDING,qs:euFilter(STAGE_LANDING.qs),disabled:!hasCTE('landing'),disabledReason:'Landing is not part of your supply chain.'},
+    tsStage,
+    landingStage,
     {...STAGE_PROCESSING,qs:euFilter(STAGE_PROCESSING.qs),disabled:!hasCTE('processing'),disabledReason:'Processing is not part of your supply chain.'},
     {...STAGE_SHIPPING,qs:hasUS?[...STAGE_SHIPPING.qs,...US_SHIPPING]:STAGE_SHIPPING.qs,disabled:!hasCTE('shipreceive'),disabledReason:'Shipping & Logistics is not part of your supply chain.'},
     {k:'certifications',t:'Certifications & Compliance',i:'🏅',qs:certQs},
@@ -1327,9 +1410,64 @@ function renderKDE(){
         <div style="margin-top:16px;display:inline-flex;align-items:center;gap:6px;background:#fff7ed;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:600;color:#c2410c;">This stage has been skipped based on your supply chain.</div>
       </div>`;
   } else {
+    // ── Transshipment location sub-question (Mode 1 only) ──
+    const tsSubQ = st.hasSubQ ? `
+      <div style="background:#fff8e1;border:1.5px solid #fde68a;border-radius:12px;padding:16px 18px;margin-bottom:14px;">
+        <div style="font-size:12px;font-weight:700;color:#92400e;margin-bottom:10px;">⚠️ Where did the transshipment take place?</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <div onclick="setTsLocation('at_sea',this)" id="tsl_sea"
+            style="display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:999px;border:1.5px solid ${kResp._tsLocation==='at_sea'?'#f59e0b':'#e0e3ed'};background:${kResp._tsLocation==='at_sea'?'#fffbeb':'#fff'};font-size:12px;font-weight:600;color:${kResp._tsLocation==='at_sea'?'#92400e':'#6b7280'};cursor:pointer;">
+            🌊 At Sea — vessel to vessel
+          </div>
+          <div onclick="setTsLocation('at_port',this)" id="tsl_port"
+            style="display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:999px;border:1.5px solid ${kResp._tsLocation==='at_port'?'#1a6fdb':'#e0e3ed'};background:${kResp._tsLocation==='at_port'?'#eef4fd':'#fff'};font-size:12px;font-weight:600;color:${kResp._tsLocation==='at_port'?'#1a6fdb':'#6b7280'};cursor:pointer;">
+            ⚓ At Port — within port limits
+          </div>
+        </div>
+        ${kResp._tsLocation==='at_sea'?`
+        <div style="margin-top:12px;padding:10px 14px;background:#fff5f5;border-radius:9px;border:1px solid #fecaca;">
+          <div style="font-size:11px;font-weight:700;color:#e63946;margin-bottom:4px;">🚨 High Risk — At-Sea Transshipment</div>
+          <div style="font-size:11px;color:#6b7280;line-height:1.6;">At-sea transshipment is a major IUU indicator. RFMO authorization and independent observer records are required. Two additional KDEs have been added below.</div>
+        </div>`:''}
+      </div>` : '';
+
+    // ── Inherited from Harvesting panel (Mode 3 only) ──
+    const inheritedPanel = st.inheritedFields ? `
+      <div style="background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:12px;padding:16px 18px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:12px;">
+          <span style="font-size:14px;">⬆️</span>
+          <span style="font-size:12px;font-weight:700;color:#15803d;">Inherited from Harvesting Stage</span>
+          <span style="font-size:10px;color:#9aa0b4;font-weight:500;">— the fishing vessel delivers directly, so these carry forward automatically</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          ${st.inheritedFields.map(f=>{
+            const r=kResp[f.id];
+            const answered=r&&r.ans;
+            return `<div style="background:#fff;border-radius:8px;padding:9px 12px;border:1px solid #d1fae5;">
+              <div style="font-size:10px;font-weight:600;color:#6b7280;margin-bottom:2px;">${f.label}</div>
+              <div style="display:flex;align-items:center;gap:5px;">
+                ${answered
+                  ? `<span style="font-size:11px;font-weight:700;color:${r.ans==='av'?'#16a34a':r.ans==='pa'?'#92400e':'#e63946'};">${r.ans==='av'?'✓ Available':r.ans==='pa'?'◑ Partial':'✗ Not Available'}</span>`
+                  : `<span style="font-size:11px;color:#c0c4d0;font-style:italic;">Not answered in Harvesting</span>`}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>` : '';
+
+    // ── At-sea extra KDEs ──
+    const atSeaQs = (st.hasSubQ && kResp._tsLocation==='at_sea') ? [
+      {id:'cr_atsea_rfmo', q:'Is RFMO authorization specifically for at-sea transshipment available?'},
+      {id:'cr_atsea_obs',  q:'Was an independent observer present or was electronic monitoring active during at-sea transshipment?'},
+    ] : [];
+
+    const allQs = [...(st.qs||[]), ...atSeaQs];
+
     document.getElementById('kcontent').innerHTML=
-      `<div class="kde-sticky"><div class="ksbadge">${st.i} ${st.t}</div><div class="kstitle">${st.t}</div><div class="kssub">Select the availability of each data element for your operations.</div></div>`
-      +st.qs.map(q=>renderQ(q)).join('');
+      `<div class="kde-sticky"><div class="ksbadge">${st.i} ${st.t}${st.deliveryMode==='vessel'?' <span style="background:#e0f2fe;color:#0369a1;border-radius:5px;padding:1px 7px;font-size:9px;font-weight:700;">DIRECT FV</span>':st.deliveryMode==='carrier'?' <span style="background:#fef3c7;color:#92400e;border-radius:5px;padding:1px 7px;font-size:9px;font-weight:700;">VIA CARRIER</span>':st.deliveryMode==='container'?' <span style="background:#f4f6fb;color:#6b7280;border-radius:5px;padding:1px 7px;font-size:9px;font-weight:700;">CONTAINER</span>':''}</div><div class="kstitle">${st.t}</div><div class="kssub">Select the availability of each data element for your operations.</div></div>`
+      + tsSubQ
+      + inheritedPanel
+      + allQs.map(q=>renderQ(q)).join('');
   }
 }
 function renderQ(q){
@@ -1369,6 +1507,10 @@ function setAns(id,ans){
   if(evs)evs.style.display=(ans==='av'||ans==='pa')?'flex':'none';
 }
 function saveNote(id,v){if(!kResp[id])kResp[id]={};kResp[id].note=v;}
+function setTsLocation(val){
+  kResp._tsLocation=val;
+  renderKDE(); // re-render to show/hide at-sea warning + extra KDEs
+}
 
 // Evidence modal
 let evKdeId=null,evSelType=null,evTempItems=[];
