@@ -75,6 +75,19 @@
     .wwd-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#1a6fdb;text-decoration:none;}
     .wwd-link:hover{gap:10px;}
 
+    /* ── Take the Test glow ── */
+    @keyframes qt-pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(139,92,246,0.7), 0 0 0 0 rgba(139,92,246,0.4); }
+      50%  { box-shadow: 0 0 0 8px rgba(139,92,246,0.15), 0 0 20px 4px rgba(139,92,246,0.3); }
+      100% { box-shadow: 0 0 0 0 rgba(139,92,246,0), 0 0 0 0 rgba(139,92,246,0); }
+    }
+    .home-test-glow {
+      background: #8b5cf6 !important;
+      color: #fff !important;
+      animation: qt-pulse 2s ease-in-out infinite;
+      position: relative;
+    }
+    .home-test-glow:hover { background: #7c3aed !important; transform:translateY(-1px); }
     @media(max-width:768px){
       .wwd-section,.wwd-section.reverse{flex-direction:column;}
       .wwd-img{min-height:240px;width:100%;}
@@ -100,7 +113,7 @@
       <li><a href="contact.html">Contact</a></li>
       <li><a href="about.html">About</a></li>
       <li id="home-profile-link">
-        <a href="javascript:void(0)" class="home-register-btn" onclick="openQT()">Take the Test</a>
+        <a href="javascript:void(0)" class="home-register-btn home-test-glow" onclick="openQT()">Take the Test</a>
         <a href="login.html" class="home-login-btn">Login</a>
       </li>
     </ul>
@@ -246,6 +259,11 @@
   document.addEventListener('DOMContentLoaded', async function() {
     const { data: { session } } = await dbClient.auth.getSession();
     if (session) { window.location.href = 'home-logged-in.html'; return; }
+    // Auto-open Quick Test if redirected from teaser
+    if (sessionStorage.getItem('openQT') === '1') {
+      sessionStorage.removeItem('openQT');
+      setTimeout(() => openQT(), 300);
+    }
   });
 
   // ── QUICK TRACE TEST ────────────────────────────────────────
