@@ -736,11 +736,16 @@
     <div class="scbbody">
       <div class="scpal">
         <div class="scpalt">GDST CTEs</div>
+        <div class="scpalt">GDST CTEs — Wild Catch</div>
         <div class="pnode" draggable="true" ondragstart="onPD(event,'harvest')"><div class="pnicon" style="background:#e0f2fe;">🎣</div><div class="pnlbl">Harvest / Catch</div></div>
         <div class="pnode" draggable="true" ondragstart="onPD(event,'onvessel')"><div class="pnicon" style="background:#f0fdf4;">🚢</div><div class="pnlbl">On Vessel Processing</div></div>
         <div class="pnode" draggable="true" ondragstart="onPD(event,'transshipment')"><div class="pnicon" style="background:#fef3c7;">🔄</div><div class="pnlbl">Transshipment</div></div>
         <div class="pnode" draggable="true" ondragstart="onPD(event,'landing')"><div class="pnicon" style="background:#f0fdf4;">⚓</div><div class="pnlbl">Landing</div></div>
         <div class="pnode" draggable="true" ondragstart="onPD(event,'vessel_landing')"><div class="pnicon" style="background:#e0f2fe;">🚢⚓</div><div class="pnlbl">Direct Vessel Landing</div></div>
+        <div class="scpalt" style="margin-top:12px;">GDST CTEs — Aquaculture</div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'feedmill')"><div class="pnicon" style="background:#fef9c3;">🌾</div><div class="pnlbl">Feedmill</div></div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'hatchery')"><div class="pnicon" style="background:#fce7f3;">🐣</div><div class="pnlbl">Hatchery</div></div>
+        <div class="scpalt" style="margin-top:12px;">GDST CTEs — Shared</div>
         <div class="pnode" draggable="true" ondragstart="onPD(event,'aggregation')"><div class="pnicon" style="background:#fdf4ff;">📦</div><div class="pnlbl">Aggregation / Disagg.</div></div>
         <div class="pnode" draggable="true" ondragstart="onPD(event,'processing')"><div class="pnicon" style="background:#fff7ed;">🏭</div><div class="pnlbl">Processing</div></div>
         <div class="pnode" draggable="true" ondragstart="onPD(event,'shipreceive')"><div class="pnicon" style="background:#eef4fd;">🚛</div><div class="pnlbl">Ship / Receive</div></div>
@@ -775,7 +780,7 @@ const SU='https://enbdaajcromxmhgcverp.supabase.co',SK='sb_publishable_NxQj3wE3U
 const db=window._sharedSupabase||(window._sharedSupabase=supabase.createClient(SU,SK));
 let company=null,products=[],curPI=0,mkSel=[],allC=[],allSp=[],curChain=[];
 let kIdx=0,kResp={},pref='email',faoSel=[],allFAO=[],cooSel=[],allCOO=[];
-const CTE={harvest:{l:'Harvest / Catch',i:'🎣',b:'#e0f2fe'},onvessel:{l:'On Vessel Processing',i:'🚢',b:'#f0fdf4'},transshipment:{l:'Transshipment',i:'🔄',b:'#fef3c7'},landing:{l:'Landing',i:'⚓',b:'#f0fdf4'},vessel_landing:{l:'Direct Vessel Landing',i:'🚢⚓',b:'#e0f2fe'},aggregation:{l:'Aggregation/Disagg.',i:'📦',b:'#fdf4ff'},processing:{l:'Processing',i:'🏭',b:'#fff7ed'},shipreceive:{l:'Ship / Receive',i:'🚛',b:'#eef4fd'}};
+const CTE={harvest:{l:'Harvest / Catch',i:'🎣',b:'#e0f2fe'},onvessel:{l:'On Vessel Processing',i:'🚢',b:'#f0fdf4'},transshipment:{l:'Transshipment',i:'🔄',b:'#fef3c7'},landing:{l:'Landing',i:'⚓',b:'#f0fdf4'},vessel_landing:{l:'Direct Vessel Landing',i:'🚢⚓',b:'#e0f2fe'},feedmill:{l:'Feedmill',i:'🌾',b:'#fef9c3'},hatchery:{l:'Hatchery',i:'🐣',b:'#fce7f3'},aggregation:{l:'Aggregation/Disagg.',i:'📦',b:'#fdf4ff'},processing:{l:'Processing',i:'🏭',b:'#fff7ed'},shipreceive:{l:'Ship / Receive',i:'🚛',b:'#eef4fd'}};
 const OWN={we:'We operate this',supplier:'Our Supplier',client:'Our Client',third:'Third Party'};
 let scN=[],scC=[],sDT=null,sDN=null,sDX=0,sDY=0,sCC=null,sNC=0,aOwn=null;
 
@@ -1148,6 +1153,34 @@ const HARVEST_MIXED=[
   {id:'aq_welfare',q:'[Aquaculture] Does the farm have a documented welfare policy?'},
 ];
 
+// ── Aquaculture upstream stage definitions ──
+const STAGE_FEEDMILL={k:'feedmill',t:'Feedmill',i:'🌾',qs:[
+  {id:'fm_name',       q:'Is the feedmill name and location documented and available to you?'},
+  {id:'fm_license',    q:'Is a valid feedmill registration or operating license available?'},
+  {id:'fm_formulation',q:'Is the feed formulation or full ingredient list available?'},
+  {id:'fm_fishmeal',   q:'Are all fishmeal and fish oil ingredients traceable to their source fishery?'},
+  {id:'fm_cert',       q:'Is the source fishery for marine ingredients certified (e.g. IFFO RS, MarinTrust)?'},
+  {id:'fm_lot',        q:'Is a lot or batch number assigned to each feed production run?'},
+  {id:'fm_weight',     q:'Is weight or quantity with unit of measure available per feed batch?'},
+  {id:'fm_allergen',   q:'Are allergen declarations available for the feed produced?'},
+  {id:'fm_audit',      q:'Does the feedmill hold a recognised third-party quality audit (e.g. GMP+, FAMI-QS)?'},
+  {id:'fm_welfare',    q:'Does the feedmill operate under a documented Human Welfare Policy?'},
+]};
+
+const STAGE_HATCHERY={k:'hatchery',t:'Hatchery',i:'🐣',qs:[
+  {id:'ht_name',       q:'Is the hatchery name and location documented and available?'},
+  {id:'ht_license',    q:'Is a valid hatchery registration or license available?'},
+  {id:'ht_broodstock', q:'Is broodstock origin and health status documented?'},
+  {id:'ht_lot',        q:'Is a batch or lot number assigned at juvenile or fingerling production?'},
+  {id:'ht_species',    q:'Is the species documented using its scientific name at the hatchery stage?'},
+  {id:'ht_stocking',   q:'Are stocking records (date, quantity, weight) available per batch?'},
+  {id:'ht_disease',    q:'Are disease treatment and medication records available at the hatchery?'},
+  {id:'ht_water',      q:'Are water quality monitoring records available at the hatchery?'},
+  {id:'ht_coc',        q:'Is the hatchery covered by a Chain of Custody or aquaculture certification?'},
+  {id:'ht_audit',      q:'Has the hatchery passed a third-party audit in the last 12 months?'},
+  {id:'ht_welfare',    q:'Does the hatchery operate under a documented Human Welfare Policy?'},
+]};
+
 // ── Base stage definitions ──
 const STAGE_TRANSSHIPMENT={k:'transshipment',t:'Transshipment',i:'🔄',qs:[
   {id:'cr_name',q:'Is the name of the carrier vessel used for transshipment available to you?'},
@@ -1258,6 +1291,9 @@ function buildActiveStages(){
   const allCTEs=new Set();
   prods.forEach(p=>(p.chain||[]).forEach(c=>allCTEs.add(c.type)));
   const hasCTE=type=>allCTEs.size===0||allCTEs.has(type);
+  const hasAquaProducts=harvests.some(h=>h==='Aquaculture');
+  const hasFeedmill=allCTEs.has('feedmill');
+  const hasHatchery=allCTEs.has('hatchery');
 
   // Delivery mode detection
   // Mode 1: transshipment node present → carrier vessel delivers
@@ -1372,7 +1408,22 @@ function buildActiveStages(){
       disabledReason:'Landing is not part of your supply chain.'};
   })();
 
+  // Aquaculture upstream stages — only when product is aquaculture
+  const feedmillStage = hasAquaProducts
+    ? {...STAGE_FEEDMILL,
+        disabled:!hasFeedmill,
+        disabledReason:'Feedmill is not part of your supply chain — drag it onto the canvas in the Supply Chain Builder if it applies.'}
+    : null;
+
+  const hatcheryStage = hasAquaProducts
+    ? {...STAGE_HATCHERY,
+        disabled:!hasHatchery,
+        disabledReason:'Hatchery is not part of your supply chain — drag it onto the canvas if it applies.'}
+    : null;
+
   return [
+    ...(feedmillStage ? [feedmillStage] : []),
+    ...(hatcheryStage ? [hatcheryStage] : []),
     {k:'harvesting',t:harvestLabel,i:harvestIcon,harvestType,qs:harvestQs},
     tsStage,
     landingStage,
