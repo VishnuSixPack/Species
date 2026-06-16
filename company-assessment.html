@@ -20,10 +20,10 @@
     #kcontent::-webkit-scrollbar-thumb{background:#e0e3ed;border-radius:999px;}
     #kcontent::-webkit-scrollbar-track{background:transparent;}
     .slides-area{position:relative;overflow:hidden;flex:1;min-height:0;}
-    .slide{position:absolute;inset:0;opacity:0;pointer-events:none;overflow-y:auto;}
+    .slide{display:none;overflow-y:auto;}
     .slide::-webkit-scrollbar{display:none;}
-    .slide.active{opacity:1;transform:translateX(0);pointer-events:auto;position:relative;height:100%;display:flex;flex-direction:column;gap:0;}
-    .slide.out{opacity:0;position:absolute;}
+    .slide.active{display:flex;flex-direction:column;gap:0;height:100%;}
+    .slide.out{display:none;}
     .dots{flex-shrink:0;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;}
     .knav{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;margin-top:16px;}
     .kprog{flex-shrink:0;}
@@ -877,8 +877,30 @@ function savePF(){
 }
 function fillSlot(i){
   const p=products[i],s=document.getElementById('ps'+i);if(!p)return;
+  const imgMap={Whole:'pf-whole.jpg',Fillet:'pf-fillet.jpg',Loin:'pf-loin.png',Canned:'pf-canned.jpg',Frozen:'pf-frozen.png',Smoked:'pf-smoked.jpg'};
+  const img=imgMap[p.form]||null;
   s.classList.add('filled');
-  s.innerHTML=`<button class="pedit" onclick="event.stopPropagation();openPF(${i})">✏️</button><div style="font-size:20px;">${p.cert==='MSC'?'🎣':p.cert==='ASC'?'🐟':'📦'}</div><div class="pname">${p.desc}</div><div class="ptype">${p.harvest||''}</div>`;
+  s.style.padding='0';
+  s.style.overflow='hidden';
+  s.style.aspectRatio='1';
+  s.innerHTML=img
+    ? `<div style="position:relative;width:100%;height:100%;border-radius:12px;overflow:hidden;background:#14172a;">
+        <img src="${img}" style="width:100%;height:100%;object-fit:cover;opacity:0.82;border-radius:12px;"/>
+        <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(5,8,22,0.92) 0%,rgba(5,8,22,0.2) 60%,transparent 100%);border-radius:12px;"></div>
+        <button class="pedit" onclick="event.stopPropagation();openPF(${i})" style="position:absolute;top:8px;right:8px;z-index:2;">✏️</button>
+        <div style="position:absolute;bottom:0;left:0;right:0;padding:10px 12px;z-index:2;">
+          <div style="font-size:11px;font-weight:800;color:#fff;line-height:1.3;margin-bottom:3px;">${p.desc}</div>
+          ${p.harvest?`<div style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,255,255,0.15);border-radius:999px;padding:2px 8px;font-size:9px;font-weight:700;color:#fff;">${p.harvest==='Wild Catch'?'🎣':'🌊'} ${p.harvest}</div>`:''}
+        </div>
+      </div>`
+    : `<div style="position:relative;width:100%;height:100%;border-radius:12px;overflow:hidden;background:#14172a;display:flex;align-items:center;justify-content:center;">
+        <button class="pedit" onclick="event.stopPropagation();openPF(${i})" style="position:absolute;top:8px;right:8px;z-index:2;">✏️</button>
+        <div style="padding:12px;text-align:center;">
+          <div style="font-size:22px;margin-bottom:6px;">📦</div>
+          <div style="font-size:11px;font-weight:800;color:#fff;line-height:1.3;">${p.desc}</div>
+          ${p.harvest?`<div style="margin-top:5px;font-size:9px;font-weight:700;color:rgba(255,255,255,0.6);">${p.harvest}</div>`:''}
+        </div>
+      </div>`;
   s.onclick=()=>openPF(i);
 }
 function toggleGear(){const v=document.getElementById('pfharvest').value;document.getElementById('geargrp').classList.toggle('hidden',v!=='Wild Catch');if(v!=='Wild Catch')clearSingle('gear');}
