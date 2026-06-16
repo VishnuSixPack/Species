@@ -222,9 +222,9 @@
       <!-- Questions view -->
       <div id="qtQuestions">
         <div class="qt-header">
-          <div class="qt-badge">⚡ Quick Trace Test</div>
-          <div class="qt-title">Where do you stand?</div>
-          <div class="qt-sub">10 quick questions to assess your seafood traceability readiness.</div>
+          <div class="qt-badge">⚡ Readiness Check</div>
+          <div class="qt-title">How transparent is your supply chain?</div>
+          <div class="qt-sub">15 questions across 8 traceability dimensions — see exactly where your gaps are.</div>
         </div>
         <div class="qt-progress"><div class="qt-progress-fill" id="qtFill" style="width:10%"></div></div>
         <div class="qt-step-lbl" id="qtStepLbl">Question 1 of 10</div>
@@ -264,95 +264,118 @@
 
   // ── QUICK TRACE TEST ────────────────────────────────────────
   const QT_QUESTIONS = [
+    // ── Section 1: First-Mile Visibility ──
     {
-      q: 'Do you know the name and registration of every fishing vessel that supplies your seafood?',
-      opts: [
-        {t:'Yes, for all vessels', icon:'✅', score:3},
-        {t:'For some vessels only', icon:'◑', score:1},
-        {t:'No, we don\'t track this', icon:'❌', score:0},
-      ],
-      category:'Vessel Identity'
+      section:'Section 1 — First-Mile Visibility',
+      q:'Do you capture and verify vessel activity (VMS/AIS) directly from the source for all your incoming seafood?',
+      opts:[{t:'Yes, for all vessels',score:3},{t:'Sometimes',score:1},{t:'No / Not sure',score:0}],
+      category:'First-Mile Visibility',
+      gap:'Your supply chain starts too late. You rely on supplier-provided documents instead of real-time, at-sea evidence.'
     },
     {
-      q: 'Can you identify which FAO fishing zone your seafood was caught in?',
-      opts: [
-        {t:'Yes, always documented', icon:'✅', score:3},
-        {t:'Sometimes', icon:'◑', score:1},
-        {t:'No', icon:'❌', score:0},
-      ],
-      category:'Catch Data'
+      section:'Section 1 — First-Mile Visibility',
+      q:'Do you know the name, registration and flag state of every fishing vessel that supplies your product?',
+      opts:[{t:'Yes, for all vessels',score:3},{t:'For some vessels only',score:1},{t:'No, we do not track this',score:0}],
+      category:'First-Mile Visibility',
+      gap:'Without verified vessel identity, you cannot validate the origin or legality of your catch.'
+    },
+    // ── Section 2: Raw Material Provenance ──
+    {
+      section:'Section 2 — Raw Material Provenance',
+      q:'Can you link each batch or raw material lot to a verified trip — including vessel identity, fishing method, area and discharge composition?',
+      opts:[{t:'Yes, consistently',score:3},{t:'Partially',score:1},{t:'No',score:0}],
+      category:'Raw Material Provenance',
+      gap:'You cannot fully prove origin, validate sustainability claims, or demonstrate compliance in case of audit.'
     },
     {
-      q: 'Does every batch of seafood you handle have a unique lot or batch number?',
-      opts: [
-        {t:'Yes, from catch to delivery', icon:'✅', score:3},
-        {t:'Only at processing stage', icon:'◑', score:1},
-        {t:'No lot tracking', icon:'❌', score:0},
-      ],
-      category:'Batch Traceability'
+      section:'Section 2 — Raw Material Provenance',
+      q:'Can you identify which FAO fishing zone your seafood was caught in for every lot?',
+      opts:[{t:'Yes, always documented',score:3},{t:'Sometimes',score:1},{t:'No',score:0}],
+      category:'Raw Material Provenance',
+      gap:'Without FAO area documentation, you cannot meet basic catch certificate or import requirements.'
+    },
+    // ── Section 3: Database Verification ──
+    {
+      section:'Section 3 — Verification Against Authoritative Databases',
+      q:'Does your system automatically check supplier vessels and facilities against RFMO registries, ISSF PVR, IUU lists, MSC CoC, PSMA port lists and EU approvals?',
+      opts:[{t:'Yes, automated',score:3},{t:'We manually check',score:1},{t:'No',score:0}],
+      category:'Database Verification',
+      gap:'Manual verification is slow, prone to error, and risky — especially during audits or recalls.'
+    },
+    // ── Section 4: Documentation & Traceability ──
+    {
+      section:'Section 4 — Documentation & Traceability',
+      q:'How do you store and connect documents (catch certificates, port docs, processing records, CoCs) across lots and finished products?',
+      opts:[{t:'Full digital linkage',score:3},{t:'Mix of systems',score:1},{t:'Scattered PDFs, emails or paper-based',score:0}],
+      category:'Documentation',
+      gap:'If documents are not unified per lot and product, you cannot produce audit-ready traceability.'
     },
     {
-      q: 'Do you hold a Chain of Custody certification (MSC, ASC, or equivalent)?',
-      opts: [
-        {t:'Yes, currently certified', icon:'✅', score:3},
-        {t:'In progress / pending', icon:'◑', score:1},
-        {t:'No certification', icon:'❌', score:0},
-      ],
-      category:'Certification'
+      section:'Section 4 — Documentation & Traceability',
+      q:'Does every batch of seafood you handle have a unique lot or batch number assigned from catch through to delivery?',
+      opts:[{t:'Yes, from catch to delivery',score:3},{t:'Only at processing stage',score:1},{t:'No lot tracking',score:0}],
+      category:'Documentation',
+      gap:'Without batch-level linking, a recall or audit will be slow and incomplete.'
     },
     {
-      q: 'Can you trace a product back to its source within 4 hours if a recall is needed?',
-      opts: [
-        {t:'Yes, we have a tested process', icon:'✅', score:3},
-        {t:'Probably, but untested', icon:'◑', score:1},
-        {t:'No, it would take much longer', icon:'❌', score:0},
-      ],
-      category:'Recall Readiness'
+      section:'Section 4 — Documentation & Traceability',
+      q:'Can you trace a product back to its source within 4 hours if a recall is triggered?',
+      opts:[{t:'Yes, tested and ready',score:3},{t:'Probably, but untested',score:1},{t:'No, it would take much longer',score:0}],
+      category:'Documentation',
+      gap:'A recall that takes more than 4 hours puts consumers at risk and exposes you to regulatory action.'
+    },
+    // ── Section 5: Sustainability Claims ──
+    {
+      section:'Section 5 — Real-Time Proof of Sustainability Claims',
+      q:'Can you substantiate claims (MSC, FAD-Free, Free School, Social Accountability) instantly, based on data — not just supplier declarations?',
+      opts:[{t:'Yes, data-backed',score:3},{t:'Only partially',score:1},{t:'No',score:0}],
+      category:'Sustainability Claims',
+      gap:'If claims rely on trust, not verification, you are exposed to legal and reputational risk.'
     },
     {
-      q: 'Is your traceability data captured digitally (not just paper records)?',
-      opts: [
-        {t:'Fully digital', icon:'✅', score:3},
-        {t:'Mix of paper and digital', icon:'◑', score:1},
-        {t:'Mostly paper-based', icon:'❌', score:0},
-      ],
-      category:'Digital Readiness'
+      section:'Section 5 — Real-Time Proof of Sustainability Claims',
+      q:'Do you hold a current Chain of Custody certification (MSC, ASC or equivalent) covering your operations?',
+      opts:[{t:'Yes, currently certified',score:3},{t:'In progress or pending',score:1},{t:'No certification',score:0}],
+      category:'Sustainability Claims',
+      gap:'Without a CoC certification, sustainability claims cannot be independently verified by buyers or regulators.'
+    },
+    // ── Section 6: Digital Readiness ──
+    {
+      section:'Section 6 — Digital & System Readiness',
+      q:'Is your traceability data captured digitally across your entire supply chain?',
+      opts:[{t:'Fully digital',score:3},{t:'Mix of paper and digital',score:1},{t:'Mostly paper-based',score:0}],
+      category:'Digital Readiness',
+      gap:'Paper-based traceability cannot be shared, audited or scaled at the speed the industry demands.'
     },
     {
-      q: 'Do you have a documented Human Welfare / Labour Standards policy for your supply chain?',
-      opts: [
-        {t:'Yes, audited and documented', icon:'✅', score:3},
-        {t:'Policy exists but not audited', icon:'◑', score:1},
-        {t:'No policy', icon:'❌', score:0},
-      ],
-      category:'Human Welfare'
+      section:'Section 6 — Digital & System Readiness',
+      q:'Does your processor or supplier hold an approved food safety certification (BRC, HACCP, ISO 22000)?',
+      opts:[{t:'Yes, current certification',score:3},{t:'Some suppliers do',score:1},{t:'No certifications',score:0}],
+      category:'Digital Readiness',
+      gap:'Without food safety certification, you cannot meet the baseline requirements of most major buyers and markets.'
+    },
+    // ── Section 7: Human Welfare ──
+    {
+      section:'Section 7 — Human Welfare & Labour Standards',
+      q:'Do you have a documented Human Welfare and Labour Standards policy covering your entire supply chain?',
+      opts:[{t:'Yes, audited and documented',score:3},{t:'Policy exists but not audited',score:1},{t:'No policy',score:0}],
+      category:'Human Welfare',
+      gap:'Without a welfare policy, you cannot respond to buyer ESG requirements or social compliance audits.'
+    },
+    // ── Section 8: Buyer Transparency ──
+    {
+      section:'Section 8 — Downstream Buyer & Consumer Transparency',
+      q:'Can you provide a digital product passport or QR code linking to verified evidence behind each product code?',
+      opts:[{t:'Yes',score:3},{t:'No',score:0}],
+      category:'Buyer Transparency',
+      gap:'Buyers increasingly require verifiable transparency, not marketing statements.'
     },
     {
-      q: 'Can you share traceability data digitally with buyers or regulators on request?',
-      opts: [
-        {t:'Yes, through a system or portal', icon:'✅', score:3},
-        {t:'We can, but it takes time', icon:'◑', score:1},
-        {t:'No, we can\'t share digitally', icon:'❌', score:0},
-      ],
-      category:'Data Sharing'
-    },
-    {
-      q: 'Does your processor or supplier hold an approved food safety certification (BRC, HACCP, ISO 22000)?',
-      opts: [
-        {t:'Yes, current certification', icon:'✅', score:3},
-        {t:'Some suppliers do', icon:'◑', score:1},
-        {t:'No certifications', icon:'❌', score:0},
-      ],
-      category:'Food Safety'
-    },
-    {
-      q: 'Have you undergone an independent third-party traceability or sustainability audit in the last 12 months?',
-      opts: [
-        {t:'Yes', icon:'✅', score:3},
-        {t:'More than 12 months ago', icon:'◑', score:1},
-        {t:'Never', icon:'❌', score:0},
-      ],
-      category:'Audit'
+      section:'Section 8 — Downstream Buyer & Consumer Transparency',
+      q:'Can you share traceability data digitally with buyers or regulators on request — within the same business day?',
+      opts:[{t:'Yes, through a system or portal',score:3},{t:'We can, but it takes time',score:1},{t:'No, we cannot share digitally',score:0}],
+      category:'Buyer Transparency',
+      gap:'If data cannot be shared on demand, you will lose ground to competitors who can demonstrate transparency instantly.'
     },
   ];
 
@@ -381,7 +404,7 @@
     const total = QT_QUESTIONS.length;
     const pct = Math.round(((qtIdx + 1) / total) * 100);
     document.getElementById('qtFill').style.width = pct + '%';
-    document.getElementById('qtStepLbl').textContent = `Question ${qtIdx + 1} of ${total} — ${q.category}`;
+    document.getElementById('qtStepLbl').textContent = q.section || `Question ${qtIdx + 1} of ${total}`;
     document.getElementById('qtQ').textContent = q.q;
     document.getElementById('qtBack').style.visibility = qtIdx === 0 ? 'hidden' : 'visible';
     document.getElementById('qtNext').textContent = qtIdx === total - 1 ? 'See Results →' : 'Next →';
@@ -389,7 +412,6 @@
 
     document.getElementById('qtOpts').innerHTML = q.opts.map((o, i) => `
       <div class="qt-opt ${qtAnswers[qtIdx] === i ? 'selected' : ''}" onclick="selectOpt(${i})">
-        <span class="qt-opt-icon">${o.icon}</span>
         ${o.t}
       </div>
     `).join('');
@@ -415,55 +437,61 @@
   }
 
   function showQTResult() {
-    // Calculate score
-    const maxScore = QT_QUESTIONS.length * 3;
-    const score = qtAnswers.reduce((sum, ans, i) => {
+    const totalScore = qtAnswers.reduce((sum, ans, i) => {
       return sum + (ans !== null ? QT_QUESTIONS[i].opts[ans].score : 0);
     }, 0);
-    const pct = Math.round((score / maxScore) * 100);
+    // Max score: sum of max option per question
+    const maxScore = QT_QUESTIONS.reduce((sum, q) => sum + Math.max(...q.opts.map(o=>o.score)), 0);
+    const pct = Math.round((totalScore / maxScore) * 100);
 
-    // Category breakdown
-    const categories = {};
+    // Collect gaps — questions where answer is not the top score
+    const gaps = [];
     QT_QUESTIONS.forEach((q, i) => {
       const ans = qtAnswers[i];
-      if (!categories[q.category]) categories[q.category] = {score:0,max:3};
-      categories[q.category].score = ans !== null ? q.opts[ans].score : 0;
+      const maxOpt = Math.max(...q.opts.map(o=>o.score));
+      if (ans === null || q.opts[ans].score < maxOpt) {
+        gaps.push({category: q.category, gap: q.gap});
+      }
     });
 
-    // Determine result tier
-    let icon, title, desc, color;
-    if (pct >= 75) {
-      icon = '🟢'; title = 'Strong Traceability';
-      desc = 'Your supply chain traceability is well developed. A full MRI Assessment will pinpoint remaining gaps and give you a verified score to share with buyers and regulators.';
-      color = '#16a34a';
-    } else if (pct >= 45) {
-      icon = '🟡'; title = 'Developing Traceability';
-      desc = 'You have some traceability systems in place, but there are significant gaps. A full MRI Assessment will show exactly where you stand and what to fix first.';
-      color = '#f59e0b';
+    // Tier — matches ChatGPT scoring: 0-5 Critical, 6-10 Moderate, 11-15 Low
+    // Remap our 0-15 scale
+    let tier, title, desc, color, tierLabel;
+    if (totalScore <= 15) {
+      tier='critical'; title='Critical Risk'; color='#e63946'; tierLabel='High exposure to IUU / mislabeling';
+      desc='Your supply chain may not be as transparent as you think. There are significant verification gaps that expose you to mislabeling, recalls and compliance failures.';
+    } else if (totalScore <= 30) {
+      tier='moderate'; title='Moderate Risk'; color='#f59e0b'; tierLabel='Significant verification gaps';
+      desc='You have some traceability systems in place, but key verification gaps remain. Without first-mile proof and automated checks, you remain exposed during audits.';
     } else {
-      icon = '🔴'; title = 'High Traceability Risk';
-      desc = 'Your supply chain has critical traceability gaps that could expose you to regulatory risk, buyer rejection or fraud. A full MRI Assessment is strongly recommended.';
-      color = '#e63946';
+      tier='low'; title='Low Risk'; color='#16a34a'; tierLabel='Missing real-time first-mile proof';
+      desc='Your traceability posture is strong. A full MRI Assessment will verify your claims and produce a score you can share with buyers and regulators with confidence.';
     }
 
     document.getElementById('qtQuestions').style.display = 'none';
     const result = document.getElementById('qtResult');
     result.style.display = 'block';
-    document.getElementById('qtResultIcon').textContent = icon;
+
+    // Score display
+    document.getElementById('qtResultIcon').innerHTML = `<div style="font-size:48px;font-weight:800;color:${color};line-height:1;">${totalScore}<span style="font-size:18px;color:#9aa0b4;">/${maxScore}</span></div>`;
     document.getElementById('qtResultTitle').textContent = title;
     document.getElementById('qtResultTitle').style.color = color;
-    document.getElementById('qtResultDesc').textContent = desc;
+    document.getElementById('qtResultDesc').innerHTML = `<span style="display:inline-block;background:${color}18;color:${color};border-radius:999px;padding:3px 12px;font-size:11px;font-weight:700;margin-bottom:10px;">${tierLabel}</span><br/>${desc}`;
 
-    // Bars
-    document.getElementById('qtResultBars').innerHTML = Object.entries(categories).map(([cat, val]) => {
-      const p = Math.round((val.score / val.max) * 100);
-      const c = p >= 75 ? '#16a34a' : p >= 40 ? '#f59e0b' : '#e63946';
-      return `<div class="qt-bar-row">
-        <span class="qt-bar-lbl">${cat}</span>
-        <div class="qt-bar-track"><div class="qt-bar-fill" style="width:${p}%;background:${c}"></div></div>
-        <span class="qt-bar-pct">${p}%</span>
-      </div>`;
-    }).join('');
+    // Gaps diagnostic
+    const gapHtml = gaps.length === 0
+      ? `<div style="color:#16a34a;font-size:13px;font-weight:600;">No critical gaps identified.</div>`
+      : `<div style="font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:10px;">Where your supply chain falls short:</div>`
+        + gaps.map(g => `
+          <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;">
+            <div style="width:18px;height:18px;border-radius:50%;background:#fff5f5;color:#e63946;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">✕</div>
+            <div>
+              <div style="font-size:11px;font-weight:700;color:#1a1a2e;">${g.category}</div>
+              <div style="font-size:11px;color:#6b7280;line-height:1.5;">${g.gap}</div>
+            </div>
+          </div>`).join('');
+
+    document.getElementById('qtResultBars').innerHTML = gapHtml;
   }
   </script>
 </body>
