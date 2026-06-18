@@ -126,6 +126,31 @@ select option{color:var(--text)}
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1;visibility:visible;box-shadow:var(--shadow-lg)}
 .toast.err{background:var(--danger)}
 
+/* ===== premium custom dropdown (overlays the native <select>) ===== */
+.csel{position:relative}
+.csel>select{position:absolute;opacity:0;height:0;width:0;padding:0;border:0;pointer-events:none}
+.csel-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;height:var(--field-h);padding:0 14px;border:1.5px solid var(--border);border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;font-size:13.5px;color:var(--text);transition:border-color .14s,box-shadow .14s}
+.csel-trigger:hover{border-color:var(--line-strong)}
+.csel.open .csel-trigger{border-color:var(--primary);box-shadow:0 0 0 3.5px rgba(26,111,219,.13)}
+.csel-trigger .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.csel-trigger .lbl.ph{color:#b6bcca}
+.csel-trigger svg{color:var(--soft);flex-shrink:0;transition:transform .2s,color .2s}
+.csel.open .csel-trigger svg{transform:rotate(180deg);color:var(--primary)}
+.csel-panel{position:absolute;top:calc(100% + 8px);left:0;width:100%;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg);padding:6px;z-index:80;max-height:300px;overflow:auto;opacity:0;visibility:hidden;transform:translateY(-6px) scale(.985);transform-origin:top center;transition:opacity .16s,transform .16s,visibility .16s}
+.csel.open .csel-panel{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
+.csel-search{position:sticky;top:0;background:#fff;padding:4px 4px 8px;z-index:1}
+.csel-search input{height:38px;width:100%;border:1.5px solid var(--border);border-radius:9px;padding:0 12px;font:inherit;font-size:13px}
+.csel-search input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,111,219,.12)}
+.csel-opt{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:9px;font-size:13.5px;color:var(--text);cursor:pointer;transition:background .12s,color .12s}
+.csel-opt:hover{background:var(--primary-soft);color:var(--primary-ink)}
+.csel-opt.sel{background:var(--primary);color:#fff;font-weight:600}
+.csel-opt.sel::after{content:"✓";margin-left:auto;font-size:12px}
+.csel-opt.sel:hover{background:var(--primary-ink);color:#fff}
+.csel-empty{padding:14px;text-align:center;color:var(--soft);font-size:12.5px}
+.csel-panel::-webkit-scrollbar{width:10px}
+.csel-panel::-webkit-scrollbar-thumb{background:#e2e6ee;border-radius:6px;border:3px solid #fff}
+.csel-panel::-webkit-scrollbar-track{background:transparent}
+
 </style>
 </head>
 <body>
@@ -349,6 +374,55 @@ function toast(msg, err=false){
   setTimeout(()=>t.className='toast',2600);
 }
 
+/* ---- premium custom dropdown over a native <select> ---- */
+function enhanceSelect(sel, opts={}){
+  if(!sel || sel.dataset.enh) return; sel.dataset.enh='1';
+  const wrap=document.createElement('div'); wrap.className='csel';
+  sel.parentNode.insertBefore(wrap, sel); wrap.appendChild(sel);
+  const trigger=document.createElement('button'); trigger.type='button'; trigger.className='csel-trigger';
+  trigger.innerHTML='<span class="lbl"></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+  const panel=document.createElement('div'); panel.className='csel-panel';
+  wrap.appendChild(trigger); wrap.appendChild(panel);
+  const lbl=trigger.querySelector('.lbl');
+  const placeholder=(sel.options[0]&&sel.options[0].value==='')?sel.options[0].textContent:(opts.placeholder||'Select…');
+
+  function build(filter=''){
+    panel.innerHTML='';
+    if(opts.search){
+      const box=document.createElement('div'); box.className='csel-search';
+      box.innerHTML='<input type="text" placeholder="Search…" />';
+      panel.appendChild(box);
+      const inp=box.querySelector('input'); inp.value=filter;
+      inp.addEventListener('input',()=>build(inp.value));
+      inp.addEventListener('click',e=>e.stopPropagation());
+      setTimeout(()=>inp.focus(),30);
+    }
+    const f=filter.toLowerCase(); let n=0;
+    [...sel.options].forEach(o=>{
+      if(o.value==='') return;
+      if(f && !o.textContent.toLowerCase().includes(f)) return;
+      const it=document.createElement('div');
+      it.className='csel-opt'+(sel.value===o.value?' sel':'');
+      it.textContent=o.textContent;
+      it.addEventListener('click',()=>{ sel.value=o.value; sel.dispatchEvent(new Event('change')); updateLabel(); close(); });
+      panel.appendChild(it); n++;
+    });
+    if(!n){ const e=document.createElement('div'); e.className='csel-empty'; e.textContent='No matches'; panel.appendChild(e); }
+  }
+  function updateLabel(){
+    const o=sel.options[sel.selectedIndex];
+    if(!o||o.value===''){ lbl.textContent=placeholder; lbl.className='lbl ph'; }
+    else { lbl.textContent=o.textContent; lbl.className='lbl'; }
+  }
+  function open(){ document.querySelectorAll('.csel.open').forEach(x=>x.classList.remove('open')); build(); wrap.classList.add('open'); }
+  function close(){ wrap.classList.remove('open'); }
+  trigger.addEventListener('click',e=>{ e.preventDefault(); e.stopPropagation(); wrap.classList.contains('open')?close():open(); });
+  sel._sync=updateLabel; updateLabel();
+}
+function syncCustomSelects(){ document.querySelectorAll('.csel>select').forEach(s=>{ if(s._sync) s._sync(); }); }
+document.addEventListener('click',()=>document.querySelectorAll('.csel.open').forEach(x=>x.classList.remove('open')));
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.csel.open').forEach(x=>x.classList.remove('open')); });
+
 /* ---------- bootstrap ---------- */
 (async function init(){
   const { data:{ user } } = await sb.auth.getUser();
@@ -367,6 +441,9 @@ function toast(msg, err=false){
   await loadOrganisations();
   await loadSpecies();
   await loadCountries();
+  enhanceSelect($('storage_type'));
+  enhanceSelect($('status'));
+  enhanceSelect($('country'), {search:true});
   addContactRow();
   addKVRow();
 
@@ -374,6 +451,7 @@ function toast(msg, err=false){
     $('pageTitle').textContent='Edit Cold Storage';
     $('saveBtn').textContent='Save changes';
     await loadFacility(editId);
+    syncCustomSelects();
   }
 })();
 
