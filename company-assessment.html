@@ -1045,24 +1045,9 @@ function clearSingle(key){
   if(key==='harvest')toggleGear();
 }
 function setDropVal(key,val){
-  // Used in openPF to restore saved value
   if(val)selSingle(key,val);
   else clearSingle(key);
-
 }
-
-// CTE tooltip positioning
-document.querySelectorAll('.pnode').forEach(node=>{
-  const tip=node.querySelector('.cte-tip');
-  if(!tip)return;
-  node.addEventListener('mouseenter',()=>{
-    const r=node.getBoundingClientRect();
-    tip.style.top=(r.top+r.height/2-tip.offsetHeight/2)+'px';
-    tip.style.left=(r.right+12)+'px';
-    tip.style.display='block';
-  });
-  node.addEventListener('mouseleave',()=>{tip.style.display='none';});
-});
 
 async function loadCountries(){
   const{data}=await db.from('countries').select('country,alpha2').order('country');
@@ -1121,7 +1106,25 @@ function rmFAO(z){faoSel=faoSel.filter(f=>f!==z);updateFAOChips();renderFAOOpts(
 
 <script>
 // SC BUILDER
-function openSCB(){document.getElementById('scbov').classList.add('open');}
+function openSCB(){
+  document.getElementById('scbov').classList.add('open');
+  // init tooltips after modal is visible so getBoundingClientRect is accurate
+  setTimeout(()=>{
+    document.querySelectorAll('.pnode').forEach(node=>{
+      if(node._tipInit)return;
+      node._tipInit=true;
+      const tip=node.querySelector('.cte-tip');
+      if(!tip)return;
+      node.addEventListener('mouseenter',()=>{
+        const r=node.getBoundingClientRect();
+        tip.style.top=Math.max(8,r.top+r.height/2-tip.offsetHeight/2)+'px';
+        tip.style.left=(r.right+12)+'px';
+        tip.style.display='block';
+      });
+      node.addEventListener('mouseleave',()=>{tip.style.display='none';});
+    });
+  },50);
+}
 function closeSCB(){document.getElementById('scbov').classList.remove('open');document.getElementById('ownpop').classList.remove('open');}
 function onPD(e,t){sDT=t;e.dataTransfer.effectAllowed='copy';}
 function onCD(e){e.preventDefault();}
