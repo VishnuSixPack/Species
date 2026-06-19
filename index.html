@@ -12,6 +12,9 @@
     .home-nav-logo{display:flex;align-items:center;gap:8px;text-decoration:none;}
     .home-nav-logo img{width:28px;height:28px;object-fit:contain;}
     .home-nav-brand{display:flex;flex-direction:column;line-height:1.1;}
+    .lg-brand{display:flex;flex-direction:column;line-height:1.1;}
+    .lg-brand-project{font-size:8px;font-weight:700;letter-spacing:2px;color:#9aa0b4;text-transform:uppercase;}
+    .lg-brand-name{font-size:16px;font-weight:800;color:#1a1a2e;}
 
     /* ── QUICK TEST MODAL ── */
     .qt-modal{display:none;position:fixed;inset:0;background:rgba(6,10,28,0.6);backdrop-filter:blur(8px);z-index:1000;align-items:center;justify-content:center;padding:20px;}
@@ -171,9 +174,9 @@
     <!-- Logo — fixed width so pill stays centred -->
     <a class="home-nav-logo" href="index.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:0;min-width:200px;">
       <img src="brand-logo.png" style="width:28px;height:28px;object-fit:contain;"/>
-      <div class="home-nav-brand">
-        <span class="home-nav-project">PROJECT</span>
-        <span class="home-nav-manhattan">Manhattan.</span>
+      <div class="lg-brand">
+        <span class="lg-brand-project">PROJECT</span>
+        <span class="lg-brand-name">Manhattan.</span>
       </div>
     </a>
 
@@ -205,10 +208,41 @@
       </div>
     </div>
 
-    <!-- CTA buttons — same min-width as logo to balance -->
-    <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;min-width:200px;justify-content:flex-end;">
-      <a href="javascript:void(0)" class="home-register-btn home-test-glow" onclick="openQT()">Take the Test</a>
-      <a href="login.html" class="home-login-btn">Login</a>
+    <!-- Combined CTA pill -->
+    <div style="flex-shrink:0;min-width:200px;display:flex;justify-content:flex-end;">
+      <div id="ctaPill" style="
+        display:inline-flex;align-items:center;gap:2px;padding:5px 7px;
+        border-radius:999px;position:relative;
+        background:rgba(26,26,46,0.04);
+        border:1px solid rgba(26,26,46,0.08);
+        box-shadow:inset 0 1px 0 rgba(255,255,255,0.8),0 1px 4px rgba(0,0,0,0.06);
+      ">
+        <!-- Sliding indicator — transitions between purple and dark -->
+        <div id="ctaIndicator" style="
+          position:absolute;top:5px;height:calc(100% - 10px);
+          border-radius:999px;
+          background:rgba(139,92,246,0.9);
+          border-top:1px solid rgba(255,255,255,0.4);
+          border-bottom:1px solid rgba(100,60,200,0.3);
+          box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),0 2px 12px rgba(139,92,246,0.35);
+          transition:
+            left 0.42s cubic-bezier(0.34,1.56,0.64,1),
+            width 0.42s cubic-bezier(0.34,1.56,0.64,1),
+            background 0.35s ease,
+            box-shadow 0.35s ease;
+          pointer-events:none;z-index:1;
+        "></div>
+        <a href="javascript:void(0)" id="ctaTest" onclick="openQT()" style="
+          padding:8px 18px;border-radius:999px;
+          font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;
+          color:#fff;text-decoration:none;position:relative;z-index:2;white-space:nowrap;
+        ">Take the Test</a>
+        <a href="login.html" id="ctaLogin" style="
+          padding:8px 18px;border-radius:999px;
+          font-family:'Poppins',sans-serif;font-size:13px;font-weight:500;
+          color:#6b7280;text-decoration:none;position:relative;z-index:2;white-space:nowrap;
+        ">Login</a>
+      </div>
     </div>
   </nav>
 
@@ -267,6 +301,76 @@
         }, 50);
       }
     });
+  })();
+
+  // ── CTA combined pill ──
+  (function(){
+    const pill   = document.getElementById('ctaPill');
+    const ind    = document.getElementById('ctaIndicator');
+    const test   = document.getElementById('ctaTest');
+    const login  = document.getElementById('ctaLogin');
+    if (!pill) return;
+
+    const PURPLE = {
+      bg:'rgba(139,92,246,0.9)',
+      shadow:'inset 0 1px 0 rgba(255,255,255,0.35),0 2px 12px rgba(139,92,246,0.35)',
+      textActive:'#fff', textInactive:'#6b7280'
+    };
+    const DARK = {
+      bg:'rgba(26,26,46,0.85)',
+      shadow:'inset 0 1px 0 rgba(255,255,255,0.15),0 2px 8px rgba(0,0,0,0.2)',
+      textActive:'#fff', textInactive:'#9aa0b4'
+    };
+
+    let current = 'test'; // default active
+
+    function moveTo(el, scheme) {
+      const pillRect = pill.getBoundingClientRect();
+      const elRect   = el.getBoundingClientRect();
+      ind.style.left   = (elRect.left - pillRect.left) + 'px';
+      ind.style.width  = elRect.width + 'px';
+      ind.style.background  = scheme.bg;
+      ind.style.boxShadow   = scheme.shadow;
+    }
+
+    // Init on load
+    window.addEventListener('load', () => {
+      ind.style.transition = 'none';
+      moveTo(test, PURPLE);
+      test.style.color  = PURPLE.textActive;
+      login.style.color = PURPLE.textInactive;
+      setTimeout(() => {
+        ind.style.transition = 'left 0.42s cubic-bezier(0.34,1.56,0.64,1),width 0.42s cubic-bezier(0.34,1.56,0.64,1),background 0.35s ease,box-shadow 0.35s ease';
+      }, 50);
+    });
+
+    test.addEventListener('mouseenter', () => {
+      moveTo(test, PURPLE);
+      test.style.color  = PURPLE.textActive;
+      login.style.color = PURPLE.textInactive;
+    });
+
+    login.addEventListener('mouseenter', () => {
+      moveTo(login, DARK);
+      login.style.color = DARK.textActive;
+      test.style.color  = DARK.textInactive;
+    });
+
+    pill.addEventListener('mouseleave', () => {
+      // Snap back to current active
+      if (current === 'test') {
+        moveTo(test, PURPLE);
+        test.style.color  = PURPLE.textActive;
+        login.style.color = PURPLE.textInactive;
+      } else {
+        moveTo(login, DARK);
+        login.style.color = DARK.textActive;
+        test.style.color  = DARK.textInactive;
+      }
+    });
+
+    test.addEventListener('click', () => { current = 'test'; });
+    login.addEventListener('click', () => { current = 'login'; });
   })();
   </script>
 

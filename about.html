@@ -233,9 +233,35 @@
         <a href="index.html" class="lg-item">Home</a><a href="teaser.html" class="lg-item">Platform</a><a href="index.html#what-we-do" class="lg-item">What do we do?</a><a href="contact.html" class="lg-item">Contact</a><a href="about.html" class="lg-item active">About</a>
       </div>
     </div>
-    <div class="lg-right">
-      <a href="index.html" class="lg-test" onclick="sessionStorage.setItem('openQT','1')">Take the Test</a>
-      <a href="login.html" class="lg-login">Login</a>
+    <div style="flex-shrink:0;min-width:200px;display:flex;justify-content:flex-end;">
+      <div id="ctaPill" style="
+        display:inline-flex;align-items:center;gap:2px;padding:5px 7px;
+        border-radius:999px;position:relative;
+        background:rgba(26,26,46,0.04);
+        border:1px solid rgba(26,26,46,0.08);
+        box-shadow:inset 0 1px 0 rgba(255,255,255,0.8),0 1px 4px rgba(0,0,0,0.06);
+      ">
+        <div id="ctaIndicator" style="
+          position:absolute;top:5px;height:calc(100% - 10px);
+          border-radius:999px;
+          background:rgba(139,92,246,0.9);
+          border-top:1px solid rgba(255,255,255,0.4);
+          border-bottom:1px solid rgba(100,60,200,0.3);
+          box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),0 2px 12px rgba(139,92,246,0.35);
+          transition:left 0.42s cubic-bezier(0.34,1.56,0.64,1),width 0.42s cubic-bezier(0.34,1.56,0.64,1),background 0.35s ease,box-shadow 0.35s ease;
+          pointer-events:none;z-index:1;
+        "></div>
+        <a href="index.html" id="ctaTest" onclick="sessionStorage.setItem('openQT','1')" style="
+          padding:8px 18px;border-radius:999px;
+          font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;
+          color:#fff;text-decoration:none;position:relative;z-index:2;white-space:nowrap;
+        ">Take the Test</a>
+        <a href="login.html" id="ctaLogin" style="
+          padding:8px 18px;border-radius:999px;
+          font-family:'Poppins',sans-serif;font-size:13px;font-weight:500;
+          color:#6b7280;text-decoration:none;position:relative;z-index:2;white-space:nowrap;
+        ">Login</a>
+      </div>
     </div>
   </nav>
 
@@ -456,6 +482,71 @@
         setTimeout(() => { indicator.style.transition = 'left 0.38s cubic-bezier(0.34,1.56,0.64,1),width 0.38s cubic-bezier(0.34,1.56,0.64,1),opacity 0.18s ease'; }, 50);
       }
     });
+  })();
+  </script>
+  <script>
+  (function(){
+    const pill  = document.getElementById('ctaPill');
+    const ind   = document.getElementById('ctaIndicator');
+    const test  = document.getElementById('ctaTest');
+    const login = document.getElementById('ctaLogin');
+    if (!pill) return;
+
+    const PURPLE = {
+      bg:'rgba(139,92,246,0.9)',
+      shadow:'inset 0 1px 0 rgba(255,255,255,0.35),0 2px 12px rgba(139,92,246,0.35)',
+      textActive:'#fff', textInactive:'#6b7280'
+    };
+    const DARK = {
+      bg:'rgba(26,26,46,0.85)',
+      shadow:'inset 0 1px 0 rgba(255,255,255,0.15),0 2px 8px rgba(0,0,0,0.2)',
+      textActive:'#fff', textInactive:'#9aa0b4'
+    };
+
+    let current = 'test';
+
+    function moveTo(el, scheme) {
+      const pillRect = pill.getBoundingClientRect();
+      const elRect   = el.getBoundingClientRect();
+      ind.style.left       = (elRect.left - pillRect.left) + 'px';
+      ind.style.width      = elRect.width + 'px';
+      ind.style.background = scheme.bg;
+      ind.style.boxShadow  = scheme.shadow;
+    }
+
+    window.addEventListener('load', () => {
+      ind.style.transition = 'none';
+      moveTo(test, PURPLE);
+      test.style.color  = PURPLE.textActive;
+      login.style.color = PURPLE.textInactive;
+      setTimeout(() => {
+        ind.style.transition = 'left 0.42s cubic-bezier(0.34,1.56,0.64,1),width 0.42s cubic-bezier(0.34,1.56,0.64,1),background 0.35s ease,box-shadow 0.35s ease';
+      }, 50);
+    });
+
+    test.addEventListener('mouseenter', () => {
+      moveTo(test, PURPLE);
+      test.style.color  = PURPLE.textActive;
+      login.style.color = PURPLE.textInactive;
+    });
+    login.addEventListener('mouseenter', () => {
+      moveTo(login, DARK);
+      login.style.color = DARK.textActive;
+      test.style.color  = DARK.textInactive;
+    });
+    pill.addEventListener('mouseleave', () => {
+      if (current === 'test') {
+        moveTo(test, PURPLE);
+        test.style.color  = PURPLE.textActive;
+        login.style.color = PURPLE.textInactive;
+      } else {
+        moveTo(login, DARK);
+        login.style.color = DARK.textActive;
+        test.style.color  = DARK.textInactive;
+      }
+    });
+    test.addEventListener('click',  () => { current = 'test'; });
+    login.addEventListener('click', () => { current = 'login'; });
   })();
   </script>
 </body>
