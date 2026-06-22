@@ -198,10 +198,15 @@
         <div class="comment-lbl">Expert Comments</div>
         <textarea class="comment-ta" id="pComment" rows="4" placeholder="Add your review comments, feedback, or requests for more information..."></textarea>
       </div>
+      <div class="ar-section">
+        <div class="ar-sec-title">📊 Compliance Snapshot</div>
+        <div id="pCompliance" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
+      </div>
       <div class="ar-actions">
         <button class="btn-verify" onclick="updateStatus('verified')">✅ Verify & Publish</button>
         <button class="btn-more-info" onclick="updateStatus('more_info')">📋 Request More Info</button>
         <button class="btn-reject" onclick="updateStatus('rejected')">❌ Reject</button>
+        <button class="btn-reject" onclick="confirmDelete()" style="margin-left:auto;">🗑️ Delete</button>
       </div>
     </div>
   </div>
@@ -252,6 +257,14 @@ const KDE_LABELS={
   fv_name:'Fishing vessel name recorded',fv_imo:'IMO number for each vessel',fv_uid:'Unique vessel identification number',fv_flag:'Flag state of each vessel',fv_registry:'Vessel on public registry with hyperlink',fv_tracking:'Satellite vessel tracking (VMS)',fv_species:'Species recorded by scientific name',fv_gtin:'Item/SKU/UPC/GTIN assigned at harvest',fv_linking:'Linking KDE (batch/lot/serial) at harvest',fv_weight:'Weight or quantity with unit of measure',fv_area:'FAO catch area documented',fv_coords:'Catch geo-coordinates recorded',fv_rfmo:'Vessel on RFMO register',fv_permit:'Valid fishing authorization or permit',fv_harvest_cert:'Harvest certification (e.g. MSC)',fv_coc:'Chain of Custody certification — harvest',fv_welfare_policy:'Human Welfare Policy documented',fv_welfare_standards:'Human welfare standards compliance',
   cr_name:'Carrier vessel name',cr_imo:'Carrier vessel IMO number',cr_uid:'Unique carrier vessel ID',cr_reg:'Carrier vessel registration number',cr_flag:'Carrier vessel flag state',cr_rfmo:'Carrier on RFMO register',cr_gtin:'GTIN carried through to transshipment',cr_linking:'Linking KDE maintained at transshipment',cr_weight:'Weight/quantity at transshipment',cr_location:'Geo-location of transshipment event',cr_approval:'Flag state transshipment authorization',cr_auth_doc:'Transshipment authorization document',cr_observer:'In-port or observer-monitored transshipment',cr_coc:'CoC certification — transshipment',cr_welfare_policy:'Human Welfare Policy — carrier vessels',cr_welfare_standards:'Human welfare standards — carrier',
   fcl_species:'Species carried through to landing',fcl_gtin:'GTIN recorded at landing',fcl_linking:'Linking KDE at landing',fcl_weight:'Weight/quantity at landing',fcl_port:'Port of landing documented',fcl_geo:'Geo-coordinates of landing location',fcl_bol:'Bill of Lading',fcl_consignee:'Consignee on shipping documents',fcl_container:'Container number documented',fcl_ownership:'Product ownership documented at landing',fcl_auth:'Landing authorization held',fcl_eu:'EU competent authority approval',fcl_coc:'CoC certification — landing',fcl_welfare:'Human Welfare Policy — landing entity',
+  fcl_landing_date:'Date of first landing or off-load documented',fcl_product_form:'Product form at landing recorded (whole, H&G, fillet etc.)',fcl_master_decl:'Signed vessel master declaration for the catch',fcl_ca_validation:'Catch certificate validated by flag state competent authority',fcl_net_weight:'Net weight (not gross) specifically recorded at landing',
+  fcl_land_decl:'Landing declaration submitted to port authority',fcl_port_receipt:'Port authority receipt or weigh ticket at landing',fcl_catch_log:"Vessel's catch log available at point of landing",fcl_cold_chain:'Cold chain continuity documented — vessel hold to landing facility',fcl_carrier_name:'Carrier vessel name recorded at landing',fcl_carrier_imo:'Carrier vessel IMO recorded at landing',
+  cr_atsea_rfmo:'RFMO authorization for at-sea transshipment',cr_atsea_obs:'Independent observer or electronic monitoring at at-sea transshipment',cr_atsea_hs:"RFMO High Seas transshipment authorization document",
+  s_simp:'SIMP entry filing available (US-bound)',s_fsma_lot:'FSMA 204 traceability lot code assigned at each CTE (US-bound)',
+  s_iftp:'Importer holds valid NOAA International Fisheries Trade Permit (IFTP)',c_fsma_kde:'FSMA 204 KDE record maintained per lot (US-bound)',c_fsvp:'Foreign Supplier Verification Program (FSVP) on file (US-bound)',
+  fm_name:'Feedmill name and location documented',fm_license:'Feedmill registration or operating license',fm_formulation:'Feed formulation or ingredient list available',fm_fishmeal:'Fishmeal/fish oil ingredients traceable to source fishery',fm_cert:'Source fishery certified (IFFO RS, MarinTrust)',fm_lot:'Lot/batch number per feed production run',fm_weight:'Weight/quantity per feed batch',fm_allergen:'Allergen declarations for feed produced',fm_audit:'Third-party feedmill quality audit (GMP+, FAMI-QS)',fm_welfare:'Human Welfare Policy — feedmill',
+  ht_name:'Hatchery name and location documented',ht_license:'Hatchery registration or license',ht_broodstock:'Broodstock origin and health status documented',ht_lot:'Batch/lot number at juvenile or fingerling production',ht_species:'Species documented by scientific name at hatchery',ht_stocking:'Stocking records (date, quantity, weight) per batch',ht_disease:'Disease treatment and medication records at hatchery',ht_water:'Water quality monitoring records at hatchery',ht_coc:'Hatchery covered by CoC or aquaculture certification',ht_audit:'Third-party hatchery audit (12 months)',ht_welfare:'Human Welfare Policy — hatchery',
+  aq_farm_name:'Farm name and location documented',aq_farm_license:'Farm registration or aquaculture license',aq_species:'Species documented by scientific name',aq_gtin:'GTIN assigned at farm stage',aq_linking:'Linking KDE at farm stage',aq_weight:'Harvest weight and unit of measure per batch',aq_lot:'Lot code or production batch number at harvest',aq_stocking:'Stocking density and stocking date records',aq_feed_supplier:'Feed supplier name and traceability',aq_feed_origin:'Feed ingredient origin documented',aq_water:'Water quality monitoring records',aq_disease:'Disease treatment and medication records',aq_coc:'Farm CoC certification (ASC, BAP)',aq_audit:'Third-party aquaculture audit (12 months)',aq_welfare:'Animal and worker welfare policy at farm',
   pp_name:'Processing facility name and location',pp_ownership:'Product ownership at processing',pp_origin:'Product origin recorded',pp_geo:'Processing facility geo-coordinates',pp_gtin:'GTIN at processing',pp_lot:'Lot/batch number assigned',pp_linking:'Linking KDE maintained at processing',pp_weight:'Weight/quantity at processing',pp_data:'Full catch data received from first receiver',pp_cold:'Cold chain covered by CoC',pp_eu:'EU Facility Approval number',pp_coc:'CoC certification — processing',pp_harvest_cert:'Harvest certification at processing',pp_welfare_policy:'Human Welfare Policy — processing',pp_welfare_standards:'Human welfare standards — processing',
   lfp_shipper:"Shipper's GLN",lfp_receiver:"Receiver's GLN",lfp_ownership:'Product ownership — shipping',lfp_gtin:'GTIN on shipping documents',lfp_linking:'Linking KDE on shipping documents',lfp_weight:'Weight/quantity on shipping documents',lfp_source:'Source location on shipping documents',lfp_dest:'Destination location documented',lfp_geo:'Geo-location event read points',lfp_po:"Buyer's purchase order",lfp_seal:'Container seal number',lfp_invoice:'Commercial invoice with certification status',lfp_packing:'Packing list matches invoice and BoL',lfp_coc:'Logistics partner CoC certification',
   c_msc:'MSC Chain of Custody certificate',c_asc:'ASC Chain of Custody certificate',c_brc:'BRC Global Standard or IFS certification',c_iso:'ISO 22000 or equivalent',c_eu:'EU Facility Approval number',c_haccp:'Certified HACCP food safety plan',c_audit:'Independent third-party traceability audit (12 months)',c_internal:'Internal traceability system (source to sale)',c_recall:'Product recall within 4 hours capability',c_digital:'Traceability data captured digitally',c_interop:'Traceability data shareable digitally',c_welfare_org:'Company-wide Human Welfare Policy',c_welfare_audit:'Human welfare/social responsibility audit (2 years)',
@@ -459,6 +472,7 @@ function openPanel(id){
     </div>`;
   }).join('');
 
+  renderCompliance(kde);
   document.getElementById('pDelivery').textContent=
     a.delivery_preference==='meeting'?'📅 Wants a meeting with the Manhattan team':'📧 Prefers to receive results via email';
 
@@ -536,6 +550,64 @@ function openDocViewer(url, name){
 function closeDocViewer(e){
   if(e.target===document.getElementById('docViewer'))
     document.getElementById('docViewer').classList.remove('open');
+}
+function renderCompliance(kde){
+  // GDST — digital KDE completeness across all stages
+  const gdstKeys=['fv_name','fv_imo','fv_flag','fv_species','fv_gtin','fv_linking','fv_weight','fv_area','fv_permit','fv_coc','fcl_bol','fcl_linking','fcl_weight','fcl_port','fcl_ownership','pp_gtin','pp_lot','pp_linking','pp_weight','lfp_gtin','lfp_linking','lfp_weight','lfp_source','lfp_dest'];
+  // FSMA — lot codes + KDE records
+  const fsmaKeys=['s_fsma_lot','c_fsma_kde','c_fsvp','fcl_linking','pp_lot','lfp_linking','c_recall','c_digital','c_internal'];
+  // SIMP — US entry readiness
+  const simpKeys=['s_simp','s_iftp','fv_name','fv_imo','fv_flag','fv_area','fv_permit','fcl_landing_date','fcl_product_form','fcl_port','fcl_weight','c_internal'];
+  // EU — catch certificate requirements
+  const euKeys=['fcl_master_decl','fcl_ca_validation','fcl_net_weight','fcl_eu','pp_eu','c_eu','fv_name','fv_imo','fv_flag','fv_rfmo','fv_permit','fcl_port','fcl_species'];
+
+  function calcPct(keys){
+    const answered=keys.filter(k=>kde[k]?.ans==='av').length;
+    const partial=keys.filter(k=>kde[k]?.ans==='pa').length;
+    return Math.round(((answered+(partial*0.5))/keys.length)*100);
+  }
+
+  const scores=[
+    {label:'GDST Traceability',img:'gdst-ca.png',pct:calcPct(gdstKeys),color:'#16a34a',sub:'Data Coverage'},
+    {label:'FSMA 204 Readiness',img:'fsma-ca.png',pct:calcPct(fsmaKeys),color:'#f59e0b',sub:'Readiness Score'},
+    {label:'NOAA SIMP',img:'simp-ca.png',pct:calcPct(simpKeys),color:'#e63946',sub:'Entry Readiness'},
+    {label:'EU Catch Certificate',img:'eu-ca.png',pct:calcPct(euKeys),color:'#1a6fdb',sub:'Compatibility'},
+  ];
+
+  document.getElementById('pCompliance').innerHTML=scores.map(s=>`
+    <div style="background:#f9fafc;border:1px solid #e8eaf0;border-radius:12px;padding:12px 14px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <img src="${s.img}" style="height:22px;object-fit:contain;"/>
+        <span style="font-size:11px;font-weight:700;color:#6b7280;">${s.label}</span>
+      </div>
+      <div style="height:4px;background:#e8eaf0;border-radius:999px;overflow:hidden;margin-bottom:5px;">
+        <div style="width:${s.pct}%;height:100%;background:${s.color};border-radius:999px;"></div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:10px;color:#9aa0b4;">${s.sub}</span>
+        <span style="font-size:12px;font-weight:800;color:${s.color};">${s.pct}%</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function confirmDelete(){
+  if(!currentId)return;
+  const a=allAssessments.find(x=>x.id===currentId);
+  const name=a?.company_name||'this assessment';
+  if(!confirm(`Delete assessment for "${name}"? This cannot be undone.`))return;
+  deleteAssessment();
+}
+
+async function deleteAssessment(){
+  if(!currentId)return;
+  const{error}=await db.from('company_assessments').delete().eq('id',currentId);
+  if(error){alert('Delete failed: '+error.message);return;}
+  allAssessments=allAssessments.filter(x=>x.id!==currentId);
+  document.getElementById('arDetail').classList.remove('open');
+  currentId=null;
+  renderList();
+  showToast('🗑️ Assessment deleted.','info');
 }
 loadAssessments();
 </script>
