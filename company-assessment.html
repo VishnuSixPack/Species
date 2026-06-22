@@ -812,6 +812,10 @@
       <div class="ev-file-name" id="ev-file-name"></div>
       <input type="file" id="ev-file-inp" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" style="display:none;" onchange="onEvFileChange(this)"/>
     </div>
+    <div class="ev-reuse" id="ev-reuse" style="display:none;margin-bottom:14px;">
+      <div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:7px;">♻️ Reuse from this assessment</div>
+      <div id="ev-reuse-list" style="display:flex;flex-direction:column;gap:5px;max-height:120px;overflow-y:auto;"></div>
+    </div>
     <div class="ev-items" id="ev-items"></div>
     <div class="ev-footer">
       <div class="ev-count" id="ev-count"></div>
@@ -1747,6 +1751,7 @@ function setTsZone(val){
 
 // Evidence modal
 let evKdeId=null,evSelType=null,evTempItems=[];
+let evReusePool=[];
 const evTypeMeta={
   cert:{lbl:'Certificate name or standard',ph:'e.g. MSC CoC, ASC, BRC Issue 9',icon:'🏅'},
   url:{lbl:'URL or web link',ph:'https://...',icon:'🔗'},
@@ -1766,6 +1771,7 @@ function openEvMod(id){
   document.getElementById('ev-inp').value='';
   renderEvItems();
   updateEvCount();
+  renderReuseList(id);
   document.getElementById('evmod').classList.add('open');
 }
 function closeEvMod(){
@@ -1875,6 +1881,72 @@ function renderEvItems(){
 }
 function updateEvCount(){
   document.getElementById('ev-count').textContent=evTempItems.length?`${evTempItems.length} item${evTempItems.length>1?'s':''} added`:'';
+}
+
+function renderReuseList(currentId){
+  const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};
+  // collect all evidence from other KDEs
+  const pool=[];
+  Object.entries(kResp).forEach(([kid,resp])=>{
+    if(kid===currentId||kid.startsWith('_'))return;
+    if(!resp.evidence||!resp.evidence.length)return;
+    resp.evidence.forEach(ev=>{
+      // find the question text for context
+      const qText=findQText(kid);
+      pool.push({...ev,fromKde:kid,fromQ:qText});
+    });
+  });
+  // deduplicate by value
+  const seen=new Set();
+  const unique=pool.filter(ev=>{
+    if(seen.has(ev.value))return false;
+    seen.add(ev.value);return true;
+  });
+  const container=document.getElementById('ev-reuse');
+  const list=document.getElementById('ev-reuse-list');
+  if(!unique.length){container.style.display='none';return;}
+  container.style.display='block';
+  evReusePool=unique;
+  list.innerHTML=unique.map((ev,i)=>{
+    const display=ev.name&&ev.name!==ev.value?ev.name:ev.value;
+    const disp=display.length>36?display.slice(0,36)+'…':display;
+    const alreadyAdded=evTempItems.some(t=>t.value===ev.value);
+    return `<div style="display:flex;align-items:center;justify-content:space-between;background:#f9fafc;border:1px solid #e8eaf0;border-radius:8px;padding:7px 10px;">
+      <div style="display:flex;align-items:center;gap:7px;min-width:0;">
+        <span style="font-size:13px;flex-shrink:0;">${ev.icon||evIcons[ev.type]||'📎'}</span>
+        <div style="min-width:0;">
+          <div style="font-size:11px;font-weight:600;color:#1a1a2e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${disp}</div>
+          <div style="font-size:10px;color:#9aa0b4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ev.fromQ||ev.fromKde}</div>
+        </div>
+      </div>
+      <button onclick="reuseEv(${i})" style="flex-shrink:0;margin-left:8px;padding:4px 10px;border-radius:6px;border:1.5px solid ${alreadyAdded?'#16a34a':'#1a6fdb'};background:${alreadyAdded?'#f0fdf4':'#eef4fd'};font-size:10px;font-weight:700;color:${alreadyAdded?'#16a34a':'#1a6fdb'};cursor:${alreadyAdded?'default':'pointer'};" ${alreadyAdded?'disabled':''}>
+        ${alreadyAdded?'✓ Added':'♻️ Reuse'}
+      </button>
+    </div>`;
+  }).join('');
+}
+
+function findQText(kid){
+  // search all stage qs for this KDE id
+  const allQs=[
+    ...HARVEST_WILD,...HARVEST_AQUA,...HARVEST_MIXED,
+    ...(STAGE_FEEDMILL.qs||[]),...(STAGE_HATCHERY.qs||[]),
+    ...(STAGE_TRANSSHIPMENT.qs||[]),...(STAGE_LANDING.qs||[]),
+    ...(STAGE_PROCESSING.qs||[]),...(STAGE_SHIPPING.qs||[]),
+  ];
+  const found=allQs.find(q=>q.id===kid);
+  if(found)return found.q.length>50?found.q.slice(0,50)+'…':found.q;
+  return kid;
+}
+
+function reuseEv(idx){
+  const ev=evReusePool[idx];
+  if(!ev)return;
+  if(evTempItems.some(t=>t.value===ev.value))return;
+  evTempItems.push({type:ev.type,value:ev.value,icon:ev.icon,name:ev.name||ev.value});
+  renderEvItems();
+  updateEvCount();
+  renderReuseList(evKdeId); // refresh to show ✓ Added
 }
 function saveEvidence(){
   if(!evKdeId)return;
