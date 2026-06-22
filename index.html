@@ -16,6 +16,14 @@
     .lg-brand-project{font-size:8px;font-weight:700;letter-spacing:2px;color:#9aa0b4;text-transform:uppercase;}
     .lg-brand-name{font-size:16px;font-weight:800;color:#1a1a2e;}
 
+    /* ── PREMIUM SCROLLBAR ── */
+    ::-webkit-scrollbar{width:4px;height:4px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+    ::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#8b5cf6 0%,#1a6fdb 100%);border-radius:999px;}
+    ::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,#7c3aed 0%,#1558b0 100%);}
+    ::-webkit-scrollbar-corner{background:transparent;}
+    *{scrollbar-width:thin;scrollbar-color:#8b5cf6 transparent;}
+
     /* ── QUICK TEST MODAL ── */
     .qt-modal{display:none;position:fixed;inset:0;background:rgba(6,10,28,0.65);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:9999;padding:20px;}
     .qt-modal.open{display:grid;place-items:center;}
@@ -110,16 +118,12 @@
     .home-wwd-header{text-align:center;padding:0 40px;margin-bottom:64px;}
     .home-wwd-header h2{font-size:48px;font-weight:800;color:#1a1a2e;margin-bottom:8px;letter-spacing:-0.02em;}
     .home-wwd-header p{font-size:15px;color:#9aa0b4;}
-
     .wwd-section{display:flex;align-items:center;gap:0;min-height:420px;}
     .wwd-section.reverse{flex-direction:row-reverse;}
     .wwd-section-alt{background:#f9fafc;}
-
     .wwd-img{flex:1;min-height:420px;overflow:hidden;border-radius:9px;}
     .wwd-img img{width:100%;height:100%;object-fit:cover;display:block;border-radius:9px;}
-
     .wwd-text{flex:1;padding:56px 64px;}
-
     .wwd-text h3{font-size:36px;font-weight:800;color:#1a1a2e;line-height:1.25;margin-bottom:14px;letter-spacing:-0.02em;}
     .wwd-text p{font-size:14px;color:#6b7280;line-height:1.8;margin-bottom:24px;}
     .wwd-link{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:#1a6fdb;text-decoration:none;}
@@ -220,7 +224,6 @@
         border:1px solid rgba(26,26,46,0.08);
         box-shadow:inset 0 1px 0 rgba(255,255,255,0.8),0 1px 4px rgba(0,0,0,0.06);
       ">
-        <!-- Sliding indicator — transitions between purple and dark -->
         <div id="ctaIndicator" style="
           position:absolute;top:5px;height:calc(100% - 10px);
           border-radius:999px;
@@ -228,11 +231,7 @@
           border-top:1px solid rgba(255,255,255,0.4);
           border-bottom:1px solid rgba(100,60,200,0.3);
           box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),0 2px 12px rgba(139,92,246,0.35);
-          transition:
-            left 0.42s cubic-bezier(0.34,1.56,0.64,1),
-            width 0.42s cubic-bezier(0.34,1.56,0.64,1),
-            background 0.35s ease,
-            box-shadow 0.35s ease;
+          transition:left 0.42s cubic-bezier(0.34,1.56,0.64,1),width 0.42s cubic-bezier(0.34,1.56,0.64,1),background 0.35s ease,box-shadow 0.35s ease;
           pointer-events:none;z-index:1;
         "></div>
         <a href="javascript:void(0)" id="ctaTest" onclick="openQT()" style="
@@ -256,7 +255,6 @@
     const items = document.querySelectorAll('.gnav-item');
     let activeItem = document.querySelector('.gnav-item.active');
     let leaveTimer = null;
-
     function moveIndicator(el) {
       const navRect = nav.getBoundingClientRect();
       const elRect = el.getBoundingClientRect();
@@ -268,112 +266,36 @@
         i.style.fontWeight = i === el ? '600' : '400';
       });
     }
-
     function resetToActive() {
-      if (activeItem) {
-        moveIndicator(activeItem);
-      } else {
-        indicator.style.opacity = '0';
-        items.forEach(i => { i.style.color = '#6b7280'; i.style.fontWeight = '400'; });
-      }
+      if (activeItem) moveIndicator(activeItem);
+      else { indicator.style.opacity = '0'; items.forEach(i => { i.style.color = '#6b7280'; i.style.fontWeight = '400'; }); }
     }
-
     items.forEach(item => {
-      item.addEventListener('mouseenter', () => {
-        clearTimeout(leaveTimer);
-        moveIndicator(item);
-      });
-      item.addEventListener('click', () => {
-        activeItem = item;
-        items.forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
-      });
+      item.addEventListener('mouseenter', () => { clearTimeout(leaveTimer); moveIndicator(item); });
+      item.addEventListener('click', () => { activeItem = item; items.forEach(i => i.classList.remove('active')); item.classList.add('active'); });
     });
-
-    nav.addEventListener('mouseleave', () => {
-      leaveTimer = setTimeout(resetToActive, 80);
-    });
-
-    // Init on load
+    nav.addEventListener('mouseleave', () => { leaveTimer = setTimeout(resetToActive, 80); });
     window.addEventListener('load', () => {
       if (activeItem) {
         indicator.style.transition = 'none';
         moveIndicator(activeItem);
-        setTimeout(() => {
-          indicator.style.transition = 'left 0.38s cubic-bezier(0.34,1.56,0.64,1),width 0.38s cubic-bezier(0.34,1.56,0.64,1),opacity 0.18s ease';
-        }, 50);
+        setTimeout(() => { indicator.style.transition = 'left 0.38s cubic-bezier(0.34,1.56,0.64,1),width 0.38s cubic-bezier(0.34,1.56,0.64,1),opacity 0.18s ease'; }, 50);
       }
     });
   })();
-
-  // ── CTA combined pill ──
   (function(){
-    const pill   = document.getElementById('ctaPill');
-    const ind    = document.getElementById('ctaIndicator');
-    const test   = document.getElementById('ctaTest');
-    const login  = document.getElementById('ctaLogin');
-    if (!pill) return;
-
-    const PURPLE = {
-      bg:'rgba(139,92,246,0.9)',
-      shadow:'inset 0 1px 0 rgba(255,255,255,0.35),0 2px 12px rgba(139,92,246,0.35)',
-      textActive:'#fff', textInactive:'#6b7280'
-    };
-    const DARK = {
-      bg:'rgba(26,26,46,0.85)',
-      shadow:'inset 0 1px 0 rgba(255,255,255,0.15),0 2px 8px rgba(0,0,0,0.2)',
-      textActive:'#fff', textInactive:'#9aa0b4'
-    };
-
-    let current = 'test'; // default active
-
-    function moveTo(el, scheme) {
-      const pillRect = pill.getBoundingClientRect();
-      const elRect   = el.getBoundingClientRect();
-      ind.style.left   = (elRect.left - pillRect.left) + 'px';
-      ind.style.width  = elRect.width + 'px';
-      ind.style.background  = scheme.bg;
-      ind.style.boxShadow   = scheme.shadow;
-    }
-
-    // Init on load
-    window.addEventListener('load', () => {
-      ind.style.transition = 'none';
-      moveTo(test, PURPLE);
-      test.style.color  = PURPLE.textActive;
-      login.style.color = PURPLE.textInactive;
-      setTimeout(() => {
-        ind.style.transition = 'left 0.42s cubic-bezier(0.34,1.56,0.64,1),width 0.42s cubic-bezier(0.34,1.56,0.64,1),background 0.35s ease,box-shadow 0.35s ease';
-      }, 50);
-    });
-
-    test.addEventListener('mouseenter', () => {
-      moveTo(test, PURPLE);
-      test.style.color  = PURPLE.textActive;
-      login.style.color = PURPLE.textInactive;
-    });
-
-    login.addEventListener('mouseenter', () => {
-      moveTo(login, DARK);
-      login.style.color = DARK.textActive;
-      test.style.color  = DARK.textInactive;
-    });
-
-    pill.addEventListener('mouseleave', () => {
-      // Snap back to current active
-      if (current === 'test') {
-        moveTo(test, PURPLE);
-        test.style.color  = PURPLE.textActive;
-        login.style.color = PURPLE.textInactive;
-      } else {
-        moveTo(login, DARK);
-        login.style.color = DARK.textActive;
-        test.style.color  = DARK.textInactive;
-      }
-    });
-
-    test.addEventListener('click', () => { current = 'test'; });
-    login.addEventListener('click', () => { current = 'login'; });
+    const pill=document.getElementById('ctaPill'),ind=document.getElementById('ctaIndicator'),test=document.getElementById('ctaTest'),login=document.getElementById('ctaLogin');
+    if(!pill)return;
+    const PURPLE={bg:'rgba(139,92,246,0.9)',shadow:'inset 0 1px 0 rgba(255,255,255,0.35),0 2px 12px rgba(139,92,246,0.35)',textActive:'#fff',textInactive:'#6b7280'};
+    const DARK={bg:'rgba(26,26,46,0.85)',shadow:'inset 0 1px 0 rgba(255,255,255,0.15),0 2px 8px rgba(0,0,0,0.2)',textActive:'#fff',textInactive:'#9aa0b4'};
+    let current='test';
+    function moveTo(el,scheme){const pr=pill.getBoundingClientRect(),er=el.getBoundingClientRect();ind.style.left=(er.left-pr.left)+'px';ind.style.width=er.width+'px';ind.style.background=scheme.bg;ind.style.boxShadow=scheme.shadow;}
+    window.addEventListener('load',()=>{ind.style.transition='none';moveTo(test,PURPLE);test.style.color=PURPLE.textActive;login.style.color=PURPLE.textInactive;setTimeout(()=>{ind.style.transition='left 0.42s cubic-bezier(0.34,1.56,0.64,1),width 0.42s cubic-bezier(0.34,1.56,0.64,1),background 0.35s ease,box-shadow 0.35s ease';},50);});
+    test.addEventListener('mouseenter',()=>{moveTo(test,PURPLE);test.style.color=PURPLE.textActive;login.style.color=PURPLE.textInactive;});
+    login.addEventListener('mouseenter',()=>{moveTo(login,DARK);login.style.color=DARK.textActive;test.style.color=DARK.textInactive;});
+    pill.addEventListener('mouseleave',()=>{if(current==='test'){moveTo(test,PURPLE);test.style.color=PURPLE.textActive;login.style.color=PURPLE.textInactive;}else{moveTo(login,DARK);login.style.color=DARK.textActive;test.style.color=DARK.textInactive;}});
+    test.addEventListener('click',()=>{current='test';});
+    login.addEventListener('click',()=>{current='login';});
   })();
   </script>
 
@@ -416,48 +338,32 @@
       <h2>What do we do?</h2>
       <p>Project Manhattan helps seafood companies understand, map and improve their traceability posture.</p>
     </div>
-
-    <!-- Row 1 — photo left, text right -->
     <div class="wwd-section">
-      <div class="wwd-img">
-        <img src="wwd-1.jpg" alt="Supply Chain Traceability"/>
-      </div>
+      <div class="wwd-img"><img src="wwd-1.jpg" alt="Supply Chain Traceability"/></div>
       <div class="wwd-text">
         <h3>Trace Every Step.<br/>From Ocean to Shelf.</h3>
         <p>Map your entire supply chain — from the fishing vessel and transshipment through landing, processing and final delivery. Every batch, every link, fully documented.</p>
         <a href="teaser.html" class="wwd-link">Explore the Platform →</a>
       </div>
     </div>
-
-    <!-- Row 2 — text left, photo right -->
     <div class="wwd-section reverse wwd-section-alt">
-      <div class="wwd-img">
-        <img src="wwd-2.jpg" alt="Manhattan Risk Index"/>
-      </div>
+      <div class="wwd-img"><img src="wwd-2.jpg" alt="Manhattan Risk Index"/></div>
       <div class="wwd-text">
         <h3>Know Your Risk.<br/>Manhattan Risk Index.</h3>
         <p>Get a data-driven traceability risk score built on GDST, SIMP, FSMA 204 and EU catch certificate standards. Instantly understand where your supply chain stands.</p>
         <a href="teaser.html" class="wwd-link">Learn about MRI →</a>
       </div>
     </div>
-
-    <!-- Row 3 — photo left, text right -->
     <div class="wwd-section">
-      <div class="wwd-img">
-        <img src="wwd-3.jpg" alt="Verify and Certify"/>
-      </div>
+      <div class="wwd-img"><img src="wwd-3.jpg" alt="Verify and Certify"/></div>
       <div class="wwd-text">
         <h3>Submit Evidence.<br/>Get Verified.</h3>
         <p>Upload certificates, documents and references against each KDE. Our expert team reviews your submission and publishes a verified score your buyers and regulators can trust.</p>
         <a href="contact.html" class="wwd-link">Request an Assessment →</a>
       </div>
     </div>
-
-    <!-- Row 4 — text left, photo right -->
     <div class="wwd-section reverse wwd-section-alt">
-      <div class="wwd-img">
-        <img src="wwd-4.jpg" alt="Species and Country Atlas"/>
-      </div>
+      <div class="wwd-img"><img src="wwd-4.jpg" alt="Species and Country Atlas"/></div>
       <div class="wwd-text">
         <h3>Species & Country.<br/>A Living Atlas.</h3>
         <p>Access a comprehensive database of 3,000+ species and 249 countries with taxonomy, regulatory and trade data — including ISSF stock status for tuna species.</p>
@@ -469,7 +375,6 @@
   <!-- PREMIUM FOOTER -->
   <footer class="pf-footer">
     <div class="pf-grid">
-      <!-- Brand -->
       <div>
         <div class="pf-brand">
           <img src="brand-logo.png" alt="Manhattan Logo"/>
@@ -484,7 +389,6 @@
           info@definitelynotvishnu.com
         </a>
       </div>
-      <!-- Platform -->
       <div>
         <div class="pf-col-title">Platform</div>
         <div class="pf-links">
@@ -495,7 +399,6 @@
           <a href="login.html">Product Studio</a>
         </div>
       </div>
-      <!-- Company -->
       <div>
         <div class="pf-col-title">Company</div>
         <div class="pf-links">
@@ -505,7 +408,6 @@
           <a href="login.html">Login</a>
         </div>
       </div>
-      <!-- Standards logos -->
       <div>
         <div class="pf-col-title">Aligned With</div>
         <div style="display:flex;flex-wrap:wrap;gap:6px;">
@@ -535,85 +437,76 @@
   <div class="qt-modal" id="qtModal" onclick="qtOutside(event)">
     <div class="qt-box">
       <button class="qt-close" onclick="closeQT()">×</button>
-      <!-- Questions view -->
       <!-- WELCOME SCREEN -->
       <div style="position:relative;display:flex;flex-direction:column;flex:1;min-height:0;width:100%;" id="qtWelcomeWrap">
         <div class="qt-scroll-arrow qt-scroll-up" id="qtWelScrollUp" onclick="qtScrollEl('qtWelcome','up')">▲</div>
         <div id="qtWelcome" style="padding:36px 36px 32px;text-align:center;">
-        <!-- Logo -->
-        <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:28px;">
-          <img src="brand-logo.png" style="width:32px;height:32px;object-fit:contain;"/>
-          <div style="text-align:left;line-height:1.1;">
-            <div style="font-size:8px;font-weight:700;letter-spacing:2px;color:#9aa0b4;text-transform:uppercase;">Project</div>
-            <div style="font-size:17px;font-weight:800;color:#1a1a2e;">Manhattan.</div>
+          <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:28px;">
+            <img src="brand-logo.png" style="width:32px;height:32px;object-fit:contain;"/>
+            <div style="text-align:left;line-height:1.1;">
+              <div style="font-size:8px;font-weight:700;letter-spacing:2px;color:#9aa0b4;text-transform:uppercase;">Project</div>
+              <div style="font-size:17px;font-weight:800;color:#1a1a2e;">Manhattan.</div>
+            </div>
           </div>
+          <div style="display:inline-flex;align-items:center;gap:7px;background:#f4f0ff;border-radius:999px;padding:5px 16px;font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:20px;">
+            <div style="width:6px;height:6px;border-radius:50%;background:#8b5cf6;"></div>
+            Traceability Readiness Check
+          </div>
+          <h2 style="font-size:24px;font-weight:800;color:#1a1a2e;line-height:1.2;margin-bottom:12px;">
+            How traceable is your<br/>seafood from catch to end?
+          </h2>
+          <p style="font-size:13px;color:#6b7280;line-height:1.8;margin-bottom:28px;max-width:380px;margin-left:auto;margin-right:auto;">
+            This short assessment takes about <strong style="color:#1a1a2e;">3 minutes</strong> and covers 15 key traceability dimensions — from vessel identity to supply chain transparency.
+          </p>
+          <div style="background:#f9fafc;border:1px solid #e8eaf0;border-radius:14px;padding:18px 20px;margin-bottom:28px;text-align:left;">
+            <div style="display:flex;align-items:flex-start;gap:12px;">
+              <div style="width:32px;height:32px;border-radius:50%;background:#f0fdf4;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+              </div>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:4px;">Your privacy is protected</div>
+                <div style="font-size:12px;color:#6b7280;line-height:1.6;">We do not store your answers, collect personal data, or track your responses. Everything stays in your browser session only. This is purely for your own insight.</div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:32px;text-align:left;">
+            <div style="font-size:11px;font-weight:700;color:#9aa0b4;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">What you will get</div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#4a4e69;">
+              <div style="width:20px;height:20px;border-radius:50%;background:#eef4fd;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              A traceability readiness score out of 45
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#4a4e69;">
+              <div style="width:20px;height:20px;border-radius:50%;background:#eef4fd;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              A personalised gap summary across 8 supply chain dimensions
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#4a4e69;">
+              <div style="width:20px;height:20px;border-radius:50%;background:#eef4fd;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              Honest, no-fluff insights — no sales pitch
+            </div>
+          </div>
+          <button onclick="startAssessment()" style="width:100%;padding:15px 24px;background:#1a1a2e;color:#fff;border:none;border-radius:12px;font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:background 0.2s,transform 0.15s;" onmouseover="this.style.background='#2d2d50'" onmouseout="this.style.background='#1a1a2e'">
+            Begin Assessment →
+          </button>
+          <p style="font-size:11px;color:#c0c4d0;margin-top:12px;">Takes about 3 minutes · No account required · 100% private</p>
         </div>
-        <!-- Badge -->
-        <div style="display:inline-flex;align-items:center;gap:7px;background:#f4f0ff;border-radius:999px;padding:5px 16px;font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:20px;">
-          <div style="width:6px;height:6px;border-radius:50%;background:#8b5cf6;"></div>
-          Traceability Readiness Check
-        </div>
-        <!-- Title -->
-        <h2 style="font-size:24px;font-weight:800;color:#1a1a2e;line-height:1.2;margin-bottom:12px;">
-          How traceable is your<br/>seafood from catch to end?
-        </h2>
-        <p style="font-size:13px;color:#6b7280;line-height:1.8;margin-bottom:28px;max-width:380px;margin-left:auto;margin-right:auto;">
-          This short assessment takes about <strong style="color:#1a1a2e;">3 minutes</strong> and covers 15 key traceability dimensions — from vessel identity to supply chain transparency.
-        </p>
-        <!-- Privacy notice -->
-        <div style="background:#f9fafc;border:1px solid #e8eaf0;border-radius:14px;padding:18px 20px;margin-bottom:28px;text-align:left;">
-          <div style="display:flex;align-items:flex-start;gap:12px;">
-            <div style="width:32px;height:32px;border-radius:50%;background:#f0fdf4;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-            </div>
-            <div>
-              <div style="font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:4px;">Your privacy is protected</div>
-              <div style="font-size:12px;color:#6b7280;line-height:1.6;">We do not store your answers, collect personal data, or track your responses. Everything stays in your browser session only. This is purely for your own insight.</div>
-            </div>
-          </div>
-        </div>
-        <!-- What you'll get -->
-        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:32px;text-align:left;">
-          <div style="font-size:11px;font-weight:700;color:#9aa0b4;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">What you will get</div>
-          <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#4a4e69;">
-            <div style="width:20px;height:20px;border-radius:50%;background:#eef4fd;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            </div>
-            A traceability readiness score out of 45
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#4a4e69;">
-            <div style="width:20px;height:20px;border-radius:50%;background:#eef4fd;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            </div>
-            A personalised gap summary across 8 supply chain dimensions
-          </div>
-          <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#4a4e69;">
-            <div style="width:20px;height:20px;border-radius:50%;background:#eef4fd;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            </div>
-            Honest, no-fluff insights — no sales pitch
-          </div>
-        </div>
-        <!-- CTA -->
-        <button onclick="startAssessment()" style="width:100%;padding:15px 24px;background:#1a1a2e;color:#fff;border:none;border-radius:12px;font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:background 0.2s,transform 0.15s;" onmouseover="this.style.background='#2d2d50'" onmouseout="this.style.background='#1a1a2e'">
-          Begin Assessment →
-        </button>
-        <p style="font-size:11px;color:#c0c4d0;margin-top:12px;">Takes about 3 minutes · No account required · 100% private</p>
-      </div>
-
-        </div><!-- end qtWelcome inner -->
         <div class="qt-scroll-arrow qt-scroll-down" id="qtWelScrollDown" onclick="qtScrollEl('qtWelcome','down')">▼</div>
-      </div><!-- end qtWelcomeWrap -->
+      </div>
 
       <!-- QUESTIONS -->
       <div id="qtQuestions" style="display:none;">
         <div class="qt-header">
-          <div class="qt-badge">⚡ Readiness Check</div>
+          <div class="qt-badge">Readiness Check</div>
           <div class="qt-title">How transparent is your supply chain?</div>
           <div class="qt-sub">15 questions across 8 traceability dimensions — see exactly where your gaps are.</div>
         </div>
         <div class="qt-progress"><div class="qt-progress-fill" id="qtFill" style="width:10%"></div></div>
-        <div class="qt-step-lbl" id="qtStepLbl">Question 1 of 10</div>
+        <div class="qt-step-lbl" id="qtStepLbl">Question 1 of 15</div>
         <div class="qt-q" id="qtQ"></div>
         <div class="qt-opts" id="qtOpts"></div>
         <div class="qt-nav">
@@ -621,9 +514,9 @@
           <button class="qt-btn-next" id="qtNext" onclick="qtNext()" disabled>Next →</button>
         </div>
       </div>
-      <!-- Result view -->
-      </div><!-- end qtQuestions -->
-      <div style="position:relative;flex:1;min-height:0;display:none;flex-direction:column;border-radius:9px;overflow:hidden;" id="qtResultWrap">
+
+      <!-- RESULT -->
+      <div style="position:relative;flex:1;min-height:0;display:none;flex-direction:column;overflow:hidden;" id="qtResultWrap">
         <div class="qt-scroll-arrow qt-scroll-up" id="qtScrollUp" onclick="qtScroll('up')">▲</div>
         <div class="qt-result" id="qtResult">
           <div class="qt-result-icon" id="qtResultIcon"></div>
@@ -631,19 +524,19 @@
           <div class="qt-result-desc" id="qtResultDesc"></div>
           <div class="qt-result-bars" id="qtResultBars"></div>
           <a href="contact.html" class="qt-result-cta">Get Your Full MRI Assessment →</a>
-        <div style="margin-top:10px;position:relative;display:flex;justify-content:center;">
-          <button onclick="downloadResult()" id="qtDownloadBtn"
-            style="display:inline-flex;align-items:center;gap:8px;background:#f4f6fb;border:1.5px solid #e0e3ed;border-radius:12px;padding:11px 22px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:#4a4e69;cursor:pointer;transition:all 0.2s;"
-            onmouseover="this.style.borderColor='#1a1a2e';this.style.color='#1a1a2e';document.getElementById('qtDlTip').style.opacity='1'"
-            onmouseout="this.style.borderColor='#e0e3ed';this.style.color='#4a4e69';document.getElementById('qtDlTip').style.opacity='0'">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Download My Result
-          </button>
-          <div id="qtDlTip" style="position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;font-size:11px;font-weight:500;padding:8px 14px;border-radius:8px;white-space:normal;max-width:240px;text-align:center;line-height:1.5;opacity:0;transition:opacity 0.2s;pointer-events:none;z-index:10;">
-            Since we don't store your data, download your result and share it with Manhattan if you wish to have our service.
-            <div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1a1a2e;"></div>
+          <div style="margin-top:10px;position:relative;display:flex;justify-content:center;">
+            <button onclick="downloadResult()" id="qtDownloadBtn"
+              style="display:inline-flex;align-items:center;gap:8px;background:#f4f6fb;border:1.5px solid #e0e3ed;border-radius:12px;padding:11px 22px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:#4a4e69;cursor:pointer;transition:all 0.2s;"
+              onmouseover="this.style.borderColor='#1a1a2e';this.style.color='#1a1a2e';document.getElementById('qtDlTip').style.opacity='1'"
+              onmouseout="this.style.borderColor='#e0e3ed';this.style.color='#4a4e69';document.getElementById('qtDlTip').style.opacity='0'">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download My Result
+            </button>
+            <div id="qtDlTip" style="position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;font-size:11px;font-weight:500;padding:8px 14px;border-radius:8px;white-space:normal;max-width:240px;text-align:center;line-height:1.5;opacity:0;transition:opacity 0.2s;pointer-events:none;z-index:10;">
+              Since we don't store your data, download your result and share it with Manhattan if you wish to have our service.
+              <div style="position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1a1a2e;"></div>
+            </div>
           </div>
-        </div>
         </div>
         <div class="qt-scroll-arrow qt-scroll-down" id="qtScrollDown" onclick="qtScroll('down')">▼</div>
       </div>
@@ -659,128 +552,28 @@
   document.addEventListener('DOMContentLoaded', async function() {
     const { data: { session } } = await dbClient.auth.getSession();
     if (session) { window.location.href = 'home-logged-in.html'; return; }
-    // Auto-open Quick Test if redirected from teaser
     if (sessionStorage.getItem('openQT') === '1') {
       sessionStorage.removeItem('openQT');
       setTimeout(() => openQT(), 300);
     }
   });
 
-  // ── QUICK TRACE TEST ────────────────────────────────────────
   const QT_QUESTIONS = [
-    // ── Section 1: First-Mile Visibility ──
-    {
-      section:'Section 1 — First-Mile Visibility',
-      q:'Do you capture and verify vessel activity (VMS/AIS) directly from the source for all your incoming seafood?',
-      opts:[{t:'Yes, for all vessels',score:3},{t:'Sometimes',score:1},{t:'No / Not sure',score:0}],
-      category:'First-Mile Visibility',
-      gap:'Your supply chain starts too late. You rely on supplier-provided documents instead of real-time, at-sea evidence.'
-    },
-    {
-      section:'Section 1 — First-Mile Visibility',
-      q:'Do you know the name, registration and flag state of every fishing vessel that supplies your product?',
-      opts:[{t:'Yes, for all vessels',score:3},{t:'For some vessels only',score:1},{t:'No, we do not track this',score:0}],
-      category:'First-Mile Visibility',
-      gap:'Without verified vessel identity, you cannot validate the origin or legality of your catch.'
-    },
-    // ── Section 2: Raw Material Provenance ──
-    {
-      section:'Section 2 — Raw Material Provenance',
-      q:'Can you link each batch or raw material lot to a verified trip — including vessel identity, fishing method, area and discharge composition?',
-      opts:[{t:'Yes, consistently',score:3},{t:'Partially',score:1},{t:'No',score:0}],
-      category:'Raw Material Provenance',
-      gap:'You cannot fully prove origin, validate sustainability claims, or demonstrate compliance in case of audit.'
-    },
-    {
-      section:'Section 2 — Raw Material Provenance',
-      q:'Can you identify which FAO fishing zone your seafood was caught in for every lot?',
-      opts:[{t:'Yes, always documented',score:3},{t:'Sometimes',score:1},{t:'No',score:0}],
-      category:'Raw Material Provenance',
-      gap:'Without FAO area documentation, you cannot meet basic catch certificate or import requirements.'
-    },
-    // ── Section 3: Database Verification ──
-    {
-      section:'Section 3 — Verification Against Authoritative Databases',
-      q:'Does your system automatically check supplier vessels and facilities against RFMO registries, ISSF PVR, IUU lists, MSC CoC, PSMA port lists and EU approvals?',
-      opts:[{t:'Yes, automated',score:3},{t:'We manually check',score:1},{t:'No',score:0}],
-      category:'Database Verification',
-      gap:'Manual verification is slow, prone to error, and risky — especially during audits or recalls.'
-    },
-    // ── Section 4: Documentation & Traceability ──
-    {
-      section:'Section 4 — Documentation & Traceability',
-      q:'How do you store and connect documents (catch certificates, port docs, processing records, CoCs) across lots and finished products?',
-      opts:[{t:'Full digital linkage',score:3},{t:'Mix of systems',score:1},{t:'Scattered PDFs, emails or paper-based',score:0}],
-      category:'Documentation',
-      gap:'If documents are not unified per lot and product, you cannot produce audit-ready traceability.'
-    },
-    {
-      section:'Section 4 — Documentation & Traceability',
-      q:'Does every batch of seafood you handle have a unique lot or batch number assigned from catch through to delivery?',
-      opts:[{t:'Yes, from catch to delivery',score:3},{t:'Only at processing stage',score:1},{t:'No lot tracking',score:0}],
-      category:'Documentation',
-      gap:'Without batch-level linking, a recall or audit will be slow and incomplete.'
-    },
-    {
-      section:'Section 4 — Documentation & Traceability',
-      q:'Can you trace a product back to its source within 4 hours if a recall is triggered?',
-      opts:[{t:'Yes, tested and ready',score:3},{t:'Probably, but untested',score:1},{t:'No, it would take much longer',score:0}],
-      category:'Documentation',
-      gap:'A recall that takes more than 4 hours puts consumers at risk and exposes you to regulatory action.'
-    },
-    // ── Section 5: Sustainability Claims ──
-    {
-      section:'Section 5 — Real-Time Proof of Sustainability Claims',
-      q:'Can you substantiate claims (MSC, FAD-Free, Free School, Social Accountability) instantly, based on data — not just supplier declarations?',
-      opts:[{t:'Yes, data-backed',score:3},{t:'Only partially',score:1},{t:'No',score:0}],
-      category:'Sustainability Claims',
-      gap:'If claims rely on trust, not verification, you are exposed to legal and reputational risk.'
-    },
-    {
-      section:'Section 5 — Real-Time Proof of Sustainability Claims',
-      q:'Do you hold a current Chain of Custody certification (MSC, ASC or equivalent) covering your operations?',
-      opts:[{t:'Yes, currently certified',score:3},{t:'In progress or pending',score:1},{t:'No certification',score:0}],
-      category:'Sustainability Claims',
-      gap:'Without a CoC certification, sustainability claims cannot be independently verified by buyers or regulators.'
-    },
-    // ── Section 6: Digital Readiness ──
-    {
-      section:'Section 6 — Digital & System Readiness',
-      q:'Do you retain traceability records for a minimum of 3 years and can produce them within 24 hours upon regulatory request?',
-      opts:[{t:'Yes, fully compliant',score:3},{t:'We retain records but retrieval takes time',score:1},{t:'No formal retention policy',score:0}],
-      category:'Digital Readiness',
-      gap:'Regulators expect records to be available within 24 hours. Without a formal retention and retrieval policy, you are exposed during audits.'
-    },
-    {
-      section:'Section 6 — Digital & System Readiness',
-      q:'Does your processor or supplier hold an approved food safety certification (BRC, HACCP, ISO 22000)?',
-      opts:[{t:'Yes, current certification',score:3},{t:'Some suppliers do',score:1},{t:'No certifications',score:0}],
-      category:'Digital Readiness',
-      gap:'Without food safety certification, you cannot meet the baseline requirements of most major buyers and markets.'
-    },
-    // ── Section 7: Human Welfare ──
-    {
-      section:'Section 7 — Human Welfare & Labour Standards',
-      q:'Do you have a documented Human Welfare and Labour Standards policy covering your entire supply chain?',
-      opts:[{t:'Yes, audited and documented',score:3},{t:'Policy exists but not audited',score:1},{t:'No policy',score:0}],
-      category:'Human Welfare',
-      gap:'Without a welfare policy, you cannot respond to buyer ESG requirements or social compliance audits.'
-    },
-    // ── Section 8: Buyer Transparency ──
-    {
-      section:'Section 8 — Downstream Buyer & Consumer Transparency',
-      q:'Can you provide a URL or link that your customers can use to independently verify the traceability of your product?',
-      opts:[{t:'Yes, publicly accessible',score:3},{t:'Available on request only',score:1},{t:'No',score:0}],
-      category:'Buyer Transparency',
-      gap:'Customers and retailers increasingly expect a direct, verifiable link — not a document or a claim.'
-    },
-    {
-      section:'Section 8 — Downstream Buyer & Consumer Transparency',
-      q:'Can you share traceability data digitally with buyers or regulators on request — within the same business day?',
-      opts:[{t:'Yes, through a system or portal',score:3},{t:'We can, but it takes time',score:1},{t:'No, we cannot share digitally',score:0}],
-      category:'Buyer Transparency',
-      gap:'If data cannot be shared on demand, you will lose ground to competitors who can demonstrate transparency instantly.'
-    },
+    {section:'Section 1 — First-Mile Visibility',q:'Do you capture and verify vessel activity (VMS/AIS) directly from the source for all your incoming seafood?',opts:[{t:'Yes, for all vessels',score:3},{t:'Sometimes',score:1},{t:'No / Not sure',score:0}],category:'First-Mile Visibility',gap:'Your supply chain starts too late. You rely on supplier-provided documents instead of real-time, at-sea evidence.'},
+    {section:'Section 1 — First-Mile Visibility',q:'Do you know the name, registration and flag state of every fishing vessel that supplies your product?',opts:[{t:'Yes, for all vessels',score:3},{t:'For some vessels only',score:1},{t:'No, we do not track this',score:0}],category:'First-Mile Visibility',gap:'Without verified vessel identity, you cannot validate the origin or legality of your catch.'},
+    {section:'Section 2 — Raw Material Provenance',q:'Can you link each batch or raw material lot to a verified trip — including vessel identity, fishing method, area and discharge composition?',opts:[{t:'Yes, consistently',score:3},{t:'Partially',score:1},{t:'No',score:0}],category:'Raw Material Provenance',gap:'You cannot fully prove origin, validate sustainability claims, or demonstrate compliance in case of audit.'},
+    {section:'Section 2 — Raw Material Provenance',q:'Can you identify which FAO fishing zone your seafood was caught in for every lot?',opts:[{t:'Yes, always documented',score:3},{t:'Sometimes',score:1},{t:'No',score:0}],category:'Raw Material Provenance',gap:'Without FAO area documentation, you cannot meet basic catch certificate or import requirements.'},
+    {section:'Section 3 — Verification Against Authoritative Databases',q:'Does your system automatically check supplier vessels and facilities against RFMO registries, ISSF PVR, IUU lists, MSC CoC, PSMA port lists and EU approvals?',opts:[{t:'Yes, automated',score:3},{t:'We manually check',score:1},{t:'No',score:0}],category:'Database Verification',gap:'Manual verification is slow, prone to error, and risky — especially during audits or recalls.'},
+    {section:'Section 4 — Documentation & Traceability',q:'How do you store and connect documents (catch certificates, port docs, processing records, CoCs) across lots and finished products?',opts:[{t:'Full digital linkage',score:3},{t:'Mix of systems',score:1},{t:'Scattered PDFs, emails or paper-based',score:0}],category:'Documentation',gap:'If documents are not unified per lot and product, you cannot produce audit-ready traceability.'},
+    {section:'Section 4 — Documentation & Traceability',q:'Does every batch of seafood you handle have a unique lot or batch number assigned from catch through to delivery?',opts:[{t:'Yes, from catch to delivery',score:3},{t:'Only at processing stage',score:1},{t:'No lot tracking',score:0}],category:'Documentation',gap:'Without batch-level linking, a recall or audit will be slow and incomplete.'},
+    {section:'Section 4 — Documentation & Traceability',q:'Can you trace a product back to its source within 4 hours if a recall is triggered?',opts:[{t:'Yes, tested and ready',score:3},{t:'Probably, but untested',score:1},{t:'No, it would take much longer',score:0}],category:'Documentation',gap:'A recall that takes more than 4 hours puts consumers at risk and exposes you to regulatory action.'},
+    {section:'Section 5 — Real-Time Proof of Sustainability Claims',q:'Can you substantiate claims (MSC, FAD-Free, Free School, Social Accountability) instantly, based on data — not just supplier declarations?',opts:[{t:'Yes, data-backed',score:3},{t:'Only partially',score:1},{t:'No',score:0}],category:'Sustainability Claims',gap:'If claims rely on trust, not verification, you are exposed to legal and reputational risk.'},
+    {section:'Section 5 — Real-Time Proof of Sustainability Claims',q:'Do you hold a current Chain of Custody certification (MSC, ASC or equivalent) covering your operations?',opts:[{t:'Yes, currently certified',score:3},{t:'In progress or pending',score:1},{t:'No certification',score:0}],category:'Sustainability Claims',gap:'Without a CoC certification, sustainability claims cannot be independently verified by buyers or regulators.'},
+    {section:'Section 6 — Digital & System Readiness',q:'Do you retain traceability records for a minimum of 3 years and can produce them within 24 hours upon regulatory request?',opts:[{t:'Yes, fully compliant',score:3},{t:'We retain records but retrieval takes time',score:1},{t:'No formal retention policy',score:0}],category:'Digital Readiness',gap:'Regulators expect records to be available within 24 hours. Without a formal retention and retrieval policy, you are exposed during audits.'},
+    {section:'Section 6 — Digital & System Readiness',q:'Does your processor or supplier hold an approved food safety certification (BRC, HACCP, ISO 22000)?',opts:[{t:'Yes, current certification',score:3},{t:'Some suppliers do',score:1},{t:'No certifications',score:0}],category:'Digital Readiness',gap:'Without food safety certification, you cannot meet the baseline requirements of most major buyers and markets.'},
+    {section:'Section 7 — Human Welfare & Labour Standards',q:'Do you have a documented Human Welfare and Labour Standards policy covering your entire supply chain?',opts:[{t:'Yes, audited and documented',score:3},{t:'Policy exists but not audited',score:1},{t:'No policy',score:0}],category:'Human Welfare',gap:'Without a welfare policy, you cannot respond to buyer ESG requirements or social compliance audits.'},
+    {section:'Section 8 — Downstream & Consumer Transparency',q:'Can you provide a URL or link that your customers can use to independently verify the traceability of your product?',opts:[{t:'Yes, publicly accessible',score:3},{t:'Available on request only',score:1},{t:'No',score:0}],category:'Supply Chain Transparency',gap:'Customers and retailers increasingly expect a direct, verifiable link — not a document or a claim.'},
+    {section:'Section 8 — Downstream & Consumer Transparency',q:'Can you share traceability data digitally with buyers or regulators on request — within the same business day?',opts:[{t:'Yes, through a system or portal',score:3},{t:'We can, but it takes time',score:1},{t:'No, we cannot share digitally',score:0}],category:'Supply Chain Transparency',gap:'If data cannot be shared on demand, you will lose ground to competitors who can demonstrate transparency instantly.'},
   ];
 
   let qtIdx = 0;
@@ -789,7 +582,6 @@
   function openQT() {
     qtIdx = 0;
     qtAnswers = new Array(QT_QUESTIONS.length).fill(null);
-    // Show welcome screen, hide questions and result
     document.getElementById('qtWelcomeWrap').style.display = 'flex';
     document.getElementById('qtQuestions').style.display = 'none';
     document.getElementById('qtResultWrap').style.display = 'none';
@@ -802,52 +594,11 @@
       updateScrollArrows('qtWelcome','qtWelScrollUp','qtWelScrollDown');
     }, 100);
   }
+
   function startAssessment() {
     document.getElementById('qtWelcomeWrap').style.display = 'none';
     document.getElementById('qtQuestions').style.display = 'block';
     renderQT();
-  }
-  function downloadResult() {
-    const score = document.getElementById('qtResultIcon').querySelector('div')?.textContent || '';
-    const title = document.getElementById('qtResultTitle').textContent || '';
-    const gaps = [...document.querySelectorAll('#qtResultBars .report-gap-item, #qtResultBars [style*="display:flex"]')]
-      .map(el => el.textContent.trim()).filter(Boolean).join('\n');
-
-    // Build text report
-    const date = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
-    const lines = [
-      'PROJECT MANHATTAN — TRACEABILITY READINESS RESULT',
-      '='.repeat(50),
-      `Date: ${date}`,
-      `Score: ${score}`,
-      `Risk Level: ${title}`,
-      '',
-      'SUPPLY CHAIN GAP SUMMARY',
-      '-'.repeat(50),
-    ];
-
-    // Collect gap items
-    document.querySelectorAll('#qtResultBars [style*="margin-bottom"]').forEach(el => {
-      const cat = el.querySelector('[style*="font-weight:700"]')?.textContent?.trim();
-      const gap = el.querySelector('[style*="color:#6b7280"]')?.textContent?.trim();
-      if (cat) lines.push(`• ${cat}: ${gap || ''}`);
-    });
-
-    lines.push('');
-    lines.push('='.repeat(50));
-    lines.push('Want a full verified MRI Assessment?');
-    lines.push('Contact Project Manhattan: contact.html');
-    lines.push('');
-    lines.push('Note: This result was generated privately in your browser.');
-    lines.push('Project Manhattan does not store or retain your responses.');
-
-    const blob = new Blob([lines.join('\n')], {type:'text/plain'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Manhattan_Readiness_Result_${date.replace(/ /g,'_')}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
   }
 
   function closeQT() {
@@ -858,118 +609,57 @@
     document.getElementById('qtResultWrap').style.display = 'none';
     document.getElementById('qtResult').style.display = 'none';
   }
+
   function updateScrollArrows(elId='qtResult', upId='qtScrollUp', dnId='qtScrollDown') {
-    const el = document.getElementById(elId);
-    const up = document.getElementById(upId);
-    const dn = document.getElementById(dnId);
-    if (!el || !up || !dn) return;
-    const atTop = el.scrollTop <= 4;
-    const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 4;
-    up.classList.toggle('show', !atTop);
-    dn.classList.toggle('show', !atBottom);
-    el.classList.toggle('can-scroll-up', !atTop);
-    el.classList.toggle('can-scroll-down', !atBottom);
+    const el=document.getElementById(elId),up=document.getElementById(upId),dn=document.getElementById(dnId);
+    if(!el||!up||!dn)return;
+    const atTop=el.scrollTop<=4,atBottom=el.scrollTop+el.clientHeight>=el.scrollHeight-4;
+    up.classList.toggle('show',!atTop);dn.classList.toggle('show',!atBottom);
+    el.classList.toggle('can-scroll-up',!atTop);el.classList.toggle('can-scroll-down',!atBottom);
   }
-  function qtScroll(dir) {
-    const el = document.getElementById('qtResult');
-    el.scrollBy({top: dir === 'down' ? 120 : -120, behavior: 'smooth'});
-  }
-  function qtScrollEl(elId, dir) {
-    const el = document.getElementById(elId);
-    if (el) el.scrollBy({top: dir === 'down' ? 120 : -120, behavior: 'smooth'});
-  }
-  function qtOutside(e) {
-    if (e.target === document.getElementById('qtModal')) closeQT();
-  }
+  function qtScroll(dir){const el=document.getElementById('qtResult');el.scrollBy({top:dir==='down'?120:-120,behavior:'smooth'});}
+  function qtScrollEl(elId,dir){const el=document.getElementById(elId);if(el)el.scrollBy({top:dir==='down'?120:-120,behavior:'smooth'});}
+  function qtOutside(e){if(e.target===document.getElementById('qtModal'))closeQT();}
 
   function renderQT() {
-    const q = QT_QUESTIONS[qtIdx];
-    const total = QT_QUESTIONS.length;
-    const pct = Math.round(((qtIdx + 1) / total) * 100);
-    document.getElementById('qtFill').style.width = pct + '%';
-    document.getElementById('qtStepLbl').textContent = q.section || `Question ${qtIdx + 1} of ${total}`;
-    document.getElementById('qtQ').textContent = q.q;
-    document.getElementById('qtBack').style.visibility = qtIdx === 0 ? 'hidden' : 'visible';
-    document.getElementById('qtNext').textContent = qtIdx === total - 1 ? 'See Results →' : 'Next →';
-    document.getElementById('qtNext').disabled = qtAnswers[qtIdx] === null;
-
-    document.getElementById('qtOpts').innerHTML = q.opts.map((o, i) => `
-      <div class="qt-opt ${qtAnswers[qtIdx] === i ? 'selected' : ''}" onclick="selectOpt(${i})">
-        ${o.t}
-      </div>
+    const q=QT_QUESTIONS[qtIdx],total=QT_QUESTIONS.length,pct=Math.round(((qtIdx+1)/total)*100);
+    document.getElementById('qtFill').style.width=pct+'%';
+    document.getElementById('qtStepLbl').textContent=q.section||`Question ${qtIdx+1} of ${total}`;
+    document.getElementById('qtQ').textContent=q.q;
+    document.getElementById('qtBack').style.visibility=qtIdx===0?'hidden':'visible';
+    document.getElementById('qtNext').textContent=qtIdx===total-1?'See Results →':'Next →';
+    document.getElementById('qtNext').disabled=qtAnswers[qtIdx]===null;
+    document.getElementById('qtOpts').innerHTML=q.opts.map((o,i)=>`
+      <div class="qt-opt ${qtAnswers[qtIdx]===i?'selected':''}" onclick="selectOpt(${i})">${o.t}</div>
     `).join('');
   }
 
-  function selectOpt(i) {
-    qtAnswers[qtIdx] = i;
-    document.querySelectorAll('.qt-opt').forEach((el, idx) => el.classList.toggle('selected', idx === i));
-    document.getElementById('qtNext').disabled = false;
-  }
-
-  function qtNext() {
-    if (qtAnswers[qtIdx] === null) return;
-    if (qtIdx < QT_QUESTIONS.length - 1) {
-      qtIdx++;
-      renderQT();
-    } else {
-      showQTResult();
-    }
-  }
-  function qtPrev() {
-    if (qtIdx > 0) { qtIdx--; renderQT(); }
-  }
+  function selectOpt(i){qtAnswers[qtIdx]=i;document.querySelectorAll('.qt-opt').forEach((el,idx)=>el.classList.toggle('selected',idx===i));document.getElementById('qtNext').disabled=false;}
+  function qtNext(){if(qtAnswers[qtIdx]===null)return;if(qtIdx<QT_QUESTIONS.length-1){qtIdx++;renderQT();}else{showQTResult();}}
+  function qtPrev(){if(qtIdx>0){qtIdx--;renderQT();}}
 
   function showQTResult() {
-    const totalScore = qtAnswers.reduce((sum, ans, i) => {
-      return sum + (ans !== null ? QT_QUESTIONS[i].opts[ans].score : 0);
-    }, 0);
-    // Max score: sum of max option per question
-    const maxScore = QT_QUESTIONS.reduce((sum, q) => sum + Math.max(...q.opts.map(o=>o.score)), 0);
-    const pct = Math.round((totalScore / maxScore) * 100);
-
-    // Collect gaps — deduplicated by category, first gap per category wins
-    const seenCats = new Set();
-    const gaps = [];
-    QT_QUESTIONS.forEach((q, i) => {
-      const ans = qtAnswers[i];
-      const maxOpt = Math.max(...q.opts.map(o=>o.score));
-      if ((ans === null || q.opts[ans].score < maxOpt) && !seenCats.has(q.category)) {
-        seenCats.add(q.category);
-        gaps.push({category: q.category, gap: q.gap});
-      }
+    const totalScore=qtAnswers.reduce((sum,ans,i)=>sum+(ans!==null?QT_QUESTIONS[i].opts[ans].score:0),0);
+    const maxScore=QT_QUESTIONS.reduce((sum,q)=>sum+Math.max(...q.opts.map(o=>o.score)),0);
+    const seenCats=new Set(),gaps=[];
+    QT_QUESTIONS.forEach((q,i)=>{
+      const ans=qtAnswers[i],maxOpt=Math.max(...q.opts.map(o=>o.score));
+      if((ans===null||q.opts[ans].score<maxOpt)&&!seenCats.has(q.category)){seenCats.add(q.category);gaps.push({category:q.category,gap:q.gap});}
     });
+    let title,desc,color,tierLabel;
+    if(totalScore<=15){title='Critical Risk';color='#e63946';tierLabel='High exposure to IUU / mislabeling';desc='Your supply chain may not be as transparent as you think. There are significant verification gaps that expose you to mislabeling, recalls and compliance failures.';}
+    else if(totalScore<=30){title='Moderate Risk';color='#f59e0b';tierLabel='Significant verification gaps';desc='You have some traceability systems in place, but key verification gaps remain. Without first-mile proof and automated checks, you remain exposed during audits.';}
+    else{title='Low Risk';color='#16a34a';tierLabel='Strong traceability posture';desc='Your traceability posture is strong. A full MRI Assessment will verify your claims and produce a score you can share with buyers and regulators with confidence.';}
 
-    // Tier — matches ChatGPT scoring: 0-5 Critical, 6-10 Moderate, 11-15 Low
-    // Remap our 0-15 scale
-    let tier, title, desc, color, tierLabel;
-    if (totalScore <= 15) {
-      tier='critical'; title='Critical Risk'; color='#e63946'; tierLabel='High exposure to IUU / mislabeling';
-      desc='Your supply chain may not be as transparent as you think. There are significant verification gaps that expose you to mislabeling, recalls and compliance failures.';
-    } else if (totalScore <= 30) {
-      tier='moderate'; title='Moderate Risk'; color='#f59e0b'; tierLabel='Significant verification gaps';
-      desc='You have some traceability systems in place, but key verification gaps remain. Without first-mile proof and automated checks, you remain exposed during audits.';
-    } else {
-      tier='low'; title='Low Risk'; color='#16a34a'; tierLabel='Missing real-time first-mile proof';
-      desc='Your traceability posture is strong. A full MRI Assessment will verify your claims and produce a score you can share with buyers and regulators with confidence.';
-    }
+    document.getElementById('qtQuestions').style.display='none';
+    const resultWrap=document.getElementById('qtResultWrap');
+    resultWrap.style.display='flex';resultWrap.style.flexDirection='column';resultWrap.style.flex='1';resultWrap.style.minHeight='0';
+    const result=document.getElementById('qtResult');
+    result.style.display='flex';result.style.flexDirection='column';result.style.gap='24px';result.scrollTop=0;
+    setTimeout(()=>updateScrollArrows(),100);
+    result.onscroll=()=>updateScrollArrows();
 
-    document.getElementById('qtQuestions').style.display = 'none';
-    const resultWrap = document.getElementById('qtResultWrap');
-    resultWrap.style.display = 'flex';
-    resultWrap.style.flexDirection = 'column';
-    resultWrap.style.flex = '1';
-    resultWrap.style.minHeight = '0';
-    const result = document.getElementById('qtResult');
-    result.style.display = 'flex';
-    result.style.flexDirection = 'column';
-    result.style.gap = '24px';
-    result.scrollTop = 0;
-    // Init scroll arrows
-    setTimeout(() => updateScrollArrows(), 100);
-    result.onscroll = () => updateScrollArrows();
-
-    // ── Score hero ──
-    document.getElementById('qtResultIcon').innerHTML = `
+    document.getElementById('qtResultIcon').innerHTML=`
       <div style="background:linear-gradient(135deg,#1a1a2e,#2d2d50);border-radius:16px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px;">
         <div>
           <div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Your Readiness Score</div>
@@ -984,31 +674,27 @@
           <div style="font-size:12px;color:rgba(255,255,255,0.5);max-width:200px;line-height:1.5;">${desc}</div>
         </div>
       </div>`;
+    document.getElementById('qtResultTitle').textContent='';
+    document.getElementById('qtResultDesc').innerHTML='';
+    document.getElementById('qtResultBars').innerHTML=gaps.length===0
+      ?`<div style="background:#f0fdf4;border-radius:12px;padding:16px 20px;color:#16a34a;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><div style="width:20px;height:20px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;font-size:11px;">✓</div>No critical gaps identified across your supply chain.</div>`
+      :`<div><div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:12px;display:flex;align-items:center;gap:8px;"><div style="width:3px;height:16px;background:#e63946;border-radius:999px;"></div>Your Supply Chain Risk Summary</div>${gaps.map(g=>`<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#fafafa;border:1px solid #f0f2f8;border-radius:10px;margin-bottom:8px;"><div style="width:20px;height:20px;border-radius:50%;background:#fff5f5;color:#e63946;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">✕</div><div><div style="font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:2px;">${g.category}</div><div style="font-size:11px;color:#6b7280;line-height:1.6;">${g.gap}</div></div></div>`).join('')}</div>`;
+  }
 
-    // ── Gaps ──
-    document.getElementById('qtResultTitle').textContent = '';
-    document.getElementById('qtResultDesc').innerHTML = '';
-    const gapHtml = gaps.length === 0
-      ? `<div style="background:#f0fdf4;border-radius:12px;padding:16px 20px;color:#16a34a;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;">
-          <div style="width:20px;height:20px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;font-size:11px;">✓</div>
-          No critical gaps identified across your supply chain.
-        </div>`
-      : `<div>
-          <div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
-            <div style="width:3px;height:16px;background:#e63946;border-radius:999px;"></div>
-            Your Supply Chain Risk Summary
-          </div>
-          ${gaps.map(g => `
-          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#fafafa;border:1px solid #f0f2f8;border-radius:10px;margin-bottom:8px;">
-            <div style="width:20px;height:20px;border-radius:50%;background:#fff5f5;color:#e63946;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">✕</div>
-            <div>
-              <div style="font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:2px;">${g.category}</div>
-              <div style="font-size:11px;color:#6b7280;line-height:1.6;">${g.gap}</div>
-            </div>
-          </div>`).join('')}
-        </div>`;
-
-    document.getElementById('qtResultBars').innerHTML = gapHtml;
+  function downloadResult() {
+    const score=document.getElementById('qtResultIcon').querySelector('div')?.textContent||'';
+    const title=document.getElementById('qtResultTitle').textContent||'';
+    const date=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+    const lines=['PROJECT MANHATTAN — TRACEABILITY READINESS RESULT','='.repeat(50),`Date: ${date}`,`Score: ${score}`,`Risk Level: ${title}`,'','SUPPLY CHAIN GAP SUMMARY','-'.repeat(50)];
+    document.querySelectorAll('#qtResultBars [style*="margin-bottom"]').forEach(el=>{
+      const cat=el.querySelector('[style*="font-weight:700"]')?.textContent?.trim();
+      const gap=el.querySelector('[style*="color:#6b7280"]')?.textContent?.trim();
+      if(cat)lines.push(`• ${cat}: ${gap||''}`);
+    });
+    lines.push('','='.repeat(50),'Want a full verified MRI Assessment?','Contact Project Manhattan: contact.html','','Note: This result was generated privately in your browser.','Project Manhattan does not store or retain your responses.');
+    const blob=new Blob([lines.join('\n')],{type:'text/plain'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');a.href=url;a.download=`Manhattan_Readiness_Result_${date.replace(/ /g,'_')}.txt`;a.click();URL.revokeObjectURL(url);
   }
   </script>
 </body>
