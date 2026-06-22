@@ -187,6 +187,10 @@
         <div id="pProducts"><span style="font-size:12px;color:#9aa0b4;">No products</span></div>
       </div>
       <div class="ar-section">
+        <div class="ar-sec-title">📊 Compliance Snapshot</div>
+        <div id="pCompliance"></div>
+      </div>
+      <div class="ar-section">
         <div class="ar-sec-title">🔍 KDE Responses</div>
         <div id="pKDE"></div>
       </div>
@@ -197,10 +201,6 @@
       <div class="comment-box">
         <div class="comment-lbl">Expert Comments</div>
         <textarea class="comment-ta" id="pComment" rows="4" placeholder="Add your review comments, feedback, or requests for more information..."></textarea>
-      </div>
-      <div class="ar-section">
-        <div class="ar-sec-title">📊 Compliance Snapshot</div>
-        <div id="pCompliance" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
       </div>
       <div class="ar-actions">
         <button class="btn-verify" onclick="updateStatus('verified')">✅ Verify & Publish</button>
@@ -552,43 +552,133 @@ function closeDocViewer(e){
     document.getElementById('docViewer').classList.remove('open');
 }
 function renderCompliance(kde){
-  // GDST — digital KDE completeness across all stages
-  const gdstKeys=['fv_name','fv_imo','fv_flag','fv_species','fv_gtin','fv_linking','fv_weight','fv_area','fv_permit','fv_coc','fcl_bol','fcl_linking','fcl_weight','fcl_port','fcl_ownership','pp_gtin','pp_lot','pp_linking','pp_weight','lfp_gtin','lfp_linking','lfp_weight','lfp_source','lfp_dest'];
-  // FSMA — lot codes + KDE records
-  const fsmaKeys=['s_fsma_lot','c_fsma_kde','c_fsvp','fcl_linking','pp_lot','lfp_linking','c_recall','c_digital','c_internal'];
-  // SIMP — US entry readiness
-  const simpKeys=['s_simp','s_iftp','fv_name','fv_imo','fv_flag','fv_area','fv_permit','fcl_landing_date','fcl_product_form','fcl_port','fcl_weight','c_internal'];
-  // EU — catch certificate requirements
-  const euKeys=['fcl_master_decl','fcl_ca_validation','fcl_net_weight','fcl_eu','pp_eu','c_eu','fv_name','fv_imo','fv_flag','fv_rfmo','fv_permit','fcl_port','fcl_species'];
-
-  function calcPct(keys){
-    const answered=keys.filter(k=>kde[k]?.ans==='av').length;
-    const partial=keys.filter(k=>kde[k]?.ans==='pa').length;
-    return Math.round(((answered+(partial*0.5))/keys.length)*100);
-  }
-
-  const scores=[
-    {label:'GDST Traceability',img:'gdst-ca.png',pct:calcPct(gdstKeys),color:'#16a34a',sub:'Data Coverage'},
-    {label:'FSMA 204 Readiness',img:'fsma-ca.png',pct:calcPct(fsmaKeys),color:'#f59e0b',sub:'Readiness Score'},
-    {label:'NOAA SIMP',img:'simp-ca.png',pct:calcPct(simpKeys),color:'#e63946',sub:'Entry Readiness'},
-    {label:'EU Catch Certificate',img:'eu-ca.png',pct:calcPct(euKeys),color:'#1a6fdb',sub:'Compatibility'},
+  const STANDARDS=[
+    {
+      id:'gdst',label:'GDST Traceability',img:'gdst-ca.png',color:'#16a34a',sub:'Data Coverage',
+      keys:[
+        {id:'fv_name',label:'Fishing vessel name'},
+        {id:'fv_imo',label:'IMO number'},
+        {id:'fv_flag',label:'Flag state'},
+        {id:'fv_species',label:'Species (scientific name)'},
+        {id:'fv_gtin',label:'GTIN at harvest'},
+        {id:'fv_linking',label:'Linking KDE at harvest'},
+        {id:'fv_weight',label:'Weight at harvest'},
+        {id:'fv_area',label:'FAO catch area'},
+        {id:'fv_permit',label:'Fishing permit'},
+        {id:'fv_coc',label:'Chain of Custody cert — harvest'},
+        {id:'fcl_bol',label:'Bill of Lading'},
+        {id:'fcl_linking',label:'Linking KDE at landing'},
+        {id:'fcl_weight',label:'Weight at landing'},
+        {id:'fcl_port',label:'Port of landing'},
+        {id:'fcl_ownership',label:'Product ownership at landing'},
+        {id:'pp_gtin',label:'GTIN at processing'},
+        {id:'pp_lot',label:'Lot code at processing'},
+        {id:'pp_linking',label:'Linking KDE at processing'},
+        {id:'pp_weight',label:'Weight at processing'},
+        {id:'lfp_gtin',label:'GTIN on shipping docs'},
+        {id:'lfp_linking',label:'Linking KDE on shipping docs'},
+        {id:'lfp_weight',label:'Weight on shipping docs'},
+        {id:'lfp_source',label:'Source location on shipping docs'},
+        {id:'lfp_dest',label:'Destination on shipping docs'},
+      ]
+    },
+    {
+      id:'fsma',label:'FSMA 204 Readiness',img:'fsma-ca.png',color:'#f59e0b',sub:'Readiness Score',
+      keys:[
+        {id:'s_fsma_lot',label:'FSMA 204 traceability lot code at each CTE'},
+        {id:'c_fsma_kde',label:'FSMA 204 KDE record maintained per lot'},
+        {id:'c_fsvp',label:'Foreign Supplier Verification Program (FSVP)'},
+        {id:'fcl_linking',label:'Linking KDE at landing'},
+        {id:'pp_lot',label:'Lot code at processing'},
+        {id:'lfp_linking',label:'Linking KDE on shipping docs'},
+        {id:'c_recall',label:'Product recall within 4 hours'},
+        {id:'c_digital',label:'Traceability data captured digitally'},
+        {id:'c_internal',label:'Internal traceability system (source to sale)'},
+      ]
+    },
+    {
+      id:'simp',label:'NOAA SIMP',img:'simp-ca.png',color:'#e63946',sub:'Entry Readiness',
+      keys:[
+        {id:'s_simp',label:'SIMP entry filing'},
+        {id:'s_iftp',label:'NOAA International Fisheries Trade Permit (IFTP)'},
+        {id:'fv_name',label:'Fishing vessel name'},
+        {id:'fv_imo',label:'IMO number'},
+        {id:'fv_flag',label:'Flag state'},
+        {id:'fv_area',label:'FAO catch area'},
+        {id:'fv_permit',label:'Fishing permit'},
+        {id:'fcl_landing_date',label:'Date of first landing documented'},
+        {id:'fcl_product_form',label:'Product form at landing recorded'},
+        {id:'fcl_port',label:'Port of landing'},
+        {id:'fcl_weight',label:'Weight at landing'},
+        {id:'c_internal',label:'Internal chain of custody system'},
+      ]
+    },
+    {
+      id:'eu',label:'EU Catch Certificate',img:'eu-ca.png',color:'#1a6fdb',sub:'Compatibility',
+      keys:[
+        {id:'fcl_master_decl',label:'Vessel master signed declaration'},
+        {id:'fcl_ca_validation',label:'Competent authority catch cert validation'},
+        {id:'fcl_net_weight',label:'Net weight specifically recorded'},
+        {id:'fcl_eu',label:'EU competent authority port approval'},
+        {id:'pp_eu',label:'EU facility approval number'},
+        {id:'c_eu',label:'EU facility approval — certifications'},
+        {id:'fv_name',label:'Fishing vessel name'},
+        {id:'fv_imo',label:'IMO number'},
+        {id:'fv_flag',label:'Flag state'},
+        {id:'fv_rfmo',label:'Vessel on RFMO register'},
+        {id:'fv_permit',label:'Fishing permit'},
+        {id:'fcl_port',label:'Port of landing'},
+        {id:'fcl_species',label:'Species at landing record'},
+      ]
+    },
   ];
 
-  document.getElementById('pCompliance').innerHTML=scores.map(s=>`
-    <div style="background:#f9fafc;border:1px solid #e8eaf0;border-radius:12px;padding:12px 14px;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-        <img src="${s.img}" style="height:22px;object-fit:contain;"/>
-        <span style="font-size:11px;font-weight:700;color:#6b7280;">${s.label}</span>
+  function calcPct(keys){
+    const av=keys.filter(k=>kde[k.id]?.ans==='av').length;
+    const pa=keys.filter(k=>kde[k.id]?.ans==='pa').length;
+    return Math.round(((av+(pa*0.5))/keys.length)*100);
+  }
+
+  document.getElementById('pCompliance').innerHTML=STANDARDS.map(s=>{
+    const pct=calcPct(s.keys);
+    const rows=s.keys.map(k=>{
+      const ans=kde[k.id]?.ans;
+      const icon=ans==='av'?'✓':ans==='pa'?'◑':ans==='un'?'✗':'—';
+      const col=ans==='av'?'#16a34a':ans==='pa'?'#f59e0b':ans==='un'?'#e63946':'#c0c4d0';
+      const bg=ans==='av'?'#f0fdf4':ans==='pa'?'#fffbeb':ans==='un'?'#fff5f5':'#f4f6fb';
+      return `<div style="display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid #f0f2f8;">
+        <span style="width:18px;height:18px;border-radius:50%;background:${bg};color:${col};font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${icon}</span>
+        <span style="font-size:11px;color:#4a4e69;">${k.label}</span>
+      </div>`;
+    }).join('');
+    return `<div style="background:#fff;border:1px solid #e8eaf0;border-radius:12px;overflow:hidden;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;background:#f9fafc;" onclick="toggleCompliance('comp_${s.id}')">
+        <div style="display:flex;align-items:center;gap:9px;">
+          <img src="${s.img}" style="height:24px;object-fit:contain;" onerror="this.style.display='none'"/>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#1a1a2e;">${s.label}</div>
+            <div style="font-size:10px;color:#9aa0b4;">${s.sub}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:70px;height:4px;background:#e8eaf0;border-radius:999px;overflow:hidden;">
+            <div style="width:${pct}%;height:100%;background:${s.color};border-radius:999px;"></div>
+          </div>
+          <span style="font-size:13px;font-weight:800;color:${s.color};min-width:34px;text-align:right;">${pct}%</span>
+          <span style="font-size:10px;color:#c0c4d0;">▼</span>
+        </div>
       </div>
-      <div style="height:4px;background:#e8eaf0;border-radius:999px;overflow:hidden;margin-bottom:5px;">
-        <div style="width:${s.pct}%;height:100%;background:${s.color};border-radius:999px;"></div>
+      <div id="comp_${s.id}" style="display:none;padding:8px 14px 4px;">
+        ${rows}
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <span style="font-size:10px;color:#9aa0b4;">${s.sub}</span>
-        <span style="font-size:12px;font-weight:800;color:${s.color};">${s.pct}%</span>
-      </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
+}
+
+function toggleCompliance(id){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.style.display=el.style.display==='none'?'block':'none';
 }
 
 function confirmDelete(){
