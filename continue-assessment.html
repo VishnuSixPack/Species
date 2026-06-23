@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Continue Assessment — Project Manhattan</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="icon" type="image/png" href="brand-logo.png"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Poppins',sans-serif;background:#d4dfe8;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+
+    /* ── ENTER CODE SCREEN ── */
+    .screen{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:24px 32px;z-index:10;}
+    .screen.active{display:flex;}
+    .mw{position:relative;width:100%;max-width:calc(100vw - 48px);border-radius:33px;}
+    .mc{background:#fff;border-radius:33px;padding:28px 40px 28px;width:100%;height:calc(100vh - 48px);overflow:hidden;display:flex;flex-direction:column;}
+    .no-glow .mw::before,.no-glow .mw::after{display:none;}
+    .no-glow .mc{box-shadow:0 4px 32px rgba(0,0,0,0.1);}
+
+    .logo{display:flex;align-items:center;gap:10px;text-decoration:none;margin-bottom:32px;}
+    .logo-icon{width:36px;height:36px;background:transparent;border-radius:10px;display:flex;align-items:center;justify-content:center;}
+    .logo-project{font-size:9px;font-weight:700;letter-spacing:2.5px;color:#9aa0b4;text-transform:uppercase;}
+    .logo-name{font-size:16px;font-weight:800;color:#1a1a2e;}
+
+    .big-h{font-size:30px;font-weight:800;color:#1a1a2e;letter-spacing:-0.8px;margin-bottom:7px;}
+    .big-sub{font-size:13px;color:#6b7280;margin-bottom:32px;line-height:1.6;max-width:420px;}
+    .code-lbl{font-size:13px;font-weight:600;color:#1a1a2e;margin-bottom:14px;}
+    .code-row{display:flex;align-items:center;gap:6px;margin-bottom:28px;}
+    .cbox{width:40px;height:46px;border:1px solid #dde1ed;border-radius:10px;font-size:18px;font-weight:700;font-family:'DM Mono',monospace;color:#1a1a2e;text-align:center;outline:none;background:#fff;transition:border-color 0.2s,box-shadow 0.2s;text-transform:uppercase;}
+    .cbox:focus{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,0.1);}
+    .csep{font-size:15px;color:#d0d4e0;user-select:none;}
+    .btn-purple{background:#8b5cf6;color:#fff;border:none;border-radius:999px;padding:11px 30px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s;}
+    .btn-purple:hover{background:#7c3aed;}
+    .btn-ghost{background:#f4f6fb;color:#6b7280;border:none;border-radius:999px;padding:11px 24px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s;text-decoration:none;display:inline-flex;align-items:center;}
+    .btn-ghost:hover{background:#e8eaf0;}
+    .code-footer{font-size:12px;color:#b8bcc9;}
+
+    /* ── DRAFTS LIST SCREEN ── */
+    .drafts-wrap{flex:1;overflow-y:auto;min-height:0;margin-top:8px;padding-right:2px;}
+    .drafts-wrap::-webkit-scrollbar{width:3px;}
+    .drafts-wrap::-webkit-scrollbar-thumb{background:#e0e3ed;border-radius:999px;}
+    .draft-card{background:#fff;border:1px solid #e8eaf0;border-radius:16px;padding:18px 22px;margin-bottom:12px;display:flex;align-items:center;gap:16px;transition:box-shadow 0.2s,border-color 0.2s;}
+    .draft-card:hover{box-shadow:0 4px 20px rgba(0,0,0,0.08);border-color:#c7dcf8;}
+    .draft-logo{width:44px;height:44px;border-radius:50%;background:#eef4fd;border:2px solid #e0e8f8;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#1a6fdb;flex-shrink:0;overflow:hidden;}
+    .draft-logo img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+    .draft-info{flex:1;min-width:0;}
+    .draft-name{font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:3px;}
+    .draft-meta{font-size:12px;color:#9aa0b4;display:flex;gap:14px;flex-wrap:wrap;}
+    .draft-meta span{display:flex;align-items:center;gap:4px;}
+    .draft-progress{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+    .draft-pct{font-size:13px;font-weight:700;}
+    .draft-prog-track{width:80px;height:5px;background:#f0f2f7;border-radius:999px;overflow:hidden;}
+    .draft-prog-fill{height:100%;border-radius:999px;transition:width 0.4s;}
+    .btn-continue{background:#8b5cf6;color:#fff;border:none;border-radius:999px;padding:9px 20px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;transition:background 0.2s;}
+    .btn-continue:hover{background:#7c3aed;}
+    .btn-delete{background:#fff5f5;color:#e63946;border:1.5px solid #fecaca;border-radius:999px;padding:9px 16px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;}
+    .empty-state{text-align:center;padding:60px 20px;color:#9aa0b4;}
+    .empty-icon{font-size:40px;margin-bottom:12px;}
+    .empty-t{font-size:15px;font-weight:600;color:#4a4e69;margin-bottom:5px;}
+    .empty-s{font-size:13px;}
+
+    /* stage progress pills */
+    .stage-pills{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px;}
+    .stage-pill{display:inline-flex;align-items:center;gap:3px;background:#f4f6fb;border-radius:5px;padding:2px 7px;font-size:10px;font-weight:600;color:#6b7280;}
+    .stage-pill.done{background:#f0fdf4;color:#16a34a;}
+    .stage-pill.current{background:#f4f0ff;color:#7c3aed;}
+
+    /* delete confirm modal */
+    .del-modal{display:none;position:fixed;inset:0;background:rgba(8,12,32,0.55);backdrop-filter:blur(6px);z-index:600;align-items:center;justify-content:center;padding:24px;}
+    .del-modal.open{display:flex;}
+    .del-box{background:#fff;border-radius:20px;padding:28px 30px 24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.18);}
+
+    /* loading spinner */
+    .spinner{width:32px;height:32px;border:3px solid #f0f2f7;border-top-color:#8b5cf6;border-radius:50%;animation:spin 0.7s linear infinite;margin:40px auto;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+
+    .tb{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px;flex-shrink:0;}
+  </style>
+</head>
+<body>
+
+<!-- SCREEN 1: ENTER CODE -->
+<div class="screen no-glow active" id="sCode">
+  <div class="mw"><div class="mc">
+    <a class="logo" href="home-logged-in.html">
+      <div class="logo-icon"><img src="brand-logo.png" style="width:28px;height:28px;object-fit:contain;"/></div>
+      <div style="display:flex;flex-direction:column;line-height:1.1;">
+        <span class="logo-project">Project</span>
+        <span class="logo-name">Manhattan.</span>
+      </div>
+    </a>
+    <div class="big-h">Continue Your Assessment</div>
+    <div class="big-sub">Enter your company code to load your saved progress. You'll be taken straight back to where you left off.</div>
+    <div class="code-lbl">Enter your 6-digit company code</div>
+    <div class="code-row">
+      <input class="cbox" id="c0" maxlength="1"/><span class="csep">-</span>
+      <input class="cbox" id="c1" maxlength="1"/><span class="csep">-</span>
+      <input class="cbox" id="c2" maxlength="1"/><span class="csep">-</span>
+      <input class="cbox" id="c3" maxlength="1"/><span class="csep">-</span>
+      <input class="cbox" id="c4" maxlength="1"/><span class="csep">-</span>
+      <input class="cbox" id="c5" maxlength="1"/>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:28px;">
+      <button class="btn-purple" onclick="loadDrafts()">Find My Drafts →</button>
+      <a href="home-logged-in.html" class="btn-ghost">← Back</a>
+    </div>
+    <div class="code-footer" id="codeErr" style="color:#e63946;display:none;">No saved drafts found for this code. Please check and try again.</div>
+  </div></div>
+</div>
+
+<!-- SCREEN 2: DRAFTS LIST -->
+<div class="screen no-glow" id="sDrafts">
+  <div class="mw"><div class="mc">
+    <div class="tb">
+      <a class="logo" href="home-logged-in.html" style="margin-bottom:0;">
+        <div class="logo-icon"><img src="brand-logo.png" style="width:28px;height:28px;object-fit:contain;"/></div>
+        <div style="display:flex;flex-direction:column;line-height:1.1;">
+          <span class="logo-project">Project</span>
+          <span class="logo-name">Manhattan.</span>
+        </div>
+      </a>
+      <button class="btn-ghost" onclick="goTo('sCode')">← Different Code</button>
+    </div>
+    <div style="font-size:20px;font-weight:800;color:#1a1a2e;margin-bottom:3px;">Saved Assessments</div>
+    <div style="font-size:12px;color:#9aa0b4;margin-bottom:20px;" id="draftsSub">Loading...</div>
+    <div class="drafts-wrap" id="draftsList">
+      <div class="spinner"></div>
+    </div>
+  </div></div>
+</div>
+
+<!-- DELETE CONFIRM MODAL -->
+<div class="del-modal" id="delModal">
+  <div class="del-box">
+    <div style="width:44px;height:44px;border-radius:12px;background:#fff5f5;border:1px solid #fecaca;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:16px;">🗑️</div>
+    <div style="font-size:17px;font-weight:800;color:#1a1a2e;margin-bottom:8px;">Delete this draft?</div>
+    <div style="font-size:13px;color:#6b7280;line-height:1.7;margin-bottom:22px;">This will permanently delete the saved draft for <strong id="delName" style="color:#1a1a2e;"></strong>. This cannot be undone.</div>
+    <div style="display:flex;gap:10px;">
+      <button onclick="document.getElementById('delModal').style.display='none'" style="flex:1;padding:11px;border-radius:999px;border:1.5px solid #e0e3ed;background:#fff;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:#6b7280;cursor:pointer;">Keep it</button>
+      <button onclick="confirmDelete()" style="flex:1;padding:11px;border-radius:999px;border:none;background:#e63946;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:#fff;cursor:pointer;">Yes, Delete</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SU='https://enbdaajcromxmhgcverp.supabase.co',SK='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const db=window._sharedSupabase||(window._sharedSupabase=supabase.createClient(SU,SK));
+
+let drafts=[],pendingDeleteId=null,resolvedCompany=null;
+
+// Stage labels for progress display
+const STAGE_LABELS=[
+  {k:'feedmill',i:'🌾'},
+  {k:'hatchery',i:'🐣'},
+  {k:'harvesting',i:'🎣'},
+  {k:'transshipment',i:'🔄'},
+  {k:'landing',i:'⚓'},
+  {k:'processing',i:'🏭'},
+  {k:'shipping',i:'🚛'},
+  {k:'certifications',i:'🏅'},
+];
+
+function goTo(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// Code input auto-advance
+document.querySelectorAll('.cbox').forEach((b,i)=>{
+  b.addEventListener('input',()=>{
+    b.value=b.value.toUpperCase();
+    if(b.value&&i<5)document.getElementById('c'+(i+1)).focus();
+  });
+  b.addEventListener('keydown',e=>{
+    if(e.key==='Backspace'&&!b.value&&i>0)document.getElementById('c'+(i-1)).focus();
+    if(e.key==='Enter')loadDrafts();
+  });
+});
+
+async function loadDrafts(){
+  const code=['c0','c1','c2','c3','c4','c5'].map(id=>document.getElementById(id).value).join('').toUpperCase();
+  if(code.length<6){showErr('Please enter all 6 digits of your company code.');return;}
+
+  document.getElementById('codeErr').style.display='none';
+  document.getElementById('draftsList').innerHTML='<div class="spinner"></div>';
+  goTo('sDrafts');
+
+  // Find company by code
+  const{data:companies}=await db.from('companies').select('*').ilike('company_code','%'+code+'%').limit(1);
+  resolvedCompany=companies&&companies.length?companies[0]:null;
+
+  // Load draft assessments for this company name or company_id
+  let query=db.from('company_assessments').select('*').eq('status','draft').order('updated_at',{ascending:false});
+  if(resolvedCompany){
+    query=query.eq('company_id',resolvedCompany.id);
+  } else {
+    // fallback — try by name if no company record found
+    showErr('Company code not found. Please check and try again.');
+    goTo('sCode');
+    return;
+  }
+
+  const{data,error}=await query;
+  if(error||!data||!data.length){
+    document.getElementById('draftsList').innerHTML=`
+      <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <div class="empty-t">No saved drafts found</div>
+        <div class="empty-s">Start a new assessment to save your progress automatically.</div>
+        <a href="company-assessment.html" style="display:inline-block;margin-top:20px;background:#8b5cf6;color:#fff;border-radius:999px;padding:10px 24px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;text-decoration:none;">Start New Assessment →</a>
+      </div>`;
+    document.getElementById('draftsSub').textContent='No drafts found for this company.';
+    return;
+  }
+
+  drafts=data;
+  document.getElementById('draftsSub').textContent=`${drafts.length} saved draft${drafts.length!==1?'s':''} found for ${resolvedCompany?.company_name||'your company'}.`;
+  renderDrafts();
+}
+
+function renderDrafts(){
+  const el=document.getElementById('draftsList');
+  if(!drafts.length){
+    el.innerHTML=`<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-t">No drafts</div></div>`;
+    return;
+  }
+
+  el.innerHTML=drafts.map(d=>{
+    const products=typeof d.products==='string'?JSON.parse(d.products||'[]'):d.products||[];
+    const kde=typeof d.kde_responses==='string'?JSON.parse(d.kde_responses||'{}'):d.kde_responses||{};
+    const stageIdx=d.stage_index||0;
+    const answered=Object.values(kde).filter(r=>r&&r.ans).length;
+    const total=Object.keys(kde).length||1;
+    const pct=Math.min(100,Math.round((answered/Math.max(total,1))*100));
+    const pctColor=pct>=80?'#16a34a':pct>=40?'#f59e0b':'#e63946';
+    const saved=new Date(d.updated_at||d.created_at);
+    const timeAgo=formatTimeAgo(saved);
+    const initials=(d.company_name||'?').charAt(0).toUpperCase();
+
+    // Stage progress pills
+    const pills=STAGE_LABELS.map((s,i)=>{
+      const cls=i<stageIdx?'done':i===stageIdx?'current':'';
+      return `<span class="stage-pill ${cls}">${s.i}</span>`;
+    }).join('');
+
+    return `<div class="draft-card">
+      <div class="draft-logo">${initials}</div>
+      <div class="draft-info">
+        <div class="draft-name">${d.company_name||'Unknown Company'}</div>
+        <div class="draft-meta">
+          <span>🕐 ${timeAgo}</span>
+          <span>📦 ${products.length} product${products.length!==1?'s':''}</span>
+          <span>🗝️ ${answered} KDEs answered</span>
+        </div>
+        <div class="stage-pills">${pills}</div>
+      </div>
+      <div class="draft-progress">
+        <div class="draft-pct" style="color:${pctColor}">${pct}%</div>
+        <div class="draft-prog-track"><div class="draft-prog-fill" style="width:${pct}%;background:${pctColor}"></div></div>
+      </div>
+      <button class="btn-continue" onclick="resumeDraft('${d.id}')">Continue →</button>
+      <button class="btn-delete" onclick="askDelete('${d.id}','${(d.company_name||'this draft').replace(/'/g,"\\'")}')">🗑️</button>
+    </div>`;
+  }).join('');
+}
+
+function formatTimeAgo(date){
+  const diff=Math.floor((Date.now()-date.getTime())/1000);
+  if(diff<60)return 'Just now';
+  if(diff<3600)return Math.floor(diff/60)+'m ago';
+  if(diff<86400)return Math.floor(diff/3600)+'h ago';
+  return Math.floor(diff/86400)+'d ago';
+}
+
+function resumeDraft(id){
+  const draft=drafts.find(d=>d.id===id);
+  if(!draft)return;
+  // Store draft data in sessionStorage for company-assessment.html to pick up
+  sessionStorage.setItem('resumeDraft',JSON.stringify({
+    id:draft.id,
+    company:resolvedCompany,
+    products:draft.products,
+    kde_responses:draft.kde_responses,
+    delivery_preference:draft.delivery_preference||'email',
+    stage_index:draft.stage_index||0,
+  }));
+  window.location.href='company-assessment.html';
+}
+
+function askDelete(id,name){
+  pendingDeleteId=id;
+  document.getElementById('delName').textContent=name;
+  document.getElementById('delModal').style.display='flex';
+}
+
+async function confirmDelete(){
+  if(!pendingDeleteId)return;
+  await db.from('company_assessments').delete().eq('id',pendingDeleteId);
+  drafts=drafts.filter(d=>d.id!==pendingDeleteId);
+  pendingDeleteId=null;
+  document.getElementById('delModal').style.display='none';
+  document.getElementById('draftsSub').textContent=`${drafts.length} saved draft${drafts.length!==1?'s':''} found.`;
+  renderDrafts();
+}
+
+function showErr(msg){
+  const el=document.getElementById('codeErr');
+  el.textContent=msg;
+  el.style.display='block';
+}
+</script>
+</body>
+</html>

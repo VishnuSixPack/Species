@@ -950,7 +950,7 @@
 const SU='https://enbdaajcromxmhgcverp.supabase.co',SK='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
 const db=window._sharedSupabase||(window._sharedSupabase=supabase.createClient(SU,SK));
 let company=null,products=[],curPI=0,mkSel=[],allC=[],allSp=[],curChain=[];
-let kIdx=0,kResp={},pref='email',faoSel=[],allFAO=[],cooSel=[],allCOO=[];
+let kIdx=0,kResp={},pref='email',faoSel=[],allFAO=[],cooSel=[],allCOO=[],draftId=null;
 const CTE={harvest:{l:'Harvest / Catch',i:'🎣',b:'#e0f2fe'},onvessel:{l:'On Vessel Processing',i:'🚢',b:'#f0fdf4'},transshipment:{l:'Transshipment',i:'🔄',b:'#fef3c7'},landing:{l:'Landing / Discharge',i:'⚓',b:'#f0fdf4'},vessel_landing:{l:'Direct Vessel Landing',i:'🚢⚓',b:'#e0f2fe'},feedmill:{l:'Feedmill',i:'🌾',b:'#fef9c3'},hatchery:{l:'Hatchery',i:'🐣',b:'#fce7f3'},aggregation:{l:'Aggregation/Disagg.',i:'📦',b:'#fdf4ff'},processing:{l:'Processing',i:'🏭',b:'#fff7ed'},shipreceive:{l:'Ship / Receive',i:'🚛',b:'#eef4fd'}};
 const OWN={we:'We operate this',supplier:'Our Supplier',client:'Our Client',third:'Third Party'};
 let scN=[],scC=[],sDT=null,sDN=null,sDX=0,sDY=0,sCC=null,sNC=0,aOwn=null;
@@ -1662,7 +1662,27 @@ function buildActiveStages(){
 // Active stages — rebuilt when toKDE() is called
 let STAGES=[];
 
-
+async function autoSave(){
+  const payload={
+    company_id:company?.id||null,
+    company_name:company?.company_name||'Unknown',
+    products:JSON.stringify(products.filter(Boolean)),
+    kde_responses:JSON.stringify(kResp),
+    delivery_preference:pref,
+    status:'draft',
+    stage_index:kIdx,
+    compliance_scores:null,
+  };
+  try{
+    if(draftId){
+      await db.from('company_assessments').update({...payload,updated_at:new Date().toISOString()}).eq('id',draftId);
+    } else {
+      const{data,error}=await db.from('company_assessments').insert(payload).select('id').single();
+      if(!error&&data)draftId=data.id;
+    }
+    showToast('✓ Progress saved','success');
+  }catch(e){console.log('Auto-save failed:',e.message);}
+}
 
 function renderKDE(){
   const st=STAGES[kIdx];
@@ -2049,7 +2069,10 @@ function saveEvidence(){
   if(sumEl){sumEl.innerHTML=evChips+addChip;sumEl.style.display='flex';}
 }
 function kPrev(){if(kIdx>0){kIdx--;renderKDE();}else goTo('s4');}
-function kNext(){if(kIdx<STAGES.length-1){kIdx++;renderKDE();}else goTo('s6');}
+function kNext(){
+  autoSave();
+  if(kIdx<STAGES.length-1){kIdx++;renderKDE();}else goTo('s6');
+}
 
 // PREFS + SUBMIT
 function selPref(v){pref=v;document.getElementById('pEmail').classList.toggle('sel',v==='email');document.getElementById('pMeeting').classList.toggle('sel',v==='meeting');}
@@ -2092,7 +2115,23 @@ function renderS7Compliance(c){
 }
 async function doSubmit(){
   const compliance=calcComplianceScores();
-  try{await db.from('company_assessments').insert({company_id:company?.id||null,company_name:company?.company_name||'Unknown',products:JSON.stringify(products.filter(Boolean)),kde_responses:JSON.stringify(kResp),delivery_preference:pref,status:'pending',compliance_scores:JSON.stringify(compliance)});}catch(e){console.log(e.message);}
+  const payload={
+    company_id:company?.id||null,
+    company_name:company?.company_name||'Unknown',
+    products:JSON.stringify(products.filter(Boolean)),
+    kde_responses:JSON.stringify(kResp),
+    delivery_preference:pref,
+    status:'pending',
+    stage_index:kIdx,
+    compliance_scores:JSON.stringify(compliance),
+  };
+  try{
+    if(draftId){
+      await db.from('company_assessments').update(payload).eq('id',draftId);
+    } else {
+      await db.from('company_assessments').insert(payload);
+    }
+  }catch(e){console.log(e.message);}
   renderS7Compliance(compliance);
   goTo('s7');
 }
@@ -2151,6 +2190,34 @@ function showMoreSlots(){
   document.getElementById('addMoreBtn').style.display='none';
 }
 loadCountries();loadSpecies();loadFAO();
+
+// ── RESUME DRAFT ──
+(function checkResume(){
+  const raw=sessionStorage.getItem('resumeDraft');
+  if(!raw)return;
+  sessionStorage.removeItem('resumeDraft');
+  try{
+    const d=JSON.parse(raw);
+    // Restore company
+    company=d.company||{company_name:'Unknown',industry:'',gln:'',photo_url:null};
+    fillWelcome();
+    // Restore products
+    products=typeof d.products==='string'?JSON.parse(d.products||'[]'):d.products||[];
+    products.forEach((p,i)=>{if(p)fillSlot(i);});
+    // Restore KDE responses
+    kResp=typeof d.kde_responses==='string'?JSON.parse(d.kde_responses||'{}'):d.kde_responses||{};
+    // Restore draft ID so auto-save updates instead of inserts
+    draftId=d.id||null;
+    // Restore preference
+    pref=d.delivery_preference||'email';
+    // Build stages and jump to saved stage
+    STAGES=buildActiveStages();
+    kIdx=Math.min(d.stage_index||0,STAGES.length-1);
+    renderKDE();
+    goTo('s5');
+    showToast('✓ Assessment resumed from where you left off','success');
+  }catch(e){console.log('Resume failed:',e.message);}
+})();
 </script>
 </body>
 </html>
