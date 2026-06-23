@@ -23,18 +23,6 @@
     .logo-project{font-size:9px;font-weight:700;letter-spacing:2.5px;color:#9aa0b4;text-transform:uppercase;}
     .logo-name{font-size:16px;font-weight:800;color:#1a1a2e;}
 
-    .big-h{font-size:30px;font-weight:800;color:#1a1a2e;letter-spacing:-0.8px;margin-bottom:7px;}
-    .big-sub{font-size:13px;color:#6b7280;margin-bottom:32px;line-height:1.6;max-width:420px;}
-    .code-lbl{font-size:13px;font-weight:600;color:#1a1a2e;margin-bottom:14px;}
-    .code-row{display:flex;align-items:center;gap:6px;margin-bottom:28px;}
-    .cbox{width:40px;height:46px;border:1px solid #dde1ed;border-radius:10px;font-size:18px;font-weight:700;font-family:'DM Mono',monospace;color:#1a1a2e;text-align:center;outline:none;background:#fff;transition:border-color 0.2s,box-shadow 0.2s;text-transform:uppercase;}
-    .cbox:focus{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,0.1);}
-    .csep{font-size:15px;color:#d0d4e0;user-select:none;}
-    .btn-purple{background:#8b5cf6;color:#fff;border:none;border-radius:999px;padding:11px 30px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s;}
-    .btn-purple:hover{background:#7c3aed;}
-    .btn-ghost{background:#f4f6fb;color:#6b7280;border:none;border-radius:999px;padding:11px 24px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s;text-decoration:none;display:inline-flex;align-items:center;}
-    .btn-ghost:hover{background:#e8eaf0;}
-    .code-footer{font-size:12px;color:#b8bcc9;}
 
     /* ── DRAFTS LIST SCREEN ── */
     .drafts-wrap{flex:1;overflow-y:auto;min-height:0;margin-top:8px;padding-right:2px;}
@@ -80,37 +68,10 @@
 </head>
 <body>
 
-<!-- SCREEN 1: ENTER CODE -->
-<div class="screen no-glow active" id="sCode">
-  <div class="mw"><div class="mc">
-    <a class="logo" href="home-logged-in.html">
-      <div class="logo-icon"><img src="brand-logo.png" style="width:28px;height:28px;object-fit:contain;"/></div>
-      <div style="display:flex;flex-direction:column;line-height:1.1;">
-        <span class="logo-project">Project</span>
-        <span class="logo-name">Manhattan.</span>
-      </div>
-    </a>
-    <div class="big-h">Continue Your Assessment</div>
-    <div class="big-sub">Enter your company code to load your saved progress. You'll be taken straight back to where you left off.</div>
-    <div class="code-lbl">Enter your 6-digit company code</div>
-    <div class="code-row">
-      <input class="cbox" id="c0" maxlength="1"/><span class="csep">-</span>
-      <input class="cbox" id="c1" maxlength="1"/><span class="csep">-</span>
-      <input class="cbox" id="c2" maxlength="1"/><span class="csep">-</span>
-      <input class="cbox" id="c3" maxlength="1"/><span class="csep">-</span>
-      <input class="cbox" id="c4" maxlength="1"/><span class="csep">-</span>
-      <input class="cbox" id="c5" maxlength="1"/>
-    </div>
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:28px;">
-      <button class="btn-purple" onclick="loadDrafts()">Find My Drafts →</button>
-      <a href="home-logged-in.html" class="btn-ghost">← Back</a>
-    </div>
-    <div class="code-footer" id="codeErr" style="color:#e63946;display:none;">No saved drafts found for this code. Please check and try again.</div>
-  </div></div>
-</div>
 
-<!-- SCREEN 2: DRAFTS LIST -->
-<div class="screen no-glow" id="sDrafts">
+
+<!-- DRAFTS LIST -->
+<div class="screen no-glow active" id="sDrafts">
   <div class="mw"><div class="mc">
     <div class="tb">
       <a class="logo" href="home-logged-in.html" style="margin-bottom:0;">
@@ -148,7 +109,7 @@
 const SU='https://enbdaajcromxmhgcverp.supabase.co',SK='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
 const db=window._sharedSupabase||(window._sharedSupabase=supabase.createClient(SU,SK));
 
-let drafts=[],pendingDeleteId=null,resolvedCompany=null;
+let drafts=[],pendingDeleteId=null;
 
 // Stage labels for progress display
 const STAGE_LABELS=[
@@ -167,56 +128,26 @@ function goTo(id){
   document.getElementById(id).classList.add('active');
 }
 
-// Code input auto-advance
-document.querySelectorAll('.cbox').forEach((b,i)=>{
-  b.addEventListener('input',()=>{
-    b.value=b.value.toUpperCase();
-    if(b.value&&i<5)document.getElementById('c'+(i+1)).focus();
-  });
-  b.addEventListener('keydown',e=>{
-    if(e.key==='Backspace'&&!b.value&&i>0)document.getElementById('c'+(i-1)).focus();
-    if(e.key==='Enter')loadDrafts();
-  });
-});
+
 
 async function loadDrafts(){
-  const code=['c0','c1','c2','c3','c4','c5'].map(id=>document.getElementById(id).value).join('').toUpperCase();
-  if(code.length<6){showErr('Please enter all 6 digits of your company code.');return;}
-
-  document.getElementById('codeErr').style.display='none';
-  document.getElementById('draftsList').innerHTML='<div class="spinner"></div>';
-  goTo('sDrafts');
-
-  // Find company by code
-  const{data:companies}=await db.from('companies').select('*').ilike('company_code','%'+code+'%').limit(1);
-  resolvedCompany=companies&&companies.length?companies[0]:null;
-
-  // Load draft assessments for this company name or company_id
-  let query=db.from('company_assessments').select('*').eq('status','draft').order('updated_at',{ascending:false});
-  if(resolvedCompany){
-    query=query.eq('company_id',resolvedCompany.id);
-  } else {
-    // fallback — try by name if no company record found
-    showErr('Company code not found. Please check and try again.');
-    goTo('sCode');
-    return;
-  }
-
-  const{data,error}=await query;
+  const{data,error}=await db.from('company_assessments')
+    .select('*')
+    .eq('status','draft')
+    .order('updated_at',{ascending:false});
   if(error||!data||!data.length){
     document.getElementById('draftsList').innerHTML=`
       <div class="empty-state">
         <div class="empty-icon">📋</div>
-        <div class="empty-t">No saved drafts found</div>
-        <div class="empty-s">Start a new assessment to save your progress automatically.</div>
+        <div class="empty-t">No saved drafts</div>
+        <div class="empty-s">Start a new assessment — progress saves automatically as you go.</div>
         <a href="company-assessment.html" style="display:inline-block;margin-top:20px;background:#8b5cf6;color:#fff;border-radius:999px;padding:10px 24px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;text-decoration:none;">Start New Assessment →</a>
       </div>`;
-    document.getElementById('draftsSub').textContent='No drafts found for this company.';
+    document.getElementById('draftsSub').textContent='No drafts found.';
     return;
   }
-
   drafts=data;
-  document.getElementById('draftsSub').textContent=`${drafts.length} saved draft${drafts.length!==1?'s':''} found for ${resolvedCompany?.company_name||'your company'}.`;
+  document.getElementById('draftsSub').textContent=`${drafts.length} saved draft${drafts.length!==1?'s':''}.`;
   renderDrafts();
 }
 
@@ -280,7 +211,7 @@ function resumeDraft(id){
   // Store draft data in sessionStorage for company-assessment.html to pick up
   sessionStorage.setItem('resumeDraft',JSON.stringify({
     id:draft.id,
-    company:resolvedCompany,
+    company:{company_name:draft.company_name,id:draft.company_id},
     products:draft.products,
     kde_responses:draft.kde_responses,
     delivery_preference:draft.delivery_preference||'email',
@@ -310,6 +241,7 @@ function showErr(msg){
   el.textContent=msg;
   el.style.display='block';
 }
+loadDrafts();
 </script>
 </body>
 </html>
