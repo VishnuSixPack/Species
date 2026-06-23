@@ -586,7 +586,7 @@
     <div id="kcontent"></div>
     <div class="knav">
       <button class="btnkback" id="kback" onclick="kPrev()">← Back</button>
-      <button class="btnkback" onclick="autoSave()" style="background:#f0fdf4;color:#16a34a;border:1.5px solid #bbf7d0;">💾 Save & Exit Later</button>
+      <button class="btnkback" onclick="saveAndExit()" style="background:#f0fdf4;color:#16a34a;border:1.5px solid #bbf7d0;">💾 Save & Exit</button>
       <button class="btnknext" id="knext" onclick="kNext()">Next Stage →</button>
     </div>
   </div></div>
@@ -1685,6 +1685,11 @@ async function autoSave(){
   }catch(e){console.log('Auto-save failed:',e.message);}
 }
 
+async function saveAndExit(){
+  await autoSave();
+  document.getElementById('saveExitModal').style.display='flex';
+}
+
 function renderKDE(){
   const st=STAGES[kIdx];
   const activeCount=STAGES.filter(s=>!s.disabled).length;
@@ -1837,7 +1842,7 @@ function setTsZone(val){
 }
 
 // Evidence modal
-let evKdeId=null,evSelType=null,evTempItems=[];
+let evKdeId=null,evSelType=null,evTempItems=[],evCustomName=null;
 let evReusePool=[];
 const evTypeMeta={
   cert:{lbl:'Certificate name or standard',ph:'e.g. MSC CoC, ASC, BRC Issue 9',icon:'🏅'},
@@ -1867,7 +1872,7 @@ function closeEvMod(){
   document.getElementById('ev-file-name').classList.remove('show');
   document.getElementById('ev-file-name').textContent='';
   document.getElementById('ev-upload-btn').classList.remove('show');
-  evKdeId=null;evSelType=null;
+  evKdeId=null;evSelType=null;evCustomName=null;
 }
 function selEvType(type){
   evSelType=type;
@@ -1879,6 +1884,10 @@ function selEvType(type){
   document.getElementById('ev-inp').value='';
   document.getElementById('ev-input-area').classList.add('show');
   document.getElementById('ev-add-btn').style.display='inline-block';
+  evCustomName=null;
+  document.getElementById('ev-inp').oninput=function(){
+    if(!this.value.startsWith('http'))evCustomName=this.value.trim()||null;
+  };
   const uploadBtn=document.getElementById('ev-upload-btn');
   const fileName=document.getElementById('ev-file-name');
   const fileInp=document.getElementById('ev-file-inp');
@@ -1950,12 +1959,11 @@ function addEvItem(){
   if(!evSelType)return;
   const val=document.getElementById('ev-inp').value.trim();
   if(!val){document.getElementById('ev-inp').focus();return;}
-  // If value is a URL from upload, store display name from file-name element
-  const fnEl=document.getElementById('ev-file-name');
-  const displayName=fnEl.classList.contains('show')&&fnEl.textContent.startsWith('✓')
-    ?fnEl.textContent.replace('✓ ','').trim()
-    :null;
-  evTempItems.push({type:evSelType,value:val,icon:evTypeMeta[evSelType].icon,name:displayName||val});
+  // Custom name: whatever the user typed before upload overwrote the input
+  // We store it separately in evCustomName when the user types
+  const isUploadedUrl=val.startsWith('http')&&val.includes('supabase');
+  const displayName=isUploadedUrl&&evCustomName?evCustomName:val;
+  evTempItems.push({type:evSelType,value:val,icon:evTypeMeta[evSelType].icon,name:displayName});
   document.getElementById('ev-inp').value='';
   document.getElementById('ev-file-name').classList.remove('show');
   document.getElementById('ev-file-name').textContent='';
@@ -2220,5 +2228,14 @@ loadCountries();loadSpecies();loadFAO();
   }catch(e){console.log('Resume failed:',e.message);}
 })();
 </script>
+<!-- SAVE & EXIT MODAL -->
+<div id="saveExitModal" style="display:none;position:fixed;inset:0;background:rgba(8,12,32,0.55);backdrop-filter:blur(6px);z-index:600;align-items:center;justify-content:center;padding:24px;">
+  <div style="background:#fff;border-radius:20px;padding:32px 30px 26px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.18);text-align:center;">
+    <div style="width:52px;height:52px;border-radius:14px;background:#f0fdf4;border:1.5px solid #bbf7d0;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 16px;">💾</div>
+    <div style="font-size:17px;font-weight:800;color:#1a1a2e;margin-bottom:8px;">Progress Saved!</div>
+    <div style="font-size:13px;color:#6b7280;line-height:1.7;margin-bottom:24px;">Your assessment has been saved. You can pick up exactly where you left off by clicking <strong style="color:#1a1a2e;">Continue Assessment</strong> on the MRI page.</div>
+    <button onclick="window.location.href='mri.html'" style="width:100%;padding:13px;border-radius:999px;border:none;background:#8b5cf6;font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;color:#fff;cursor:pointer;">← Back to MRI</button>
+  </div>
+</div>
 </body>
 </html>
