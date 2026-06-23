@@ -1402,10 +1402,10 @@ const STAGE_TRANSSHIPMENT={k:'transshipment',t:'Transshipment',i:'🔄',qs:[
   {id:'cr_rfmo',q:'Is the carrier vessel registered on the relevant RFMO register?'},
   {id:'cr_iuu_check',q:'Has the carrier vessel been checked against IUU vessel blacklists (RFMO, EU IUU vessel list, PSMA)?'},
   {id:'cr_psma',q:'Does the carrier vessel comply with Port State Measures Agreement (PSMA) requirements?'},
+  {id:'cr_location',q:'Is the location of the transshipment event documented and geo-referenced?'},
   {id:'cr_gtin',q:'Is the Item/SKU/UPC/GTIN carried through to the transshipment record?'},
   {id:'cr_linking',q:'Is the linking KDE (batch/lot/serial) maintained and available at transshipment?'},
   {id:'cr_weight',q:'Is weight or quantity with unit of measure available at transshipment?'},
-  {id:'cr_location',q:'Is the geo-location of the transshipment event available?'},
   {id:'cr_approval',q:'Is formal transshipment authorization from the flag state available?'},
   {id:'cr_auth_doc',q:'Is a transshipment authorization document available for each event?'},
   {id:'cr_observer',q:'Is transshipment conducted in port or under independent observer monitoring?'},
@@ -1749,7 +1749,15 @@ function renderKDE(){
       ...(kResp._tsZone==='high_seas'?[{id:'cr_atsea_hs', q:'Is the relevant RFMO\'s High Seas transshipment authorization document available for this event?'}]:[]),
     ] : [];
 
-    const allQs = [...(st.qs||[]), ...atSeaQs];
+    // Relabel cr_location based on transshipment location selection
+    const allQs = [...(st.qs||[]), ...atSeaQs].map(q=>{
+      if(q.id==='cr_location'){
+        const loc=kResp._tsLocation;
+        if(loc==='at_sea') return {...q,q:'Are the geo-coordinates of the at-sea transshipment event recorded and available?'};
+        if(loc==='at_port') return {...q,q:'Is the port of transshipment documented and geo-referenced?'};
+      }
+      return q;
+    });
 
     document.getElementById('kcontent').innerHTML=
       `<div class="kde-sticky"><div class="ksbadge">${st.i} ${st.t}${st.deliveryMode==='vessel'?' <span style="background:#e0f2fe;color:#0369a1;border-radius:5px;padding:1px 7px;font-size:9px;font-weight:700;">DIRECT FV</span>':st.deliveryMode==='carrier'?' <span style="background:#fef3c7;color:#92400e;border-radius:5px;padding:1px 7px;font-size:9px;font-weight:700;">VIA CARRIER</span>':st.deliveryMode==='container'?' <span style="background:#f4f6fb;color:#6b7280;border-radius:5px;padding:1px 7px;font-size:9px;font-weight:700;">CONTAINER</span>':''}</div><div class="kstitle">${st.t}</div><div class="kssub">Select the availability of each data element for your operations.</div></div>`
