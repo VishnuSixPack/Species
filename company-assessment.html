@@ -855,7 +855,7 @@
       <input class="ev-inp" id="ev-inp" placeholder="" onkeydown="if(event.key==='Enter')addEvItem()"/>
       <button class="ev-upload-btn" id="ev-upload-btn" onclick="triggerEvUpload()">📎 Upload file instead</button>
       <div class="ev-file-name" id="ev-file-name"></div>
-      <input type="file" id="ev-file-inp" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx" style="display:none;" onchange="onEvFileChange(this)"/>
+      <input type="file" id="ev-file-inp" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.svg,.doc,.docx,.xls,.xlsx" style="display:none;" onchange="onEvFileChange(this)"/>
     </div>
     <div class="ev-reuse" id="ev-reuse" style="display:none;margin-bottom:14px;">
       <div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:7px;">♻️ Reuse from this assessment</div>
@@ -1837,13 +1837,17 @@ function selEvType(type){
   document.getElementById('ev-inp').value='';
   document.getElementById('ev-input-area').classList.add('show');
   document.getElementById('ev-add-btn').style.display='inline-block';
-  // Show upload button only for doc and cert
   const uploadBtn=document.getElementById('ev-upload-btn');
   const fileName=document.getElementById('ev-file-name');
   const fileInp=document.getElementById('ev-file-inp');
   if(type==='doc'||type==='cert'){
     uploadBtn.classList.add('show');
     uploadBtn.textContent='📎 Upload file instead';
+    fileInp.setAttribute('accept','.pdf,.doc,.docx,.xls,.xlsx');
+  } else if(type==='photo'){
+    uploadBtn.classList.add('show');
+    uploadBtn.textContent='🖼️ Upload image';
+    fileInp.setAttribute('accept','.jpg,.jpeg,.png,.gif,.webp,.svg');
   } else {
     uploadBtn.classList.remove('show');
   }
@@ -1866,9 +1870,12 @@ async function onEvFileChange(inp){
     if(error)throw error;
     const{data:{publicUrl}}=db.storage.from('assessments').getPublicUrl(path);
     document.getElementById('ev-inp').value=publicUrl;
-    fn.innerHTML=`✓ <a href="${publicUrl}" target="_blank" style="color:#16a34a;text-decoration:underline;">${file.name}</a>`;
+    const isImg=evSelType==='photo';
+    fn.innerHTML=isImg
+      ?`✓ <a href="${publicUrl}" target="_blank" style="color:#16a34a;text-decoration:underline;">${file.name}</a><br/><img src="${publicUrl}" style="margin-top:6px;max-width:100%;max-height:80px;border-radius:6px;object-fit:cover;border:1px solid #e0e3ed;"/>`
+      :`✓ <a href="${publicUrl}" target="_blank" style="color:#16a34a;text-decoration:underline;">${file.name}</a>`;
     fn.classList.add('show');
-    uploadBtn.textContent='📎 Change file';
+    uploadBtn.textContent=isImg?'🖼️ Change image':'📎 Change file';
 
     // ── AUTO-LINK: if uploading to an anchor KDE, cascade to linked KDEs ──
     if(evKdeId && AUTO_LINK[evKdeId]){

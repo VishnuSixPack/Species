@@ -442,6 +442,16 @@ function openPanel(id){
           const display=e.name&&e.name!==e.value?e.name:e.value;
           const disp=display&&display.length>28?display.slice(0,28)+'…':display;
           const clickAction=isUrl?`openDocViewer('${e.value}','${(display||'').replace(/'/g,"\\'")}')`:null;
+          const isPhoto=e.type==='photo';
+          if(isPhoto&&isUrl){
+            return `<div style="margin-top:6px;">
+              <img src="${e.value}" onclick="openDocViewer('${e.value}','${(display||'').replace(/'/g,"\\'")}')"
+                style="max-width:120px;max-height:90px;border-radius:8px;object-fit:cover;border:1px solid #e0e3ed;cursor:pointer;"
+                onerror="this.style.display='none'"
+                title="${display||'Photo evidence'}"/>
+              <div style="font-size:10px;color:#9aa0b4;margin-top:3px;">${disp}</div>
+            </div>`;
+          }
           return `<span class="kde-ev-chip" ${clickAction?`onclick="${clickAction}" style="cursor:pointer;"`:''}>${evIcons[e.type]||'📎'} ${disp}<span class="kde-ev-chip-tag">${e.type||'file'}</span></span>`;
         }).join('')}</div>`
         :'';
