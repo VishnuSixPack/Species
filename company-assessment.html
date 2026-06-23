@@ -325,6 +325,7 @@
     .cancel-warn-actions{display:flex;gap:10px;}
     .hidden{display:none!important;}
     .iuu-card img{will-change:auto;}
+    @keyframes shake{0%{transform:translateX(0);}20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);}100%{transform:translateX(0);}}
   </style>
 </head>
 <body>
@@ -1052,6 +1053,7 @@ function closePF(){document.getElementById('pfov').classList.remove('open');clea
 function savePF(){
   const d=document.getElementById('pfd').value.trim();
   if(!d){showToast('Please enter a product description.','error');return;}
+  if(!curChain.length){showToast('Please build a supply chain before confirming this product.','error');document.getElementById('btnbuild').style.animation='shake 0.4s ease';setTimeout(()=>document.getElementById('btnbuild').style.animation='',400);return;}
   products[curPI]={
     desc:d,species:document.getElementById('pfsp').value,
     cert:document.getElementById('pfcert').value,form:document.getElementById('pfform').value,
@@ -1308,6 +1310,7 @@ const HARVEST_WILD=[
   {id:'fv_area',q:'Is the FAO catch area or fishing zone available and documented?'},
   {id:'fv_coords',q:'Are catch coordinates (geo-location) available for each fishing event?'},
   {id:'fv_rfmo',q:'Is each vessel registered on the relevant RFMO register?'},
+  {id:'fv_eu_approval',q:'Does each fishing vessel hold a valid EU approved vessel listing (if EU-bound)?'},
   {id:'fv_iuu_check',q:'Has each fishing vessel been checked against IUU vessel blacklists (RFMO, EU IUU vessel list, PSMA)?'},
   {id:'fv_psma',q:'Does each fishing vessel comply with Port State Measures Agreement (PSMA) requirements?'},
   {id:'fv_permit',q:'Is a valid fishing authorization or permit available for each vessel?'},
@@ -1398,6 +1401,7 @@ const STAGE_TRANSSHIPMENT={k:'transshipment',t:'Transshipment',i:'🔄',qs:[
   {id:'cr_reg',q:'Is the vessel registration number of the carrier available?'},
   {id:'cr_flag',q:"Is the carrier vessel's flag state known and documented?"},
   {id:'cr_rfmo',q:'Is the carrier vessel registered on the relevant RFMO register?'},
+  {id:'cr_eu_approval',q:'Does the carrier vessel hold a valid EU approved vessel listing (if EU-bound)?'},
   {id:'cr_iuu_check',q:'Has the carrier vessel been checked against IUU vessel blacklists (RFMO, EU IUU vessel list, PSMA)?'},
   {id:'cr_psma',q:'Does the carrier vessel comply with Port State Measures Agreement (PSMA) requirements?'},
   {id:'cr_location',q:'Is the location of the transshipment event documented and geo-referenced?'},
@@ -1476,7 +1480,7 @@ const AUTO_LINK={
 const AUTO_LINK_LABEL={
   fcl_bol:'Bill of Lading 📄'
 };
-const EU_QIDS=['fcl_eu','pp_eu','c_eu','fcl_master_decl','fcl_ca_validation','fcl_net_weight'];
+const EU_QIDS=['fcl_eu','pp_eu','c_eu','fcl_master_decl','fcl_ca_validation','fcl_net_weight','fv_eu_approval','cr_eu_approval'];
 const US_QIDS=['fcl_landing_date','fcl_product_form','s_iftp'];
 
 const US_SHIPPING=[
@@ -1646,7 +1650,7 @@ function buildActiveStages(){
   return [
     ...(feedmillStage ? [feedmillStage] : []),
     ...(hatcheryStage ? [hatcheryStage] : []),
-    {k:'harvesting',t:harvestLabel,i:harvestIcon,harvestType,qs:harvestQs},
+    {k:'harvesting',t:harvestLabel,i:harvestIcon,harvestType,qs:euFilter(harvestQs)},
     tsStage,
     landingStage,
     {...STAGE_PROCESSING,qs:euFilter(STAGE_PROCESSING.qs),disabled:!hasCTE('processing'),disabledReason:'Processing is not part of your supply chain.'},
