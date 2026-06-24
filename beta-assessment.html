@@ -1,0 +1,2044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Beta Assessment — Project Manhattan</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <link rel="icon" type="image/png" href="brand-logo.png"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'Poppins',sans-serif;background:#d4dfe8;min-height:100vh;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+
+    /* ── SCREENS ── */
+    .screen{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:24px 32px;z-index:10;}
+    .screen.active{display:flex;}
+    .mw{position:relative;width:100%;max-width:calc(100vw - 48px);border-radius:33px;}
+    .mc{background:#fff;border-radius:33px;padding:28px 40px 20px;width:100%;height:calc(100vh - 48px);overflow:hidden;display:flex;flex-direction:column;}
+    .no-glow .mw::before,.no-glow .mw::after{display:none;}
+    .no-glow .mc{box-shadow:0 4px 32px rgba(0,0,0,0.1);}
+
+    /* ── LOGO ── */
+    .logo{display:flex;align-items:center;gap:10px;cursor:pointer;transition:opacity 0.2s;text-decoration:none;}
+    .logo-icon{width:36px;height:36px;background:transparent;border-radius:10px;display:flex;align-items:center;justify-content:center;}
+    .logo-project{font-size:9px;font-weight:700;letter-spacing:2.5px;color:#9aa0b4;text-transform:uppercase;}
+    .logo-name{font-size:16px;font-weight:800;color:#1a1a2e;}
+
+    /* ── BUTTONS ── */
+    .btn-purple{background:#8b5cf6;color:#fff;border:none;border-radius:999px;padding:11px 30px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s;}
+    .btn-purple:hover{background:#7c3aed;}
+    .btn-ghost{background:#f4f6fb;color:#6b7280;border:none;border-radius:999px;padding:11px 24px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s;}
+    .btn-ghost:hover{background:#e8eaf0;}
+    .tb{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px;flex-shrink:0;}
+    .brow{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:20px;flex-shrink:0;}
+
+    /* ── MOU ── */
+    #sMOU .mc{overflow-y:auto;}
+    #sMOU .mc::-webkit-scrollbar{display:none;}
+
+    /* ── PRODUCTS ── */
+    #sProducts .mc{display:flex;flex-direction:column;}
+    .pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px;}
+    .pslot{aspect-ratio:1;border:1.5px dashed #cdd1de;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer;background:#f9fafc;transition:border-color 0.2s,background 0.2s;position:relative;}
+    .pslot:hover{border-color:#8b5cf6;background:#faf5ff;}
+    .pslot.filled{border-style:solid;border-color:#1a6fdb;background:#eef4fd;padding:0;overflow:hidden;}
+    .pplus{font-size:24px;color:#c8ccd8;}
+    .plbl{font-size:11px;font-weight:600;color:#c8ccd8;}
+    .hidden{display:none!important;}
+
+    /* ── PRODUCT FORM OVERLAY ── */
+    .ov{display:none;position:fixed;inset:0;background:rgba(8,12,32,0.5);backdrop-filter:blur(6px);z-index:200;align-items:center;justify-content:center;padding:24px;}
+    .ov.open{display:flex;}
+    .ovc{background:#fff;border-radius:24px;width:100%;max-width:800px;max-height:90vh;overflow-y:auto;padding:30px 36px 26px;box-shadow:0 20px 60px rgba(0,0,0,0.16);}
+    .ovhd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;}
+    .ovtitle{font-size:20px;font-weight:800;color:#1a1a2e;}
+    .ovsub{font-size:12px;color:#9aa0b4;margin-top:3px;}
+    .ovcls{width:30px;height:30px;border-radius:50%;background:#f4f6fb;border:none;cursor:pointer;font-size:17px;color:#6b7280;display:flex;align-items:center;justify-content:center;}
+    .ovcls:hover{background:#e8eaf0;}
+    .fg{display:grid;grid-template-columns:1fr 1fr;gap:13px 22px;margin-bottom:16px;}
+    .fgg{display:flex;flex-direction:column;gap:5px;}
+    .fl{font-size:11px;font-weight:600;color:#6b7280;}
+    .fi{padding:9px 13px;border:1px solid #e0e3ed;border-radius:9px;font-family:'Poppins',sans-serif;font-size:12px;color:#1a1a2e;outline:none;background:#fff;width:100%;transition:border-color 0.2s;}
+    .fi:focus{border-color:#8b5cf6;}
+    .mkw{position:relative;}
+    .mksel{min-height:38px;border:1px solid #e0e3ed;border-radius:9px;padding:4px 9px;display:flex;flex-wrap:wrap;gap:4px;cursor:pointer;background:#fff;align-items:center;}
+    .mksel:hover{border-color:#8b5cf6;}
+    .mkchip{display:inline-flex;align-items:center;gap:4px;background:#eef4fd;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:600;color:#1a6fdb;}
+    .mkx{cursor:pointer;color:#9aa0b4;font-size:12px;}
+    .mkx:hover{color:#e63946;}
+    .mkph{font-size:12px;color:#c0c4d0;padding:2px 4px;}
+    .mkdd{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e0e3ed;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,0.1);max-height:200px;overflow-y:auto;z-index:300;display:none;}
+    .mkdd.open{display:block;}
+    .mksearch{padding:8px 13px;border-bottom:1px solid #f0f2f8;}
+    .mksearch input{width:100%;border:none;outline:none;font-family:'Poppins',sans-serif;font-size:12px;color:#1a1a2e;background:transparent;}
+    .mkopt{display:flex;align-items:center;justify-content:space-between;padding:8px 13px;cursor:pointer;font-size:12px;color:#1a1a2e;transition:background 0.15s;}
+    .mkopt:hover{background:#f4f6fb;}
+    .mkopt.sel{background:#eef4fd;color:#1a6fdb;font-weight:600;}
+    .spw{position:relative;}
+    .spdd{position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid #e0e3ed;border-radius:9px;box-shadow:0 8px 24px rgba(0,0,0,0.1);max-height:180px;overflow-y:auto;z-index:300;display:none;}
+    .spdd.open{display:block;}
+    .spopt{padding:8px 13px;cursor:pointer;transition:background 0.15s;}
+    .spopt:hover{background:#f4f6fb;}
+    .spn{font-size:12px;font-weight:600;color:#1a1a2e;}
+    .sps{font-size:10px;color:#9aa0b4;font-style:italic;}
+
+    /* ── SC BUILDER ── */
+    .scbov{display:none;position:fixed;inset:0;background:rgba(4,8,24,0.65);backdrop-filter:blur(8px);z-index:300;align-items:center;justify-content:center;padding:20px;}
+    .scbov.open{display:flex;}
+    .scb{background:#fff;border-radius:22px;width:100%;max-width:1100px;height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 64px rgba(0,0,0,0.22);}
+    .scbhd{display:flex;align-items:center;justify-content:space-between;padding:16px 24px 12px;border-bottom:1px solid #f0f2f8;flex-shrink:0;}
+    .scbht{font-size:15px;font-weight:800;color:#1a1a2e;}
+    .scbhs{font-size:12px;color:#9aa0b4;margin-top:2px;}
+    .scbbody{display:flex;flex:1;overflow:hidden;}
+
+    /* Palette */
+    .scpal{width:190px;flex-shrink:0;border-right:1px solid #f0f2f8;padding:14px 12px;overflow-y:auto;}
+    .scpal::-webkit-scrollbar{width:3px;}
+    .scpal::-webkit-scrollbar-thumb{background:#e0e3ed;border-radius:999px;}
+    .scpalt{font-size:10px;font-weight:700;color:#9aa0b4;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;margin-top:10px;}
+    .scpalt:first-child{margin-top:0;}
+    .pnode{display:flex;align-items:center;gap:8px;background:#f9fafc;border:1px solid #e8eaf0;border-radius:10px;padding:9px 11px;margin-bottom:6px;cursor:grab;user-select:none;transition:box-shadow 0.15s,transform 0.15s;position:relative;}
+    .pnode:hover{box-shadow:0 3px 10px rgba(0,0,0,0.07);transform:translateY(-1px);}
+    .pnode:active{cursor:grabbing;}
+    .pnicon{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+    .pnlbl{font-size:11px;font-weight:600;color:#1a1a2e;line-height:1.3;}
+    .pndesc{font-size:9px;color:#9aa0b4;margin-top:1px;line-height:1.3;}
+
+    /* Canvas */
+    .sccanvas{flex:1;position:relative;overflow:hidden;background:#fafbfc;background-image:radial-gradient(circle,#d0d4e0 1px,transparent 1px);background-size:24px 24px;cursor:default;}
+    .connsvg{position:absolute;inset:0;pointer-events:none;z-index:2;overflow:visible;}
+    .cvhint{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;pointer-events:none;transition:opacity 0.3s;}
+    .cvhint.gone{opacity:0;}
+
+    /* Canvas nodes */
+    .cnode{position:absolute;background:#fff;border:2px solid #e0e3ed;border-radius:14px;padding:10px 14px 8px;min-width:150px;cursor:move;user-select:none;box-shadow:0 2px 10px rgba(0,0,0,0.08);z-index:10;transition:border-color 0.15s,box-shadow 0.15s;}
+    .cnode:hover{border-color:#8b5cf6;box-shadow:0 4px 16px rgba(139,92,246,0.15);}
+    .cnode.selected{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,0.15);}
+    .cni{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+    .cni-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+    .cni-name{font-size:11px;font-weight:800;color:#1a1a2e;line-height:1.2;}
+    .cni-num{font-size:10px;color:#9aa0b4;font-weight:500;}
+    .cown-badge{display:inline-flex;align-items:center;font-size:9px;font-weight:700;color:#7c3aed;background:#f4f0ff;border-radius:5px;padding:1px 6px;margin-top:2px;}
+
+    /* Vessel stepper */
+    .vstepper{display:flex;align-items:center;gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid #f0f2f8;}
+    .vstep-lbl{font-size:9px;font-weight:600;color:#9aa0b4;flex:1;}
+    .vstep-btn{width:18px;height:18px;border-radius:50%;border:1.5px solid #e0e3ed;background:#fff;font-size:11px;color:#6b7280;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;flex-shrink:0;}
+    .vstep-btn:hover{border-color:#8b5cf6;color:#8b5cf6;}
+    .vstep-val{font-size:12px;font-weight:700;color:#1a1a2e;min-width:20px;text-align:center;}
+
+    /* Ports */
+    .port{position:absolute;width:12px;height:12px;border-radius:50%;background:#fff;border:2px solid #c0c4d0;z-index:15;transition:border-color 0.15s,background 0.15s,transform 0.15s;}
+    .port:hover{border-color:#8b5cf6;background:#f4f0ff;transform:scale(1.3);}
+    .port.out{right:-7px;top:50%;transform:translateY(-50%);}
+    .port.out:hover{transform:translateY(-50%) scale(1.3);}
+    .port.in{left:-7px;top:50%;transform:translateY(-50%);}
+    .port.in:hover{transform:translateY(-50%) scale(1.3);}
+    .port.active{border-color:#8b5cf6;background:#8b5cf6;}
+
+    /* Delete button */
+    .cdel{position:absolute;top:-8px;right:-8px;width:18px;height:18px;background:#e63946;color:#fff;border-radius:50%;border:none;font-size:10px;cursor:pointer;display:none;align-items:center;justify-content:center;z-index:20;line-height:1;}
+    .cnode:hover .cdel{display:flex;}
+
+    /* Owner popup */
+    .ownpop{position:absolute;background:#fff;border:1px solid #e0e3ed;border-radius:14px;padding:14px 16px;box-shadow:0 8px 28px rgba(0,0,0,0.13);z-index:100;min-width:200px;display:none;}
+    .ownpop.open{display:block;}
+    .ownpopt{font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:9px;}
+    .ownopt{display:flex;align-items:center;gap:7px;padding:5px 7px;border-radius:8px;cursor:pointer;margin-bottom:2px;transition:background 0.15s;}
+    .ownopt:hover{background:#f4f6fb;}
+    .ownopt input[type=radio]{accent-color:#8b5cf6;}
+    .ownopt label{font-size:12px;color:#4a4e69;font-weight:500;cursor:pointer;}
+    .owndone{width:100%;margin-top:9px;background:#8b5cf6;color:#fff;border:none;border-radius:8px;padding:7px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;}
+
+    /* Footer */
+    .scbft{padding:12px 24px;border-top:1px solid #f0f2f8;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+    .chainsum{font-size:12px;color:#6b7280;display:flex;align-items:center;gap:4px;flex-wrap:wrap;flex:1;margin-right:14px;}
+    .scbftacts{display:flex;gap:8px;}
+    .btnsm-ghost{background:#fff;color:#6b7280;border:1.5px solid #e0e3ed;border-radius:999px;padding:7px 15px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;}
+    .btnsm-red{background:#fff;color:#e63946;border:1.5px solid #fecaca;border-radius:999px;padding:7px 15px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;}
+    .btnsm-purple{background:#8b5cf6;color:#fff;border:none;border-radius:999px;padding:7px 19px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;}
+
+    /* SC preview in product form */
+    .scsec{background:#f9fafc;border:1px solid #e8eaf0;border-radius:12px;padding:14px 17px;margin-bottom:18px;}
+    .scslbl{font-size:11px;font-weight:700;color:#6b7280;margin-bottom:9px;text-transform:uppercase;letter-spacing:0.5px;}
+    .scprev{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-height:30px;margin-bottom:10px;}
+    .scchip{display:inline-flex;align-items:center;gap:4px;background:#eef4fd;border:1px solid #c7dcf8;border-radius:8px;padding:3px 10px;font-size:11px;font-weight:600;color:#1a6fdb;}
+    .scempty{font-size:12px;color:#c0c4d0;font-style:italic;}
+    .scarrow{color:#c0c4d0;}
+    .btnbuild{background:#1a6fdb;color:#fff;border:none;border-radius:9px;padding:10px 18px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;width:100%;transition:background 0.2s;}
+    .btnbuild:hover{background:#1558b0;}
+    @keyframes shake{0%{transform:translateX(0);}20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);}100%{transform:translateX(0);}}
+
+    /* ── KDE ── */
+    #sKDE .mc{display:flex;flex-direction:column;}
+    .kprog{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-shrink:0;}
+    .ktrack{flex:1;height:4px;background:#f0f2f7;border-radius:999px;overflow:hidden;}
+    .kfill{height:100%;background:#8b5cf6;border-radius:999px;transition:width 0.4s ease;}
+    .klbl{font-size:11px;font-weight:600;color:#9aa0b4;white-space:nowrap;}
+    #kcontent{flex:1;overflow-y:auto;min-height:0;padding-right:2px;}
+    #kcontent::-webkit-scrollbar{width:3px;}
+    #kcontent::-webkit-scrollbar-thumb{background:#e0e3ed;border-radius:999px;}
+    .knav{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;margin-top:16px;}
+    .kde-sticky{position:sticky;top:0;background:#fff;z-index:5;padding-bottom:10px;margin-bottom:14px;border-bottom:1px solid #f0f2f8;}
+    .ksbadge{display:inline-flex;align-items:center;gap:6px;background:#f4f0ff;border-radius:8px;padding:4px 12px;font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:4px;}
+    .kstitle{font-size:20px;font-weight:800;color:#1a1a2e;margin-bottom:2px;}
+    .kssub{font-size:12px;color:#9aa0b4;}
+    .kinstance-hd{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#f4f0ff;border-radius:10px;margin-bottom:10px;border-left:3px solid #8b5cf6;}
+    .kinstance-title{font-size:13px;font-weight:700;color:#7c3aed;}
+    .kinstance-meta{font-size:11px;color:#a78bfa;}
+    .kq{background:#f9fafc;border:1px solid #e8eaf0;border-radius:12px;padding:14px 16px;margin-bottom:10px;transition:border-color 0.2s;}
+    .kq.done{border-color:#c7dcf8;background:#fafcff;}
+    .kqtxt{font-size:13px;font-weight:600;color:#1a1a2e;margin-bottom:10px;line-height:1.5;}
+    .kopts{display:flex;gap:7px;flex-wrap:wrap;}
+    .kopt{display:flex;align-items:center;gap:5px;padding:7px 15px;border-radius:999px;border:1.5px solid #e0e3ed;font-size:12px;font-weight:600;color:#9aa0b4;cursor:pointer;background:#fff;transition:all 0.15s;user-select:none;}
+    .kopt:hover{border-color:#8b5cf6;color:#8b5cf6;}
+    .kopt.av{border-color:#16a34a;color:#16a34a;background:#f0fdf4;}
+    .kopt.pa{border-color:#f59e0b;color:#92400e;background:#fffbeb;}
+    .kopt.un{border-color:#e63946;color:#e63946;background:#fff5f5;}
+    .kpartial{margin-top:10px;display:none;}
+    .kpartial.show{display:block;}
+    .kpta{width:100%;padding:8px 12px;border:1px solid #e0e3ed;border-radius:8px;font-family:'Poppins',sans-serif;font-size:12px;color:#1a1a2e;outline:none;resize:none;transition:border-color 0.2s;}
+    .kpta:focus{border-color:#f59e0b;}
+    .btnkback{background:#f4f6fb;color:#6b7280;border:none;border-radius:999px;padding:10px 22px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+    .btnknext{background:#8b5cf6;color:#fff;border:none;border-radius:999px;padding:10px 25px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+    .btnknext:hover{background:#7c3aed;}
+    .ev-summary{margin-top:8px;display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
+    .ev-add-chip{display:inline-flex;align-items:center;gap:4px;background:#f4f6fb;border:1.5px dashed #c0c4d0;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:600;color:#9aa0b4;cursor:pointer;}
+    .ev-add-chip:hover{border-color:#8b5cf6;color:#8b5cf6;background:#faf5ff;}
+    .ev-add-chip-done{border-color:#16a34a!important;color:#16a34a!important;background:#f0fdf4!important;border-style:solid!important;}
+
+    /* ── PREFS / SUBMIT ── */
+    .prefcard{display:flex;align-items:center;gap:15px;border:2px solid #e0e3ed;border-radius:14px;padding:16px 19px;cursor:pointer;transition:border-color 0.2s,background 0.2s;margin-bottom:10px;}
+    .prefcard:hover{border-color:#8b5cf6;}
+    .prefcard.sel{border-color:#8b5cf6;background:#faf5ff;}
+    .preficon{width:44px;height:44px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;}
+    .preftitle{font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:2px;}
+    .prefdesc{font-size:12px;color:#9aa0b4;}
+    .prefradio{margin-left:auto;width:18px;height:18px;border-radius:50%;border:2px solid #e0e3ed;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+    .prefcard.sel .prefradio{border-color:#8b5cf6;background:#8b5cf6;}
+    .prefcard.sel .prefradio::after{content:'';width:7px;height:7px;border-radius:50%;background:#fff;}
+
+    /* ── THANK YOU ── */
+    .tywrap{text-align:center;padding:18px 0;}
+    .tyicon{font-size:54px;margin-bottom:14px;}
+    .tyh{font-size:27px;font-weight:800;color:#1a1a2e;margin-bottom:8px;}
+    .tysub{font-size:13px;color:#6b7280;line-height:1.7;max-width:400px;margin:0 auto 22px;}
+
+    /* ── CPILL ── */
+    .cpill{display:flex;align-items:center;gap:8px;background:#f4f6fb;border-radius:999px;padding:5px 13px 5px 5px;}
+    .cpa{width:28px;height:28px;border-radius:50%;background:#eef4fd;border:1.5px solid #c7dcf8;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#1a6fdb;}
+    .cpbl{font-size:9px;color:#9aa0b4;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;display:block;line-height:1.1;}
+    .cpbn{font-size:12px;font-weight:700;color:#1a1a2e;display:block;line-height:1.1;}
+
+    /* ── EVIDENCE MODAL ── */
+    .evmod{display:none;position:fixed;inset:0;background:rgba(8,12,32,0.4);backdrop-filter:blur(4px);z-index:500;align-items:center;justify-content:center;padding:20px;}
+    .evmod.open{display:flex;}
+    .evbox{background:#fff;border-radius:20px;width:100%;max-width:480px;padding:24px 26px 20px;box-shadow:0 16px 48px rgba(0,0,0,0.16);max-height:90vh;overflow-y:auto;}
+    .evbox-h{font-size:15px;font-weight:800;color:#1a1a2e;margin-bottom:4px;}
+    .evbox-sub{font-size:12px;color:#9aa0b4;margin-bottom:16px;}
+    .ev-types{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+    .ev-type{display:flex;align-items:center;gap:9px;border:1.5px solid #e0e3ed;border-radius:11px;padding:10px 13px;cursor:pointer;transition:all 0.15s;user-select:none;}
+    .ev-type:hover{border-color:#8b5cf6;background:#faf5ff;}
+    .ev-type.sel{border-color:#8b5cf6;background:#faf5ff;}
+    .ev-type-icon{font-size:18px;flex-shrink:0;}
+    .ev-type-lbl{font-size:12px;font-weight:600;color:#1a1a2e;}
+    .ev-type-desc{font-size:10px;color:#9aa0b4;margin-top:1px;}
+    .ev-input-area{display:none;margin-bottom:14px;}
+    .ev-input-area.show{display:block;}
+    .ev-inp-lbl{font-size:11px;font-weight:600;color:#6b7280;margin-bottom:6px;}
+    .ev-inp{width:100%;padding:9px 13px;border:1px solid #e0e3ed;border-radius:9px;font-family:'Poppins',sans-serif;font-size:12px;color:#1a1a2e;outline:none;background:#fff;transition:border-color 0.2s;}
+    .ev-inp:focus{border-color:#8b5cf6;}
+    .ev-items{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+    .ev-item{display:flex;align-items:center;justify-content:space-between;background:#f4f6fb;border-radius:9px;padding:8px 12px;}
+    .ev-item-l{display:flex;align-items:center;gap:8px;}
+    .ev-item-txt{font-size:12px;font-weight:600;color:#1a1a2e;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .ev-item-tag{font-size:10px;color:#7c3aed;background:#f4f0ff;border-radius:5px;padding:1px 7px;font-weight:600;}
+    .ev-item-del{background:none;border:none;cursor:pointer;color:#c0c4d0;font-size:14px;}
+    .ev-item-del:hover{color:#e63946;}
+    .ev-footer{display:flex;align-items:center;justify-content:space-between;}
+    .ev-count{font-size:11px;color:#9aa0b4;}
+    .ev-actions{display:flex;gap:8px;}
+    .ev-add-btn{background:#8b5cf6;color:#fff;border:none;border-radius:999px;padding:8px 18px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;}
+    .ev-done-btn{background:#1a1a2e;color:#fff;border:none;border-radius:999px;padding:8px 18px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;}
+    .ev-ghost-btn{background:#f4f6fb;color:#6b7280;border:none;border-radius:999px;padding:8px 16px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;}
+    .ev-upload-btn{display:none;width:100%;margin-top:7px;padding:8px 13px;border:1.5px dashed #c0c4d0;border-radius:9px;background:#f9fafc;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;color:#6b7280;cursor:pointer;text-align:center;}
+    .ev-upload-btn:hover{border-color:#8b5cf6;color:#8b5cf6;}
+    .ev-upload-btn.show{display:block;}
+    .ev-file-name{font-size:11px;color:#16a34a;font-weight:600;margin-top:5px;display:none;}
+    .ev-file-name.show{display:block;}
+
+    /* ── TOAST ── */
+    .ca-toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(12px);color:#fff;padding:11px 22px;border-radius:999px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.15);z-index:9999;opacity:0;transition:opacity 0.25s ease,transform 0.25s ease;white-space:nowrap;}
+
+    /* ── LANDING/SHIP SUB-Q ── */
+    .subq-box{background:#fff8e1;border:1.5px solid #fde68a;border-radius:12px;padding:16px 18px;margin-bottom:14px;}
+    .subq-title{font-size:12px;font-weight:700;color:#92400e;margin-bottom:10px;}
+    .subq-opts{display:flex;gap:10px;flex-wrap:wrap;}
+    .subq-opt{display:flex;align-items:center;gap:7px;padding:9px 16px;border-radius:999px;border:1.5px solid #e0e3ed;background:#fff;font-size:12px;font-weight:600;color:#6b7280;cursor:pointer;transition:all 0.15s;}
+    .subq-opt:hover{border-color:#f59e0b;}
+    .subq-opt.sel-a{border-color:#1a6fdb;background:#eef4fd;color:#1a6fdb;}
+    .subq-opt.sel-b{border-color:#f59e0b;background:#fffbeb;color:#92400e;}
+    .subq-opt.sel-c{border-color:#16a34a;background:#f0fdf4;color:#16a34a;}
+
+    /* Save exit modal */
+    #saveExitModal{display:none;position:fixed;inset:0;background:rgba(8,12,32,0.55);backdrop-filter:blur(6px);z-index:600;align-items:center;justify-content:center;padding:24px;}
+  </style>
+</head>
+<body>
+
+<!-- ══ SCREEN: MOU ══ -->
+<div class="screen no-glow active" id="sMOU">
+  <div class="mw"><div class="mc">
+    <div class="tb">
+      <a class="logo" href="mri.html">
+        <div class="logo-icon"><img src="brand-logo.png" style="width:28px;height:28px;object-fit:contain;"/></div>
+        <div style="display:flex;flex-direction:column;line-height:1.1;">
+          <span class="logo-project">Project</span>
+          <span class="logo-name">Manhattan.</span>
+        </div>
+      </a>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="background:#f4f0ff;color:#7c3aed;font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;">BETA</span>
+        <a href="mri.html" class="btn-ghost" style="padding:8px 18px;font-size:12px;">← Back to MRI</a>
+        <button class="btn-purple" id="mouBtn" onclick="goTo('sProducts')" disabled style="opacity:0.4;cursor:not-allowed;">I Agree & Continue</button>
+      </div>
+    </div>
+    <div style="max-width:640px;margin:0 auto;padding-bottom:20px;">
+      <div style="display:inline-flex;align-items:center;gap:8px;background:#f4f0ff;border-radius:8px;padding:4px 14px;font-size:11px;font-weight:700;color:#7c3aed;margin-bottom:16px;">📋 Memorandum of Understanding</div>
+      <div style="font-size:26px;font-weight:800;color:#1a1a2e;line-height:1.2;margin-bottom:6px;">Data Privacy &<br/>Confidentiality Agreement</div>
+      <div style="font-size:12px;color:#9aa0b4;margin-bottom:24px;">Between Project Manhattan (Operator) and the Participating Company (You)</div>
+      <div style="background:#f9fafc;border:1px solid #e8eaf0;border-radius:14px;padding:22px 24px;font-size:13px;color:#4a4e69;line-height:1.9;margin-bottom:20px;">
+        <div style="font-weight:700;color:#1a1a2e;margin-bottom:10px;">1. Purpose</div>
+        <p style="margin-bottom:14px;">This Memorandum of Understanding ("MoU") governs the terms under which your company voluntarily submits supply chain traceability data ("Assessment Data") to Project Manhattan for the purpose of generating a Manhattan Risk Index (MRI) score.</p>
+        <div style="font-weight:700;color:#1a1a2e;margin-bottom:10px;">2. Data Collection</div>
+        <p style="margin-bottom:14px;">We collect only the information you voluntarily provide during this assessment. This includes product details, supply chain stage responses, Key Data Element (KDE) availability declarations, and evidence files you choose to upload.</p>
+        <div style="font-weight:700;color:#1a1a2e;margin-bottom:10px;">3. Non-Disclosure</div>
+        <p style="margin-bottom:14px;">Project Manhattan agrees that your Assessment Data will <strong style="color:#1a1a2e;">not be shared, sold, or disclosed</strong> to any third party without your prior written consent. Your data is used solely for calculating and delivering your MRI score.</p>
+        <div style="font-weight:700;color:#1a1a2e;margin-bottom:10px;">4. Data Retention</div>
+        <p style="margin-bottom:14px;">Evidence files are retained only for the duration of the review process. Upon your written request, all data will be permanently deleted within <strong style="color:#1a1a2e;">72 hours</strong>.</p>
+        <div style="font-weight:700;color:#1a1a2e;margin-bottom:10px;">5. Self-Declaration</div>
+        <p style="margin-bottom:14px;">All responses are self-declarations. Project Manhattan does not independently verify information unless separately engaged for a Manhattan Verified assessment.</p>
+        <div style="font-weight:700;color:#1a1a2e;margin-bottom:10px;">6. Right to Withdraw</div>
+        <p>You may withdraw at any time before submission. Contact <strong style="color:#1a1a2e;">privacy@projectmanhattan.io</strong> to request deletion after submission.</p>
+      </div>
+      <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer;padding:16px;background:#fff;border:1.5px solid #e0e3ed;border-radius:12px;" id="mouLabel">
+        <input type="checkbox" id="mouCheck" onchange="toggleMoU(this)" style="width:18px;height:18px;margin-top:1px;accent-color:#8b5cf6;flex-shrink:0;cursor:pointer;"/>
+        <span style="font-size:13px;color:#1a1a2e;font-weight:500;line-height:1.6;">I have read and understood the terms above. I agree to participate in this assessment under the conditions set out in this Memorandum of Understanding.</span>
+      </label>
+    </div>
+  </div></div>
+</div>
+
+<!-- ══ SCREEN: PRODUCTS ══ -->
+<div class="screen no-glow" id="sProducts">
+  <div class="mw"><div class="mc">
+    <div class="tb">
+      <a class="logo" href="mri.html">
+        <div class="logo-icon"><img src="brand-logo.png" style="width:28px;height:28px;object-fit:contain;"/></div>
+        <div style="display:flex;flex-direction:column;line-height:1.1;">
+          <span class="logo-project">Project</span>
+          <span class="logo-name">Manhattan.</span>
+        </div>
+      </a>
+      <span style="background:#f4f0ff;color:#7c3aed;font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;">BETA</span>
+    </div>
+    <div style="font-size:20px;font-weight:800;color:#1a1a2e;margin-bottom:3px;">Select your Products</div>
+    <div style="font-size:12px;color:#9aa0b4;margin-bottom:18px;">Add products and build the supply chain for each. Up to 8 products.</div>
+    <div style="flex:1;overflow-y:auto;min-height:0;margin-bottom:14px;">
+      <div class="pgrid" id="pgrid">
+        <div class="pslot" onclick="openPF(0)" id="ps0"><div class="pplus">+</div><div class="plbl">Add Product</div></div>
+        <div class="pslot" onclick="openPF(1)" id="ps1"><div class="pplus">+</div><div class="plbl">Add Product</div></div>
+        <div class="pslot" onclick="openPF(2)" id="ps2"><div class="pplus">+</div><div class="plbl">Add Product</div></div>
+        <div class="pslot" onclick="openPF(3)" id="ps3"><div class="pplus">+</div><div class="plbl">Add Product</div></div>
+        <div class="pslot hidden" onclick="openPF(4)" id="ps4"><div class="pplus">+</div><div class="plbl">Add Product</div></div>
+        <div class="pslot hidden" onclick="openPF(5)" id="ps5"><div class="pplus">+</div><div class="plbl">Add Product</div></div>
+        <div class="pslot hidden" onclick="openPF(6)" id="ps6"><div class="pplus">+</div><div class="plbl">Add Product</div></div>
+        <div class="pslot hidden" onclick="openPF(7)" id="ps7"><div class="pplus">+</div><div class="plbl">Add Product</div></div>
+      </div>
+      <div style="text-align:center;margin-top:4px;">
+        <button id="addMoreBtn" onclick="showMoreSlots()" style="display:inline-flex;align-items:center;gap:6px;background:#f4f6fb;border:1.5px dashed #c0c4d0;border-radius:999px;padding:8px 20px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;color:#6b7280;cursor:pointer;">+ Add More Products</button>
+      </div>
+    </div>
+    <div class="brow" style="margin-top:0;">
+      <button class="btn-ghost" onclick="goTo('sMOU')">← Back</button>
+      <button class="btn-purple" onclick="toKDE()">Continue to Assessment →</button>
+    </div>
+  </div></div>
+</div>
+
+<!-- ══ SCREEN: KDE ══ -->
+<div class="screen no-glow" id="sKDE">
+  <div class="mw"><div class="mc">
+    <div class="tb">
+      <a class="logo" href="mri.html">
+        <div class="logo-icon"><img src="brand-logo.png" style="width:28px;height:28px;object-fit:contain;"/></div>
+        <div style="display:flex;flex-direction:column;line-height:1.1;">
+          <span class="logo-project">Project</span>
+          <span class="logo-name">Manhattan.</span>
+        </div>
+      </a>
+      <span style="background:#f4f0ff;color:#7c3aed;font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;">BETA</span>
+    </div>
+    <div class="kprog">
+      <div class="ktrack"><div class="kfill" id="kfill" style="width:0%"></div></div>
+      <div class="klbl" id="klbl">Stage 1</div>
+    </div>
+    <div id="kcontent"></div>
+    <div class="knav">
+      <button class="btnkback" id="kback" onclick="kPrev()">← Back</button>
+      <button class="btnkback" onclick="saveAndExit()" style="background:#f0fdf4;color:#16a34a;border:1.5px solid #bbf7d0;">💾 Save & Exit</button>
+      <button class="btnknext" id="knext" onclick="kNext()">Next Stage →</button>
+    </div>
+  </div></div>
+</div>
+
+<!-- ══ SCREEN: PREFS ══ -->
+<div class="screen no-glow" id="sPrefs">
+  <div class="mw"><div class="mc">
+    <div class="logo" style="margin-bottom:26px;">
+      <div class="logo-icon"><img src="brand-logo.png" style="width:28px;height:28px;object-fit:contain;"/></div>
+      <div style="display:flex;flex-direction:column;line-height:1.1;"><span class="logo-project">Project</span><span class="logo-name">Manhattan.</span></div>
+    </div>
+    <div style="font-size:25px;font-weight:800;color:#1a1a2e;margin-bottom:6px;">Almost there.</div>
+    <div style="font-size:13px;color:#6b7280;margin-bottom:24px;line-height:1.6;max-width:460px;">Your results will only be published once a Manhattan expert has reviewed and verified your submission.</div>
+    <div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:12px;">How would you like to receive your results?</div>
+    <div class="prefcard sel" id="pEmail" onclick="selPref('email')">
+      <div class="preficon" style="background:#eef4fd;">📧</div>
+      <div><div class="preftitle">Via Email</div><div class="prefdesc">We'll send your Manhattan Risk Score report directly to your inbox.</div></div>
+      <div class="prefradio"></div>
+    </div>
+    <div class="prefcard" id="pMeeting" onclick="selPref('meeting')">
+      <div class="preficon" style="background:#f4f0ff;">📅</div>
+      <div><div class="preftitle">Schedule a Meeting</div><div class="prefdesc">A Manhattan team member will walk you through your results personally.</div></div>
+      <div class="prefradio"></div>
+    </div>
+    <div style="background:#f9fafc;border:1px solid #e8eaf0;border-radius:11px;padding:13px 15px;font-size:12px;color:#6b7280;line-height:1.7;margin-top:16px;margin-bottom:22px;"><strong>Important:</strong> All responses are self-declarations. Your score will only be published as <strong>Manhattan Verified</strong> once our expert team has reviewed your submission.</div>
+    <div class="brow">
+      <button class="btn-ghost" onclick="goTo('sKDE')">← Back</button>
+      <button class="btn-purple" onclick="doSubmit()">Submit Assessment</button>
+    </div>
+  </div></div>
+</div>
+
+<!-- ══ SCREEN: THANK YOU ══ -->
+<div class="screen no-glow" id="sThankYou">
+  <div class="mw"><div class="mc" style="overflow-y:auto;align-items:center;justify-content:center;">
+    <div class="tywrap">
+      <div class="tyicon">🎉</div>
+      <div class="tyh">Thank You!</div>
+      <div class="tysub">Your assessment has been submitted. Our team will review your responses and evidence within 48 hours.</div>
+      <div style="display:inline-flex;align-items:center;gap:7px;background:#f4f0ff;border-radius:999px;padding:8px 20px;font-size:13px;font-weight:700;color:#7c3aed;margin-bottom:24px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+        Pending Manhattan Verification
+      </div>
+      <button class="btn-purple" onclick="window.location.href='mri.html'" style="margin-top:8px;">← Back to MRI</button>
+    </div>
+  </div></div>
+</div>
+
+<!-- ══ PRODUCT FORM OVERLAY ══ -->
+<div class="ov" id="pfov">
+  <div class="ovc">
+    <div class="ovhd">
+      <div><div class="ovtitle">Add Product</div><div class="ovsub">Fill in product details and build your supply chain.</div></div>
+      <button class="ovcls" onclick="closePF()">×</button>
+    </div>
+    <div class="fg">
+      <div class="fgg" style="grid-column:1/-1;"><label class="fl">Product Description *</label><input type="text" class="fi" id="pfd" placeholder="e.g. Skipjack Tuna Loin — Canned"/></div>
+      <div class="fgg"><label class="fl">Species *</label>
+        <div class="spw"><input type="text" class="fi" id="pfsp" placeholder="Search species..." oninput="filterSp(this.value)" onfocus="openSpDD()" autocomplete="off"/>
+        <div class="spdd" id="spdd"><div style="padding:12px;font-size:12px;color:#c0c4d0;">Loading...</div></div></div>
+      </div>
+      <div class="fgg"><label class="fl">Market / Destination *</label>
+        <div class="mkw"><div class="mksel" id="mksel" onclick="toggleMK()"><span class="mkph" id="mkph">Select markets...</span></div>
+        <div class="mkdd" id="mkdd"><div class="mksearch"><input type="text" placeholder="Search country..." oninput="filterMK(this.value)"/></div><div id="mklist"></div></div></div>
+      </div>
+      <div class="fgg"><label class="fl">Harvest Method</label>
+        <div class="mkw" id="harvestw">
+          <div class="mksel" id="harvestsel" onclick="toggleDrop('harvest')" style="cursor:pointer;"><span class="mkph" id="harvestph">Select...</span></div>
+          <div class="mkdd" id="harvestdd">
+            <div class="mkopt" onclick="selSingle('harvest','Wild Catch')">Wild Catch</div>
+            <div class="mkopt" onclick="selSingle('harvest','Aquaculture')">Aquaculture</div>
+            <div class="mkopt" onclick="selSingle('harvest','Mixed')">Mixed (Wild + Aquaculture)</div>
+          </div>
+        </div>
+        <input type="hidden" id="pfharvest"/>
+      </div>
+      <div class="fgg"><label class="fl">Certification</label>
+        <div class="mkw" id="certw">
+          <div class="mksel" id="certsel" onclick="toggleDrop('cert')" style="cursor:pointer;"><span class="mkph" id="certph">Select...</span></div>
+          <div class="mkdd" id="certdd">
+            <div class="mkopt" onclick="selSingle('cert','MSC')">MSC</div>
+            <div class="mkopt" onclick="selSingle('cert','ASC')">ASC</div>
+            <div class="mkopt" onclick="selSingle('cert','Other')">Other</div>
+            <div class="mkopt" onclick="selSingle('cert','None')">None</div>
+          </div>
+        </div>
+        <input type="hidden" id="pfcert"/>
+      </div>
+      <div class="fgg"><label class="fl">Product Form</label>
+        <div class="mkw" id="formw">
+          <div class="mksel" id="formsel" onclick="toggleDrop('form')" style="cursor:pointer;"><span class="mkph" id="formph">Select...</span></div>
+          <div class="mkdd" id="formdd">
+            <div class="mkopt" onclick="selSingle('form','Whole')">Whole</div>
+            <div class="mkopt" onclick="selSingle('form','Fillet')">Fillet</div>
+            <div class="mkopt" onclick="selSingle('form','Loin')">Loin</div>
+            <div class="mkopt" onclick="selSingle('form','Canned')">Canned</div>
+            <div class="mkopt" onclick="selSingle('form','Frozen')">Frozen</div>
+            <div class="mkopt" onclick="selSingle('form','Smoked')">Smoked</div>
+          </div>
+        </div>
+        <input type="hidden" id="pfform"/>
+      </div>
+    </div>
+    <!-- SC PREVIEW -->
+    <div class="scsec">
+      <div class="scslbl">Supply Chain *</div>
+      <div class="scprev" id="scprev"><span class="scempty">No supply chain built yet</span></div>
+      <button class="btnbuild" id="btnbuild" onclick="openSCB()">🔗 Build Supply Chain</button>
+    </div>
+    <div class="brow" style="margin-top:0;">
+      <button class="btn-ghost" onclick="closePF()">Cancel</button>
+      <button class="btn-purple" onclick="savePF()">Confirm Product</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SC BUILDER ══ -->
+<div class="scbov" id="scbov">
+  <div class="scb">
+    <div class="scbhd">
+      <div>
+        <div class="scbht">Supply Chain Builder <span style="font-size:11px;font-weight:500;color:#9aa0b4;margin-left:8px;">Beta</span></div>
+        <div class="scbhs">Drag CTEs onto the canvas. Click a node to set ownership and vessel count. Draw connections by dragging from the ● output port to an input port.</div>
+      </div>
+      <button class="ovcls" onclick="closeSCB()">×</button>
+    </div>
+    <div class="scbbody">
+      <!-- PALETTE -->
+      <div class="scpal">
+        <div class="scpalt">Wild Catch</div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'harvest')">
+          <div class="pnicon" style="background:#e0f2fe;">🎣</div>
+          <div><div class="pnlbl">Harvest / Catch</div><div class="pndesc">Fishing vessel event</div></div>
+        </div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'onvessel')">
+          <div class="pnicon" style="background:#f0fdf4;">🚢</div>
+          <div><div class="pnlbl">On-Vessel Processing</div><div class="pndesc">Processing at sea</div></div>
+        </div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'transshipment')">
+          <div class="pnicon" style="background:#fef3c7;">🔄</div>
+          <div><div class="pnlbl">Transshipment</div><div class="pndesc">Carrier vessel transfer</div></div>
+        </div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'landing')">
+          <div class="pnicon" style="background:#f0fdf4;">⚓</div>
+          <div><div class="pnlbl">Landing / Discharge</div><div class="pndesc">FV→Container or Carrier→Port</div></div>
+        </div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'vessel_landing')">
+          <div class="pnicon" style="background:#e0f2fe;">🚢⚓</div>
+          <div><div class="pnlbl">Direct Vessel Landing</div><div class="pndesc">FV direct to port</div></div>
+        </div>
+        <div class="scpalt">Aquaculture</div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'feedmill')">
+          <div class="pnicon" style="background:#fef9c3;">🌾</div>
+          <div><div class="pnlbl">Feedmill</div><div class="pndesc">Feed production</div></div>
+        </div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'hatchery')">
+          <div class="pnicon" style="background:#fce7f3;">🐣</div>
+          <div><div class="pnlbl">Hatchery</div><div class="pndesc">Juvenile production</div></div>
+        </div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'farm')">
+          <div class="pnicon" style="background:#f0fdf4;">🌊</div>
+          <div><div class="pnlbl">Farm / Grow-out</div><div class="pndesc">Aquaculture facility</div></div>
+        </div>
+        <div class="scpalt">Shared</div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'aggregation')">
+          <div class="pnicon" style="background:#fdf4ff;">📦</div>
+          <div><div class="pnlbl">Aggregation / Disagg.</div><div class="pndesc">Consolidate or split lots</div></div>
+        </div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'processing')">
+          <div class="pnicon" style="background:#fff7ed;">🏭</div>
+          <div><div class="pnlbl">Processing</div><div class="pndesc">Land-based facility</div></div>
+        </div>
+        <div class="pnode" draggable="true" ondragstart="onPD(event,'shipreceive')">
+          <div class="pnicon" style="background:#eef4fd;">🚛</div>
+          <div><div class="pnlbl">Ship / Receive</div><div class="pndesc">Export, transfer or delivery</div></div>
+        </div>
+      </div>
+
+      <!-- CANVAS -->
+      <div class="sccanvas" id="sccanvas" ondragover="onCD(event)" ondrop="onCDrop(event)">
+        <div class="cvhint" id="cvhint">
+          <div style="font-size:32px;">🔗</div>
+          <div style="font-size:13px;color:#c0c4d0;font-weight:500;">Drag CTEs here to build your supply chain</div>
+          <div style="font-size:11px;color:#d0d4e0;margin-top:4px;">Same CTE can be added multiple times — they'll be numbered automatically</div>
+        </div>
+        <svg class="connsvg" id="connsvg" style="width:100%;height:100%;overflow:visible;"></svg>
+
+        <!-- Owner popup -->
+        <div class="ownpop" id="ownpop">
+          <div class="ownpopt" id="ownpopt">Who operates this stage?</div>
+          <div class="ownopt"><input type="radio" name="ow" id="ow1" value="we"><label for="ow1">We operate this</label></div>
+          <div class="ownopt"><input type="radio" name="ow" id="ow2" value="supplier"><label for="ow2">Our Supplier</label></div>
+          <div class="ownopt"><input type="radio" name="ow" id="ow3" value="client"><label for="ow3">Our Client</label></div>
+          <div class="ownopt"><input type="radio" name="ow" id="ow4" value="third"><label for="ow4">Third Party</label></div>
+          <button class="owndone" onclick="saveOwn()">Done</button>
+        </div>
+      </div>
+    </div>
+    <div class="scbft">
+      <div class="chainsum" id="chainsum"><span style="color:#c0c4d0;">No chain defined yet</span></div>
+      <div class="scbftacts">
+        <button class="btnsm-ghost" onclick="closeSCB()">Cancel</button>
+        <button class="btnsm-red" onclick="clearCV()">Clear All</button>
+        <button class="btnsm-purple" onclick="saveSC()">Save Chain →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ EVIDENCE MODAL ══ -->
+<div class="evmod" id="evmod">
+  <div class="evbox">
+    <div class="evbox-h">Add Evidence</div>
+    <div class="evbox-sub" id="evmod-sub">Select the type of evidence to attach to this KDE.</div>
+    <div class="ev-types">
+      <div class="ev-type" id="evt-cert" onclick="selEvType('cert')"><div class="ev-type-icon">🏅</div><div><div class="ev-type-lbl">Certificate</div><div class="ev-type-desc">MSC, ASC, BRC, ISO</div></div></div>
+      <div class="ev-type" id="evt-url" onclick="selEvType('url')"><div class="ev-type-icon">🔗</div><div><div class="ev-type-lbl">URL / Link</div><div class="ev-type-desc">Registry, database</div></div></div>
+      <div class="ev-type" id="evt-doc" onclick="selEvType('doc')"><div class="ev-type-icon">📄</div><div><div class="ev-type-lbl">Document</div><div class="ev-type-desc">PDF, Word, Excel</div></div></div>
+      <div class="ev-type" id="evt-ref" onclick="selEvType('ref')"><div class="ev-type-icon">📋</div><div><div class="ev-type-lbl">Reference / ID</div><div class="ev-type-desc">Permit no., code</div></div></div>
+      <div class="ev-type" id="evt-photo" onclick="selEvType('photo')"><div class="ev-type-icon">🖼️</div><div><div class="ev-type-lbl">Photo / Image</div><div class="ev-type-desc">JPG, PNG, scan</div></div></div>
+      <div class="ev-type" id="evt-statement" onclick="selEvType('statement')"><div class="ev-type-icon">✍️</div><div><div class="ev-type-lbl">Statement</div><div class="ev-type-desc">Declaration, attestation</div></div></div>
+    </div>
+    <div class="ev-input-area" id="ev-input-area">
+      <div class="ev-inp-lbl" id="ev-inp-lbl">Enter details</div>
+      <input class="ev-inp" id="ev-inp" placeholder="" onkeydown="if(event.key==='Enter')addEvItem()"/>
+      <button class="ev-upload-btn" id="ev-upload-btn" onclick="triggerEvUpload()">📎 Upload file</button>
+      <div class="ev-file-name" id="ev-file-name"></div>
+      <input type="file" id="ev-file-inp" style="display:none;" onchange="onEvFileChange(this)"/>
+    </div>
+    <div class="ev-items" id="ev-items"></div>
+    <div class="ev-footer">
+      <div class="ev-count" id="ev-count"></div>
+      <div class="ev-actions">
+        <button class="ev-ghost-btn" onclick="closeEvMod()">Cancel</button>
+        <button class="ev-add-btn" id="ev-add-btn" onclick="addEvItem()" style="display:none;">+ Add</button>
+        <button class="ev-done-btn" onclick="saveEvidence()">Done ✓</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SAVE EXIT MODAL ══ -->
+<div id="saveExitModal" style="display:none;position:fixed;inset:0;background:rgba(8,12,32,0.55);backdrop-filter:blur(6px);z-index:600;align-items:center;justify-content:center;padding:24px;">
+  <div style="background:#fff;border-radius:20px;padding:32px 30px 26px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.18);text-align:center;">
+    <div style="width:52px;height:52px;border-radius:14px;background:#f0fdf4;border:1.5px solid #bbf7d0;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 16px;">💾</div>
+    <div style="font-size:17px;font-weight:800;color:#1a1a2e;margin-bottom:8px;">Progress Saved!</div>
+    <div style="font-size:13px;color:#6b7280;line-height:1.7;margin-bottom:24px;">Your assessment has been saved. Pick up where you left off by clicking <strong style="color:#1a1a2e;">Continue Assessment</strong> on the MRI page.</div>
+    <button onclick="window.location.href='mri.html'" style="width:100%;padding:13px;border-radius:999px;border:none;background:#8b5cf6;font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;color:#fff;cursor:pointer;">← Back to MRI</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ══════════════════════════════════════════════
+// SUPABASE
+// ══════════════════════════════════════════════
+const SU='https://enbdaajcromxmhgcverp.supabase.co',SK='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const db=window._sharedSupabase||(window._sharedSupabase=supabase.createClient(SU,SK));
+
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+let products=[],curPI=0,mkSel=[],allC=[],allSp=[],curChain=[];
+let kIdx=0,kResp={},pref='email',draftId=null;
+let evCustomName=null;
+
+// ══════════════════════════════════════════════
+// SCREEN NAV
+// ══════════════════════════════════════════════
+function goTo(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ══════════════════════════════════════════════
+// MOU
+// ══════════════════════════════════════════════
+function toggleMoU(cb){
+  const btn=document.getElementById('mouBtn');
+  const lbl=document.getElementById('mouLabel');
+  if(cb.checked){
+    btn.disabled=false;btn.style.opacity='1';btn.style.cursor='pointer';
+    lbl.style.borderColor='#8b5cf6';lbl.style.background='#faf5ff';
+  } else {
+    btn.disabled=true;btn.style.opacity='0.4';btn.style.cursor='not-allowed';
+    lbl.style.borderColor='#e0e3ed';lbl.style.background='#fff';
+  }
+}
+
+// ══════════════════════════════════════════════
+// CTE CONFIG
+// ══════════════════════════════════════════════
+const CTE_CFG={
+  harvest:    {l:'Harvest / Catch',      i:'🎣', b:'#e0f2fe', hasVessels:true,  maxCount:36},
+  onvessel:   {l:'On-Vessel Processing', i:'🚢', b:'#f0fdf4', hasVessels:false},
+  transshipment:{l:'Transshipment',      i:'🔄', b:'#fef3c7', hasVessels:true,  maxCount:20},
+  landing:    {l:'Landing / Discharge',  i:'⚓', b:'#f0fdf4', hasVessels:false, hasSubQ:true},
+  vessel_landing:{l:'Direct Vessel Landing',i:'🚢⚓',b:'#e0f2fe',hasVessels:false},
+  feedmill:   {l:'Feedmill',             i:'🌾', b:'#fef9c3', hasVessels:false},
+  hatchery:   {l:'Hatchery',             i:'🐣', b:'#fce7f3', hasVessels:false},
+  farm:       {l:'Farm / Grow-out',      i:'🌊', b:'#f0fdf4', hasVessels:false},
+  aggregation:{l:'Aggregation / Disagg.',i:'📦', b:'#fdf4ff', hasVessels:false},
+  processing: {l:'Processing',           i:'🏭', b:'#fff7ed', hasVessels:false},
+  shipreceive:{l:'Ship / Receive',       i:'🚛', b:'#eef4fd', hasVessels:false, hasSubQ:true},
+};
+
+const OWN_LABELS={we:'We operate',supplier:'Our Supplier',client:'Our Client',third:'Third Party'};
+
+// ══════════════════════════════════════════════
+// SC BUILDER STATE
+// ══════════════════════════════════════════════
+let scNodes=[],scEdges=[],scNodeCount=0;
+let dragType=null; // palette drag
+let draggingId=null,dragOffX=0,dragOffY=0; // node drag
+let connectFrom=null; // connection draw
+let activeOwn=null;
+
+// Count instances per type for auto-numbering
+function getInstanceNum(type){
+  const existing=scNodes.filter(n=>n.type===type);
+  return existing.length+1;
+}
+const ROMAN=['I','II','III','IV','V','VI','VII','VIII','IX','X'];
+
+function openSCB(){document.getElementById('scbov').classList.add('open');}
+function closeSCB(){
+  document.getElementById('scbov').classList.remove('open');
+  document.getElementById('ownpop').classList.remove('open');
+  activeOwn=null;
+  connectFrom=null;
+}
+
+function onPD(e,type){dragType=type;e.dataTransfer.effectAllowed='copy';}
+function onCD(e){e.preventDefault();}
+function onCDrop(e){
+  e.preventDefault();
+  if(!dragType)return;
+  const cv=document.getElementById('sccanvas');
+  const r=cv.getBoundingClientRect();
+  addNode(dragType, e.clientX-r.left-75, e.clientY-r.top-30);
+  dragType=null;
+}
+
+function addNode(type, x, y){
+  const cfg=CTE_CFG[type];
+  if(!cfg)return;
+  const num=getInstanceNum(type);
+  const id='n'+(++scNodeCount);
+  const node={id,type,x:Math.max(0,x),y:Math.max(0,y),cfg,own:null,
+    vesselCount:cfg.hasVessels?1:null,
+    instanceNum:num,
+    subMode:null, // for landing and shipreceive
+  };
+  scNodes.push(node);
+  renderNode(node);
+  document.getElementById('cvhint').classList.add('gone');
+  updateChainSum();
+}
+
+function renderNode(node){
+  const cv=document.getElementById('sccanvas');
+  // Remove existing if re-rendering
+  document.getElementById(node.id)?.remove();
+
+  const el=document.createElement('div');
+  el.className='cnode';
+  el.id=node.id;
+  el.style.left=node.x+'px';
+  el.style.top=node.y+'px';
+
+  const numLabel=ROMAN[node.instanceNum-1]||node.instanceNum;
+  const hasMultiple=scNodes.filter(n=>n.type===node.type).length>1;
+
+  el.innerHTML=`
+    <button class="cdel" onclick="delNode('${node.id}')">×</button>
+    <div class="cni">
+      <div class="cni-icon" style="background:${node.cfg.b}">${node.cfg.i}</div>
+      <div>
+        <div class="cni-name">${node.cfg.l}</div>
+        ${hasMultiple?`<div class="cni-num">${numLabel}</div>`:''}
+      </div>
+    </div>
+    ${node.own?`<div class="cown-badge">${OWN_LABELS[node.own]}</div>`:''}
+    ${node.cfg.hasVessels?`
+      <div class="vstepper">
+        <span class="vstep-lbl">${node.type==='transshipment'?'Carriers':'Vessels'}</span>
+        <button class="vstep-btn" onclick="event.stopPropagation();changeCount('${node.id}',-1)">−</button>
+        <span class="vstep-val" id="vc_${node.id}">${node.vesselCount}</span>
+        <button class="vstep-btn" onclick="event.stopPropagation();changeCount('${node.id}',+1)">+</button>
+      </div>`:''}
+    ${node.cfg.hasSubQ&&node.subMode?`<div style="margin-top:5px;font-size:9px;font-weight:700;color:#1a6fdb;background:#eef4fd;border-radius:5px;padding:1px 6px;display:inline-block;">${getSubModeLabel(node.type,node.subMode)}</div>`:''}
+    <div class="port out" data-node="${node.id}" data-dir="out"></div>
+    <div class="port in"  data-node="${node.id}" data-dir="in"></div>
+  `;
+
+  // Node drag
+  el.addEventListener('mousedown',e=>{
+    if(e.target.classList.contains('port')||e.target.classList.contains('cdel')||e.target.classList.contains('vstep-btn'))return;
+    draggingId=node.id;
+    const r=el.getBoundingClientRect();
+    dragOffX=e.clientX-r.left;
+    dragOffY=e.clientY-r.top;
+    e.preventDefault();
+  });
+
+  // Click to open owner popup
+  el.addEventListener('click',e=>{
+    if(e.target.classList.contains('port')||e.target.classList.contains('cdel')||e.target.classList.contains('vstep-btn'))return;
+    openOwn(node.id,el);
+  });
+
+  // Port mousedown — start connection
+  el.querySelectorAll('.port.out').forEach(port=>{
+    port.addEventListener('mousedown',e=>{
+      e.stopPropagation();
+      e.preventDefault();
+      connectFrom={id:node.id,el:port};
+      port.classList.add('active');
+    });
+  });
+
+  cv.appendChild(el);
+}
+
+function getSubModeLabel(type, mode){
+  if(type==='landing'){
+    if(mode==='fv_container') return 'FV → Container';
+    if(mode==='carrier_port') return 'Carrier → Port';
+  }
+  if(type==='shipreceive'){
+    if(mode==='internal') return 'Internal Transfer';
+    if(mode==='export') return 'Export Shipment';
+    if(mode==='domestic') return 'Domestic Delivery';
+  }
+  return mode;
+}
+
+function changeCount(id, delta){
+  const node=scNodes.find(n=>n.id===id);
+  if(!node||!node.cfg.hasVessels)return;
+  node.vesselCount=Math.max(1,Math.min(node.cfg.maxCount||36,node.vesselCount+delta));
+  const el=document.getElementById('vc_'+id);
+  if(el)el.textContent=node.vesselCount;
+  updateChainSum();
+}
+
+function delNode(id){
+  scNodes=scNodes.filter(n=>n.id!==id);
+  scEdges=scEdges.filter(e=>e.from!==id&&e.to!==id);
+  document.getElementById(id)?.remove();
+  if(!scNodes.length)document.getElementById('cvhint').classList.remove('gone');
+  drawConnections();
+  updateChainSum();
+  // Re-render all nodes to update numbering
+  const toRender=[...scNodes];
+  toRender.forEach(n=>renderNode(n));
+  drawConnections();
+}
+
+function clearCV(){
+  scNodes.forEach(n=>document.getElementById(n.id)?.remove());
+  scNodes=[];scEdges=[];
+  document.getElementById('cvhint').classList.remove('gone');
+  document.getElementById('connsvg').innerHTML='';
+  updateChainSum();
+}
+
+// Mouse events on canvas
+document.addEventListener('mousemove',e=>{
+  // Drag node
+  if(draggingId){
+    const cv=document.getElementById('sccanvas');
+    if(!cv)return;
+    const r=cv.getBoundingClientRect();
+    const x=Math.max(0,e.clientX-r.left-dragOffX);
+    const y=Math.max(0,e.clientY-r.top-dragOffY);
+    const el=document.getElementById(draggingId);
+    if(el){el.style.left=x+'px';el.style.top=y+'px';}
+    const node=scNodes.find(n=>n.id===draggingId);
+    if(node){node.x=x;node.y=y;}
+    drawConnections();
+  }
+  // Draw connection line
+  if(connectFrom){
+    const cv=document.getElementById('sccanvas');
+    if(!cv)return;
+    const r=cv.getBoundingClientRect();
+    drawConnections(e.clientX-r.left,e.clientY-r.top);
+  }
+});
+
+document.addEventListener('mouseup',e=>{
+  if(draggingId){draggingId=null;drawConnections();}
+  if(connectFrom){
+    // Check if dropped on an input port
+    const target=e.target;
+    if(target.classList.contains('port')&&target.dataset.dir==='in'){
+      const toId=target.dataset.node;
+      if(toId!==connectFrom.id){
+        // Avoid duplicate edges
+        const exists=scEdges.find(ed=>ed.from===connectFrom.id&&ed.to===toId);
+        if(!exists){
+          scEdges.push({from:connectFrom.id,to:toId});
+        }
+      }
+    }
+    // Clear active port styling
+    document.querySelectorAll('.port.active').forEach(p=>p.classList.remove('active'));
+    connectFrom=null;
+    drawConnections();
+    updateChainSum();
+  }
+});
+
+// ── Connection drawing ──
+function getPortPos(nodeId, dir){
+  const el=document.getElementById(nodeId);
+  if(!el)return null;
+  const cv=document.getElementById('sccanvas');
+  const cr=cv.getBoundingClientRect();
+  const nr=el.getBoundingClientRect();
+  const port=el.querySelector(`.port.${dir==='out'?'out':'in'}`);
+  if(!port)return{x:dir==='out'?nr.right-cr.left:nr.left-cr.left, y:nr.top+nr.height/2-cr.top};
+  const pr=port.getBoundingClientRect();
+  return{x:pr.left+pr.width/2-cr.left, y:pr.top+pr.height/2-cr.top};
+}
+
+function drawConnections(mouseX, mouseY){
+  const svg=document.getElementById('connsvg');
+  if(!svg)return;
+  svg.innerHTML='';
+
+  // Draw existing edges
+  scEdges.forEach(edge=>{
+    const from=getPortPos(edge.from,'out');
+    const to=getPortPos(edge.to,'in');
+    if(from&&to) drawCurve(svg,from.x,from.y,to.x,to.y,'#8b5cf6',false,edge.from+'_'+edge.to);
+  });
+
+  // Draw in-progress connection
+  if(connectFrom&&mouseX!==undefined){
+    const from=getPortPos(connectFrom.id,'out');
+    if(from) drawCurve(svg,from.x,from.y,mouseX,mouseY,'#c0c4d0',true,'temp');
+  }
+}
+
+function drawCurve(svg,x1,y1,x2,y2,color,dashed,edgeId){
+  const dx=Math.abs(x2-x1)*0.5;
+  const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d',`M${x1} ${y1} C${x1+dx} ${y1} ${x2-dx} ${y2} ${x2} ${y2}`);
+  path.setAttribute('stroke',color);
+  path.setAttribute('stroke-width','2');
+  path.setAttribute('fill','none');
+  if(dashed)path.setAttribute('stroke-dasharray','5,4');
+
+  // Delete edge on click
+  if(!dashed&&edgeId){
+    path.style.cursor='pointer';
+    path.style.pointerEvents='stroke';
+    path.setAttribute('stroke-width','6');
+    path.setAttribute('stroke','transparent');
+    svg.appendChild(path);
+    const visPath=path.cloneNode();
+    visPath.setAttribute('stroke',color);
+    visPath.setAttribute('stroke-width','2');
+    visPath.style.pointerEvents='none';
+    svg.appendChild(visPath);
+    path.addEventListener('click',()=>{
+      const parts=edgeId.split('_');
+      scEdges=scEdges.filter(e=>!(e.from===parts[0]&&e.to===parts[1]));
+      drawConnections();
+      updateChainSum();
+    });
+    return;
+  }
+
+  // Arrow marker
+  const mid='m'+Math.random().toString(36).substr(2,5);
+  const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+  const mk=document.createElementNS('http://www.w3.org/2000/svg','marker');
+  mk.setAttribute('id',mid);mk.setAttribute('markerWidth','8');mk.setAttribute('markerHeight','8');
+  mk.setAttribute('refX','6');mk.setAttribute('refY','3');mk.setAttribute('orient','auto');
+  const arr=document.createElementNS('http://www.w3.org/2000/svg','path');
+  arr.setAttribute('d','M0,0 L0,6 L8,3 z');arr.setAttribute('fill',color);
+  mk.appendChild(arr);defs.appendChild(mk);svg.appendChild(defs);
+  path.setAttribute('marker-end',`url(#${mid})`);
+  svg.appendChild(path);
+}
+
+// Owner popup
+function openOwn(nid,el){
+  activeOwn=nid;
+  const node=scNodes.find(n=>n.id===nid);
+  document.getElementById('ownpopt').textContent=`Who operates "${node.cfg.l}"?`;
+  document.querySelectorAll('input[name="ow"]').forEach(r=>r.checked=false);
+  if(node.own){const r=document.querySelector(`input[name="ow"][value="${node.own}"]`);if(r)r.checked=true;}
+  const cv=document.getElementById('sccanvas'),cr=cv.getBoundingClientRect(),nr=el.getBoundingClientRect();
+  let px=nr.right-cr.left+10,py=nr.top-cr.top;
+  if(px+210>cv.offsetWidth)px=nr.left-cr.left-215;
+  if(py+200>cv.offsetHeight)py=cv.offsetHeight-205;
+  const pop=document.getElementById('ownpop');
+  pop.style.left=px+'px';pop.style.top=Math.max(8,py)+'px';
+  pop.classList.add('open');
+}
+function saveOwn(){
+  if(!activeOwn)return;
+  const sel=document.querySelector('input[name="ow"]:checked');
+  const node=scNodes.find(n=>n.id===activeOwn);
+  if(sel&&node){
+    node.own=sel.value;
+    renderNode(node);
+    drawConnections();
+  }
+  document.getElementById('ownpop').classList.remove('open');
+  activeOwn=null;
+  updateChainSum();
+}
+
+// Chain summary
+function updateChainSum(){
+  const el=document.getElementById('chainsum');
+  if(!scNodes.length){el.innerHTML='<span style="color:#c0c4d0;">No chain defined yet</span>';return;}
+  // Topological order
+  const ordered=topoOrder(scNodes,scEdges);
+  el.innerHTML=ordered.map((n,i)=>{
+    const numLabel=ROMAN[n.instanceNum-1]||n.instanceNum;
+    const hasMultiple=scNodes.filter(x=>x.type===n.type).length>1;
+    const vcLabel=n.vesselCount>1?` (${n.vesselCount} ${n.type==='transshipment'?'carriers':'vessels'})`:n.vesselCount===1&&n.cfg.hasVessels?` (1 ${n.type==='transshipment'?'carrier':'vessel'})`:'';
+    return `${i>0?'<span style="color:#c0c4d0;margin:0 3px;">→</span>':''}
+      <span style="display:inline-flex;align-items:center;gap:3px;background:${n.cfg.b};border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;color:#1a1a2e;">
+        ${n.cfg.i} ${n.cfg.l}${hasMultiple?' '+numLabel:''}${vcLabel}
+      </span>`;
+  }).join('');
+}
+
+function topoOrder(nodes,edges){
+  if(!edges.length)return nodes;
+  // Build adjacency
+  const inDeg={};const adj={};
+  nodes.forEach(n=>{inDeg[n.id]=0;adj[n.id]=[];});
+  edges.forEach(e=>{adj[e.from].push(e.to);inDeg[e.to]=(inDeg[e.to]||0)+1;});
+  const queue=nodes.filter(n=>inDeg[n.id]===0).map(n=>n.id);
+  const result=[];const visited=new Set();
+  while(queue.length){
+    const id=queue.shift();
+    if(visited.has(id))continue;
+    visited.add(id);
+    const node=nodes.find(n=>n.id===id);
+    if(node)result.push(node);
+    (adj[id]||[]).forEach(nid=>{
+      inDeg[nid]--;
+      if(inDeg[nid]<=0&&!visited.has(nid))queue.push(nid);
+    });
+  }
+  // Add any unvisited (disconnected) nodes
+  nodes.forEach(n=>{if(!visited.has(n.id))result.push(n);});
+  return result;
+}
+
+function saveSC(){
+  if(!scNodes.length){showToast('Please add at least one CTE to your supply chain.','error');return;}
+  const ordered=topoOrder(scNodes,scEdges);
+  curChain=ordered.map(n=>({
+    id:n.id, type:n.type, l:n.cfg.l, i:n.cfg.i, b:n.cfg.b,
+    own:n.own, vesselCount:n.vesselCount, instanceNum:n.instanceNum,
+    subMode:n.subMode,
+  }));
+  updateSCPrev();
+  closeSCB();
+}
+
+function updateSCPrev(){
+  const p=document.getElementById('scprev');
+  if(!curChain.length){p.innerHTML='<span class="scempty">No supply chain built yet</span>';return;}
+  const ROMAN=['I','II','III','IV','V','VI','VII','VIII','IX','X'];
+  const typeCounts={};
+  curChain.forEach(n=>{typeCounts[n.type]=(typeCounts[n.type]||0)+1;});
+  p.innerHTML=curChain.map((n,i)=>{
+    const numLabel=ROMAN[n.instanceNum-1]||n.instanceNum;
+    const hasMultiple=typeCounts[n.type]>1;
+    return `${i>0?'<span class="scarrow">→</span>':''}<span class="scchip">${n.i} ${n.l}${hasMultiple?' '+numLabel:''}</span>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════
+// PRODUCT FORM
+// ══════════════════════════════════════════════
+function openPF(idx){
+  curPI=idx;
+  const p=products[idx]||{};
+  document.getElementById('pfd').value=p.desc||'';
+  document.getElementById('pfsp').value=p.species||'';
+  setDropVal('cert',p.cert||'');
+  setDropVal('form',p.form||'');
+  setDropVal('harvest',p.harvest||'');
+  mkSel=p.markets?[...p.markets]:[];updateMKChips();
+  curChain=p.chain?[...p.chain]:[];
+  // Restore SC builder state
+  clearCV();
+  if(p.scNodes){
+    p.scNodes.forEach(n=>{
+      scNodes.push({...n});
+      renderNode({...n,cfg:CTE_CFG[n.type]});
+    });
+    scEdges=[...(p.scEdges||[])];
+    drawConnections();
+    if(scNodes.length)document.getElementById('cvhint').classList.add('gone');
+  }
+  updateSCPrev();
+  document.getElementById('pfov').classList.add('open');
+}
+
+function closePF(){
+  document.getElementById('pfov').classList.remove('open');
+}
+
+function savePF(){
+  const d=document.getElementById('pfd').value.trim();
+  if(!d){showToast('Please enter a product description.','error');return;}
+  if(!curChain.length){
+    showToast('Please build a supply chain first.','error');
+    document.getElementById('btnbuild').style.animation='shake 0.4s ease';
+    setTimeout(()=>document.getElementById('btnbuild').style.animation='',400);
+    return;
+  }
+  products[curPI]={
+    desc:d, species:document.getElementById('pfsp').value,
+    cert:document.getElementById('pfcert').value,
+    form:document.getElementById('pfform').value,
+    harvest:document.getElementById('pfharvest').value,
+    markets:[...mkSel], chain:[...curChain],
+    scNodes:scNodes.map(n=>({...n,cfg:undefined})),
+    scEdges:[...scEdges],
+  };
+  fillSlot(curPI);
+  document.getElementById('pfov').classList.remove('open');
+}
+
+function fillSlot(i){
+  const p=products[i];
+  if(!p)return;
+  const s=document.getElementById('ps'+i);
+  s.classList.add('filled');
+  s.style.padding='0';s.style.overflow='hidden';s.style.aspectRatio='1';
+  const imgMap={Whole:'pf-whole.jpg',Fillet:'pf-fillet.jpg',Loin:'pf-loin.png',Canned:'pf-canned.jpg',Frozen:'pf-frozen.png',Smoked:'pf-smoked.jpg'};
+  const img=imgMap[p.form]||'pf-fallback.jpg';
+  s.innerHTML=`<div style="position:relative;width:100%;height:100%;border-radius:12px;overflow:hidden;background:#14172a;">
+    <img src="${img}" style="width:100%;height:100%;object-fit:cover;opacity:0.82;"/>
+    <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(5,8,22,0.92) 0%,rgba(5,8,22,0.2) 60%,transparent 100%);"></div>
+    <button style="position:absolute;top:8px;right:8px;z-index:2;background:#8b5cf6;color:#fff;border:none;border-radius:999px;padding:3px 10px;font-size:10px;font-weight:600;cursor:pointer;" onclick="event.stopPropagation();openPF(${i})">✏️ Edit</button>
+    <div style="position:absolute;bottom:0;left:0;right:0;padding:12px 14px;z-index:2;">
+      <div style="font-size:14px;font-weight:800;color:#fff;line-height:1.25;margin-bottom:4px;">${p.desc}</div>
+      <div style="font-size:10px;color:rgba(255,255,255,0.75);">${[p.species,p.harvest,p.cert&&p.cert!=='None'?p.cert:null].filter(Boolean).join(' · ')}</div>
+      <div style="font-size:9px;color:rgba(255,255,255,0.5);margin-top:3px;">${p.chain.length} CTE chain</div>
+    </div>
+  </div>`;
+  s.onclick=()=>openPF(i);
+}
+
+function showMoreSlots(){
+  ['ps4','ps5','ps6','ps7'].forEach(id=>document.getElementById(id)?.classList.remove('hidden'));
+  document.getElementById('addMoreBtn').style.display='none';
+}
+
+// ══════════════════════════════════════════════
+// KDE FLOW
+// ══════════════════════════════════════════════
+
+// CTE type ordering for grouping
+const CTE_GROUP_ORDER=['feedmill','hatchery','farm','harvest','onvessel','vessel_landing','transshipment','landing','aggregation','processing','shipreceive','certifications'];
+
+// EU countries
+const EU27=['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE'];
+
+let STAGES=[];
+
+function toKDE(){
+  if(!products.filter(Boolean).length){showToast('Please add at least one product.','error');return;}
+  STAGES=buildStages();
+  kIdx=0;
+  renderKDE();
+  goTo('sKDE');
+}
+
+function buildStages(){
+  const prods=products.filter(Boolean);
+  const markets=new Set();
+  prods.forEach(p=>(p.markets||[]).forEach(m=>markets.add(m)));
+  const hasEU=[...markets].some(m=>EU27.includes(m));
+  const hasUS=markets.has('US');
+  const certs=prods.map(p=>p.cert).filter(Boolean);
+  const hasMSC=certs.includes('MSC');
+  const hasASC=certs.includes('ASC');
+
+  // Tuna detection for ISSF PVR
+  const TUNA=['skipjack','yellowfin','bigeye','albacore','bluefin','longtail','tuna'];
+  const hasTuna=prods.some(p=>p.species&&TUNA.some(t=>p.species.toLowerCase().includes(t)));
+
+  // Collect all chain nodes across all products, grouped by type
+  const allChainNodes=[];
+  prods.forEach(p=>(p.chain||[]).forEach(cn=>allChainNodes.push(cn)));
+
+  // Group by type, preserve instance numbering
+  const byType={};
+  allChainNodes.forEach(cn=>{
+    if(!byType[cn.type])byType[cn.type]=[];
+    // Avoid duplicates (same node from multiple products)
+    if(!byType[cn.type].find(x=>x.id===cn.id))byType[cn.type].push(cn);
+  });
+
+  const stages=[];
+
+  // Add stages in group order
+  CTE_GROUP_ORDER.forEach(type=>{
+    const instances=byType[type];
+    if(!instances||!instances.length)return;
+
+    if(type==='harvest'){
+      // Group all harvest instances together
+      instances.forEach(inst=>{
+        const numLabel=ROMAN[inst.instanceNum-1]||inst.instanceNum;
+        const hasMultiple=instances.length>1;
+        const vc=inst.vesselCount||1;
+        stages.push({
+          k:`harvest_${inst.id}`, type:'harvest', instance:inst,
+          t:`Harvesting & Catch${hasMultiple?' — '+numLabel:''}`,
+          i:'🎣', vesselCount:vc,
+          qs:buildHarvestQs(inst,vc,hasEU,prods),
+        });
+      });
+    } else if(type==='transshipment'){
+      instances.forEach(inst=>{
+        const numLabel=ROMAN[inst.instanceNum-1]||inst.instanceNum;
+        const hasMultiple=instances.length>1;
+        const vc=inst.vesselCount||1;
+        stages.push({
+          k:`transshipment_${inst.id}`, type:'transshipment', instance:inst,
+          t:`Transshipment${hasMultiple?' — '+numLabel:''}`,
+          i:'🔄', vesselCount:vc, hasSubQ:true,
+          qs:buildTransshipmentQs(inst,vc,hasEU),
+        });
+      });
+    } else if(type==='landing'){
+      instances.forEach(inst=>{
+        const numLabel=ROMAN[inst.instanceNum-1]||inst.instanceNum;
+        const hasMultiple=instances.length>1;
+        stages.push({
+          k:`landing_${inst.id}`, type:'landing', instance:inst,
+          t:`Landing / Discharge${hasMultiple?' — '+numLabel:''}`,
+          i:'⚓', hasSubQ:true,
+          qs:[], // built dynamically based on subMode
+        });
+      });
+    } else if(type==='processing'){
+      instances.forEach(inst=>{
+        const numLabel=ROMAN[inst.instanceNum-1]||inst.instanceNum;
+        const hasMultiple=instances.length>1;
+        stages.push({
+          k:`processing_${inst.id}`, type:'processing', instance:inst,
+          t:`Processing${hasMultiple?' — '+numLabel:''}`,
+          i:'🏭',
+          qs:buildProcessingQs(hasEU),
+        });
+      });
+    } else if(type==='aggregation'){
+      instances.forEach(inst=>{
+        const numLabel=ROMAN[inst.instanceNum-1]||inst.instanceNum;
+        const hasMultiple=instances.length>1;
+        stages.push({
+          k:`aggregation_${inst.id}`, type:'aggregation', instance:inst,
+          t:`Aggregation / Disagg.${hasMultiple?' — '+numLabel:''}`,
+          i:'📦',
+          qs:buildAggregationQs(),
+        });
+      });
+    } else if(type==='shipreceive'){
+      instances.forEach(inst=>{
+        const numLabel=ROMAN[inst.instanceNum-1]||inst.instanceNum;
+        const hasMultiple=instances.length>1;
+        stages.push({
+          k:`shipreceive_${inst.id}`, type:'shipreceive', instance:inst,
+          t:`Ship / Receive${hasMultiple?' — '+numLabel:''}`,
+          i:'🚛', hasSubQ:true,
+          qs:[], // built dynamically based on subMode
+        });
+      });
+    } else if(type==='feedmill'){
+      instances.forEach(inst=>{
+        stages.push({k:`feedmill_${inst.id}`,type:'feedmill',instance:inst,t:'Feedmill',i:'🌾',qs:buildFeedmillQs()});
+      });
+    } else if(type==='hatchery'){
+      instances.forEach(inst=>{
+        stages.push({k:`hatchery_${inst.id}`,type:'hatchery',instance:inst,t:'Hatchery',i:'🐣',qs:buildHatcheryQs()});
+      });
+    } else if(type==='farm'){
+      instances.forEach(inst=>{
+        stages.push({k:`farm_${inst.id}`,type:'farm',instance:inst,t:'Farm / Grow-out',i:'🌊',qs:buildFarmQs()});
+      });
+    } else if(type==='vessel_landing'){
+      instances.forEach(inst=>{
+        stages.push({k:`vessel_landing_${inst.id}`,type:'vessel_landing',instance:inst,t:'Direct Vessel Landing',i:'🚢⚓',qs:buildVesselLandingQs(hasEU)});
+      });
+    } else if(type==='onvessel'){
+      instances.forEach(inst=>{
+        stages.push({k:`onvessel_${inst.id}`,type:'onvessel',instance:inst,t:'On-Vessel Processing',i:'🚢',qs:buildOnVesselQs()});
+      });
+    }
+  });
+
+  // Always add certifications last
+  stages.push({
+    k:'certifications', type:'certifications', t:'Certifications & Compliance', i:'🏅',
+    qs:buildCertQs(hasMSC,hasASC,hasEU,hasUS,hasTuna),
+  });
+
+  return stages;
+}
+
+const ROMAN=['I','II','III','IV','V','VI','VII','VIII','IX','X'];
+
+// ── KDE question builders ──
+function buildHarvestQs(inst,vc,hasEU,prods){
+  const N=vc===1?'the':'all '+vc;
+  const vessel=vc===1?'vessel':'vessels';
+  const harvests=prods.map(p=>p.harvest).filter(Boolean);
+  const isAqua=harvests.every(h=>h==='Aquaculture');
+  if(isAqua)return buildFarmQs(); // pure aquaculture
+
+  const qs=[
+    {id:`${inst.id}_fv_name`,q:`Is the name of ${N} fishing ${vessel} supplying this product available to you?`},
+    {id:`${inst.id}_fv_imo`,q:`Is the IMO number available for ${N} fishing ${vessel}?`},
+    {id:`${inst.id}_fv_uid`,q:`Is a unique vessel identification number (beyond IMO) available for ${N} ${vessel}?`},
+    {id:`${inst.id}_fv_flag`,q:`Is the flag state of ${N} fishing ${vessel} known and documented?`},
+    {id:`${inst.id}_fv_registry`,q:`Is ${vc===1?'the vessel':'each vessel'} listed on a public vessel registry with a hyperlink?`},
+    {id:`${inst.id}_fv_vms`,q:`Is VMS (Vessel Monitoring System) active for ${N} fishing ${vessel}?`},
+    {id:`${inst.id}_fv_ais`,q:`Is AIS tracking active and publicly verifiable for ${N} fishing ${vessel}?`},
+    {id:`${inst.id}_fv_rfmo`,q:`Is ${vc===1?'the vessel':'each vessel'} registered on the relevant RFMO register?`},
+    ...(hasEU?[{id:`${inst.id}_fv_eu_approval`,q:`Does ${vc===1?'the vessel':'each vessel'} hold a valid EU approved vessel listing?`}]:[]),
+    {id:`${inst.id}_fv_iuu_check`,q:`Has ${vc===1?'the vessel':'each vessel'} been checked against IUU vessel blacklists (RFMO, EU, PSMA)?`},
+    {id:`${inst.id}_fv_psma`,q:`Does ${vc===1?'the vessel':'each vessel'} comply with Port State Measures Agreement (PSMA) requirements?`},
+    {id:`${inst.id}_fv_permit`,q:`Is a valid fishing authorization or permit available for ${N} ${vessel}?`},
+    {id:`${inst.id}_fv_species`,q:'Is the species available using its scientific name at point of catch?'},
+    {id:`${inst.id}_fv_gtin`,q:'Is an Item/SKU/UPC/GTIN assigned to the product at the harvest stage?'},
+    {id:`${inst.id}_fv_linking`,q:'Is a linking KDE (batch/lot/serial number) assigned at harvest?'},
+    {id:`${inst.id}_fv_weight`,q:`Is weight or quantity with unit of measure available at point of catch for ${N} ${vessel}?`},
+    {id:`${inst.id}_fv_area`,q:'Is the FAO catch area or fishing zone available and documented?'},
+    {id:`${inst.id}_fv_coords`,q:'Are catch geo-coordinates available for each fishing event?'},
+    {id:`${inst.id}_fv_harvest_cert`,q:'Is a harvest certification available for this product (e.g. MSC)?'},
+    {id:`${inst.id}_fv_coc`,q:'Is a Chain of Custody certification available covering the harvest stage?'},
+    {id:`${inst.id}_fv_welfare_policy`,q:`Does your organization have a documented Human Welfare Policy covering ${N} fishing ${vessel}?`},
+    {id:`${inst.id}_fv_welfare_standards`,q:`Do ${N} ${vessel} comply with recognized human welfare standards (e.g. ILO, FISH)?`},
+  ];
+  return qs;
+}
+
+function buildTransshipmentQs(inst,vc,hasEU){
+  const N=vc===1?'the':'all '+vc;
+  const vessel=vc===1?'carrier vessel':'carrier vessels';
+  return [
+    {id:`${inst.id}_cr_name`,q:`Is the name of ${N} ${vessel} used for transshipment available?`},
+    {id:`${inst.id}_cr_imo`,q:`Is the IMO number available for ${N} ${vessel}?`},
+    {id:`${inst.id}_cr_uid`,q:`Is a unique vessel ID available for ${N} ${vessel}?`},
+    {id:`${inst.id}_cr_reg`,q:`Is the vessel registration number of ${N} ${vessel} available?`},
+    {id:`${inst.id}_cr_flag`,q:`Is the flag state of ${N} ${vessel} known and documented?`},
+    {id:`${inst.id}_cr_rfmo`,q:`Is ${vc===1?'the carrier vessel':'each carrier vessel'} registered on the relevant RFMO register?`},
+    ...(hasEU?[{id:`${inst.id}_cr_eu_approval`,q:`Does ${N} ${vessel} hold a valid EU approved vessel listing?`}]:[]),
+    {id:`${inst.id}_cr_iuu_check`,q:`Has ${N} ${vessel} been checked against IUU vessel blacklists (RFMO, EU, PSMA)?`},
+    {id:`${inst.id}_cr_psma`,q:`Does ${N} ${vessel} comply with PSMA requirements?`},
+    {id:`${inst.id}_cr_location`,q:'Is the location of the transshipment event documented and geo-referenced?'},
+    {id:`${inst.id}_cr_gtin`,q:'Is the Item/SKU/UPC/GTIN carried through to the transshipment record?'},
+    {id:`${inst.id}_cr_linking`,q:'Is the linking KDE (batch/lot/serial) maintained at transshipment?'},
+    {id:`${inst.id}_cr_weight`,q:`Is weight/quantity available at transshipment for ${N} ${vessel}?`},
+    {id:`${inst.id}_cr_approval`,q:'Is formal transshipment authorization from the flag state available?'},
+    {id:`${inst.id}_cr_auth_doc`,q:'Is a transshipment authorization document available for each event?'},
+    {id:`${inst.id}_cr_ts_port_auth`,q:'Was the transshipment notified to and approved by the relevant port authority? (At-port only)'},
+    {id:`${inst.id}_cr_ts_port_obs`,q:'Was an independent observer present at the port transshipment? (At-port only)'},
+    {id:`${inst.id}_cr_ts_atsea_notify`,q:'Was advance notification given to the RFMO before at-sea transshipment? (At-sea only)'},
+    {id:`${inst.id}_cr_coc`,q:'Is a Chain of Custody certification available covering the transshipment stage?'},
+    {id:`${inst.id}_cr_welfare_policy`,q:`Do ${N} ${vessel} operate under a documented Human Welfare Policy?`},
+    {id:`${inst.id}_cr_welfare_standards`,q:`Do ${N} ${vessel} comply with recognized human welfare standards?`},
+  ];
+}
+
+function buildLandingQs(inst, mode, hasEU){
+  const base=[
+    {id:`${inst.id}_fcl_species`,q:'Is the species (scientific name) carried through to the landing record?'},
+    {id:`${inst.id}_fcl_gtin`,q:'Is the Item/SKU/UPC/GTIN available at the point of landing?'},
+    {id:`${inst.id}_fcl_linking`,q:'Is the linking KDE (batch/lot/serial) available and maintained at landing?'},
+    {id:`${inst.id}_fcl_weight`,q:'Is weight/quantity with unit of measure available at landing?'},
+    {id:`${inst.id}_fcl_port`,q:'Is the port of landing documented and available?'},
+    {id:`${inst.id}_fcl_geo`,q:'Are the geo-coordinates of the landing location available?'},
+    {id:`${inst.id}_fcl_ownership`,q:'Is product ownership clearly documented at the landing stage?'},
+    {id:`${inst.id}_fcl_auth`,q:'Is a landing authorization available for each landing event?'},
+    ...(hasEU?[
+      {id:`${inst.id}_fcl_eu`,q:'Does the landing port have EU competent authority approval?'},
+      {id:`${inst.id}_fcl_master_decl`,q:'Is a signed vessel master declaration available for the catch?'},
+      {id:`${inst.id}_fcl_ca_validation`,q:'Has the catch certificate been validated by the flag state competent authority?'},
+      {id:`${inst.id}_fcl_net_weight`,q:'Is the net weight (not gross) specifically recorded at landing?'},
+    ]:[]),
+    {id:`${inst.id}_fcl_coc`,q:'Does the landing facility hold a Chain of Custody certification?'},
+    {id:`${inst.id}_fcl_welfare`,q:'Does the landing entity operate under a documented Human Welfare Policy?'},
+  ];
+
+  if(mode==='fv_container'){
+    // FV → Reefer Container at port
+    return [
+      ...base,
+      {id:`${inst.id}_fcl_bol`,q:'Is a Bill of Lading available for this container shipment?'},
+      {id:`${inst.id}_fcl_container`,q:'Is the container number documented and available?'},
+      {id:`${inst.id}_fcl_seal`,q:'Is the container seal number documented?'},
+      {id:`${inst.id}_fcl_consignee`,q:'Is the consignee identified on all shipping documents?'},
+      {id:`${inst.id}_fcl_cold_chain`,q:'Is cold chain continuity documented from vessel hold to container?'},
+    ];
+  } else if(mode==='carrier_port'){
+    // Carrier Vessel Discharge at port
+    return [
+      ...base,
+      {id:`${inst.id}_fcl_carrier_name`,q:'Is the carrier vessel name available at the landing record?'},
+      {id:`${inst.id}_fcl_carrier_imo`,q:'Is the carrier vessel IMO number recorded at landing?'},
+      {id:`${inst.id}_fcl_port_receipt`,q:'Is a port authority receipt or weigh ticket available?'},
+      {id:`${inst.id}_fcl_land_decl`,q:'Has a landing declaration been submitted to the port authority?'},
+    ];
+  }
+  return base;
+}
+
+function buildShipReceiveQs(inst, mode, hasEU, hasUS){
+  if(mode==='internal'){
+    return [
+      {id:`${inst.id}_lfp_ownership`,q:'Is product ownership clearly documented for this internal transfer?'},
+      {id:`${inst.id}_lfp_gtin`,q:'Is the GTIN/item code carried through on transfer documents?'},
+      {id:`${inst.id}_lfp_linking`,q:'Is the linking KDE (batch/lot/serial) maintained on transfer documents?'},
+      {id:`${inst.id}_lfp_weight`,q:'Is weight/quantity available on transfer documents?'},
+      {id:`${inst.id}_lfp_source`,q:'Is the source facility documented on transfer records?'},
+      {id:`${inst.id}_lfp_dest`,q:'Is the destination facility documented on transfer records?'},
+    ];
+  } else if(mode==='export'){
+    return [
+      {id:`${inst.id}_lfp_shipper`,q:"Is the shipper's GLN (Global Location Number) available?"},
+      {id:`${inst.id}_lfp_receiver`,q:"Is the receiver/end buyer's GLN available?"},
+      {id:`${inst.id}_lfp_ownership`,q:'Is product ownership clearly documented throughout shipping?'},
+      {id:`${inst.id}_lfp_gtin`,q:'Is the GTIN carried through on all shipping documents?'},
+      {id:`${inst.id}_lfp_linking`,q:'Is the linking KDE available on shipping documents?'},
+      {id:`${inst.id}_lfp_weight`,q:'Is weight/quantity available on shipping documents?'},
+      {id:`${inst.id}_lfp_source`,q:'Is the source location on shipping documents?'},
+      {id:`${inst.id}_lfp_dest`,q:'Is the destination location documented?'},
+      {id:`${inst.id}_lfp_bol`,q:'Is a Bill of Lading available?'},
+      {id:`${inst.id}_lfp_invoice`,q:"Is a commercial invoice available referencing certification status?"},
+      {id:`${inst.id}_lfp_packing`,q:'Is a packing list available matching the invoice and BoL?'},
+      {id:`${inst.id}_lfp_po`,q:"Is a buyer's purchase order available?"},
+      {id:`${inst.id}_lfp_seal`,q:'Is the container seal number documented?'},
+      {id:`${inst.id}_lfp_geo`,q:'Are geo-location event read points available during transit?'},
+      {id:`${inst.id}_lfp_coc`,q:'Does the logistics partner hold a Chain of Custody certification?'},
+      ...(hasUS?[
+        {id:`${inst.id}_s_simp`,q:'Is a SIMP entry filing available for this shipment? (US-bound)'},
+        {id:`${inst.id}_s_fsma_lot`,q:'Is an FSMA 204 traceability lot code assigned at each CTE? (US-bound)'},
+      ]:[]),
+    ];
+  } else {
+    // domestic
+    return [
+      {id:`${inst.id}_lfp_ownership`,q:'Is product ownership clearly documented for this delivery?'},
+      {id:`${inst.id}_lfp_gtin`,q:'Is the GTIN carried through on delivery documents?'},
+      {id:`${inst.id}_lfp_linking`,q:'Is the linking KDE maintained on delivery documents?'},
+      {id:`${inst.id}_lfp_weight`,q:'Is weight/quantity available on delivery documents?'},
+      {id:`${inst.id}_lfp_source`,q:'Is the source location documented?'},
+      {id:`${inst.id}_lfp_dest`,q:'Is the delivery destination documented?'},
+      {id:`${inst.id}_lfp_po`,q:"Is a buyer's purchase order available?"},
+    ];
+  }
+}
+
+function buildProcessingQs(hasEU){
+  return [
+    {id:'pp_name',q:'Is the name and location of the processing facility available?'},
+    {id:'pp_ownership',q:'Is product ownership clearly identified at processing?'},
+    {id:'pp_origin',q:'Is the product origin (country/region of catch) available at processing?'},
+    {id:'pp_geo',q:'Are the geo-coordinates of the processing facility available?'},
+    {id:'pp_gtin',q:'Is a GTIN assigned or carried through at processing?'},
+    {id:'pp_lot',q:'Is a lot code or batch number assigned to each production run?'},
+    {id:'pp_linking',q:'Is the linking KDE maintained throughout processing?'},
+    {id:'pp_weight',q:'Is weight/quantity available at processing?'},
+    {id:'pp_data',q:'Does the processor receive full catch/harvest data from the first receiver?'},
+    {id:'pp_cold',q:'Is cold chain covered by Chain of Custody certification?'},
+    ...(hasEU?[{id:'pp_eu',q:'Does this processing facility hold an EU Facility Approval number?'}]:[]),
+    {id:'pp_coc',q:'Does the processing facility hold a Chain of Custody certification?'},
+    {id:'pp_harvest_cert',q:'Does the processing facility hold a valid Harvest Certification?'},
+    {id:'pp_welfare_policy',q:'Does the processing facility have a documented Human Welfare Policy?'},
+    {id:'pp_welfare_standards',q:'Does the processing facility comply with recognized human welfare standards?'},
+  ];
+}
+
+function buildAggregationQs(){
+  return [
+    {id:'agg_lot',q:'Is a new lot code or batch number assigned at the aggregation/disaggregation point?'},
+    {id:'agg_linking',q:'Are all source lot codes linked to the new aggregated lot? (traceability linkage)'},
+    {id:'agg_weight',q:'Is weight/quantity reconciled and documented at the aggregation/disaggregation point?'},
+    {id:'agg_gtin',q:'Is a GTIN assigned or updated at the aggregation/disaggregation stage?'},
+    {id:'agg_ownership',q:'Is product ownership documented at the aggregation/disaggregation stage?'},
+    {id:'agg_location',q:'Is the location of the aggregation/disaggregation event documented?'},
+    {id:'agg_date',q:'Is the date of aggregation/disaggregation recorded?'},
+    {id:'agg_digital',q:'Is the aggregation/disaggregation event recorded in a digital traceability system?'},
+  ];
+}
+
+function buildFeedmillQs(){
+  return [
+    {id:'fm_name',q:'Is the feedmill name and location documented?'},
+    {id:'fm_license',q:'Is a valid feedmill registration or operating license available?'},
+    {id:'fm_formulation',q:'Is the feed formulation or full ingredient list available?'},
+    {id:'fm_fishmeal',q:'Are all fishmeal/fish oil ingredients traceable to their source fishery?'},
+    {id:'fm_cert',q:'Is the source fishery for marine ingredients certified (e.g. IFFO RS, MarinTrust)?'},
+    {id:'fm_lot',q:'Is a lot/batch number assigned to each feed production run?'},
+    {id:'fm_weight',q:'Is weight/quantity available per feed batch?'},
+    {id:'fm_audit',q:'Does the feedmill hold a recognised third-party quality audit (GMP+, FAMI-QS)?'},
+    {id:'fm_welfare',q:'Does the feedmill operate under a documented Human Welfare Policy?'},
+  ];
+}
+
+function buildHatcheryQs(){
+  return [
+    {id:'ht_name',q:'Is the hatchery name and location documented?'},
+    {id:'ht_license',q:'Is a valid hatchery registration or license available?'},
+    {id:'ht_broodstock',q:'Is broodstock origin and health status documented?'},
+    {id:'ht_lot',q:'Is a batch/lot number assigned at juvenile or fingerling production?'},
+    {id:'ht_species',q:'Is the species documented using its scientific name at the hatchery?'},
+    {id:'ht_stocking',q:'Are stocking records (date, quantity, weight) available per batch?'},
+    {id:'ht_disease',q:'Are disease treatment and medication records available?'},
+    {id:'ht_water',q:'Are water quality monitoring records available at the hatchery?'},
+    {id:'ht_coc',q:'Is the hatchery covered by a Chain of Custody or aquaculture certification?'},
+    {id:'ht_audit',q:'Has the hatchery passed a third-party audit in the last 12 months?'},
+    {id:'ht_welfare',q:'Does the hatchery operate under a documented Human Welfare Policy?'},
+  ];
+}
+
+function buildFarmQs(){
+  return [
+    {id:'aq_farm_name',q:'Is the farm name and location documented?'},
+    {id:'aq_farm_license',q:'Is a valid farm registration or aquaculture license available?'},
+    {id:'aq_species',q:'Is the species documented using its scientific name?'},
+    {id:'aq_gtin',q:'Is a GTIN assigned at the farm stage?'},
+    {id:'aq_linking',q:'Is a linking KDE (batch/lot/serial) assigned at the farm stage?'},
+    {id:'aq_weight',q:'Is the harvest weight and unit of measure available per batch?'},
+    {id:'aq_lot',q:'Is a lot code or production batch number assigned at harvest?'},
+    {id:'aq_stocking',q:'Are stocking density and stocking date records available?'},
+    {id:'aq_feed_supplier',q:'Is the feed supplier name and traceability available?'},
+    {id:'aq_feed_origin',q:'Is the origin of feed ingredients documented?'},
+    {id:'aq_water',q:'Are water quality monitoring records available?'},
+    {id:'aq_disease',q:'Are disease treatment and medication records available?'},
+    {id:'aq_coc',q:'Does the farm hold a Chain of Custody certification (e.g. ASC, BAP)?'},
+    {id:'aq_audit',q:'Has the farm passed a third-party audit in the last 12 months?'},
+    {id:'aq_welfare',q:'Does the farm operate under a documented animal and worker welfare policy?'},
+  ];
+}
+
+function buildVesselLandingQs(hasEU){
+  return [
+    {id:'fcl_port',q:'Is the port of landing documented and available?'},
+    {id:'fcl_geo',q:'Are the geo-coordinates of the landing location available?'},
+    {id:'fcl_land_decl',q:'Is a landing declaration submitted to the port authority?'},
+    {id:'fcl_port_receipt',q:'Is a port authority receipt or weigh ticket available at landing?'},
+    {id:'fcl_catch_log',q:"Is the vessel's catch log available and presented at point of landing?"},
+    {id:'fcl_cold_chain',q:'Is cold chain continuity documented from vessel hold to landing facility?'},
+    {id:'fcl_ownership',q:'Is product ownership clearly documented at landing?'},
+    {id:'fcl_auth',q:'Is a landing authorization available?'},
+    ...(hasEU?[{id:'fcl_eu',q:'Does the landing port have EU competent authority approval?'}]:[]),
+    {id:'fcl_coc',q:'Does the landing facility hold a Chain of Custody certification?'},
+    {id:'fcl_welfare',q:'Does the landing entity operate under a documented Human Welfare Policy?'},
+  ];
+}
+
+function buildOnVesselQs(){
+  return [
+    {id:'ov_process_type',q:'Is the type of on-vessel processing documented (e.g. H&G, gutting, freezing)?'},
+    {id:'ov_lot',q:'Is a lot or batch number assigned at the on-vessel processing stage?'},
+    {id:'ov_weight',q:'Is the weight/quantity after processing recorded per batch?'},
+    {id:'ov_linking',q:'Is the linking KDE maintained from catch through to on-vessel processing?'},
+    {id:'ov_cold',q:'Is the cold chain documented from catch to processed product on board?'},
+    {id:'ov_audit',q:'Has the vessel processing operation been audited against a food safety standard?'},
+  ];
+}
+
+function buildCertQs(hasMSC,hasASC,hasEU,hasUS,hasTuna){
+  return [
+    ...(hasMSC?[{id:'c_msc',q:'Do you hold a valid MSC Chain of Custody certificate?'}]:[]),
+    ...(hasASC?[{id:'c_asc',q:'Do you hold a valid ASC Chain of Custody certificate?'}]:[]),
+    ...(hasTuna?[{id:'c_issf_pvr',q:'Are your fishing vessels listed on the ISSF Participating Vessel Register (PVR)? Verify at iss-foundation.org/pvr-vessel-list'}]:[]),
+    {id:'c_brc',q:'Do you hold a current BRC Global Standard or IFS Food certification?'},
+    {id:'c_haccp',q:'Is a certified HACCP food safety plan in place at your processing facility?'},
+    {id:'c_iso',q:'Does your facility hold an ISO 22000 or equivalent food safety management system certification?'},
+    ...(hasEU?[{id:'c_eu',q:'Does your facility hold an EU Facility Approval number?'}]:[]),
+    {id:'c_audit',q:'Have you passed an independent third-party traceability audit in the last 12 months?'},
+    {id:'c_internal',q:'Do you have an internal traceability system linking every batch from source to sale?'},
+    {id:'c_recall',q:'Can you execute a full product recall or withdrawal within 4 hours?'},
+    {id:'c_digital',q:'Is your traceability data captured digitally (not paper-based)?'},
+    {id:'c_interop',q:'Can your traceability data be shared digitally with supply chain partners or regulators?'},
+    {id:'c_welfare_org',q:'Does your organization have a documented company-wide Human Welfare Policy?'},
+    {id:'c_welfare_audit',q:'Have you been audited against a recognized human welfare standard in the last 2 years?'},
+    ...(hasUS?[
+      {id:'s_iftp',q:'Does the importer hold a valid NOAA International Fisheries Trade Permit (IFTP)?'},
+      {id:'c_fsma_kde',q:'Is an FSMA 204 KDE record maintained for each lot? (US-bound)'},
+      {id:'c_fsvp',q:'Is a Foreign Supplier Verification Program (FSVP) on file? (US-bound)'},
+    ]:[]),
+  ];
+}
+
+// ── KDE Render ──
+function renderKDE(){
+  const st=STAGES[kIdx];
+  if(!st)return;
+
+  const pct=Math.round(((kIdx+1)/STAGES.length)*100);
+  document.getElementById('kfill').style.width=pct+'%';
+  document.getElementById('klbl').textContent=`Stage ${kIdx+1} of ${STAGES.length}`;
+  document.getElementById('kback').style.visibility=kIdx===0?'hidden':'visible';
+  document.getElementById('knext').textContent=kIdx===STAGES.length-1?'Finish →':'Next Stage →';
+
+  // Landing/Ship sub-question
+  const needsSubQ=(st.type==='landing'||st.type==='shipreceive')&&st.hasSubQ;
+  const stKey=st.k;
+  const savedMode=kResp[`_subMode_${stKey}`];
+
+  // Get qs — may be empty for landing/ship until subMode chosen
+  let qs=st.qs||[];
+  if(st.type==='landing'&&savedMode){
+    const prods2=products.filter(Boolean);
+    const markets=new Set();prods2.forEach(p=>(p.markets||[]).forEach(m=>markets.add(m)));
+    const hasEU=[...markets].some(m=>EU27.includes(m));
+    qs=buildLandingQs(st.instance,savedMode,hasEU);
+  }
+  if(st.type==='shipreceive'&&savedMode){
+    const prods2=products.filter(Boolean);
+    const markets=new Set();prods2.forEach(p=>(p.markets||[]).forEach(m=>markets.add(m)));
+    const hasEU=[...markets].some(m=>EU27.includes(m));
+    const hasUS=markets.has('US');
+    qs=buildShipReceiveQs(st.instance,savedMode,hasEU,hasUS);
+  }
+
+  // Transshipment sub-question (at-sea / at-port)
+  const isTSSubQ=st.type==='transshipment'&&st.hasSubQ;
+  const tsLoc=kResp[`_tsLoc_${stKey}`];
+
+  let html=`<div class="kde-sticky">
+    <div class="ksbadge">${st.i} ${st.t}</div>
+    <div class="kstitle">${st.t}</div>
+    <div class="kssub">Select the availability of each data element for your operations.</div>
+  </div>`;
+
+  // Landing sub-question
+  if(st.type==='landing'&&st.hasSubQ){
+    html+=`<div class="subq-box">
+      <div class="subq-title">⚠️ What does this Landing / Discharge event represent?</div>
+      <div class="subq-opts">
+        <div class="subq-opt ${savedMode==='fv_container'?'sel-a':''}" onclick="setSubMode('${stKey}','fv_container')">
+          🚢📦 Fishing vessel unloading into a reefer container at port
+        </div>
+        <div class="subq-opt ${savedMode==='carrier_port'?'sel-b':''}" onclick="setSubMode('${stKey}','carrier_port')">
+          🔄⚓ Carrier vessel discharging at port
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // Ship/Receive sub-question
+  if(st.type==='shipreceive'&&st.hasSubQ){
+    html+=`<div class="subq-box">
+      <div class="subq-title">⚠️ What does this Ship / Receive event represent?</div>
+      <div class="subq-opts">
+        <div class="subq-opt ${savedMode==='export'?'sel-a':''}" onclick="setSubMode('${stKey}','export')">
+          ✈️ Export shipment to overseas buyer
+        </div>
+        <div class="subq-opt ${savedMode==='domestic'?'sel-b':''}" onclick="setSubMode('${stKey}','domestic')">
+          🚛 Domestic delivery to buyer
+        </div>
+        <div class="subq-opt ${savedMode==='internal'?'sel-c':''}" onclick="setSubMode('${stKey}','internal')">
+          🏭 Internal transfer between facilities
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // Transshipment sub-question
+  if(isTSSubQ){
+    html+=`<div class="subq-box">
+      <div class="subq-title">⚠️ Where did this transshipment take place?</div>
+      <div class="subq-opts">
+        <div class="subq-opt ${tsLoc==='at_port'?'sel-a':''}" onclick="setTSLoc('${stKey}','at_port')">⚓ At Port — within port limits</div>
+        <div class="subq-opt ${tsLoc==='at_sea'?'sel-b':''}" onclick="setTSLoc('${stKey}','at_sea')">🌊 At Sea — vessel to vessel</div>
+      </div>
+      ${tsLoc==='at_sea'?`<div style="margin-top:10px;padding:9px 13px;background:#fff5f5;border-radius:8px;border:1px solid #fecaca;font-size:11px;color:#e63946;font-weight:600;">🚨 At-sea transshipment is a major IUU risk indicator. RFMO authorization and independent observer documentation are required.</div>`:''}
+    </div>`;
+  }
+
+  // Render KDE questions
+  if(!needsSubQ||savedMode){
+    // Filter transshipment questions based on location
+    let filteredQs=qs;
+    if(isTSSubQ){
+      filteredQs=qs.filter(q=>{
+        const id=q.id;
+        if(id.endsWith('_cr_ts_port_auth')||id.endsWith('_cr_ts_port_obs')){return tsLoc==='at_port'||!tsLoc;}
+        if(id.endsWith('_cr_ts_atsea_notify')){return tsLoc==='at_sea'||!tsLoc;}
+        return true;
+      });
+    }
+    html+=filteredQs.map(q=>renderQ(q)).join('');
+  } else if(needsSubQ&&!savedMode){
+    html+=`<div style="padding:32px 20px;text-align:center;background:#f9fafc;border-radius:12px;border:1.5px dashed #e0e3ed;color:#9aa0b4;font-size:13px;">
+      👆 Please select what this stage represents above to load the relevant KDE questions.
+    </div>`;
+  }
+
+  document.getElementById('kcontent').innerHTML=html;
+  document.getElementById('kcontent').scrollTop=0;
+}
+
+function setSubMode(stKey, mode){
+  kResp[`_subMode_${stKey}`]=mode;
+  renderKDE();
+}
+
+function setTSLoc(stKey, loc){
+  kResp[`_tsLoc_${stKey}`]=loc;
+  renderKDE();
+}
+
+function renderQ(q){
+  const r=kResp[q.id]||{};
+  const evs=r.evidence||[];
+  const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};
+  const evChips=evs.map(e=>`<span class="ev-chip" onclick="openEvMod('${q.id}')" style="display:inline-flex;align-items:center;gap:4px;background:#f4f0ff;border:1px solid #ddd6fe;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:600;color:#7c3aed;cursor:pointer;">${evIcons[e.type]||'📎'} ${(e.name||e.value).slice(0,22)}</span>`).join('');
+  const addChip=evs.length>0
+    ?`<span class="ev-add-chip ev-add-chip-done" onclick="openEvMod('${q.id}')">✓ ${evs.length} Evidence</span>`
+    :`<span class="ev-add-chip" onclick="openEvMod('${q.id}')">+ Add Evidence</span>`;
+  const showEv=r.ans==='av'||r.ans==='pa';
+
+  return `<div class="kq ${r.ans?'done':''}" id="kq${q.id.replace(/[^a-zA-Z0-9]/g,'_')}">
+    <div class="kqtxt">${q.q}</div>
+    <div class="kopts">
+      <div class="kopt ${r.ans==='av'?'av':''}" onclick="setAns('${q.id}','av')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Available
+      </div>
+      <div class="kopt ${r.ans==='pa'?'pa':''}" onclick="setAns('${q.id}','pa')">◑ Partial</div>
+      <div class="kopt ${r.ans==='un'?'un':''}" onclick="setAns('${q.id}','un')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Not Available
+      </div>
+    </div>
+    <div class="kpartial ${r.ans==='pa'?'show':''}" id="kp${q.id.replace(/[^a-zA-Z0-9]/g,'_')}">
+      <textarea class="kpta" rows="2" placeholder="Describe what data you currently have..." oninput="saveNote('${q.id}',this.value)">${r.note||''}</textarea>
+    </div>
+    ${showEv?`<div class="ev-summary">${evChips}${addChip}</div>`:`<div class="ev-summary" style="display:none;">${addChip}</div>`}
+  </div>`;
+}
+
+function setAns(id,ans){
+  if(!kResp[id])kResp[id]={};
+  kResp[id].ans=ans;
+  const safeId=id.replace(/[^a-zA-Z0-9]/g,'_');
+  const card=document.getElementById('kq'+safeId);
+  if(!card)return;
+  card.classList.add('done');
+  card.querySelectorAll('.kopt').forEach(o=>o.classList.remove('av','pa','un'));
+  const opts=[...card.querySelectorAll('.kopt')];
+  if(ans==='av')opts[0].classList.add('av');
+  else if(ans==='pa')opts[1].classList.add('pa');
+  else opts[2].classList.add('un');
+  const pb=document.getElementById('kp'+safeId);
+  if(pb)pb.classList.toggle('show',ans==='pa');
+  const evs=card.querySelector('.ev-summary');
+  if(evs)evs.style.display=(ans==='av'||ans==='pa')?'flex':'none';
+}
+
+function saveNote(id,v){if(!kResp[id])kResp[id]={};kResp[id].note=v;}
+
+function kPrev(){if(kIdx>0){kIdx--;renderKDE();}else goTo('sProducts');}
+function kNext(){
+  autoSave();
+  if(kIdx<STAGES.length-1){kIdx++;renderKDE();}else goTo('sPrefs');
+}
+
+// ══════════════════════════════════════════════
+// EVIDENCE MODAL
+// ══════════════════════════════════════════════
+let evKdeId=null,evSelType=null,evTempItems=[];
+const evTypeMeta={
+  cert:{lbl:'Certificate name or standard',ph:'e.g. MSC CoC, ASC, BRC Issue 9',icon:'🏅'},
+  url:{lbl:'URL or web link',ph:'https://...',icon:'🔗'},
+  doc:{lbl:'Document name or reference',ph:'e.g. BoL_2024_001.pdf',icon:'📄'},
+  ref:{lbl:'Reference number or ID',ph:'e.g. Permit No. FP-2024-007',icon:'📋'},
+  photo:{lbl:'Image file name or description',ph:'e.g. vessel_photo_jan2024.jpg',icon:'🖼️'},
+  statement:{lbl:'Statement or declaration reference',ph:'e.g. Supplier declaration Jan 2024',icon:'✍️'},
+};
+
+function openEvMod(id){
+  evKdeId=id;evSelType=null;
+  evTempItems=[...(kResp[id]?.evidence||[])];
+  document.querySelectorAll('.ev-type').forEach(el=>el.classList.remove('sel'));
+  document.getElementById('ev-input-area').classList.remove('show');
+  document.getElementById('ev-add-btn').style.display='none';
+  document.getElementById('ev-inp').value='';
+  renderEvItems();updateEvCount();
+  document.getElementById('evmod').classList.add('open');
+}
+function closeEvMod(){
+  document.getElementById('evmod').classList.remove('open');
+  evKdeId=null;evSelType=null;evCustomName=null;
+}
+function selEvType(type){
+  evSelType=type;
+  document.querySelectorAll('.ev-type').forEach(el=>el.classList.remove('sel'));
+  document.getElementById('evt-'+type).classList.add('sel');
+  const meta=evTypeMeta[type];
+  document.getElementById('ev-inp-lbl').textContent=meta.lbl;
+  document.getElementById('ev-inp').placeholder=meta.ph;
+  document.getElementById('ev-inp').value='';
+  document.getElementById('ev-input-area').classList.add('show');
+  document.getElementById('ev-add-btn').style.display='inline-block';
+  const uploadBtn=document.getElementById('ev-upload-btn');
+  const fileInp=document.getElementById('ev-file-inp');
+  if(type==='doc'||type==='cert'){
+    uploadBtn.classList.add('show');uploadBtn.textContent='📎 Upload file instead';
+    fileInp.setAttribute('accept','.pdf,.doc,.docx,.xls,.xlsx');
+  } else if(type==='photo'){
+    uploadBtn.classList.add('show');uploadBtn.textContent='🖼️ Upload image';
+    fileInp.setAttribute('accept','.jpg,.jpeg,.png,.gif,.webp,.svg');
+  } else {uploadBtn.classList.remove('show');}
+  document.getElementById('ev-file-name').classList.remove('show');
+  document.getElementById('ev-file-name').textContent='';
+  fileInp.value='';
+  evCustomName=null;
+  document.getElementById('ev-inp').oninput=function(){
+    if(!this.value.startsWith('http'))evCustomName=this.value.trim()||null;
+  };
+  setTimeout(()=>document.getElementById('ev-inp').focus(),50);
+}
+function triggerEvUpload(){document.getElementById('ev-file-inp').click();}
+async function onEvFileChange(inp){
+  if(!inp.files[0])return;
+  const file=inp.files[0];
+  const uploadBtn=document.getElementById('ev-upload-btn');
+  const fn=document.getElementById('ev-file-name');
+  uploadBtn.textContent='⏳ Uploading...';uploadBtn.style.pointerEvents='none';
+  fn.classList.remove('show');
+  try{
+    const path=`evidence/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+    const{data,error}=await db.storage.from('assessments').upload(path,file,{upsert:true});
+    if(error)throw error;
+    const{data:{publicUrl}}=db.storage.from('assessments').getPublicUrl(path);
+    document.getElementById('ev-inp').value=publicUrl;
+    const isImg=evSelType==='photo';
+    fn.innerHTML=isImg
+      ?`✓ <a href="${publicUrl}" target="_blank" style="color:#16a34a;text-decoration:underline;">${file.name}</a><br/><img src="${publicUrl}" style="margin-top:6px;max-width:100%;max-height:80px;border-radius:6px;object-fit:cover;border:1px solid #e0e3ed;"/>`
+      :`✓ <a href="${publicUrl}" target="_blank" style="color:#16a34a;text-decoration:underline;">${file.name}</a>`;
+    fn.classList.add('show');
+    uploadBtn.textContent=isImg?'🖼️ Change image':'📎 Change file';
+  }catch(e){
+    fn.textContent='❌ Upload failed: '+e.message;fn.classList.add('show');fn.style.color='#e63946';
+    uploadBtn.textContent='📎 Try again';
+  }
+  uploadBtn.style.pointerEvents='auto';
+}
+function addEvItem(){
+  if(!evSelType)return;
+  const val=document.getElementById('ev-inp').value.trim();
+  if(!val){document.getElementById('ev-inp').focus();return;}
+  const isUploadedUrl=val.startsWith('http')&&val.includes('supabase');
+  const displayName=isUploadedUrl&&evCustomName?evCustomName:val;
+  evTempItems.push({type:evSelType,value:val,icon:evTypeMeta[evSelType].icon,name:displayName});
+  document.getElementById('ev-inp').value='';
+  document.getElementById('ev-file-name').classList.remove('show');
+  document.getElementById('ev-file-name').textContent='';
+  evCustomName=null;
+  renderEvItems();updateEvCount();
+}
+function removeEvItem(i){evTempItems.splice(i,1);renderEvItems();updateEvCount();}
+function renderEvItems(){
+  const el=document.getElementById('ev-items');
+  if(!evTempItems.length){el.innerHTML='';return;}
+  el.innerHTML=evTempItems.map((e,i)=>{
+    const display=(e.name||e.value).slice(0,32);
+    const isUrl=e.value.startsWith('http');
+    return `<div class="ev-item">
+      <div class="ev-item-l">
+        <span style="font-size:14px;">${e.icon}</span>
+        <span class="ev-item-txt">${isUrl?`<a href="${e.value}" target="_blank" style="color:#7c3aed;text-decoration:underline;">${display}</a>`:display}</span>
+        <span class="ev-item-tag">${e.type}</span>
+      </div>
+      <button class="ev-item-del" onclick="removeEvItem(${i})">×</button>
+    </div>`;
+  }).join('');
+}
+function updateEvCount(){document.getElementById('ev-count').textContent=evTempItems.length?`${evTempItems.length} item${evTempItems.length>1?'s':''} added`:''}
+function saveEvidence(){
+  if(!evKdeId)return;
+  if(!kResp[evKdeId])kResp[evKdeId]={};
+  kResp[evKdeId].evidence=[...evTempItems];
+  closeEvMod();
+  renderKDE(); // refresh to show evidence chips
+}
+
+// ══════════════════════════════════════════════
+// AUTO-SAVE
+// ══════════════════════════════════════════════
+async function autoSave(){
+  const{data:{user}}=await db.auth.getUser();
+  const payload={
+    company_name:'Beta Assessment',
+    products:JSON.stringify(products.filter(Boolean)),
+    kde_responses:JSON.stringify(kResp),
+    delivery_preference:pref,
+    status:'draft',
+    stage_index:kIdx,
+    submitted_by:user?.email||'beta-user',
+    compliance_scores:null,
+  };
+  try{
+    if(draftId){
+      await db.from('company_assessments').update(payload).eq('id',draftId);
+    } else {
+      const{data,error}=await db.from('company_assessments').insert(payload).select('id').single();
+      if(!error&&data)draftId=data.id;
+    }
+    showToast('✓ Progress saved','success');
+  }catch(e){console.log('Save failed:',e.message);}
+}
+
+async function saveAndExit(){
+  await autoSave();
+  document.getElementById('saveExitModal').style.display='flex';
+}
+
+// ══════════════════════════════════════════════
+// SUBMIT
+// ══════════════════════════════════════════════
+function selPref(v){
+  pref=v;
+  document.getElementById('pEmail').classList.toggle('sel',v==='email');
+  document.getElementById('pMeeting').classList.toggle('sel',v==='meeting');
+}
+
+async function doSubmit(){
+  const payload={
+    company_name:'Beta Assessment',
+    products:JSON.stringify(products.filter(Boolean)),
+    kde_responses:JSON.stringify(kResp),
+    delivery_preference:pref,
+    status:'pending',
+    stage_index:kIdx,
+  };
+  try{
+    if(draftId){
+      await db.from('company_assessments').update(payload).eq('id',draftId);
+    } else {
+      await db.from('company_assessments').insert(payload);
+    }
+  }catch(e){console.log(e.message);}
+  goTo('sThankYou');
+}
+
+// ══════════════════════════════════════════════
+// DROPDOWN HELPERS
+// ══════════════════════════════════════════════
+function toggleDrop(key){
+  const dd=document.getElementById(key+'dd');
+  ['cert','form','harvest'].forEach(k=>{if(k!==key)document.getElementById(k+'dd')?.classList.remove('open');});
+  dd.classList.toggle('open');
+}
+function selSingle(key,val){
+  document.getElementById('pf'+key).value=val;
+  const sel=document.getElementById(key+'sel');
+  const ph=document.getElementById(key+'ph');
+  sel.querySelectorAll('.mkchip').forEach(e=>e.remove());
+  if(val){
+    ph.style.display='none';
+    const chip=document.createElement('span');
+    chip.className='mkchip';
+    chip.innerHTML=`${val}<span class="mkx" onclick="event.stopPropagation();clearSingle('${key}')">×</span>`;
+    sel.insertBefore(chip,ph);
+  } else {ph.style.display='block';}
+  document.getElementById(key+'dd').classList.remove('open');
+  document.querySelectorAll('#'+key+'dd .mkopt').forEach(o=>o.classList.toggle('sel',o.textContent.trim()===val));
+}
+function clearSingle(key){
+  document.getElementById('pf'+key).value='';
+  const sel=document.getElementById(key+'sel');
+  sel.querySelectorAll('.mkchip').forEach(e=>e.remove());
+  document.getElementById(key+'ph').style.display='block';
+  document.querySelectorAll('#'+key+'dd .mkopt').forEach(o=>o.classList.remove('sel'));
+}
+function setDropVal(key,val){if(val)selSingle(key,val);else clearSingle(key);}
+
+// Markets
+async function loadCountries(){
+  const{data}=await db.from('countries').select('country,alpha2').order('country');
+  allC=data||[];renderMKOpts(allC);
+}
+function renderMKOpts(list){
+  document.getElementById('mklist').innerHTML=list.map(c=>`<div class="mkopt ${mkSel.includes(c.alpha2)?'sel':''}" onclick="togMK('${c.alpha2}')"><span>${c.country}</span>${mkSel.includes(c.alpha2)?'<span>✓</span>':''}</div>`).join('');
+}
+function filterMK(q){renderMKOpts(allC.filter(c=>c.country.toLowerCase().includes(q.toLowerCase())));}
+function toggleMK(){document.getElementById('mkdd').classList.toggle('open');}
+function togMK(a2){mkSel.includes(a2)?mkSel=mkSel.filter(m=>m!==a2):mkSel.push(a2);updateMKChips();renderMKOpts(allC);}
+function updateMKChips(){
+  const w=document.getElementById('mksel');w.querySelectorAll('.mkchip').forEach(e=>e.remove());
+  const ph=document.getElementById('mkph');
+  if(!mkSel.length){ph.style.display='block';return;}ph.style.display='none';
+  mkSel.forEach(a2=>{const c=allC.find(c=>c.alpha2===a2);if(!c)return;const ch=document.createElement('span');ch.className='mkchip';ch.innerHTML=`${c.country}<span class="mkx" onclick="event.stopPropagation();rmMK('${a2}')">×</span>`;w.insertBefore(ch,ph);});
+}
+function rmMK(a2){mkSel=mkSel.filter(m=>m!==a2);updateMKChips();renderMKOpts(allC);}
+
+// Species
+async function loadSpecies(){
+  const{data}=await db.from('species').select('species_name,scientific_name').is('deleted_at',null).order('species_name');
+  allSp=data||[];renderSpOpts(allSp);
+}
+function renderSpOpts(list){
+  const dd=document.getElementById('spdd');
+  if(!list.length){dd.innerHTML='<div style="padding:12px;font-size:12px;color:#c0c4d0;">No species found</div>';return;}
+  dd.innerHTML=list.slice(0,50).map(s=>`<div class="spopt" onclick="selSp('${s.species_name.replace(/'/g,"\\'")}')"><div class="spn">${s.species_name}</div>${s.scientific_name?`<div class="sps">${s.scientific_name}</div>`:''}</div>`).join('');
+}
+function filterSp(q){renderSpOpts(allSp.filter(s=>s.species_name?.toLowerCase().includes(q.toLowerCase())||s.scientific_name?.toLowerCase().includes(q.toLowerCase())));document.getElementById('spdd').classList.add('open');}
+function openSpDD(){document.getElementById('spdd').classList.add('open');}
+function selSp(n){document.getElementById('pfsp').value=n;document.getElementById('spdd').classList.remove('open');}
+
+// Outside click
+document.addEventListener('click',e=>{
+  ['cert','form','harvest'].forEach(k=>{if(!e.target.closest('#'+k+'w'))document.getElementById(k+'dd')?.classList.remove('open');});
+  if(!e.target.closest('.mkw'))document.getElementById('mkdd')?.classList.remove('open');
+  if(!e.target.closest('.spw'))document.getElementById('spdd')?.classList.remove('open');
+  if(!e.target.closest('.ownpop')&&!e.target.closest('.cnode')){
+    document.getElementById('ownpop')?.classList.remove('open');activeOwn=null;
+  }
+});
+
+// ══════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════
+function showToast(msg,type='success'){
+  document.querySelectorAll('.ca-toast').forEach(t=>t.remove());
+  const t=document.createElement('div');t.className='ca-toast';
+  t.style.cssText=`position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(12px);background:${type==='error'?'#e63946':type==='info'?'#1a6fdb':'#22c55e'};color:#fff;padding:11px 22px;border-radius:999px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.15);z-index:9999;opacity:0;transition:opacity 0.25s ease,transform 0.25s ease;white-space:nowrap;`;
+  t.textContent=msg;document.body.appendChild(t);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{t.style.opacity='1';t.style.transform='translateX(-50%) translateY(0)';}));
+  setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(-50%) translateY(8px)';setTimeout(()=>t.remove(),300);},3000);
+}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+loadCountries();
+loadSpecies();
+</script>
+</body>
+</html>
