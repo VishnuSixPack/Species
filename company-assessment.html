@@ -1411,7 +1411,9 @@ const STAGE_TRANSSHIPMENT={k:'transshipment',t:'Transshipment',i:'🔄',qs:[
   {id:'cr_weight',q:'Is weight or quantity with unit of measure available at transshipment?'},
   {id:'cr_approval',q:'Is formal transshipment authorization from the flag state available?'},
   {id:'cr_auth_doc',q:'Is a transshipment authorization document available for each event?'},
-  {id:'cr_observer',q:'Is transshipment conducted in port or under independent observer monitoring?'},
+  {id:'cr_ts_port_auth',q:'Was the transshipment notified to and approved by the relevant port authority? (At-port transshipment)'},
+  {id:'cr_ts_port_obs',q:'Was an independent observer present at the port transshipment event? (At-port transshipment)'},
+  {id:'cr_ts_atsea_notify',q:'Was advance notification given to the relevant RFMO prior to the at-sea transshipment event?'},
   {id:'cr_coc',q:'Is a Chain of Custody certification available covering the transshipment stage?'},
   {id:'cr_welfare_policy',q:'Do your transshipment vessels operate under a documented Human Welfare Policy?'},
   {id:'cr_welfare_standards',q:'Do your carrier vessels comply with recognized human welfare standards?'},
@@ -1539,10 +1541,15 @@ function buildActiveStages(){
   const hasEU=[...markets].some(m=>EU27.includes(m));
   const hasUS=markets.has('US');
 
+  // 4. Detect tuna species across products for ISSF PVR gating
+  const TUNA_SPECIES=['skipjack','yellowfin','bigeye','albacore','bluefin','southern bluefin','atlantic bluefin','pacific bluefin','longtail','frigate','bullet','bonito','tuna'];
+  const hasTuna=prods.some(p=>p.species&&TUNA_SPECIES.some(t=>p.species.toLowerCase().includes(t)));
+
   // 4. Build certifications stage questions
   const certQs=[
     ...(hasMSC?[{id:'c_msc',q:'Do you hold a valid MSC Chain of Custody certificate?'}]:[]),
     ...(hasASC?[{id:'c_asc',q:'Do you hold a valid ASC Chain of Custody certificate?'}]:[]),
+    ...(hasTuna?[{id:'c_issf_pvr',q:'Are your fishing vessels listed on the ISSF Participating Vessel Register (PVR)? The PVR is a voluntary register of tuna vessels committed to ISSF conservation measures — verify at issf-foundation.org/pvr-vessel-list'}]:[]),
     {id:'c_brc',q:'Do you hold a current BRC Global Standard or IFS Food certification?'},
     {id:'c_haccp',q:'Is a certified HACCP (Hazard Analysis and Critical Control Points) food safety plan in place at your processing facility?'},
     {id:'c_iso',q:'Does your facility or processor hold an ISO 22000 or equivalent food safety management system certification?'},
@@ -1786,8 +1793,12 @@ function renderKDE(){
         if(loc==='at_sea') return {...q,q:'Are the geo-coordinates of the at-sea transshipment event recorded and available?'};
         if(loc==='at_port') return {...q,q:'Is the port of transshipment documented and geo-referenced?'};
       }
+      // At-port only KDEs
+      if((q.id==='cr_ts_port_auth'||q.id==='cr_ts_port_obs')&&kResp._tsLocation==='at_sea') return null;
+      // At-sea only KDE
+      if(q.id==='cr_ts_atsea_notify'&&kResp._tsLocation==='at_port') return null;
       return q;
-    });
+    }).filter(Boolean);
 
     document.getElementById('kcontent').innerHTML=
       `<div class="kde-sticky"><div class="ksbadge">${st.i} ${st.t}${st.deliveryMode==='vessel'?' <span style="background:#e0f2fe;color:#0369a1;border-radius:5px;padding:1px 7px;font-size:9px;font-weight:700;">DIRECT FV</span>':st.deliveryMode==='carrier'?' <span style="background:#fef3c7;color:#92400e;border-radius:5px;padding:1px 7px;font-size:9px;font-weight:700;">VIA CARRIER</span>':st.deliveryMode==='container'?' <span style="background:#f4f6fb;color:#6b7280;border-radius:5px;padding:1px 7px;font-size:9px;font-weight:700;">CONTAINER</span>':''}</div><div class="kstitle">${st.t}</div><div class="kssub">Select the availability of each data element for your operations.</div></div>`
