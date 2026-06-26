@@ -1085,17 +1085,18 @@ function buildStages(){
     const subInstances=instances.map(inst=>{
       const vc=inst.vesselCount||1;
       let qs=[],hasSubQ=false;
-      if(type==='harvest')      {qs=buildHarvestQs(inst,vc,hasEU,prods);}
-      else if(type==='transshipment'){qs=buildTransshipmentQs(inst,vc,hasEU);hasSubQ=true;}
+      const own=inst.own||null;
+      if(type==='harvest')      {qs=buildHarvestQs(inst,vc,hasEU,prods,own);}
+      else if(type==='transshipment'){qs=buildTransshipmentQs(inst,vc,hasEU,own);hasSubQ=true;}
       else if(type==='landing')  {qs=[];hasSubQ=true;}
-      else if(type==='processing'){qs=buildProcessingQs(hasEU);}
-      else if(type==='aggregation'){qs=buildAggregationQs();}
+      else if(type==='processing'){qs=buildProcessingQs(hasEU,own);}
+      else if(type==='aggregation'){qs=buildAggregationQs(own);}
       else if(type==='shipreceive'){qs=[];hasSubQ=true;}
-      else if(type==='feedmill') {qs=buildFeedmillQs();}
-      else if(type==='hatchery') {qs=buildHatcheryQs();}
-      else if(type==='farm')     {qs=buildFarmQs();}
-      else if(type==='vessel_landing'){qs=buildVesselLandingQs(hasEU);}
-      else if(type==='onvessel') {qs=buildOnVesselQs();}
+      else if(type==='feedmill') {qs=buildFeedmillQs(own);}
+      else if(type==='hatchery') {qs=buildHatcheryQs(own);}
+      else if(type==='farm')     {qs=buildFarmQs(own);}
+      else if(type==='vessel_landing'){qs=buildVesselLandingQs(hasEU,own);}
+      else if(type==='onvessel') {qs=buildOnVesselQs(own);}
       return{inst,vc,qs,hasSubQ};
     });
     // One stage per TYPE — instances is the array of sub-sections
@@ -1111,7 +1112,7 @@ function buildStages(){
   stages.push({k:'certifications',type:'certifications',t:'Certifications & Compliance',i:'🏅',instances:[{inst:null,vc:null,qs:buildCertQs(hasMSC,hasASC,hasEU,hasUS,hasTuna),hasSubQ:false}]});
   return stages;
 }
-function buildHarvestQs(inst,vc,hasEU,prods){
+function buildHarvestQs(inst,vc,hasEU,prods,own){
   const N=vc===1?'the':'all '+vc,vessel=vc===1?'vessel':'vessels';
   const harvests=prods.map(p=>p.harvest).filter(Boolean);
   if(harvests.every(h=>h==='Aquaculture'))return buildFarmQs();
@@ -1128,56 +1129,56 @@ function buildHarvestQs(inst,vc,hasEU,prods){
     {id:`${inst.id}_fv_iuu_check`,q:`Has ${vc===1?'the vessel':'each vessel'} been checked against IUU vessel blacklists (RFMO, EU, PSMA)?`},
     
     {id:`${inst.id}_fv_permit`,q:`Is a valid fishing authorization or permit available for ${N} ${vessel}?`},
-    {id:`${inst.id}_fv_species`,q:'Is the caught species identified and recorded by its scientific name (FAO species code) at the point of capture?'},
+    {id:`${inst.id}_fv_species`,q:'Can you confirm the species is identified by its scientific name (FAO species code) at the point of capture?'},
     {id:`${inst.id}_fv_gtin`,q:'Is an Item/SKU/UPC/GTIN assigned to the product at the harvest stage?'},
-    {id:`${inst.id}_fv_linking`,q:'Is a linking KDE (batch/lot/serial number) assigned at harvest?'},
+    {id:`${inst.id}_fv_linking`,q:'Do you assign a linking KDE (batch/lot/serial number) at the point of harvest?'},
     {id:`${inst.id}_fv_weight`,q:`Is weight or quantity with unit of measure available at point of catch for ${N} ${vessel}?`},
     {id:`${inst.id}_fv_area`,q:'Is the FAO catch area or fishing zone available and documented?'},
     {id:`${inst.id}_fv_coords`,q:'Are catch geo-coordinates available for each fishing event?'},
-    {id:`${inst.id}_fv_harvest_cert`,q:'Is a harvest certification available for this product (e.g. MSC)?'},
-    {id:`${inst.id}_fv_coc`,q:'Is a Chain of Custody certification available covering the harvest stage?'},
-    {id:`${inst.id}_fv_welfare_policy`,q:`Does your organization have a documented Human Welfare Policy covering ${N} fishing ${vessel}?`},
-    {id:`${inst.id}_fv_welfare_standards`,q:`Do ${N} ${vessel} comply with recognized human welfare standards (e.g. ILO, FISH)?`},
+    {id:`${inst.id}_fv_harvest_cert`,q:`Is a harvest certification (e.g. MSC) held by ${entity(own,'fishing entity')} supplying this product?`},
+    {id:`${inst.id}_fv_coc`,q:`Does ${entity(own,'fishing entity')} hold a Chain of Custody certification covering the harvest stage?`},
+    {id:`${inst.id}_fv_welfare_policy`,q:`Does the company operating ${N} fishing ${vessel} have a documented Human Welfare Policy?`},
+    {id:`${inst.id}_fv_welfare_standards`,q:`Do ${N} ${vessel} in your supply chain comply with recognized human welfare standards (e.g. ILO, FISH)?`},
   ];
 }
-function buildTransshipmentQs(inst,vc,hasEU){
+function buildTransshipmentQs(inst,vc,hasEU,own){
   const N=vc===1?'the':'all '+vc,vessel=vc===1?'carrier vessel':'carrier vessels';
   return [
     {id:`${inst.id}_cr_name`,q:`Is the name of ${N} ${vessel} used for transshipment available?`},
-    {id:`${inst.id}_cr_imo`,q:`Is the IMO number available for ${N} ${vessel}?`},
+    {id:`${inst.id}_cr_imo`,q:`Do you know the IMO number of ${N} ${vessel}?`},
     {id:`${inst.id}_cr_uid`,q:`Is a unique vessel ID available for ${N} ${vessel}?`},
-    {id:`${inst.id}_cr_reg`,q:`Is the vessel registration number of ${N} ${vessel} available?`},
+    {id:`${inst.id}_cr_reg`,q:`Do you have the vessel registration number of ${N} ${vessel} on record?`},
     {id:`${inst.id}_cr_flag`,q:`Is the flag state of ${N} ${vessel} known and documented?`},
     {id:`${inst.id}_cr_rfmo`,q:`Is ${vc===1?'the carrier vessel':'each carrier vessel'} registered on the relevant RFMO register?`},
     ...(hasEU?[{id:`${inst.id}_cr_eu_approval`,q:`Does ${N} ${vessel} hold a valid EU approved vessel listing?`}]:[]),
     {id:`${inst.id}_cr_iuu_check`,q:`Has ${N} ${vessel} been checked against IUU vessel blacklists?`},
     
     {id:`${inst.id}_cr_location`,q:'Is the location of the transshipment event documented and geo-referenced?'},
-    {id:`${inst.id}_cr_invoice`,q:'Is a commercial invoice or transfer document available for the transshipment event?'},
+    {id:`${inst.id}_cr_invoice`,q:'Is a commercial invoice or transfer document available to you for this transshipment event?'},
     {id:`${inst.id}_cr_bol`,q:'Is a Bill of Lading or carrier receipt available for the transshipment transfer?'},
-    {id:`${inst.id}_cr_planogram`,q:'Is a stowage planogram or storage plan documenting where the fish is held in the carrier vessel available?'},
+    {id:`${inst.id}_cr_planogram`,q:'Do you have access to a stowage planogram or storage plan showing where the fish is held in the carrier vessel?'},
     {id:`${inst.id}_cr_separation`,q:'If the product is MSC-certified, is it physically separated from non-certified product using MSC-defined netting or partition?'},
-    {id:`${inst.id}_cr_linking`,q:'Is the linking KDE (batch/lot/serial) maintained at transshipment?'},
+    {id:`${inst.id}_cr_linking`,q:'Do you have the linking KDE (batch/lot/serial) maintained and accessible at transshipment?'},
     {id:`${inst.id}_cr_weight`,q:`Is weight/quantity available at transshipment for ${N} ${vessel}?`},
-    {id:`${inst.id}_cr_approval`,q:'Is formal transshipment authorization from the flag state available?'},
+    {id:`${inst.id}_cr_approval`,q:'Has formal transshipment authorization been obtained from the flag state for this event?'},
     {id:`${inst.id}_cr_auth_doc`,q:'Is a transshipment authorization document available for each event?'},
     {id:`${inst.id}_cr_ts_port_auth`,q:'Was the transshipment notified to and approved by the relevant port authority? (At-port only)'},
     {id:`${inst.id}_cr_ts_port_obs`,q:'Was an independent observer present at the port transshipment? (At-port only)'},
     {id:`${inst.id}_cr_ts_atsea_notify`,q:'Was advance notification given to the RFMO before at-sea transshipment? (At-sea only)'},
-    {id:`${inst.id}_cr_coc`,q:'Is a Chain of Custody certification available covering the transshipment stage?'},
+    {id:`${inst.id}_cr_coc`,q:`Does ${entity(own,'carrier or transshipment operator')} hold a Chain of Custody certification for this stage?`},
     {id:`${inst.id}_cr_welfare_policy`,q:`Do ${N} ${vessel} operate under a documented Human Welfare Policy?`},
-    {id:`${inst.id}_cr_welfare_standards`,q:`Do ${N} ${vessel} comply with recognized human welfare standards?`},
+    {id:`${inst.id}_cr_welfare_standards`,q:`Do ${N} ${vessel} in your supply chain comply with recognized human welfare standards?`},
   ];
 }
 function buildLandingQs(inst,mode,hasEU){
   const base=[
-    {id:`${inst.id}_fcl_species`,    q:'Is the species (scientific name) carried through and available at the landing record?'},
+    {id:`${inst.id}_fcl_species`,    q:'Is the species (scientific name) documented and known to you at the landing stage?'},
     {id:`${inst.id}_fcl_gtin`,       q:'Is the Item/SKU/UPC/GTIN available at the point of landing? (May not apply to unprocessed raw material — mark Partial if an internal lot code is used instead)'},
-    {id:`${inst.id}_fcl_linking`,    q:'Is the linking KDE (batch/lot/serial) available and maintained at landing?'},
-    {id:`${inst.id}_fcl_weight`,     q:'Is weight or quantity with unit of measure available at landing?'},
-    {id:`${inst.id}_fcl_port`,       q:'Is the port of landing documented and available?'},
-    {id:`${inst.id}_fcl_geo`,        q:'Are the geo-coordinates of the landing location available?'},
-    {id:`${inst.id}_fcl_landing_date`,q:'Is the date of first landing or off-load documented and available?'},
+    {id:`${inst.id}_fcl_linking`,    q:'Do you have the linking KDE (batch/lot/serial) maintained and accessible at landing?'},
+    {id:`${inst.id}_fcl_weight`,     q:'Do you have weight or quantity with unit of measure recorded at landing?'},
+    {id:`${inst.id}_fcl_port`,       q:'Do you have the port of landing documented on your records?'},
+    {id:`${inst.id}_fcl_geo`,        q:'Do you have the geo-coordinates of the landing location on your records?'},
+    {id:`${inst.id}_fcl_landing_date`,q:'Do you know and have documented the date of first landing or off-load?'},
     {id:`${inst.id}_fcl_product_form`,q:'Is the product form at time of landing recorded (e.g. whole, H&G, fillet)?'},
     {id:`${inst.id}_fcl_ownership`,  q:'Is product ownership clearly identified and documented at the landing stage?'},
     {id:`${inst.id}_fcl_auth`,       q:'Is a landing authorization available for each landing event?'},
@@ -1187,12 +1188,12 @@ function buildLandingQs(inst,mode,hasEU){
       {id:`${inst.id}_fcl_ca_validation`, q:'Has the catch certificate been validated by the flag state competent authority?'},
       {id:`${inst.id}_fcl_net_weight`,    q:'Is the net weight (not gross weight) specifically recorded and available at landing?'},
     ]:[]),
-    {id:`${inst.id}_fcl_coc`,    q:'Does the landing facility hold a Chain of Custody certification?'},
-    {id:`${inst.id}_fcl_welfare`,q:'Does the landing entity operate under a documented Human Welfare Policy?'},
+    {id:`${inst.id}_fcl_coc`,    q:'Does the landing facility in your supply chain hold a Chain of Custody certification?'},
+    {id:`${inst.id}_fcl_welfare`,q:'Does the landing entity in your supply chain operate under a documented Human Welfare Policy?'},
   ];
   if(mode==='fv_container')return [...base,
     {id:`${inst.id}_fcl_bol`,      q:'Is a Bill of Lading available for this container shipment?'},
-    {id:`${inst.id}_fcl_container`,q:'Is the container number documented and available?'},
+    {id:`${inst.id}_fcl_container`,q:'Do you have the container number on your records?'},
     {id:`${inst.id}_fcl_seal`,     q:'Is the container seal number documented?'},
     {id:`${inst.id}_fcl_consignee`,q:'Is the consignee identified on all shipping documents?'},
     {id:`${inst.id}_fcl_cold_chain`,q:'Is cold chain continuity documented from vessel hold to container?'},
@@ -1200,7 +1201,7 @@ function buildLandingQs(inst,mode,hasEU){
   if(mode==='carrier_port')return [...base,
     {id:`${inst.id}_fcl_carrier_name`,q:'Is the carrier vessel name available at the landing record?'},
     {id:`${inst.id}_fcl_carrier_imo`, q:'Is the carrier vessel IMO number recorded at landing?'},
-    {id:`${inst.id}_fcl_port_receipt`,q:'Is a port authority receipt or weigh ticket available?'},
+    {id:`${inst.id}_fcl_port_receipt`,q:'Is a port authority receipt or weigh ticket available to you for this landing?'},
     {id:`${inst.id}_fcl_land_decl`,   q:'Has a landing declaration been submitted to the port authority?'},
   ];
   return base;
@@ -1209,45 +1210,45 @@ function buildShipReceiveQs(inst,mode,transport,hasEU,hasUS,isFrozen=false){
   // ── INTERNAL TRANSFER (no transport mode needed) ──
   if(mode==='internal') return [
     {id:`${inst.id}_lfp_ownership`,q:'Is product ownership clearly documented for this internal transfer?'},
-    {id:`${inst.id}_lfp_gtin`,q:'Is the GTIN/item code carried through on transfer documents?'},
-    {id:`${inst.id}_lfp_linking`,q:'Is the linking KDE (batch/lot/serial) maintained on transfer documents?'},
+    {id:`${inst.id}_lfp_gtin`,q:'Do you carry the GTIN/item code through on your internal transfer documents?'},
+    {id:`${inst.id}_lfp_linking`,q:'Do you maintain the linking KDE on your internal transfer documents?'},
     {id:`${inst.id}_lfp_weight`,q:'Is weight/quantity available on transfer documents?'},
-    {id:`${inst.id}_lfp_source`,q:'Is the source facility name and address documented on transfer records?'},
-    {id:`${inst.id}_lfp_dest`,q:'Is the destination facility name and address documented on transfer records?'},
-    {id:`${inst.id}_lfp_transfer_date`,q:'Is the transfer date documented for each internal movement?'},
-    {id:`${inst.id}_lfp_transfer_ref`,q:'Is a unique transfer reference number assigned to this movement?'},
+    {id:`${inst.id}_lfp_source`,q:'Do you have the source facility name and address on your transfer records?'},
+    {id:`${inst.id}_lfp_dest`,q:'Do you have the destination facility name and address on your transfer records?'},
+    {id:`${inst.id}_lfp_transfer_date`,q:'Do you document the transfer date for each internal movement?'},
+    {id:`${inst.id}_lfp_transfer_ref`,q:'Do you assign a unique transfer reference number to each internal movement?'},
   ];
 
   // ── COMMON BASE KDEs for export & domestic ──
   const base = [
     {id:`${inst.id}_lfp_shipper`,q:"Is the shipper's name, address and GLN (Global Location Number) available?"},
     {id:`${inst.id}_lfp_receiver`,q:"Is the receiver's name, address and GLN available?"},
-    {id:`${inst.id}_lfp_ownership`,q:'Is product ownership clearly documented on all shipping documents?'},
-    {id:`${inst.id}_lfp_gtin`,q:'Is the GTIN carried through on all shipping and customs documents?'},
-    {id:`${inst.id}_lfp_linking`,q:'Is the linking KDE (batch/lot/serial) on all shipping documents?'},
-    {id:`${inst.id}_lfp_weight`,q:'Is gross and net weight documented on all shipping documents?'},
-    {id:`${inst.id}_lfp_invoice`,q:'Is a commercial invoice available for the shipment?'},
-    {id:`${inst.id}_lfp_packing`,q:'Is a packing list available for the shipment?'},
+    {id:`${inst.id}_lfp_ownership`,q:'Do you clearly document product ownership on all shipping documents?'},
+    {id:`${inst.id}_lfp_gtin`,q:'Do you carry the GTIN through on all your shipping and customs documents?'},
+    {id:`${inst.id}_lfp_linking`,q:'Do you have the linking KDE (batch/lot/serial) on all shipping documents?'},
+    {id:`${inst.id}_lfp_weight`,q:'Do you have gross and net weight documented on all your shipping documents?'},
+    {id:`${inst.id}_lfp_invoice`,q:'Is a commercial invoice available to you for this shipment?'},
+    {id:`${inst.id}_lfp_packing`,q:'Is a packing list available to you for this shipment?'},
     ...(isFrozen?[{id:`${inst.id}_lfp_cold_chain`,q:'Is cold chain continuity (temperature logs, reefer settings) documented throughout the shipment?'}]:[]),
-    {id:`${inst.id}_lfp_species_ship`,q:'Is the species (scientific name) carried through on shipping documents?'},
+    {id:`${inst.id}_lfp_species_ship`,q:'Do you carry the species (scientific name) through on your shipping documents?'},
   ];
 
   // ── SEA FREIGHT ──
   if(transport==='sea') return [
     ...base,
     {id:`${inst.id}_lfp_bol`,q:'Is a Bill of Lading (B/L) available and signed for this sea shipment?'},
-    {id:`${inst.id}_lfp_container`,q:'Is the container number documented on all sea freight documents?'},
+    {id:`${inst.id}_lfp_container`,q:'Do you have the container number documented on all your sea freight documents?'},
     {id:`${inst.id}_lfp_seal`,q:'Is the container seal number documented and verified at loading?'},
-    {id:`${inst.id}_lfp_vessel_name`,q:'Is the name of the carrying vessel documented on the B/L?'},
-    {id:`${inst.id}_lfp_port_loading`,q:'Is the port of loading documented?'},
-    {id:`${inst.id}_lfp_port_discharge`,q:'Is the port of discharge documented?'},
+    {id:`${inst.id}_lfp_vessel_name`,q:'Do you have the carrying vessel name documented on the Bill of Lading?'},
+    {id:`${inst.id}_lfp_port_loading`,q:'Do you have the port of loading documented?'},
+    {id:`${inst.id}_lfp_port_discharge`,q:'Do you have the port of discharge documented?'},
     {id:`${inst.id}_lfp_eta`,q:'Is the estimated time of arrival (ETA) available and tracked?'},
     ...(mode==='export'?[
 
       ...(hasEU?[{id:`${inst.id}_lfp_eu_health`,q:'Is an EU health certificate available for this sea shipment?'}]:[]),
       ...(hasUS?[
         {id:`${inst.id}_s_simp`,     q:'Is a SIMP (Seafood Import Monitoring Program) entry filing available for this shipment? (US-bound)'},
-        {id:`${inst.id}_s_fsma_lot`, q:'Is an FSMA 204 traceability lot code assigned and carried at each CTE? (US-bound)'},
+        {id:`${inst.id}_s_fsma_lot`, q:'Do you assign an FSMA 204 traceability lot code and carry it at each CTE? (US-bound)'},
         {id:`${inst.id}_lfp_fsma`,   q:'Does this shipment comply with FSMA 204 requirements? (US-bound)'},
       ]:[]),
     ]:[]),
@@ -1257,17 +1258,17 @@ function buildShipReceiveQs(inst,mode,transport,hasEU,hasUS,isFrozen=false){
   if(transport==='air') return [
     ...base,
     {id:`${inst.id}_lfp_awb`,q:'Is an Air Waybill (AWB) available for this air shipment?'},
-    {id:`${inst.id}_lfp_flight`,q:'Is the flight number and airline documented?'},
-    {id:`${inst.id}_lfp_airport_dep`,q:'Is the airport of departure documented?'},
-    {id:`${inst.id}_lfp_airport_arr`,q:'Is the airport of arrival documented?'},
+    {id:`${inst.id}_lfp_flight`,q:'Do you have the flight number and airline documented?'},
+    {id:`${inst.id}_lfp_airport_dep`,q:'Do you have the airport of departure documented?'},
+    {id:`${inst.id}_lfp_airport_arr`,q:'Do you have the airport of arrival documented?'},
 
-    {id:`${inst.id}_lfp_handling`,q:'Is a handling instruction document available for the air shipment?'},
+    {id:`${inst.id}_lfp_handling`,q:'Is a handling instruction document available to you for this air shipment?'},
     ...(mode==='export'?[
 
       ...(hasEU?[{id:`${inst.id}_lfp_eu_health`,q:'Is an EU health certificate available for this air shipment?'}]:[]),
       ...(hasUS?[
         {id:`${inst.id}_s_simp`,     q:'Is a SIMP entry filing available for this air shipment? (US-bound)'},
-        {id:`${inst.id}_s_fsma_lot`, q:'Is an FSMA 204 traceability lot code assigned and carried at each CTE? (US-bound)'},
+        {id:`${inst.id}_s_fsma_lot`, q:'Do you assign an FSMA 204 traceability lot code and carry it at each CTE? (US-bound)'},
         {id:`${inst.id}_lfp_fsma`,   q:'Does this air shipment comply with FSMA 204 requirements? (US-bound)'},
       ]:[]),
     ]:[]),
@@ -1276,10 +1277,10 @@ function buildShipReceiveQs(inst,mode,transport,hasEU,hasUS,isFrozen=false){
   // ── ROAD / TRUCK ──
   return [
     ...base,
-    {id:`${inst.id}_lfp_cmr`,q:'Is a CMR (road consignment note) or equivalent delivery note available?'},
-    {id:`${inst.id}_lfp_truck_plate`,q:'Is the truck/vehicle registration plate documented?'},
-    {id:`${inst.id}_lfp_driver`,q:'Is the driver name and transport company documented?'},
-    {id:`${inst.id}_lfp_route`,q:'Is the route (origin and destination address) documented?'},
+    {id:`${inst.id}_lfp_cmr`,q:'Is a CMR (road consignment note) or equivalent delivery note available to you for this shipment?'},
+    {id:`${inst.id}_lfp_truck_plate`,q:'Do you have the truck/vehicle registration plate documented?'},
+    {id:`${inst.id}_lfp_driver`,q:'Do you have the driver name and transport company documented?'},
+    {id:`${inst.id}_lfp_route`,q:'Do you have the route (origin and destination address) documented?'},
     ...(isFrozen?[{id:`${inst.id}_lfp_truck_temp`,q:'Is the truck refrigeration unit (reefer) temperature logged throughout the journey?'}]:[]),
     ...(mode==='export'?[
 
@@ -1287,90 +1288,90 @@ function buildShipReceiveQs(inst,mode,transport,hasEU,hasUS,isFrozen=false){
     ]:[]),
   ];
 }
-function buildProcessingQs(hasEU){return [
+function buildProcessingQs(hasEU,own){return [
   {id:'pp_name',             q:'Is the name and location of your processing facility available and documented?'},
-  {id:'pp_ownership',        q:'Is product ownership clearly identified at the processing stage?'},
+  {id:'pp_ownership',        q:'Can you clearly identify who owns the product at the processing stage?'},
   {id:'pp_origin',           q:'Is the product origin (country/region of catch) available at processing?'},
-  {id:'pp_geo',              q:'Are the geo-coordinates of the processing facility available?'},
+  {id:'pp_geo',              q:'Do you have the geo-coordinates of your processing facility on record?'},
   {id:'pp_gtin',             q:'Is an Item/SKU/UPC/GTIN assigned or carried through at processing?'},
-  {id:'pp_lot',              q:'Is a lot code or batch number assigned to each production run?'},
-  {id:'pp_linking',          q:'Is the linking KDE (batch/lot/serial) maintained throughout processing?'},
+  {id:'pp_lot',              q:'Do you assign a lot code or batch number to each production run?'},
+  {id:'pp_linking',          q:'Do you maintain the linking KDE (batch/lot/serial) throughout your processing?'},
   {id:'pp_weight',           q:'Is weight or quantity with unit of measure available at processing?'},
   {id:'pp_data',             q:'Does your processor receive full catch/harvest data from the first receiver?'},
   {id:'pp_cold',             q:'Is cold chain and storage facility covered by your Chain of Custody certification?'},
-  ...(hasEU?[{id:'pp_eu',   q:'Does your processor hold an EU Facility Approval number? (EU-bound)'}]:[]),
-  {id:'pp_coc',              q:'Does the processing facility hold a Chain of Custody certification?'},
-  {id:'pp_harvest_cert',     q:'Does the processing facility hold a valid Harvest Certification?'},
-  {id:'proc_haccp',          q:'Is a HACCP plan implemented and documented at this facility?'},
-  {id:'proc_digital',        q:'Are processing records captured digitally?'},
-  {id:'pp_welfare_policy',   q:'Does your processing facility have a documented Human Welfare Policy?'},
-  {id:'pp_welfare_standards',q:'Does your processing facility comply with recognized human welfare standards?'},
+  ...(hasEU?[{id:'pp_eu',   q:`Does ${entity(own,'processing facility')} hold an EU Facility Approval number? (EU-bound)`}]:[]),
+  {id:'pp_coc',              q:`Does ${entity(own,'processing facility')} hold a Chain of Custody certification?`},
+  {id:'pp_harvest_cert',     q:`Does ${entity(own,'processing facility')} hold a valid Harvest Certification?`},
+  {id:'proc_haccp',          q:`Does ${entity(own,'processing facility')} have a documented HACCP plan?`},
+  {id:'proc_digital',        q:'Do you capture processing records digitally (not paper-only)?'},
+  {id:'pp_welfare_policy',   q:`Does ${entity(own,'processing facility')} have a documented Human Welfare Policy?`},
+  {id:'pp_welfare_standards',q:`Does ${entity(own,'processing facility')} comply with recognized human welfare standards?`},
 ];}
-function buildAggregationQs(){return [{id:'agg_lot_code',q:'Is a new lot/batch code or equivalent identifier assigned after aggregation or disaggregation?'},{id:'agg_linking',q:'Is the link between input lot(s) and output lot(s) documented (parent-child linking)?'},{id:'agg_weight',q:'Is a weight reconciliation performed and documented after aggregation?'},{id:'agg_ownership',q:'Is product ownership clearly documented at the aggregation stage?'},{id:'agg_location',q:'Is the facility location documented on aggregation records?'},{id:'agg_eu_approval',q:'Does this aggregation facility hold a valid EU establishment approval number?'},{id:'agg_msc_coc',q:'Does this aggregation facility hold a valid MSC Chain of Custody certificate?'},{id:'agg_digital',q:'Are aggregation records captured in a digital system?'}];}
-function buildFarmQs(){return [
-  {id:'aq_farm_name',    q:'Is the name and location of the farm or aquaculture facility documented?'},
-  {id:'aq_farm_license', q:'Is a valid farm registration or aquaculture license available?'},
+function buildAggregationQs(own){return [{id:'agg_lot_code',q:'Do you assign a new lot/batch code after aggregation or disaggregation?'},{id:'agg_linking',q:'Do you document the link between input and output lots (parent-child traceability)?'},{id:'agg_weight',q:'Do you perform and document a weight reconciliation after aggregation?'},{id:'agg_ownership',q:'Can you clearly document product ownership at the aggregation stage?'},{id:'agg_location',q:'Do you have the facility location documented on your aggregation records?'},{id:'agg_eu_approval',q:'Does the aggregation facility in your supply chain hold a valid EU establishment approval number?'},{id:'agg_msc_coc',q:'Does the aggregation facility in your supply chain hold a valid MSC Chain of Custody certificate?'},{id:'agg_digital',q:'Do you capture aggregation records in a digital system?'}];}
+function buildFarmQs(own){return [
+  {id:'aq_farm_name',    q:'Do you have the farm or aquaculture facility name and location documented?'},
+  {id:'aq_farm_license', q:'Do you have access to a valid farm registration or aquaculture license?'},
   {id:'aq_species',      q:'Is the species documented using its scientific name?'},
   {id:'aq_gtin',         q:'Is an Item/SKU/UPC/GTIN assigned to the product at the farm stage?'},
   {id:'aq_linking',      q:'Is a linking KDE (batch/lot/serial number) assigned at the farm stage?'},
   {id:'aq_weight',       q:'Is the harvest weight and unit of measure available per batch?'},
-  {id:'aq_lot',          q:'Is a lot code or production batch number assigned at harvest?'},
-  {id:'aq_stocking',     q:'Are stocking density and stocking date records available?'},
-  {id:'aq_feed_supplier',q:'Is the feed supplier name and traceability information available?'},
-  {id:'aq_feed_origin',  q:'Is the origin of feed ingredients documented?'},
-  {id:'aq_water',        q:'Are water quality monitoring records available?'},
-  {id:'aq_disease',      q:'Are disease treatment and medication records available?'},
-  {id:'aq_coc',          q:'Does the farm hold a Chain of Custody certification (e.g. ASC, BAP)?'},
+  {id:'aq_lot',          q:'Do you assign a lot code or production batch number at harvest?'},
+  {id:'aq_stocking',     q:'Do you have stocking density and stocking date records accessible?'},
+  {id:'aq_feed_supplier',q:'Do you know who your feed supplier is, and can you access their traceability information?'},
+  {id:'aq_feed_origin',  q:'Do you have the origin of feed ingredients documented?'},
+  {id:'aq_water',        q:'Do you have access to water quality monitoring records for this farm?'},
+  {id:'aq_disease',      q:'Do you have access to disease treatment and medication records?'},
+  {id:'aq_coc',          q:`Does ${entity(own,'farm')} hold a Chain of Custody certification (e.g. ASC, BAP)?`},
   {id:'aq_audit',        q:'Has the farm passed a third-party aquaculture standard audit in the last 12 months?'},
-  {id:'aq_welfare',      q:'Does the farm operate under a documented animal and worker welfare policy?'},
+  {id:'aq_welfare',      q:`Does ${entity(own,'farm')} operate under a documented animal and worker welfare policy?`},
 ];}
-function buildFeedmillQs(){return [
+function buildFeedmillQs(own){return [
   {id:'fm_name',        q:'Is the feedmill name and location documented and available to you?'},
-  {id:'fm_license',     q:'Is a valid feedmill registration or operating license available?'},
-  {id:'fm_formulation', q:'Is the feed formulation or full ingredient list available?'},
-  {id:'fm_fishmeal',    q:'Are all fishmeal and fish oil ingredients traceable to their source fishery?'},
-  {id:'fm_ingredients', q:'Are all feed ingredients and their sources documented?'},
-  {id:'fm_cert',        q:'Is the source fishery for marine ingredients certified (e.g. IFFO RS, MarinTrust)?'},
+  {id:'fm_license',     q:'Do you have access to a valid feedmill registration or operating license?'},
+  {id:'fm_formulation', q:'Do you have access to the feed formulation or full ingredient list from your feedmill?'},
+  {id:'fm_fishmeal',    q:'Can you trace all fishmeal and fish oil ingredients back to their source fishery?'},
+  {id:'fm_ingredients', q:'Do you have all feed ingredients and their sources documented?'},
+  {id:'fm_cert',        q:'Is the source fishery for marine ingredients used by the feedmill certified (e.g. IFFO RS, MarinTrust)?'},
   {id:'fm_lot',         q:'Is a lot or batch number assigned to each feed production run?'},
   {id:'fm_weight',      q:'Is weight or quantity with unit of measure available per feed batch?'},
-  {id:'fm_allergen',    q:'Are allergen declarations available for the feed produced?'},
-  {id:'fm_audit',       q:'Does the feedmill hold a recognised third-party quality audit (e.g. GMP+, FAMI-QS)?'},
-  {id:'fm_traceability',q:'Can the feedmill trace each batch of feed back to raw material source?'},
-  {id:'fm_welfare',     q:'Does the feedmill operate under a documented Human Welfare Policy?'},
+  {id:'fm_allergen',    q:'Are allergen declarations available to you from the feedmill for the feed produced?'},
+  {id:'fm_audit',       q:`Does ${entity(own,'feedmill')} hold a recognised third-party quality audit (e.g. GMP+, FAMI-QS)?`},
+  {id:'fm_traceability',q:'Can you trace each batch of feed back to its raw material source through your feedmill?'},
+  {id:'fm_welfare',     q:`Does ${entity(own,'feedmill')} operate under a documented Human Welfare Policy?`},
 ];}
-function buildHatcheryQs(){return [
-  {id:'ht_name',       q:'Is the hatchery name and location documented and available?'},
-  {id:'ht_license',    q:'Is a valid hatchery registration or license available?'},
-  {id:'ht_broodstock', q:'Is broodstock origin and health status documented?'},
-  {id:'ht_lot',        q:'Is a batch or lot number assigned at juvenile or fingerling production?'},
-  {id:'ht_species',    q:'Is the species documented using its scientific name at the hatchery stage?'},
+function buildHatcheryQs(own){return [
+  {id:'ht_name',       q:'Do you have the hatchery name and location on your records?'},
+  {id:'ht_license',    q:'Do you have access to a valid hatchery registration or license?'},
+  {id:'ht_broodstock', q:'Do you have broodstock origin and health status documented?'},
+  {id:'ht_lot',        q:'Do you assign a batch or lot number at juvenile or fingerling production?'},
+  {id:'ht_species',    q:'Do you document the species by its scientific name at the hatchery stage?'},
   {id:'ht_stocking',   q:'Are stocking records (date, quantity, weight) available per batch?'},
   {id:'ht_disease',    q:'Are disease treatment and medication records available at the hatchery?'},
   {id:'ht_water',      q:'Are water quality monitoring records available at the hatchery?'},
-  {id:'ht_coc',        q:'Is the hatchery covered by a Chain of Custody or aquaculture certification?'},
+  {id:'ht_coc',        q:'Is the hatchery in your supply chain covered by a Chain of Custody or aquaculture certification?'},
   {id:'ht_audit',      q:'Has the hatchery passed a third-party audit in the last 12 months?'},
-  {id:'ht_welfare',    q:'Does the hatchery operate under a documented Human Welfare Policy?'},
+  {id:'ht_welfare',    q:`Does ${entity(own,'hatchery')} operate under a documented Human Welfare Policy?`},
 ];}
-function buildVesselLandingQs(hasEU){return [{id:'vl_vessel_name',q:'Is the fishing vessel name documented on landing records?'},{id:'vl_imo',q:'Is the vessel IMO number recorded at landing?'},{id:'vl_species',q:'Is the species documented at vessel landing?'},{id:'vl_weight',q:'Is landing weight recorded at the point of discharge?'},{id:'vl_port',q:'Is the port of landing documented?'},{id:'vl_date',q:'Is the landing date documented?'},...(hasEU?[{id:'vl_ca',q:'Is the landing port EU-approved by the competent authority?'},{id:'vl_prior_notice',q:'Was a prior landing notice submitted as per EU IUU regulation?'}]:[]),{id:'vl_auth',q:'Is a landing authorization from port authority available?'}];}
-function buildOnVesselQs(){return [{id:'ov_species',q:'Is the species documented through on-vessel processing records?'},{id:'ov_vessel',q:'Is the vessel name and IMO number on the processing record?'},{id:'ov_weight_in',q:'Is input weight recorded before on-vessel processing?'},{id:'ov_weight_out',q:'Is output weight recorded after on-vessel processing?'},{id:'ov_process_type',q:'Is the type of processing documented?'},{id:'ov_date',q:'Is the processing date/time documented for each batch at sea?'},{id:'ov_lot',q:'Is a lot or batch code assigned to the processed product on vessel?'}];}
+function buildVesselLandingQs(hasEU,own){return [{id:'vl_vessel_name',q:'Do you have the fishing vessel name on your landing records?'},{id:'vl_imo',q:'Is the vessel IMO number recorded at landing?'},{id:'vl_species',q:'Is the species documented at vessel landing?'},{id:'vl_weight',q:'Do you record the landing weight at the point of discharge?'},{id:'vl_port',q:'Do you have the port of landing documented?'},{id:'vl_date',q:'Do you have the landing date documented?'},...(hasEU?[{id:'vl_ca',q:'Is the landing port EU-approved by the competent authority?'},{id:'vl_prior_notice',q:'Was a prior landing notice submitted as per EU IUU regulation?'}]:[]),{id:'vl_auth',q:'Can you obtain a landing authorization from the port authority for this event?'}];}
+function buildOnVesselQs(own){return [{id:'ov_species',q:'Do you have the species documented in your on-vessel processing records?'},{id:'ov_vessel',q:'Do you have the vessel name and IMO number on the processing record?'},{id:'ov_weight_in',q:'Do you record input weight before on-vessel processing begins?'},{id:'ov_weight_out',q:'Do you record output weight after on-vessel processing?'},{id:'ov_process_type',q:'Do you document the type of processing carried out (e.g. headed, gutted, filleted)?'},{id:'ov_date',q:'Do you document the processing date and time for each batch at sea?'},{id:'ov_lot',q:'Do you assign a lot or batch code to the processed product while on vessel?'}];}
 function buildCertQs(hasMSC,hasASC,hasEU,hasUS,hasTuna){return [
-  ...(hasMSC?[{id:'c_msc',q:'Do you hold a valid MSC Chain of Custody certificate?'}]:[]),
-  ...(hasASC?[{id:'c_asc',q:'Do you hold a valid ASC Chain of Custody certificate?'}]:[]),
+  ...(hasMSC?[{id:'c_msc',q:'Does your company hold a valid MSC Chain of Custody certificate?'}]:[]),
+  ...(hasASC?[{id:'c_asc',q:'Does your company hold a valid ASC Chain of Custody certificate?'}]:[]),
   ...(hasTuna?[{id:'c_issf_pvr',q:'Are your fishing vessels listed on the ISSF ProActive Vessel List (PVL)? Verify at issf-foundation.org'}]:[]),
-  {id:'c_brc',          q:'Do you hold a current BRC Global Standard or IFS Food certification?'},
-  {id:'c_haccp',        q:'Is a certified HACCP (Hazard Analysis and Critical Control Points) food safety plan in place at your processing facility?'},
-  {id:'c_iso',          q:'Does your facility or processor hold an ISO 22000 or equivalent food safety management system certification?'},
-  ...(hasEU?[{id:'c_eu',q:'Does your facility hold an EU Facility Approval number?'}]:[]),
-  {id:'c_audit',        q:'Have you passed an independent third-party traceability audit in the last 12 months?'},
-  {id:'c_internal',     q:'Do you have an internal traceability system that links every batch from source to sale?'},
-  {id:'c_recall',       q:'Can you execute a full product recall or withdrawal within 4 hours?'},
-  {id:'c_digital',      q:'Is your traceability data captured digitally (not paper-based)?'},
-  {id:'c_interop',      q:'Can your traceability data be shared digitally with supply chain partners or regulators?'},
-  {id:'c_welfare_org',  q:'Does your organization have a documented company-wide Human Welfare Policy?'},
-  {id:'c_welfare_audit',q:'Have you been audited against a recognized human welfare standard in the last 2 years?'},
+  {id:'c_brc',          q:'Does your company or your processor hold a current BRC Global Standard or IFS Food certification?'},
+  {id:'c_haccp',        q:'Is a certified HACCP food safety plan in place at your company or processing facility?'},
+  {id:'c_iso',          q:'Does your company or your processor hold an ISO 22000 or equivalent food safety management system certification?'},
+  ...(hasEU?[{id:'c_eu',q:'Does your company or your processing facility hold an EU Facility Approval number?'}]:[]),
+  {id:'c_audit',        q:'Has your company or your supply chain passed an independent third-party traceability audit in the last 12 months?'},
+  {id:'c_internal',     q:'Does your company have an internal traceability system linking every batch from source to sale?'},
+  {id:'c_recall',       q:'Can your company execute a full product recall or withdrawal within 4 hours?'},
+  {id:'c_digital',      q:'Is your company\'s traceability data captured digitally (not paper-based)?'},
+  {id:'c_interop',      q:'Can your company share traceability data digitally with supply chain partners or regulators?'},
+  {id:'c_welfare_org',  q:'Does your company have a documented company-wide Human Welfare Policy?'},
+  {id:'c_welfare_audit',q:'Has your company been audited against a recognized human welfare standard in the last 2 years?'},
   ...(hasUS?[
-    {id:'s_iftp',     q:'Does the importer of record hold a valid NOAA International Fisheries Trade Permit (IFTP)? (Required by SIMP for US entry)'},
-    {id:'c_fsma_kde', q:'Is an FSMA 204 Key Data Element (KDE) record maintained for each lot? (US-bound)'},
+    {id:'s_iftp',     q:'Does your company or the importer of record hold a valid NOAA International Fisheries Trade Permit (IFTP)? (Required by SIMP for US entry)'},
+    {id:'c_fsma_kde', q:'Does your company maintain an FSMA 204 KDE record for each lot shipped to the US?'},
     {id:'c_fsvp',     q:'Is a Foreign Supplier Verification Program (FSVP) on file for this supplier? (US-bound)'},
   ]:[]),
 ];}
@@ -1504,7 +1505,7 @@ function renderKDE(){
       // Build TS questions with at-sea extras
       let qs=[...sub.qs];
       const atSeaQs=(tsLoc==='at_sea'&&inst)?[
-        {id:`${inst.id}_cr_atsea_rfmo`,q:'Is RFMO authorization specifically for at-sea transshipment available?'},
+        {id:`${inst.id}_cr_atsea_rfmo`,q:'Has the RFMO authorization been obtained specifically for this at-sea transshipment event?'},
         {id:`${inst.id}_cr_atsea_obs`,q:'Was an independent observer present or was electronic monitoring active during at-sea transshipment?'},
         ...(tsZone==='eez'?[{id:`${inst.id}_cr_atsea_eez_permit`,q:'Is a coastal state permit or notification confirmation available for transshipment within this EEZ?'},{id:`${inst.id}_cr_atsea_eez_notify`,q:'Was the coastal state notified in advance of the transshipment in their EEZ?'}]:[]),
         ...(tsZone==='high_seas'?[{id:`${inst.id}_cr_atsea_hs`,q:"Is the relevant RFMO's High Seas transshipment authorization document available for this event?"}]:[]),
@@ -1515,7 +1516,7 @@ function renderKDE(){
         return true;
       }).map(q=>{
         if(q.id.endsWith('_cr_location')){
-          if(tsLoc==='at_sea')return{...q,q:'Are the geo-coordinates of the at-sea transshipment event recorded and available?'};
+          if(tsLoc==='at_sea')return{...q,q:'Do you have the geo-coordinates of this at-sea transshipment event on record?'};
           if(tsLoc==='at_port')return{...q,q:'Is the port of transshipment documented and geo-referenced?'};
         }
         return q;
@@ -1972,6 +1973,13 @@ const DEFAULT_WEIGHTS={
   c_welfare_org:3,c_welfare_audit:3,s_iftp:4,c_fsma_kde:4,c_fsvp:3,
 };
 function getWeight(kdeId){const stripped=kdeId.replace(/^[^_]*_/,'');return DEFAULT_WEIGHTS[kdeId]||DEFAULT_WEIGHTS[stripped]||3;}
+// Returns the right subject for cert questions based on who operates this CTE
+function entity(own, stageLabel){
+  if(own==='we') return 'your company';
+  const label = stageLabel||'this entity';
+  return `the ${label} in your supply chain`;
+}
+
 function getPartialScore(kdeId){
   // Direct lookup — strip instance prefix for template-literal IDs (e.g. "n1234_fv_imo" → "fv_imo")
   if(KDE_PARTIAL_SCORES[kdeId]!==undefined)return KDE_PARTIAL_SCORES[kdeId];
@@ -2373,9 +2381,9 @@ function buildFullReviewStages(){
   const dummyInst={id:'preview',instanceNum:1};const vc=1;
   const allStages=[];
   // Aquaculture upstream
-  allStages.push({t:'Feedmill',i:'🌾',qs:buildFeedmillQs()});
-  allStages.push({t:'Hatchery',i:'🐣',qs:buildHatcheryQs()});
-  allStages.push({t:'Farm / Grow-out (Aquaculture)',i:'🌊',qs:buildFarmQs()});
+  allStages.push({t:'Feedmill',i:'🌾',qs:buildFeedmillQs(null)});
+  allStages.push({t:'Hatchery',i:'🐣',qs:buildHatcheryQs(null)});
+  allStages.push({t:'Farm / Grow-out (Aquaculture)',i:'🌊',qs:buildFarmQs(null)});
   // Wild harvest
   allStages.push({t:'Harvest / Catch (Wild)',i:'🎣',qs:buildHarvestQs(dummyInst,vc,true,[{harvest:'Wild Catch'}])});
   // On-vessel / direct landing
@@ -2384,7 +2392,7 @@ function buildFullReviewStages(){
   // Transshipment (all sub-Qs)
   allStages.push({t:'Transshipment',i:'🔄',qs:[
     ...buildTransshipmentQs(dummyInst,vc,true),
-    {id:'cr_atsea_rfmo',     q:'Is RFMO authorization specifically for at-sea transshipment available?'},
+    {id:'cr_atsea_rfmo',     q:'Has the RFMO authorization been obtained specifically for this at-sea transshipment event?'},
     {id:'cr_atsea_obs',      q:'Was an independent observer present or was electronic monitoring active during at-sea transshipment?'},
     {id:'cr_atsea_eez_permit',q:'Is a coastal state permit or notification confirmation available for transshipment within this EEZ? (EEZ)'},
     {id:'cr_atsea_eez_notify',q:'Was the coastal state notified in advance of the transshipment in their EEZ? (EEZ)'},
@@ -2396,7 +2404,7 @@ function buildFullReviewStages(){
   // Processing
   allStages.push({t:'Processing',i:'🏭',qs:buildProcessingQs(true)});
   // Aggregation
-  allStages.push({t:'Aggregation / Disaggregation',i:'📦',qs:buildAggregationQs()});
+  allStages.push({t:'Aggregation / Disaggregation',i:'📦',qs:buildAggregationQs(null)});
   // Ship/Receive — all modes
   allStages.push({t:'Ship / Receive — Sea Freight (Export)',   i:'🚢',qs:buildShipReceiveQs(dummyInst,'export','sea',true,true,true)});
   allStages.push({t:'Ship / Receive — Air Freight (Export)',   i:'✈️',qs:buildShipReceiveQs(dummyInst,'export','air',true,true,false)});
