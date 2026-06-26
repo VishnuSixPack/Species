@@ -2041,7 +2041,7 @@ function getPartialScore(kdeId){
 function calcScore(overrides){
   let total=0,max=0;
   // Inverse risk: av=0 penalty, pa=30, la=10, un=50. Lower score = lower risk.
-  Object.entries(kResp).forEach(([id,r])=>{if(id.startsWith('_')||!r||!r.ans)return;const w=getWeight(id);max+=w*50;const ov=overrides&&overrides[id]!==undefined?Number(overrides[id]):null;if(ov!==null)total+=ov;else if(r.ans==='av')total+=0;else if(r.ans==='pa')total+=w*getPartialScore(id);else if(r.ans==='un')total+=w*50;});
+  Object.entries(kResp).forEach(([id,r])=>{if(id.startsWith('_')||!r||!r.ans)return;max+=50;const ov=overrides&&overrides[id]!==undefined?Number(overrides[id]):null;if(ov!==null)total+=ov;else if(r.ans==='av')total+=0;else if(r.ans==='pa')total+=getPartialScore(id);else if(r.ans==='un')total+=50;});
   return max?Math.round((total/max)*100):0;
 }
 function buildReview(){
@@ -2060,12 +2060,14 @@ function buildReview(){
   let html='';
   STAGES.forEach((st,si)=>{
     const stQs=(st.instances||[]).flatMap(sub=>sub.qs||[]);let stScore=0,stMax=0;
-    stQs.forEach(q=>{const r=kResp[q.id]||{};const w=getWeight(q.id);if(r.ans){stMax+=w*50;const ov=rvOverrides[q.id];if(ov!==undefined)stScore+=Number(ov);else if(r.ans==='av')stScore+=0;else if(r.ans==='pa')stScore+=w*getPartialScore(q.id);else if(r.ans==='un')stScore+=w*50;}});
+    stQs.forEach(q=>{const r=kResp[q.id]||{};if(r.ans){stMax+=50;const ov=rvOverrides[q.id];if(ov!==undefined)stScore+=Number(ov);else if(r.ans==='av')stScore+=0;else if(r.ans==='pa')stScore+=getPartialScore(q.id);else if(r.ans==='un')stScore+=50;}});
     const stPct=stMax?Math.round((stScore/stMax)*100):null;
     html+=`<div class="rv-stage"><div class="rv-stage-hd" onclick="toggleStage(${si})"><div class="rv-stage-title">${st.i} ${st.t}</div><div style="display:flex;align-items:center;gap:10px;">${stPct!==null?`<div class="rv-stage-score">${stPct}%</div>`:''}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9aa0b4" stroke-width="2.5" id="rv-chev-${si}"><polyline points="6 9 12 15 18 9"/></svg></div></div><div class="rv-stage-body" id="rv-body-${si}">`;
     if(!stQs.length)html+=`<div style="padding:14px 0;font-size:12px;color:#9aa0b4;">No questions for this stage.</div>`;
     stQs.forEach(q=>{const r=kResp[q.id]||{};const ansLabel=r.ans==='av'?'Available':r.ans==='pa'?`Partial (${getPartialScore(q.id)})`:r.ans==='un'?'Not Available':'—';const ansClass=r.ans||'nr';const evs=r.evidence||[];
-      html+=`<div class="rv-kde-row"><div class="rv-kde-icon">${r.ans==='av'?'✅':r.ans==='pa'?'🔶':r.ans==='un'?'❌':'⬜'}</div><div style="flex:1;"><div class="rv-kde-q">${q.q}</div>${r.note?`<div class="rv-kde-note">Partial note: ${r.note}</div>`:''}${r.unNote?`<div class="rv-kde-note" style="color:#e63946;">Not available note: ${r.unNote}</div>`:''}${evs.length?`<span style="font-size:10px;color:#7c3aed;margin-top:2px;display:block;">${evs.length} evidence item${evs.length>1?'s':''}</span>`:''}<div class="rv-override"><label>Override score:</label><input type="number" min="0" max="50" placeholder="—" id="ov_${q.id.replace(/[^a-zA-Z0-9]/g,'_')}" onchange="setOverride('${q.id}',this.value,50)"/><span style="font-size:10px;color:#c0c4d0;">/ 50</span></div></div><div class="rv-kde-ans ${ansClass}">${ansLabel}</div></div>`;
+      html+=`<div class="rv-kde-row"><div class="rv-kde-icon">${r.ans==='av'?'✅':r.ans==='pa'?'🔶':r.ans==='un'?'❌':'⬜'}</div><div style="flex:1;"><div class="rv-kde-q">${q.q}</div>${r.note?`<div class="rv-kde-note">Partial note: ${r.note}</div>`:''}${r.unNote?`<div class="rv-kde-note" style="color:#e63946;">Not available note: ${r.unNote}</div>`:''}${evs.length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">
+  ${evs.map(e=>`<span style="display:inline-flex;align-items:center;gap:4px;background:#f4f0ff;border:1px solid #ddd6fe;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:600;color:#7c3aed;">${{'cert':'🏅','url':'🔗','doc':'📄','ref':'📋','photo':'🖼️','statement':'✍️'}[e.type]||'📎'} ${(e.name||e.value||'').slice(0,30)}</span>`).join('')}
+</div>`:''}<div class="rv-override"><label>Override score:</label><input type="number" min="0" max="50" placeholder="—" id="ov_${q.id.replace(/[^a-zA-Z0-9]/g,'_')}" onchange="setOverride('${q.id}',this.value,50)"/><span style="font-size:10px;color:#c0c4d0;">/ 50</span></div></div><div class="rv-kde-ans ${ansClass}">${ansLabel}</div></div>`;
     });
     html+=`</div></div>`;
   });
