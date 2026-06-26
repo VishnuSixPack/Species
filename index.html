@@ -456,7 +456,7 @@
             How traceable is your<br/>seafood from catch to end?
           </h2>
           <p style="font-size:13px;color:#6b7280;line-height:1.8;margin-bottom:28px;max-width:380px;margin-left:auto;margin-right:auto;">
-            This short assessment takes about <strong style="color:#1a1a2e;">3–4 minutes</strong> and covers 18 key traceability dimensions — from vessel identity to supply chain transparency.
+            This short assessment takes about <strong style="color:#1a1a2e;">3 minutes</strong> and covers up to 20 key traceability dimensions — from vessel identity to supply chain transparency.
           </p>
           <div style="background:#f9fafc;border:1px solid #e8eaf0;border-radius:14px;padding:18px 20px;margin-bottom:28px;text-align:left;">
             <div style="display:flex;align-items:flex-start;gap:12px;">
@@ -503,7 +503,7 @@
         <div class="qt-header">
           <div class="qt-badge">Readiness Check</div>
           <div class="qt-title">How transparent is your supply chain?</div>
-          <div class="qt-sub">18 questions across 8 traceability dimensions — see exactly where your gaps are.</div>
+          <div class="qt-sub">Up to 20 questions across 8 traceability dimensions — see exactly where your gaps are.</div>
         </div>
         <div class="qt-progress"><div class="qt-progress-fill" id="qtFill" style="width:10%"></div></div>
         <div class="qt-step-lbl" id="qtStepLbl">Question 1 of 15</div>
@@ -573,16 +573,22 @@
     {section:'Section 5 — Real-Time Proof of Sustainability Claims',q:'Can you substantiate claims (MSC, FAD-Free, Free School, Social Accountability) instantly, based on data — not just supplier declarations?',opts:[{t:'Yes, data-backed',score:3},{t:'Only partially',score:1},{t:'No',score:0}],category:'Sustainability Claims',gap:'If claims rely on trust, not verification, you are exposed to legal and reputational risk.'},
     {section:'Section 5 — Real-Time Proof of Sustainability Claims',q:'Do you hold a current Chain of Custody certification (MSC, ASC or equivalent) covering your operations?',opts:[{t:'Yes, currently certified',score:3},{t:'In progress or pending',score:1},{t:'No certification',score:0}],category:'Sustainability Claims',gap:'Without a CoC certification, sustainability claims cannot be independently verified by buyers or regulators.'},
     {section:'Section 6 — Digital & System Readiness',q:'Do you retain traceability records for a minimum of 3 years and can produce them within 24 hours upon regulatory request?',opts:[{t:'Yes, fully compliant',score:3},{t:'We retain records but retrieval takes time',score:1},{t:'No formal retention policy',score:0}],category:'Digital Readiness',gap:'Regulators expect records to be available within 24 hours. Without a formal retention and retrieval policy, you are exposed during audits.'},
-    {section:'Section 6 — Digital & System Readiness',q:'Does your processor or supplier hold a current BRC Global Standard or IFS Food certification?',opts:[{t:'Yes, currently certified',score:3},{t:'Some facilities do',score:1},{t:'No',score:0}],category:'Digital Readiness',gap:'BRC and IFS are retailer-driven food safety standards required by most major European and global buyers. Without them, access to premium markets is significantly limited.'},
+    {section:'Section 6 — Digital & System Readiness',q:'Do the facilities handling your seafood — at any point in the supply chain — hold a current BRC Global Standard or IFS Food certification?',opts:[{t:'Yes, currently certified',score:3},{t:'Some facilities do',score:1},{t:'No',score:0}],category:'Digital Readiness',gap:'BRC and IFS are retailer-driven food safety standards required by most major European and global buyers. Without them, access to premium markets is significantly limited.'},
     {section:'Section 6 — Digital & System Readiness',q:'Is a certified HACCP (Hazard Analysis and Critical Control Points) food safety plan in place at your processing facility?',opts:[{t:'Yes, certified and documented',score:3},{t:'In place but not formally certified',score:1},{t:'No',score:0}],category:'Digital Readiness',gap:'HACCP is a legal requirement in most export markets. Without a certified plan, you face regulatory exposure and cannot demonstrate basic food safety due diligence.'},
-    {section:'Section 6 — Digital & System Readiness',q:'Does your facility or processor hold an ISO 22000 or equivalent food safety management system certification?',opts:[{t:'Yes, currently certified',score:3},{t:'In progress',score:1},{t:'No',score:0}],category:'Digital Readiness',gap:'ISO 22000 demonstrates a systematic approach to food safety management. Its absence signals to auditors and buyers that your food safety system may lack formal structure and independent verification.'},
+    {section:'Section 6 — Digital & System Readiness',q:'Does any part of your supply chain operate under an ISO 22000 or equivalent food safety management system certification?',opts:[{t:'Yes, currently certified',score:3},{t:'In progress',score:1},{t:'No',score:0}],category:'Digital Readiness',gap:'ISO 22000 demonstrates a systematic approach to food safety management. Its absence signals to auditors and buyers that your food safety system may lack formal structure and independent verification.'},
     {section:'Section 7 — Human Welfare & Labour Standards',q:'Do you have a documented Human Welfare and Labour Standards policy covering your entire supply chain?',opts:[{t:'Yes, audited and documented',score:3},{t:'Policy exists but not audited',score:1},{t:'No policy',score:0}],category:'Human Welfare',gap:'Without a welfare policy, you cannot respond to buyer ESG requirements or social compliance audits.'},
     {section:'Section 8 — Downstream & Consumer Transparency',q:'Can you provide a URL or link that your customers can use to independently verify the traceability of your product?',opts:[{t:'Yes, publicly accessible',score:3},{t:'Available on request only',score:1},{t:'No',score:0}],category:'Supply Chain Transparency',gap:'Customers and retailers increasingly expect a direct, verifiable link — not a document or a claim.'},
-    {section:'Section 8 — Downstream & Consumer Transparency',q:'Can you share traceability data digitally with buyers or regulators on request — within the same business day?',opts:[{t:'Yes, through a system or portal',score:3},{t:'We can, but it takes time',score:1},{t:'No, we cannot share digitally',score:0}],category:'Supply Chain Transparency',gap:'If data cannot be shared on demand, you will lose ground to competitors who can demonstrate transparency instantly.'},
+    {section:'Section 8 — Downstream & Consumer Transparency',q:'Can traceability data be shared digitally with any party who requests it — within the same business day?',opts:[{t:'Yes, through a system or portal',score:3},{t:'We can, but it takes time',score:1},{t:'No, we cannot share digitally',score:0}],category:'Supply Chain Transparency',gap:'If data cannot be shared on demand, you will lose ground to competitors who can demonstrate transparency instantly.'},
   ];
 
   let qtIdx = 0;
   let qtAnswers = new Array(QT_QUESTIONS.length).fill(null);
+
+  function shouldShow(idx){
+    const q=QT_QUESTIONS[idx];
+    if(!q.conditional)return true;
+    return q.conditional(qtAnswers);
+  }
 
   function openQT() {
     qtIdx = 0;
@@ -629,9 +635,7 @@
   function renderQT() {
     const q=QT_QUESTIONS[qtIdx],total=QT_QUESTIONS.length,pct=Math.round(((qtIdx+1)/total)*100);
     document.getElementById('qtFill').style.width=pct+'%';
-    const visibleTotal=QT_QUESTIONS.filter((_,i)=>shouldShow(i)).length;
-    const visibleIdx=QT_QUESTIONS.slice(0,qtIdx+1).filter((_,i)=>shouldShow(i)).length;
-    document.getElementById('qtStepLbl').textContent=q.section||`Question ${visibleIdx} of ${visibleTotal}`;
+    document.getElementById('qtStepLbl').textContent=q.section||`Question ${qtIdx+1} of ${total}`;
     document.getElementById('qtQ').textContent=q.q;
     document.getElementById('qtBack').style.visibility=qtIdx===0?'hidden':'visible';
     document.getElementById('qtNext').textContent=qtIdx===total-1?'See Results →':'Next →';
@@ -642,24 +646,12 @@
   }
 
   function selectOpt(i){qtAnswers[qtIdx]=i;document.querySelectorAll('.qt-opt').forEach((el,idx)=>el.classList.toggle('selected',idx===i));document.getElementById('qtNext').disabled=false;}
-
-  function shouldShow(idx){
-    const q=QT_QUESTIONS[idx];
-    if(!q.conditional)return true;
-    return q.conditional(qtAnswers);
-  }
-
   function qtNext(){
     if(qtAnswers[qtIdx]===null)return;
     let next=qtIdx+1;
-    while(next<QT_QUESTIONS.length&&!shouldShow(next)){
-      qtAnswers[next]=null; // clear skipped answer
-      next++;
-    }
-    if(next<QT_QUESTIONS.length){qtIdx=next;renderQT();}
-    else{showQTResult();}
+    while(next<QT_QUESTIONS.length&&!shouldShow(next)){qtAnswers[next]=null;next++;}
+    if(next<QT_QUESTIONS.length){qtIdx=next;renderQT();}else{showQTResult();}
   }
-
   function qtPrev(){
     let prev=qtIdx-1;
     while(prev>0&&!shouldShow(prev))prev--;
@@ -677,7 +669,7 @@
     let title,desc,color,tierLabel;
     if(totalScore<=19){title='Critical Risk';color='#e63946';tierLabel='High exposure to IUU / mislabeling';desc='Your supply chain may not be as transparent as you think. There are significant verification gaps that expose you to mislabeling, recalls and compliance failures.';}
     else if(totalScore<=38){title='Moderate Risk';color='#f59e0b';tierLabel='Significant verification gaps';desc='You have some traceability systems in place, but key verification gaps remain. Without first-mile proof and automated checks, you remain exposed during audits.';}
-    else{title='Low Risk';color:'#16a34a';tierLabel='Strong traceability posture';desc='Your traceability posture is strong. A full MRI Assessment will verify your claims and produce a score you can share with buyers and regulators with confidence.';}
+    else{title='Low Risk';color='#16a34a';tierLabel='Strong traceability posture';desc='Your traceability posture is strong. A full MRI Assessment will verify your claims and produce a score you can share with buyers and regulators with confidence.';}
 
     document.getElementById('qtQuestions').style.display='none';
     const resultWrap=document.getElementById('qtResultWrap');
