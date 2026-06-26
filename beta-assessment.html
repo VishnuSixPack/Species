@@ -299,24 +299,25 @@
     .cont-del:hover{color:#e63946;}
     .cont-acts{display:flex;align-items:center;gap:6px;flex-shrink:0;}
     .rfmo-banner{background:#eef4fd;border:1px solid #c7dcf8;border-radius:10px;padding:10px 14px;font-size:12px;color:#1a6fdb;font-weight:600;margin-bottom:10px;display:none;}
-    .inst-section{border:1.5px solid #e8eaf0;border-radius:14px;overflow:hidden;margin-bottom:10px;}
-    .inst-section.active-inst{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,0.08);}
-    .inst-hd{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;background:#f9fafc;transition:background 0.15s;user-select:none;}
-    .inst-section.active-inst .inst-hd{background:#f4f0ff;cursor:default;}
-    .inst-hd:hover{background:#f4f0ff;}
-    .inst-section.active-inst .inst-hd:hover{background:#f4f0ff;}
-    .inst-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
-    .inst-title{font-size:13px;font-weight:800;color:#1a1a2e;}
-    .inst-sub-label{font-size:10px;font-weight:700;color:#9aa0b4;margin-left:auto;padding:2px 9px;background:#f0f2f8;border-radius:5px;}
-    .inst-section.active-inst .inst-sub-label{background:#ddd6fe;color:#7c3aed;}
-    .inst-done-chip{font-size:10px;font-weight:700;color:#16a34a;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px;padding:2px 9px;margin-left:8px;}
-    .inst-progress-chip{font-size:10px;font-weight:700;color:#f59e0b;background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:2px 9px;margin-left:8px;}
-    .inst-body{display:none;padding:14px 16px 16px;}
-    .inst-section.active-inst .inst-body{display:block;}
-    .inst-chevron{color:#c0c4d0;flex-shrink:0;transition:transform 0.2s;}
-    .inst-section.active-inst .inst-chevron{color:#8b5cf6;}
+    /* Instance frozen header */
+    .inst-frozen-hd{position:sticky;top:98px;z-index:4;background:#f4f0ff;border:1.5px solid #ddd6fe;border-radius:12px;padding:10px 16px;margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+    .inst-frozen-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+    .inst-frozen-title{font-size:13px;font-weight:800;color:#7c3aed;flex:1;}
+    .inst-frozen-counter{font-size:11px;font-weight:700;color:#9aa0b4;background:#fff;border:1px solid #e0e3ed;border-radius:6px;padding:2px 10px;white-space:nowrap;}
+    .inst-frozen-progress{font-size:10px;color:#16a34a;font-weight:700;margin-left:6px;}
+    .inst-nav{display:flex;align-items:center;justify-content:space-between;margin-top:18px;padding-top:14px;border-top:1.5px solid #f0f2f8;}
+    .inst-nav-btn{border:none;border-radius:999px;padding:9px 20px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;}
+    .inst-nav-prev{background:#f4f6fb;color:#6b7280;}
+    .inst-nav-prev:hover{background:#e8eaf0;}
+    .inst-nav-next{background:#8b5cf6;color:#fff;}
+    .inst-nav-next:hover{background:#7c3aed;}
     .rfmo-banner.show{display:block;}
     /* Supply chain position popup */
+    @keyframes scNodePulse{
+      0%{opacity:0.7;transform:scale(1);}
+      50%{opacity:0.2;transform:scale(1.08);}
+      100%{opacity:0.7;transform:scale(1);}
+    }
     .sc-pos-badge{display:inline-flex;align-items:center;gap:5px;background:#f9fafc;border:1px solid #e0e3ed;border-radius:7px;padding:3px 10px;font-size:11px;font-weight:600;color:#6b7280;cursor:pointer;margin-left:8px;transition:border-color 0.15s,background 0.15s;}
     .sc-pos-badge:hover{border-color:#8b5cf6;background:#faf5ff;color:#7c3aed;}
     .sc-pos-badge .dot{width:7px;height:7px;border-radius:50%;background:#8b5cf6;flex-shrink:0;}
@@ -1383,7 +1384,12 @@ function renderKDE(){
   document.getElementById('kfill').style.width=pct+'%';
   document.getElementById('klbl').textContent=`Stage ${kIdx+1} of ${STAGES.length}`;
   document.getElementById('kback').style.visibility=kIdx===0?'hidden':'visible';
-  document.getElementById('knext').textContent=kIdx===STAGES.length-1?'Finish →':'Next Stage →';
+  const stForNav=STAGES[kIdx];
+  const isMultiMid=stForNav?.instances?.length>1&&activeSubIdx<(stForNav?.instances?.length||1)-1;
+  document.getElementById('knext').textContent=kIdx===STAGES.length-1&&!isMultiMid?'Finish →':'Next Stage →';
+  // Hide the main Next button when inst-nav is shown (inst-nav handles navigation)
+  document.getElementById('knext').style.visibility=isMultiMid?'hidden':'visible';
+  document.getElementById('kback').style.visibility=(kIdx===0&&activeSubIdx===0)?'hidden':'visible';
 
   const multiInst=st.instances&&st.instances.length>1;
   const prods2=products.filter(Boolean);
@@ -1401,31 +1407,28 @@ function renderKDE(){
     <div class="kssub">${multiInst?`${st.instances.length} instances in your supply chain — fill each sub-section below.`:'Select the availability of each data element for your operations.'}</div>
   </div>`;
 
-  // ── Render each instance as a collapsible sub-section ──
-  (st.instances||[]).forEach((sub,subIdx)=>{
-    const inst=sub.inst;
+  // ── Render only the active sub-instance ──
+  const totalInsts=(st.instances||[]).length;
+  const sub=st.instances?.[activeSubIdx];
+  if(!sub&&st.instances?.length){return;}  // safety
+  {
+    const subIdx=activeSubIdx;
+    const inst=sub?.inst;
     const instKey=inst?`${st.type}_${inst.id}`:st.type;
     const numLabel=inst?(ROMAN[(inst.instanceNum||1)-1]||(inst.instanceNum||1)):'';
-    const isActive=!multiInst||(subIdx===activeSubIdx);
 
-    if(multiInst){
-      // Count how many KDEs answered for this sub
+    if(multiInst&&inst){
+      // Frozen instance header
+      const cfg=CTE_CFG[st.type]||{b:'#f4f6fb'};
       const answered=(sub.qs||[]).filter(q=>kResp[q.id]?.ans).length;
       const total=(sub.qs||[]).length;
-      const allDone=total>0&&answered===total;
-      const anyDone=answered>0;
-      const cfg=CTE_CFG[st.type]||{b:'#f4f6fb'};
-      const vcLabel=inst&&inst.vesselCount>1
-        ?` <span style="font-size:10px;color:#9aa0b4;font-weight:500;">${st.type==='transshipment'?inst.vesselCount+' carriers':inst.vesselCount+' vessels'}</span>`
-        :'';
-      html+=`<div class="inst-section${isActive?' active-inst':''}" id="inst_${subIdx}">
-        <div class="inst-hd" onclick="${isActive?'':'setActiveSubIdx('+subIdx+')'}">
-          <div class="inst-icon" style="background:${cfg.b};">${st.i}</div>
-          <div class="inst-title">${st.t} — ${numLabel}${vcLabel}</div>
-          ${allDone?`<span class="inst-done-chip">✓ ${answered}/${total} done</span>`:anyDone?`<span class="inst-progress-chip">${answered}/${total} answered</span>`:''}
-          <span class="inst-sub-label">${isActive?'▼ Active':'▶ Open'}</span>
-        </div>
-        <div class="inst-body">`;
+      const vcLabel=inst.vesselCount>1?(st.type==='transshipment'?` · ${inst.vesselCount} carriers`:` · ${inst.vesselCount} vessels`):'';
+      html+=`<div class="inst-frozen-hd">
+        <div class="inst-frozen-icon" style="background:${cfg.b};">${st.i}</div>
+        <div class="inst-frozen-title">${st.t} — ${numLabel}${vcLabel}</div>
+        ${answered>0?`<span class="inst-frozen-progress">✓ ${answered}/${total}</span>`:''}
+        <span class="inst-frozen-counter">${subIdx+1} of ${totalInsts}</span>
+      </div>`;
     }
 
     // Sub-Q for landing
@@ -1442,7 +1445,10 @@ function renderKDE(){
       } else {
         html+=`<div style="padding:20px;text-align:center;background:#f9fafc;border-radius:10px;border:1.5px dashed #e0e3ed;color:#9aa0b4;font-size:12px;">👆 Select what this landing event represents above.</div>`;
       }
-      if(multiInst)html+=`</div></div>`;
+      if(multiInst){
+        const isFirst=activeSubIdx===0,isLast=activeSubIdx===totalInsts-1;
+        html+=`<div class="inst-nav"><button class="inst-nav-btn inst-nav-prev" onclick="instPrev()" ${isFirst?'style="visibility:hidden;"':''}>← ${st.t} ${ROMAN[activeSubIdx-1]||''}</button><span style="font-size:11px;color:#9aa0b4;font-weight:600;">${activeSubIdx+1} of ${totalInsts}</span><button class="inst-nav-btn inst-nav-next" onclick="${isLast?'kNext()':'instNext()'}"> ${isLast?'Done — Next Stage →':`${st.t} ${ROMAN[activeSubIdx+1]||''} →`}</button></div>`;
+      }
       return;
     }
 
@@ -1475,7 +1481,10 @@ function renderKDE(){
       } else {
         html+=`<div style="padding:20px;text-align:center;background:#f9fafc;border-radius:10px;border:1.5px dashed #e0e3ed;color:#9aa0b4;font-size:12px;">👆 Select what this ship/receive event represents above.</div>`;
       }
-      if(multiInst)html+=`</div></div>`;
+      if(multiInst){
+        const isFirst=activeSubIdx===0,isLast=activeSubIdx===totalInsts-1;
+        html+=`<div class="inst-nav"><button class="inst-nav-btn inst-nav-prev" onclick="instPrev()" ${isFirst?'style="visibility:hidden;"':''}>← ${st.t} ${ROMAN[activeSubIdx-1]||''}</button><span style="font-size:11px;color:#9aa0b4;font-weight:600;">${activeSubIdx+1} of ${totalInsts}</span><button class="inst-nav-btn inst-nav-next" onclick="${isLast?'kNext()':'instNext()'}"> ${isLast?'Done — Next Stage →':`${st.t} ${ROMAN[activeSubIdx+1]||''} →`}</button></div>`;
+      }
       return;
     }
 
@@ -1522,18 +1531,29 @@ function renderKDE(){
         return q;
       });
       html+=[...qs,...atSeaQs].map(q=>renderQ(q)).join('');
-      if(multiInst)html+=`</div></div>`;
+      if(multiInst){
+        const isFirst=activeSubIdx===0,isLast=activeSubIdx===totalInsts-1;
+        html+=`<div class="inst-nav"><button class="inst-nav-btn inst-nav-prev" onclick="instPrev()" ${isFirst?'style="visibility:hidden;"':''}>← ${st.t} ${ROMAN[activeSubIdx-1]||''}</button><span style="font-size:11px;color:#9aa0b4;font-weight:600;">${activeSubIdx+1} of ${totalInsts}</span><button class="inst-nav-btn inst-nav-next" onclick="${isLast?'kNext()':'instNext()'}"> ${isLast?'Done — Next Stage →':`${st.t} ${ROMAN[activeSubIdx+1]||''} →`}</button></div>`;
+      }
       return;
     }
 
     // Default: just render the questions
     html+=sub.qs.map(q=>renderQ(q)).join('');
 
-    // Close inst-section wrapper if multi-instance
+    // Instance nav for multi-instance stages
     if(multiInst){
-      html+=`</div></div>`; // close inst-body + inst-section
+      const isFirst=activeSubIdx===0;
+      const isLast=activeSubIdx===totalInsts-1;
+      html+=`<div class="inst-nav">
+        <button class="inst-nav-btn inst-nav-prev" onclick="instPrev()" ${isFirst?'style="visibility:hidden;"':''}>← ${st.t} ${ROMAN[activeSubIdx-1]||''}</button>
+        <span style="font-size:11px;color:#9aa0b4;font-weight:600;">${activeSubIdx+1} of ${totalInsts}</span>
+        <button class="inst-nav-btn inst-nav-next" onclick="${isLast?'kNext()':'instNext()'}">
+          ${isLast?'Done — Next Stage →':`${st.t} ${ROMAN[activeSubIdx+1]||''} →`}
+        </button>
+      </div>`;
     }
-  });
+  }  // end single-instance block
 
   document.getElementById('kcontent').innerHTML=html;
   document.getElementById('kcontent').scrollTop=0;
@@ -1551,6 +1571,23 @@ function updateSCBadge(st){
 function setActiveSubIdx(idx){
   activeSubIdx=idx;
   renderKDE();
+}
+function instNext(){
+  const st=STAGES[kIdx];
+  if(st&&activeSubIdx<(st.instances?.length||1)-1){
+    activeSubIdx++;
+    renderKDE();
+    document.getElementById('kcontent').scrollTop=0;
+  } else {
+    kNext();
+  }
+}
+function instPrev(){
+  if(activeSubIdx>0){
+    activeSubIdx--;
+    renderKDE();
+    document.getElementById('kcontent').scrollTop=0;
+  }
 }
 function setSubMode(stKey,mode){
   kResp[`_subMode_${stKey}`]=mode;
@@ -1630,7 +1667,19 @@ function setAns(id,ans){
   const evs=card.querySelector('.ev-summary');if(evs)evs.style.display=(ans==='av'||ans==='pa')?'flex':'none';
 }
 function saveNote(id,type,v){if(!kResp[id])kResp[id]={};if(type==='pa')kResp[id].note=v;else kResp[id].unNote=v;}
-function kPrev(){activeSubIdx=0;if(kIdx>0){kIdx--;renderKDE();}else goTo('sProducts');}
+function kPrev(){
+  const st=STAGES[kIdx];
+  if(st?.instances?.length>1&&activeSubIdx>0){
+    // Go to previous instance within this stage
+    activeSubIdx--;
+    renderKDE();
+    document.getElementById('kcontent').scrollTop=0;
+  } else {
+    activeSubIdx=0;
+    if(kIdx>0){kIdx--;renderKDE();}
+    else goTo('sProducts');
+  }
+}
 function kNext(){activeSubIdx=0;autoSave();if(kIdx<STAGES.length-1){kIdx++;renderKDE();}else goTo('sPrefs');}
 
 // ══ EVIDENCE MODAL ══
@@ -2189,20 +2238,41 @@ function renderMiniGraph(container, nodes, edges, currentNodeId){
 
   const NW=152, NH=62;  // node width/height matching the builder
 
-  // Use EXACT saved x,y positions from the SC builder
-  // Find bounding box to scale/translate into the popup viewport
+  // Full bounding box of all nodes
   const xs=nodes.map(n=>n.x||0), ys=nodes.map(n=>n.y||0);
-  const minX=Math.min(...xs), minY=Math.min(...ys);
-  const maxX=Math.max(...xs)+NW, maxY=Math.max(...ys)+NH;
-  const PAD=24;
-  const rawW=maxX-minX+PAD*2, rawH=maxY-minY+PAD*2;
+  const allMinX=Math.min(...xs), allMinY=Math.min(...ys);
+  const allMaxX=Math.max(...xs)+NW, allMaxY=Math.max(...ys)+NH;
+  const PAD=60;
+  const fullW=allMaxX-allMinX+PAD*2, fullH=allMaxY-allMinY+PAD*2;
 
-  // SVG viewBox uses raw coords; CSS width=100% scales it to fit popup
+  // Auto-zoom: if current node exists, focus viewBox on it + close neighbours
+  // Show a window ~3 node-widths wide centred on the current node
+  let vx=allMinX-PAD, vy=allMinY-PAD, vw=fullW, vh=fullH;
+  const currentNode=currentNodeId?nodes.find(n=>n.id===currentNodeId):null;
+  if(currentNode){
+    // Find all directly connected neighbours (1 hop)
+    const neighbourIds=new Set([currentNode.id]);
+    edges.forEach(e=>{
+      if(e.from===currentNode.id)neighbourIds.add(e.to);
+      if(e.to===currentNode.id)neighbourIds.add(e.from);
+    });
+    const focusNodes=nodes.filter(n=>neighbourIds.has(n.id));
+    const fxs=focusNodes.map(n=>n.x||0), fys=focusNodes.map(n=>n.y||0);
+    const focMinX=Math.min(...fxs)-PAD, focMinY=Math.min(...fys)-PAD;
+    const focMaxX=Math.max(...fxs)+NW+PAD, focMaxY=Math.max(...fys)+NH+PAD;
+    vx=focMinX; vy=focMinY; vw=focMaxX-focMinX; vh=focMaxY-focMinY;
+    // Keep minimum viewport so nodes don't get gigantic
+    const minVW=NW*3.5, minVH=NH*4;
+    if(vw<minVW){const dx=(minVW-vw)/2;vx-=dx;vw=minVW;}
+    if(vh<minVH){const dy=(minVH-vh)/2;vy-=dy;vh=minVH;}
+  }
+
+  // SVG viewBox: focused on current node, full graph still rendered (for edge drawing)
   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
-  svg.setAttribute('viewBox',`${minX-PAD} ${minY-PAD} ${rawW} ${rawH}`);
-  svg.setAttribute('preserveAspectRatio','xMinYMin meet');
+  svg.setAttribute('viewBox',`${vx} ${vy} ${vw} ${vh}`);
+  svg.setAttribute('preserveAspectRatio','xMidYMid meet');
   svg.style.width='100%';
-  svg.style.minHeight='180px';
+  svg.style.minHeight='220px';
   svg.style.display='block';
   svg.style.overflow='visible';
 
@@ -2217,8 +2287,8 @@ function renderMiniGraph(container, nodes, edges, currentNodeId){
 
   // Draw dot-grid background rect
   const bg=document.createElementNS('http://www.w3.org/2000/svg','rect');
-  bg.setAttribute('x',minX-PAD);bg.setAttribute('y',minY-PAD);
-  bg.setAttribute('width',rawW);bg.setAttribute('height',rawH);
+  bg.setAttribute('x',allMinX-PAD);bg.setAttribute('y',allMinY-PAD);
+  bg.setAttribute('width',fullW);bg.setAttribute('height',fullH);
   bg.setAttribute('fill','#fafbfc');bg.setAttribute('rx','12');
   svg.appendChild(bg);
 
@@ -2253,8 +2323,22 @@ function renderMiniGraph(container, nodes, edges, currentNodeId){
     const shadow=document.createElementNS('http://www.w3.org/2000/svg','rect');
     shadow.setAttribute('x',nx+2);shadow.setAttribute('y',ny+3);
     shadow.setAttribute('width',NW);shadow.setAttribute('height',NH);
-    shadow.setAttribute('rx','12');shadow.setAttribute('fill','rgba(0,0,0,0.06)');
+    shadow.setAttribute('rx','12');shadow.setAttribute('fill',isCurrent?'rgba(139,92,246,0.12)':'rgba(0,0,0,0.06)');
     svg.appendChild(shadow);
+
+    // Pulsing animated ring for current node
+    if(isCurrent){
+      const pulse=document.createElementNS('http://www.w3.org/2000/svg','rect');
+      pulse.setAttribute('x',nx-6);pulse.setAttribute('y',ny-6);
+      pulse.setAttribute('width',NW+12);pulse.setAttribute('height',NH+12);
+      pulse.setAttribute('rx','16');pulse.setAttribute('fill','none');
+      pulse.setAttribute('stroke','#8b5cf6');pulse.setAttribute('stroke-width','2');
+      pulse.setAttribute('opacity','0.6');
+      // CSS animation via style
+      pulse.style.transformOrigin=`${nx+NW/2}px ${ny+NH/2}px`;
+      pulse.style.animation='scNodePulse 1.8s ease-in-out infinite';
+      svg.appendChild(pulse);
+    }
 
     // Node border rect
     const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
@@ -2263,24 +2347,38 @@ function renderMiniGraph(container, nodes, edges, currentNodeId){
     rect.setAttribute('rx','12');
     rect.setAttribute('fill',isCurrent?'#f4f0ff':isDone?'#f0fdf4':(cfg.b||'#fff'));
     rect.setAttribute('stroke',isCurrent?'#8b5cf6':isDone?'#86efac':'#e0e3ed');
-    rect.setAttribute('stroke-width',isCurrent?'2.5':'1.5');
+    rect.setAttribute('stroke-width',isCurrent?'3':'1.5');
     if(isCurrent){
       // Glow effect
       rect.setAttribute('filter','url(#glowFilter)');
       if(!defs.querySelector('#glowFilter')){
         const filter=document.createElementNS('http://www.w3.org/2000/svg','filter');
         filter.setAttribute('id','glowFilter');
-        const feGaussian=document.createElementNS('http://www.w3.org/2000/svg','feGaussianBlur');
-        feGaussian.setAttribute('stdDeviation','3');feGaussian.setAttribute('result','blur');
-        const feFlood=document.createElementNS('http://www.w3.org/2000/svg','feFlood');
-        feFlood.setAttribute('flood-color','#8b5cf6');feFlood.setAttribute('flood-opacity','0.3');feFlood.setAttribute('result','color');
-        const feComposite=document.createElementNS('http://www.w3.org/2000/svg','feComposite');
-        feComposite.setAttribute('in','color');feComposite.setAttribute('in2','blur');feComposite.setAttribute('operator','in');feComposite.setAttribute('result','shadow');
+        filter.setAttribute('x','-40%');filter.setAttribute('y','-40%');
+        filter.setAttribute('width','180%');filter.setAttribute('height','180%');
+        // Outer wide glow
+        const feG1=document.createElementNS('http://www.w3.org/2000/svg','feGaussianBlur');
+        feG1.setAttribute('stdDeviation','8');feG1.setAttribute('result','blur1');
+        const feF1=document.createElementNS('http://www.w3.org/2000/svg','feFlood');
+        feF1.setAttribute('flood-color','#8b5cf6');feF1.setAttribute('flood-opacity','0.7');feF1.setAttribute('result','color1');
+        const feC1=document.createElementNS('http://www.w3.org/2000/svg','feComposite');
+        feC1.setAttribute('in','color1');feC1.setAttribute('in2','blur1');feC1.setAttribute('operator','in');feC1.setAttribute('result','glow1');
+        // Inner tight glow
+        const feG2=document.createElementNS('http://www.w3.org/2000/svg','feGaussianBlur');
+        feG2.setAttribute('stdDeviation','3');feG2.setAttribute('result','blur2');
+        const feF2=document.createElementNS('http://www.w3.org/2000/svg','feFlood');
+        feF2.setAttribute('flood-color','#c4b5fd');feF2.setAttribute('flood-opacity','0.9');feF2.setAttribute('result','color2');
+        const feC2=document.createElementNS('http://www.w3.org/2000/svg','feComposite');
+        feC2.setAttribute('in','color2');feC2.setAttribute('in2','blur2');feC2.setAttribute('operator','in');feC2.setAttribute('result','glow2');
+        // Merge: outer glow + inner glow + source
         const feMerge=document.createElementNS('http://www.w3.org/2000/svg','feMerge');
-        const m1=document.createElementNS('http://www.w3.org/2000/svg','feMergeNode');m1.setAttribute('in','shadow');
-        const m2=document.createElementNS('http://www.w3.org/2000/svg','feMergeNode');m2.setAttribute('in','SourceGraphic');
-        feMerge.appendChild(m1);feMerge.appendChild(m2);
-        filter.appendChild(feGaussian);filter.appendChild(feFlood);filter.appendChild(feComposite);filter.appendChild(feMerge);
+        const m1=document.createElementNS('http://www.w3.org/2000/svg','feMergeNode');m1.setAttribute('in','glow1');
+        const m2=document.createElementNS('http://www.w3.org/2000/svg','feMergeNode');m2.setAttribute('in','glow2');
+        const m3=document.createElementNS('http://www.w3.org/2000/svg','feMergeNode');m3.setAttribute('in','SourceGraphic');
+        feMerge.appendChild(m1);feMerge.appendChild(m2);feMerge.appendChild(m3);
+        filter.appendChild(feG1);filter.appendChild(feF1);filter.appendChild(feC1);
+        filter.appendChild(feG2);filter.appendChild(feF2);filter.appendChild(feC2);
+        filter.appendChild(feMerge);
         defs.appendChild(filter);
       }
     }
