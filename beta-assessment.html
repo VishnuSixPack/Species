@@ -1062,13 +1062,14 @@ function fillSlot(i){
 function showMoreSlots(){document.getElementById('pgrid2').classList.remove('hidden');['ps4','ps5','ps6','ps7'].forEach(id=>document.getElementById(id)?.classList.remove('hidden'));document.getElementById('addMoreBtn').style.display='none';}
 
 // ══ KDE FLOW ══
-const CTE_GROUP_ORDER=['feedmill','hatchery','farm','harvest','onvessel','vessel_landing','transshipment','landing','aggregation','processing','shipreceive','certifications'];
+const CTE_GROUP_ORDER=['feedmill','hatchery','farm','harvest','onvessel','vessel_landing','transshipment','landing','aggregation','processing','shipreceive'];
 const EU27=['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE','IT','LV','LT','LU','MT','NL','PL','PT','RO','SK','SI','ES','SE'];
 let STAGES=[];
 
 function toKDE(){
   if(!products.filter(Boolean).length){showToast('Please add at least one product.','error');return;}
-  STAGES=buildStages();kIdx=0;renderKDE();goTo('sKDE');
+  STAGES=buildStages();
+  kIdx=0;renderKDE();goTo('sKDE');
 }
 function buildStages(){
   const prods=products.filter(Boolean);const markets=new Set();prods.forEach(p=>(p.markets||[]).forEach(m=>markets.add(m)));
@@ -1076,8 +1077,37 @@ function buildStages(){
   const certs=prods.map(p=>p.cert).filter(Boolean),hasMSC=certs.includes('MSC'),hasASC=certs.includes('ASC');
   const TUNA=['skipjack','yellowfin','bigeye','albacore','bluefin','longtail','tuna'];
   const hasTuna=prods.some(p=>p.species&&TUNA.some(t=>p.species.toLowerCase().includes(t)));
-  const allChainNodes=[];prods.forEach(p=>(p.chain||[]).forEach(cn=>allChainNodes.push(cn)));
-  const byType={};allChainNodes.forEach(cn=>{if(!byType[cn.type])byType[cn.type]=[];if(!byType[cn.type].find(x=>x.id===cn.id))byType[cn.type].push(cn);});
+  // Use p.chain (topo-sorted, connected nodes only) for stage order
+  // Supplement with p.scNodes to get .own property (stripped from chain)
+  const allChainNodes=[];
+  const seenIds=new Set();
+  prods.forEach(p=>{
+    // Build scNodes lookup by id for .own/.vesselCount
+    const scLookup={};
+    (p.scNodes||[]).forEach(n=>{scLookup[n.id]=n;});
+    // Use p.chain — guaranteed to be connected, topo-ordered nodes
+    const nodes=p.chain||[];
+    nodes.forEach(cn=>{
+      if(!seenIds.has(cn.id)){
+        seenIds.add(cn.id);
+        // Merge .own from scNodes if available
+        const scn=scLookup[cn.id]||{};
+        allChainNodes.push({
+          ...cn,
+          type:cn.type,
+          own:scn.own||cn.own||null,
+          vesselCount:cn.vesselCount||scn.vesselCount||1,
+          instanceNum:cn.instanceNum||scn.instanceNum||1,
+        });
+      }
+    });
+  });
+  const byType={};
+  allChainNodes.forEach(cn=>{
+    const t=cn.type;if(!t)return;
+    if(!byType[t])byType[t]=[];
+    byType[t].push(cn);
+  });
   const stages=[];
   CTE_GROUP_ORDER.forEach(type=>{
     const instances=byType[type];if(!instances||!instances.length)return;
@@ -1086,7 +1116,7 @@ function buildStages(){
     const subInstances=instances.map(inst=>{
       const vc=inst.vesselCount||1;
       let qs=[],hasSubQ=false;
-      const own=inst.own||null;
+      const own=inst?.own||inst?.ownedBy||null;
       if(type==='harvest')      {qs=buildHarvestQs(inst,vc,hasEU,prods,own);}
       else if(type==='transshipment'){qs=buildTransshipmentQs(inst,vc,hasEU,own);hasSubQ=true;}
       else if(type==='landing')  {qs=[];hasSubQ=true;}
@@ -1409,8 +1439,13 @@ function renderKDE(){
 
   // ── Render only the active sub-instance ──
   const totalInsts=(st.instances||[]).length;
+  // Safety: clamp activeSubIdx to valid range — prevents stale index from previous stage
+  if(activeSubIdx>=totalInsts)activeSubIdx=0;
   const sub=st.instances?.[activeSubIdx];
-  if(!sub&&st.instances?.length){return;}  // safety
+  if(!sub){
+    _setKDEContent(html+'<div style="padding:20px;text-align:center;color:#9aa0b4;">No questions for this stage.</div>',st);
+    return;
+  }
   {
     const subIdx=activeSubIdx;
     const inst=sub?.inst;
@@ -1449,7 +1484,7 @@ function renderKDE(){
         const isFirst=activeSubIdx===0,isLast=activeSubIdx===totalInsts-1;
         html+=`<div class="inst-nav"><button class="inst-nav-btn inst-nav-prev" onclick="instPrev()" ${isFirst?'style="visibility:hidden;"':''}>← ${st.t} ${ROMAN[activeSubIdx-1]||''}</button><span style="font-size:11px;color:#9aa0b4;font-weight:600;">${activeSubIdx+1} of ${totalInsts}</span><button class="inst-nav-btn inst-nav-next" onclick="${isLast?'kNext()':'instNext()'}"> ${isLast?'Done — Next Stage →':`${st.t} ${ROMAN[activeSubIdx+1]||''} →`}</button></div>`;
       }
-      return;
+      _setKDEContent(html,st);return;
     }
 
     // Sub-Q for ship/receive
@@ -1485,7 +1520,7 @@ function renderKDE(){
         const isFirst=activeSubIdx===0,isLast=activeSubIdx===totalInsts-1;
         html+=`<div class="inst-nav"><button class="inst-nav-btn inst-nav-prev" onclick="instPrev()" ${isFirst?'style="visibility:hidden;"':''}>← ${st.t} ${ROMAN[activeSubIdx-1]||''}</button><span style="font-size:11px;color:#9aa0b4;font-weight:600;">${activeSubIdx+1} of ${totalInsts}</span><button class="inst-nav-btn inst-nav-next" onclick="${isLast?'kNext()':'instNext()'}"> ${isLast?'Done — Next Stage →':`${st.t} ${ROMAN[activeSubIdx+1]||''} →`}</button></div>`;
       }
-      return;
+      _setKDEContent(html,st);return;
     }
 
     // Sub-Q for transshipment (HS/EEZ)
@@ -1535,7 +1570,7 @@ function renderKDE(){
         const isFirst=activeSubIdx===0,isLast=activeSubIdx===totalInsts-1;
         html+=`<div class="inst-nav"><button class="inst-nav-btn inst-nav-prev" onclick="instPrev()" ${isFirst?'style="visibility:hidden;"':''}>← ${st.t} ${ROMAN[activeSubIdx-1]||''}</button><span style="font-size:11px;color:#9aa0b4;font-weight:600;">${activeSubIdx+1} of ${totalInsts}</span><button class="inst-nav-btn inst-nav-next" onclick="${isLast?'kNext()':'instNext()'}"> ${isLast?'Done — Next Stage →':`${st.t} ${ROMAN[activeSubIdx+1]||''} →`}</button></div>`;
       }
-      return;
+      _setKDEContent(html,st);return;
     }
 
     // Default: just render the questions
@@ -1555,6 +1590,9 @@ function renderKDE(){
     }
   }  // end single-instance block
 
+  _setKDEContent(html,st);
+}
+function _setKDEContent(html,st){
   document.getElementById('kcontent').innerHTML=html;
   document.getElementById('kcontent').scrollTop=0;
   updateSCBadge(st);
@@ -1616,8 +1654,14 @@ function renderQ(q){
       <div class="kopt ${r.ans==='pa'?'pa':''}" onclick="setAns('${q.id}','pa')">◑ Partial <span style="font-size:10px;opacity:0.55;margin-left:3px;">${getPartialScore(q.id)}</span></div>
       <div class="kopt ${r.ans==='un'?'un':''}" onclick="setAns('${q.id}','un')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Not Available <span style="font-size:10px;opacity:0.55;margin-left:3px;">50</span></div>
     </div>
-    <div class="knotebox ${r.ans==='pa'?'show':''}" id="kp${safeId}"><textarea class="kpta" rows="2" placeholder="Describe what data you currently have..." oninput="saveNote('${q.id}','pa',this.value)">${r.note||''}</textarea></div>
-    <div class="knotebox ${r.ans==='un'?'show':''}" id="kun${safeId}"><textarea class="kpta un-note" rows="2" placeholder="Explain why this is not available..." oninput="saveNote('${q.id}','un',this.value)">${r.unNote||''}</textarea></div>
+    <div class="knotebox ${r.ans==='pa'?'show':''}" id="kp${safeId}">
+      <textarea class="kpta" rows="2" placeholder="Describe what data you currently have..." oninput="saveNote('${q.id}','pa',this.value)">${r.note||''}</textarea>
+      <button onclick="saveNote('${q.id}','pa',document.getElementById('kp${safeId}').querySelector('textarea').value);showToast('Note saved','success')" style="margin-top:5px;background:#f59e0b;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-family:Poppins,sans-serif;font-size:11px;font-weight:600;cursor:pointer;">Save Note</button>
+    </div>
+    <div class="knotebox ${r.ans==='un'?'show':''}" id="kun${safeId}">
+      <textarea class="kpta un-note" rows="2" placeholder="Explain why this is not available..." oninput="saveNote('${q.id}','un',this.value)">${r.unNote||''}</textarea>
+      <button onclick="saveNote('${q.id}','un',document.getElementById('kun${safeId}').querySelector('textarea').value);showToast('Note saved','success')" style="margin-top:5px;background:#e63946;color:#fff;border:none;border-radius:6px;padding:4px 12px;font-family:Poppins,sans-serif;font-size:11px;font-weight:600;cursor:pointer;">Save Note</button>
+    </div>
     ${showEv?`<div class="ev-summary">${evChips}${addChip}</div>`:`<div class="ev-summary" style="display:none;">${addChip}</div>`}
   </div>`;
 }
@@ -1666,7 +1710,32 @@ function setAns(id,ans){
   document.getElementById('kun'+safeId)?.classList.toggle('show',ans==='un');
   const evs=card.querySelector('.ev-summary');if(evs)evs.style.display=(ans==='av'||ans==='pa')?'flex':'none';
 }
-function saveNote(id,type,v){if(!kResp[id])kResp[id]={};if(type==='pa')kResp[id].note=v;else kResp[id].unNote=v;}
+function saveNote(id,type,v){
+  if(!kResp[id])kResp[id]={};
+  if(type==='pa')kResp[id].note=v;
+  else kResp[id].unNote=v;
+  // Reflect saved note inline
+  const safeId=id.replace(/[^a-zA-Z0-9]/g,'_');
+  const boxId=type==='pa'?'kp':'kun';
+  const box=document.getElementById(boxId+safeId);
+  if(box){
+    const existing=box.querySelector('.note-saved-badge');
+    if(existing)existing.remove();
+    if(v&&v.trim()){
+      const badge=document.createElement('div');
+      badge.className='note-saved-badge';
+      badge.style.cssText='margin-top:4px;display:flex;align-items:center;gap:6px;font-size:11px;color:#16a34a;font-weight:600;';
+      badge.innerHTML=`✓ Note saved — <span style="color:#6b7280;font-weight:400;cursor:pointer;text-decoration:underline;" onclick="clearNote('${id}','${type}')">Remove</span>`;
+      box.appendChild(badge);
+    }
+  }
+}
+function clearNote(id,type){
+  if(!kResp[id])return;
+  if(type==='pa'){kResp[id].note='';const safeId=id.replace(/[^a-zA-Z0-9]/g,'_');const ta=document.getElementById('kp'+safeId)?.querySelector('textarea');if(ta)ta.value='';}
+  else{kResp[id].unNote='';const safeId=id.replace(/[^a-zA-Z0-9]/g,'_');const ta=document.getElementById('kun'+safeId)?.querySelector('textarea');if(ta)ta.value='';}
+  saveNote(id,type,'');
+}
 function kPrev(){
   const st=STAGES[kIdx];
   if(st?.instances?.length>1&&activeSubIdx>0){
@@ -1713,11 +1782,16 @@ function triggerEvUpload(){document.getElementById('ev-file-inp').click();}
 async function onEvFileChange(inp){
   if(!inp.files[0])return;const file=inp.files[0];const uploadBtn=document.getElementById('ev-upload-btn'),fn=document.getElementById('ev-file-name');
   uploadBtn.textContent='⏳ Uploading...';uploadBtn.style.pointerEvents='none';fn.classList.remove('show');
-  try{const path=`evidence/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;const{data,error}=await db.storage.from('assessments').upload(path,file,{upsert:true});if(error)throw error;const{data:{publicUrl}}=db.storage.from('assessments').getPublicUrl(path);document.getElementById('ev-inp').value=publicUrl;const isImg=evSelType==='photo';fn.innerHTML=isImg?`✓ <a href="${publicUrl}" target="_blank" style="color:#16a34a;text-decoration:underline;">${file.name}</a>`:`✓ <a href="${publicUrl}" target="_blank" style="color:#16a34a;text-decoration:underline;">${file.name}</a>`;fn.classList.add('show');uploadBtn.textContent=isImg?'🖼️ Change image':'📎 Change file';}
+  try{const path=`evidence/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;const{data,error}=await db.storage.from('assessments').upload(path,file,{upsert:true});if(error)throw error;const{data:{publicUrl}}=db.storage.from('assessments').getPublicUrl(path);
+    document.getElementById('ev-inp').value=publicUrl;
+    evCustomName=file.name; // preserve original filename — NOT the supabase URL
+    const isImg=evSelType==='photo';
+    fn.innerHTML=isImg?`✓ <a href="${publicUrl}" target="_blank" style="color:#16a34a;text-decoration:underline;">${file.name}</a>`:`✓ <a href="${publicUrl}" target="_blank" style="color:#16a34a;text-decoration:underline;">${file.name}</a>`;
+    fn.classList.add('show');uploadBtn.textContent=isImg?'🖼️ Change image':'📎 Change file';}
   catch(e){fn.textContent='❌ Upload failed: '+e.message;fn.classList.add('show');fn.style.color='#e63946';uploadBtn.textContent='📎 Try again';}
   uploadBtn.style.pointerEvents='auto';
 }
-function addEvItem(){if(!evSelType)return;const val=document.getElementById('ev-inp').value.trim();if(!val){document.getElementById('ev-inp').focus();return;}const isUploadedUrl=val.startsWith('http')&&val.includes('supabase');const displayName=isUploadedUrl&&evCustomName?evCustomName:val;evTempItems.push({type:evSelType,value:val,name:displayName});document.getElementById('ev-inp').value='';document.getElementById('ev-file-name').classList.remove('show');document.getElementById('ev-file-name').textContent='';evCustomName=null;renderEvItems();updateEvCount();}
+function addEvItem(){if(!evSelType)return;const val=document.getElementById('ev-inp').value.trim();if(!val){document.getElementById('ev-inp').focus();return;}const isUrl=val.startsWith('http');const displayName=(isUrl&&evCustomName)?evCustomName:isUrl?'(uploaded file)':val;evTempItems.push({type:evSelType,value:val,name:displayName});document.getElementById('ev-inp').value='';document.getElementById('ev-file-name').classList.remove('show');document.getElementById('ev-file-name').textContent='';evCustomName=null;renderEvItems();updateEvCount();}
 function removeEvItem(i){evTempItems.splice(i,1);renderEvItems();updateEvCount();}
 function renderEvItems(){const el=document.getElementById('ev-items');if(!evTempItems.length){el.innerHTML='';return;}const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};el.innerHTML=evTempItems.map((e,i)=>`<div class="ev-item"><div class="ev-item-l"><span style="font-size:14px;">${evIcons[e.type]||'📎'}</span><span class="ev-item-txt">${e.name||e.value}</span><span class="ev-item-tag">${e.type}</span></div><button class="ev-item-del" onclick="removeEvItem(${i})">×</button></div>`).join('');}
 function updateEvCount(){document.getElementById('ev-count').textContent=evTempItems.length?`${evTempItems.length} item${evTempItems.length>1?'s':''} added`:''; }
@@ -1736,13 +1810,40 @@ function saveEvidence(){
 
 // ══ AUTO-SAVE → beta_assessments only ══
 async function autoSave(){
-  const{data:ud}=await db.auth.getUser();
-  const payload={submitted_by:ud?.data?.user?.email||'beta-user',status:'draft',products:products.filter(Boolean),sc_nodes:null,sc_edges:null,k_resp:kResp,stage_index:kIdx};
+  const prods=products.filter(Boolean);
+  if(!prods.length&&!Object.keys(kResp).length){showToast('Nothing to save yet','info');return;}
+  const payload={
+    submitted_by:'beta-user',
+    status:'draft',
+    products:prods,
+    k_resp:kResp,
+    stage_index:kIdx,
+    updated_at:new Date().toISOString()
+  };
   try{
-    if(draftId){await db.from('beta_assessments').update({...payload,updated_at:new Date().toISOString()}).eq('id',draftId);}
-    else{const{data,error}=await db.from('beta_assessments').insert(payload).select('id').single();if(!error&&data)draftId=data.id;}
+    if(draftId){
+      const{error}=await db.from('beta_assessments').update(payload).eq('id',draftId);
+      if(error){
+        // draftId might be stale — try inserting fresh
+        draftId=null;
+        const{data:nd,error:ne}=await db.from('beta_assessments').insert({...payload,updated_at:undefined}).select('id').single();
+        if(ne)throw ne;
+        if(nd)draftId=nd.id;
+      }
+    } else {
+      const{data,error}=await db.from('beta_assessments').insert(payload).select('id').single();
+      if(error)throw error;
+      if(data)draftId=data.id;
+    }
     showToast('✓ Progress saved','success');
-  }catch(e){console.log('Save failed:',e.message);}
+  }catch(e){
+    console.error('autoSave error:',e);
+    if(e.message&&e.message.includes('row-level security')){
+      showToast('⚠ Save blocked by database policy — contact admin to enable RLS policy','error');
+    } else {
+      showToast('⚠ Save failed: '+e.message,'error');
+    }
+  }
 }
 async function saveAndExit(){await autoSave();document.getElementById('saveExitModal').style.display='flex';}
 
@@ -2040,12 +2141,22 @@ function getPartialScore(kdeId){
 }
 function calcScore(overrides){
   let total=0,max=0;
-  // Inverse risk: av=0 penalty, pa=30, la=10, un=50. Lower score = lower risk.
-  Object.entries(kResp).forEach(([id,r])=>{if(id.startsWith('_')||!r||!r.ans)return;max+=50;const ov=overrides&&overrides[id]!==undefined?Number(overrides[id]):null;if(ov!==null)total+=ov;else if(r.ans==='av')total+=0;else if(r.ans==='pa')total+=getPartialScore(id);else if(r.ans==='un')total+=50;});
-  return max?Math.round((total/max)*100):0;
+  // Raw risk penalty: av=0, pa=10 or 30, un=50. Returns {total, max}
+  Object.entries(kResp).forEach(([id,r])=>{
+    if(id.startsWith('_')||!r||!r.ans)return;
+    max+=50;
+    const ov=overrides&&overrides[id]!==undefined?Number(overrides[id]):null;
+    if(ov!==null)total+=ov;
+    else if(r.ans==='av')total+=0;
+    else if(r.ans==='pa')total+=getPartialScore(id);
+    else if(r.ans==='un')total+=50;
+  });
+  return{total,max};
 }
 function buildReview(){
-  rvOverrides={};const score=calcScore(rvOverrides);
+  // Build stages for review WITHOUT overwriting global STAGES (which is used by KDE)
+  const reviewStages=products.filter(Boolean).length?buildStages():STAGES;
+  rvOverrides={};
   // Reviewer note banner
   document.getElementById('rv-score-area').insertAdjacentHTML('beforebegin',
     `<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:12px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;">
@@ -2056,15 +2167,46 @@ function buildReview(){
       </div>
     </div>`
   );
-  document.getElementById('rv-score-area').innerHTML=`<div class="rv-score-card"><div><div class="rv-score-num" id="rv-score-num">${score}</div><div style="font-size:12px;opacity:0.8;margin-top:4px;">Manhattan Risk Score — lower is better</div></div><div><div class="rv-score-badge">${score<=20?'🟢 Low Risk':score<=40?'🟡 Moderate Risk':'🔴 High Risk'}</div><div style="font-size:11px;opacity:0.7;margin-top:6px;text-align:right;">${Object.keys(kResp).filter(k=>!k.startsWith('_')&&kResp[k]?.ans).length} KDEs answered</div></div></div>`;
+  const{total:riskTotal,max:riskMax}=calcScore(rvOverrides);
+  const answered=Object.keys(kResp).filter(k=>!k.startsWith('_')&&kResp[k]?.ans).length;
+  const totalKdes=reviewStages.reduce((acc,st)=>acc+(st.instances||[]).reduce((a,sub)=>a+(sub.qs||[]).length,0),0);
+  const pct=riskMax?Math.round((riskTotal/riskMax)*100):0;
+  const badge=pct<=20?'🟢 Low Risk':pct<=50?'🟡 Moderate Risk':'🔴 High Risk';
+  document.getElementById('rv-score-area').innerHTML=`<div class="rv-score-card">
+    <div>
+      <div class="rv-score-num" id="rv-score-num">${riskTotal}</div>
+      <div style="font-size:11px;opacity:0.7;margin-top:4px;">risk points out of ${riskMax} possible</div>
+      <div style="font-size:10px;opacity:0.55;margin-top:3px;">lower = better</div>
+    </div>
+    <div style="text-align:right;">
+      <div class="rv-score-badge">${badge}</div>
+      <div style="font-size:11px;opacity:0.7;margin-top:8px;">${answered} of ${totalKdes} KDEs answered</div>
+      <div style="font-size:10px;opacity:0.55;margin-top:4px;">Available=0 · Partial=10 or 30 · Not Available=50</div>
+    </div>
+  </div>`;
   let html='';
-  STAGES.forEach((st,si)=>{
-    const stQs=(st.instances||[]).flatMap(sub=>sub.qs||[]);let stScore=0,stMax=0;
+  reviewStages.forEach((st,si)=>{
+    const multiInstRv=(st.instances||[]).length>1;
+    const instBoundaries=[];const allInstQs=[];
+    (st.instances||[]).forEach((sub,subI)=>{if(sub.qs&&sub.qs.length){instBoundaries.push({startIdx:allInstQs.length,subIdx:subI,inst:sub.inst,label:ROMAN[subI]||String(subI+1)});allInstQs.push(...sub.qs);}});
+    const stQs=allInstQs;let stScore=0,stMax=0;
     stQs.forEach(q=>{const r=kResp[q.id]||{};if(r.ans){stMax+=50;const ov=rvOverrides[q.id];if(ov!==undefined)stScore+=Number(ov);else if(r.ans==='av')stScore+=0;else if(r.ans==='pa')stScore+=getPartialScore(q.id);else if(r.ans==='un')stScore+=50;}});
-    const stPct=stMax?Math.round((stScore/stMax)*100):null;
+    const stPct=stMax?`${stScore}/${stMax}`:null;
     html+=`<div class="rv-stage"><div class="rv-stage-hd" onclick="toggleStage(${si})"><div class="rv-stage-title">${st.i} ${st.t}</div><div style="display:flex;align-items:center;gap:10px;">${stPct!==null?`<div class="rv-stage-score">${stPct}%</div>`:''}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9aa0b4" stroke-width="2.5" id="rv-chev-${si}"><polyline points="6 9 12 15 18 9"/></svg></div></div><div class="rv-stage-body" id="rv-body-${si}">`;
     if(!stQs.length)html+=`<div style="padding:14px 0;font-size:12px;color:#9aa0b4;">No questions for this stage.</div>`;
-    stQs.forEach(q=>{const r=kResp[q.id]||{};const ansLabel=r.ans==='av'?'Available':r.ans==='pa'?`Partial (${getPartialScore(q.id)})`:r.ans==='un'?'Not Available':'—';const ansClass=r.ans||'nr';const evs=r.evidence||[];
+    stQs.forEach((q,qi)=>{
+      // Insert sub-instance heading at boundary
+      if(multiInstRv){
+        const boundary=instBoundaries.find(b=>b.startIdx===qi);
+        if(boundary){
+          const cfg=CTE_CFG[st.type]||{b:'#f4f6fb',i:'📦'};
+          html+=`<div style="display:flex;align-items:center;gap:8px;padding:10px 0 6px;margin-top:${qi>0?'14px':'2px'};border-top:${qi>0?'1.5px solid #f0f2f8':'none'};">
+            <span style="font-size:13px;">${cfg.i}</span>
+            <span style="font-size:12px;font-weight:800;color:#7c3aed;">${st.t} — ${boundary.label}</span>
+          </div>`;
+        }
+      }
+      const r=kResp[q.id]||{};const ansLabel=r.ans==='av'?'Available':r.ans==='pa'?`Partial (${getPartialScore(q.id)})`:r.ans==='un'?'Not Available':'—';const ansClass=r.ans||'nr';const evs=r.evidence||[];
       html+=`<div class="rv-kde-row"><div class="rv-kde-icon">${r.ans==='av'?'✅':r.ans==='pa'?'🔶':r.ans==='un'?'❌':'⬜'}</div><div style="flex:1;"><div class="rv-kde-q">${q.q}</div>${r.note?`<div class="rv-kde-note">Partial note: ${r.note}</div>`:''}${r.unNote?`<div class="rv-kde-note" style="color:#e63946;">Not available note: ${r.unNote}</div>`:''}${evs.length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">
   ${evs.map(e=>`<span style="display:inline-flex;align-items:center;gap:4px;background:#f4f0ff;border:1px solid #ddd6fe;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:600;color:#7c3aed;">${{'cert':'🏅','url':'🔗','doc':'📄','ref':'📋','photo':'🖼️','statement':'✍️'}[e.type]||'📎'} ${(e.name||e.value||'').slice(0,30)}</span>`).join('')}
 </div>`:''}<div class="rv-override"><label>Override score:</label><input type="number" min="0" max="50" placeholder="—" id="ov_${q.id.replace(/[^a-zA-Z0-9]/g,'_')}" onchange="setOverride('${q.id}',this.value,50)"/><span style="font-size:10px;color:#c0c4d0;">/ 50</span></div></div><div class="rv-kde-ans ${ansClass}">${ansLabel}</div></div>`;
@@ -2075,7 +2217,7 @@ function buildReview(){
 }
 function toggleStage(i){const body=document.getElementById('rv-body-'+i);const chev=document.getElementById('rv-chev-'+i);body.classList.toggle('open');if(chev)chev.setAttribute('transform',body.classList.contains('open')?'rotate(180,12,12)':'');}
 function setOverride(id,val,maxW){const num=parseFloat(val);if(isNaN(num)||num<0)rvOverrides[id]=0;else if(num>50)rvOverrides[id]=50;else rvOverrides[id]=num;}
-function recalcReview(){const score=calcScore(rvOverrides);const el=document.getElementById('rv-score-num');if(el)el.textContent=score;showToast(`Score updated: ${score}`,'info');}
+function recalcReview(){const{total,max}=calcScore(rvOverrides);const el=document.getElementById('rv-score-num');if(el)el.textContent=total;showToast(`Risk score updated: ${total} / ${max}`,'info');}
 async function saveReviewStatus(status){
   if(!draftId){showToast('No draft to save to.','error');return;}
   const comment=document.getElementById('rv-expert-comment').value;
