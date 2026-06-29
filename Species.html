@@ -535,14 +535,41 @@
 
   // ── Patch script.js AFTER it has fully executed (window load) ──
   window.addEventListener('load', () => {
-    // Patch renderTable — called by script.js whenever species list updates
-    const _origRender = window.renderTable;
-    if (typeof _origRender === 'function') {
-      window.renderTable = function(data) {
-        _origRender(data);
-        if (currentView === 'grid') renderGrid(data);
-      };
-    }
+    // Override renderTable with 5-column version (adds Family)
+    window.renderTable = function(data) {
+      const tableBody = document.getElementById('species-table-body');
+      if (!tableBody) return;
+      tableBody.innerHTML = '';
+      if (!data || !data.length) {
+        tableBody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">🐟</div><p>No species found</p><small>Click "Create Species" to add your first record.</small></div></td></tr>`;
+        return;
+      }
+      data.forEach(s => {
+        const date = s.created_at ? new Date(s.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:36px;height:36px;border-radius:6px;background:#f5f5f5;border:1px solid #e8e8e8;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
+                ${s.photo_url ? `<img src="${s.photo_url}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;"/>` : `<img src="fish-icon.png" style="width:22px;height:22px;opacity:0.5;"/>`}
+              </div>
+              <a href="species-detail.html?id=${s.id}" style="color:#0f0f0f;text-decoration:none;font-weight:600;">${s.species_name || '—'}</a>
+            </div>
+          </td>
+          <td style="font-style:italic;color:#6b7280;">${s.scientific_name || '—'}</td>
+          <td>${s.family || '—'}</td>
+          <td>${date}</td>
+          <td>
+            <div class="actions-cell">
+              <button class="btn btn-edit" onclick="openEditModal(${s.id})">✏️ Edit</button>
+              <button class="btn btn-danger" onclick="deleteSpecies(${s.id},'${(s.species_name||'').replace(/'/g,"\'")}')">🗑 Delete</button>
+            </div>
+          </td>`;
+        tableBody.appendChild(row);
+      });
+      // Also update grid if in grid view
+      if (currentView === 'grid') renderGrid(data);
+    };
 
     // Patch filterSpecies — called on search
     const _origFilter = window.filterSpecies;
