@@ -1,481 +1,568 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Species</title>
+  <title>Species — Project Manhattan</title>
   <link rel="icon" type="image/png" href="brand-logo.png" />
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
   <style>
-.sp-nav-wrap { position: relative; padding: 7px 14px; border-radius: 999px; font-size: 13px; color: #6b7280; cursor: default; }
-.sp-nav-wrap:hover { background: #f0f2f7; color: #1a1a2e; }
-.sp-nav-wrap.active { background: #f0f2f7; color: #1a1a2e; font-weight: 600; }
-.sp-nav-wrap::after { content: ''; position: absolute; top: 100%; left: 0; width: 100%; height: 12px; background: transparent; }
-.sp-dropdown { display: none; position: absolute; top: calc(100% + 8px); left: 0; background: #fff; border: 1px solid #e8eaf0; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.10); min-width: 160px; padding: 6px; z-index: 500; }
-.sp-nav-wrap:hover .sp-dropdown { display: block; }
-.sp-dropdown a { display: block; padding: 8px 12px; font-size: 13px; color: #4a4e69; text-decoration: none; border-radius: 8px; font-weight: 500; }
-.sp-dropdown a:hover { background: #f0f2f7; color: #1a6fdb; }
-</style>
-</head>
-<body class="species-page">
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-  <!-- TOP NAVIGATION -->
-  <div style="display:flex; align-items:center; padding:14px 28px; gap:20px; background:#f0f2f7; position:sticky; top:0; z-index:100;">
-    <a href="home-logged-in.html" style="display:flex; align-items:center; background:#fff; border-radius:999px; padding:8px 16px; box-shadow:0 1px 6px rgba(0,0,0,0.07); text-decoration:none; flex-shrink:0;">
-      <div style="line-height:1.1;">
-        <span style="display:block; font-size:8px; font-weight:700; letter-spacing:2px; color:#9aa0b4;">PROJECT</span>
-        <span style="display:block; font-size:16px; font-weight:800; color:#1a1a2e;">Manhattan.</span>
-      </div>
+    :root {
+      --primary: #1a6fdb;
+      --bg: #f0f2f7;
+      --white: #ffffff;
+      --text: #1a1a2e;
+      --muted: #6b7280;
+      --border: #e8eaf0;
+    }
+
+    body { font-family: 'Poppins', 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    /* ── TOPBAR (matches home-logged-in) ── */
+    .topbar { display:flex; align-items:center; padding:14px 28px; gap:20px; flex-shrink:0; background:var(--bg); }
+    .topbar-brand { text-decoration:none; flex-shrink:0; line-height:1.1; }
+    .topbar-brand-project { display:block; font-size:8px; font-weight:700; letter-spacing:2px; color:#9aa0b4; }
+    .topbar-brand-name { display:block; font-size:16px; font-weight:800; color:var(--text); }
+    .topbar-nav { flex:1; display:flex; justify-content:center; }
+    .nav-pill { display:inline-flex; align-items:center; gap:2px; background:var(--white); border-radius:999px; padding:5px 7px; box-shadow:0 1px 6px rgba(0,0,0,0.07); }
+    .nav-item { display:flex; align-items:center; gap:6px; padding:7px 14px; border-radius:999px; font-size:13px; font-weight:400; color:var(--muted); text-decoration:none; transition:background 0.15s,color 0.15s; white-space:nowrap; }
+    .nav-item:hover { background:var(--bg); color:var(--text); }
+    .nav-item.active { background:var(--bg); color:var(--text); font-weight:600; }
+    .nav-item img { width:15px; height:15px; object-fit:contain; opacity:0.5; flex-shrink:0; }
+    .nav-item:hover img, .nav-item.active img { opacity:1; }
+    .nav-item-wrap { position:relative; }
+    .nav-item-wrap::after { content:''; position:absolute; top:100%; left:0; width:100%; height:12px; background:transparent; }
+    .nav-item-wrap:hover .nav-dropdown { display:block; }
+    .nav-dropdown { display:none; position:absolute; top:calc(100% + 8px); left:0; background:var(--white); border:1px solid var(--border); border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.10); min-width:160px; padding:6px; z-index:500; }
+    .nav-dropdown-item { display:flex; align-items:center; padding:8px 12px; font-size:13px; color:#4a4e69; text-decoration:none; border-radius:8px; font-weight:500; transition:background 0.15s; }
+    .nav-dropdown-item:hover { background:var(--bg); color:var(--primary); }
+    .nav-dropdown-item.active { color:var(--primary); font-weight:700; }
+    .topbar-right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+    .search-pill { display:flex; align-items:center; gap:8px; background:var(--white); border-radius:999px; padding:8px 16px; font-size:12px; color:#c0c4d0; box-shadow:0 1px 4px rgba(0,0,0,0.06); min-width:150px; cursor:text; }
+    .avatar-btn { width:36px; height:36px; border-radius:50%; background:var(--primary); color:var(--white); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; box-shadow:0 1px 4px rgba(0,0,0,0.12); flex-shrink:0; }
+    .avatar-menu { display:none; position:absolute; top:calc(100% + 8px); right:0; background:var(--white); border:1px solid var(--border); border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.10); min-width:176px; overflow:hidden; z-index:999; }
+    .avatar-menu.open { display:block; }
+    .avatar-menu-name { padding:11px 15px 7px; font-size:12px; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); }
+    .avatar-menu a { display:flex; align-items:center; gap:8px; padding:9px 15px; font-size:13px; color:#4a4e69; text-decoration:none; font-weight:500; }
+    .avatar-menu a:hover { background:var(--bg); color:var(--primary); }
+    .avatar-menu button { width:100%; padding:9px 15px; background:none; border:none; border-top:1px solid var(--border); text-align:left; font-family:'Poppins',sans-serif; font-size:13px; color:#e63946; cursor:pointer; }
+    .avatar-menu button:hover { background:#fff0f1; }
+
+    /* ── PAGE ── */
+    .page-container { padding:24px 28px; }
+
+    /* ── PAGE HEADER ── */
+    .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
+    .page-header h1 { font-size:22px; font-weight:800; color:var(--text); }
+    .page-header-right { display:flex; align-items:center; gap:10px; }
+
+    /* Search */
+    .search-bar { display:flex; align-items:center; gap:8px; background:var(--white); border:1px solid var(--border); border-radius:10px; padding:9px 14px; min-width:220px; }
+    .search-bar input { border:none; outline:none; font-family:'Poppins',sans-serif; font-size:13px; color:var(--text); background:transparent; width:100%; }
+    .search-bar input::placeholder { color:#c0c4d0; }
+    .search-bar svg { flex-shrink:0; }
+
+    /* View toggle */
+    .view-toggle { display:flex; background:var(--white); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+    .view-btn { padding:8px 12px; border:none; background:transparent; cursor:pointer; color:#9aa0b4; display:flex; align-items:center; transition:all 0.15s; }
+    .view-btn:hover { color:var(--text); }
+    .view-btn.active { background:var(--text); color:#fff; }
+
+    /* Create btn */
+    .btn-create { display:flex; align-items:center; gap:6px; padding:9px 18px; background:var(--primary); color:#fff; border:none; border-radius:10px; font-family:'Poppins',sans-serif; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.15s; }
+    .btn-create:hover { background:#1558b0; }
+
+    /* ── LIST VIEW ── */
+    .species-table { width:100%; border-collapse:collapse; background:var(--white); border-radius:14px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+    .species-table thead tr { background:#f8f9fc; }
+    .species-table th { padding:12px 16px; font-size:11px; font-weight:700; color:#9aa0b4; text-transform:uppercase; letter-spacing:0.5px; text-align:left; border-bottom:1px solid var(--border); }
+    .species-table td { padding:13px 16px; font-size:13px; color:var(--text); border-bottom:1px solid #f0f2f7; vertical-align:middle; }
+    .species-table tbody tr:last-child td { border-bottom:none; }
+    .species-table tbody tr:hover { background:#f8f9fc; }
+    .species-thumb { width:40px; height:40px; border-radius:8px; object-fit:cover; border:1px solid var(--border); }
+    .species-thumb-placeholder { width:40px; height:40px; border-radius:8px; background:#f0f2f7; display:flex; align-items:center; justify-content:center; }
+    .species-name-cell { display:flex; align-items:center; gap:12px; }
+    .species-name-text { font-weight:600; color:var(--text); }
+    .species-sci-text { font-size:11px; color:var(--muted); font-style:italic; }
+    .action-btn { padding:5px 12px; border-radius:6px; font-size:12px; font-weight:600; border:none; cursor:pointer; font-family:'Poppins',sans-serif; transition:all 0.15s; }
+    .action-btn-view { background:#eef4fd; color:var(--primary); }
+    .action-btn-view:hover { background:#dce9fb; }
+    .action-btn-edit { background:#f4f6fb; color:#4a4e69; }
+    .action-btn-edit:hover { background:#e8eaf0; }
+    .action-btn-del { background:#fff0f1; color:#e63946; }
+    .action-btn-del:hover { background:#ffd6d8; }
+    .empty-msg { text-align:center; color:var(--muted); padding:40px; font-size:13px; }
+
+    /* ── GRID VIEW ── */
+    .species-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:16px; }
+    .species-card { background:var(--white); border-radius:14px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.06); transition:transform 0.2s,box-shadow 0.2s; cursor:pointer; }
+    .species-card:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,0,0,0.10); }
+    .species-card-img { width:100%; height:140px; object-fit:cover; display:block; background:#f0f2f7; }
+    .species-card-img-placeholder { width:100%; height:140px; background:linear-gradient(135deg,#f0f2f7,#e8eaf0); display:flex; align-items:center; justify-content:center; }
+    .species-card-body { padding:14px; }
+    .species-card-name { font-size:14px; font-weight:700; color:var(--text); margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .species-card-sci { font-size:11px; color:var(--muted); font-style:italic; margin-bottom:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .species-card-footer { display:flex; gap:6px; }
+    .species-card-footer .action-btn { flex:1; text-align:center; padding:6px 8px; }
+
+    /* ── MODAL ── */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(15,20,40,0.45); backdrop-filter:blur(6px); z-index:1000; align-items:flex-start; justify-content:center; overflow-y:auto; padding:24px; }
+    .modal-overlay.open { display:flex; }
+    .modal { background:var(--white); border-radius:16px; width:100%; max-width:760px; box-shadow:0 24px 60px rgba(0,0,0,0.15); margin:auto; }
+    .modal-header { display:flex; align-items:center; justify-content:space-between; padding:20px 24px; border-bottom:1px solid var(--border); }
+    .modal-header h2 { font-size:17px; font-weight:800; color:var(--text); }
+    .modal-body { padding:24px; max-height:65vh; overflow-y:auto; }
+    .modal-footer { display:flex; align-items:center; justify-content:flex-end; gap:10px; padding:16px 24px; border-top:1px solid var(--border); }
+    .section-title { font-size:13px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px; margin:20px 0 14px; padding-bottom:6px; border-bottom:2px solid var(--border); }
+    .section-title:first-child { margin-top:0; }
+    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .form-group { display:flex; flex-direction:column; gap:5px; }
+    .form-group.full-width { grid-column:1/-1; }
+    .form-group label { font-size:11px; font-weight:700; color:#4a4e69; letter-spacing:0.3px; }
+    .form-group input, .form-group textarea, .form-group select { padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; font-family:'Poppins',sans-serif; font-size:13px; color:var(--text); outline:none; transition:border-color 0.2s; }
+    .form-group input:focus, .form-group textarea:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(26,111,219,0.08); }
+    .form-group textarea { resize:vertical; min-height:72px; line-height:1.5; }
+    .btn { padding:9px 20px; border-radius:8px; font-family:'Poppins',sans-serif; font-size:13px; font-weight:600; cursor:pointer; border:none; transition:all 0.15s; }
+    .btn-primary { background:var(--primary); color:#fff; }
+    .btn-primary:hover { background:#1558b0; }
+    .btn-secondary { background:#f4f6fb; color:#4a4e69; border:1.5px solid var(--border); }
+    .btn-secondary:hover { border-color:#9aa0b4; }
+    .btn-danger { background:#fff0f1; color:#e63946; border:1.5px solid #ffd6d8; }
+    .btn-danger:hover { background:#ffd6d8; }
+
+    /* Multi-select */
+    .multi-select-wrap { position:relative; }
+    .multi-select-box { display:flex; align-items:center; justify-content:space-between; padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; background:#fff; min-height:38px; }
+    .multi-select-box:hover { border-color:#9aa0b4; }
+    .multi-select-placeholder { font-size:13px; color:#c0c4d0; }
+    .multi-select-tags { display:flex; flex-wrap:wrap; gap:4px; flex:1; }
+    .multi-select-tag { background:#eef4fd; color:var(--primary); border-radius:4px; padding:2px 8px; font-size:11px; font-weight:600; }
+    .multi-select-arrow { font-size:11px; color:#9aa0b4; flex-shrink:0; margin-left:6px; }
+    .multi-select-dropdown { display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; background:#fff; border:1px solid var(--border); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.10); z-index:600; }
+    .multi-select-dropdown.open { display:block; }
+    .multi-select-search { display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid var(--border); }
+    .multi-select-search input { border:none; outline:none; font-family:'Poppins',sans-serif; font-size:13px; width:100%; background:transparent; }
+    .multi-select-options { max-height:180px; overflow-y:auto; }
+    .multi-select-option { display:flex; align-items:center; gap:10px; padding:9px 14px; cursor:pointer; transition:background 0.12s; font-size:13px; color:#4a4e69; }
+    .multi-select-option:hover { background:#f4f6fb; }
+    .multi-select-option.selected { background:#eef4fd; color:var(--primary); }
+    .multi-select-checkbox { width:15px; height:15px; border:1.5px solid var(--border); border-radius:4px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+    .multi-select-option.selected .multi-select-checkbox { background:var(--primary); border-color:var(--primary); }
+    .multi-select-option.selected .multi-select-checkbox::after { content:'✓'; color:#fff; font-size:9px; font-weight:700; }
+
+    /* File upload */
+    .file-upload-label { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background:#f4f6fb; border:1.5px solid var(--border); border-radius:8px; font-size:13px; font-weight:600; color:#4a4e69; cursor:pointer; }
+    .file-upload-label:hover { border-color:#9aa0b4; }
+    input[type="file"] { display:none; }
+    .file-name-text { font-size:12px; color:var(--muted); margin-top:4px; }
+
+    /* Delete modal */
+    .confirm-overlay { display:none; position:fixed; inset:0; background:rgba(15,20,40,0.45); backdrop-filter:blur(6px); z-index:1100; align-items:center; justify-content:center; }
+    .confirm-overlay.open { display:flex; }
+    .confirm-box { background:#fff; border-radius:14px; padding:32px; max-width:380px; width:90%; text-align:center; box-shadow:0 24px 60px rgba(0,0,0,0.15); }
+    .confirm-box h3 { font-size:16px; font-weight:700; margin-bottom:8px; }
+    .confirm-box p { font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:20px; }
+    .confirm-actions { display:flex; gap:10px; justify-content:center; }
+
+    /* Toast */
+    #toast-container { position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column; gap:8px; }
+    .toast { padding:11px 20px; border-radius:999px; font-size:13px; font-weight:600; color:#fff; box-shadow:0 8px 24px rgba(0,0,0,0.15); }
+    .toast-success { background:#16a34a; }
+    .toast-error { background:#e63946; }
+
+    .hidden { display:none !important; }
+    /* Hide email in nav profile — show avatar only */
+    #nav-profile-link span[style*="font-size:12px"] { display:none !important; }
+  </style>
+</head>
+<body>
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <a href="home-logged-in.html" class="topbar-brand">
+      <span class="topbar-brand-project">PROJECT</span>
+      <span class="topbar-brand-name">Manhattan.</span>
     </a>
-    <div style="flex:1; display:flex; justify-content:center;">
-      <div style="display:inline-flex; align-items:center; gap:2px; background:#fff; border-radius:999px; padding:5px 7px; box-shadow:0 1px 6px rgba(0,0,0,0.07);">
-        <a href="home-logged-in.html" style="padding:7px 14px; border-radius:999px; font-size:13px; color:#6b7280; text-decoration:none;">Home</a>
-        <div class="sp-nav-wrap">
-          My Studio
-          <div class="sp-dropdown">
-            <a href="product-list.html">Products</a>
-            <a href="organisation.html">Your Company</a>
+    <div class="topbar-nav">
+      <div class="nav-pill">
+        <a href="home-logged-in.html" class="nav-item">
+          <img src="home.png" alt=""/> Home
+        </a>
+        <div class="nav-item-wrap">
+          <a href="organisation.html" class="nav-item">
+            <img src="my-studio.png" alt=""/> My Studio
+          </a>
+          <div class="nav-dropdown">
+            <a href="product-list.html" class="nav-dropdown-item">Product</a>
+            <a href="organisation.html" class="nav-dropdown-item">Your Company</a>
           </div>
         </div>
-        <div class="sp-nav-wrap active">
-          Atlas
-          <div class="sp-dropdown">
-            <a href="Species.html" style="color:#1a6fdb; font-weight:600;">Species</a>
-            <a href="country.html">Country</a>
-            <a href="#">Ports</a>
-            <a href="#">Vessels</a>
+        <div class="nav-item-wrap">
+          <a href="Species.html" class="nav-item active">
+            <img src="atlas.png" alt=""/> Atlas
+          </a>
+          <div class="nav-dropdown">
+            <a href="Species.html" class="nav-dropdown-item active">Species</a>
+            <a href="country.html" class="nav-dropdown-item">Country</a>
+            <a href="#" class="nav-dropdown-item">Ports</a>
+            <a href="#" class="nav-dropdown-item">Vessels</a>
           </div>
         </div>
-        <a href="#" style="padding:7px 14px; border-radius:999px; font-size:13px; color:#6b7280; text-decoration:none;">Reports</a>
-        <div class="sp-nav-wrap">
-          Support
-          <div class="sp-dropdown">
-            <a href="contact.html">Contact</a>
-            <a href="report.html">Report an Issue</a>
-            <a href="about.html">About</a>
-          </div>
-        </div>
+        <a href="#" class="nav-item">
+          <img src="features.png" alt=""/> Features
+        </a>
+        <a href="#" class="nav-item">
+          <img src="messages.png" alt=""/> Messages
+        </a>
+        <a href="#" class="nav-item">
+          <img src="report.png" alt=""/> Reports
+        </a>
+        <a href="report.html" class="nav-item">
+          <img src="support.png" alt=""/> Support
+        </a>
       </div>
     </div>
-    <div id="nav-profile-link" style="display:flex; align-items:center; gap:8px;"></div>
+    <div class="topbar-right">
+      <div id="nav-profile-link" style="display:flex;align-items:center;gap:8px;"></div>
+    </div>
   </div>
 
-  <!-- SPECIES PAGE -->
+  <!-- PAGE -->
   <div class="page-container">
 
-    <!-- PAGE HEADER -->
-   <div class="page-header">
-  <h1>Species</h1>
-  <div style="display:flex; align-items:center; gap:12px;">
-    <div class="search-input">
-      <img src="search-icon.png" style="width:16px; height:16px; opacity:0.5;"/>
-      <input type="text" id="search-input" placeholder="Search species..."/>
+    <!-- HEADER -->
+    <div class="page-header">
+      <h1>Species</h1>
+      <div class="page-header-right">
+        <!-- Search -->
+        <div class="search-bar">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9aa0b4" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="search-input" placeholder="Search species..."/>
+        </div>
+        <!-- View toggle -->
+        <div class="view-toggle">
+          <button class="view-btn active" id="btn-list-view" onclick="setView('list')" title="List view">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          </button>
+          <button class="view-btn" id="btn-grid-view" onclick="setView('grid')" title="Grid view">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          </button>
+        </div>
+        <!-- Create -->
+        <button class="btn-create" id="btn-create-species">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Create Species
+        </button>
+      </div>
     </div>
-    <button class="btn btn-primary" id="btn-create-species">+ Create Species</button>
+
+    <!-- LIST VIEW -->
+    <div id="list-view">
+      <table class="species-table">
+        <thead>
+          <tr>
+            <th>Species</th>
+            <th>Scientific Name</th>
+            <th>Family</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="species-table-body">
+          <tr><td colspan="5" class="empty-msg">Loading species...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- GRID VIEW -->
+    <div id="grid-view" class="hidden">
+      <div class="species-grid" id="species-grid-body"></div>
+    </div>
+
   </div>
-</div>
 
-    <!-- SPECIES TABLE -->
-    <table class="species-table">
-      <thead>
-        <tr>
-          <th>Species Name</th>
-          <th>Scientific Name</th>
-          <th>Created Date</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody id="species-table-body">
-        <!-- Data will load here -->
-        <tr>
-          <td colspan="4" class="empty-msg">No species found. Click "Create Species" to add one.</td>
-        </tr>
-      </tbody>
-    </table>
-
-  </div>
-
-  <!-- CREATE / EDIT FORM (hidden by default) -->
+  <!-- CREATE / EDIT MODAL -->
   <div class="modal-overlay" id="modal-overlay">
     <div class="modal">
       <div class="modal-header">
         <h2 id="modal-title">Create Species</h2>
-        <button class="btn btn-secondary" id="btn-modal-close">Close</button>
+        <button class="btn btn-secondary" id="btn-modal-close">✕ Close</button>
       </div>
-
       <form id="species-form">
-      <div class="modal-body">
+        <div class="modal-body">
 
-        <!-- SECTION 1: Basic Information -->
-        <h3 class="section-title">Basic Information</h3>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Species Name</label>
-            <input type="text" id="species_name"  name="species_name" placeholder="Enter species name"/>
+          <h3 class="section-title">Basic Information</h3>
+          <div class="form-grid">
+            <div class="form-group"><label>Species Name</label><input type="text" id="species_name" name="species_name" placeholder="Enter species name"/></div>
+            <div class="form-group"><label>Scientific Name</label><input type="text" id="scientific_name" name="scientific_name" placeholder="Enter scientific name"/></div>
+            <div class="form-group"><label>Common / Trade Family Name</label><input type="text" id="common_trade_family_name" name="common_trade_family_name" placeholder="Enter common name"/></div>
+            <div class="form-group"><label>AFSIS 3A Code</label><input type="text" id="afsis_3a_code" name="afsis_3a_code" placeholder="Enter code"/></div>
+            <div class="form-group"><label>Taxonomic Code</label><input type="number" id="taxonomic_code" name="taxonomic_code" placeholder="Enter number"/></div>
+            <div class="form-group"><label>Alphia ID</label><input type="number" id="alphia_id" name="alphia_id" placeholder="Enter number"/></div>
+            <div class="form-group"><label>ISSCAAP Code</label><input type="number" id="isscaap_code" name="isscaap_code" placeholder="Enter number"/></div>
+            <div class="form-group"><label>CAAB Code</label><input type="number" id="caab_code" name="caab_code" placeholder="Enter number"/></div>
           </div>
-          <div class="form-group">
-            <label>Scientific Name</label>
-            <input type="text" id="scientific_name" name="scientific_name" placeholder="Enter scientific name"/>
-          </div>
-          <div class="form-group">
-            <label>Common / Trade Family Name</label>
-            <input type="text" id="common_trade_family_name" name="common_trade_family_name" placeholder="Enter common name"/>
-          </div>
-          <div class="form-group">
-            <label>AFSIS 3A Code</label>
-            <input type="text" id="afsis_3a_code" name="afsis_3a_code"   placeholder="Enter code"/>
-          </div>
-          <div class="form-group">
-            <label>Taxonomic Code</label>
-            <input type="number" id="taxonomic_code" name="taxonomic_code" placeholder="Enter number"/>
-          </div>
-          <div class="form-group">
-            <label>Alphia ID</label>
-            <input type="number" id="alphia_id" name="alphia_id"  placeholder="Enter number"/>
-          </div>
-          <div class="form-group">
-            <label>ISSCAAP Code</label>
-            <input type="number" id="isscaap_code" name="isscaap_code" placeholder="Enter number"/>
-          </div>
-          <div class="form-group">
-            <label>CAAB Code</label>
-            <input type="number" id="caab_code" name="caab_code" placeholder="Enter number"/>
-          </div>
-        </div>
 
-        <!-- SECTION 2: Classification -->
-        <h3 class="section-title">Classification</h3>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Kingdom</label>
-            <input type="text" id="kingdom" name="kingdom" placeholder="Enter kingdom"/>
+          <h3 class="section-title">Classification</h3>
+          <div class="form-grid">
+            <div class="form-group"><label>Kingdom</label><input type="text" id="kingdom" name="kingdom" placeholder="e.g. Animalia"/></div>
+            <div class="form-group"><label>Phylum</label><input type="text" id="phylum" name="phylum" placeholder="e.g. Chordata"/></div>
+            <div class="form-group"><label>Class</label><input type="text" id="class_name" name="class_name" placeholder="Enter class"/></div>
+            <div class="form-group"><label>Order</label><input type="text" id="order_name" name="order_name" placeholder="Enter order"/></div>
+            <div class="form-group"><label>Family</label><input type="text" id="family" name="family" placeholder="Enter family"/></div>
+            <div class="form-group"><label>Genus</label><input type="text" id="genus" name="genus" placeholder="Enter genus"/></div>
           </div>
-          <div class="form-group">
-            <label>Phylum</label>
-            <input type="text" id="phylum" name="phylum" placeholder="Enter phylum"/>
-          </div>
-          <div class="form-group">
-            <label>Class</label>
-            <input type="text" id="class_name" name="class_name" placeholder="Enter class"/>
-          </div>
-          <div class="form-group">
-            <label>Order</label>
-            <input type="text" id="order_name" name="order_name" placeholder="Enter order"/>
-          </div>
-          <div class="form-group">
-            <label>Family</label>
-            <input type="text" id="family" name="family" placeholder="Enter family"/>
-          </div>
-          <div class="form-group">
-            <label>Genus</label>
-            <input type="text" id="genus" name="genus" placeholder="Enter genus"/>
-          </div>
-        </div>
 
-        <!-- SECTION 3: Dimensions -->
-        <h3 class="section-title">Dimensions</h3>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Maturity (cm)</label>
-            <input type="number" id="maturity_cm" name="maturity_cm" placeholder="0.00" step="0.01"/>
+          <h3 class="section-title">Dimensions</h3>
+          <div class="form-grid">
+            <div class="form-group"><label>Maturity (cm)</label><input type="number" id="maturity_cm" name="maturity_cm" placeholder="0.00" step="0.01"/></div>
+            <div class="form-group"><label>Maturity Type</label><input type="text" id="maturity_cm_type" name="maturity_cm_type" placeholder="e.g. cm"/></div>
+            <div class="form-group"><label>Max Length (cm)</label><input type="number" id="max_length_cm" name="max_length_cm" placeholder="0.00" step="0.01"/></div>
+            <div class="form-group"><label>Max Length Type</label><input type="text" id="max_length_cm_type" name="max_length_cm_type" placeholder="e.g. cm"/></div>
+            <div class="form-group"><label>Common Length (cm)</label><input type="number" id="common_length_cm" name="common_length_cm" placeholder="0.00" step="0.01"/></div>
+            <div class="form-group"><label>Common Length Type</label><input type="text" id="common_length_cm_type" name="common_length_cm_type" placeholder="e.g. cm"/></div>
+            <div class="form-group"><label>Max Published Weight</label><input type="number" id="max_published_weight" name="max_published_weight" placeholder="0.00" step="0.01"/></div>
+            <div class="form-group"><label>Max Published Weight Type</label><input type="text" id="max_published_weight_type" name="max_published_weight_type" placeholder="e.g. kg"/></div>
+            <div class="form-group"><label>Max Reported Age</label><input type="number" id="max_reported_age" name="max_reported_age" placeholder="0.00" step="0.01"/></div>
+            <div class="form-group"><label>Max Reported Age Type</label><input type="text" id="max_reported_age_type" name="max_reported_age_type" placeholder="e.g. Years"/></div>
           </div>
-          <div class="form-group">
-            <label>Maturity Type</label>
-            <input type="text" id="maturity_cm_type" name="maturity_cm_type" placeholder="e.g. cm"/>
-          </div>
-          <div class="form-group">
-            <label>Max Length (cm)</label>
-            <input type="number" id="max_length_cm" name="max_length_cm" placeholder="0.00" step="0.01"/>
-          </div>
-          <div class="form-group">
-            <label>Max Length Type</label>
-            <input type="text" id="max_length_cm_type" name="max_length_cm_type" placeholder="e.g. cm"/>
-          </div>
-          <div class="form-group">
-            <label>Common Length (cm)</label>
-            <input type="number" id="common_length_cm" name="common_length_cm" placeholder="0.00" step="0.01"/>
-          </div>
-          <div class="form-group">
-            <label>Common Length Type</label>
-            <input type="text" id="common_length_cm_type" name="common_length_cm_type" placeholder="e.g. cm"/>
-          </div>
-          <div class="form-group">
-            <label>Max Published Weight</label>
-            <input type="number" id="max_published_weight" name="max_published_weight" placeholder="0.00" step="0.01"/>
-          </div>
-          <div class="form-group">
-            <label>Max Published Weight Type</label>
-            <input type="text" id="max_published_weight_type" name="max_published_weight_type" placeholder="e.g. kg"/>
-          </div>
-          <div class="form-group">
-            <label>Max Reported Age</label>
-            <input type="number" id="max_reported_age" name="max_reported_age" placeholder="0.00" step="0.01"/>
-          </div>
-          <div class="form-group">
-            <label>Max Reported Age Type</label>
-            <input type="text" id="max_reported_age_type" name="max_reported_age_type" placeholder="e.g. Years"/>
-          </div>
-        </div>
 
-        <!-- SECTION 4: Characteristics & Environment -->
-        <h3 class="section-title">Characteristics & Environment</h3>
-        <div class="form-grid">
-          <div class="form-group full-width">
-            <label>Short Description</label>
-            <textarea id="short_description" name="short_description" maxlength="300" placeholder="Max 300 characters"></textarea>
+          <h3 class="section-title">Characteristics & Environment</h3>
+          <div class="form-grid">
+            <div class="form-group full-width"><label>Short Description</label><textarea id="short_description" name="short_description" maxlength="300" placeholder="Max 300 characters"></textarea></div>
+            <div class="form-group full-width"><label>Habitat</label><textarea id="habitat" name="habitat" maxlength="300" placeholder="Max 300 characters"></textarea></div>
+            <div class="form-group full-width"><label>Biology</label><textarea id="biology" name="biology" maxlength="300" placeholder="Max 300 characters"></textarea></div>
+            <div class="form-group full-width"><label>Distribution</label><textarea id="distribution" name="distribution" maxlength="300" placeholder="Max 300 characters"></textarea></div>
+            <div class="form-group full-width"><label>Colour</label><textarea id="colour" name="colour" maxlength="300" placeholder="Max 300 characters"></textarea></div>
+            <div class="form-group full-width"><label>DNA Sequence</label><textarea id="dna_sequence" name="dna_sequence" maxlength="300" placeholder="Max 300 characters"></textarea></div>
+            <div class="form-group full-width"><label>Reproduction & Lifecycle</label><textarea id="reproduction_lifecycle" name="reproduction_lifecycle" maxlength="300" placeholder="Max 300 characters"></textarea></div>
+            <div class="form-group full-width"><label>Temperature</label><textarea id="temperature" name="temperature" maxlength="300" placeholder="Max 300 characters"></textarea></div>
+            <div class="form-group"><label>Generation Length</label><input type="number" id="generation_length" name="generation_length" placeholder="0.00" step="0.01"/></div>
+            <div class="form-group"><label>Generation Length Type</label><input type="text" id="generation_length_type" name="generation_length_type" placeholder="e.g. Years"/></div>
+            <div class="form-group full-width"><label>Behavior</label><textarea id="behavior" name="behavior" placeholder="Enter behavior"></textarea></div>
+            <div class="form-group"><label>Swim Speed</label><input type="text" id="swim_speed" name="swim_speed" placeholder="Enter swim speed"/></div>
+            <div class="form-group"><label>Short Bursts</label><input type="text" id="short_bursts" name="short_bursts" placeholder="Enter short bursts"/></div>
+            <div class="form-group"><label>Predators</label><input type="text" id="predators" name="predators" maxlength="100" placeholder="Max 100 characters"/></div>
+            <div class="form-group"><label>Main Prey</label><input type="text" id="main_prey" name="main_prey" maxlength="100" placeholder="Max 100 characters"/></div>
+            <div class="form-group"><label>Diet</label><input type="text" id="diet" name="diet" maxlength="100" placeholder="Max 100 characters"/></div>
+            <div class="form-group"><label>Depth Range</label><input type="text" id="depth_range" name="depth_range" maxlength="100" placeholder="Max 100 characters"/></div>
+            <div class="form-group full-width">
+              <label>FAO Area</label>
+              <div class="multi-select-wrap" id="ms-wrap-fao_area">
+                <div class="multi-select-box" onclick="toggleMultiSelect('fao_area')">
+                  <span class="multi-select-placeholder" id="ms-placeholder-fao_area">Select FAO areas</span>
+                  <span class="multi-select-arrow">▾</span>
+                </div>
+                <div class="multi-select-dropdown" id="ms-dropdown-fao_area">
+                  <div class="multi-select-search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9aa0b4" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search..." oninput="filterMultiSelect('fao_area', this.value)"/></div>
+                  <div class="multi-select-options" id="ms-options-fao_area">
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Africa – Inland waters (FAO 01)')"><div class="multi-select-checkbox"></div><span>Africa – Inland waters (FAO 01)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','America, North – Inland waters (FAO 02)')"><div class="multi-select-checkbox"></div><span>America, North – Inland waters (FAO 02)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','America, South – Inland waters (FAO 03)')"><div class="multi-select-checkbox"></div><span>America, South – Inland waters (FAO 03)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Northwest (FAO 21)')"><div class="multi-select-checkbox"></div><span>Atlantic, Northwest (FAO 21)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Northeast (FAO 27)')"><div class="multi-select-checkbox"></div><span>Atlantic, Northeast (FAO 27)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Western Central (FAO 31)')"><div class="multi-select-checkbox"></div><span>Atlantic, Western Central (FAO 31)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Eastern Central (FAO 34)')"><div class="multi-select-checkbox"></div><span>Atlantic, Eastern Central (FAO 34)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Mediterranean and Black Sea (FAO 37)')"><div class="multi-select-checkbox"></div><span>Mediterranean and Black Sea (FAO 37)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Southwest (FAO 41)')"><div class="multi-select-checkbox"></div><span>Atlantic, Southwest (FAO 41)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Southeast (FAO 47)')"><div class="multi-select-checkbox"></div><span>Atlantic, Southeast (FAO 47)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Antarctic (FAO 48)')"><div class="multi-select-checkbox"></div><span>Atlantic, Antarctic (FAO 48)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Indian Ocean, Western (FAO 51)')"><div class="multi-select-checkbox"></div><span>Indian Ocean, Western (FAO 51)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Indian Ocean, Eastern (FAO 57)')"><div class="multi-select-checkbox"></div><span>Indian Ocean, Eastern (FAO 57)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Indian Ocean, Antarctic (FAO 58)')"><div class="multi-select-checkbox"></div><span>Indian Ocean, Antarctic (FAO 58)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Northwest (FAO 61)')"><div class="multi-select-checkbox"></div><span>Pacific, Northwest (FAO 61)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Northeast (FAO 67)')"><div class="multi-select-checkbox"></div><span>Pacific, Northeast (FAO 67)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Western Central (FAO 71)')"><div class="multi-select-checkbox"></div><span>Pacific, Western Central (FAO 71)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Eastern Central (FAO 77)')"><div class="multi-select-checkbox"></div><span>Pacific, Eastern Central (FAO 77)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Southwest (FAO 81)')"><div class="multi-select-checkbox"></div><span>Pacific, Southwest (FAO 81)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Southeast (FAO 87)')"><div class="multi-select-checkbox"></div><span>Pacific, Southeast (FAO 87)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Antarctic (FAO 88)')"><div class="multi-select-checkbox"></div><span>Pacific, Antarctic (FAO 88)</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Not Specified / Unavailable')"><div class="multi-select-checkbox"></div><span>Not Specified / Unavailable</span></div>
+                  </div>
+                </div>
+              </div>
+              <input type="hidden" id="fao_area" name="fao_area"/>
+            </div>
           </div>
-          <div class="form-group full-width">
-            <label>Habitat</label>
-            <textarea id="habitat" name="habitat" maxlength="300" placeholder="Max 300 characters"></textarea>
-          </div>
-          <div class="form-group full-width">
-            <label>Biology</label>
-            <textarea id="biology" name="biology" maxlength="300" placeholder="Max 300 characters"></textarea>
-          </div>
-          <div class="form-group full-width">
-            <label>Distribution</label>
-            <textarea id="distribution" name="distribution" maxlength="300" placeholder="Max 300 characters"></textarea>
-          </div>
-          <div class="form-group full-width">
-            <label>Colour</label>
-            <textarea id="colour" name="colour" maxlength="300" placeholder="Max 300 characters"></textarea>
-          </div>
-          <div class="form-group full-width">
-            <label>DNA Sequence</label>
-            <textarea id="dna_sequence" name="dna_sequence" maxlength="300" placeholder="Max 300 characters"></textarea>
-          </div>
-          <div class="form-group full-width">
-            <label>Reproduction & Lifecycle</label>
-            <textarea id="reproduction_lifecycle" name="reproduction_lifecycle" maxlength="300" placeholder="Max 300 characters"></textarea>
-          </div>
-          <div class="form-group full-width">
-            <label>Temperature</label>
-            <textarea id="temperature" name="temperature" maxlength="300" placeholder="Max 300 characters"></textarea>
-          </div>
-          <div class="form-group">
-            <label>Generation Length</label>
-            <input type="number" id="generation_length" name="generation_length" placeholder="0.00" step="0.01"/>
-          </div>
-          <div class="form-group">
-            <label>Generation Length Type</label>
-            <input type="text" id="generation_length_type" name="generation_length_type" placeholder="e.g. Years"/>
-          </div>
-          <div class="form-group full-width">
-            <label>Behavior</label>
-            <textarea id="behavior" name="behavior" placeholder="Enter behavior"></textarea>
-          </div>
-          <div class="form-group">
-            <label>Swim Speed</label>
-            <input type="text" id="swim_speed" name="swim_speed" placeholder="Enter swim speed"/>
-          </div>
-          <div class="form-group">
-            <label>Short Bursts</label>
-            <input type="text" id="short_bursts" name="short_bursts" placeholder="Enter short bursts"/>
-          </div>
-          <div class="form-group">
-            <label>Predators</label>
-            <input type="text" id="predators" name="predators" maxlength="100" placeholder="Max 100 characters"/>
-          </div>
-          <div class="form-group">
-            <label>Main Prey</label>
-            <input type="text" id="main_prey" name="main_prey" maxlength="100" placeholder="Max 100 characters"/>
-          </div>
-          <div class="form-group">
-            <label>Diet</label>
-            <input type="text" id="diet" name="diet" maxlength="100" placeholder="Max 100 characters"/>
-          </div>
-          <div class="form-group">
-            <label>Depth Range</label>
-            <input type="text" id="depth_range" name="depth_range" maxlength="100" placeholder="Max 100 characters"/>
-          </div>
-          <div class="form-group full-width">
-  <label>FAO Area</label>
-  <div class="multi-select-wrap" id="ms-wrap-fao_area">
-    <div class="multi-select-box" onclick="toggleMultiSelect('fao_area')">
-      <span class="multi-select-placeholder" id="ms-placeholder-fao_area">Select FAO areas</span>
-      <span class="multi-select-arrow">▾</span>
-    </div>
-    <div class="multi-select-dropdown" id="ms-dropdown-fao_area">
-      <div class="multi-select-search">
-        <img src="search-icon.png" style="width:14px; height:14px; opacity:0.4;"/>
-        <input type="text" placeholder="Search..." oninput="filterMultiSelect('fao_area', this.value)"/>
-      </div>
-<div class="multi-select-options" id="ms-options-fao_area">
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'Africa – Inland waters (FAO 01)')"><div class="multi-select-checkbox"></div><span>Africa – Inland waters (FAO 01)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'America, North – Inland waters (FAO 02)')"><div class="multi-select-checkbox"></div><span>America, North – Inland waters (FAO 02)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'America, South – Inland waters (FAO 03)')"><div class="multi-select-checkbox"></div><span>America, South – Inland waters (FAO 03)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'Atlantic, Northwest (FAO 21)')"><div class="multi-select-checkbox"></div><span>Atlantic, Northwest (FAO 21)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'Atlantic, Northeast (FAO 27)')"><div class="multi-select-checkbox"></div><span>Atlantic, Northeast (FAO 27)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'Atlantic, Western Central (FAO 31)')"><div class="multi-select-checkbox"></div><span>Atlantic, Western Central (FAO 31)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'Atlantic, Eastern Central (FAO 34)')"><div class="multi-select-checkbox"></div><span>Atlantic, Eastern Central (FAO 34)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'Mediterranean and Black Sea (FAO 37)')"><div class="multi-select-checkbox"></div><span>Mediterranean and Black Sea (FAO 37)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'Atlantic, Southwest (FAO 41)')"><div class="multi-select-checkbox"></div><span>Atlantic, Southwest (FAO 41)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'Atlantic, Southeast (FAO 47)')"><div class="multi-select-checkbox"></div><span>Atlantic, Southeast (FAO 47)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'Atlantic, Antarctic (FAO 48)')"><div class="multi-select-checkbox"></div><span>Atlantic, Antarctic (FAO 48)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'Indian Ocean, Western (FAO 51)')"><div class="multi-select-checkbox"></div><span>Indian Ocean, Western (FAO 51)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'Indian Ocean, Eastern (FAO 57)')"><div class="multi-select-checkbox"></div><span>Indian Ocean, Eastern (FAO 57)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'Indian Ocean, Antarctic (FAO 58)')"><div class="multi-select-checkbox"></div><span>Indian Ocean, Antarctic (FAO 58)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'Pacific, Northwest (FAO 61)')"><div class="multi-select-checkbox"></div><span>Pacific, Northwest (FAO 61)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'Pacific, Northeast (FAO 67)')"><div class="multi-select-checkbox"></div><span>Pacific, Northeast (FAO 67)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'Pacific, Western Central (FAO 71)')"><div class="multi-select-checkbox"></div><span>Pacific, Western Central (FAO 71)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'Pacific, Eastern Central (FAO 77)')"><div class="multi-select-checkbox"></div><span>Pacific, Eastern Central (FAO 77)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'Pacific, Southwest (FAO 81)')"><div class="multi-select-checkbox"></div><span>Pacific, Southwest (FAO 81)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'Pacific, Southeast (FAO 87)')"><div class="multi-select-checkbox"></div><span>Pacific, Southeast (FAO 87)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'Pacific, Antarctic (FAO 88)')"><div class="multi-select-checkbox"></div><span>Pacific, Antarctic (FAO 88)</span></div>
-        <div class="multi-select-option" onclick="selectMultiOption('fao_area', 'Not Specified / Unavailable')"><div class="multi-select-checkbox"></div><span>Not Specified / Unavailable</span></div>
-      </div>
-    </div>
-  </div>
-  <input type="hidden" id="fao_area" name="fao_area"/>
-</div>
-        </div>
 
-        <!-- SECTION 5: Harvest -->
-        <h3 class="section-title">Harvest</h3>
-        <div class="form-grid">
-          <div class="form-group">
-  <label>Source Type</label>
-  <div class="multi-select-wrap" id="ms-wrap-source_type">
-    <div class="multi-select-box" onclick="toggleMultiSelect('source_type')">
-      <span class="multi-select-placeholder" id="ms-placeholder-source_type">Select source type</span>
-      <span class="multi-select-arrow">▾</span>
-    </div>
-    <div class="multi-select-dropdown" id="ms-dropdown-source_type">
-      <div class="multi-select-search">
-        <img src="search-icon.png" style="width:14px; height:14px; opacity:0.4;"/>
-        <input type="text" placeholder="Search..." oninput="filterMultiSelect('source_type', this.value)"/>
-      </div>
-      <div class="multi-select-options" id="ms-options-source_type">
-        <div class="multi-select-option" onclick="selectMultiOption('source_type', 'Farm')">
-          <div class="multi-select-checkbox"></div>
-          <span>Farm</span>
-        </div>
-        <div class="multi-select-option" onclick="selectMultiOption('source_type', 'Wild Capture')">
-          <div class="multi-select-checkbox"></div>
-          <span>Wild Capture</span>
-        </div>
-      </div>
-    </div>
-  </div>
-  <input type="hidden" id="source_type" name="source_type"/>
-</div>
-        <div class="form-group">
-  <label>Gear Type</label>
-  <div class="multi-select-wrap" id="ms-wrap-gear_type">
-    <div class="multi-select-box" onclick="toggleMultiSelect('gear_type')">
-      <span class="multi-select-placeholder" id="ms-placeholder-gear_type">Select gear type</span>
-      <span class="multi-select-arrow">▾</span>
-    </div>
-    <div class="multi-select-dropdown" id="ms-dropdown-gear_type">
-      <div class="multi-select-search">
-        <img src="search-icon.png" style="width:14px; height:14px; opacity:0.4;"/>
-        <input type="text" placeholder="Search..." oninput="filterMultiSelect('gear_type', this.value)"/>
-      </div>
-      <div class="multi-select-options" id="ms-options-gear_type">
-        <div class="multi-select-option" onclick="selectMultiOption('gear_type', 'Purse Seiner')">
-          <div class="multi-select-checkbox"></div>
-          <span>Purse Seiner</span>
-        </div>
-        <div class="multi-select-option" onclick="selectMultiOption('gear_type', 'Longline')">
-          <div class="multi-select-checkbox"></div>
-          <span>Longline</span>
-        </div>
-        <div class="multi-select-option" onclick="selectMultiOption('gear_type', 'Traps & Pots')">
-          <div class="multi-select-checkbox"></div>
-          <span>Traps & Pots</span>
-        </div>
-        <div class="multi-select-option" onclick="selectMultiOption('gear_type', 'Pole & Line')">
-          <div class="multi-select-checkbox"></div>
-          <span>Pole & Line</span>
-        </div>
-        <div class="multi-select-option" onclick="selectMultiOption('gear_type', 'Trawler')">
-          <div class="multi-select-checkbox"></div>
-          <span>Trawler</span>
-        </div>
-      </div>
-    </div>
-  </div>
-  <input type="hidden" id="gear_type" name="gear_type"/>
-</div>
-        </div>
+          <h3 class="section-title">Harvest</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Source Type</label>
+              <div class="multi-select-wrap" id="ms-wrap-source_type">
+                <div class="multi-select-box" onclick="toggleMultiSelect('source_type')"><span class="multi-select-placeholder" id="ms-placeholder-source_type">Select source type</span><span class="multi-select-arrow">▾</span></div>
+                <div class="multi-select-dropdown" id="ms-dropdown-source_type">
+                  <div class="multi-select-search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9aa0b4" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search..." oninput="filterMultiSelect('source_type', this.value)"/></div>
+                  <div class="multi-select-options" id="ms-options-source_type">
+                    <div class="multi-select-option" onclick="selectMultiOption('source_type','Farm')"><div class="multi-select-checkbox"></div><span>Farm</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('source_type','Wild Capture')"><div class="multi-select-checkbox"></div><span>Wild Capture</span></div>
+                  </div>
+                </div>
+              </div>
+              <input type="hidden" id="source_type" name="source_type"/>
+            </div>
+            <div class="form-group">
+              <label>Gear Type</label>
+              <div class="multi-select-wrap" id="ms-wrap-gear_type">
+                <div class="multi-select-box" onclick="toggleMultiSelect('gear_type')"><span class="multi-select-placeholder" id="ms-placeholder-gear_type">Select gear type</span><span class="multi-select-arrow">▾</span></div>
+                <div class="multi-select-dropdown" id="ms-dropdown-gear_type">
+                  <div class="multi-select-search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9aa0b4" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search..." oninput="filterMultiSelect('gear_type', this.value)"/></div>
+                  <div class="multi-select-options" id="ms-options-gear_type">
+                    <div class="multi-select-option" onclick="selectMultiOption('gear_type','Purse Seiner')"><div class="multi-select-checkbox"></div><span>Purse Seiner</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('gear_type','Longline')"><div class="multi-select-checkbox"></div><span>Longline</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('gear_type','Traps & Pots')"><div class="multi-select-checkbox"></div><span>Traps & Pots</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('gear_type','Pole & Line')"><div class="multi-select-checkbox"></div><span>Pole & Line</span></div>
+                    <div class="multi-select-option" onclick="selectMultiOption('gear_type','Trawler')"><div class="multi-select-checkbox"></div><span>Trawler</span></div>
+                  </div>
+                </div>
+              </div>
+              <input type="hidden" id="gear_type" name="gear_type"/>
+            </div>
+          </div>
 
-<!-- SECTION 6: Photo -->
- <h3 class="section-title">Photo</h3>
-<div class="form-grid cols-1">
-  <div class="form-group">
-   <label class="file-upload-label" for="species_photo">
-  📁 Choose Photo
-</label>
-<input type="file" id="species_photo" name="species_photo" accept="image/*" onchange="updateFileName(this)"/>
-<div class="file-name-text" id="file-name-display">No file chosen</div>
-<small>Accepted formats: JPG, PNG, WEBP. Max 50MB.</small>
-  </div>
- <div class="form-group" id="photo-preview-group" style="display:none;">
-  <label>Current Photo</label>
-  <div style="display:flex; align-items:flex-start; gap:12px;">
-    <img id="photo-preview" src="" style="width:160px; height:120px; object-fit:cover; border-radius:8px; border:1.5px solid #e8e8e8;"/>
-    <button type="button" class="btn btn-danger" onclick="removePhoto()">🗑 Remove Photo</button>
-  </div>
-</div>
-</div>
-      </div>
+          <h3 class="section-title">Photo</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="file-upload-label" for="species_photo">Choose Photo</label>
+              <input type="file" id="species_photo" name="species_photo" accept="image/*" onchange="updateFileName(this)"/>
+              <div class="file-name-text" id="file-name-display">No file chosen</div>
+              <small style="color:#9aa0b4;font-size:11px;">JPG, PNG, WEBP — max 50MB</small>
+            </div>
+            <div class="form-group" id="photo-preview-group" style="display:none;">
+              <label>Current Photo</label>
+              <div style="display:flex;align-items:flex-start;gap:12px;">
+                <img id="photo-preview" src="" style="width:160px;height:120px;object-fit:cover;border-radius:8px;border:1.5px solid #e8e8e8;"/>
+                <button type="button" class="btn btn-danger" onclick="removePhoto()">Remove Photo</button>
+              </div>
+            </div>
+          </div>
+
+        </div>
       </form>
-
-      <!-- FORM FOOTER -->
       <div class="modal-footer">
         <button class="btn btn-secondary" id="btn-modal-cancel">Cancel</button>
         <button class="btn btn-primary" id="btn-save-species">Save Species</button>
       </div>
-
     </div>
   </div>
+
+  <!-- CONFIRM DELETE -->
+  <div class="confirm-overlay" id="confirm-overlay">
+    <div class="confirm-box">
+      <h3 id="confirm-title">Are you sure?</h3>
+      <p id="confirm-message">This cannot be undone.</p>
+      <div class="confirm-actions">
+        <button class="btn btn-secondary" id="confirm-cancel">Cancel</button>
+        <button class="btn btn-danger" id="confirm-ok">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SOFT DELETE MODAL -->
+  <div id="speciesListDeleteModal" style="display:none;position:fixed;inset:0;background:rgba(15,20,40,0.45);backdrop-filter:blur(6px);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:14px;padding:36px 32px;max-width:400px;width:90%;display:flex;flex-direction:column;align-items:center;gap:14px;box-shadow:0 24px 60px rgba(0,0,0,0.15);text-align:center;">
+      <div style="width:56px;height:56px;background:#fff0f1;border-radius:50%;display:flex;align-items:center;justify-content:center;">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#e63946" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+      </div>
+      <div id="speciesListDeleteStep1">
+        <h3 style="font-size:16px;font-weight:700;color:#1a1a2e;">Move to Trash?</h3>
+        <p style="font-size:13px;color:#6b7280;line-height:1.6;margin-top:8px;"><strong id="deleteSpeciesListName"></strong> will be moved to Trash and permanently deleted after <strong>30 days</strong>.</p>
+        <div style="display:flex;gap:10px;width:100%;margin-top:14px;">
+          <button onclick="closeSpeciesListDeleteModal()" style="flex:1;padding:9px;background:#fff;border:1.5px solid #e0e3ed;border-radius:8px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:#4a4e69;cursor:pointer;">Cancel</button>
+          <button onclick="proceedToSpeciesListStep2()" style="flex:1;padding:9px;background:#e63946;color:#fff;border:none;border-radius:8px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Move to Trash</button>
+        </div>
+      </div>
+      <div id="speciesListDeleteStep2" class="hidden">
+        <h3 style="font-size:16px;font-weight:700;color:#1a1a2e;">Would you like a reminder?</h3>
+        <p style="font-size:13px;color:#6b7280;line-height:1.6;margin-top:8px;">We can remind you before this is permanently deleted in 25 days.</p>
+        <div style="display:flex;flex-direction:column;gap:8px;width:100%;margin-top:14px;">
+          <button onclick="confirmSpeciesListDelete(true)" style="width:100%;padding:9px;background:#1a6fdb;color:#fff;border:none;border-radius:8px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Yes, remind me</button>
+          <button onclick="confirmSpeciesListDelete(false)" style="width:100%;padding:9px;background:#fff;color:#e63946;border:1.5px solid #e63946;border-radius:8px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">No, I'm sure</button>
+          <button onclick="closeSpeciesListDeleteModal()" style="width:100%;padding:9px;background:#fff;border:1.5px solid #e0e3ed;border-radius:8px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:#4a4e69;cursor:pointer;">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="toast-container"></div>
 
-<script src="utils.js"></script>
+  <script src="utils.js"></script>
   <script src="script.js"></script>
 
-  <div class="confirm-overlay" id="confirm-overlay">
-  <div class="confirm-box">
-    <h3 id="confirm-title">Are you sure?</h3>
-    <p id="confirm-message">This cannot be undone.</p>
-    <div class="confirm-actions">
-      <button class="btn btn-secondary" id="confirm-cancel">Cancel</button>
-      <button class="btn btn-danger" id="confirm-ok" style="background:#c0392b; color:white; border:none;">Delete</button>
-    </div>
-  </div>
-</div>
+  <script>
+  // ── Grid view toggle ──
+  let currentView = localStorage.getItem('speciesView') || 'list';
 
-<!-- Species List Soft Delete Modal -->
-<div id="speciesListDeleteModal" style="display:none; position:fixed; inset:0; background:rgba(15,20,40,0.45); backdrop-filter:blur(6px); z-index:1000; align-items:center; justify-content:center;">
-  <div class="modal-box" style="background:#fff; border-radius:14px; padding:36px 32px; max-width:400px; width:90%; display:flex; flex-direction:column; align-items:center; gap:14px; box-shadow:0 24px 60px rgba(0,0,0,0.15); text-align:center;">
-    <div style="width:56px; height:56px; background:#fff0f1; border-radius:50%; display:flex; align-items:center; justify-content:center;">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#e63946" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-    </div>
-    <!-- Step 1 -->
-    <div id="speciesListDeleteStep1">
-      <h3 style="font-size:16px; font-weight:700; color:#1a1a2e;">Move to Trash?</h3>
-      <p style="font-size:13px; color:#6b7280; line-height:1.6; margin-top:8px;">
-        <strong id="deleteSpeciesListName"></strong> will be moved to Trash and permanently deleted after <strong>30 days</strong>. You can restore it anytime before that.
-      </p>
-      <div style="display:flex; gap:10px; width:100%; margin-top:14px;">
-        <button onclick="closeSpeciesListDeleteModal()" style="flex:1; padding:9px; background:#fff; border:1.5px solid #e0e3ed; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:600; color:#4a4e69; cursor:pointer;">Cancel</button>
-        <button onclick="proceedToSpeciesListStep2()" style="flex:1; padding:9px; background:#e63946; color:#fff; border:none; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:600; cursor:pointer;">Move to Trash</button>
-      </div>
-    </div>
-    <!-- Step 2 -->
-    <div id="speciesListDeleteStep2" class="hidden">
-      <h3 style="font-size:16px; font-weight:700; color:#1a1a2e;">Would you like a reminder?</h3>
-      <p style="font-size:13px; color:#6b7280; line-height:1.6; margin-top:8px;">We can remind you before this is permanently deleted in 25 days?</p>
-      <div style="display:flex; flex-direction:column; gap:8px; width:100%; margin-top:14px;">
-        <button class="species-list-remind-btn" onclick="confirmSpeciesListDelete(true)" style="width:100%; padding:9px; background:#1a6fdb; color:#fff; border:none; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:600; cursor:pointer;">Yes, remind me</button>
-        <button class="species-list-no-remind-btn" onclick="confirmSpeciesListDelete(false)" style="width:100%; padding:9px; background:#fff; color:#e63946; border:1.5px solid #e63946; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:600; cursor:pointer;">No, I'm sure</button>
-        <button onclick="closeSpeciesListDeleteModal()" style="width:100%; padding:9px; background:#fff; border:1.5px solid #e0e3ed; border-radius:8px; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:600; color:#4a4e69; cursor:pointer;">Cancel</button>
-      </div>
-    </div>
-  </div>
-</div>
+  function setView(v) {
+    currentView = v;
+    localStorage.setItem('speciesView', v);
+    document.getElementById('list-view').classList.toggle('hidden', v !== 'list');
+    document.getElementById('grid-view').classList.toggle('hidden', v !== 'grid');
+    document.getElementById('btn-list-view').classList.toggle('active', v === 'list');
+    document.getElementById('btn-grid-view').classList.toggle('active', v === 'grid');
+    // allSpecies is a global let in script.js — accessible directly
+    if (v === 'grid') renderGrid(typeof allSpecies !== 'undefined' ? allSpecies : []);
+  }
+
+  function renderGrid(data) {
+    const grid = document.getElementById('species-grid-body');
+    if (!grid) return;
+    if (!data || !data.length) {
+      grid.innerHTML = '<p style="color:#9aa0b4;font-size:13px;grid-column:1/-1;text-align:center;padding:40px;">No species found.</p>';
+      return;
+    }
+    grid.innerHTML = data.map(s => `
+      <div class="species-card">
+        ${s.photo_url
+          ? `<img src="${s.photo_url}" class="species-card-img" alt="${s.species_name || ''}" onclick="window.location.href='species-detail.html?id=${s.id}'"/>`
+          : `<div class="species-card-img-placeholder" onclick="window.location.href='species-detail.html?id=${s.id}'">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d0d4dd" stroke-width="1.2"><path d="M21 16.5c0 2.5-4 4.5-9 4.5S3 19 3 16.5 7 12 12 12s9 2 9 4.5z"/><path d="M3 16.5V8C3 5.5 7 3.5 12 3.5S21 5.5 21 8v8.5"/></svg>
+             </div>`}
+        <div class="species-card-body">
+          <div class="species-card-name">${s.species_name || '—'}</div>
+          <div class="species-card-sci">${s.scientific_name || 'Scientific name not set'}</div>
+          <div class="species-card-footer">
+            <button class="action-btn action-btn-view" onclick="window.location.href='species-detail.html?id=${s.id}'">View</button>
+            <button class="action-btn action-btn-edit" onclick="openEditModal(${s.id})">Edit</button>
+            <button class="action-btn action-btn-del" onclick="deleteSpecies(${s.id},'${(s.species_name||'').replace(/'/g,"\'")}')">Delete</button>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+
+  // ── Patch script.js AFTER it has fully executed (window load) ──
+  window.addEventListener('load', () => {
+    // Patch renderTable — called by script.js whenever species list updates
+    const _origRender = window.renderTable;
+    if (typeof _origRender === 'function') {
+      window.renderTable = function(data) {
+        _origRender(data);
+        if (currentView === 'grid') renderGrid(data);
+      };
+    }
+
+    // Patch filterSpecies — called on search
+    const _origFilter = window.filterSpecies;
+    if (typeof _origFilter === 'function') {
+      window.filterSpecies = function(q) {
+        _origFilter(q);
+        if (currentView === 'grid') {
+          const filtered = (typeof allSpecies !== 'undefined' ? allSpecies : []).filter(s =>
+            (s.species_name||'').toLowerCase().includes(q.toLowerCase()) ||
+            (s.scientific_name||'').toLowerCase().includes(q.toLowerCase())
+          );
+          renderGrid(filtered);
+        }
+      };
+    }
+
+    // Apply saved view — by now allSpecies is populated
+    if (currentView === 'grid') renderGrid(typeof allSpecies !== 'undefined' ? allSpecies : []);
+    setView(currentView);
+  });
+  </script>
 </body>
 </html>
