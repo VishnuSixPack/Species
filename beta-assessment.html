@@ -696,6 +696,10 @@
           <svg class="connsvg" id="connsvg" style="position:absolute;top:0;left:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:2;"></svg>
           <div class="ownpop" id="ownpop">
           <div class="ownpopt" id="ownpopt">Who operates this stage?</div>
+          <div id="ownNameField" style="display:none;margin-bottom:10px;">
+            <label id="ownNameLabel" style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:4px;">Name (optional)</label>
+            <input type="text" id="ownNameInput" placeholder="e.g. MV Pacific Star" style="width:100%;padding:7px 10px;border:1px solid #e0e3ed;border-radius:7px;font-family:'Poppins',sans-serif;font-size:12px;color:#1a1a2e;outline:none;box-sizing:border-box;"/>
+          </div>
           <div class="ownopt"><input type="radio" name="ow" id="ow1" value="we"><label for="ow1">We operate this</label></div>
           <div class="ownopt"><input type="radio" name="ow" id="ow2" value="supplier"><label for="ow2">Our Supplier</label></div>
           <div class="ownopt"><input type="radio" name="ow" id="ow3" value="client"><label for="ow3">Our Client</label></div>
@@ -912,6 +916,7 @@ function renderNode(node){
     <button class="cdel" onclick="delNode('${node.id}')">×</button>
     <div class="cni"><div class="cni-icon" style="background:${node.cfg.b}">${node.cfg.i}</div>
       <div><div class="cni-name">${node.cfg.l}</div>${hasMultiple?`<div class="cni-num">${numLabel}</div>`:''}</div></div>
+    ${node.entityName?`<div style="font-size:10px;font-weight:700;color:#1a1a2e;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;">${node.entityName}</div>`:''}
     ${node.own?`<div class="cown-badge">${OWN_LABELS[node.own]}</div>`:''}
     ${node.cfg.hasVessels?`<div class="vstepper"><span class="vstep-lbl">${node.type==='transshipment'?'Carriers':'Vessels'}</span>
       <button class="vstep-btn" onclick="event.stopPropagation();changeCount('${node.id}',-1)">−</button>
@@ -995,11 +1000,35 @@ function drawCurve(svg,x1,y1,x2,y2,color,dashed,edgeId){
   if(!dashed)path.setAttribute('marker-end',`url(#${mid})`);
   svg.appendChild(path);
 }
+// CTE types that represent a named, fixed-identity entity (vessel or facility).
+// On-Vessel Processing inherits its name from the parent Harvest node, so it's excluded here.
+const NAMED_ENTITY_TYPES={
+  harvest:'Vessel name',
+  transshipment:'Carrier / Reefer name',
+  farm:'Farm name',
+  hatchery:'Hatchery name',
+  feedmill:'Feedmill name',
+  processing:'Facility name',
+  aggregation:'Facility name',
+};
 function openOwn(nid,el){
   activeOwn=nid;const node=scNodes.find(n=>n.id===nid);
   document.getElementById('ownpopt').textContent=`Who operates "${node.cfg.l}"?`;
   document.querySelectorAll('input[name="ow"]').forEach(r=>r.checked=false);
   if(node.own){const r=document.querySelector(`input[name="ow"][value="${node.own}"]`);if(r)r.checked=true;}
+  // Show name field only for fixed-identity CTEs
+  const nameField=document.getElementById('ownNameField');
+  const nameLabel=document.getElementById('ownNameLabel');
+  const nameInput=document.getElementById('ownNameInput');
+  const namePlaceholder=NAMED_ENTITY_TYPES[node.type];
+  if(namePlaceholder){
+    nameField.style.display='block';
+    nameLabel.textContent=namePlaceholder+' (optional)';
+    nameInput.placeholder=node.type==='harvest'?'e.g. MV Pacific Star':node.type==='transshipment'?'e.g. Ocean Reefer III':'e.g. ABC Processing Ltd';
+    nameInput.value=node.entityName||'';
+  } else {
+    nameField.style.display='none';
+  }
   const cv=document.getElementById('sccanvas'),cr=cv.getBoundingClientRect(),nr=el.getBoundingClientRect();
   let px=nr.right-cr.left+10,py=nr.top-cr.top;
   if(px+210>cv.offsetWidth)px=nr.left-cr.left-215;if(py+200>cv.offsetHeight)py=cv.offsetHeight-205;
@@ -1007,7 +1036,14 @@ function openOwn(nid,el){
 }
 function saveOwn(){
   if(!activeOwn)return;const sel=document.querySelector('input[name="ow"]:checked');const node=scNodes.find(n=>n.id===activeOwn);
-  if(sel&&node){node.own=sel.value;renderNode(node);drawConnections();}
+  if(sel&&node){
+    node.own=sel.value;
+    const nameInput=document.getElementById('ownNameInput');
+    if(NAMED_ENTITY_TYPES[node.type]){
+      node.entityName=(nameInput?.value||'').trim()||null;
+    }
+    renderNode(node);drawConnections();
+  }
   document.getElementById('ownpop').classList.remove('open');activeOwn=null;updateChainSum();
 }
 function updateChainSum(){
@@ -1082,7 +1118,7 @@ function topoOrder(nodes,edges){
 function saveSC(){
   if(!scNodes.length){showToast('Please add at least one CTE.','error');return;}
   const ordered=topoOrder(scNodes,scEdges);
-  curChain=ordered.map(n=>({id:n.id,type:n.type,l:n.cfg.l,i:n.cfg.i,b:n.cfg.b,own:n.own,vesselCount:n.vesselCount,instanceNum:n.instanceNum,subMode:n.subMode}));
+  curChain=ordered.map(n=>({id:n.id,type:n.type,l:n.cfg.l,i:n.cfg.i,b:n.cfg.b,own:n.own,entityName:n.entityName||null,vesselCount:n.vesselCount,instanceNum:n.instanceNum,subMode:n.subMode}));
   updateSCPrev();
   const fao=document.getElementById('pffao').value;
   if(fao){const zone=FAO_ZONES.find(z=>z.z===fao);if(zone){const b=document.getElementById('rfmo-banner');b.textContent=`🌊 FAO ${fao} (${zone.n}) — ${zone.rfmo} jurisdiction.`;b.classList.add('show');}}
@@ -1170,6 +1206,7 @@ function buildStages(){
           ...cn,
           type:cn.type,
           own:scn.own||cn.own||null,
+          entityName:cn.entityName||scn.entityName||null,
           vesselCount:cn.vesselCount||scn.vesselCount||1,
           instanceNum:cn.instanceNum||scn.instanceNum||1,
         });
@@ -1201,7 +1238,20 @@ function buildStages(){
       else if(type==='hatchery') {qs=buildHatcheryQs(own,inst);}
       else if(type==='farm')     {qs=buildFarmQs(own,inst);}
       else if(type==='vessel_landing'){qs=buildVesselLandingQs(hasEU,own,inst);}
-      else if(type==='onvessel') {qs=buildOnVesselQs(own,inst);}
+      else if(type==='onvessel') {
+        // Inherit vessel name from the connected Harvest node, if any
+        if(!inst.entityName){
+          prods.forEach(p=>{
+            const edges=p.scEdges||[];
+            const harvestEdge=edges.find(e=>e.to===inst.id);
+            if(harvestEdge){
+              const harvestNode=(p.scNodes||[]).find(n=>n.id===harvestEdge.from&&n.type==='harvest');
+              if(harvestNode&&harvestNode.entityName)inst.entityName=harvestNode.entityName;
+            }
+          });
+        }
+        qs=buildOnVesselQs(own,inst);
+      }
       return{inst,vc,qs,hasSubQ};
     });
     // One stage per TYPE — instances is the array of sub-sections
@@ -1546,9 +1596,10 @@ function renderKDE(){
       const answered=(sub.qs||[]).filter(q=>kResp[q.id]?.ans).length;
       const total=(sub.qs||[]).length;
       const vcLabel=inst.vesselCount>1?(st.type==='transshipment'?` · ${inst.vesselCount} carriers`:` · ${inst.vesselCount} vessels`):'';
+      const titleLabel=inst.entityName?`${st.t} — ${inst.entityName}`:`${st.t} — ${numLabel}`;
       html+=`<div class="inst-frozen-hd">
         <div class="inst-frozen-icon" style="background:${cfg.b};">${st.i}</div>
-        <div class="inst-frozen-title">${st.t} — ${numLabel}${vcLabel}</div>
+        <div class="inst-frozen-title">${titleLabel}${vcLabel}</div>
         ${answered>0?`<span class="inst-frozen-progress">✓ ${answered}/${total}</span>`:''}
         <span class="inst-frozen-counter">${subIdx+1} of ${totalInsts}</span>
       </div>`;
@@ -1557,6 +1608,7 @@ function renderKDE(){
     // Sub-Q for landing
     if(st.type==='landing'&&sub.hasSubQ){
       const savedMode=kResp[`_subMode_${instKey}`];
+      html+=renderConnectionBreadcrumb(inst.id);
       html+=`<div class="subq-box"><div class="subq-title">⚠️ What does this Landing / Discharge event represent?</div>
         <div class="subq-opts">
           <div class="subq-opt ${savedMode==='fv_container'?'sel-a':''}" onclick="setSubMode('${instKey}','fv_container')">🚢📦 Fishing vessel unloading into a reefer container at port</div>
@@ -1579,6 +1631,7 @@ function renderKDE(){
     if(st.type==='shipreceive'&&sub.hasSubQ){
       const savedMode=kResp[`_subMode_${instKey}`];
       const srTransport=kResp[`_srTransport_${instKey}`]||null;
+      html+=renderConnectionBreadcrumb(inst.id);
       html+=`<div class="subq-box"><div class="subq-title">⚠️ What does this Ship / Receive event represent?</div>
         <div class="subq-opts">
           <div class="subq-opt ${savedMode==='export'?'sel-a':''}" onclick="setSubMode('${instKey}','export')">🌍 Export shipment to overseas buyer</div>
@@ -2301,6 +2354,44 @@ const DEFAULT_WEIGHTS={
 };
 function getWeight(kdeId){const stripped=kdeId.replace(/^[^_]*_/,'');return DEFAULT_WEIGHTS[kdeId]||DEFAULT_WEIGHTS[stripped]||3;}
 // Returns the right subject for cert questions based on who operates this CTE
+// Trace SC builder edges to find the named entity connected before/after a given node.
+// Used for Landing/Discharge and Ship/Receive — event stages with no name of their own.
+function getConnectionBreadcrumb(nodeId){
+  if(!nodeId)return null;
+  let edges=[],nodes=[];
+  products.filter(Boolean).forEach(p=>{
+    if(p.scNodes&&p.scNodes.find(n=>n.id===nodeId)){
+      edges=p.scEdges||[];
+      nodes=p.scNodes||[];
+    }
+  });
+  if(!nodes.length)return null;
+
+  const labelFor=(id)=>{
+    const n=nodes.find(x=>x.id===id);
+    if(!n)return null;
+    const cfg=CTE_CFG[n.type]||{l:n.type,i:'📦'};
+    return{name:n.entityName||cfg.l,icon:cfg.i,type:n.type};
+  };
+
+  const incoming=edges.filter(e=>e.to===nodeId).map(e=>labelFor(e.from)).filter(Boolean);
+  const outgoing=edges.filter(e=>e.from===nodeId).map(e=>labelFor(e.to)).filter(Boolean);
+
+  if(!incoming.length&&!outgoing.length)return null;
+
+  const fromText=incoming.length?incoming.map(x=>`${x.icon} ${x.name}`).join(' + '):null;
+  const toText=outgoing.length?outgoing.map(x=>`${x.icon} ${x.name}`).join(' + '):null;
+
+  return{fromText,toText};
+}
+function renderConnectionBreadcrumb(nodeId){
+  const bc=getConnectionBreadcrumb(nodeId);
+  if(!bc||(!bc.fromText&&!bc.toText))return '';
+  const parts=[];
+  if(bc.fromText)parts.push(`<span style="color:#6b7280;">From:</span> <strong style="color:#1a1a2e;">${bc.fromText}</strong>`);
+  if(bc.toText)parts.push(`<span style="color:#6b7280;">To:</span> <strong style="color:#1a1a2e;">${bc.toText}</strong>`);
+  return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;padding:8px 12px;background:#f9fafc;border:1px solid #f0f2f8;border-radius:8px;margin-bottom:10px;">📍 ${parts.join(' &nbsp;→&nbsp; ')}</div>`;
+}
 function entity(own, stageLabel){
   if(own==='we') return 'your company';
   const label = stageLabel||'this entity';
@@ -2999,7 +3090,7 @@ function renderMiniGraph(container, nodes, edges, currentNodeId){
     textDiv.style.cssText=`width:${NW-54}px;display:flex;flex-direction:column;justify-content:center;height:${NH-10}px;`;
     const label=document.createElement('div');
     label.style.cssText=`font-size:10px;font-weight:800;color:${isCurrent?'#7c3aed':isDone?'#15803d':'#1a1a2e'};line-height:1.3;font-family:'Poppins',sans-serif;`;
-    label.textContent=cfg.l+(numLabel?' '+numLabel:'');
+    label.textContent=n.entityName?(cfg.l+' — '+n.entityName):(cfg.l+(numLabel?' '+numLabel:''));
     textDiv.appendChild(label);
     if(isCurrent){
       const youHere=document.createElement('div');
