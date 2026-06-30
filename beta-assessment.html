@@ -1194,14 +1194,14 @@ function buildStages(){
       if(type==='harvest')      {qs=buildHarvestQs(inst,vc,hasEU,prods,own);}
       else if(type==='transshipment'){qs=buildTransshipmentQs(inst,vc,hasEU,own);hasSubQ=true;}
       else if(type==='landing')  {qs=[];hasSubQ=true;}
-      else if(type==='processing'){qs=buildProcessingQs(hasEU,own);}
-      else if(type==='aggregation'){qs=buildAggregationQs(own);}
+      else if(type==='processing'){qs=buildProcessingQs(hasEU,own,inst);}
+      else if(type==='aggregation'){qs=buildAggregationQs(own,inst);}
       else if(type==='shipreceive'){qs=[];hasSubQ=true;}
-      else if(type==='feedmill') {qs=buildFeedmillQs(own);}
-      else if(type==='hatchery') {qs=buildHatcheryQs(own);}
-      else if(type==='farm')     {qs=buildFarmQs(own);}
-      else if(type==='vessel_landing'){qs=buildVesselLandingQs(hasEU,own);}
-      else if(type==='onvessel') {qs=buildOnVesselQs(own);}
+      else if(type==='feedmill') {qs=buildFeedmillQs(own,inst);}
+      else if(type==='hatchery') {qs=buildHatcheryQs(own,inst);}
+      else if(type==='farm')     {qs=buildFarmQs(own,inst);}
+      else if(type==='vessel_landing'){qs=buildVesselLandingQs(hasEU,own,inst);}
+      else if(type==='onvessel') {qs=buildOnVesselQs(own,inst);}
       return{inst,vc,qs,hasSubQ};
     });
     // One stage per TYPE — instances is the array of sub-sections
@@ -1220,7 +1220,7 @@ function buildStages(){
 function buildHarvestQs(inst,vc,hasEU,prods,own){
   const N=vc===1?'the':'all '+vc,vessel=vc===1?'vessel':'vessels';
   const harvests=prods.map(p=>p.harvest).filter(Boolean);
-  if(harvests.every(h=>h==='Aquaculture'))return buildFarmQs();
+  if(harvests.every(h=>h==='Aquaculture'))return buildFarmQs(null,inst);
   return [
     {id:`${inst.id}_fv_name`,q:`Is the name of ${N} fishing ${vessel} supplying this product available?`},
     {id:`${inst.id}_fv_imo`,q:`Is the IMO number available for ${N} fishing ${vessel}?`},
@@ -1393,72 +1393,86 @@ function buildShipReceiveQs(inst,mode,transport,hasEU,hasUS,isFrozen=false){
     ]:[]),
   ];
 }
-function buildProcessingQs(hasEU,own){return [
-  {id:'pp_name',             q:'Is the name and location of your processing facility available and documented?'},
-  {id:'pp_ownership',        q:'Can you clearly identify who owns the product at the processing stage?'},
-  {id:'pp_origin',           q:'Is the product origin (country/region of catch) available at processing?'},
-  {id:'pp_geo',              q:'Do you have the geo-coordinates of your processing facility on record?'},
-  {id:'pp_gtin',             q:'Is an Item/SKU/UPC/GTIN assigned or carried through at processing?'},
-  {id:'pp_lot',              q:'Do you assign a lot code or batch number to each production run?'},
-  {id:'pp_linking',          q:'Do you maintain the linking KDE (batch/lot/serial) throughout your processing?'},
-  {id:'pp_weight',           q:'Is weight or quantity with unit of measure available at processing?'},
-  {id:'pp_data',             q:'Does your processor receive full catch/harvest data from the first receiver?'},
-  {id:'pp_cold',             q:'Is cold chain and storage facility covered by your Chain of Custody certification?'},
-  ...(hasEU?[{id:'pp_eu',   q:`Does ${entity(own,'processing facility')} hold an EU Facility Approval number? (EU-bound)`}]:[]),
-  {id:'pp_coc',              q:`Does ${entity(own,'processing facility')} hold a Chain of Custody certification?`},
-  {id:'pp_harvest_cert',     q:`Does ${entity(own,'processing facility')} hold a valid Harvest Certification?`},
-  {id:'proc_haccp',          q:`Does ${entity(own,'processing facility')} have a documented HACCP plan?`},
-  {id:'proc_digital',        q:'Do you capture processing records digitally (not paper-only)?'},
-  {id:'pp_welfare_policy',   q:`Does ${entity(own,'processing facility')} have a documented Human Welfare Policy?`},
-  {id:'pp_welfare_standards',q:`Does ${entity(own,'processing facility')} comply with recognized human welfare standards?`},
+function buildProcessingQs(hasEU,own,inst){
+  const p=inst?inst.id+'_':'';
+  return [
+  {id:p+'pp_name',             q:'Is the name and location of your processing facility available and documented?'},
+  {id:p+'pp_ownership',        q:'Can you clearly identify who owns the product at the processing stage?'},
+  {id:p+'pp_origin',           q:'Is the product origin (country/region of catch) available at processing?'},
+  {id:p+'pp_geo',              q:'Do you have the geo-coordinates of your processing facility on record?'},
+  {id:p+'pp_gtin',             q:'Is an Item/SKU/UPC/GTIN assigned or carried through at processing?'},
+  {id:p+'pp_lot',              q:'Do you assign a lot code or batch number to each production run?'},
+  {id:p+'pp_linking',          q:'Do you maintain the linking KDE (batch/lot/serial) throughout your processing?'},
+  {id:p+'pp_weight',           q:'Is weight or quantity with unit of measure available at processing?'},
+  {id:p+'pp_data',             q:'Does your processor receive full catch/harvest data from the first receiver?'},
+  {id:p+'pp_cold',             q:'Is cold chain and storage facility covered by your Chain of Custody certification?'},
+  ...(hasEU?[{id:p+'pp_eu',   q:`Does ${entity(own,'processing facility')} hold an EU Facility Approval number? (EU-bound)`}]:[]),
+  {id:p+'pp_coc',              q:`Does ${entity(own,'processing facility')} hold a Chain of Custody certification?`},
+  {id:p+'pp_harvest_cert',     q:`Does ${entity(own,'processing facility')} hold a valid Harvest Certification?`},
+  {id:p+'proc_haccp',          q:`Does ${entity(own,'processing facility')} have a documented HACCP plan?`},
+  {id:p+'proc_digital',        q:'Do you capture processing records digitally (not paper-only)?'},
+  {id:p+'pp_welfare_policy',   q:`Does ${entity(own,'processing facility')} have a documented Human Welfare Policy?`},
+  {id:p+'pp_welfare_standards',q:`Does ${entity(own,'processing facility')} comply with recognized human welfare standards?`},
 ];}
-function buildAggregationQs(own){return [{id:'agg_lot_code',q:'Do you assign a new lot/batch code after aggregation or disaggregation?'},{id:'agg_linking',q:'Do you document the link between input and output lots (parent-child traceability)?'},{id:'agg_weight',q:'Do you perform and document a weight reconciliation after aggregation?'},{id:'agg_ownership',q:'Can you clearly document product ownership at the aggregation stage?'},{id:'agg_location',q:'Do you have the facility location documented on your aggregation records?'},{id:'agg_eu_approval',q:'Does the aggregation facility in your supply chain hold a valid EU establishment approval number?'},{id:'agg_msc_coc',q:'Does the aggregation facility in your supply chain hold a valid MSC Chain of Custody certificate?'},{id:'agg_digital',q:'Do you capture aggregation records in a digital system?'}];}
-function buildFarmQs(own){return [
-  {id:'aq_farm_name',    q:'Do you have the farm or aquaculture facility name and location documented?'},
-  {id:'aq_farm_license', q:'Do you have access to a valid farm registration or aquaculture license?'},
-  {id:'aq_species',      q:'Is the species documented using its scientific name?'},
-  {id:'aq_gtin',         q:'Is an Item/SKU/UPC/GTIN assigned to the product at the farm stage?'},
-  {id:'aq_linking',      q:'Is a linking KDE (batch/lot/serial number) assigned at the farm stage?'},
-  {id:'aq_weight',       q:'Is the harvest weight and unit of measure available per batch?'},
-  {id:'aq_lot',          q:'Do you assign a lot code or production batch number at harvest?'},
-  {id:'aq_stocking',     q:'Do you have stocking density and stocking date records accessible?'},
-  {id:'aq_feed_supplier',q:'Do you know who your feed supplier is, and can you access their traceability information?'},
-  {id:'aq_feed_origin',  q:'Do you have the origin of feed ingredients documented?'},
-  {id:'aq_water',        q:'Do you have access to water quality monitoring records for this farm?'},
-  {id:'aq_disease',      q:'Do you have access to disease treatment and medication records?'},
-  {id:'aq_coc',          q:`Does ${entity(own,'farm')} hold a Chain of Custody certification (e.g. ASC, BAP)?`},
-  {id:'aq_audit',        q:'Has the farm passed a third-party aquaculture standard audit in the last 12 months?'},
-  {id:'aq_welfare',      q:`Does ${entity(own,'farm')} operate under a documented animal and worker welfare policy?`},
+function buildAggregationQs(own,inst){
+  const p=inst?inst.id+'_':'';
+  return [{id:p+'agg_lot_code',q:'Do you assign a new lot/batch code after aggregation or disaggregation?'},{id:p+'agg_linking',q:'Do you document the link between input and output lots (parent-child traceability)?'},{id:p+'agg_weight',q:'Do you perform and document a weight reconciliation after aggregation?'},{id:p+'agg_ownership',q:'Can you clearly document product ownership at the aggregation stage?'},{id:p+'agg_location',q:'Do you have the facility location documented on your aggregation records?'},{id:p+'agg_eu_approval',q:'Does the aggregation facility in your supply chain hold a valid EU establishment approval number?'},{id:p+'agg_msc_coc',q:'Does the aggregation facility in your supply chain hold a valid MSC Chain of Custody certificate?'},{id:p+'agg_digital',q:'Do you capture aggregation records in a digital system?'}];}
+function buildFarmQs(own,inst){
+  const p=inst?inst.id+'_':'';
+  return [
+  {id:p+'aq_farm_name',    q:'Do you have the farm or aquaculture facility name and location documented?'},
+  {id:p+'aq_farm_license', q:'Do you have access to a valid farm registration or aquaculture license?'},
+  {id:p+'aq_species',      q:'Is the species documented using its scientific name?'},
+  {id:p+'aq_gtin',         q:'Is an Item/SKU/UPC/GTIN assigned to the product at the farm stage?'},
+  {id:p+'aq_linking',      q:'Is a linking KDE (batch/lot/serial number) assigned at the farm stage?'},
+  {id:p+'aq_weight',       q:'Is the harvest weight and unit of measure available per batch?'},
+  {id:p+'aq_lot',          q:'Do you assign a lot code or production batch number at harvest?'},
+  {id:p+'aq_stocking',     q:'Do you have stocking density and stocking date records accessible?'},
+  {id:p+'aq_feed_supplier',q:'Do you know who your feed supplier is, and can you access their traceability information?'},
+  {id:p+'aq_feed_origin',  q:'Do you have the origin of feed ingredients documented?'},
+  {id:p+'aq_water',        q:'Do you have access to water quality monitoring records for this farm?'},
+  {id:p+'aq_disease',      q:'Do you have access to disease treatment and medication records?'},
+  {id:p+'aq_coc',          q:`Does ${entity(own,'farm')} hold a Chain of Custody certification (e.g. ASC, BAP)?`},
+  {id:p+'aq_audit',        q:'Has the farm passed a third-party aquaculture standard audit in the last 12 months?'},
+  {id:p+'aq_welfare',      q:`Does ${entity(own,'farm')} operate under a documented animal and worker welfare policy?`},
 ];}
-function buildFeedmillQs(own){return [
-  {id:'fm_name',        q:'Is the feedmill name and location documented and available to you?'},
-  {id:'fm_license',     q:'Do you have access to a valid feedmill registration or operating license?'},
-  {id:'fm_formulation', q:'Do you have access to the feed formulation or full ingredient list from your feedmill?'},
-  {id:'fm_fishmeal',    q:'Can you trace all fishmeal and fish oil ingredients back to their source fishery?'},
-  {id:'fm_ingredients', q:'Do you have all feed ingredients and their sources documented?'},
-  {id:'fm_cert',        q:'Is the source fishery for marine ingredients used by the feedmill certified (e.g. IFFO RS, MarinTrust)?'},
-  {id:'fm_lot',         q:'Is a lot or batch number assigned to each feed production run?'},
-  {id:'fm_weight',      q:'Is weight or quantity with unit of measure available per feed batch?'},
-  {id:'fm_allergen',    q:'Are allergen declarations available to you from the feedmill for the feed produced?'},
-  {id:'fm_audit',       q:`Does ${entity(own,'feedmill')} hold a recognised third-party quality audit (e.g. GMP+, FAMI-QS)?`},
-  {id:'fm_traceability',q:'Can you trace each batch of feed back to its raw material source through your feedmill?'},
-  {id:'fm_welfare',     q:`Does ${entity(own,'feedmill')} operate under a documented Human Welfare Policy?`},
+function buildFeedmillQs(own,inst){
+  const p=inst?inst.id+'_':'';
+  return [
+  {id:p+'fm_name',        q:'Is the feedmill name and location documented and available to you?'},
+  {id:p+'fm_license',     q:'Do you have access to a valid feedmill registration or operating license?'},
+  {id:p+'fm_formulation', q:'Do you have access to the feed formulation or full ingredient list from your feedmill?'},
+  {id:p+'fm_fishmeal',    q:'Can you trace all fishmeal and fish oil ingredients back to their source fishery?'},
+  {id:p+'fm_ingredients', q:'Do you have all feed ingredients and their sources documented?'},
+  {id:p+'fm_cert',        q:'Is the source fishery for marine ingredients used by the feedmill certified (e.g. IFFO RS, MarinTrust)?'},
+  {id:p+'fm_lot',         q:'Is a lot or batch number assigned to each feed production run?'},
+  {id:p+'fm_weight',      q:'Is weight or quantity with unit of measure available per feed batch?'},
+  {id:p+'fm_allergen',    q:'Are allergen declarations available to you from the feedmill for the feed produced?'},
+  {id:p+'fm_audit',       q:`Does ${entity(own,'feedmill')} hold a recognised third-party quality audit (e.g. GMP+, FAMI-QS)?`},
+  {id:p+'fm_traceability',q:'Can you trace each batch of feed back to its raw material source through your feedmill?'},
+  {id:p+'fm_welfare',     q:`Does ${entity(own,'feedmill')} operate under a documented Human Welfare Policy?`},
 ];}
-function buildHatcheryQs(own){return [
-  {id:'ht_name',       q:'Do you have the hatchery name and location on your records?'},
-  {id:'ht_license',    q:'Do you have access to a valid hatchery registration or license?'},
-  {id:'ht_broodstock', q:'Do you have broodstock origin and health status documented?'},
-  {id:'ht_lot',        q:'Do you assign a batch or lot number at juvenile or fingerling production?'},
-  {id:'ht_species',    q:'Do you document the species by its scientific name at the hatchery stage?'},
-  {id:'ht_stocking',   q:'Are stocking records (date, quantity, weight) available per batch?'},
-  {id:'ht_disease',    q:'Are disease treatment and medication records available at the hatchery?'},
-  {id:'ht_water',      q:'Are water quality monitoring records available at the hatchery?'},
-  {id:'ht_coc',        q:'Is the hatchery in your supply chain covered by a Chain of Custody or aquaculture certification?'},
-  {id:'ht_audit',      q:'Has the hatchery passed a third-party audit in the last 12 months?'},
-  {id:'ht_welfare',    q:`Does ${entity(own,'hatchery')} operate under a documented Human Welfare Policy?`},
+function buildHatcheryQs(own,inst){
+  const p=inst?inst.id+'_':'';
+  return [
+  {id:p+'ht_name',       q:'Do you have the hatchery name and location on your records?'},
+  {id:p+'ht_license',    q:'Do you have access to a valid hatchery registration or license?'},
+  {id:p+'ht_broodstock', q:'Do you have broodstock origin and health status documented?'},
+  {id:p+'ht_lot',        q:'Do you assign a batch or lot number at juvenile or fingerling production?'},
+  {id:p+'ht_species',    q:'Do you document the species by its scientific name at the hatchery stage?'},
+  {id:p+'ht_stocking',   q:'Are stocking records (date, quantity, weight) available per batch?'},
+  {id:p+'ht_disease',    q:'Are disease treatment and medication records available at the hatchery?'},
+  {id:p+'ht_water',      q:'Are water quality monitoring records available at the hatchery?'},
+  {id:p+'ht_coc',        q:'Is the hatchery in your supply chain covered by a Chain of Custody or aquaculture certification?'},
+  {id:p+'ht_audit',      q:'Has the hatchery passed a third-party audit in the last 12 months?'},
+  {id:p+'ht_welfare',    q:`Does ${entity(own,'hatchery')} operate under a documented Human Welfare Policy?`},
 ];}
-function buildVesselLandingQs(hasEU,own){return [{id:'vl_vessel_name',q:'Do you have the fishing vessel name on your landing records?'},{id:'vl_imo',q:'Is the vessel IMO number recorded at landing?'},{id:'vl_species',q:'Is the species documented at vessel landing?'},{id:'vl_weight',q:'Do you record the landing weight at the point of discharge?'},{id:'vl_port',q:'Do you have the port of landing documented?'},{id:'vl_date',q:'Do you have the landing date documented?'},...(hasEU?[{id:'vl_ca',q:'Is the landing port EU-approved by the competent authority?'},{id:'vl_prior_notice',q:'Was a prior landing notice submitted as per EU IUU regulation?'}]:[]),{id:'vl_auth',q:'Can you obtain a landing authorization from the port authority for this event?'}];}
-function buildOnVesselQs(own){return [{id:'ov_species',q:'Do you have the species documented in your on-vessel processing records?'},{id:'ov_vessel',q:'Do you have the vessel name and IMO number on the processing record?'},{id:'ov_weight_in',q:'Do you record input weight before on-vessel processing begins?'},{id:'ov_weight_out',q:'Do you record output weight after on-vessel processing?'},{id:'ov_process_type',q:'Do you document the type of processing carried out (e.g. headed, gutted, filleted)?'},{id:'ov_date',q:'Do you document the processing date and time for each batch at sea?'},{id:'ov_lot',q:'Do you assign a lot or batch code to the processed product while on vessel?'}];}
+function buildVesselLandingQs(hasEU,own,inst){
+  const p=inst?inst.id+'_':'';
+  return [{id:p+'vl_vessel_name',q:'Do you have the fishing vessel name on your landing records?'},{id:p+'vl_imo',q:'Is the vessel IMO number recorded at landing?'},{id:p+'vl_species',q:'Is the species documented at vessel landing?'},{id:p+'vl_weight',q:'Do you record the landing weight at the point of discharge?'},{id:p+'vl_port',q:'Do you have the port of landing documented?'},{id:p+'vl_date',q:'Do you have the landing date documented?'},...(hasEU?[{id:p+'vl_ca',q:'Is the landing port EU-approved by the competent authority?'},{id:p+'vl_prior_notice',q:'Was a prior landing notice submitted as per EU IUU regulation?'}]:[]),{id:p+'vl_auth',q:'Can you obtain a landing authorization from the port authority for this event?'}];}
+function buildOnVesselQs(own,inst){
+  const p=inst?inst.id+'_':'';
+  return [{id:p+'ov_species',q:'Do you have the species documented in your on-vessel processing records?'},{id:p+'ov_vessel',q:'Do you have the vessel name and IMO number on the processing record?'},{id:p+'ov_weight_in',q:'Do you record input weight before on-vessel processing begins?'},{id:p+'ov_weight_out',q:'Do you record output weight after on-vessel processing?'},{id:p+'ov_process_type',q:'Do you document the type of processing carried out (e.g. headed, gutted, filleted)?'},{id:p+'ov_date',q:'Do you document the processing date and time for each batch at sea?'},{id:p+'ov_lot',q:'Do you assign a lot or batch code to the processed product while on vessel?'}];}
 function buildCertQs(hasMSC,hasASC,hasEU,hasUS,hasTuna){return [
   ...(hasMSC?[{id:'c_msc',q:'Does your company hold a valid MSC Chain of Custody certificate?'}]:[]),
   ...(hasASC?[{id:'c_asc',q:'Does your company hold a valid ASC Chain of Custody certificate?'}]:[]),
@@ -2007,9 +2021,10 @@ async function doSubmit(){
   // Rebuild STAGES from current products to ensure we cover all questions before defaulting
   if(products.filter(Boolean).length)STAGES=buildStages();
   fillSkippedAsNotAvailable();
-  const payload={submitted_by:assessorName||'beta-user',status:'submitted',products:products.filter(Boolean),k_resp:kResp,stage_index:kIdx};
+  const nowIso=new Date().toISOString();
+  const payload={submitted_by:assessorName||'beta-user',status:'submitted',products:products.filter(Boolean),k_resp:kResp,stage_index:kIdx,updated_at:nowIso,submitted_at:nowIso};
   try{
-    if(draftId){await db.from('beta_assessments').update(payload).eq('id',draftId);}
+    if(draftId){const{error}=await db.from('beta_assessments').update(payload).eq('id',draftId);if(error)throw error;}
     else{const{data,error}=await db.from('beta_assessments').insert(payload).select('id').single();if(error)throw error;if(data)draftId=data.id;}
   }catch(e){
     console.error('Submit error:',e);
@@ -2315,6 +2330,53 @@ function calcScore(overrides){
   });
   return{total,max};
 }
+// Reconstruct the actual questions shown to the user for a stage instance,
+// based on saved sub-mode answers (landing type, ship/receive transport, TS location/zone)
+function resolveReviewSubQs(st,sub,hasEU,hasUS,isFrozen){
+  const inst=sub.inst;
+  if(!inst){
+    // single-instance stage (e.g. certifications) — qs already set directly
+    return sub.qs||[];
+  }
+  const instKey=`${st.type}_${inst.id}`;
+
+  if(st.type==='landing'&&sub.hasSubQ){
+    const savedMode=kResp[`_subMode_${instKey}`];
+    if(!savedMode)return []; // user never answered the sub-Q — nothing to show
+    return buildLandingQs(inst,savedMode,hasEU);
+  }
+
+  if(st.type==='shipreceive'&&sub.hasSubQ){
+    const savedMode=kResp[`_subMode_${instKey}`];
+    if(!savedMode)return [];
+    if(savedMode==='internal')return buildShipReceiveQs(inst,savedMode,null,hasEU,hasUS,isFrozen);
+    const srTransport=kResp[`_srTransport_${instKey}`];
+    if(!srTransport)return []; // mode chosen but transport not yet selected
+    return buildShipReceiveQs(inst,savedMode,srTransport,hasEU,hasUS,isFrozen);
+  }
+
+  if(st.type==='transshipment'&&sub.hasSubQ){
+    const tsLoc=kResp[`_tsLoc_${instKey}`]||null;
+    const tsZone=kResp[`_tsZone_${instKey}`]||null;
+    let qs=[...(sub.qs||[])];
+    const atSeaQs=(tsLoc==='at_sea')?[
+      {id:`${inst.id}_cr_atsea_rfmo`,q:'Has the RFMO authorization been obtained specifically for this at-sea transshipment event?'},
+      {id:`${inst.id}_cr_atsea_obs`,q:'Was an independent observer present or was electronic monitoring active during at-sea transshipment?'},
+      ...(tsZone==='eez'?[{id:`${inst.id}_cr_atsea_eez_permit`,q:'Is a coastal state permit or notification confirmation available for transshipment within this EEZ?'},{id:`${inst.id}_cr_atsea_eez_notify`,q:'Was the coastal state notified in advance of the transshipment in their EEZ?'}]:[]),
+      ...(tsZone==='high_seas'?[{id:`${inst.id}_cr_atsea_hs`,q:"Is the relevant RFMO's High Seas transshipment authorization document available for this event?"}]:[]),
+    ]:[];
+    qs=qs.filter(q=>{
+      if(q.id.endsWith('_cr_ts_port_auth')||q.id.endsWith('_cr_ts_port_obs'))return tsLoc==='at_port'||!tsLoc;
+      if(q.id.endsWith('_cr_ts_atsea_notify'))return tsLoc==='at_sea'||!tsLoc;
+      return true;
+    });
+    return [...qs,...atSeaQs];
+  }
+
+  // default: questions are already fully resolved in sub.qs
+  return sub.qs||[];
+}
+
 function buildReview(){
   // Build stages for review WITHOUT overwriting global STAGES (which is used by KDE)
   const reviewStages=products.filter(Boolean).length?buildStages():STAGES;
@@ -2349,10 +2411,23 @@ function buildReview(){
     </div>
   </div>`;
   let html='';
+  // For score/total/answered counts at the top, we need EU/US/frozen context
+  const prods3=products.filter(Boolean);
+  const markets3=new Set();prods3.forEach(p=>(p.markets||[]).forEach(m=>markets3.add(m)));
+  const hasEU3=[...markets3].some(m=>EU27.includes(m)),hasUS3=markets3.has('US');
+  const frozen3=prods3.some(p=>p.form==='Frozen'||p.form==='Smoked');
+
   reviewStages.forEach((st,si)=>{
     const multiInstRv=(st.instances||[]).length>1;
     const instBoundaries=[];const allInstQs=[];
-    (st.instances||[]).forEach((sub,subI)=>{if(sub.qs&&sub.qs.length){instBoundaries.push({startIdx:allInstQs.length,subIdx:subI,inst:sub.inst,label:ROMAN[subI]||String(subI+1)});allInstQs.push(...sub.qs);}});
+    (st.instances||[]).forEach((sub,subI)=>{
+      // Reconstruct actual questions for landing/shipreceive/transshipment based on saved sub-mode answers
+      const resolvedQs=resolveReviewSubQs(st,sub,hasEU3,hasUS3,frozen3);
+      if(resolvedQs&&resolvedQs.length){
+        instBoundaries.push({startIdx:allInstQs.length,subIdx:subI,inst:sub.inst,label:ROMAN[subI]||String(subI+1)});
+        allInstQs.push(...resolvedQs);
+      }
+    });
     const stQs=allInstQs;let stScore=0,stMax=0;
     stQs.forEach(q=>{const r=kResp[q.id]||{};if(r.ans){stMax+=50;const ov=rvOverrides[q.id];if(ov!==undefined)stScore+=Number(ov);else if(r.ans==='av')stScore+=0;else if(r.ans==='pa')stScore+=getPartialScore(q.id);else if(r.ans==='un')stScore+=50;}});
     const stScoreLabel=stMax?`${stScore}`:null;
@@ -2526,7 +2601,7 @@ let _contActiveTab='draft';
 async function loadContinue(){
   const el=document.getElementById('cont-list');el.innerHTML='<div style="text-align:center;padding:40px;color:#9aa0b4;font-size:13px;">Loading...</div>';
   try{
-    const{data,error}=await db.from('beta_assessments').select('*').in('status',['draft','submitted']).order('created_at',{ascending:false});
+    const{data,error}=await db.from('beta_assessments').select('*').in('status',['draft','submitted']).order('updated_at',{ascending:false,nullsFirst:false});
     if(error)throw error;
     _continueData=data||[];
     const draftCount=_continueData.filter(d=>d.status==='draft').length;
@@ -2569,22 +2644,43 @@ function renderContinueList(data, activeQuery){
     const cardBg=isDraft?'#fff':'#f6fef9';
     const statusColor=isDraft?'#7c3aed':'#16a34a';
     const statusLabel=isDraft?'📝 In Progress':'✅ Submitted';
-    const diff=Date.now()-new Date(d.created_at).getTime();const mins=Math.floor(diff/60000);const timeAgo=mins<2?'Just now':mins<60?`${mins}m ago`:Math.floor(mins/60)<24?`${Math.floor(mins/60)}h ago`:`${Math.floor(mins/1440)}d ago`;
+    const diff=Date.now()-new Date(d.updated_at||d.created_at).getTime();const mins=Math.floor(diff/60000);const timeAgo=mins<2?'Just now':mins<60?`${mins}m ago`:Math.floor(mins/60)<24?`${Math.floor(mins/60)}h ago`:`${Math.floor(mins/1440)}d ago`;
     const resumeBtn=isDraft
       ?`<button onclick="resumeDraft('${d.id}')" style="background:#8b5cf6;color:#fff;border:none;border-radius:999px;padding:8px 18px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;">Resume →</button>`
-      :`<button onclick="resumeDraft('${d.id}')" style="background:#16a34a;color:#fff;border:none;border-radius:999px;padding:8px 18px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;">View →</button>`;
+      :`<button onclick="resumeDraft('${d.id}',true)" style="background:#1a6fdb;color:#fff;border:none;border-radius:999px;padding:8px 14px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;">📝 Questions</button>
+        <button onclick="viewSubmittedReview('${d.id}')" style="background:#16a34a;color:#fff;border:none;border-radius:999px;padding:8px 14px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin-left:6px;">📋 Review</button>`;
     return `<div class="cont-card" style="border-color:${cardBorder};background:${cardBg};"><div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:4px;">👤 ${d.submitted_by||'Unknown'} <span style="background:${statusColor}22;color:${statusColor};font-size:10px;font-weight:700;border-radius:5px;padding:1px 8px;margin-left:6px;">${statusLabel}</span></div><div class="cont-meta">${timeAgo}</div><div style="margin-top:6px;">${prods.length?`<span class="cont-pill">🐟 ${prods.length} product${prods.length>1?'s':''}</span>`:''} ${kdeCount?`<span class="cont-pill">📋 ${kdeCount} KDEs</span>`:''} ${isDraft?`<span class="cont-pill">📍 Stage ${(d.stage_index||0)+1}</span>`:''}</div></div><div class="cont-acts">${resumeBtn}<button class="cont-del" onclick="event.stopPropagation();deleteDraft('${d.id}',this)">🗑</button></div></div>`;
   }).join('');
 }
-async function resumeDraft(id){
+async function resumeDraft(id,viewOnly){
   try{
     const{data,error}=await db.from('beta_assessments').select('*').eq('id',id).single();if(error)throw error;
     draftId=id;
     assessorName=data.submitted_by||assessorName||''; // restore assessor identity
     products=Array.isArray(data.products)?data.products:[];kResp=data.k_resp||{};
+    rvOverrides=data.reviewer_overrides||{};
+    rvKdeComments=(data.reviewer_comments&&data.reviewer_comments.kde_comments)||{};
     products.forEach((p,i)=>{if(p)fillSlot(i);});
-    STAGES=buildStages();kIdx=data.stage_index||0;renderKDE();goTo('sKDE');showToast('Assessment resumed','success');
+    STAGES=buildStages();kIdx=viewOnly?(STAGES.length-1):(data.stage_index||0);renderKDE();goTo('sKDE');
+    showToast(viewOnly?'Viewing submitted questions':'Assessment resumed','success');
   }catch(e){showToast('Could not resume: '+e.message,'error');}
+}
+async function viewSubmittedReview(id){
+  try{
+    const{data,error}=await db.from('beta_assessments').select('*').eq('id',id).single();if(error)throw error;
+    draftId=id;
+    assessorName=data.submitted_by||assessorName||'';
+    products=Array.isArray(data.products)?data.products:[];kResp=data.k_resp||{};
+    rvOverrides=data.reviewer_overrides||{};
+    rvKdeComments=(data.reviewer_comments&&data.reviewer_comments.kde_comments)||{};
+    STAGES=buildStages();
+    goTo('sReview');buildReview();
+    // Pre-fill expert comment box if one was saved
+    const expertComment=(data.reviewer_comments&&data.reviewer_comments.expert)||'';
+    const ta=document.getElementById('rv-expert-comment');
+    if(ta)ta.value=expertComment;
+    showToast('Viewing submitted review','success');
+  }catch(e){showToast('Could not load review: '+e.message,'error');}
 }
 async function deleteDraft(id,btn){
   if(!confirm('Delete this saved assessment?'))return;
