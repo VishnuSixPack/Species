@@ -176,6 +176,27 @@
     .hidden { display:none !important; }
     /* Hide email in nav profile — show avatar only */
     #nav-profile-link span[style*="font-size:12px"] { display:none !important; }
+
+    /* ── CROP MODAL ── */
+    .crop-overlay{display:none;position:fixed;inset:0;background:rgba(10,14,40,0.75);backdrop-filter:blur(8px);z-index:3000;align-items:center;justify-content:center;padding:20px;}
+    .crop-overlay.open{display:flex;}
+    .crop-box{background:#fff;border-radius:16px;width:100%;max-width:680px;box-shadow:0 24px 64px rgba(0,0,0,0.2);overflow:hidden;}
+    .crop-header{padding:18px 24px;border-bottom:1px solid #e8eaf0;display:flex;align-items:center;justify-content:space-between;}
+    .crop-header h3{font-size:15px;font-weight:800;color:#1a1a2e;}
+    .crop-header p{font-size:12px;color:#9aa0b4;margin-top:2px;}
+    .crop-body{padding:24px;display:grid;grid-template-columns:1fr 200px;gap:24px;align-items:start;}
+    .crop-canvas-wrap{position:relative;background:#f0f2f7;border-radius:12px;overflow:hidden;width:100%;height:300px;cursor:crosshair;}
+    canvas#cropCanvas{display:block;width:100%;height:100%;object-fit:contain;}
+    .crop-previews{display:flex;flex-direction:column;gap:14px;}
+    .crop-preview-label{font-size:10px;font-weight:700;color:#9aa0b4;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+    .crop-preview-grid{width:100%;aspect-ratio:4/3;border-radius:8px;overflow:hidden;border:2px solid #e8eaf0;background:#f0f2f7;}
+    .crop-preview-detail{width:100%;aspect-ratio:16/7;border-radius:8px;overflow:hidden;border:2px solid #e8eaf0;background:#f0f2f7;}
+    .crop-preview-grid img,.crop-preview-detail img{width:100%;height:100%;object-fit:cover;display:block;}
+    .crop-tip{background:#f4f0ff;border-radius:8px;padding:10px 12px;font-size:11px;color:#7c3aed;line-height:1.5;margin-top:4px;}
+    .crop-footer{padding:16px 24px;border-top:1px solid #e8eaf0;display:flex;align-items:center;justify-content:flex-end;gap:10px;}
+    .crop-controls{display:flex;align-items:center;gap:8px;margin-right:auto;}
+    .crop-zoom{font-size:11px;color:#6b7280;font-weight:600;}
+    input[type=range]#cropZoom{width:100px;accent-color:#8b5cf6;}
   </style>
 </head>
 <body>
@@ -589,6 +610,250 @@
     // Apply saved view — by now allSpecies is populated
     if (currentView === 'grid') renderGrid(typeof allSpecies !== 'undefined' ? allSpecies : []);
     setView(currentView);
+  });
+  </script>
+  <!-- CROP MODAL -->
+  <div class="crop-overlay" id="cropOverlay">
+    <div class="crop-box">
+      <div class="crop-header">
+        <div>
+          <h3>Crop Photo</h3>
+          <p>Drag to reposition · Scroll or use slider to zoom · Crop area is fixed at 4:3 ratio</p>
+        </div>
+        <button class="btn btn-secondary" onclick="closeCrop()">✕ Cancel</button>
+      </div>
+      <div class="crop-body">
+        <!-- Canvas -->
+        <div class="crop-canvas-wrap" id="cropCanvasWrap">
+          <canvas id="cropCanvas"></canvas>
+        </div>
+        <!-- Previews -->
+        <div class="crop-previews">
+          <div>
+            <div class="crop-preview-label">Grid View Preview</div>
+            <div class="crop-preview-grid"><img id="cropPreviewGrid" src="" alt=""/></div>
+          </div>
+          <div>
+            <div class="crop-preview-label">Detail Page Preview</div>
+            <div class="crop-preview-detail"><img id="cropPreviewDetail" src="" alt=""/></div>
+          </div>
+          <div class="crop-tip">Tip: Keep the main subject centred for the best result across grid and detail views.</div>
+        </div>
+      </div>
+      <div class="crop-footer">
+        <div class="crop-controls">
+          <span class="crop-zoom">Zoom</span>
+          <input type="range" id="cropZoom" min="100" max="300" value="100" oninput="cropZoomChange(this.value)"/>
+          <span class="crop-zoom" id="cropZoomVal">100%</span>
+        </div>
+        <button class="btn btn-secondary" onclick="closeCrop()">Cancel</button>
+        <button class="btn btn-primary" onclick="applyCrop()">Use This Photo →</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  // ── CROP ENGINE ──
+  let cropImg = new Image();
+  let cropScale = 1;
+  let cropOffX = 0, cropOffY = 0;
+  let cropDragging = false;
+  let cropDragStartX, cropDragStartY, cropDragOffX, cropDragOffY;
+  let cropOriginalFile = null;
+  const CROP_RATIO = 4 / 3; // fixed ratio
+
+  function openCrop(file) {
+    cropOriginalFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      cropImg = new Image();
+      cropImg.onload = () => {
+        cropScale = 1;
+        // Centre image
+        const canvas = document.getElementById('cropCanvas');
+        const wrap = document.getElementById('cropCanvasWrap');
+        const W = wrap.clientWidth || 400;
+        const H = 300;
+        canvas.width = W; canvas.height = H;
+        canvas.style.width = W + 'px';
+        canvas.style.height = H + 'px';
+        // Fit image to fill crop area
+        const fitScale = Math.max(W / cropImg.width, H / cropImg.height);
+        cropScale = fitScale;
+        cropOffX = (W - cropImg.width * cropScale) / 2;
+        cropOffY = (H - cropImg.height * cropScale) / 2;
+        document.getElementById('cropZoom').value = 100;
+        document.getElementById('cropZoomVal').textContent = '100%';
+        drawCrop();
+        document.getElementById('cropOverlay').classList.add('open');
+      };
+      cropImg.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function drawCrop() {
+    const canvas = document.getElementById('cropCanvas');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+    // Draw image
+    ctx.drawImage(cropImg, cropOffX, cropOffY, cropImg.width * cropScale, cropImg.height * cropScale);
+    // Overlay — darken outside crop
+    const cW = Math.min(W, H * CROP_RATIO);
+    const cH = cW / CROP_RATIO;
+    const cX = (W - cW) / 2, cY = (H - cH) / 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(0, 0, W, cY);
+    ctx.fillRect(0, cY + cH, W, H - cY - cH);
+    ctx.fillRect(0, cY, cX, cH);
+    ctx.fillRect(cX + cW, cY, W - cX - cW, cH);
+    // Crop border
+    ctx.strokeStyle = '#8b5cf6';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(cX, cY, cW, cH);
+    // Rule of thirds guides
+    ctx.strokeStyle = 'rgba(139,92,246,0.3)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4,4]);
+    ctx.beginPath();
+    ctx.moveTo(cX + cW/3, cY); ctx.lineTo(cX + cW/3, cY + cH);
+    ctx.moveTo(cX + 2*cW/3, cY); ctx.lineTo(cX + 2*cW/3, cY + cH);
+    ctx.moveTo(cX, cY + cH/3); ctx.lineTo(cX + cW, cY + cH/3);
+    ctx.moveTo(cX, cY + 2*cH/3); ctx.lineTo(cX + cW, cY + 2*cH/3);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    updatePreviews();
+  }
+
+  function updatePreviews() {
+    const canvas = document.getElementById('cropCanvas');
+    const W = canvas.width, H = canvas.height;
+    const cW = Math.min(W, H * CROP_RATIO);
+    const cH = cW / CROP_RATIO;
+    const cX = (W - cW) / 2, cY = (H - cH) / 2;
+    // Extract crop region to offscreen canvas
+    const off = document.createElement('canvas');
+    off.width = cW; off.height = cH;
+    const offCtx = off.getContext('2d');
+    offCtx.drawImage(canvas, cX, cY, cW, cH, 0, 0, cW, cH);
+    const url = off.toDataURL('image/jpeg', 0.92);
+    document.getElementById('cropPreviewGrid').src = url;
+    document.getElementById('cropPreviewDetail').src = url;
+  }
+
+  function cropZoomChange(val) {
+    document.getElementById('cropZoomVal').textContent = val + '%';
+    const canvas = document.getElementById('cropCanvas');
+    const W = canvas.width, H = canvas.height;
+    const fitScale = Math.max(W / cropImg.width, H / cropImg.height);
+    const newScale = fitScale * (val / 100);
+    // Scale around centre
+    const cx = W / 2, cy = H / 2;
+    const imgCX = (cx - cropOffX) / cropScale;
+    const imgCY = (cy - cropOffY) / cropScale;
+    cropScale = newScale;
+    cropOffX = cx - imgCX * cropScale;
+    cropOffY = cy - imgCY * cropScale;
+    drawCrop();
+  }
+
+  // Drag to pan
+  const cropCanvas = document.getElementById('cropCanvas');
+  cropCanvas.addEventListener('mousedown', e => {
+    cropDragging = true;
+    cropDragStartX = e.clientX; cropDragStartY = e.clientY;
+    cropDragOffX = cropOffX; cropDragOffY = cropOffY;
+  });
+  cropCanvas.addEventListener('mousemove', e => {
+    if (!cropDragging) return;
+    cropOffX = cropDragOffX + (e.clientX - cropDragStartX);
+    cropOffY = cropDragOffY + (e.clientY - cropDragStartY);
+    drawCrop();
+  });
+  cropCanvas.addEventListener('mouseup', () => cropDragging = false);
+  cropCanvas.addEventListener('mouseleave', () => cropDragging = false);
+  // Touch support
+  cropCanvas.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    cropDragging = true; cropDragStartX = t.clientX; cropDragStartY = t.clientY;
+    cropDragOffX = cropOffX; cropDragOffY = cropOffY;
+  });
+  cropCanvas.addEventListener('touchmove', e => {
+    if (!cropDragging) return;
+    const t = e.touches[0];
+    cropOffX = cropDragOffX + (t.clientX - cropDragStartX);
+    cropOffY = cropDragOffY + (t.clientY - cropDragStartY);
+    drawCrop(); e.preventDefault();
+  }, {passive:false});
+  cropCanvas.addEventListener('touchend', () => cropDragging = false);
+  // Scroll to zoom
+  cropCanvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const slider = document.getElementById('cropZoom');
+    const newVal = Math.min(300, Math.max(100, parseInt(slider.value) - e.deltaY * 0.3));
+    slider.value = newVal;
+    cropZoomChange(newVal);
+  }, {passive:false});
+
+  function applyCrop() {
+    const canvas = document.getElementById('cropCanvas');
+    const W = canvas.width, H = canvas.height;
+    const cW = Math.min(W, H * CROP_RATIO);
+    const cH = cW / CROP_RATIO;
+    const cX = (W - cW) / 2, cY = (H - cH) / 2;
+    // High-res output canvas
+    const out = document.createElement('canvas');
+    out.width = 800; out.height = 600;
+    const outCtx = out.getContext('2d');
+    // Map crop area back to original image coords
+    const srcX = (cX - cropOffX) / cropScale;
+    const srcY = (cY - cropOffY) / cropScale;
+    const srcW = cW / cropScale;
+    const srcH = cH / cropScale;
+    outCtx.drawImage(cropImg, srcX, srcY, srcW, srcH, 0, 0, 800, 600);
+    out.toBlob(blob => {
+      // Create a File object from the cropped blob
+      const croppedFile = new File([blob], cropOriginalFile.name, {type:'image/jpeg'});
+      // Inject into the file input via DataTransfer
+      try {
+        const dt = new DataTransfer();
+        dt.items.add(croppedFile);
+        document.getElementById('species_photo').files = dt.files;
+      } catch(e) { console.warn('DataTransfer not supported:', e); }
+      // Show preview
+      const previewUrl = out.toDataURL('image/jpeg', 0.92);
+      document.getElementById('photo-preview').src = previewUrl;
+      document.getElementById('photo-preview-group').style.display = 'block';
+      document.getElementById('file-name-display').textContent = croppedFile.name + ' (cropped)';
+      closeCrop();
+    }, 'image/jpeg', 0.92);
+  }
+
+  function closeCrop() {
+    document.getElementById('cropOverlay').classList.remove('open');
+    // Reset file input if user cancels
+    if (!document.getElementById('photo-preview').src || document.getElementById('photo-preview').src === window.location.href) {
+      document.getElementById('species_photo').value = '';
+      document.getElementById('file-name-display').textContent = 'No file chosen';
+    }
+  }
+
+  // ── Hook into file input — intercept and open crop instead ──
+  // Override updateFileName from script.js — intercept and open crop instead
+  window.addEventListener('load', () => {
+    // Override the function script.js uses when a file is chosen
+    window.updateFileName = function(input) {
+      const file = input.files[0];
+      if (!file) return;
+      if (file.size > 50 * 1024 * 1024) {
+        alert('File too large. Max 50MB.');
+        input.value = '';
+        return;
+      }
+      openCrop(file);
+      // Don't reset input here — openCrop reads it
+    };
   });
   </script>
 </body>
