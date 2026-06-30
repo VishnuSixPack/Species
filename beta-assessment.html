@@ -1003,8 +1003,6 @@ function drawCurve(svg,x1,y1,x2,y2,color,dashed,edgeId){
 // CTE types that represent a named, fixed-identity entity (vessel or facility).
 // On-Vessel Processing inherits its name from the parent Harvest node, so it's excluded here.
 const NAMED_ENTITY_TYPES={
-  harvest:'Vessel name',
-  transshipment:'Carrier / Reefer name',
   farm:'Farm name',
   hatchery:'Hatchery name',
   feedmill:'Feedmill name',
@@ -1024,7 +1022,7 @@ function openOwn(nid,el){
   if(namePlaceholder){
     nameField.style.display='block';
     nameLabel.textContent=namePlaceholder+' (optional)';
-    nameInput.placeholder=node.type==='harvest'?'e.g. MV Pacific Star':node.type==='transshipment'?'e.g. Ocean Reefer III':'e.g. ABC Processing Ltd';
+    nameInput.placeholder='e.g. ABC Processing Ltd';
     nameInput.value=node.entityName||'';
   } else {
     nameField.style.display='none';
@@ -1238,20 +1236,7 @@ function buildStages(){
       else if(type==='hatchery') {qs=buildHatcheryQs(own,inst);}
       else if(type==='farm')     {qs=buildFarmQs(own,inst);}
       else if(type==='vessel_landing'){qs=buildVesselLandingQs(hasEU,own,inst);}
-      else if(type==='onvessel') {
-        // Inherit vessel name from the connected Harvest node, if any
-        if(!inst.entityName){
-          prods.forEach(p=>{
-            const edges=p.scEdges||[];
-            const harvestEdge=edges.find(e=>e.to===inst.id);
-            if(harvestEdge){
-              const harvestNode=(p.scNodes||[]).find(n=>n.id===harvestEdge.from&&n.type==='harvest');
-              if(harvestNode&&harvestNode.entityName)inst.entityName=harvestNode.entityName;
-            }
-          });
-        }
-        qs=buildOnVesselQs(own,inst);
-      }
+      else if(type==='onvessel') {qs=buildOnVesselQs(own,inst);}
       return{inst,vc,qs,hasSubQ};
     });
     // One stage per TYPE — instances is the array of sub-sections
@@ -1597,9 +1582,13 @@ function renderKDE(){
       const total=(sub.qs||[]).length;
       const vcLabel=inst.vesselCount>1?(st.type==='transshipment'?` · ${inst.vesselCount} carriers`:` · ${inst.vesselCount} vessels`):'';
       const titleLabel=inst.entityName?`${st.t} — ${inst.entityName}`:`${st.t} — ${numLabel}`;
+      const parentHint=getParentHint(inst.id);
       html+=`<div class="inst-frozen-hd">
         <div class="inst-frozen-icon" style="background:${cfg.b};">${st.i}</div>
-        <div class="inst-frozen-title">${titleLabel}${vcLabel}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="inst-frozen-title">${titleLabel}${vcLabel}</div>
+          ${parentHint?`<div style="font-size:10px;color:#9aa0b4;font-weight:600;margin-top:1px;">↳ of ${parentHint}</div>`:''}
+        </div>
         ${answered>0?`<span class="inst-frozen-progress">✓ ${answered}/${total}</span>`:''}
         <span class="inst-frozen-counter">${subIdx+1} of ${totalInsts}</span>
       </div>`;
@@ -2075,7 +2064,7 @@ async function doSubmit(){
   if(products.filter(Boolean).length)STAGES=buildStages();
   fillSkippedAsNotAvailable();
   const nowIso=new Date().toISOString();
-  const payload={submitted_by:assessorName||'beta-user',status:'submitted',products:products.filter(Boolean),k_resp:kResp,stage_index:kIdx,updated_at:nowIso,submitted_at:nowIso};
+  const payload={submitted_by:assessorName||'beta-user',status:'submitted',products:products.filter(Boolean),k_resp:kResp,stage_index:kIdx,updated_at:nowIso};
   try{
     if(draftId){const{error}=await db.from('beta_assessments').update(payload).eq('id',draftId);if(error)throw error;}
     else{const{data,error}=await db.from('beta_assessments').insert(payload).select('id').single();if(error)throw error;if(data)draftId=data.id;}
@@ -2356,6 +2345,34 @@ function getWeight(kdeId){const stripped=kdeId.replace(/^[^_]*_/,'');return DEFA
 // Returns the right subject for cert questions based on who operates this CTE
 // Trace SC builder edges to find the named entity connected before/after a given node.
 // Used for Landing/Discharge and Ship/Receive — event stages with no name of their own.
+// Find the upstream parent CTE instance(s) for any node — used as a heading hint
+// e.g. "On-Vessel Processing of Harvest I" when there are multiple Harvest instances.
+function getParentHint(nodeId){
+  if(!nodeId)return null;
+  let edges=[],nodes=[];
+  products.filter(Boolean).forEach(p=>{
+    if(p.scNodes&&p.scNodes.find(n=>n.id===nodeId)){
+      edges=p.scEdges||[];
+      nodes=p.scNodes||[];
+    }
+  });
+  if(!nodes.length)return null;
+
+  const parentIds=edges.filter(e=>e.to===nodeId).map(e=>e.from);
+  if(!parentIds.length)return null;
+
+  const parentLabels=parentIds.map(pid=>{
+    const pnode=nodes.find(n=>n.id===pid);
+    if(!pnode)return null;
+    const cfg=CTE_CFG[pnode.type]||{l:pnode.type};
+    const sameTypeCount=nodes.filter(n=>n.type===pnode.type).length;
+    const numLabel=sameTypeCount>1?(ROMAN[(pnode.instanceNum||1)-1]||pnode.instanceNum):'';
+    const name=pnode.entityName?` — ${pnode.entityName}`:'';
+    return numLabel?`${cfg.l} ${numLabel}${name}`:`${cfg.l}${name}`;
+  }).filter(Boolean);
+
+  return parentLabels.length?parentLabels.join(' + '):null;
+}
 function getConnectionBreadcrumb(nodeId){
   if(!nodeId)return null;
   let edges=[],nodes=[];
