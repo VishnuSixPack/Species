@@ -74,7 +74,7 @@
     .tip:hover .tip-box{display:block;}
     .scbov{display:none;position:fixed;inset:0;background:rgba(4,8,24,0.65);backdrop-filter:blur(8px);z-index:300;align-items:center;justify-content:center;padding:20px;}
     .scbov.open{display:flex;}
-    .scb{background:#fff;border-radius:22px;width:100%;max-width:1100px;height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 64px rgba(0,0,0,0.22);}
+    .scb{background:#fff;border-radius:22px;width:100%;max-width:1380px;height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 64px rgba(0,0,0,0.22);}
     .scbhd{display:flex;align-items:center;justify-content:space-between;padding:16px 24px 12px;border-bottom:1px solid #f0f2f8;flex-shrink:0;}
     .scbht{font-size:15px;font-weight:800;color:#1a1a2e;}
     .scbhs{font-size:12px;color:#9aa0b4;margin-top:2px;}
@@ -346,6 +346,7 @@
     .inst-nav-next:hover{background:#7c3aed;}
     .rfmo-banner.show{display:block;}
     /* Supply chain position popup */
+    @keyframes pulse-cta{0%,100%{opacity:1;}50%{opacity:0.4;}}
     @keyframes scNodePulse{
       0%{opacity:0.7;transform:scale(1);}
       50%{opacity:0.2;transform:scale(1.08);}
@@ -422,10 +423,17 @@
       </div>
     </div>
     <div style="font-size:22px;font-weight:800;color:#1a1a2e;margin-bottom:4px;">Your Products</div>
-    <div style="font-size:13px;color:#9aa0b4;margin-bottom:20px;">Add the seafood products you want to assess. Each product needs a supply chain.</div>
+    <div style="font-size:13px;color:#9aa0b4;margin-bottom:6px;">Add the seafood products you want to assess. Each product needs a supply chain.</div>
+    <div style="background:#f4f0ff;border:1px solid #ddd6fe;border-radius:10px;padding:11px 15px;margin-bottom:18px;font-size:12px;color:#5b21b6;line-height:1.6;">
+      🎯 We evaluate your company's traceability based on each product and its supply chain — from first harvest to final delivery. This helps identify where your data gaps are and what risk they carry.
+    </div>
     <div style="flex:1;overflow-y:auto;min-height:0;">
       <div class="pgrid">
-        <div class="pslot" id="ps0" onclick="openPF(0)"><div class="pplus">+</div><div class="plbl">Add Product</div></div>
+        <div class="pslot" id="ps0" onclick="openPF(0)" style="border-color:#8b5cf6;border-width:2px;position:relative;">
+          <div class="pplus" style="color:#8b5cf6;">+</div>
+          <div class="plbl" style="color:#7c3aed;font-weight:700;">Add Product</div>
+          <div style="position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:10px;font-weight:700;color:#8b5cf6;animation:pulse-cta 2s ease-in-out infinite;">▲ Start here</div>
+        </div>
         <div class="pslot" id="ps1" onclick="openPF(1)"><div class="pplus">+</div><div class="plbl">Add Product</div></div>
         <div class="pslot" id="ps2" onclick="openPF(2)"><div class="pplus">+</div><div class="plbl">Add Product</div></div>
         <div class="pslot" id="ps3" onclick="openPF(3)"><div class="pplus">+</div><div class="plbl">Add Product</div></div>
@@ -1167,7 +1175,18 @@ function fillSlot(i){
     </div></div>`;
   s.onclick=()=>openPF(i);
 }
-function showMoreSlots(){document.getElementById('pgrid2').classList.remove('hidden');['ps4','ps5','ps6','ps7'].forEach(id=>document.getElementById(id)?.classList.remove('hidden'));document.getElementById('addMoreBtn').style.display='none';}
+function showMoreSlots(){
+  // Reveal the next empty hidden slot one at a time
+  const slots=['ps4','ps5','ps6','ps7'];
+  const next=slots.find(id=>{const el=document.getElementById(id);return el&&el.classList.contains('hidden');});
+  if(next){
+    document.getElementById('pgrid2').classList.remove('hidden');
+    document.getElementById(next).classList.remove('hidden');
+    // Check if all slots now visible — hide the button
+    const remaining=slots.filter(id=>{const el=document.getElementById(id);return el&&el.classList.contains('hidden');});
+    if(!remaining.length)document.getElementById('addMoreBtn').style.display='none';
+  }
+}
 
 // ══ KDE FLOW ══
 const CTE_GROUP_ORDER=['feedmill','hatchery','farm','harvest','onvessel','vessel_landing','transshipment','landing','aggregation','processing','shipreceive'];
@@ -1277,8 +1296,8 @@ function buildHarvestQs(inst,vc,hasEU,prods,own){
     {id:`${inst.id}_fv_coords`,q:'Are catch geo-coordinates available for each fishing event?'},
     {id:`${inst.id}_fv_harvest_cert`,q:`Is a harvest certification (e.g. MSC) held by ${entity(own,'fishing entity')} supplying this product?`},
     {id:`${inst.id}_fv_coc`,q:`Does ${entity(own,'fishing entity')} hold a Chain of Custody certification covering the harvest stage?`},
-    {id:`${inst.id}_fv_welfare_policy`,q:`Does the company operating ${N} fishing ${vessel} have a documented Human Welfare Policy?`},
-    {id:`${inst.id}_fv_welfare_standards`,q:`Do ${N} ${vessel} in your supply chain comply with recognized human welfare standards (e.g. ILO, FISH)?`},
+    {id:`${inst.id}_fv_welfare_policy`,q:`Does ${N} ${vessel} operate under a documented Human Welfare Policy?`},
+    {id:`${inst.id}_fv_welfare_standards`,q:`Does ${N} ${vessel} comply with recognized human welfare standards (e.g. ILO, FISH)?`},
   ];
 }
 function buildTransshipmentQs(inst,vc,hasEU,own){
@@ -1287,7 +1306,7 @@ function buildTransshipmentQs(inst,vc,hasEU,own){
     {id:`${inst.id}_cr_name`,q:`Is the name of ${N} ${vessel} used for transshipment available?`},
     {id:`${inst.id}_cr_imo`,q:`Do you know the IMO number of ${N} ${vessel}?`},
     {id:`${inst.id}_cr_uid`,q:`Is a unique vessel ID available for ${N} ${vessel}?`},
-    {id:`${inst.id}_cr_reg`,q:`Do you have the vessel registration number of ${N} ${vessel} on record?`},
+    {id:`${inst.id}_cr_reg`,q:'Is the carrier vessel\'s unique vessel ID available?'},
     {id:`${inst.id}_cr_flag`,q:`Is the flag state of ${N} ${vessel} known and documented?`},
     {id:`${inst.id}_cr_rfmo`,q:`Is ${vc===1?'the carrier vessel':'each carrier vessel'} registered on the relevant RFMO register?`},
     ...(hasEU?[{id:`${inst.id}_cr_eu_approval`,q:`Does ${N} ${vessel} hold a valid EU approved vessel listing?`}]:[]),
@@ -1299,7 +1318,7 @@ function buildTransshipmentQs(inst,vc,hasEU,own){
     {id:`${inst.id}_cr_planogram`,q:'Do you have access to a stowage planogram or storage plan showing where the fish is held in the carrier vessel?'},
     {id:`${inst.id}_cr_separation`,q:'If the product is MSC-certified, is it physically separated from non-certified product using MSC-defined netting or partition?'},
     {id:`${inst.id}_cr_linking`,q:'Do you have the linking KDE (batch/lot/serial) maintained and accessible at transshipment?'},
-    {id:`${inst.id}_cr_weight`,q:`Is weight/quantity available at transshipment for ${N} ${vessel}?`},
+    {id:`${inst.id}_cr_weight`,q:'Is the product weight or quantity available at transshipment?'},
     {id:`${inst.id}_cr_approval`,q:'Has formal transshipment authorization been obtained from the flag state for this event?'},
     {id:`${inst.id}_cr_auth_doc`,q:'Is a transshipment authorization document available for each event?'},
     {id:`${inst.id}_cr_ts_port_auth`,q:'Was the transshipment notified to and approved by the relevant port authority? (At-port only)'},
@@ -1318,15 +1337,17 @@ function buildLandingQs(inst,mode,hasEU){
     {id:`${inst.id}_fcl_weight`,     q:'Do you have weight or quantity with unit of measure recorded at landing?'},
     {id:`${inst.id}_fcl_port`,       q:'Do you have the port of landing documented on your records?'},
     {id:`${inst.id}_fcl_geo`,        q:'Do you have the geo-coordinates of the landing location on your records?'},
-    {id:`${inst.id}_fcl_landing_date`,q:'Do you know and have documented the date of first landing or off-load?'},
+    {id:`${inst.id}_fcl_landing_date`,q:'Is the date of first landing or off-load documented?'},
     {id:`${inst.id}_fcl_product_form`,q:'Is the product form at time of landing recorded (e.g. whole, H&G, fillet)?'},
-    {id:`${inst.id}_fcl_ownership`,  q:'Is product ownership clearly identified and documented at the landing stage?'},
+    {id:`${inst.id}_fcl_ownership`,  q:'Is product ownership identified and documented at landing?'},
     {id:`${inst.id}_fcl_auth`,       q:'Is a landing authorization available for each landing event?'},
     ...(hasEU?[
-      {id:`${inst.id}_fcl_eu`,            q:'Does the landing port have EU competent authority approval?'},
-      {id:`${inst.id}_fcl_master_decl`,   q:'Is a signed declaration from the vessel master available for the catch?'},
-      {id:`${inst.id}_fcl_ca_validation`, q:'Has the catch certificate been validated by the flag state competent authority?'},
-      {id:`${inst.id}_fcl_net_weight`,    q:'Is the net weight (not gross weight) specifically recorded and available at landing?'},
+      {id:`${inst.id}_fcl_eu`,             q:'Is the landing port approved by the relevant EU competent authority?'},
+      {id:`${inst.id}_fcl_eu_designated`,  q:'Is the landing port listed as an EU-designated port for third-country vessel landings? (Required under EU IUU Regulation)'},
+      {id:`${inst.id}_fcl_port_inspection`,q:'Is a port inspection report or notice of inspection available for this landing? (EU IUU Regulation requires inspection of at least 5% of landings)'},
+      {id:`${inst.id}_fcl_master_decl`,    q:'Is a signed declaration from the vessel master available for the catch?'},
+      {id:`${inst.id}_fcl_ca_validation`,  q:'Has the catch certificate been validated by the flag state competent authority?'},
+      {id:`${inst.id}_fcl_net_weight`,     q:'Is the net weight (not gross weight) specifically recorded and available at landing?'},
     ]:[]),
     {id:`${inst.id}_fcl_coc`,    q:'Does the landing facility in your supply chain hold a Chain of Custody certification?'},
     {id:`${inst.id}_fcl_welfare`,q:'Does the landing entity in your supply chain operate under a documented Human Welfare Policy?'},
@@ -1432,42 +1453,42 @@ function buildProcessingQs(hasEU,own,inst){
   const p=inst?inst.id+'_':'';
   return [
   {id:p+'pp_name',             q:'Is the name and location of your processing facility available and documented?'},
-  {id:p+'pp_ownership',        q:'Can you clearly identify who owns the product at the processing stage?'},
+  {id:p+'pp_ownership',        q:'Is product ownership identified at the processing stage?'},
   {id:p+'pp_origin',           q:'Is the product origin (country/region of catch) available at processing?'},
   {id:p+'pp_geo',              q:'Do you have the geo-coordinates of your processing facility on record?'},
   {id:p+'pp_gtin',             q:'Is an Item/SKU/UPC/GTIN assigned or carried through at processing?'},
   {id:p+'pp_lot',              q:'Do you assign a lot code or batch number to each production run?'},
   {id:p+'pp_linking',          q:'Do you maintain the linking KDE (batch/lot/serial) throughout your processing?'},
   {id:p+'pp_weight',           q:'Is weight or quantity with unit of measure available at processing?'},
-  {id:p+'pp_data',             q:'Does your processor receive full catch/harvest data from the first receiver?'},
+  {id:p+'pp_data',             q:'Is full catch or harvest data available to the processor from the first receiver?'},
   {id:p+'pp_cold',             q:'Is cold chain and storage facility covered by your Chain of Custody certification?'},
   ...(hasEU?[{id:p+'pp_eu',   q:`Does ${entity(own,'processing facility')} hold an EU Facility Approval number? (EU-bound)`}]:[]),
   {id:p+'pp_coc',              q:`Does ${entity(own,'processing facility')} hold a Chain of Custody certification?`},
-  {id:p+'pp_harvest_cert',     q:`Does ${entity(own,'processing facility')} hold a valid Harvest Certification?`},
+
   {id:p+'proc_haccp',          q:`Does ${entity(own,'processing facility')} have a documented HACCP plan?`},
-  {id:p+'proc_digital',        q:'Do you capture processing records digitally (not paper-only)?'},
+  {id:p+'proc_digital',        q:'Are processing records captured digitally?'},
   {id:p+'pp_welfare_policy',   q:`Does ${entity(own,'processing facility')} have a documented Human Welfare Policy?`},
   {id:p+'pp_welfare_standards',q:`Does ${entity(own,'processing facility')} comply with recognized human welfare standards?`},
 ];}
 function buildAggregationQs(own,inst){
   const p=inst?inst.id+'_':'';
-  return [{id:p+'agg_lot_code',q:'Do you assign a new lot/batch code after aggregation or disaggregation?'},{id:p+'agg_linking',q:'Do you document the link between input and output lots (parent-child traceability)?'},{id:p+'agg_weight',q:'Do you perform and document a weight reconciliation after aggregation?'},{id:p+'agg_ownership',q:'Can you clearly document product ownership at the aggregation stage?'},{id:p+'agg_location',q:'Do you have the facility location documented on your aggregation records?'},{id:p+'agg_eu_approval',q:'Does the aggregation facility in your supply chain hold a valid EU establishment approval number?'},{id:p+'agg_msc_coc',q:'Does the aggregation facility in your supply chain hold a valid MSC Chain of Custody certificate?'},{id:p+'agg_digital',q:'Do you capture aggregation records in a digital system?'}];}
+  return [{id:p+'agg_lot_code',q:'Do you assign a new lot/batch code after aggregation or disaggregation?'},{id:p+'agg_linking',q:'Do you document the link between input and output lots (parent-child traceability)?'},{id:p+'agg_weight',q:'Do you perform and document a weight reconciliation after aggregation?'},{id:p+'agg_ownership',q:'Can you clearly document product ownership at the aggregation stage?'},{id:p+'agg_location',q:'Do you have the facility location documented on your aggregation records?'},{id:p+'agg_eu_approval',q:'Does the aggregation facility in your supply chain hold a valid EU establishment approval number?'},{id:p+'agg_msc_coc',q:'Does the aggregation facility in your supply chain hold a valid MSC Chain of Custody certificate?'},{id:p+'agg_sizing',q:'Does the discharged quantity undergo sizing or grading at this aggregation or disaggregation stage?'},{id:p+'agg_digital',q:'Do you capture aggregation records in a digital system?'}];}
 function buildFarmQs(own,inst){
   const p=inst?inst.id+'_':'';
   return [
-  {id:p+'aq_farm_name',    q:'Do you have the farm or aquaculture facility name and location documented?'},
-  {id:p+'aq_farm_license', q:'Do you have access to a valid farm registration or aquaculture license?'},
+  {id:p+'aq_farm_name',    q:'Are the farm or aquaculture facility name and location available?'},
+  {id:p+'aq_farm_license', q:'Is a valid farm registration or aquaculture license available?'},
   {id:p+'aq_species',      q:'Is the species documented using its scientific name?'},
-  {id:p+'aq_gtin',         q:'Is an Item/SKU/UPC/GTIN assigned to the product at the farm stage?'},
+  {id:p+'aq_gtin',         q:'Is an Item/SKU/UPC/GTIN assigned to the product at harvest?'},
   {id:p+'aq_linking',      q:'Is a linking KDE (batch/lot/serial number) assigned at the farm stage?'},
   {id:p+'aq_weight',       q:'Is the harvest weight and unit of measure available per batch?'},
   {id:p+'aq_lot',          q:'Do you assign a lot code or production batch number at harvest?'},
   {id:p+'aq_stocking',     q:'Do you have stocking density and stocking date records accessible?'},
-  {id:p+'aq_feed_supplier',q:'Do you know who your feed supplier is, and can you access their traceability information?'},
+  {id:p+'aq_feed_supplier',q:'Is your feed supplier identified, and is their traceability information available?'},
   {id:p+'aq_feed_origin',  q:'Do you have the origin of feed ingredients documented?'},
   {id:p+'aq_water',        q:'Do you have access to water quality monitoring records for this farm?'},
   {id:p+'aq_disease',      q:'Do you have access to disease treatment and medication records?'},
-  {id:p+'aq_coc',          q:`Does ${entity(own,'farm')} hold a Chain of Custody certification (e.g. ASC, BAP)?`},
+  {id:p+'aq_coc',          q:'Does the farm hold a valid Chain of Custody certification (e.g. ASC, BAP)?'},
   {id:p+'aq_audit',        q:'Has the farm passed a third-party aquaculture standard audit in the last 12 months?'},
   {id:p+'aq_welfare',      q:`Does ${entity(own,'farm')} operate under a documented animal and worker welfare policy?`},
 ];}
@@ -1511,14 +1532,14 @@ function buildOnVesselQs(own,inst){
 function buildCertQs(hasMSC,hasASC,hasEU,hasUS,hasTuna){return [
   ...(hasMSC?[{id:'c_msc',q:'Does your company hold a valid MSC Chain of Custody certificate?'}]:[]),
   ...(hasASC?[{id:'c_asc',q:'Does your company hold a valid ASC Chain of Custody certificate?'}]:[]),
-  ...(hasTuna?[{id:'c_issf_pvr',q:'Are your fishing vessels listed on the ISSF ProActive Vessel List (PVL)? Verify at issf-foundation.org'}]:[]),
+  ...(hasTuna?[{id:'c_issf_pvr',q:'Are your fishing vessels listed on the ISSF ProActive Vessel Register (PVR)?'}]:[]),
   {id:'c_brc',          q:'Does your company or your processor hold a current BRC Global Standard or IFS Food certification?'},
   {id:'c_haccp',        q:'Is a certified HACCP food safety plan in place at your company or processing facility?'},
   {id:'c_iso',          q:'Does your company or your processor hold an ISO 22000 or equivalent food safety management system certification?'},
   ...(hasEU?[{id:'c_eu',q:'Does your company or your processing facility hold an EU Facility Approval number?'}]:[]),
   {id:'c_audit',        q:'Has your company or your supply chain passed an independent third-party traceability audit in the last 12 months?'},
   {id:'c_internal',     q:'Does your company have an internal traceability system linking every batch from source to sale?'},
-  {id:'c_recall',       q:'Can your company execute a full product recall or withdrawal within 4 hours?'},
+  {id:'c_recall',       q:'Can your company complete a full product recall or withdrawal within 4 hours?'},
   {id:'c_digital',      q:'Is your company\'s traceability data captured digitally (not paper-based)?'},
   {id:'c_interop',      q:'Can your company share traceability data digitally with supply chain partners or regulators?'},
   {id:'c_welfare_org',  q:'Does your company have a documented company-wide Human Welfare Policy?'},
@@ -1681,8 +1702,12 @@ function renderKDE(){
       const atSeaQs=(tsLoc==='at_sea'&&inst)?[
         {id:`${inst.id}_cr_atsea_rfmo`,q:'Has the RFMO authorization been obtained specifically for this at-sea transshipment event?'},
         {id:`${inst.id}_cr_atsea_obs`,q:'Was an independent observer present or was electronic monitoring active during at-sea transshipment?'},
+        {id:`${inst.id}_cr_atsea_ais`,q:'Is AIS tracking active and verifiable for the carrier vessel during this at-sea transshipment?'},
         ...(tsZone==='eez'?[{id:`${inst.id}_cr_atsea_eez_permit`,q:'Is a coastal state permit or notification confirmation available for transshipment within this EEZ?'},{id:`${inst.id}_cr_atsea_eez_notify`,q:'Was the coastal state notified in advance of the transshipment in their EEZ?'}]:[]),
         ...(tsZone==='high_seas'?[{id:`${inst.id}_cr_atsea_hs`,q:"Is the relevant RFMO's High Seas transshipment authorization document available for this event?"}]:[]),
+      ]:[];
+      const atPortQsExtra=(tsLoc==='at_port'&&inst)?[
+        {id:`${inst.id}_cr_atport_geo`,q:'Are the geo-coordinates of the port where the transshipment took place recorded and available?'},
       ]:[];
       qs=qs.filter(q=>{
         if(q.id.endsWith('_cr_ts_port_auth')||q.id.endsWith('_cr_ts_port_obs'))return tsLoc==='at_port'||!tsLoc;
@@ -1695,7 +1720,7 @@ function renderKDE(){
         }
         return q;
       });
-      html+=[...qs,...atSeaQs].map(q=>renderQ(q)).join('');
+      html+=[...qs,...atSeaQs,...atPortQsExtra].map(q=>renderQ(q)).join('');
       if(multiInst){
         const isFirst=activeSubIdx===0,isLast=activeSubIdx===totalInsts-1;
         html+=`<div class="inst-nav"><button class="inst-nav-btn inst-nav-prev" onclick="instPrev()" ${isFirst?'style="visibility:hidden;"':''}>← ${st.t} ${ROMAN[activeSubIdx-1]||''}</button><span style="font-size:11px;color:#9aa0b4;font-weight:600;">${activeSubIdx+1} of ${totalInsts}</span><button class="inst-nav-btn inst-nav-next" onclick="${isLast?'kNext()':'instNext()'}"> ${isLast?'Done — Next Stage →':`${st.t} ${ROMAN[activeSubIdx+1]||''} →`}</button></div>`;
@@ -2165,6 +2190,11 @@ const KDE_PARTIAL_SCORES={
   'cr_atsea_eez_permit':30,
   'cr_atsea_eez_notify':30,
   'cr_atsea_hs':30,
+  'cr_atsea_ais':30,
+  'cr_atport_geo':10,
+  'fcl_eu_designated':30,
+  'fcl_port_inspection':10,
+  'agg_sizing':10,
   'fcl_species':30,
   'fcl_gtin':30,
   'fcl_linking':30,
@@ -2310,7 +2340,7 @@ const DEFAULT_WEIGHTS={
   cr_iuu_check:5,cr_location:4,cr_invoice:4,cr_bol:4,cr_planogram:3,cr_separation:4,
   cr_linking:4,cr_weight:4,cr_approval:5,cr_auth_doc:4,cr_ts_port_auth:4,cr_ts_port_obs:3,
   cr_ts_atsea_notify:5,cr_coc:3,cr_welfare_policy:2,cr_welfare_standards:2,
-  cr_atsea_rfmo:5,cr_atsea_obs:4,cr_atsea_eez_permit:4,cr_atsea_eez_notify:4,cr_atsea_hs:5,
+  cr_atsea_rfmo:5,cr_atsea_obs:4,cr_atsea_eez_permit:4,cr_atsea_eez_notify:4,cr_atsea_hs:5,cr_atsea_ais:4,cr_atport_geo:2,fcl_eu_designated:4,fcl_port_inspection:2,agg_sizing:2,
   // Landing
   fcl_species:4,fcl_gtin:4,fcl_linking:4,fcl_weight:4,fcl_port:4,fcl_geo:3,
   fcl_landing_date:4,fcl_product_form:3,fcl_ownership:4,fcl_auth:4,
@@ -2470,15 +2500,17 @@ function resolveReviewSubQs(st,sub,hasEU,hasUS,isFrozen){
     const atSeaQs=(tsLoc==='at_sea')?[
       {id:`${inst.id}_cr_atsea_rfmo`,q:'Has the RFMO authorization been obtained specifically for this at-sea transshipment event?'},
       {id:`${inst.id}_cr_atsea_obs`,q:'Was an independent observer present or was electronic monitoring active during at-sea transshipment?'},
+      {id:`${inst.id}_cr_atsea_ais`,q:'Is AIS tracking active and verifiable for the carrier vessel during this at-sea transshipment?'},
       ...(tsZone==='eez'?[{id:`${inst.id}_cr_atsea_eez_permit`,q:'Is a coastal state permit or notification confirmation available for transshipment within this EEZ?'},{id:`${inst.id}_cr_atsea_eez_notify`,q:'Was the coastal state notified in advance of the transshipment in their EEZ?'}]:[]),
       ...(tsZone==='high_seas'?[{id:`${inst.id}_cr_atsea_hs`,q:"Is the relevant RFMO's High Seas transshipment authorization document available for this event?"}]:[]),
     ]:[];
+    const atPortQsExtra=(tsLoc==='at_port')?[{id:`${inst.id}_cr_atport_geo`,q:'Are the geo-coordinates of the port where the transshipment took place recorded and available?'}]:[];
     qs=qs.filter(q=>{
       if(q.id.endsWith('_cr_ts_port_auth')||q.id.endsWith('_cr_ts_port_obs'))return tsLoc==='at_port'||!tsLoc;
       if(q.id.endsWith('_cr_ts_atsea_notify'))return tsLoc==='at_sea'||!tsLoc;
       return true;
     });
-    return [...qs,...atSeaQs];
+    return [...qs,...atSeaQs,...atPortQsExtra];
   }
 
   // default: questions are already fully resolved in sub.qs
