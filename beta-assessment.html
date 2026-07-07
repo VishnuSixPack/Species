@@ -2078,13 +2078,23 @@ async function saveAndExit(){await autoSave();document.getElementById('saveExitM
 function selPref(v){pref=v;document.getElementById('pEmail').classList.toggle('sel',v==='email');document.getElementById('pMeeting').classList.toggle('sel',v==='meeting');}
 function fillSkippedAsNotAvailableFor(stagesArr){
   // Walk every KDE question across all stages/instances and default unanswered ones to 'un'
+  const prods2=products.filter(Boolean);
+  const markets2=new Set();prods2.forEach(p=>(p.markets||[]).forEach(m=>markets2.add(m)));
+  const hasEU2=[...markets2].some(m=>EU27.includes(m)),hasUS2=markets2.has('US');
+  const frozen2=prods2.some(p=>p.form==='Frozen'||p.form==='Smoked');
+
   (stagesArr||[]).forEach(st=>{
     (st.instances||[]).forEach(sub=>{
-      (sub.qs||[]).forEach(q=>{
+      // For dynamic stages (landing/shipreceive/transshipment), resolve actual questions
+      // from saved sub-mode answers — same as review does
+      const resolvedQs=(st.type==='landing'||st.type==='shipreceive'||st.type==='transshipment')
+        ? resolveReviewSubQs(st,sub,hasEU2,hasUS2,frozen2)
+        : (sub.qs||[]);
+      resolvedQs.forEach(q=>{
         if(!kResp[q.id]||!kResp[q.id].ans){
           if(!kResp[q.id])kResp[q.id]={};
           kResp[q.id].ans='un';
-          kResp[q.id].autoSkipped=true; // flag so reviewer knows it was auto-defaulted
+          kResp[q.id].autoSkipped=true;
         }
       });
     });
