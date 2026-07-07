@@ -534,6 +534,7 @@
       </div>
     </div>
     <div class="rv-scroll">
+      <div id="rv-company-summary"></div>
       <div id="rv-score-area"></div>
       <div id="rv-stages-area"></div>
       <div class="rv-expert-area">
@@ -742,9 +743,18 @@
         <div class="sc-popup-h" id="scPopupTitle">Your Supply Chain</div>
         <div class="sc-popup-sub" id="scPopupSub"></div>
       </div>
-      <button onclick="closeSCPopup()" style="width:28px;height:28px;border-radius:50%;background:#f4f6fb;border:none;cursor:pointer;font-size:15px;color:#6b7280;flex-shrink:0;">×</button>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <div style="display:flex;gap:4px;background:#f4f6fb;border-radius:8px;padding:3px;">
+          <button onclick="scPopupZoom(0.2)" title="Zoom in" style="width:26px;height:26px;border:none;background:none;cursor:pointer;font-size:14px;border-radius:5px;color:#6b7280;" onmouseover="this.style.background='#e8eaf0'" onmouseout="this.style.background='none'">+</button>
+          <button onclick="scPopupZoom(-0.2)" title="Zoom out" style="width:26px;height:26px;border:none;background:none;cursor:pointer;font-size:14px;border-radius:5px;color:#6b7280;" onmouseover="this.style.background='#e8eaf0'" onmouseout="this.style.background='none'">−</button>
+          <button onclick="scPopupZoomReset()" title="Reset zoom" style="width:26px;height:26px;border:none;background:none;cursor:pointer;font-size:11px;border-radius:5px;color:#6b7280;" onmouseover="this.style.background='#e8eaf0'" onmouseout="this.style.background='none'">↺</button>
+        </div>
+        <button onclick="closeSCPopup()" style="width:28px;height:28px;border-radius:50%;background:#f4f6fb;border:none;cursor:pointer;font-size:15px;color:#6b7280;flex-shrink:0;">×</button>
+      </div>
     </div>
-    <div id="scPopupFlow" style="overflow-x:auto;overflow-y:auto;max-height:420px;margin:12px 0;padding:4px 0;"></div>
+    <div id="scPopupFlowWrap" style="overflow:hidden;max-height:440px;margin:12px 0;cursor:grab;position:relative;border-radius:10px;background:#f9fafc;">
+      <div id="scPopupFlow" style="transform-origin:top left;transition:transform 0.15s;"></div>
+    </div>
     <div style="padding:10px 14px;background:#f4f0ff;border-radius:10px;border:1px solid #ddd6fe;display:flex;align-items:center;gap:8px;">
       <span style="font-size:16px;">📍</span>
       <div style="font-size:11px;color:#7c3aed;font-weight:600;" id="scPopupCurrent"></div>
@@ -1345,7 +1355,6 @@ function buildLandingQs(inst,mode,hasEU){
       {id:`${inst.id}_fcl_eu`,             q:'Is the landing port approved by the relevant EU competent authority?'},
       {id:`${inst.id}_fcl_eu_designated`,  q:'Is the landing port listed as an EU-designated port for third-country vessel landings? (Required under EU IUU Regulation)'},
       {id:`${inst.id}_fcl_port_inspection`,q:'Is a port inspection report or notice of inspection available for this landing? (EU IUU Regulation requires inspection of at least 5% of landings)'},
-      {id:`${inst.id}_fcl_master_decl`,    q:'Is a signed declaration from the vessel master available for the catch?'},
       {id:`${inst.id}_fcl_ca_validation`,  q:'Has the catch certificate been validated by the flag state competent authority?'},
       {id:`${inst.id}_fcl_net_weight`,     q:'Is the net weight (not gross weight) specifically recorded and available at landing?'},
     ]:[]),
@@ -1472,7 +1481,7 @@ function buildProcessingQs(hasEU,own,inst){
 ];}
 function buildAggregationQs(own,inst){
   const p=inst?inst.id+'_':'';
-  return [{id:p+'agg_lot_code',q:'Do you assign a new lot/batch code after aggregation or disaggregation?'},{id:p+'agg_linking',q:'Do you document the link between input and output lots (parent-child traceability)?'},{id:p+'agg_weight',q:'Do you perform and document a weight reconciliation after aggregation?'},{id:p+'agg_ownership',q:'Can you clearly document product ownership at the aggregation stage?'},{id:p+'agg_location',q:'Do you have the facility location documented on your aggregation records?'},{id:p+'agg_eu_approval',q:'Does the aggregation facility in your supply chain hold a valid EU establishment approval number?'},{id:p+'agg_msc_coc',q:'Does the aggregation facility in your supply chain hold a valid MSC Chain of Custody certificate?'},{id:p+'agg_sizing',q:'Does the discharged quantity undergo sizing or grading at this aggregation or disaggregation stage?'},{id:p+'agg_digital',q:'Do you capture aggregation records in a digital system?'}];}
+  return [{id:p+'agg_lot_code',q:'Do you assign a new lot/batch code after aggregation or disaggregation?'},{id:p+'agg_linking',q:'Do you document the link between input and output lots (parent-child traceability)?'},{id:p+'agg_weight',q:'Do you perform and document a weight reconciliation after aggregation?'},{id:p+'agg_ownership',q:'Can you clearly document product ownership at the aggregation stage?'},{id:p+'agg_location',q:'Do you have the facility location documented on your aggregation records?'},{id:p+'agg_eu_approval',q:'Does the aggregation facility in your supply chain hold a valid EU establishment approval number?'},{id:p+'agg_msc_coc',q:'Does the aggregation facility in your supply chain hold a valid MSC Chain of Custody certificate?'},{id:p+'agg_sizing',q:'Does the discharged quantity undergo sizing at this aggregation/disaggregation stage?'},{id:p+'agg_digital',q:'Do you capture aggregation records in a digital system?'}];}
 function buildFarmQs(own,inst){
   const p=inst?inst.id+'_':'';
   return [
@@ -2517,6 +2526,102 @@ function resolveReviewSubQs(st,sub,hasEU,hasUS,isFrozen){
   return sub.qs||[];
 }
 
+function buildCompanySummary(){
+  const prods=products.filter(Boolean);
+  const el=document.getElementById('rv-company-summary');
+  if(!el||!prods.length)return;
+
+  // Build product + SC cards
+  const prodCards=prods.map(p=>{
+    const chainLabels=(p.chain||[]).map(n=>{
+      const cfg=CTE_CFG[n.type]||{l:n.type,i:'📦'};
+      const sameType=(p.chain||[]).filter(x=>x.type===n.type).length;
+      const numLabel=sameType>1?(n.entityName?` — ${n.entityName}`:(ROMAN[(n.instanceNum||1)-1]?' '+(ROMAN[(n.instanceNum||1)-1]):'')):'';
+      return `<span style="display:inline-flex;align-items:center;gap:3px;background:#f4f6fb;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:600;color:#1a1a2e;margin:2px;">${cfg.i} ${cfg.l}${numLabel}</span>`;
+    }).join('<span style="color:#c0c4d0;font-size:10px;margin:0 2px;">→</span>');
+    const mktList=(p.markets||[]).join(', ')||'—';
+    return `<div style="background:#fff;border:1.5px solid #f0f2f8;border-radius:12px;padding:12px 16px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <span style="font-size:14px;">🐟</span>
+        <span style="font-size:13px;font-weight:800;color:#1a1a2e;">${p.desc||'Unnamed Product'}</span>
+        ${p.cert?`<span style="font-size:10px;font-weight:700;color:#16a34a;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px;padding:1px 8px;">${p.cert}</span>`:''}
+        ${p.form?`<span style="font-size:10px;font-weight:600;color:#6b7280;background:#f4f6fb;border-radius:5px;padding:1px 8px;">${p.form}</span>`:''}
+      </div>
+      <div style="font-size:10px;color:#9aa0b4;margin-bottom:4px;">Species: <strong style="color:#1a1a2e;">${p.species||'—'}</strong> &nbsp;|&nbsp; Markets: <strong style="color:#1a1a2e;">${mktList}</strong></div>
+      <div style="display:flex;flex-wrap:wrap;align-items:center;margin-top:6px;">${chainLabels||'<span style="font-size:11px;color:#9aa0b4;">No supply chain built</span>'}</div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML=`<div style="margin-bottom:18px;">
+    <div style="font-size:16px;font-weight:800;color:#1a1a2e;margin-bottom:4px;">🏢 ${assessorName||'This Company'}</div>
+    <div style="font-size:12px;color:#9aa0b4;margin-bottom:12px;">Assessment submitted by <strong>${assessorName||'—'}</strong> · ${prods.length} product${prods.length>1?'s':''} assessed</div>
+    ${prodCards}
+  </div>`;
+}
+
+function buildRiskNarrative(reviewStages,score,max){
+  // Analyse gaps by category
+  const prods=products.filter(Boolean);
+  const markets=new Set();prods.forEach(p=>(p.markets||[]).forEach(m=>markets.add(m)));
+  const hasEU=[...markets].some(m=>EU27.includes(m));
+  const hasUS=markets.has('US');
+  const hasMSC=prods.some(p=>p.cert==='MSC');
+  const hasASC=prods.some(p=>p.cert==='ASC');
+
+  // Gather answered KDEs
+  const allQs=reviewStages.flatMap(st=>(st.instances||[]).flatMap(sub=>sub.qs||[]));
+  const critical=['fv_imo','fv_vms','fv_rfmo','fv_iuu_check','fv_species','fv_gtin','fv_linking','fv_area'];
+  const firstMileGaps=critical.filter(k=>{
+    const answered=Object.keys(kResp).find(id=>id.endsWith('_'+k)||id===k);
+    return !answered||!kResp[answered]?.ans||kResp[answered].ans==='un';
+  });
+
+  const gdstKeys=['fv_gtin','fv_linking','fv_weight','fv_area','fv_species','fcl_gtin','fcl_linking','pp_gtin','pp_linking','pp_lot'];
+  const gdstAnswered=gdstKeys.filter(k=>Object.keys(kResp).find(id=>(id.endsWith('_'+k)||id===k)&&kResp[id]?.ans==='av')).length;
+  const gdstPct=Math.round((gdstAnswered/gdstKeys.length)*100);
+
+  const euKeys=['fcl_eu','fcl_eu_designated','fcl_ca_validation','pp_eu','cr_eu_approval'];
+  const euScore=euKeys.filter(k=>Object.keys(kResp).find(id=>(id.endsWith('_'+k)||id===k)&&kResp[id]?.ans==='av')).length;
+
+  const usKeys=['s_simp','s_fsma_lot','c_fsma_kde','c_fsvp'];
+  const usScore=usKeys.filter(k=>Object.keys(kResp).find(id=>(id.endsWith('_'+k)||id===k)&&kResp[id]?.ans==='av')).length;
+
+  const pct=max?Math.round((score/max)*100):0;
+  const riskLevel=pct<=20?'Low':pct<=50?'Moderate':'High';
+
+  // Build narrative sentences
+  let narrative=[];
+
+  if(firstMileGaps.length>2){
+    narrative.push(`⚠️ <strong>Critical first-mile traceability gaps detected.</strong> Key catch-level data elements (${firstMileGaps.slice(0,3).map(k=>k.replace('fv_','')).join(', ')} and others) are missing or unavailable — this significantly increases IUU and fraud risk at origin.`);
+  }
+
+  narrative.push(`📊 <strong>GDST Alignment: ${gdstPct}%.</strong> ${gdstPct>=80?'The company demonstrates strong alignment with GDST Key Data Element requirements.':gdstPct>=50?'Partial alignment with GDST KDE standards — several core data elements need attention.':'The company has significant gaps against GDST Key Data Element requirements. Core traceability data is missing at key CTEs.'}`);
+
+  if(hasEU){
+    narrative.push(`🇪🇺 <strong>EU IUU Traceability (EC 1005/2008):</strong> ${euScore>=4?'EU compliance indicators are strong — catch certificates, designated port usage and competent authority validation appear to be in order.':euScore>=2?'Partial EU compliance. Some IUU Regulation requirements (catch certificate validation, designated port documentation) need strengthening.':'EU market access is at risk. Critical EU IUU Regulation requirements are not evidenced — catch certificate validation, designated port and CA approval documentation are missing.'}`);
+  }
+
+  if(hasUS){
+    narrative.push(`🇺🇸 <strong>US SIMP & FSMA 204:</strong> ${usScore>=3?'US import compliance indicators are adequate — SIMP entry filing and FSMA traceability lot codes appear to be in place.':usScore>=1?'Partial US compliance. SIMP and/or FSMA 204 lot code requirements need strengthening for US market entry.':'US market access is at risk. SIMP entry filing and FSMA 204 traceability lot code requirements are not evidenced.'}`);
+  }
+
+  if(hasMSC||hasASC){
+    const certName=hasMSC&&hasASC?'MSC and ASC':hasMSC?'MSC':'ASC';
+    const cocAnswered=Object.values(kResp).filter(r=>r?.ans==='av').length;
+    narrative.push(`🏅 <strong>${certName} Chain of Custody:</strong> ${cocAnswered>5?'CoC documentation appears to be actively maintained across the supply chain.':'CoC documentation coverage is limited. Evidence of certification maintenance across all CTEs should be strengthened.'}`);
+  }
+
+  narrative.push(`🔍 <strong>Overall Risk Level: ${riskLevel}.</strong> ${riskLevel==='Low'?'This company demonstrates good traceability practices across its supply chain.':riskLevel==='Moderate'?'Moderate traceability gaps exist. Targeted improvements in documentation and data availability are recommended.':'Significant traceability gaps exist across multiple supply chain stages. Urgent remediation is recommended before this company can be considered a trusted supply chain partner.'}`);
+
+  return `<div style="margin-bottom:18px;background:#f9fafc;border:1.5px solid #e0e3ed;border-radius:14px;padding:16px 18px;">
+    <div style="font-size:13px;font-weight:800;color:#1a1a2e;margin-bottom:12px;">📝 Traceability Assessment Summary</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      ${narrative.map(n=>`<div style="font-size:12px;color:#4a4e69;line-height:1.7;padding:8px 12px;background:#fff;border-radius:8px;border-left:3px solid #8b5cf6;">${n}</div>`).join('')}
+    </div>
+  </div>`;
+}
+
 function buildReview(){
   // Build stages for review WITHOUT overwriting global STAGES (which is used by KDE)
   const reviewStages=products.filter(Boolean).length?buildStages():STAGES;
@@ -2524,6 +2629,8 @@ function buildReview(){
   // regardless of entry path (resumed draft, direct nav, etc.)
   fillSkippedAsNotAvailableFor(reviewStages);
   rvOverrides={};
+  // Build company summary card (item 4)
+  buildCompanySummary();
   // Reviewer note banner
   document.getElementById('rv-score-area').insertAdjacentHTML('beforebegin',
     `<div style="background:#fffbeb;border:1.5px solid #fde68a;border-radius:12px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;">
@@ -2614,6 +2721,13 @@ function buildReview(){
     });
     html+=`</div></div>`;
   });
+  // Inject risk narrative (item 5) before the stage breakdown
+  document.getElementById('rv-narrative')?.remove(); // clear previous render
+  const narrativeEl=document.createElement('div');
+  narrativeEl.id='rv-narrative';
+  narrativeEl.innerHTML=buildRiskNarrative(reviewStages,riskTotal,riskMax);
+  const stagesEl=document.getElementById('rv-stages-area');
+  stagesEl.parentNode.insertBefore(narrativeEl,stagesEl);
   document.getElementById('rv-stages-area').innerHTML=html;
 }
 function toggleStage(i){const body=document.getElementById('rv-body-'+i);const chev=document.getElementById('rv-chev-'+i);body.classList.toggle('open');if(chev)chev.setAttribute('transform',body.classList.contains('open')?'rotate(180,12,12)':'');}
@@ -2957,6 +3071,7 @@ function openSCPopup(stageKey, stageTitle, explicitNodeId, explicitProduct){
   subEl.textContent=ownerProduct.desc||'';
   renderMiniGraph(flow, ownerProduct.scNodes||[], ownerProduct.scEdges||[], currentNodeId);
   currEl.textContent='You are currently filling: '+stageTitle;
+  _scPopupScale=1;_scPopupPanX=0;_scPopupPanY=0;_applyScPopupTransform();
   overlay.classList.add('open');
 }
 
@@ -3168,12 +3283,67 @@ function renderMiniGraph(container, nodes, edges, currentNodeId){
 
   container.innerHTML='';
   container.style.display='block';
-  container.style.overflowX='auto';
-  container.style.overflowY='auto';
+  container.style.overflow='visible';
   container.appendChild(svg);
 }
 
-function closeSCPopup(){document.getElementById('scPopupOverlay')?.classList.remove('open');}
+function closeSCPopup(){
+  document.getElementById('scPopupOverlay')?.classList.remove('open');
+  _scPopupScale=1;_scPopupPanX=0;_scPopupPanY=0;
+  _applyScPopupTransform();
+}
+let _scPopupScale=1,_scPopupPanX=0,_scPopupPanY=0,_scPopupDragging=false,_scPopupDragStart={x:0,y:0};
+function _applyScPopupTransform(){
+  const flow=document.getElementById('scPopupFlow');
+  if(flow)flow.style.transform=`translate(${_scPopupPanX}px,${_scPopupPanY}px) scale(${_scPopupScale})`;
+}
+function scPopupZoom(delta){
+  _scPopupScale=Math.min(2.5,Math.max(0.3,_scPopupScale+delta));
+  _applyScPopupTransform();
+}
+function scPopupZoomReset(){
+  _scPopupScale=1;_scPopupPanX=0;_scPopupPanY=0;
+  _applyScPopupTransform();
+}
+// Pan by drag
+(function(){
+  document.addEventListener('mousedown',e=>{
+    const wrap=document.getElementById('scPopupFlowWrap');
+    if(!wrap||!wrap.contains(e.target))return;
+    _scPopupDragging=true;
+    _scPopupDragStart={x:e.clientX-_scPopupPanX,y:e.clientY-_scPopupPanY};
+    wrap.style.cursor='grabbing';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!_scPopupDragging)return;
+    _scPopupPanX=e.clientX-_scPopupDragStart.x;
+    _scPopupPanY=e.clientY-_scPopupDragStart.y;
+    _applyScPopupTransform();
+  });
+  document.addEventListener('mouseup',()=>{
+    if(!_scPopupDragging)return;
+    _scPopupDragging=false;
+    const wrap=document.getElementById('scPopupFlowWrap');
+    if(wrap)wrap.style.cursor='grab';
+  });
+  // Touch pan
+  document.addEventListener('touchstart',e=>{
+    const wrap=document.getElementById('scPopupFlowWrap');
+    if(!wrap||!wrap.contains(e.target))return;
+    const t=e.touches[0];
+    _scPopupDragging=true;
+    _scPopupDragStart={x:t.clientX-_scPopupPanX,y:t.clientY-_scPopupPanY};
+  },{passive:true});
+  document.addEventListener('touchmove',e=>{
+    if(!_scPopupDragging)return;
+    const t=e.touches[0];
+    _scPopupPanX=t.clientX-_scPopupDragStart.x;
+    _scPopupPanY=t.clientY-_scPopupDragStart.y;
+    _applyScPopupTransform();
+  },{passive:true});
+  document.addEventListener('touchend',()=>{_scPopupDragging=false;});
+})();
 
 // ══ FULL QUESTION REVIEW ══
 function openFullQReview(){
