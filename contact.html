@@ -878,6 +878,29 @@
       else formDiv.insertBefore(banner, formDiv.firstChild);
     }
 
+    // ── Auto-attach result as virtual file ──
+    const resultText = sessionStorage.getItem('mri_result_text');
+    if (resultText) {
+      const filename = 'Manhattan_Readiness_Result_' + resultDate.replace(/ /g, '_') + '.txt';
+      const blob = new Blob([resultText], { type: 'text/plain' });
+      const virtualFile = new File([blob], filename, { type: 'text/plain' });
+      // Inject into the file input via DataTransfer
+      try {
+        const dt = new DataTransfer();
+        dt.items.add(virtualFile);
+        const fileInput = document.getElementById('resultFileInput');
+        if (fileInput) {
+          fileInput.files = dt.files;
+          // Trigger the UI update
+          attachedFile = virtualFile;
+          const filenameEl = document.getElementById('attachFilename');
+          const filenameText = document.getElementById('attachFileNameText');
+          if (filenameEl) filenameEl.style.display = 'flex';
+          if (filenameText) filenameText.textContent = filename;
+        }
+      } catch(e) { console.warn('Auto-attach failed:', e); }
+    }
+
     // ── Select "Request a Demo" category ──
     document.querySelectorAll('.contact-cat').forEach(b => b.classList.remove('active'));
     const demoBtn = [...document.querySelectorAll('.contact-cat')].find(b => b.textContent.includes('Demo'));
