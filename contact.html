@@ -11,21 +11,10 @@
     body { font-family: 'Poppins', 'DM Sans', sans-serif; background: #f4f6fb; color: #1a1a2e; }
 
     /* ── PUBLIC NAV ── */
-    
-    
     .public-nav-logo img{width:28px;height:28px;object-fit:contain;}
-    
-    
-    
-    
-    
     .public-nav-links a:hover{background:#f0f2f7;color:#1a1a2e;}
     .public-nav-links a.active{background:#f0f2f7;color:#1a1a2e;font-weight:600;}
-    
-    
     .public-nav-test:hover{background:#7c3aed;}
-    50%{box-shadow:0 0 0 8px rgba(139,92,246,0.1);}100%{box-shadow:0 0 0 0 rgba(139,92,246,0);}}
-    
     .public-nav-login:hover{background:#2d2d50;}
 
     /* ── HERO ── */
@@ -208,6 +197,14 @@
     .contact-success p { font-size: 14px; color: #6b7280; line-height: 1.7; margin-bottom: 24px; }
     .btn-reset { padding: 11px 28px; background: #f4f6fb; border: 1.5px solid #e0e3ed; border-radius: 999px; font-family: 'Poppins', sans-serif; font-size: 13px; font-weight: 600; color: #4a4e69; cursor: pointer; }
     .btn-reset:hover { border-color: #1a1a2e; color: #1a1a2e; }
+    .attach-zone { display:none; margin-bottom:16px; }
+    .attach-zone.visible { display:block; }
+    .attach-label { display:inline-flex; align-items:center; gap:8px; padding:10px 16px; background:#f4f0ff; border:1.5px dashed #c4b5fd; border-radius:10px; cursor:pointer; font-size:13px; font-weight:600; color:#7c3aed; transition:all 0.15s; width:100%; }
+    .attach-label:hover { background:#ede9fe; border-color:#8b5cf6; }
+    .attach-label svg { flex-shrink:0; }
+    .attach-filename { font-size:11px; color:#6b7280; margin-top:6px; display:flex; align-items:center; gap:6px; }
+    .attach-filename span { color:#7c3aed; font-weight:600; }
+    .attach-remove { background:none; border:none; color:#e63946; cursor:pointer; font-size:12px; font-weight:700; padding:0; }
 
     /* ── SIDEBAR ── */
     .contact-sidebar { display: flex; flex-direction: column; gap: 20px; }
@@ -559,11 +556,45 @@
     document.getElementById('contactCategory').value = val;
   }
 
+  let attachedFile = null;
+
+  function handleAttachment(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (!file.name.endsWith('.txt')) {
+      alert('Only .txt files are accepted.');
+      input.value = '';
+      return;
+    }
+    if (file.size > 100 * 1024) { // 100KB max for a txt file
+      alert('File too large. Max 100KB.');
+      input.value = '';
+      return;
+    }
+    attachedFile = file;
+    document.getElementById('attachFilename').style.display = 'flex';
+    document.getElementById('attachFileNameText').textContent = file.name;
+  }
+
+  function removeAttachment() {
+    attachedFile = null;
+    document.getElementById('resultFileInput').value = '';
+    document.getElementById('attachFilename').style.display = 'none';
+    document.getElementById('attachFileNameText').textContent = '';
+  }
+
   async function submitContact() {
     const name    = document.getElementById('contactName').value.trim();
     const email   = document.getElementById('contactEmail').value.trim();
     const subject = document.getElementById('contactSubject').value.trim();
-    const message = document.getElementById('contactMessage').value.trim();
+    let message = document.getElementById('contactMessage').value.trim();
+    // Append file content if attached
+    if (attachedFile) {
+      try {
+        const fileText = await attachedFile.text();
+        message += '\n\n--- ATTACHED READINESS RESULT ---\n' + fileText;
+      } catch(e) { console.warn('Could not read attachment:', e); }
+    }
     const cat     = document.getElementById('contactCategory').value;
     const company = document.getElementById('contactCompany').value.trim();
 
@@ -799,9 +830,16 @@
   <script>
   // Pre-fill form if redirected from assessment
   window.addEventListener('DOMContentLoaded', () => {
+    // Only activate attachment if arriving from assessment
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('from') !== 'assessment') return;
+
     const resultText = sessionStorage.getItem('mri_result_text');
     const resultDate = sessionStorage.getItem('mri_result_date');
     if (!resultText) return;
+
+    // Show attachment zone
+    document.getElementById('attachZone').classList.add('visible');
 
     // Show a notice banner
     const banner = document.createElement('div');
@@ -816,7 +854,7 @@
       </div>`;
 
     // Pre-fill message
-    const msgField = document.getElementById('message') || document.querySelector('textarea[name="message"]') || document.querySelector('textarea');
+    const msgField = document.getElementById('contactMessage');
     if (msgField) {
       msgField.value = `Hi Manhattan Team,
 
@@ -831,7 +869,7 @@ Looking forward to hearing from you.`;
     }
 
     // Pre-fill subject if there's one
-    const subjectField = document.getElementById('subject') || document.querySelector('input[name="subject"]');
+    const subjectField = document.getElementById('contactSubject');
     if (subjectField) subjectField.value = `Traceability Readiness Result — ${resultDate}`;
 
     // Clear after use
