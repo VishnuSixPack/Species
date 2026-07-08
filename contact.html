@@ -199,12 +199,58 @@
     .btn-reset:hover { border-color: #1a1a2e; color: #1a1a2e; }
     .attach-zone { display:none; margin-bottom:16px; }
     .attach-zone.visible { display:block; }
-    .attach-label { display:inline-flex; align-items:center; gap:8px; padding:10px 16px; background:#f4f0ff; border:1.5px dashed #c4b5fd; border-radius:10px; cursor:pointer; font-size:13px; font-weight:600; color:#7c3aed; transition:all 0.15s; width:100%; }
-    .attach-label:hover { background:#ede9fe; border-color:#8b5cf6; }
-    .attach-label svg { flex-shrink:0; }
-    .attach-filename { font-size:11px; color:#6b7280; margin-top:6px; display:flex; align-items:center; gap:6px; }
-    .attach-filename span { color:#7c3aed; font-weight:600; }
-    .attach-remove { background:none; border:none; color:#e63946; cursor:pointer; font-size:12px; font-weight:700; padding:0; }
+    /* Premium attach card */
+    .attach-card {
+      background: linear-gradient(135deg, #faf8ff 0%, #f4f0ff 100%);
+      border: 1.5px solid #e0d4fc;
+      border-radius: 14px;
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 4px 16px rgba(139,92,246,0.08), inset 0 1px 0 rgba(255,255,255,0.9);
+      position: relative;
+      overflow: hidden;
+    }
+    .attach-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #8b5cf6, #6366f1, #1a6fdb);
+      border-radius: 14px 14px 0 0;
+    }
+    .attach-card-icon {
+      width: 44px; height: 44px;
+      background: linear-gradient(135deg, #8b5cf6, #6366f1);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(139,92,246,0.3);
+    }
+    .attach-card-body { flex: 1; min-width: 0; }
+    .attach-card-title {
+      font-size: 13px; font-weight: 700; color: #1a1a2e;
+      margin-bottom: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .attach-card-meta { font-size: 11px; color: #9aa0b4; display: flex; align-items: center; gap: 8px; }
+    .attach-card-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #dcfce7; color: #16a34a;
+      border-radius: 999px; padding: 2px 8px;
+      font-size: 10px; font-weight: 700;
+    }
+    .attach-remove-btn {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: rgba(230,57,70,0.08);
+      border: 1px solid rgba(230,57,70,0.15);
+      color: #e63946; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; flex-shrink: 0;
+      transition: all 0.15s;
+    }
+    .attach-remove-btn:hover { background: #fff0f1; border-color: #e63946; }
 
     /* ── SIDEBAR ── */
     .contact-sidebar { display: flex; flex-direction: column; gap: 20px; }
@@ -477,16 +523,29 @@
         </div>
         <!-- Attachment — only shown for assessment users via JS -->
         <div class="attach-zone" id="attachZone">
-          <label class="attach-label" for="resultFileInput">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
-            Attach your Readiness Result (.txt)
-          </label>
           <input type="file" id="resultFileInput" accept=".txt" style="display:none;" onchange="handleAttachment(this)"/>
-          <div class="attach-filename" id="attachFilename" style="display:none;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
-            <span id="attachFileNameText"></span>
-            <button class="attach-remove" onclick="removeAttachment()" type="button">✕ Remove</button>
+          <!-- Attached file card -->
+          <div class="attach-card" id="attachFilename" style="display:none;">
+            <div class="attach-card-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+            </div>
+            <div class="attach-card-body">
+              <div class="attach-card-title" id="attachFileNameText">Manhattan_Readiness_Result.txt</div>
+              <div class="attach-card-meta">
+                <span class="attach-card-badge">
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                  Attached
+                </span>
+                <span>Traceability Readiness Result</span>
+              </div>
+            </div>
+            <button class="attach-remove-btn" onclick="removeAttachment()" type="button" title="Remove attachment">✕</button>
           </div>
+          <!-- Fallback manual attach (shown if auto-attach failed) -->
+          <label class="attach-label" for="resultFileInput" id="attachFallback" style="display:none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+            Attach Readiness Result (.txt)
+          </label>
         </div>
         <button class="btn-contact-submit" id="submitBtn" onclick="submitContact()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
@@ -587,6 +646,8 @@
     attachedFile = file;
     document.getElementById('attachFilename').style.display = 'flex';
     document.getElementById('attachFileNameText').textContent = file.name;
+    const fallback = document.getElementById('attachFallback');
+    if (fallback) fallback.style.display = 'none';
   }
 
   function removeAttachment() {
@@ -594,6 +655,8 @@
     document.getElementById('resultFileInput').value = '';
     document.getElementById('attachFilename').style.display = 'none';
     document.getElementById('attachFileNameText').textContent = '';
+    const fallback = document.getElementById('attachFallback');
+    if (fallback) fallback.style.display = 'flex';
   }
 
   async function submitContact() {
@@ -871,7 +934,7 @@
       banner.innerHTML = '<div style="width:32px;height:32px;background:#ede9fe;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
         + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>'
         + '<div><div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:3px;">Your readiness result is ready to attach</div>'
-        + '<div style="font-size:12px;color:#6b7280;line-height:1.5;">Your result from ' + resultDate + ' was downloaded. Use the attach button below to include it — our team will review your gaps and get back to you.</div></div>';
+        + '<div style="font-size:12px;color:#6b7280;line-height:1.5;">Your Traceability Readiness Result from ' + resultDate + ' has been automatically attached below. Just hit send and our team will review your gaps and get back to you.</div></div>';
       // Insert after the subtitle, before the category pills
       const sub = formDiv.querySelector('.contact-form-sub');
       if (sub) sub.after(banner);
@@ -897,6 +960,9 @@
           const filenameText = document.getElementById('attachFileNameText');
           if (filenameEl) filenameEl.style.display = 'flex';
           if (filenameText) filenameText.textContent = filename;
+          // Hide fallback label since auto-attach succeeded
+          const fallback = document.getElementById('attachFallback');
+          if (fallback) fallback.style.display = 'none';
         }
       } catch(e) { console.warn('Auto-attach failed:', e); }
     }
