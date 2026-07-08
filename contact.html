@@ -795,5 +795,49 @@
     login.addEventListener('click', () => { current = 'login'; });
   })();
   </script>
+
+  <script>
+  // Pre-fill form if redirected from assessment
+  window.addEventListener('DOMContentLoaded', () => {
+    const resultText = sessionStorage.getItem('mri_result_text');
+    const resultDate = sessionStorage.getItem('mri_result_date');
+    if (!resultText) return;
+
+    // Show a notice banner
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:#f4f0ff;border:1.5px solid #c4b5fd;border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px;font-family:"Poppins",sans-serif;';
+    banner.innerHTML = `
+      <div style="width:32px;height:32px;background:#ede9fe;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:3px;">Your readiness result is attached</div>
+        <div style="font-size:12px;color:#6b7280;line-height:1.5;">Your Traceability Readiness Result from ${resultDate} has been downloaded. Attach it to your message so our team can review your supply chain gaps and get back to you.</div>
+      </div>`;
+
+    // Pre-fill message
+    const msgField = document.getElementById('message') || document.querySelector('textarea[name="message"]') || document.querySelector('textarea');
+    if (msgField) {
+      msgField.value = `Hi Manhattan Team,
+
+I just completed the Traceability Readiness Check on ${resultDate} and would like to discuss my results and next steps.
+
+Please find my result file attached.
+
+Looking forward to hearing from you.`;
+      // Insert banner before the form or message field
+      const form = msgField.closest('form') || msgField.parentElement;
+      form.insertBefore(banner, form.firstChild);
+    }
+
+    // Pre-fill subject if there's one
+    const subjectField = document.getElementById('subject') || document.querySelector('input[name="subject"]');
+    if (subjectField) subjectField.value = `Traceability Readiness Result — ${resultDate}`;
+
+    // Clear after use
+    sessionStorage.removeItem('mri_result_text');
+    sessionStorage.removeItem('mri_result_date');
+  });
+  </script>
 </body>
 </html>
