@@ -475,6 +475,19 @@
           <label>Message <span class="required">*</span></label>
           <textarea id="contactMessage" rows="6" placeholder="Tell us more — the more detail, the better we can help you..."></textarea>
         </div>
+        <!-- Attachment — only shown for assessment users via JS -->
+        <div class="attach-zone" id="attachZone">
+          <label class="attach-label" for="resultFileInput">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+            Attach your Readiness Result (.txt)
+          </label>
+          <input type="file" id="resultFileInput" accept=".txt" style="display:none;" onchange="handleAttachment(this)"/>
+          <div class="attach-filename" id="attachFilename" style="display:none;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+            <span id="attachFileNameText"></span>
+            <button class="attach-remove" onclick="removeAttachment()" type="button">✕ Remove</button>
+          </div>
+        </div>
         <button class="btn-contact-submit" id="submitBtn" onclick="submitContact()">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
           Send Message
@@ -830,51 +843,49 @@
   <script>
   // Pre-fill form if redirected from assessment
   window.addEventListener('DOMContentLoaded', () => {
-    // Only activate attachment if arriving from assessment
     const params = new URLSearchParams(window.location.search);
     if (params.get('from') !== 'assessment') return;
 
-    const resultText = sessionStorage.getItem('mri_result_text');
     const resultDate = sessionStorage.getItem('mri_result_date');
-    if (!resultText) return;
+    if (!resultDate) return;
 
-    // Show attachment zone
-    document.getElementById('attachZone').classList.add('visible');
+    // ── Show attach zone ──
+    const attachZone = document.getElementById('attachZone');
+    if (attachZone) attachZone.classList.add('visible');
 
-    // Show a notice banner
-    const banner = document.createElement('div');
-    banner.style.cssText = 'background:#f4f0ff;border:1.5px solid #c4b5fd;border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px;font-family:"Poppins",sans-serif;';
-    banner.innerHTML = `
-      <div style="width:32px;height:32px;background:#ede9fe;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-      </div>
-      <div>
-        <div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:3px;">Your readiness result is attached</div>
-        <div style="font-size:12px;color:#6b7280;line-height:1.5;">Your Traceability Readiness Result from ${resultDate} has been downloaded. Attach it to your message so our team can review your supply chain gaps and get back to you.</div>
-      </div>`;
+    // ── Pre-fill subject ──
+    const subjectField = document.getElementById('contactSubject');
+    if (subjectField) subjectField.value = 'Traceability Readiness Result — ' + resultDate;
 
-    // Pre-fill message
+    // ── Pre-fill message ──
     const msgField = document.getElementById('contactMessage');
     if (msgField) {
-      msgField.value = `Hi Manhattan Team,
-
-I just completed the Traceability Readiness Check on ${resultDate} and would like to discuss my results and next steps.
-
-Please find my result file attached.
-
-Looking forward to hearing from you.`;
-      // Insert banner before the form or message field
-      const form = msgField.closest('form') || msgField.parentElement;
-      form.insertBefore(banner, form.firstChild);
+      msgField.value = 'Hi Manhattan Team,\n\nI just completed the Traceability Readiness Check on ' + resultDate + ' and would like to discuss my results and next steps.\n\nPlease find my result file attached.\n\nLooking forward to hearing from you.';
     }
 
-    // Pre-fill subject if there's one
-    const subjectField = document.getElementById('contactSubject');
-    if (subjectField) subjectField.value = `Traceability Readiness Result — ${resultDate}`;
+    // ── Insert banner at top of contactForm div ──
+    const formDiv = document.getElementById('contactForm');
+    if (formDiv) {
+      const banner = document.createElement('div');
+      banner.style.cssText = 'background:#f4f0ff;border:1.5px solid #c4b5fd;border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px;';
+      banner.innerHTML = '<div style="width:32px;height:32px;background:#ede9fe;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+        + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>'
+        + '<div><div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:3px;">Your readiness result is ready to attach</div>'
+        + '<div style="font-size:12px;color:#6b7280;line-height:1.5;">Your result from ' + resultDate + ' was downloaded. Use the attach button below to include it — our team will review your gaps and get back to you.</div></div>';
+      // Insert after the subtitle, before the category pills
+      const sub = formDiv.querySelector('.contact-form-sub');
+      if (sub) sub.after(banner);
+      else formDiv.insertBefore(banner, formDiv.firstChild);
+    }
 
-    // Clear after use
-    sessionStorage.removeItem('mri_result_text');
+    // ── Select "Request a Demo" category ──
+    document.querySelectorAll('.contact-cat').forEach(b => b.classList.remove('active'));
+    const demoBtn = [...document.querySelectorAll('.contact-cat')].find(b => b.textContent.includes('Demo'));
+    if (demoBtn) { demoBtn.classList.add('active'); document.getElementById('contactCategory').value = 'Request a Demo'; }
+
+    // Clear sessionStorage after use
     sessionStorage.removeItem('mri_result_date');
+    sessionStorage.removeItem('mri_result_text');
   });
   </script>
 </body>
