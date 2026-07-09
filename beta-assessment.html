@@ -1621,7 +1621,15 @@ function renderKDE(){
         </div>
         ${answered>0?`<span class="inst-frozen-progress">✓ ${answered}/${total}</span>`:''}
         <span class="inst-frozen-counter">${subIdx+1} of ${totalInsts}</span>
-      </div>`;
+      </div>
+      ${inst.vesselCount>1?`<div style="display:flex;gap:10px;align-items:flex-start;background:#fffbeb;border:1.5px solid #fde68a;border-radius:10px;padding:10px 14px;margin-bottom:10px;">
+        <span style="font-size:16px;flex-shrink:0;">⚠️</span>
+        <div style="font-size:11px;color:#92400e;line-height:1.6;">
+          <strong>You have ${inst.vesselCount} vessels in this group.</strong> Your answers apply to <em>all ${inst.vesselCount} vessels collectively</em>.
+          If even <strong>one vessel</strong> cannot provide a data element (e.g. IMO number, VMS tracking), you must select <strong>Partial</strong> or <strong>Not Available</strong> —
+          a single vessel's gap brings the entire fleet's score down for that KDE.
+        </div>
+      </div>`:''}`;
     }
 
     // Sub-Q for landing
@@ -2122,10 +2130,10 @@ async function doSubmit(){
 
 // ══ REVIEW SCREEN ══
 const KDE_PARTIAL_SCORES={
-  'fv_name':30,
-  'fv_imo':30,
+  'fv_name':50,
+  'fv_imo':50,
   'fv_uid':10,
-  'fv_flag':30,
+  'fv_flag':50,
   'fv_registry':30,
   'fv_vms':30,
   'fv_ais':30,
@@ -2541,24 +2549,55 @@ function buildCompanySummary(){
   const el=document.getElementById('rv-company-summary');
   if(!el||!prods.length)return;
 
-  // Build product + SC cards
-  const prodCards=prods.map(p=>{
+  const prodCards=prods.map((p,pi)=>{
     const chainLabels=(p.chain||[]).map(n=>{
       const cfg=CTE_CFG[n.type]||{l:n.type,i:'📦'};
       const sameType=(p.chain||[]).filter(x=>x.type===n.type).length;
-      const numLabel=sameType>1?(n.entityName?` — ${n.entityName}`:(ROMAN[(n.instanceNum||1)-1]?' '+(ROMAN[(n.instanceNum||1)-1]):'')):'';
+      const numLabel=sameType>1?(n.entityName?` — ${n.entityName}`:(ROMAN[(n.instanceNum||1)-1]?' '+(ROMAN[(n.instanceNum||1)-1]):'')):''
       return `<span style="display:inline-flex;align-items:center;gap:3px;background:#f4f6fb;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:600;color:#1a1a2e;margin:2px;">${cfg.i} ${cfg.l}${numLabel}</span>`;
     }).join('<span style="color:#c0c4d0;font-size:10px;margin:0 2px;">→</span>');
     const mktList=(p.markets||[]).join(', ')||'—';
+
+    // Per-product score: KDEs prefixed with this product's node IDs
+    const nodeIds=new Set((p.chain||[]).map(n=>n.id));
+    let prodTotal=0,prodMax=0,prodAvailCount=0,prodKdeCount=0;
+    Object.entries(kResp).forEach(([id,r])=>{
+      if(id.startsWith('_')||!r||!r.ans)return;
+      const belongsToProduct=[...nodeIds].some(nid=>id.startsWith(nid+'_'));
+      if(!belongsToProduct)return;
+      prodMax+=50;prodKdeCount++;
+      if(r.ans==='av')prodAvailCount++;
+      const penalty=r.ans==='av'?0:r.ans==='pa'?getPartialScore(id):50;
+      prodTotal+=penalty;
+    });
+    const prodPct=prodMax?Math.round((prodTotal/prodMax)*100):0;
+    const tracePct=prodMax?Math.round((prodAvailCount/prodKdeCount)*100):0;
+    const missPct=100-tracePct;
+    const missColor=prodPct<=20?'#16a34a':prodPct<=50?'#f59e0b':'#e63946';
+    const missBg=prodPct<=20?'#f0fdf4':prodPct<=50?'#fffbeb':'#fff5f5';
+    const missBorder=prodPct<=20?'#bbf7d0':prodPct<=50?'#fde68a':'#fecaca';
+
     return `<div style="background:#fff;border:1.5px solid #f0f2f8;border-radius:12px;padding:12px 16px;margin-bottom:8px;">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-        <span style="font-size:14px;">🐟</span>
-        <span style="font-size:13px;font-weight:800;color:#1a1a2e;">${p.desc||'Unnamed Product'}</span>
-        ${p.cert?`<span style="font-size:10px;font-weight:700;color:#16a34a;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px;padding:1px 8px;">${p.cert}</span>`:''}
-        ${p.form?`<span style="font-size:10px;font-weight:600;color:#6b7280;background:#f4f6fb;border-radius:5px;padding:1px 8px;">${p.form}</span>`:''}
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px;">
+        <div style="flex:1;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span style="font-size:14px;">🐟</span>
+            <span style="font-size:13px;font-weight:800;color:#1a1a2e;">${p.desc||'Unnamed Product'}</span>
+            ${p.cert?`<span style="font-size:10px;font-weight:700;color:#16a34a;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px;padding:1px 8px;">${p.cert}</span>`:''}
+            ${p.form?`<span style="font-size:10px;font-weight:600;color:#6b7280;background:#f4f6fb;border-radius:5px;padding:1px 8px;">${p.form}</span>`:''}
+          </div>
+          <div style="font-size:10px;color:#9aa0b4;margin-bottom:4px;">Species: <strong style="color:#1a1a2e;">${p.species||'—'}</strong> &nbsp;|&nbsp; Markets: <strong style="color:#1a1a2e;">${mktList}</strong></div>
+        </div>
+        ${prodMax>0?`<div style="text-align:center;background:${missBg};border:1.5px solid ${missBorder};border-radius:10px;padding:8px 14px;flex-shrink:0;">
+          <div style="font-size:20px;font-weight:800;color:${missColor};">${missPct}%</div>
+          <div style="font-size:9px;font-weight:700;color:${missColor};white-space:nowrap;">traceability missing</div>
+          <div style="font-size:9px;color:#9aa0b4;margin-top:2px;">${tracePct}% data available</div>
+        </div>`:''}
       </div>
-      <div style="font-size:10px;color:#9aa0b4;margin-bottom:4px;">Species: <strong style="color:#1a1a2e;">${p.species||'—'}</strong> &nbsp;|&nbsp; Markets: <strong style="color:#1a1a2e;">${mktList}</strong></div>
-      <div style="display:flex;flex-wrap:wrap;align-items:center;margin-top:6px;">${chainLabels||'<span style="font-size:11px;color:#9aa0b4;">No supply chain built</span>'}</div>
+      ${prodMax>0?`<div style="background:#e8eaf0;border-radius:999px;height:5px;margin-bottom:8px;" title="${missPct}% traceability missing">
+        <div style="background:${missColor};border-radius:999px;height:5px;width:${missPct}%;"></div>
+      </div>`:''}
+      <div style="display:flex;flex-wrap:wrap;align-items:center;">${chainLabels||'<span style="font-size:11px;color:#9aa0b4;">No supply chain built</span>'}</div>
     </div>`;
   }).join('');
 
@@ -2568,7 +2607,6 @@ function buildCompanySummary(){
     ${prodCards}
   </div>`;
 }
-
 function buildRiskNarrative(reviewStages,score,max){
   // Analyse gaps by category
   const prods=products.filter(Boolean);
@@ -2658,13 +2696,22 @@ function buildReview(){
   const badge=pct<=20?'🟢 Low Risk':pct<=50?'🟡 Moderate Risk':'🔴 High Risk';
   document.getElementById('rv-score-area').innerHTML=`<div class="rv-score-card">
     <div>
-      <div class="rv-score-num" id="rv-score-num">${riskTotal}</div>
-      <div style="font-size:11px;opacity:0.7;margin-top:4px;">total risk score — lower is better</div>
+      <div style="display:flex;align-items:baseline;gap:6px;">
+        <div class="rv-score-num" id="rv-score-num">${riskTotal}</div>
+        <div style="font-size:22px;font-weight:700;color:#c0c4d0;">/ ${riskMax}</div>
+      </div>
+      <div style="font-size:11px;opacity:0.7;margin-top:4px;">risk points — lower is better</div>
+      <div style="margin-top:8px;">
+        <div style="background:#e8eaf0;border-radius:999px;height:6px;width:160px;">
+          <div class="rv-progress-bar" style="background:${pct<=20?'#16a34a':pct<=50?'#f59e0b':'#e63946'};border-radius:999px;height:6px;width:${pct}%;transition:width 0.4s;"></div>
+        </div>
+        <div class="rv-pct-lbl" style="font-size:11px;font-weight:700;color:${pct<=20?'#16a34a':pct<=50?'#f59e0b':'#e63946'};margin-top:4px;">${pct}% risk exposure</div>
+      </div>
     </div>
     <div style="text-align:right;">
       <div class="rv-score-badge">${badge}</div>
       <div style="font-size:11px;opacity:0.7;margin-top:8px;">${answered} of ${totalKdes} KDEs answered</div>
-      <div style="font-size:10px;opacity:0.55;margin-top:4px;">Available=0 · Partial=10 or 30 · Not Available=50</div>
+      <div style="font-size:10px;opacity:0.55;margin-top:4px;">Available=0 · Partial=10,30,50 · Not Available=50</div>
     </div>
   </div>`;
   let html='';
@@ -2796,12 +2843,16 @@ function rerenderScoreBox(qid){
 }
 function recalcReview(){
   const{total,max}=calcScore(rvOverrides);
+  const pct=max?Math.round((total/max)*100):0;
   const el=document.getElementById('rv-score-num');
   if(el)el.textContent=total;
-  // Update badge too
-  const pct=max?Math.round((total/max)*100):0;
   const badgeEl=document.querySelector('.rv-score-badge');
   if(badgeEl)badgeEl.textContent=pct<=20?'🟢 Low Risk':pct<=50?'🟡 Moderate Risk':'🔴 High Risk';
+  // Update progress bar
+  const bar=document.querySelector('.rv-score-card .rv-progress-bar');
+  if(bar){bar.style.width=pct+'%';bar.style.background=pct<=20?'#16a34a':pct<=50?'#f59e0b':'#e63946';}
+  const pctLbl=document.querySelector('.rv-score-card .rv-pct-lbl');
+  if(pctLbl){pctLbl.textContent=pct+'% risk exposure';pctLbl.style.color=pct<=20?'#16a34a':pct<=50?'#f59e0b':'#e63946';}
 }
 
 // ── Evidence preview ──
