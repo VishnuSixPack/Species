@@ -2703,8 +2703,20 @@ function buildReview(){
     </div>`
   );
   const{total:riskTotal,max:riskMax}=calcScore(rvOverrides);
-  const answered=Object.keys(kResp).filter(k=>!k.startsWith('_')&&kResp[k]?.ans).length;
-  const totalKdes=reviewStages.reduce((acc,st)=>acc+(st.instances||[]).reduce((a,sub)=>a+(sub.qs||[]).length,0),0);
+  // Use the same resolved question set for both answered and total counts
+  // so dynamic stages (Landing/ShipReceive) are counted correctly
+  const prods4=products.filter(Boolean);
+  const markets4=new Set();prods4.forEach(p=>(p.markets||[]).forEach(m=>markets4.add(m)));
+  const hasEU4=[...markets4].some(m=>EU27.includes(m)),hasUS4=markets4.has('US');
+  const frozen4=prods4.some(p=>p.form==='Frozen'||p.form==='Smoked');
+  let totalKdes=0,answered=0;
+  reviewStages.forEach(st=>{
+    (st.instances||[]).forEach(sub=>{
+      const resolvedQs=resolveReviewSubQs(st,sub,hasEU4,hasUS4,frozen4);
+      totalKdes+=resolvedQs.length;
+      answered+=resolvedQs.filter(q=>kResp[q.id]?.ans&&!kResp[q.id]?.autoSkipped).length;
+    });
+  });
   const pct=riskMax?Math.round((riskTotal/riskMax)*100):0;
   const badge=pct<=20?'🟢 Low Risk':pct<=50?'🟡 Moderate Risk':'🔴 High Risk';
   document.getElementById('rv-score-area').innerHTML=`<div class="rv-score-card">
