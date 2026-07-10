@@ -323,31 +323,105 @@ document.addEventListener('click',e=>{
 });
 
 // ── ISSF ──
-function checkISSF(commonTradeName){
-  if(commonTradeName&&commonTradeName.toLowerCase().includes('tuna')){
+// ── ISSF species → Tableau shared path map ──
+const ISSF_SPECIES_MAP = {
+  'skipjack':  { path: 'shared/B9N7D7C7N', note: null },
+  'yellowfin': { path: 'shared/8HFMG6QJH', note: 'Filtered to WCPO (Western & Central Pacific Ocean). Use the filter panel to explore other ocean regions.' },
+  'bigeye':    { path: 'shared/XFJC8Z3K6', note: 'Filtered to WCPO (Western & Central Pacific Ocean). Use the filter panel to explore other ocean regions.' },
+  'bluefin':   { path: 'shared/63ZY9CN4S', note: 'Showing all stock areas. Use the Filter by Stock Area panel to narrow by ocean region.' },
+  'albacore':  { path: 'shared/SRFKBD559', note: 'Showing all stock areas. Use the Filter by Stock Area panel to narrow by ocean region.' },
+};
+
+let currentISSFSpecies = null;
+
+function getISSFEntry(name) {
+  if (!name) return null;
+  const lower = name.toLowerCase();
+  for (const [key, val] of Object.entries(ISSF_SPECIES_MAP)) {
+    if (lower.includes(key)) return { key, ...val };
+  }
+  // Generic tuna fallback — skipjack
+  if (lower.includes('tuna')) return { key: 'tuna', path: 'shared/B9N7D7C7N', note: 'Showing Skipjack Tuna data. Species-specific data may vary.' };
+  return null;
+}
+
+function checkISSF(commonTradeName) {
+  const entry = getISSFEntry(commonTradeName);
+  if (entry) {
+    currentISSFSpecies = { name: commonTradeName, ...entry };
     document.getElementById('issfBtn').classList.add('show');
-    document.getElementById('issfDivider').style.display='block';
-    document.getElementById('issfSpeciesName').textContent=commonTradeName;
+    document.getElementById('issfDivider').style.display = 'block';
+    document.getElementById('issfSpeciesName').textContent = commonTradeName;
   }
 }
-function openISSF(){
-  const modal=document.getElementById('issfModal');
-  const body=document.getElementById('issfBody');
-  const loading=document.getElementById('issfLoading');
-  loading.style.display='flex';
-  const tableauHtml=`<div class='tableauPlaceholder' id='viz1781259503444' style='width:100%;height:100%;'><object class='tableauViz' style='width:100%;height:100%;'><param name='host_url' value='https%3A%2F%2Fpublic.tableau.com%2F'/><param name='embed_code_version' value='3'/><param name='path' value='shared/B9N7D7C7N'/><param name='toolbar' value='yes'/></object></div>`;
-  body.innerHTML=tableauHtml;
-  const script=document.createElement('script');
-  script.src='https://public.tableau.com/javascripts/api/viz_v1.js';
-  script.onload=()=>{
-    loading.style.display='none';
-    const divEl=document.getElementById('viz1781259503444');
-    if(divEl){const vizEl=divEl.getElementsByTagName('object')[0];if(vizEl){vizEl.style.width='100%';vizEl.style.height='100%';}}
-  };
-  setTimeout(()=>{loading.style.display='none';},3000);
-  document.body.appendChild(script);
+
+function openISSF() {
+  if (!currentISSFSpecies) return;
+  const modal   = document.getElementById('issfModal');
+  const body    = document.getElementById('issfBody');
+  const loading = document.getElementById('issfLoading');
+  loading.style.display = 'flex';
+
+  const vizId   = 'issf-viz-' + Date.now();
+  const path    = currentISSFSpecies.path;
+  const note    = currentISSFSpecies.note;
+
+  let noteHtml = '';
+  if (note) {
+    noteHtml = `<div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 14px;margin-top:10px;font-size:11px;color:#0369a1;display:flex;align-items:flex-start;gap:8px;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0369a1" stroke-width="2" style="flex-shrink:0;margin-top:1px;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      ${note}
+    </div>`;
+  }
+
+  body.innerHTML = `
+    <div style="width:100%;height:100%;display:flex;flex-direction:column;padding:12px;">
+      <div style="flex:1;min-height:0;position:relative;">
+        <div class="issf-loading" id="issfLoading" style="display:flex;">
+          <div class="issf-loading-spinner"></div>
+          Loading ISSF Stock Status...
+        </div>
+        <div class='tableauPlaceholder' id='${vizId}' style='width:100%;height:100%;'>
+          <object class='tableauViz' style='width:100%;height:100%;display:none;'>
+            <param name='host_url' value='https%3A%2F%2Fpublic.tableau.com%2F'/>
+            <param name='embed_code_version' value='3'/>
+            <param name='path' value='${path}'/>
+            <param name='toolbar' value='yes'/>
+          </object>
+        </div>
+      </div>
+      ${noteHtml}
+    </div>`;
+
+  // Load Tableau script
+  const existing = document.querySelector('script[src*="viz_v1.js"]');
+  if (existing) {
+    // Already loaded — just init the viz
+    initTableauViz(vizId);
+  } else {
+    const script = document.createElement('script');
+    script.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';
+    script.onload = () => initTableauViz(vizId);
+    document.body.appendChild(script);
+  }
+
+  setTimeout(() => {
+    const l = document.getElementById('issfLoading');
+    if (l) l.style.display = 'none';
+  }, 4000);
+
   modal.classList.add('open');
-  document.body.style.overflow='hidden';
+  document.body.style.overflow = 'hidden';
+}
+
+function initTableauViz(vizId) {
+  const l = document.getElementById('issfLoading');
+  if (l) l.style.display = 'none';
+  const divEl = document.getElementById(vizId);
+  if (divEl) {
+    const vizEl = divEl.getElementsByTagName('object')[0];
+    if (vizEl) { vizEl.style.width='100%'; vizEl.style.height='100%'; vizEl.style.display='block'; }
+  }
 }
 function closeISSF(){
   document.getElementById('issfModal').classList.remove('open');
@@ -358,13 +432,16 @@ function closeISSFOutside(e){
   if(e.target===document.getElementById('issfModal'))closeISSF();
 }
 
-// Watch for common_trade_family_name to be populated by detail.js
-const observer=new MutationObserver(()=>{
-  const el=document.getElementById('s-common_trade_family_name');
-  if(el&&el.textContent&&el.textContent!=='—'){checkISSF(el.textContent);observer.disconnect();}
+// Patch fillField from detail.js to intercept common trade name
+window.addEventListener('load', () => {
+  const _origFill = window.fillField;
+  if (typeof _origFill === 'function') {
+    window.fillField = function(id, value, suffix) {
+      _origFill(id, value, suffix);
+      if (id === 's-common_trade_family_name' && value) checkISSF(value);
+    };
+  }
 });
-const target=document.getElementById('s-common_trade_family_name');
-if(target)observer.observe(target,{childList:true,characterData:true,subtree:true});
 </script>
 
 <!-- CONFIRM OVERLAY -->
