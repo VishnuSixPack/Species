@@ -575,15 +575,27 @@ select:focus{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
           <div class="sub-sec-title">FFA Technical Details</div>
           <div class="g3">
             <div class="field"><span>Refrigerant Used Type</span><input id="ffa_refrigerant_type" placeholder="e.g. R404A"/></div>
-            <div class="field"><span>Refrigerant Capacity</span><input id="ffa_refrigerant_cap" type="number" placeholder="kg" step="any"/></div>
+            <div class="field"><span>Refrigerant Capacity</span>
+          <div class="inline-pair">
+            <input id="ffa_refrigerant_cap" type="number" step="any" placeholder="Amount"/>
+            <input id="ffa_refrigerant_unit" placeholder="kg / lb" style="min-width:70px"/>
+          </div></div>
             <div class="field"><span>Engine Model</span><input id="ffa_engine_model" placeholder="e.g. Caterpillar 3516"/></div>
             <div class="field"><span>Total Engine Power</span>
           <div class="inline-pair">
             <input id="ffa_total_engine_power" type="number" placeholder="e.g. 3600" step="any"/>
             <select id="ffa_engine_power_unit" style="min-width:80px"><option value="kW">kW</option><option value="PS">PS</option><option value="BHP">BHP</option></select>
           </div></div>
-            <div class="field"><span>Rated Speed</span><input id="ffa_rated_speed" type="number" placeholder="RPM" step="any"/></div>
-            <div class="field"><span>Total Fuel Capacity (L)</span><input id="ffa_fuel_capacity" type="number" placeholder="Litres" step="any"/></div>
+            <div class="field"><span>Rated Speed</span>
+          <div class="inline-pair">
+            <input id="ffa_rated_speed" type="number" step="any" placeholder="Value"/>
+            <input id="ffa_rated_speed_unit" placeholder="knots / kmph" style="min-width:80px"/>
+          </div></div>
+            <div class="field"><span>Total Fuel Capacity</span>
+          <div class="inline-pair">
+            <input id="ffa_fuel_capacity" type="number" step="any" placeholder="Amount"/>
+            <input id="ffa_fuel_unit" placeholder="L / MT / gal" style="min-width:70px"/>
+          </div></div>
           </div>
         </div>
       </div>
@@ -892,7 +904,7 @@ function buildPVR(){
   b.innerHTML=PVR_MEASURES.map(m=>`<tr>
     <td style="font-weight:500;padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px">${m.label}</td>
     <td style="padding:10px 12px;border-bottom:1px solid var(--line)">
-      <select class="pvr-select" data-key="${m.key}" style="height:36px;border-radius:8px;font-size:12.5px;min-width:100px">
+      <select class="pvr-select" data-key="${m.key}" data-label="${m.label}" style="height:36px;border-radius:8px;font-size:12.5px;min-width:100px">
         <option value="N/A" selected>N/A</option><option value="Y">Y — Yes</option><option value="N">N — No</option><option value="IP">IP — In Progress</option><option value="-">– Not required</option>
       </select></td>
     <td style="padding:10px 12px;border-bottom:1px solid var(--line)">
@@ -1057,7 +1069,7 @@ async function loadVessel(id){
     'registered_owner','registered_owner_addr','beneficial_owner','beneficial_owner_addr',
     'operator_manager','operator_addr','charterer','charterer_addr','charter_notified_by','charter_host_ccm','charter_notes',
     'uk_auth_no','uk_activities','eu_approval_no','ffa_id','ffa_status','ffa_registrant_acting','ffa_reason_deregistration',
-    'ffa_refrigerant_type','ffa_refrigerant_cap','ffa_engine_model','ffa_total_engine_power','ffa_rated_speed','ffa_fuel_capacity',
+    'ffa_refrigerant_type','ffa_refrigerant_cap','ffa_refrigerant_unit','ffa_engine_model','ffa_total_engine_power','ffa_rated_speed','ffa_rated_speed_unit','ffa_fuel_capacity','ffa_fuel_unit',
     'wcpfc_vid','wcpfc_auth_no','wcpfc_auth_form','wcpfc_species','wcpfc_auth_areas','wcpfc_deletion_reason','wcpfc_registry_url',
     'iattc_no','iattc_status','iattc_registry_url',
     'uvi_number','uvi_type','uvi_issf_compliant','pvr_authorized_rfmos',
@@ -1155,9 +1167,9 @@ $('vForm').addEventListener('submit',async e=>{
     ffa_good_standing:gb('ffa_good_standing'),ffa_id:g('ffa_id'),ffa_status:g('ffa_status'),
     ffa_registration_date:gd('ffa_registration_date'),ffa_registration_end:gd('ffa_registration_end'),
     ffa_registrant_acting:g('ffa_registrant_acting'),ffa_reason_deregistration:g('ffa_reason_deregistration'),
-    ffa_refrigerant_type:g('ffa_refrigerant_type'),ffa_refrigerant_cap:g('ffa_refrigerant_cap')||null,
+    ffa_refrigerant_type:g('ffa_refrigerant_type'),ffa_refrigerant_cap:g('ffa_refrigerant_cap')||null,ffa_refrigerant_unit:g('ffa_refrigerant_unit'),
     ffa_engine_model:g('ffa_engine_model'),ffa_total_engine_power:g('ffa_total_engine_power')||null,
-    ffa_rated_speed:g('ffa_rated_speed')||null,ffa_fuel_capacity:g('ffa_fuel_capacity')||null,
+    ffa_rated_speed:g('ffa_rated_speed')||null,ffa_rated_speed_unit:g('ffa_rated_speed_unit'),ffa_fuel_capacity:g('ffa_fuel_capacity')||null,ffa_fuel_unit:g('ffa_fuel_unit'),
     flag_state_reg:gb('flag_state_reg'),flag_state_foc:gb('flag_state_foc'),
     rfmo_wcpfc:gb('rfmo_wcpfc'),wcpfc_vid:g('wcpfc_vid'),wcpfc_auth_no:g('wcpfc_auth_no'),
     wcpfc_auth_form:g('wcpfc_auth_form'),wcpfc_tranship_hs:gb('wcpfc_tranship_hs'),
@@ -1211,7 +1223,7 @@ $('vForm').addEventListener('submit',async e=>{
     const pvrSels=document.querySelectorAll('.pvr-select');
     for(const s of pvrSels){
       const note=document.querySelector(`.pvr-note[data-key="${s.dataset.key}"]`);
-      await sb.from('vessel_pvr_measures').upsert({vessel_id:vesselId,measure_key:s.dataset.key,measure_label:s.dataset.key,status:s.value,notes:note?.value||null},{onConflict:'vessel_id,measure_key'});
+      await sb.from('vessel_pvr_measures').upsert({vessel_id:vesselId,measure_key:s.dataset.key,measure_label:s.dataset.label||s.dataset.key,status:s.value,notes:note?.value||null},{onConflict:'vessel_id,measure_key'});
     }
 
     toast(editId?'Vessel updated':'Vessel saved');

@@ -307,9 +307,9 @@ if(new URLSearchParams(location.search).get('id')){
       <div class="sidebar-tags" id="sideTags"></div>
       <div class="sidebar-fields" id="sideFields"></div>
       <div class="sidebar-divider"></div>
-      <button class="btn-tracking" onclick="alert('Vessel tracking via Datalastic — coming soon.')">
+      <button class="btn-tracking" id="trackingBtn" onclick="openTracking()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
-        Tracking
+        Live Tracking
       </button>
     </div>
   </div>
@@ -347,6 +347,38 @@ if(new URLSearchParams(location.search).get('id')){
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- AIS TRACKING MODAL -->
+<div id="aisModal" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(20,24,45,.6);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:20px;box-shadow:0 8px 32px rgba(20,24,45,.18);width:900px;max-width:97vw;max-height:90vh;overflow:hidden;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line);flex-shrink:0">
+      <div>
+        <div style="font-size:16px;font-weight:700" id="aisTitle">Live Vessel Tracking</div>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:2px" id="aisSub">Powered by MarineTraffic · AIS data</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <a id="aisExtLink" href="#" target="_blank" rel="noopener"
+          style="height:36px;padding:0 14px;border-radius:9px;border:1.5px solid var(--border);background:#fff;font:inherit;font-size:12.5px;font-weight:600;color:var(--text);text-decoration:none;display:inline-flex;align-items:center;gap:6px">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Open in MarineTraffic
+        </a>
+        <button onclick="closeTracking()" style="width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border);background:#fff;cursor:pointer;font-size:17px;color:var(--soft);display:flex;align-items:center;justify-content:center;transition:.14s" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--soft)'">✕</button>
+      </div>
+    </div>
+    <div id="aisContent" style="flex:1;min-height:0;position:relative;background:#f0f2f7">
+      <div id="aisLoading" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--muted)">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        <span style="font-size:13px">Loading vessel position…</span>
+      </div>
+      <iframe id="aisFrame" style="width:100%;height:520px;border:none;display:none" allowfullscreen></iframe>
+    </div>
+    <div id="aisNoMMSI" style="display:none;padding:32px;text-align:center;color:var(--muted)">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--soft)" stroke-width="1.5" style="margin-bottom:12px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px">No MMSI number recorded</div>
+      <div style="font-size:13px">AIS tracking requires an MMSI number. Add one to this vessel record to enable live tracking.</div>
+    </div>
+  </div>
+</div>
 
 <script>
 const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
@@ -612,11 +644,11 @@ async function renderCompliance(v){
         <div><div class="dt">Registrant Acting As</div>${val(v.ffa_registrant_acting)}</div>
         <div><div class="dt">Reason Deregistration</div>${val(v.ffa_reason_deregistration)}</div>
         <div><div class="dt">Refrigerant Type</div>${val(v.ffa_refrigerant_type)}</div>
-        <div><div class="dt">Refrigerant Capacity</div>${val(v.ffa_refrigerant_cap)}</div>
+        <div><div class="dt">Refrigerant Capacity</div>${val(v.ffa_refrigerant_cap?(v.ffa_refrigerant_cap+' '+(v.ffa_refrigerant_unit||'')).trim():null)}</div>
         <div><div class="dt">Engine Model</div>${val(v.ffa_engine_model)}</div>
         <div><div class="dt">Total Engine Power</div>${val(v.ffa_total_engine_power)}</div>
-        <div><div class="dt">Rated Speed</div>${val(v.ffa_rated_speed)}</div>
-        <div><div class="dt">Fuel Capacity</div>${val(v.ffa_fuel_capacity)}</div>
+        <div><div class="dt">Rated Speed</div>${val(v.ffa_rated_speed?(v.ffa_rated_speed+' '+(v.ffa_rated_speed_unit||'')).trim():null)}</div>
+        <div><div class="dt">Total Fuel Capacity</div>${val(v.ffa_fuel_capacity?(v.ffa_fuel_capacity+' '+(v.ffa_fuel_unit||'')).trim():null)}</div>
         `:''}
       </div>
     </div>
@@ -703,7 +735,7 @@ async function renderISSF(v){
     <div class="dl" style="margin-bottom:16px">
       <div><div class="dt">UVI Number</div>${val(v.uvi_number)}</div>
       <div><div class="dt">UVI Type</div>${val(v.uvi_type)}</div>
-      <div><div class="dt">Authorized RFMO</div>${val(v.pvr_authorized_rfmo)}</div>
+      <div><div class="dt">Authorized RFMO(s)</div>${val((v.pvr_authorized_rfmos||[]).length?(v.pvr_authorized_rfmos.join(", ")):null)}</div>
       <div><div class="dt">UVI ISSF Compliant?</div>${bool(v.uvi_issf_compliant)}</div>
       ${v.pvr_last_synced?`<div class="full"><div class="dt">Last Synced</div><div class="dd">${fmtDate(v.pvr_last_synced)}</div></div>`:''}
     </div>
@@ -1044,6 +1076,53 @@ async function saveModal(){
 function toggleAvatarMenu(){$('avatarMenu').classList.toggle('open');}
 document.addEventListener('click',e=>{if(!e.target.closest('.avatar-btn'))$('avatarMenu')?.classList.remove('open');});
 async function handleLogout(){await sb.auth.signOut();location.href='index.html';}
+
+// ── AIS LIVE TRACKING (MarineTraffic free embed) ──
+function openTracking(){
+  const modal=$('aisModal');
+  const mmsi=vessel.mmsi;
+  const imo=vessel.imo;
+  const name=vessel.current_name;
+  modal.style.display='flex';
+  $('aisTitle').textContent=`Live Tracking · ${name}`;
+
+  if(!mmsi && !imo){
+    $('aisContent').style.display='none';
+    $('aisNoMMSI').style.display='block';
+    return;
+  }
+  $('aisContent').style.display='block';
+  $('aisNoMMSI').style.display='none';
+  $('aisLoading').style.display='flex';
+  $('aisFrame').style.display='none';
+
+  // MarineTraffic free embed — works with MMSI or IMO
+  // MMSI gives real-time position; IMO gives vessel page
+  let embedUrl, extUrl;
+  if(mmsi){
+    // Centered map on the vessel with 10nm zoom
+    embedUrl=`https://www.marinetraffic.com/en/ais/embed/maptype:0/mmsi:${mmsi}/zoom:10/shownames:true/`;
+    extUrl=`https://www.marinetraffic.com/en/ais/details/ships/mmsi:${mmsi}`;
+    $('aisSub').textContent=`MMSI: ${mmsi} · Powered by MarineTraffic · AIS data`;
+  } else {
+    // Fallback to IMO vessel page
+    embedUrl=`https://www.marinetraffic.com/en/ais/embed/maptype:0/imo:${imo}/zoom:5/shownames:true/`;
+    extUrl=`https://www.marinetraffic.com/en/ais/details/ships/imo:${imo}`;
+    $('aisSub').textContent=`IMO: ${imo} · Powered by MarineTraffic · AIS data`;
+  }
+
+  $('aisExtLink').href=extUrl;
+  const frame=$('aisFrame');
+  frame.onload=()=>{$('aisLoading').style.display='none';frame.style.display='block';};
+  frame.src=embedUrl;
+}
+function closeTracking(){
+  const modal=$('aisModal'); modal.style.display='none';
+  const frame=$('aisFrame'); frame.src=''; frame.style.display='none';
+  $('aisLoading').style.display='flex';
+}
+// Close modal on overlay click
+$('aisModal')?.addEventListener('click',e=>{if(e.target===$('aisModal'))closeTracking();});
 function toast(msg,err=false){
   const t=$('toast');t.textContent=msg;t.className='toast show'+(err?' err':'');
   setTimeout(()=>t.className='toast',2800);
