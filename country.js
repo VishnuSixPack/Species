@@ -258,6 +258,8 @@ async function initDetailPage() {
   const contEl = document.getElementById('d-continent');
   if (contEl) contEl.textContent = continent ? `${CONTINENT_ICONS[continent]} ${continent}` : '—';
 
+  // General Information
+  populateGeneralInfo(data);
 
   // ── Flag of Convenience ──
   const focEl = document.getElementById('foc-status');
@@ -298,4 +300,7 @@ async function initDetailPage() {
   if (data.iuu_url) { const e=document.getElementById('iuu-url'); if(e){ e.href=data.iuu_url; e.style.display='inline-flex'; } }
 
     document.getElementById('detailContent').classList.remove('hidden');
+
+  // show country on map
+  loadCountryMap(data.alpha3, data.country);
 }
