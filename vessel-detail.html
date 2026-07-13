@@ -95,7 +95,11 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .btn.primary:hover{background:var(--primary-dark)}
 
 /* ── TABS ── */
-.tab-bar{display:flex;gap:2px;overflow-x:auto;padding-bottom:0;scrollbar-width:none}
+.tab-bar-wrap{position:relative;display:flex;align-items:center}
+.tab-bar{display:flex;gap:2px;overflow-x:auto;padding-bottom:0;scrollbar-width:none;scroll-behavior:smooth;flex:1}
+.tab-arrow{width:30px;height:36px;border:none;background:linear-gradient(to right,rgba(255,255,255,0),#fff 60%);cursor:pointer;color:var(--muted);font-size:18px;display:none;align-items:center;justify-content:center;flex-shrink:0;position:relative;z-index:2}
+.tab-arrow.left{background:linear-gradient(to left,rgba(255,255,255,0),#fff 60%)}
+.tab-arrow.show{display:flex}
 .tab-bar::-webkit-scrollbar{display:none}
 .tab{padding:10px 16px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent;white-space:nowrap;transition:.14s;user-select:none}
 .tab:hover{color:var(--text)}
@@ -345,7 +349,11 @@ if(new URLSearchParams(location.search).get('id')){
         </div>
         <div class="header-actions" id="hdrActions"></div>
       </div>
-      <div class="tab-bar" id="tabBar"></div>
+      <div class="tab-bar-wrap">
+        <button class="tab-arrow left" id="tabArrowL" onclick="scrollTabs(-1)">‹</button>
+        <div class="tab-bar" id="tabBar"></div>
+        <button class="tab-arrow right" id="tabArrowR" onclick="scrollTabs(1)">›</button>
+      </div>
     </div>
 
     <div class="tab-content" id="tabContent">
@@ -497,6 +505,21 @@ function buildTabs(){
   const cat=vessel.vessel_category;
   const visible=ALL_TABS.filter(t=>!t.cats||t.cats.includes(cat));
   $('tabBar').innerHTML=visible.map(t=>`<div class="tab${t.id===activeTab?' active':''}" data-tab="${t.id}" onclick="switchTab('${t.id}')">${t.label}</div>`).join('');
+  checkTabArrows();
+  $('tabBar').addEventListener('scroll',checkTabArrows);
+  window.addEventListener('resize',checkTabArrows);
+}
+function checkTabArrows(){
+  const bar=$('tabBar'); if(!bar) return;
+  const al=$('tabArrowL'), ar=$('tabArrowR');
+  if(!al||!ar) return;
+  al.classList.toggle('show', bar.scrollLeft > 10);
+  ar.classList.toggle('show', bar.scrollLeft < bar.scrollWidth - bar.clientWidth - 10);
+}
+function scrollTabs(dir){
+  const bar=$('tabBar'); if(!bar) return;
+  bar.scrollBy({left:dir*180,behavior:'smooth'});
+  setTimeout(checkTabArrows,350);
 }
 function switchTab(id){
   activeTab=id;
@@ -515,7 +538,7 @@ async function renderTab(id){
     case 'compliance': tc.innerHTML=await renderCompliance(v); break;
     case 'rfmo': tc.innerHTML=renderRFMO(v); break;
     case 'issf': tc.innerHTML=await renderISSF(v); break;
-    case 'sustain': tc.innerHTML=renderSustain(v); break;
+    case 'sustain': tc.innerHTML=renderSustain(v); await loadOtherLicenses(); break;
     case 'notes': tc.innerHTML=renderNotesShell(); await loadNotes(); break;
     case 'timeline': tc.innerHTML=renderTimelineShell(); await loadTimeline(); break;
     case 'history': tc.innerHTML=renderHistoryShell(); await loadHistory(); break;
@@ -547,8 +570,8 @@ function renderOverview(v){
       <div><div class="dt">Gear Type</div>${val(v.gear_type)}</div>
       <div><div class="dt">Engine Power</div>${val(eng)}</div>
       <div><div class="dt">Fish Hold Capacity</div>${val(v.fish_hold_capacity?v.fish_hold_capacity+' m³':null)}</div>
-      <div><div class="dt">Freezing Method</div>${val(v.freezing_method)}</div>
-      <div><div class="dt">Freezer Type</div>${val(v.freezer_type)}</div>
+      <div><div class="dt">Lowest Freezing Temp (°C)</div>${val(v.freezing_method)}</div>
+      
       <div><div class="dt">Freezer Count</div>${val(v.freezer_count)}</div>
       <div><div class="dt">Freezing Capacity</div>${val(v.freezing_capacity)}</div>
       <div><div class="dt">Hull Material</div>${val(v.hull_material)}</div>
@@ -811,6 +834,13 @@ function renderSustain(v){
         `:''}
       </div>
     </div>
+  </div>
+  <div class="card" style="margin-top:18px">
+    <div class="card-head">
+      <div class="card-title">Other Licenses</div>
+      ${isAdmin?`<button class="btn-edit" onclick="openModal('other_license')">+ Add License</button>`:''}
+    </div>
+    <div id="otherLicensesList"><div class="empty-state" style="padding:20px;text-align:center;color:var(--soft);font-size:13px">Loading…</div></div>
   </div>`;
 }
 
@@ -829,23 +859,27 @@ function renderNotesShell(){
   </div>`;
 }
 let quillEditor=null;
+function initQuillEditor(){
+  if(quillEditor||!isAdmin) return;
+  const el=$('noteEditor'); if(!el) return;
+  if(typeof Quill==='undefined'){ setTimeout(initQuillEditor,200); return; }
+  quillEditor=new Quill('#noteEditor',{
+    theme:'snow',
+    placeholder:'Write a note — supports rich formatting…',
+    modules:{toolbar:[
+      [{header:[1,2,3,false]}],
+      ['bold','italic','underline','strike'],
+      [{list:'ordered'},{list:'bullet'}],
+      ['link','blockquote'],
+      ['clean']
+    ]}
+  });
+}
 async function loadNotes(){
   const {data}=await sb.from('vessel_notes').select('*,profiles(first_name,last_name)').eq('vessel_id',vid).order('created_at',{ascending:false});
   const el=$('notesList'); if(!el) return;
-  // init Quill if admin and not already initialised
-  if(isAdmin && !quillEditor && $('noteEditor') && typeof Quill!=='undefined'){
-    quillEditor=new Quill('#noteEditor',{
-      theme:'snow',
-      placeholder:'Write a note — supports rich formatting…',
-      modules:{toolbar:[
-        [{header:[1,2,3,false]}],
-        ['bold','italic','underline','strike'],
-        [{list:'ordered'},{list:'bullet'}],
-        ['link','blockquote'],
-        ['clean']
-      ]}
-    });
-  }
+  // init Quill after DOM is ready — use timeout to ensure element exists
+  if(isAdmin) setTimeout(initQuillEditor, 50);
   if(!data||!data.length){
     el.innerHTML='<div style="padding:30px;text-align:center;color:var(--soft);font-size:13px">No notes yet. Use the editor above to add the first one.</div>';
     return;
@@ -858,8 +892,24 @@ async function loadNotes(){
     <div class="note-card-body">${n.content||''}</div>
   </div>`).join('');
 }
+async function loadOtherLicenses(){
+  const el=$('otherLicensesList'); if(!el) return;
+  const {data}=await sb.from('vessel_other_licenses').select('*').eq('vessel_id',vid).order('start_date',{ascending:false});
+  if(!data||!data.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--soft);font-size:13px">No other licenses recorded.</div>';return;}
+  el.innerHTML=`<table style="width:100%;border-collapse:collapse">
+    <thead><tr>${['Licensing Authority','License No.','Start','End','Note'].map(c=>`<th style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--soft);padding:8px 12px;text-align:left;border-bottom:1.5px solid var(--line-strong)">${c}</th>`).join('')}</tr></thead>
+    <tbody>${data.map(r=>`<tr>
+      <td style="padding:10px 12px;border-bottom:1px solid var(--line);font-weight:500">${esc(r.licensing_authority||'')}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid var(--line)">${esc(r.license_number||'—')}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid var(--line)">${fmtDate(r.start_date)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid var(--line)">${fmtDate(r.end_date)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted)">${esc(r.agreement_note||'')}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
 async function saveNote(){
-  if(!quillEditor) return;
+  if(!quillEditor){ initQuillEditor(); toast('Editor loading, please try again',true); return; }
   const html=quillEditor.root.innerHTML;
   const text=quillEditor.getText().trim();
   if(!text){ toast('Please write something first',true); return; }
@@ -879,7 +929,7 @@ function renderTimelineShell(){
     <div class="card-head"><div class="card-title">Timeline</div></div>
     <div class="timeline-filter">
       <label>Filter by section:</label>
-      <select id="tlFilter" onchange="filterTimeline()">
+      <select id="tlFilter" onchange="filterTimeline()" style="height:40px;border:1.5px solid var(--border);border-radius:11px;padding:0 36px 0 14px;font:inherit;font-size:13px;font-weight:500;color:var(--text);background:#fff url('data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%236b7280\' stroke-width=\'2.2\'%3E%3Cpolyline points=\'6 9 12 15 18 9\'/%3E%3C/svg%3E') no-repeat right 12px center;background-size:15px;appearance:none;-webkit-appearance:none;cursor:pointer;transition:.14s;box-shadow:0 1px 3px rgba(20,24,45,.04)">
         <option value="">All sections</option>
         <option>Overview</option><option>Ownership</option><option>Compliance</option>
         <option>RFMO</option><option>ISSF</option><option>Sustainability</option>
@@ -983,16 +1033,32 @@ function histCard(title,type,cols,rows){
 // ── MODAL ──
 const MODAL_CONFIGS={
   name_history:{
-    title:'Add Name History',sub:'Record a historical vessel name and its period.',
+    title:'Add Name History',sub:'Record a historical name. Non-name fields are pre-filled from the current vessel — edit only what changed.',
     fields:[
       {id:'mf_name',label:'Vessel Name',type:'text',required:true},
-      {id:'mf_flag',label:'Flag (country name)',type:'text'},
+      {id:'mf_flag',label:'Flag',type:'country'},
+      {id:'mf_port',label:'Port of Registry',type:'text'},
       {id:'mf_ircs',label:'IRCS',type:'text'},
+      {id:'mf_length',label:'Length (m)',type:'number'},
+      {id:'mf_beam',label:'Beam (m)',type:'number'},
+      {id:'mf_depth',label:'Moulded Depth (m)',type:'number'},
+      {id:'mf_tonnage',label:'Tonnage (GT)',type:'number'},
+      {id:'mf_fishhold',label:'Fish Hold Capacity (m³)',type:'number'},
       {id:'mf_from',label:'Valid From',type:'date'},
       {id:'mf_to',label:'Valid To',type:'date'},
       {id:'mf_notes',label:'Notes',type:'textarea',full:true},
     ],
-    save:async(d)=>sb.from('vessel_name_history').insert({vessel_id:vid,name:d.mf_name,flag:d.mf_flag,ircs:d.mf_ircs,valid_from:d.mf_from||null,valid_to:d.mf_to||null,notes:d.mf_notes})
+    autofill:(v)=>({
+      mf_flag:v.vessel_flag||'',
+      mf_port:v.port_of_registry||'',
+      mf_ircs:v.ircs||'',
+      mf_length:v.vessel_length||'',
+      mf_beam:v.beam_m||'',
+      mf_depth:v.depth_m||'',
+      mf_tonnage:v.vessel_tonnage||'',
+      mf_fishhold:v.fish_hold_capacity||'',
+    }),
+    save:async(d)=>sb.from('vessel_name_history').insert({vessel_id:vid,name:d.mf_name,flag:d.mf_flag,ircs:d.mf_ircs,valid_from:d.mf_from||null,valid_to:d.mf_to||null,notes:d.mf_notes,port_of_registry:d.mf_port,vessel_length:d.mf_length||null,beam_m:d.mf_beam||null,depth_m:d.mf_depth||null,vessel_tonnage:d.mf_tonnage||null,fish_hold_capacity:d.mf_fishhold||null})
   },
   owner_history:{
     title:'Add Owner History',sub:'Record a registered owner and the period they held ownership.',
@@ -1009,7 +1075,7 @@ const MODAL_CONFIGS={
     title:'Add Captain History',sub:'Record a captain and their period of command.',
     fields:[
       {id:'mf_name',label:'Captain Name',type:'text',required:true},
-      {id:'mf_nat',label:'Nationality',type:'text'},
+      {id:'mf_nat',label:'Nationality',type:'country'},
       {id:'mf_from',label:'Valid From',type:'date'},
       {id:'mf_to',label:'Valid To',type:'date'},
       {id:'mf_notes',label:'Notes',type:'textarea',full:true},
@@ -1028,28 +1094,22 @@ const MODAL_CONFIGS={
     save:async(d)=>sb.from('vessel_charterer_history').insert({vessel_id:vid,charterer_name:d.mf_name,address:d.mf_addr,valid_from:d.mf_from||null,valid_to:d.mf_to||null,notes:d.mf_notes})
   },
   rfmo_history:{
-    title:'Add RFMO History',sub:'Record an RFMO authorisation period.',
-    fields:[
-      {id:'mf_rfmo',label:'RFMO Name',type:'text',required:true,full:true},
-      {id:'mf_regno',label:'Registration No.',type:'text'},
-      {id:'mf_authno',label:'Auth No.',type:'text'},
-      {id:'mf_start',label:'Auth Start',type:'date'},
-      {id:'mf_end',label:'Auth End',type:'date'},
-      {id:'mf_reason',label:'Reason for Deletion',type:'text'},
-      {id:'mf_deldate',label:'Date of Deletion',type:'date'},
-      {id:'mf_notes',label:'Notes',type:'textarea',full:true},
-    ],
-    save:async(d)=>sb.from('vessel_rfmo_history').insert({vessel_id:vid,rfmo_name:d.mf_rfmo,registration_no:d.mf_regno,auth_no:d.mf_authno,auth_start:d.mf_start||null,auth_end:d.mf_end||null,reason_for_deletion:d.mf_reason,date_of_deletion:d.mf_deldate||null,notes:d.mf_notes})
+    title:'Add RFMO History',sub:'Select the RFMO first — fields will update based on your selection.',
+    fields:[],
+    // custom render — handled by openRFMOHistoryModal()
+    custom:true
   },
   pna_vds:{
-    title:'Add PNA VDS Entry',sub:'Record a Vessel Day Scheme allocation period.',
+    title:'Add PNA VDS Entry',sub:'Record a Vessel Day Scheme allocation period. Vessel flag is recorded separately as it may differ from the current flag.',
     fields:[
       {id:'mf_vds',label:'VDS No.',type:'text',required:true,full:true},
+      {id:'mf_flag',label:'Vessel Flag at Time of VDS',type:'country'},
       {id:'mf_from',label:'Valid From',type:'date'},
       {id:'mf_to',label:'Valid To',type:'date'},
       {id:'mf_notes',label:'Notes',type:'textarea',full:true},
     ],
-    save:async(d)=>sb.from('vessel_pna_vds_history').insert({vessel_id:vid,vds_no:d.mf_vds,valid_from:d.mf_from||null,valid_to:d.mf_to||null,notes:d.mf_notes})
+    autofill:(v)=>({mf_flag:v.vessel_flag||''}),
+    save:async(d)=>sb.from('vessel_pna_vds_history').insert({vessel_id:vid,vds_no:d.mf_vds,valid_from:d.mf_from||null,valid_to:d.mf_to||null,notes:d.mf_notes,vessel_flag:d.mf_flag||null})
   },
   pna_fsma:{
     title:'Add PNA FSMA History',sub:'Record an FSMA/RAL registration period.',
@@ -1072,6 +1132,17 @@ const MODAL_CONFIGS={
     ],
     save:async(d)=>sb.from('vessel_ffa_history').insert({vessel_id:vid,ffa_id:d.mf_ffa,valid_from:d.mf_from||null,valid_to:d.mf_to||null,reason_for_deletion:d.mf_reason,notes:d.mf_notes})
   },
+  other_license:{
+    title:'Add Other License',sub:'Record a license or authorisation for this vessel.',
+    fields:[
+      {id:'mf_authority',label:'Licensing Authority',type:'text',required:true,full:true},
+      {id:'mf_licno',label:'License Number',type:'text'},
+      {id:'mf_start',label:'License Start Date',type:'date'},
+      {id:'mf_end',label:'License End Date',type:'date'},
+      {id:'mf_note',label:'Agreement Note',type:'textarea',full:true},
+    ],
+    save:async(d)=>sb.from('vessel_other_licenses').insert({vessel_id:vid,licensing_authority:d.mf_authority,license_number:d.mf_licno,start_date:d.mf_start||null,end_date:d.mf_end||null,agreement_note:d.mf_note})
+  },
   vosi:{
     title:'Add VOSI Initiative',sub:'Record a sustainability initiative this vessel participates in.',
     fields:[
@@ -1086,21 +1157,120 @@ const MODAL_CONFIGS={
   },
 };
 
-function openHistModal(type){ openModal(type); }
+function openHistModal(type){
+  if(type==='rfmo_history'){ openRFMOHistoryModal(); return; }
+  openModal(type);
+}
 function openVosiModal(){ openModal('vosi'); }
+
+let countryList=[];
+async function ensureCountries(){
+  if(countryList.length) return;
+  const {data}=await sb.from('countries').select('country').order('country');
+  countryList=(data||[]).map(c=>c.country);
+}
+
 function openModal(type){
   const cfg=MODAL_CONFIGS[type]; if(!cfg) return;
   curModalType=type;
   $('modalTitle').textContent=cfg.title;
   $('modalSub').textContent=cfg.sub;
+  const autofills=cfg.autofill?cfg.autofill(vessel):{};
   $('modalBody').innerHTML=`<div class="modal-grid">${cfg.fields.map(f=>`
     <div class="mfield${f.full?' full':''}">
       <span>${f.label}${f.required?' <span style="color:var(--danger)">*</span>':''}</span>
       ${f.type==='textarea'
-        ?`<textarea id="${f.id}" placeholder="${f.label}…"></textarea>`
-        :`<input type="${f.type}" id="${f.id}" placeholder="${f.label}…"/>`}
+        ?`<textarea id="${f.id}" placeholder="${f.label}…">${esc(autofills[f.id]||'')}</textarea>`
+        :f.type==='country'
+        ?`<select id="${f.id}" style="height:42px;border:1.5px solid var(--border);border-radius:10px;padding:0 12px;font:inherit;font-size:13.5px;width:100%;appearance:none;background:#fff url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2716%27 height=%2716%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%236b7280%27 stroke-width=%272.2%27%3E%3Cpolyline points=%276 9 12 15 18 9%27/%3E%3C/svg%3E') no-repeat right 12px center;background-size:15px"><option value="">Select country…</option></select>`
+        :`<input type="${f.type==='number'?'number':'text'}" step="${f.type==='number'?'any':''}" id="${f.id}" placeholder="${f.label}…" value="${esc(String(autofills[f.id]||''))}"/>`}
     </div>`).join('')}</div>`;
+  // Populate country selects
+  cfg.fields.filter(f=>f.type==='country').forEach(async f=>{
+    const sel=$(f.id); if(!sel) return;
+    await ensureCountries();
+    countryList.forEach(c=>{ const o=document.createElement('option'); o.value=c; o.textContent=c; sel.appendChild(o); });
+    if(autofills[f.id]) sel.value=autofills[f.id];
+  });
   $('modalOverlay').classList.add('open');
+}
+
+// ── RFMO HISTORY CUSTOM MODAL ──
+const RFMO_CONFIGS={
+  WCPFC:{
+    label:'WCPFC — Western & Central Pacific Fisheries Commission',
+    fields:[
+      {id:'mf_regno',label:'Registration No.'},
+      {id:'mf_authno',label:'Auth No. by Flag State'},
+      {id:'mf_authform',label:'Form of Authorisation'},
+      {id:'mf_start',label:'Auth Start',type:'date'},
+      {id:'mf_end',label:'Auth End',type:'date'},
+      {id:'mf_species',label:'Authorised Species'},
+      {id:'mf_areas',label:'Authorised Areas'},
+      {id:'mf_reason',label:'Reason for Deletion'},
+      {id:'mf_deldate',label:'Date of Deletion',type:'date'},
+      {id:'mf_url',label:'Public Registry URL'},
+    ],
+    save:async(d)=>sb.from('vessel_rfmo_history').insert({vessel_id:vid,rfmo_name:'WCPFC',registration_no:d.mf_regno,auth_no:d.mf_authno,auth_form:d.mf_authform,auth_start:d.mf_start||null,auth_end:d.mf_end||null,auth_species:d.mf_species,auth_areas:d.mf_areas,reason_for_deletion:d.mf_reason,date_of_deletion:d.mf_deldate||null,registry_url:d.mf_url})
+  },
+  IATTC:{
+    label:'IATTC — Inter-American Tropical Tuna Commission',
+    fields:[
+      {id:'mf_regno',label:'IATTC No.'},
+      {id:'mf_status',label:'Register Status'},
+      {id:'mf_start',label:'Auth Start',type:'date'},
+      {id:'mf_end',label:'Auth End',type:'date'},
+      {id:'mf_reason',label:'Reason for Deletion'},
+      {id:'mf_url',label:'Public Registry URL'},
+    ],
+    save:async(d)=>sb.from('vessel_rfmo_history').insert({vessel_id:vid,rfmo_name:'IATTC',registration_no:d.mf_regno,auth_no:d.mf_status,auth_start:d.mf_start||null,auth_end:d.mf_end||null,reason_for_deletion:d.mf_reason,registry_url:d.mf_url})
+  },
+  Other:{
+    label:'Other RFMO',
+    fields:[
+      {id:'mf_rfmo',label:'RFMO Name',required:true},
+      {id:'mf_regno',label:'Registration No.'},
+      {id:'mf_authno',label:'Auth No.'},
+      {id:'mf_start',label:'Auth Start',type:'date'},
+      {id:'mf_end',label:'Auth End',type:'date'},
+      {id:'mf_reason',label:'Reason for Deletion'},
+      {id:'mf_deldate',label:'Date of Deletion',type:'date'},
+    ],
+    save:async(d)=>sb.from('vessel_rfmo_history').insert({vessel_id:vid,rfmo_name:d.mf_rfmo,registration_no:d.mf_regno,auth_no:d.mf_authno,auth_start:d.mf_start||null,auth_end:d.mf_end||null,reason_for_deletion:d.mf_reason,date_of_deletion:d.mf_deldate||null})
+  }
+};
+
+function openRFMOHistoryModal(){
+  curModalType='rfmo_history_custom';
+  $('modalTitle').textContent='Add RFMO History';
+  $('modalSub').textContent='Select the RFMO — fields will update based on your selection.';
+  $('modalBody').innerHTML=`
+    <div class="mfield full" style="margin-bottom:16px">
+      <span>RFMO <span style="color:var(--danger)">*</span></span>
+      <select id="mf_rfmo_sel" onchange="switchRFMOFields()" style="height:42px;border:1.5px solid var(--border);border-radius:10px;padding:0 12px;font:inherit;font-size:13.5px;width:100%;appearance:none;background:#fff url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2716%27 height=%2716%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%236b7280%27 stroke-width=%272.2%27%3E%3Cpolyline points=%276 9 12 15 18 9%27/%3E%3C/svg%3E') no-repeat right 12px center;background-size:15px">
+        <option value="">Select RFMO…</option>
+        <option>WCPFC</option><option>IATTC</option><option>IOTC</option>
+        <option>ICCAT</option><option>CCAMLR</option><option>NEAFC</option>
+        <option>NAFO</option><option>Other</option>
+      </select>
+    </div>
+    <div id="rfmoFieldsWrap" class="modal-grid"></div>
+    <div class="mfield full" style="margin-top:12px">
+      <span>Notes</span><textarea id="mf_rfmo_notes" placeholder="Notes…"></textarea>
+    </div>`;
+  $('modalOverlay').classList.add('open');
+}
+function switchRFMOFields(){
+  const rfmo=$('mf_rfmo_sel').value;
+  const wrap=$('rfmoFieldsWrap'); if(!wrap) return;
+  const key=['WCPFC','IATTC'].includes(rfmo)?rfmo:'Other';
+  if(!rfmo){wrap.innerHTML='';return;}
+  const cfg=RFMO_CONFIGS[key];
+  wrap.innerHTML=cfg.fields.map(f=>`
+    <div class="mfield">
+      <span>${f.label}${f.required?' <span style="color:var(--danger)">*</span>':''}</span>
+      <input type="${f.type||'text'}" step="${f.type==='date'?'':'any'}" id="${f.id}" placeholder="${f.label}…"/>
+    </div>`).join('');
 }
 function closeModal(e){
   if(e&&e.target!==$('modalOverlay')) return;
@@ -1109,11 +1279,26 @@ function closeModal(e){
 }
 async function saveModal(){
   if(!curModalType) return;
+  // Handle custom RFMO history modal
+  if(curModalType==='rfmo_history_custom'){
+    const rfmo=$('mf_rfmo_sel')?.value;
+    if(!rfmo){toast('Please select an RFMO',true);return;}
+    const key=['WCPFC','IATTC'].includes(rfmo)?rfmo:'Other';
+    const cfg=RFMO_CONFIGS[key];
+    const d={mf_rfmo_notes:$('mf_rfmo_notes')?.value||''};
+    cfg.fields.forEach(f=>{const el=$(f.id);if(el) d[f.id]=el.value.trim();});
+    const missing=cfg.fields.filter(f=>f.required&&!d[f.id]);
+    if(missing.length){toast(`${missing[0].label} is required`,true);return;}
+    $('modalSave').disabled=true;
+    const {error}=await cfg.save(d);
+    if(error){toast(error.message||'Save failed',true);$('modalSave').disabled=false;return;}
+    $('modalOverlay').classList.remove('open'); curModalType=null;
+    toast('RFMO history entry saved'); await loadHistory(); return;
+  }
   const cfg=MODAL_CONFIGS[curModalType];
-  // collect field values
+  if(!cfg) return;
   const d={};
   cfg.fields.forEach(f=>{const el=$(f.id);if(el) d[f.id]=el.value.trim();});
-  // check required
   const missing=cfg.fields.filter(f=>f.required&&!d[f.id]);
   if(missing.length){toast(`${missing[0].label} is required`,true);return;}
   $('modalSave').disabled=true;
@@ -1122,9 +1307,7 @@ async function saveModal(){
   $('modalOverlay').classList.remove('open');
   curModalType=null;
   toast('Entry saved');
-  // reload current tab
   await loadHistory();
-  if(curModalType==='vosi') await renderTab('issf');
 }
 
 function toggleAvatarMenu(){$('avatarMenu').classList.toggle('open');}
