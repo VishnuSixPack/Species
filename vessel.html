@@ -422,6 +422,7 @@ select:focus{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
         </div>
         <div class="field" id="fishHoldWrap"><span>Fish Hold Capacity (m³)</span><input id="fish_hold_capacity" type="number" placeholder="e.g. 800" step="any"/></div>
         <div class="field" id="freezerWrap"><span>Freezer Type</span><input id="freezer_type" placeholder="e.g. RSW, Blast freezer"/></div>
+        <div class="field" id="freezingMethodWrap"><span>Freezing Method</span><input id="freezing_method" placeholder="e.g. Blast freeze, RSW, Brine"/></div>
         <div class="field" id="freezerCntWrap"><span>Freezer Count</span><input id="freezer_count" type="number" placeholder="e.g. 4" step="any"/></div>
         <div class="field" id="freezingCapWrap"><span>Freezing Capacity</span><input id="freezing_capacity" placeholder="e.g. 120 MT/day"/></div>
         <div class="field"><span>Hull Material</span><select id="hull_material"><option value="">Select…</option><option>Steel</option><option>Aluminium</option><option>Fibreglass/GRP</option><option>Wood</option><option>Other</option></select></div>
@@ -1065,7 +1066,7 @@ async function loadVessel(id){
 
   const texts=['current_name','imo','mmsi','ircs','registration_number','vessel_flag','port_of_registry','built_in_country','built_in_year','built_in_place',
     'vessel_tonnage','vessel_length','beam_m','depth_m','crew_complement','fish_hold_capacity',
-    'gear_type','engine_power','freezer_type','freezer_count','freezing_capacity','hull_material','vessel_master_name','master_nationality',
+    'gear_type','engine_power','freezer_type','freezer_count','freezing_capacity','freezing_method','hull_material','vessel_master_name','master_nationality',
     'registered_owner','registered_owner_addr','beneficial_owner','beneficial_owner_addr',
     'operator_manager','operator_addr','charterer','charterer_addr','charter_notified_by','charter_host_ccm','charter_notes',
     'uk_auth_no','uk_activities','eu_approval_no','ffa_id','ffa_status','ffa_registrant_acting','ffa_reason_deregistration',
@@ -1118,6 +1119,11 @@ async function loadVessel(id){
     const note=document.querySelector(`.pvr-note[data-key="${m.measure_key}"]`);
     if(sel) sel.value=m.status; if(note) note.value=m.notes||'';
   });
+  // re-sync ALL custom dropdowns so their displayed labels match restored values
+  syncAllCsels();
+  // re-sync year picker label
+  const yr=$('built_in_year')?.value;
+  if(yr){ const lbl=$('yearLabel'); if(lbl){lbl.textContent=yr;lbl.className='yr-lbl';} }
 }
 
 // ── SAVE ──────────────────────────────────────────────────────────────
@@ -1153,7 +1159,7 @@ $('vForm').addEventListener('submit',async e=>{
     vessel_length:g('vessel_length')||null,beam_m:g('beam_m')||null,depth_m:g('depth_m')||null,
     crew_complement:g('crew_complement')||null,fish_hold_capacity:g('fish_hold_capacity')||null,
     gear_type:g('gear_type'),engine_power:g('engine_power')||null,engine_power_unit:g('engine_power_unit')||null,
-    freezer_type:g('freezer_type'),freezer_count:g('freezer_count')||null,freezing_capacity:g('freezing_capacity'),hull_material:g('hull_material'),
+    freezer_type:g('freezer_type'),freezer_count:g('freezer_count')||null,freezing_capacity:g('freezing_capacity'),freezing_method:g('freezing_method'),hull_material:g('hull_material'),
     registered_owner:g('registered_owner'),registered_owner_addr:g('registered_owner_addr'),
     beneficial_owner:g('beneficial_owner'),beneficial_owner_addr:g('beneficial_owner_addr'),
     operator_manager:g('operator_manager'),operator_addr:g('operator_addr'),vessel_master_name:g('vessel_master_name'),master_nationality:g('master_nationality'),

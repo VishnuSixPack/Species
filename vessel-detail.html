@@ -208,13 +208,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .mbtn.primary:hover{background:var(--primary-dark)}
 
 /* ── NOTES ── */
-.note-form{display:flex;gap:10px;margin-bottom:20px}
-.note-form textarea{flex:1;min-height:80px;border:1.5px solid var(--border);border-radius:10px;padding:10px 13px;font:inherit;font-size:13px;resize:none;transition:.14s}
-.note-form textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,111,219,.12)}
-.note-submit{align-self:flex-end;height:42px;padding:0 18px;border-radius:10px;background:var(--primary);color:#fff;border:none;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
-.note-item{background:#fff;border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px}
-.note-meta{font-size:11.5px;color:var(--soft);margin-bottom:6px}
-.note-text{font-size:13.5px;line-height:1.6}
+
 
 /* ── SKEL / EMPTY ── */
 .skel{height:120px;border-radius:var(--radius);background:linear-gradient(90deg,#eef1f6,#f7f9fc,#eef1f6);background-size:200% 100%;animation:sh 1.3s infinite;margin-bottom:16px}
@@ -225,6 +219,33 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(12px);background:var(--text);color:#fff;padding:13px 20px;border-radius:11px;font-weight:600;opacity:0;visibility:hidden;transition:opacity .25s,transform .28s cubic-bezier(.2,.8,.2,1),visibility .25s;z-index:1000}
 .toast.show{transform:translateX(-50%) translateY(0);opacity:1;visibility:visible;box-shadow:var(--shadow-lg)}
 .toast.err{background:var(--danger)}
+</style>
+<!-- Quill rich text editor -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.min.css" rel="stylesheet"/>
+<style>
+/* Quill overrides to match Manhattan style */
+.ql-toolbar.ql-snow{border:1.5px solid var(--border);border-radius:var(--radius-sm) var(--radius-sm) 0 0;background:#fafbfe;padding:8px 10px;font-family:var(--font)}
+.ql-container.ql-snow{border:1.5px solid var(--border);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);font-family:var(--font);font-size:14px}
+.ql-editor{min-height:140px;padding:14px 16px;line-height:1.65;color:var(--text)}
+.ql-editor.ql-blank::before{color:#c0c4d0;font-style:normal;font-size:13.5px}
+.ql-snow .ql-picker,.ql-snow .ql-stroke{color:var(--muted);stroke:var(--muted)}
+.ql-snow.ql-toolbar button:hover,.ql-snow .ql-toolbar button:hover{color:var(--primary)}
+.ql-snow.ql-toolbar button:hover .ql-stroke,.ql-snow .ql-toolbar button:hover .ql-stroke{stroke:var(--primary)}
+.ql-snow.ql-toolbar button.ql-active .ql-stroke{stroke:var(--primary)}
+/* Note cards */
+.note-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:12px;transition:box-shadow .14s}
+.note-card:hover{box-shadow:0 2px 10px rgba(20,24,45,.06)}
+.note-card-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.note-card-author{font-size:12.5px;font-weight:600;color:var(--text)}
+.note-card-date{font-size:11.5px;color:var(--soft)}
+.note-card-body{font-size:13.5px;line-height:1.65;color:var(--text)}
+.note-card-body h1,.note-card-body h2,.note-card-body h3{font-size:15px;font-weight:700;margin-bottom:4px}
+.note-card-body p{margin-bottom:8px}
+.note-card-body p:last-child{margin-bottom:0}
+.note-card-body ul,.note-card-body ol{padding-left:20px;margin-bottom:8px}
+.note-card-body strong{font-weight:700}
+.note-card-body em{font-style:italic}
+.note-card-body a{color:var(--primary);text-decoration:underline}
 </style>
 </head>
 <body>
@@ -797,26 +818,59 @@ function renderSustain(v){
 function renderNotesShell(){
   return `<div class="card">
     <div class="card-head"><div class="card-title">Notes</div></div>
-    ${isAdmin?`<div class="note-form"><textarea id="noteTxt" placeholder="Add a note…"></textarea><button class="note-submit" onclick="saveNote()">Add note</button></div>`:''}
-    <div id="notesList"><div class="empty-state">Loading…</div></div>
+    ${isAdmin?`
+    <div style="margin-bottom:18px">
+      <div id="noteEditor" style="border-radius:var(--radius-sm);overflow:hidden;background:#fff"></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:10px">
+        <button onclick="saveNote()" style="height:40px;padding:0 22px;border-radius:10px;background:var(--primary);color:#fff;border:none;font:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(26,111,219,.22);transition:.15s" onmouseover="this.style.background='var(--primary-dark)'" onmouseout="this.style.background='var(--primary)'">Add Note</button>
+      </div>
+    </div>`:''}
+    <div id="notesList"><div class="empty-state" style="padding:30px;text-align:center;color:var(--soft)">Loading…</div></div>
   </div>`;
 }
+let quillEditor=null;
 async function loadNotes(){
   const {data}=await sb.from('vessel_notes').select('*,profiles(first_name,last_name)').eq('vessel_id',vid).order('created_at',{ascending:false});
   const el=$('notesList'); if(!el) return;
-  if(!data||!data.length){el.innerHTML='<div class="empty-state">No notes yet.</div>';return;}
-  el.innerHTML=data.map(n=>`<div class="note-item">
-    <div class="note-meta">${n.profiles?.first_name||''} ${n.profiles?.last_name||''} · ${fmtDate(n.created_at)}</div>
-    <div class="note-text">${esc(n.content)}</div>
+  // init Quill if admin and not already initialised
+  if(isAdmin && !quillEditor && $('noteEditor') && typeof Quill!=='undefined'){
+    quillEditor=new Quill('#noteEditor',{
+      theme:'snow',
+      placeholder:'Write a note — supports rich formatting…',
+      modules:{toolbar:[
+        [{header:[1,2,3,false]}],
+        ['bold','italic','underline','strike'],
+        [{list:'ordered'},{list:'bullet'}],
+        ['link','blockquote'],
+        ['clean']
+      ]}
+    });
+  }
+  if(!data||!data.length){
+    el.innerHTML='<div style="padding:30px;text-align:center;color:var(--soft);font-size:13px">No notes yet. Use the editor above to add the first one.</div>';
+    return;
+  }
+  el.innerHTML=data.map(n=>`<div class="note-card">
+    <div class="note-card-meta">
+      <span class="note-card-author">${esc((n.profiles?.first_name||''))} ${esc((n.profiles?.last_name||''))}</span>
+      <span class="note-card-date">${fmtDate(n.created_at)}</span>
+    </div>
+    <div class="note-card-body">${n.content||''}</div>
   </div>`).join('');
 }
 async function saveNote(){
-  const txt=$('noteTxt'); if(!txt||!txt.value.trim()) return;
-  const {error}=await sb.from('vessel_notes').insert({vessel_id:vid,content:txt.value.trim()});
-  if(error){toast('Failed to save note',true);return;}
-  txt.value='';
+  if(!quillEditor) return;
+  const html=quillEditor.root.innerHTML;
+  const text=quillEditor.getText().trim();
+  if(!text){ toast('Please write something first',true); return; }
+  const btn=document.querySelector('#noteEditor').closest('.card')?.querySelector('button[onclick="saveNote()"]');
+  if(btn) btn.disabled=true;
+  const {error}=await sb.from('vessel_notes').insert({vessel_id:vid,content:html});
+  if(error){toast('Failed to save note',true);if(btn)btn.disabled=false;return;}
+  quillEditor.setContents([]);
   await loadNotes();
   toast('Note added');
+  if(btn) btn.disabled=false;
 }
 
 // ── TIMELINE ──
@@ -1128,5 +1182,6 @@ function toast(msg,err=false){
   setTimeout(()=>t.className='toast',2800);
 }
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.min.js"></script>
 </body>
 </html>
