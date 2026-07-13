@@ -310,3 +310,49 @@ async function initDetailPage() {
   // show country on map
   loadCountryMap(data.alpha3, data.country);
 }
+
+// ── COUNTRY MAP ───────────────────────────────────────────────
+function loadCountryMap(alpha3, countryName) {
+  const mapEl = document.getElementById('countryMap');
+  if (!mapEl) return;
+
+  // Init Leaflet map
+  const map = L.map('countryMap', { zoomControl: true, scrollWheelZoom: false });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors', maxZoom: 18
+  }).addTo(map);
+
+  // Fetch country boundary from GeoJSON
+  fetch(`https://restcountries.com/v3.1/alpha/${alpha3}`)
+    .then(r => r.json())
+    .then(data => {
+      const latlng = data[0]?.latlng;
+      const bounds = data[0]?.area;
+      if (latlng) {
+        const zoom = bounds > 1000000 ? 3 : bounds > 100000 ? 4 : bounds > 10000 ? 5 : 6;
+        map.setView([latlng[0], latlng[1]], zoom);
+        // Add marker
+        L.marker([latlng[0], latlng[1]])
+          .addTo(map)
+          .bindPopup(`<strong>${countryName}</strong>`)
+          .openPopup();
+      }
+    })
+    .catch(() => {
+      // Fallback — world view
+      map.setView([20, 0], 2);
+    });
+}
+
+// ── MAP TOGGLES ───────────────────────────────────────────────
+function toggleFao(btn)      { btn.classList.toggle('active'); }
+function toggleEez(btn)      {
+  btn.classList.toggle('active');
+  const wrap = document.getElementById('eezScopeWrap');
+  if (wrap) wrap.classList.toggle('hidden', !btn.classList.contains('active'));
+}
+function toggleHighSeas(btn) { btn.classList.toggle('active'); }
+function setEezScope(scope, btn) {
+  document.querySelectorAll('.eez-scope-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
