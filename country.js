@@ -166,10 +166,11 @@ async function initDetailPage() {
   document.getElementById('alpha2Chip').textContent = `Alpha-2: ${data.alpha2}`;
   document.getElementById('alpha3Chip').textContent = `Alpha-3: ${data.alpha3}`;
   document.getElementById('numericChip').textContent = `Numeric: ${data.numeric}`;
-  document.getElementById('d-country').textContent = data.country;
-  document.getElementById('d-alpha2').textContent = data.alpha2;
-  document.getElementById('d-alpha3').textContent = data.alpha3;
-  document.getElementById('d-numeric').textContent = data.numeric;
+  const setEl = (id, val) => { const e = document.getElementById(id); if (e) e.textContent = val; };
+  setEl('d-country', data.country);
+  setEl('d-alpha2', data.alpha2);
+  setEl('d-alpha3', data.alpha3);
+  setEl('d-numeric', data.numeric);
 
   const contEl = document.getElementById('d-continent');
   if (contEl) contEl.textContent = continent ? `${CONTINENT_ICONS[continent]} ${continent}` : '—';
