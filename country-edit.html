@@ -275,13 +275,17 @@ function setFoc(val) {
 
 async function saveCountry() {
   const payload = {};
-  const fields = ['country','capital','alpha2','alpha3','numeric','region','subregion','languages',
-    'currency_name','currency_symbol','currency_code','decimal_example','timezone_iana',
-    'msi_prevalence','msi_vulnerability','msi_gov_response','msi_year','msi_url',
-    'iuu_score','iuu_year','iuu_url'];
-  fields.forEach(f => {
+  const textFields = ['country','capital','alpha2','alpha3','numeric','region','subregion','languages',
+    'currency_name','currency_symbol','currency_code','decimal_example','timezone_iana','msi_url','iuu_url'];
+  const numFields = ['msi_prevalence','msi_vulnerability','msi_gov_response','msi_year','iuu_score','iuu_year'];
+
+  textFields.forEach(f => {
     const el = document.getElementById(`f-${f}`);
-    if (el) payload[f] = el.value || null;
+    if (el) payload[f] = el.value.trim() || null;
+  });
+  numFields.forEach(f => {
+    const el = document.getElementById(`f-${f}`);
+    if (el) payload[f] = el.value !== '' ? parseFloat(el.value) : null;
   });
   payload.tz_multiple = document.getElementById('f-tz_multiple').value === 'true';
   payload.is_foc = focValue;

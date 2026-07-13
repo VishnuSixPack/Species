@@ -270,8 +270,12 @@ function formatTimeZone(iana, multiple) {
 let countryMap = null;
 let countryBase = null;
 let countryLayer = null;
+let currentAlpha3 = null;
+let currentCountryName = null;
 
 async function loadCountryMap(alpha3, countryName) {
+  currentAlpha3 = alpha3;
+  currentCountryName = countryName;
   const el = document.getElementById('countryMap');
   if (!el) return;
 
@@ -347,27 +351,25 @@ async function loadCountryMap(alpha3, countryName) {
   }
 }
 
-// ── MAP OVERLAY LAYERS (WMS) ──────────────────────────────────
-let faoWmsLayer = null;
-let eezWmsLayer = null;
+// ── MAP OVERLAY LAYERS ────────────────────────────────────────
+let faoWmsLayer    = null;
+let eezWmsLayer    = null;
 let highSeasWmsLayer = null;
+let eezScope = 'country'; // 'country' or 'all'
 
 function toggleFao(btn) {
   if (!countryMap) return;
   btn.classList.toggle('active');
+  if (faoWmsLayer) { countryMap.removeLayer(faoWmsLayer); faoWmsLayer = null; }
   if (btn.classList.contains('active')) {
-    // FAO Major Fishing Areas via FAO GeoServer WMS
-    faoWmsLayer = L.tileLayer.wms('https://www.fao.org/figis/geoserver/fifao/wms', {
-      layers: 'fifao:FAO_AREAS_LOWRES',
+    // OpenSeaMap FAO areas via VLIZ WMS — publicly accessible
+    faoWmsLayer = L.tileLayer.wms('https://geo.vliz.be/geoserver/MarineRegions/wms', {
+      layers: 'MarineRegions:fao',
       format: 'image/png',
       transparent: true,
-      opacity: 0.45,
-      styles: '',
-      attribution: '© FAO'
-    });
-    faoWmsLayer.addTo(countryMap);
-  } else {
-    if (faoWmsLayer) { countryMap.removeLayer(faoWmsLayer); faoWmsLayer = null; }
+      opacity: 0.5,
+      attribution: '© Marine Regions / FAO'
+    }).addTo(countryMap);
   }
   updateMapLegend();
 }
@@ -377,46 +379,58 @@ function toggleEez(btn) {
   btn.classList.toggle('active');
   const wrap = document.getElementById('eezScopeWrap');
   if (wrap) wrap.classList.toggle('hidden', !btn.classList.contains('active'));
-  if (btn.classList.contains('active')) {
-    // EEZ via MarineRegions WMS
+  refreshEez();
+  updateMapLegend();
+}
+
+function setEezScope(scope, btn) {
+  eezScope = scope;
+  document.querySelectorAll('.eez-scope-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  refreshEez();
+}
+
+function refreshEez() {
+  if (eezWmsLayer) { countryMap.removeLayer(eezWmsLayer); eezWmsLayer = null; }
+  const eezBtn = document.querySelector('.map-toggle:nth-child(2)');
+  if (!eezBtn || !eezBtn.classList.contains('active')) return;
+
+  if (eezScope === 'country' && currentAlpha3) {
+    // Filter EEZ to this country using CQL filter
+    eezWmsLayer = L.tileLayer.wms('https://geo.vliz.be/geoserver/MarineRegions/wms', {
+      layers: 'MarineRegions:eez',
+      format: 'image/png',
+      transparent: true,
+      opacity: 0.55,
+      CQL_FILTER: `iso_ter1='${currentAlpha3}'`,
+      attribution: '© Marine Regions'
+    }).addTo(countryMap);
+  } else {
+    // All EEZ
     eezWmsLayer = L.tileLayer.wms('https://geo.vliz.be/geoserver/MarineRegions/wms', {
       layers: 'MarineRegions:eez',
       format: 'image/png',
       transparent: true,
       opacity: 0.4,
-      styles: '',
       attribution: '© Marine Regions'
-    });
-    eezWmsLayer.addTo(countryMap);
-  } else {
-    if (eezWmsLayer) { countryMap.removeLayer(eezWmsLayer); eezWmsLayer = null; }
+    }).addTo(countryMap);
   }
-  updateMapLegend();
 }
 
 function toggleHighSeas(btn) {
   if (!countryMap) return;
   btn.classList.toggle('active');
+  if (highSeasWmsLayer) { countryMap.removeLayer(highSeasWmsLayer); highSeasWmsLayer = null; }
   if (btn.classList.contains('active')) {
-    // High Seas via MarineRegions WMS
     highSeasWmsLayer = L.tileLayer.wms('https://geo.vliz.be/geoserver/MarineRegions/wms', {
       layers: 'MarineRegions:high_seas',
       format: 'image/png',
       transparent: true,
-      opacity: 0.4,
-      styles: '',
+      opacity: 0.45,
       attribution: '© Marine Regions'
-    });
-    highSeasWmsLayer.addTo(countryMap);
-  } else {
-    if (highSeasWmsLayer) { countryMap.removeLayer(highSeasWmsLayer); highSeasWmsLayer = null; }
+    }).addTo(countryMap);
   }
   updateMapLegend();
-}
-
-function setEezScope(scope, btn) {
-  document.querySelectorAll('.eez-scope-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
 }
 
 function updateMapLegend() {
