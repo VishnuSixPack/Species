@@ -246,6 +246,8 @@ async function loadCountry() {
   const { data, error } = await db.from('countries').select('*').eq('id', countryId).single();
   document.getElementById('loadingState').style.display = 'none';
   if (error || !data) { showToast('Country not found', true); return; }
+  console.log('Loaded country data:', data);
+  console.log('FOC:', data.is_foc, 'MSI prev:', data.msi_prevalence, 'IUU:', data.iuu_score);
 
   document.getElementById('editTitle').textContent = `Edit — ${data.country}`;
   document.getElementById('backLink').href = `country-detail.html?id=${countryId}`;
@@ -290,8 +292,14 @@ async function saveCountry() {
   payload.tz_multiple = document.getElementById('f-tz_multiple').value === 'true';
   payload.is_foc = focValue;
 
-  const { error } = await db.from('countries').update(payload).eq('id', countryId);
-  if (error) { showToast('Error saving: ' + error.message, true); return; }
+  console.log('Saving payload:', JSON.stringify(payload));
+  const { data: updated, error } = await db.from('countries').update(payload).eq('id', countryId).select();
+  if (error) {
+    console.error('Save error:', error);
+    showToast('Error: ' + error.message, true);
+    return;
+  }
+  console.log('Saved:', updated);
   showToast('Saved successfully!');
   setTimeout(() => window.location.href = `country-detail.html?id=${countryId}`, 1200);
 }
