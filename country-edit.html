@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Edit Country — Project Manhattan</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="icon" type="image/png" href="brand-logo.png"/>
+  <link rel="stylesheet" href="country.css"/>
+  <style>
+    .cd-nav-wrap{display:flex;align-items:center;padding:14px 28px;gap:20px;background:#f0f2f7;position:sticky;top:0;z-index:100;}
+    .cd-nav-brand{text-decoration:none;flex-shrink:0;line-height:1.1;}
+    .cd-nav-brand span:first-child{display:block;font-size:8px;font-weight:700;letter-spacing:2px;color:#9aa0b4;}
+    .cd-nav-brand span:last-child{display:block;font-size:16px;font-weight:800;color:#1a1a2e;}
+    .cd-nav-pill{display:inline-flex;align-items:center;gap:2px;background:#fff;border-radius:999px;padding:5px 7px;box-shadow:0 1px 6px rgba(0,0,0,0.07);}
+    .cd-nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;color:#6b7280;text-decoration:none;cursor:pointer;}
+    .cd-nav-item:hover,.cd-nav-item.active{background:#f0f2f7;color:#1a1a2e;}
+    .cd-nav-item.active{font-weight:600;}
+    .cd-nav-item img{width:15px;height:15px;object-fit:contain;opacity:0.5;}
+    .cd-nav-item.active img{opacity:1;}
+    .cd-nav-item-wrap{position:relative;}
+    .cd-nav-item-wrap::after{content:"";position:absolute;top:100%;left:0;width:100%;height:12px;background:transparent;}
+    .cd-nav-item-wrap:hover .cd-nav-dd{display:block;}
+    .cd-nav-dd{display:none;position:absolute;top:calc(100% + 8px);left:0;background:#fff;border:1px solid #e8eaf0;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.10);min-width:160px;padding:6px;z-index:500;}
+    .cd-nav-dd a{display:block;padding:8px 12px;font-size:13px;color:#4a4e69;text-decoration:none;border-radius:8px;font-weight:500;}
+    .cd-nav-dd a:hover{background:#f0f2f7;color:#1a6fdb;}
+    .cd-nav-dd a.active{color:#1a6fdb;font-weight:700;}
+    .cd-avatar-btn{width:36px;height:36px;border-radius:50%;background:#1a6fdb;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.12);flex-shrink:0;border:none;}
+    .cd-avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid #e8eaf0;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.10);min-width:176px;overflow:hidden;z-index:999;}
+    .cd-avatar-menu.open{display:block;}
+    .cd-avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;color:#1a1a2e;border-bottom:1px solid #e8eaf0;}
+    .cd-avatar-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;color:#4a4e69;text-decoration:none;font-weight:500;}
+    .cd-avatar-menu a:hover{background:#f0f2f7;color:#1a6fdb;}
+    .cd-avatar-menu button{width:100%;padding:9px 15px;background:none;border:none;border-top:1px solid #e8eaf0;text-align:left;font-size:13px;color:#e63946;cursor:pointer;}
+    .cd-avatar-menu button:hover{background:#fff0f1;}
+
+    /* ── EDIT PAGE ── */
+    .edit-wrap{max-width:860px;margin:0 auto;padding:28px;}
+    .edit-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;}
+    .edit-header h1{font-size:20px;font-weight:800;color:#1a1a2e;}
+    .edit-actions{display:flex;gap:10px;}
+    .btn{padding:9px 20px;border-radius:8px;font-family:'Poppins','DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all 0.15s;}
+    .btn-primary{background:#1a6fdb;color:#fff;}
+    .btn-primary:hover{background:#1558b0;}
+    .btn-secondary{background:#f4f6fb;color:#4a4e69;border:1.5px solid #e0e3ed;}
+    .btn-secondary:hover{border-color:#9aa0b4;}
+    .edit-section{background:#fff;border-radius:14px;border:1.5px solid #e8eaf0;margin-bottom:16px;overflow:hidden;}
+    .edit-section-header{padding:14px 20px;border-bottom:1px solid #f0f2f8;display:flex;align-items:center;gap:8px;}
+    .edit-section-header h2{font-size:13px;font-weight:700;color:#1a1a2e;}
+    .edit-section-header svg{flex-shrink:0;}
+    .edit-body{padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+    .edit-body.single{grid-template-columns:1fr;}
+    .form-group{display:flex;flex-direction:column;gap:5px;}
+    .form-group.full{grid-column:1/-1;}
+    .form-group label{font-size:11px;font-weight:700;color:#4a4e69;letter-spacing:0.3px;}
+    .form-group input,.form-group select,.form-group textarea{padding:9px 12px;border:1.5px solid #e0e3ed;border-radius:8px;font-family:'Poppins','DM Sans',sans-serif;font-size:13px;color:#1a1a2e;outline:none;transition:border-color 0.2s;background:#fff;}
+    .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#1a6fdb;box-shadow:0 0 0 3px rgba(26,111,219,0.08);}
+    .form-group textarea{resize:vertical;min-height:68px;}
+    .foc-toggle{display:flex;gap:10px;}
+    .foc-opt{flex:1;padding:10px;border:1.5px solid #e0e3ed;border-radius:8px;text-align:center;cursor:pointer;font-size:13px;font-weight:600;color:#6b7280;transition:all 0.15s;}
+    .foc-opt:hover{border-color:#9aa0b4;}
+    .foc-opt.selected-yes{background:#fff0f1;border-color:#e63946;color:#e63946;}
+    .foc-opt.selected-no{background:#f0fdf4;border-color:#16a34a;color:#16a34a;}
+    .foc-opt.selected-null{background:#f4f6fb;border-color:#9aa0b4;color:#4a4e69;}
+    .toast{position:fixed;bottom:24px;right:24px;background:#1a1a2e;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;display:none;}
+    .toast.show{display:block;}
+    .loading-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px;color:#9aa0b4;gap:12px;}
+    .spinner{width:32px;height:32px;border:3px solid #e8eaf0;border-top-color:#1a6fdb;border-radius:50%;animation:spin 0.8s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="cd-nav-wrap">
+  <a href="home-logged-in.html" class="cd-nav-brand">
+    <span>PROJECT</span><span>Manhattan.</span>
+  </a>
+  <div style="flex:1;display:flex;justify-content:center;">
+    <div class="cd-nav-pill">
+      <a href="home-logged-in.html" class="cd-nav-item"><img src="home.png"/> Home</a>
+      <div class="cd-nav-item-wrap">
+        <div class="cd-nav-item"><img src="my-studio.png"/> My Studio</div>
+        <div class="cd-nav-dd">
+          <a href="product-list.html">Product</a>
+          <a href="organisation.html">Your Company</a>
+        </div>
+      </div>
+      <div class="cd-nav-item-wrap">
+        <div class="cd-nav-item active"><img src="atlas.png" style="opacity:1;"/> Atlas</div>
+        <div class="cd-nav-dd">
+          <a href="Species.html">Species</a>
+          <a href="country.html" class="active">Country</a>
+          <a href="#">Ports</a>
+          <a href="#">Vessels</a>
+        </div>
+      </div>
+      <a href="#" class="cd-nav-item"><img src="features.png"/> Features</a>
+      <a href="#" class="cd-nav-item"><img src="messages.png"/> Messages</a>
+      <a href="#" class="cd-nav-item"><img src="report.png"/> Reports</a>
+      <a href="report.html" class="cd-nav-item"><img src="support.png"/> Support</a>
+    </div>
+  </div>
+  <div style="position:relative;flex-shrink:0;">
+    <button class="cd-avatar-btn" id="cdAvatarBtn" onclick="toggleCdAvatar()"><span id="cdAvatarInitials">?</span></button>
+    <div class="cd-avatar-menu" id="cdAvatarMenu">
+      <div class="cd-avatar-menu-name" id="cdAvatarGreeting">Hello!</div>
+      <a href="profile.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg> Profile</a>
+      <button onclick="handleLogout()">Logout</button>
+    </div>
+  </div>
+</div>
+
+<div class="edit-wrap">
+  <div class="loading-state" id="loadingState"><div class="spinner"></div><p>Loading...</p></div>
+
+  <div id="editContent" style="display:none;">
+    <div class="edit-header">
+      <div>
+        <a href="#" id="backLink" style="font-size:12px;color:#9aa0b4;text-decoration:none;display:flex;align-items:center;gap:4px;margin-bottom:6px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          Back to Country
+        </a>
+        <h1 id="editTitle">Edit Country</h1>
+      </div>
+      <div class="edit-actions">
+        <button class="btn btn-secondary" onclick="goBack()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveCountry()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save Changes
+        </button>
+      </div>
+    </div>
+
+    <!-- BASIC INFO -->
+    <div class="edit-section">
+      <div class="edit-section-header">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+        <h2>Basic Information</h2>
+      </div>
+      <div class="edit-body">
+        <div class="form-group"><label>Country Name</label><input type="text" id="f-country" placeholder="Country name"/></div>
+        <div class="form-group"><label>Capital City</label><input type="text" id="f-capital" placeholder="Capital"/></div>
+        <div class="form-group"><label>Alpha-2 Code</label><input type="text" id="f-alpha2" placeholder="e.g. AU" maxlength="2"/></div>
+        <div class="form-group"><label>Alpha-3 Code</label><input type="text" id="f-alpha3" placeholder="e.g. AUS" maxlength="3"/></div>
+        <div class="form-group"><label>Numeric Code</label><input type="text" id="f-numeric" placeholder="e.g. 036"/></div>
+        <div class="form-group"><label>Region</label><input type="text" id="f-region" placeholder="e.g. Oceania"/></div>
+        <div class="form-group"><label>Sub-region</label><input type="text" id="f-subregion" placeholder="e.g. Australia and New Zealand"/></div>
+        <div class="form-group"><label>Official Language(s)</label><input type="text" id="f-languages" placeholder="e.g. English"/></div>
+        <div class="form-group"><label>Currency Name</label><input type="text" id="f-currency_name" placeholder="e.g. Australian Dollar"/></div>
+        <div class="form-group"><label>Currency Symbol</label><input type="text" id="f-currency_symbol" placeholder="e.g. $"/></div>
+        <div class="form-group"><label>Currency Code</label><input type="text" id="f-currency_code" placeholder="e.g. AUD"/></div>
+        <div class="form-group"><label>Decimal Format</label><input type="text" id="f-decimal_example" placeholder="e.g. 1,234.56"/></div>
+        <div class="form-group"><label>Timezone (IANA)</label><input type="text" id="f-timezone_iana" placeholder="e.g. Australia/Sydney"/></div>
+        <div class="form-group"><label>Multiple Timezones?</label>
+          <select id="f-tz_multiple">
+            <option value="false">No</option>
+            <option value="true">Yes</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- FLAG OF CONVENIENCE -->
+    <div class="edit-section">
+      <div class="edit-section-header">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        <h2>Flag of Convenience</h2>
+      </div>
+      <div class="edit-body single">
+        <div class="form-group">
+          <label>FOC Status</label>
+          <div class="foc-toggle">
+            <div class="foc-opt" id="foc-yes" onclick="setFoc(true)">🚩 Yes — FOC</div>
+            <div class="foc-opt" id="foc-no" onclick="setFoc(false)">✓ Not FOC</div>
+            <div class="foc-opt selected-null" id="foc-null" onclick="setFoc(null)">— Unknown</div>
+          </div>
+          <input type="hidden" id="f-is_foc" value=""/>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODERN SLAVERY INDEX -->
+    <div class="edit-section">
+      <div class="edit-section-header">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+        <h2>Modern Slavery Index (Walk Free)</h2>
+      </div>
+      <div class="edit-body">
+        <div class="form-group"><label>Prevalence (per 1,000)</label><input type="number" id="f-msi_prevalence" placeholder="e.g. 4.2" step="0.1"/></div>
+        <div class="form-group"><label>Vulnerability (/100)</label><input type="number" id="f-msi_vulnerability" placeholder="e.g. 52.3" step="0.1"/></div>
+        <div class="form-group"><label>Gov. Response (/100)</label><input type="number" id="f-msi_gov_response" placeholder="e.g. 45.0" step="0.1"/></div>
+        <div class="form-group"><label>Year</label><input type="number" id="f-msi_year" placeholder="e.g. 2023"/></div>
+        <div class="form-group full"><label>Source URL</label><input type="text" id="f-msi_url" placeholder="https://www.walkfree.org/..."/></div>
+      </div>
+    </div>
+
+    <!-- IUU FISHING INDEX -->
+    <div class="edit-section">
+      <div class="edit-section-header">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        <h2>IUU Fishing Index</h2>
+      </div>
+      <div class="edit-body">
+        <div class="form-group"><label>IUU Score (/100)</label><input type="number" id="f-iuu_score" placeholder="e.g. 38.5" step="0.1"/></div>
+        <div class="form-group"><label>Year</label><input type="number" id="f-iuu_year" placeholder="e.g. 2023"/></div>
+        <div class="form-group full"><label>Source URL</label><input type="text" id="f-iuu_url" placeholder="https://iuufishingindex.net/..."/></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SURL = 'https://enbdaajcromxmhgcverp.supabase.co';
+const SKEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const db = window._sharedSupabase || (window._sharedSupabase = supabase.createClient(SURL, SKEY));
+
+const params = new URLSearchParams(window.location.search);
+const countryId = params.get('id');
+let focValue = null;
+
+// Avatar + auth
+window.addEventListener('load', async () => {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+  const { data: p } = await db.from('profiles').select('first_name,last_name,avatar_color,photo_url,role').eq('id', session.user.id).single();
+  if (!p || (p.role !== 'super_admin' && p.role !== 'admin')) {
+    window.location.href = 'country.html'; return;
+  }
+  const firstName = p?.first_name || session.user.email.split('@')[0];
+  const lastName = p?.last_name || '';
+  const initials = (firstName.charAt(0) + (lastName ? lastName.charAt(0) : '')).toUpperCase();
+  if (p?.photo_url) document.getElementById('cdAvatarBtn').innerHTML = `<img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;
+  else { document.getElementById('cdAvatarBtn').style.background = p?.avatar_color || '#1a6fdb'; document.getElementById('cdAvatarInitials').textContent = initials; }
+  document.getElementById('cdAvatarGreeting').textContent = `Hello, ${firstName}!`;
+
+  if (!countryId) { window.location.href = 'country.html'; return; }
+  await loadCountry();
+});
+
+async function loadCountry() {
+  const { data, error } = await db.from('countries').select('*').eq('id', countryId).single();
+  document.getElementById('loadingState').style.display = 'none';
+  if (error || !data) { showToast('Country not found', true); return; }
+
+  document.getElementById('editTitle').textContent = `Edit — ${data.country}`;
+  document.getElementById('backLink').href = `country-detail.html?id=${countryId}`;
+  document.getElementById('backLink').onclick = (e) => { e.preventDefault(); goBack(); };
+
+  const fields = ['country','capital','alpha2','alpha3','numeric','region','subregion','languages',
+    'currency_name','currency_symbol','currency_code','decimal_example','timezone_iana',
+    'msi_prevalence','msi_vulnerability','msi_gov_response','msi_year','msi_url',
+    'iuu_score','iuu_year','iuu_url'];
+  fields.forEach(f => {
+    const el = document.getElementById(`f-${f}`);
+    if (el && data[f] !== null && data[f] !== undefined) el.value = data[f];
+  });
+  const tzEl = document.getElementById('f-tz_multiple');
+  if (tzEl) tzEl.value = data.tz_multiple ? 'true' : 'false';
+
+  setFoc(data.is_foc);
+  document.getElementById('editContent').style.display = 'block';
+}
+
+function setFoc(val) {
+  focValue = val;
+  document.getElementById('foc-yes').className = 'foc-opt' + (val === true ? ' selected-yes' : '');
+  document.getElementById('foc-no').className = 'foc-opt' + (val === false ? ' selected-no' : '');
+  document.getElementById('foc-null').className = 'foc-opt' + (val === null ? ' selected-null' : '');
+}
+
+async function saveCountry() {
+  const payload = {};
+  const fields = ['country','capital','alpha2','alpha3','numeric','region','subregion','languages',
+    'currency_name','currency_symbol','currency_code','decimal_example','timezone_iana',
+    'msi_prevalence','msi_vulnerability','msi_gov_response','msi_year','msi_url',
+    'iuu_score','iuu_year','iuu_url'];
+  fields.forEach(f => {
+    const el = document.getElementById(`f-${f}`);
+    if (el) payload[f] = el.value || null;
+  });
+  payload.tz_multiple = document.getElementById('f-tz_multiple').value === 'true';
+  payload.is_foc = focValue;
+
+  const { error } = await db.from('countries').update(payload).eq('id', countryId);
+  if (error) { showToast('Error saving: ' + error.message, true); return; }
+  showToast('Saved successfully!');
+  setTimeout(() => window.location.href = `country-detail.html?id=${countryId}`, 1200);
+}
+
+function goBack() { window.location.href = `country-detail.html?id=${countryId}`; }
+
+function showToast(msg, err = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = err ? '#e63946' : '#16a34a';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+window.toggleCdAvatar = function() { document.getElementById('cdAvatarMenu').classList.toggle('open'); };
+document.addEventListener('click', e => {
+  if (!e.target.closest('#cdAvatarBtn') && !e.target.closest('#cdAvatarMenu'))
+    document.getElementById('cdAvatarMenu')?.classList.remove('open');
+});
+window.handleLogout = async function() { await db.auth.signOut(); window.location.href = 'login.html'; };
+</script>
+</body>
+</html>
