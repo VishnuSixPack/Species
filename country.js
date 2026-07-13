@@ -258,8 +258,14 @@ async function initDetailPage() {
   const contEl = document.getElementById('d-continent');
   if (contEl) contEl.textContent = continent ? `${CONTINENT_ICONS[continent]} ${continent}` : '—';
 
-  // General Information
-  populateGeneralInfo(data);
+  // ── General Information ──
+  const setField = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || '—'; };
+  setField('gi-capital',  data.capital);
+  setField('gi-currency', data.currency ? `${data.currency} (${data.currency_code || ''})` : null);
+  setField('gi-languages', Array.isArray(data.languages) ? data.languages.join(', ') : data.languages);
+  setField('gi-region',   data.region || data.continent);
+  setField('gi-decimal',  data.decimal_format);
+  setField('gi-timezone', Array.isArray(data.timezones) ? data.timezones.join(', ') : data.timezones);
 
   // ── Flag of Convenience ──
   const focEl = document.getElementById('foc-status');
@@ -299,7 +305,7 @@ async function initDetailPage() {
   }
   if (data.iuu_url) { const e=document.getElementById('iuu-url'); if(e){ e.href=data.iuu_url; e.style.display='inline-flex'; } }
 
-    document.getElementById('detailContent').classList.remove('hidden');
+  document.getElementById('detailContent').classList.remove('hidden');
 
   // show country on map
   loadCountryMap(data.alpha3, data.country);
