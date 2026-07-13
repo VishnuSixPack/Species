@@ -1,5 +1,4 @@
 // country.js — List + Detail page logic
-// Works for both country.html (list) and country-detail.html (detail)
 
 const SUPABASE_URL = 'https://enbdaajcromxmhgcverp.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
@@ -33,7 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
-// ── LIST PAGE ─────────────────────────────────────────────────
+// ── LIST PAGE ──────────────────────────────────────────────────
 async function initListPage() {
   const { data, error } = await dbClient
     .from('countries')
@@ -176,13 +175,7 @@ async function initDetailPage() {
   if (contEl) contEl.textContent = continent ? `${CONTINENT_ICONS[continent]} ${continent}` : '—';
 
   // ── General Information ──
-  const sf = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val || '—'; };
-  sf('gi-capital',   data.capital);
-  sf('gi-currency',  data.currency ? `${data.currency}${data.currency_code ? ' ('+data.currency_code+')' : ''}` : null);
-  sf('gi-languages', Array.isArray(data.languages) ? data.languages.join(', ') : data.languages);
-  sf('gi-region',    data.region || continent);
-  sf('gi-decimal',   data.decimal_format);
-  sf('gi-timezone',  Array.isArray(data.timezones) ? data.timezones.join(', ') : data.timezones);
+  populateGeneralInfo(data);
 
   // ── Flag of Convenience ──
   const focEl = document.getElementById('foc-status');
@@ -196,12 +189,14 @@ async function initDetailPage() {
   const setBar = (barId, valId, value, max) => {
     const bar = document.getElementById(barId), val = document.getElementById(valId);
     if (!bar || !val) return;
-    if (value !== null && value !== undefined) { bar.style.width = Math.min((value/max)*100,100).toFixed(1)+'%'; val.textContent = value; }
-    else { val.textContent = '—'; }
+    if (value !== null && value !== undefined) {
+      bar.style.width = Math.min((value / max) * 100, 100).toFixed(1) + '%';
+      val.textContent = value;
+    } else { val.textContent = '—'; }
   };
-  setBar('msi-prev-bar', 'msi-prevalence',  data.msi_prevalence,  50);
+  setBar('msi-prev-bar', 'msi-prevalence',   data.msi_prevalence,   50);
   setBar('msi-vuln-bar', 'msi-vulnerability', data.msi_vulnerability, 100);
-  setBar('msi-gov-bar',  'msi-gov-response', data.msi_gov_response, 100);
+  setBar('msi-gov-bar',  'msi-gov-response',  data.msi_gov_response,  100);
   if (data.msi_year) { const e = document.getElementById('msi-year-label'); if (e) e.textContent = 'Source: Walk Free Global Slavery Index ' + data.msi_year; }
   if (data.msi_url)  { const e = document.getElementById('msi-url');  if (e) { e.href = data.msi_url; e.style.display = 'inline-flex'; } }
 
@@ -221,45 +216,121 @@ async function initDetailPage() {
   if (data.iuu_url) { const e = document.getElementById('iuu-url'); if (e) { e.href = data.iuu_url; e.style.display = 'inline-flex'; } }
 
   document.getElementById('detailContent').classList.remove('hidden');
+
+  // show country on map
   loadCountryMap(data.alpha3, data.country);
+}
+
+// ── GENERAL INFORMATION ────────────────────────────────────────
+function populateGeneralInfo(d) {
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = (v && String(v).trim()) ? v : '—'; };
+  set('gi-capital', d.capital);
+  const cur = [d.currency_name, d.currency_symbol ? `(${d.currency_symbol})` : '', d.currency_code ? `· ${d.currency_code}` : '']
+    .filter(Boolean).join(' ');
+  set('gi-currency', cur);
+  set('gi-languages', d.languages);
+  set('gi-region', [d.region, d.subregion].filter(Boolean).join(' · '));
+  set('gi-decimal', d.decimal_example);
+  document.getElementById('gi-timezone').textContent = formatTimeZone(d.timezone_iana, d.tz_multiple);
+}
+
+function utcLabel(min) {
+  const s = min < 0 ? '-' : '+';
+  const a = Math.abs(min), h = Math.floor(a / 60), m = a % 60;
+  return 'UTC' + s + h + (m ? ':' + String(m).padStart(2, '0') : '');
+}
+
+function zoneOffsetMinutes(date, timeZone) {
+  const p = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'shortOffset' }).formatToParts(date);
+  const tn = (p.find(x => x.type === 'timeZoneName') || {}).value || 'GMT';
+  const m = tn.match(/GMT([+-])(\d{1,2})(?::(\d{2}))?/);
+  if (!m) return 0;
+  return (m[1] === '-' ? -1 : 1) * (parseInt(m[2], 10) * 60 + (m[3] ? parseInt(m[3], 10) : 0));
+}
+
+function formatTimeZone(iana, multiple) {
+  if (!iana) return '—';
+  try {
+    const now = new Date();
+    const diff = zoneOffsetMinutes(now, iana) - (-now.getTimezoneOffset());
+    let rel;
+    if (diff === 0) rel = 'same as your time';
+    else {
+      const sign = diff > 0 ? '+' : '−';
+      const a = Math.abs(diff), h = Math.floor(a / 60), m = a % 60;
+      rel = sign + h + 'h' + (m ? ' ' + m + 'm' : '') + ' from you';
+    }
+    return utcLabel(zoneOffsetMinutes(now, iana)) + ' (' + rel + ')' + (multiple ? ' · multiple zones' : '');
+  } catch (e) {
+    return iana;
+  }
 }
 
 // ── COUNTRY MAP ────────────────────────────────────────────────
 let countryMap = null;
-const faoLayer = null, eezLayer = null, highSeasLayer = null;
-let eezScope = 'country';
+let countryBase = null;
+let countryLayer = null;
 
-function loadCountryMap(alpha3, countryName) {
-  const mapEl = document.getElementById('countryMap');
-  if (!mapEl) return;
-  if (countryMap) { countryMap.remove(); countryMap = null; }
+async function loadCountryMap(alpha3, countryName) {
+  const el = document.getElementById('countryMap');
+  if (!el) return;
 
-  countryMap = L.map('countryMap', { zoomControl: true, scrollWheelZoom: false });
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom: 18
-  }).addTo(countryMap);
+  if (!countryMap) {
+    countryMap = L.map('countryMap', {
+      zoomControl: false, attributionControl: false, dragging: false,
+      scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false,
+      keyboard: false, touchZoom: false
+    });
+    setTimeout(() => countryMap.invalidateSize(), 200);
+  }
 
-  // Load country boundary via GeoJSON (nominatim-based)
-  const url = `https://nominatim.openstreetmap.org/search?country=${encodeURIComponent(countryName)}&format=json&limit=1&featuretype=country`;
-  fetch(url, { headers: { 'Accept-Language': 'en' } })
-    .then(r => r.json())
-    .then(results => {
-      if (results && results[0]) {
-        const lat = parseFloat(results[0].lat);
-        const lon = parseFloat(results[0].lon);
-        const zoom = results[0].importance > 0.7 ? 4 : results[0].importance > 0.5 ? 5 : 6;
-        countryMap.setView([lat, lon], zoom);
-        L.marker([lat, lon]).addTo(countryMap).bindPopup(`<strong>${countryName}</strong>`);
-        document.getElementById('mapNote').textContent = '';
-      } else {
-        countryMap.setView([20, 0], 2);
-      }
-    })
-    .catch(() => countryMap.setView([20, 0], 2));
+  if (countryBase)  { countryMap.removeLayer(countryBase);  countryBase = null; }
+  if (countryLayer) { countryMap.removeLayer(countryLayer); countryLayer = null; }
+  document.getElementById('mapNote').textContent = '';
+
+  try {
+    const geo = await (await fetch('countries.geo.json')).json();
+
+    // gray base — every country
+    countryBase = L.geoJSON(geo, {
+      interactive: false,
+      style: { color: '#ffffff', weight: 1, fillColor: '#dfe3ea', fillOpacity: 1 }
+    }).addTo(countryMap);
+
+    const feature = geo.features.find(f => f.id === alpha3);
+
+    if (feature) {
+      countryLayer = L.geoJSON(feature, {
+        interactive: false,
+        style: { color: '#1565c0', weight: 1.2, fillColor: '#1a6fdb', fillOpacity: 0.92 }
+      }).addTo(countryMap);
+
+      countryMap.fitBounds(countryLayer.getBounds(), { padding: [40, 40], maxZoom: 6 });
+      return;
+    }
+
+    // Fallback for small territories
+    const hits = await (await fetch(
+      `https://nominatim.openstreetmap.org/search?country=${encodeURIComponent(countryName)}&format=json&limit=1`
+    )).json();
+
+    if (hits && hits.length) {
+      const h = hits[0], bb = h.boundingbox.map(Number);
+      countryMap.fitBounds([[bb[0], bb[2]], [bb[1], bb[3]]], { padding: [30, 30], maxZoom: 8 });
+      countryLayer = L.circleMarker([+h.lat, +h.lon], {
+        radius: 8, color: '#1a6fdb', fillColor: '#1a6fdb', fillOpacity: 0.6
+      }).addTo(countryMap);
+      document.getElementById('mapNote').textContent = 'Approximate location shown.';
+    } else {
+      document.getElementById('mapNote').textContent = 'Map not available for this country.';
+    }
+  } catch (e) {
+    document.getElementById('mapNote').textContent = 'Map could not be loaded.';
+  }
 }
 
-function toggleFao(btn) { btn.classList.toggle('active'); updateMapLegend(); }
+// ── MAP OVERLAY TOGGLES ────────────────────────────────────────
+function toggleFao(btn)      { btn.classList.toggle('active'); updateMapLegend(); }
 function toggleEez(btn) {
   btn.classList.toggle('active');
   const wrap = document.getElementById('eezScopeWrap');
@@ -268,7 +339,6 @@ function toggleEez(btn) {
 }
 function toggleHighSeas(btn) { btn.classList.toggle('active'); updateMapLegend(); }
 function setEezScope(scope, btn) {
-  eezScope = scope;
   document.querySelectorAll('.eez-scope-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
 }
@@ -284,9 +354,4 @@ function updateMapLegend() {
   if (lFao) lFao.classList.toggle('hidden', !faoActive);
   if (lEez) lEez.classList.toggle('hidden', !eezActive);
   if (lHs)  lHs.classList.toggle('hidden', !hsActive);
-}
-
-// ── SEARCH (detail page back button) ─────────────────────────
-function filterCountriesDetail(q) {
-  // Used if search is present on detail page
 }
