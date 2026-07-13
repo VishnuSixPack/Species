@@ -277,11 +277,21 @@ async function loadCountryMap(alpha3, countryName) {
 
   if (!countryMap) {
     countryMap = L.map('countryMap', {
-      zoomControl: false, attributionControl: false, dragging: false,
-      scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false,
-      keyboard: false, touchZoom: false
+      zoomControl: true, attributionControl: true,
+      dragging: true, scrollWheelZoom: false,
+      doubleClickZoom: true, touchZoom: true,
+      keyboard: false, minZoom: 1, maxZoom: 7
     });
     setTimeout(() => countryMap.invalidateSize(), 200);
+
+    // Labels layer (neighbour names) above fills
+    countryMap.createPane('labels');
+    countryMap.getPane('labels').style.zIndex = 650;
+    countryMap.getPane('labels').style.pointerEvents = 'none';
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+      pane: 'labels', subdomains: 'abcd',
+      attribution: '© OpenStreetMap, © CARTO', maxZoom: 18
+    }).addTo(countryMap);
   }
 
   if (countryBase)  { countryMap.removeLayer(countryBase);  countryBase = null; }
@@ -306,6 +316,14 @@ async function loadCountryMap(alpha3, countryName) {
       }).addTo(countryMap);
 
       countryMap.fitBounds(countryLayer.getBounds(), { padding: [40, 40], maxZoom: 6 });
+
+      const area = feature.properties && feature.properties.area_km2;
+      const areaText = area ? area.toLocaleString('en-US') + ' km²' : '';
+      countryLayer.bindTooltip(
+        `<span class="cml-name">${countryName.toUpperCase()}</span>` +
+        (areaText ? `<span class="cml-area">${areaText}</span>` : ''),
+        { permanent: true, direction: 'right', className: 'country-map-label', offset: [12, 0] }
+      ).openTooltip();
       return;
     }
 
