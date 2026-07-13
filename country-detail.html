@@ -65,6 +65,28 @@
     .info-tooltip-box{display:none;position:absolute;bottom:calc(100% + 8px);left:0;background:#1a1a2e;color:#fff;font-size:11px;font-weight:400;line-height:1.6;padding:10px 14px;border-radius:10px;width:280px;z-index:200;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,0.2);}
     .info-tooltip-box::after{content:'';position:absolute;top:100%;left:14px;border:5px solid transparent;border-top-color:#1a1a2e;}
     .info-tooltip-wrap:hover .info-tooltip-box{display:block;}
+
+    /* ── STAT WIDGETS ── */
+    .widgets-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:16px;}
+    .widget{flex:1;min-width:100px;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden;}
+    .widget::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:12px 12px 0 0;}
+    .widget-foc::before{background:#e63946;}
+    .widget-foc{background:#fff5f5;border:1.5px solid #ffd6d8;}
+    .widget-foc.foc-no{background:#f0fdf4;border-color:#bbf7d0;}
+    .widget-foc.foc-no::before{background:#16a34a;}
+    .widget-prev::before{background:#e63946;}
+    .widget-prev{background:#fff5f5;border:1.5px solid #ffd6d8;}
+    .widget-vuln::before{background:#f59e0b;}
+    .widget-vuln{background:#fffbeb;border:1.5px solid #fde68a;}
+    .widget-gov::before{background:#16a34a;}
+    .widget-gov{background:#f0fdf4;border:1.5px solid #bbf7d0;}
+    .widget-iuu::before{background:#7c3aed;}
+    .widget-iuu{background:#faf5ff;border:1.5px solid #e9d5ff;}
+    .widget-label{font-size:10px;font-weight:700;color:#9aa0b4;text-transform:uppercase;letter-spacing:0.5px;display:flex;align-items:center;gap:4px;}
+    .widget-value{font-size:22px;font-weight:800;color:#1a1a2e;line-height:1;}
+    .widget-sub{font-size:10px;color:#9aa0b4;margin-top:1px;}
+    .widget-badge{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:700;}
+    .widget-info-icon{width:13px;height:13px;border-radius:50%;background:rgba(0,0,0,0.08);display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;cursor:help;flex-shrink:0;}
   </style>
 </head>
 <body>
@@ -175,23 +197,7 @@
         </div>
       </div>
 
-      <!-- FLAG OF CONVENIENCE -->
-      <div class="detail-card">
-        <div class="detail-card-header">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
-          <div class="info-tooltip-wrap">
-            <h2>Flag of Convenience</h2>
-            <span class="info-tooltip-icon">i</span>
-            <div class="info-tooltip-box">A Flag of Convenience (FOC) occurs when a vessel is registered in a country different from the owner's nationality — often to benefit from lower taxes, cheaper fees, or lax enforcement. Regional bodies like the WCPFC require rigorous tracking of beneficial owners to prevent IUU fishing.</div>
-          </div>
-        </div>
-        <div class="detail-fields">
-          <div class="detail-field" style="flex-direction:row;align-items:center;gap:12px;">
-            <span class="detail-label">FOC Status</span>
-            <div id="foc-status">—</div>
-          </div>
-        </div>
-      </div>
+
 
       <!-- LOCATION MAP -->
       <div class="detail-card map-card" style="grid-column:1/-1;">
@@ -219,71 +225,104 @@
         </div>
       </div>
 
-      <!-- MODERN SLAVERY INDEX -->
-      <div class="detail-card" style="grid-column:1/-1;">
-        <div class="detail-card-header">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
-          <div class="info-tooltip-wrap">
-            <h2>Modern Slavery Index</h2>
-            <span class="info-tooltip-icon">i</span>
-            <div class="info-tooltip-box">The Walk Free Global Slavery Index measures three dimensions: Prevalence (estimated victims per 1,000 people), Vulnerability (social, economic and governance factors), and Government Response (strength of policies and actions against modern slavery). Higher vulnerability and lower gov. response = higher risk.</div>
-          </div>
-        </div>
-        <div style="padding:4px 6px;">
-          <div class="score-row">
-            <span class="score-label">Prevalence<br/><small style="color:#c0c4d0;font-size:10px;">per 1,000</small></span>
-            <div class="score-bar-wrap"><div class="score-bar" id="msi-prev-bar" style="width:0%;background:#e63946;"></div></div>
-            <span class="score-val" id="msi-prevalence">—</span>
-          </div>
-          <div class="score-row">
-            <span class="score-label">Vulnerability<br/><small style="color:#c0c4d0;font-size:10px;">/100</small></span>
-            <div class="score-bar-wrap"><div class="score-bar" id="msi-vuln-bar" style="width:0%;background:#f59e0b;"></div></div>
-            <span class="score-val" id="msi-vulnerability">—</span>
-          </div>
-          <div class="score-row">
-            <span class="score-label">Gov. Response<br/><small style="color:#c0c4d0;font-size:10px;">/100</small></span>
-            <div class="score-bar-wrap"><div class="score-bar" id="msi-gov-bar" style="width:0%;background:#16a34a;"></div></div>
-            <span class="score-val" id="msi-gov-response">—</span>
-          </div>
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
-            <span style="color:#c0c4d0;font-size:11px;" id="msi-year-label"></span>
-            <a id="msi-url" href="#" target="_blank" class="source-link" style="display:none;">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-              Walk Free Index
-            </a>
-          </div>
-        </div>
-      </div>
 
-      <!-- IUU FISHING INDEX -->
+
+      <!-- STAT WIDGETS -->
       <div class="detail-card" style="grid-column:1/-1;">
         <div class="detail-card-header">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-          <div class="info-tooltip-wrap">
-            <h2>IUU Fishing Score</h2>
-            <span class="info-tooltip-icon">i</span>
-            <div class="info-tooltip-box">The IUU Fishing Index scores countries across four roles: Flag State (vessels flying the country's flag), Coastal State (fishing in its waters), Port State (vessels landing catches), and Market State (seafood consumption/trade). Higher scores = greater IUU fishing risk. Source: iuufishingindex.net</div>
-          </div>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          <h2>Compliance Indicators</h2>
         </div>
-        <div style="display:flex;flex-direction:column;gap:8px;padding:4px 0;">
-          <div style="display:flex;align-items:flex-end;gap:8px;">
-            <div class="iuu-score-wrap">
-              <div class="iuu-score-big" id="iuu-score">—</div>
-              <div class="iuu-score-denom">/100</div>
+        <div class="widgets-row">
+
+          <!-- FOC -->
+          <div class="widget widget-foc" id="foc-widget">
+            <div class="widget-label">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+              Flag of Convenience
+              <span class="widget-info-icon info-tooltip-wrap" style="position:relative;">i
+                <div class="info-tooltip-box" style="width:240px;">A vessel is registered in a country different from its owner's nationality — often to exploit lower taxes or lax enforcement. WCPFC tracks beneficial owners to prevent IUU fishing.</div>
+              </span>
             </div>
-            <div>
-              <div id="iuu-risk-badge" style="display:none;" class="foc-badge"></div>
-              <div class="iuu-score-sub" id="iuu-year-label"></div>
+            <div class="widget-value" id="foc-status" style="font-size:15px;margin-top:4px;">—</div>
+          </div>
+
+          <!-- Prevalence -->
+          <div class="widget widget-prev">
+            <div class="widget-label">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              Prevalence
+              <span class="widget-info-icon info-tooltip-wrap" style="position:relative;">i
+                <div class="info-tooltip-box" style="width:220px;">Estimated number of people living in modern slavery per 1,000 population. Source: Walk Free Global Slavery Index.</div>
+              </span>
+            </div>
+            <div class="widget-value" id="msi-prevalence">—</div>
+            <div class="widget-sub">per 1,000 people</div>
+            <div style="height:4px;background:rgba(0,0,0,0.06);border-radius:999px;margin-top:6px;overflow:hidden;">
+              <div id="msi-prev-bar" style="height:100%;border-radius:999px;background:#e63946;width:0%;transition:width 0.6s;"></div>
             </div>
           </div>
-          <div style="height:8px;background:#f0f2f7;border-radius:999px;overflow:hidden;">
-            <div class="score-bar" id="iuu-bar" style="width:0%;background:#e63946;"></div>
+
+          <!-- Vulnerability -->
+          <div class="widget widget-vuln">
+            <div class="widget-label">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+              Vulnerability
+              <span class="widget-info-icon info-tooltip-wrap" style="position:relative;">i
+                <div class="info-tooltip-box" style="width:220px;">Social, economic and governance factors that make a population more susceptible to modern slavery. Scored out of 100. Source: Walk Free.</div>
+              </span>
+            </div>
+            <div class="widget-value" id="msi-vulnerability">—</div>
+            <div class="widget-sub">out of 100</div>
+            <div style="height:4px;background:rgba(0,0,0,0.06);border-radius:999px;margin-top:6px;overflow:hidden;">
+              <div id="msi-vuln-bar" style="height:100%;border-radius:999px;background:#f59e0b;width:0%;transition:width 0.6s;"></div>
+            </div>
           </div>
-          <p style="font-size:11px;color:#9aa0b4;line-height:1.6;">Higher scores indicate greater IUU fishing risk. Scores consider flag, coastal, port and market state responsibilities.</p>
+
+          <!-- Gov Response -->
+          <div class="widget widget-gov">
+            <div class="widget-label">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+              Gov. Response
+              <span class="widget-info-icon info-tooltip-wrap" style="position:relative;">i
+                <div class="info-tooltip-box" style="width:220px;">Strength of government policies and actions against modern slavery. Higher = stronger response. Scored out of 100. Source: Walk Free.</div>
+              </span>
+            </div>
+            <div class="widget-value" id="msi-gov-response">—</div>
+            <div class="widget-sub">out of 100</div>
+            <div style="height:4px;background:rgba(0,0,0,0.06);border-radius:999px;margin-top:6px;overflow:hidden;">
+              <div id="msi-gov-bar" style="height:100%;border-radius:999px;background:#16a34a;width:0%;transition:width 0.6s;"></div>
+            </div>
+          </div>
+
+          <!-- IUU Score -->
+          <div class="widget widget-iuu">
+            <div class="widget-label">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              IUU Fishing Score
+              <span class="widget-info-icon info-tooltip-wrap" style="position:relative;">i
+                <div class="info-tooltip-box" style="width:240px;">Scores countries across Flag, Coastal, Port and Market state responsibilities. Higher = greater IUU risk. Source: iuufishingindex.net</div>
+              </span>
+            </div>
+            <div class="widget-value" id="iuu-score">—</div>
+            <div class="widget-sub" id="iuu-year-label">out of 100</div>
+            <div style="height:4px;background:rgba(0,0,0,0.06);border-radius:999px;margin-top:6px;overflow:hidden;">
+              <div id="iuu-bar" style="height:100%;border-radius:999px;background:#7c3aed;width:0%;transition:width 0.6s;"></div>
+            </div>
+          </div>
+
+        </div>
+        <!-- Source links -->
+        <div style="display:flex;gap:16px;margin-top:12px;padding-top:10px;border-top:1px solid #f0f2f8;">
+          <a id="msi-url" href="#" target="_blank" class="source-link" style="display:none;">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Walk Free Index
+          </a>
           <a id="iuu-url" href="#" target="_blank" class="source-link" style="display:none;">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             IUU Fishing Index
           </a>
+          <span id="msi-year-label" style="font-size:11px;color:#c0c4d0;margin-left:auto;"></span>
         </div>
       </div>
 

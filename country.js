@@ -180,10 +180,17 @@ async function initDetailPage() {
 
   // ── Flag of Convenience ──
   const focEl = document.getElementById('foc-status');
+  const focWidget = document.getElementById('foc-widget');
   if (focEl) {
-    if (data.is_foc === true)       focEl.innerHTML = '<span class="foc-badge yes">🚩 Yes — Flag of Convenience</span>';
-    else if (data.is_foc === false) focEl.innerHTML = '<span class="foc-badge no">✓ Not a Flag of Convenience</span>';
-    else                            focEl.textContent = '—';
+    if (data.is_foc === true) {
+      focEl.innerHTML = '🚩 Yes';
+      if (focWidget) focWidget.className = 'widget widget-foc';
+    } else if (data.is_foc === false) {
+      focEl.innerHTML = '✓ No';
+      if (focWidget) focWidget.className = 'widget widget-foc foc-no';
+    } else {
+      focEl.textContent = '—';
+    }
   }
 
   // ── Modern Slavery Index ──
@@ -205,7 +212,7 @@ async function initDetailPage() {
   if (data.iuu_score !== null && data.iuu_score !== undefined) {
     const iS = document.getElementById('iuu-score'), iB = document.getElementById('iuu-bar'), iBadge = document.getElementById('iuu-risk-badge');
     if (iS) iS.textContent = data.iuu_score;
-    if (iB) iB.style.width = Math.min(data.iuu_score, 100) + '%';
+    if (iB) { iB.style.width = Math.min(data.iuu_score, 100) + '%'; iB.style.background = '#7c3aed'; }
     if (iBadge) {
       iBadge.style.display = 'inline-flex';
       if      (data.iuu_score >= 60) { iBadge.textContent = 'High Risk';   iBadge.className = 'foc-badge yes'; }
