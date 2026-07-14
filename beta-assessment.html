@@ -302,6 +302,15 @@
     .ev-preview-fallback{text-align:center;color:#6b7280;font-size:13px;}
     .ev-preview-fallback a{color:#7c3aed;font-weight:600;}
     .rv-expert-area{margin-top:16px;padding-top:16px;border-top:1px solid #f0f2f8;}
+    .rv-stage-comment{margin-top:12px;padding-top:12px;border-top:1px dashed #f0f2f8;}
+    .rv-stage-comment-lbl{font-size:10px;font-weight:700;color:#9aa0b4;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:5px;}
+    .rv-stage-comment-ta{width:100%;padding:8px 11px;border:1px solid #e8eaf0;border-radius:8px;font-family:'Poppins',sans-serif;font-size:12px;color:#1a1a2e;outline:none;resize:none;transition:border-color 0.2s;background:#fafbfc;box-sizing:border-box;}
+    .rv-stage-comment-ta:focus{border-color:#8b5cf6;background:#fff;}
+    .rv-stage-comment-save{margin-top:5px;font-size:11px;font-weight:600;color:#8b5cf6;cursor:pointer;background:none;border:none;padding:0;font-family:'Poppins',sans-serif;}
+    .rv-stage-comment-save:hover{text-decoration:underline;}
+    .rv-stage-comment-posted{margin-top:6px;background:#f4f0ff;border-radius:8px;padding:8px 10px;font-size:11px;color:#5b21b6;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+    .rv-stage-comment-edit{font-size:10px;font-weight:600;color:#9aa0b4;cursor:pointer;white-space:nowrap;}
+    .rv-stage-comment-edit:hover{color:#7c3aed;}
     .rv-expert-label{font-size:11px;font-weight:700;color:#6b7280;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;}
     .rv-expert-ta{width:100%;padding:10px 13px;border:1px solid #e0e3ed;border-radius:10px;font-family:'Poppins',sans-serif;font-size:13px;color:#1a1a2e;outline:none;resize:none;transition:border-color 0.2s;}
     .rv-expert-ta:focus{border-color:#8b5cf6;}
@@ -538,8 +547,9 @@
       <div id="rv-score-area"></div>
       <div id="rv-stages-area"></div>
       <div class="rv-expert-area">
-        <div class="rv-expert-label">Expert Comment</div>
-        <textarea class="rv-expert-ta" id="rv-expert-comment" rows="4" placeholder="Add your expert commentary here..."></textarea>
+        <div class="rv-expert-label">📝 Reviewer Conclusion</div>
+        <div style="font-size:11px;color:#9aa0b4;margin-bottom:8px;">Overall assessment conclusion — summarise the company's traceability standing, key risks and recommendations.</div>
+        <textarea class="rv-expert-ta" id="rv-expert-comment" rows="4" placeholder="e.g. This company demonstrates partial first-mile traceability but lacks documented evidence for vessel-level KDEs. Recommend targeted improvement in IUU risk controls before approval..."></textarea>
       </div>
     </div>
     <div class="rv-actions">
@@ -779,33 +789,57 @@
 <!-- ══ EVIDENCE MODAL ══ -->
 <div class="evmod" id="evmod">
   <div class="evbox">
-    <div class="evbox-h">Add Evidence</div>
-    <div class="evbox-sub">Select the type of evidence to attach to this KDE.</div>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;">
+      <div>
+        <div class="evbox-h">Add Evidence</div>
+        <div class="evbox-sub">You can add <strong>multiple files, documents or links</strong> for this KDE — e.g. one PDF per vessel, or multiple certificates. Add each one separately using the + Add button.</div>
+      </div>
+      <button onclick="closeEvMod()" style="width:28px;height:28px;border-radius:50%;background:#f4f6fb;border:none;cursor:pointer;font-size:15px;color:#6b7280;flex-shrink:0;margin-left:10px;">×</button>
+    </div>
+
+    <!-- Reuse section -->
     <div id="ev-reuse-section" style="display:none;margin-bottom:14px;">
-      <div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Reuse from this session</div>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+        <span style="font-size:12px;">♻️</span>
+        <span style="font-size:11px;font-weight:700;color:#7c3aed;">Reuse evidence from this session</span>
+        <span style="font-size:10px;color:#9aa0b4;">(click to add)</span>
+      </div>
       <div class="ev-reuse-list" id="ev-reuse-list"></div>
     </div>
+
+    <!-- Type selector -->
+    <div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">1. Select evidence type</div>
     <div class="ev-types">
       <div class="ev-type" id="evt-cert" onclick="selEvType('cert')"><div class="ev-type-icon">🏅</div><div><div class="ev-type-lbl">Certificate</div><div class="ev-type-desc">MSC, ASC, BRC, ISO</div></div></div>
       <div class="ev-type" id="evt-url" onclick="selEvType('url')"><div class="ev-type-icon">🔗</div><div><div class="ev-type-lbl">URL / Link</div><div class="ev-type-desc">Registry, database</div></div></div>
-      <div class="ev-type" id="evt-doc" onclick="selEvType('doc')"><div class="ev-type-icon">📄</div><div><div class="ev-type-lbl">Document</div><div class="ev-type-desc">PDF, Word, Excel</div></div></div>
+      <div class="ev-type" id="evt-doc" onclick="selEvType('doc')"><div class="ev-type-icon">📄</div><div><div class="ev-type-lbl">Document</div><div class="ev-type-desc">PDF, Excel, Word</div></div></div>
       <div class="ev-type" id="evt-ref" onclick="selEvType('ref')"><div class="ev-type-icon">📋</div><div><div class="ev-type-lbl">Reference / ID</div><div class="ev-type-desc">Permit no., code</div></div></div>
       <div class="ev-type" id="evt-photo" onclick="selEvType('photo')"><div class="ev-type-icon">🖼️</div><div><div class="ev-type-lbl">Photo / Image</div><div class="ev-type-desc">JPG, PNG, scan</div></div></div>
       <div class="ev-type" id="evt-statement" onclick="selEvType('statement')"><div class="ev-type-icon">✍️</div><div><div class="ev-type-lbl">Statement</div><div class="ev-type-desc">Declaration, attestation</div></div></div>
     </div>
+
+    <!-- Input area -->
     <div class="ev-input-area" id="ev-input-area">
-      <div class="ev-inp-lbl" id="ev-inp-lbl">Enter details</div>
+      <div class="ev-inp-lbl" id="ev-inp-lbl">2. Enter details or upload file</div>
       <input class="ev-inp" id="ev-inp" placeholder="" onkeydown="if(event.key==='Enter')addEvItem()"/>
-      <button class="ev-upload-btn" id="ev-upload-btn" onclick="triggerEvUpload()">📎 Upload file</button>
+      <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
+        <button class="ev-upload-btn" id="ev-upload-btn" onclick="triggerEvUpload()">📎 Upload file</button>
+        <button class="ev-add-btn" id="ev-add-btn" onclick="addEvItem()">+ Add to list</button>
+      </div>
       <div class="ev-file-name" id="ev-file-name"></div>
-      <input type="file" id="ev-file-inp" style="display:none;" onchange="onEvFileChange(this)"/>
+      <input type="file" id="ev-file-inp" style="display:none;" accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp" onchange="onEvFileChange(this)"/>
     </div>
-    <div class="ev-items" id="ev-items"></div>
-    <div class="ev-footer">
-      <div class="ev-count" id="ev-count"></div>
+
+    <!-- Added items list -->
+    <div id="ev-items-wrap" style="display:none;margin-top:12px;">
+      <div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">Added evidence <span id="ev-count" style="color:#8b5cf6;"></span></div>
+      <div class="ev-items" id="ev-items"></div>
+    </div>
+
+    <div class="ev-footer" style="margin-top:14px;">
+      <div style="font-size:11px;color:#9aa0b4;">Add as many files as needed, then click Done.</div>
       <div class="ev-actions">
         <button class="ev-ghost-btn" onclick="closeEvMod()">Cancel</button>
-        <button class="ev-add-btn" id="ev-add-btn" onclick="addEvItem()" style="display:none;">+ Add</button>
         <button class="ev-done-btn" onclick="saveEvidence()">Done ✓</button>
       </div>
     </div>
@@ -921,7 +955,9 @@ function addNode(type,x,y){
   const num=scNodes.filter(n=>n.type===type).length+1;
   const id='n'+Date.now();
   const node={id,type,x:Math.max(0,x),y:Math.max(0,y),cfg,own:null,vesselCount:cfg.hasVessels?1:null,instanceNum:num,subMode:null};
-  scNodes.push(node);renderNode(node);
+  scNodes.push(node);
+  // Re-render all nodes of the same type so their steppers update (lock/unlock)
+  scNodes.filter(n=>n.type===node.type).forEach(n=>renderNode(n));
   document.getElementById('cvhint').classList.add('gone');updateChainSum();
 }
 function renderNode(node){
@@ -936,10 +972,14 @@ function renderNode(node){
       <div><div class="cni-name">${node.cfg.l}</div>${hasMultiple?`<div class="cni-num">${numLabel}</div>`:''}</div></div>
     ${node.entityName?`<div style="font-size:10px;font-weight:700;color:#1a1a2e;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px;">${node.entityName}</div>`:''}
     ${node.own?`<div class="cown-badge">${OWN_LABELS[node.own]}</div>`:''}
-    ${node.cfg.hasVessels?`<div class="vstepper"><span class="vstep-lbl">${node.type==='transshipment'?'Carriers':'Vessels'}</span>
-      <button class="vstep-btn" onclick="event.stopPropagation();changeCount('${node.id}',-1)">−</button>
-      <span class="vstep-val" id="vc_${node.id}">${node.vesselCount}</span>
-      <button class="vstep-btn" onclick="event.stopPropagation();changeCount('${node.id}',+1)">+</button></div>`:''}
+    ${node.cfg.hasVessels?`<div class="vstepper" id="vst_${node.id}">
+      <span class="vstep-lbl">${node.type==='transshipment'?'Carriers':'Vessels'}</span>
+      ${scNodes.filter(n=>n.type===node.type).length>1
+        ?`<span title="Disabled when multiple ${node.type==='transshipment'?'Transshipment':'Harvest'} nodes exist — each node represents a separate group" style="font-size:10px;color:#9aa0b4;font-style:italic;">1 (locked)</span>`
+        :`<button class="vstep-btn" onclick="event.stopPropagation();changeCount('${node.id}',-1)">−</button>
+          <span class="vstep-val" id="vc_${node.id}">${node.vesselCount}</span>
+          <button class="vstep-btn" onclick="event.stopPropagation();changeCount('${node.id}',+1)">+</button>`}
+    </div>`:''}
     <div class="port out" data-node="${node.id}" data-dir="out"></div>
     <div class="port in" data-node="${node.id}" data-dir="in"></div>`;
   el.addEventListener('mousedown',e=>{
@@ -1974,29 +2014,48 @@ function kPrev(){
 function kNext(){activeSubIdx=0;autoSave();if(kIdx<STAGES.length-1){kIdx++;renderKDE();}else goTo('sPrefs');}
 
 // ══ EVIDENCE MODAL ══
-let evKdeId=null,evSelType=null,evTempItems=[];
+let evKdeId=null,evSelType=null,evTempItems=[],evUploadedUrl=null;
 const evTypeMeta={cert:{lbl:'Certificate name or standard',ph:'e.g. MSC CoC, ASC, BRC Issue 9'},url:{lbl:'URL or web link',ph:'https://...'},doc:{lbl:'Document name or reference',ph:'e.g. BoL_2024_001.pdf'},ref:{lbl:'Reference number or ID',ph:'e.g. Permit No. FP-2024-007'},photo:{lbl:'Image file name or description',ph:'e.g. vessel_photo_jan2024.jpg'},statement:{lbl:'Statement or declaration reference',ph:'e.g. Supplier declaration Jan 2024'}};
-function getAllEvidence(){const all=[];Object.values(kResp).forEach(r=>{if(r&&r.evidence)r.evidence.forEach(e=>all.push(e));});return all;}
+function getAllEvidence(){
+  const all=[];const seen=new Set();
+  Object.entries(kResp).forEach(([id,r])=>{
+    if(id===evKdeId)return; // don't show items from currently open KDE
+    if(r&&r.evidence)r.evidence.forEach(e=>{
+      const key=e.value+e.type;
+      if(!seen.has(key)){seen.add(key);all.push({...e});}
+    });
+  });
+  return all;
+}
 function openEvMod(id){
   evKdeId=id;evSelType=null;evTempItems=[...(kResp[id]?.evidence||[])];
+  // reset type selection
+  document.querySelectorAll('.ev-type').forEach(el=>el.classList.remove('sel'));
+  const addBtn=document.getElementById('ev-add-btn');if(addBtn)addBtn.style.display='none';
   document.querySelectorAll('.ev-type').forEach(el=>el.classList.remove('sel'));
   document.getElementById('ev-input-area').classList.remove('show');document.getElementById('ev-add-btn').style.display='none';document.getElementById('ev-inp').value='';
   const allEv=getAllEvidence();const reuseSection=document.getElementById('ev-reuse-section'),reuseList=document.getElementById('ev-reuse-list');
-  if(allEv.length){reuseSection.style.display='block';const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};reuseList.innerHTML=allEv.map((e,i)=>`<div class="ev-reuse-item" onclick="reuseEv(${i})"><div style="display:flex;align-items:center;gap:7px;"><span style="font-size:13px;">${evIcons[e.type]||'📎'}</span><span style="font-size:12px;font-weight:600;color:#1a1a2e;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.name||e.value}</span></div><span class="ev-reuse-tag">${e.type}</span></div>`).join('');}
+  if(allEv.length){reuseSection.style.display='block';const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};reuseList.innerHTML=allEv.map((e,i)=>`<div class="ev-reuse-item" onclick="reuseEv(${i})" title="Click to reuse this evidence"><div style="display:flex;align-items:center;gap:7px;"><span style="font-size:13px;">♻️</span><span style="font-size:13px;">${evIcons[e.type]||'📎'}</span><span style="font-size:12px;font-weight:600;color:#1a1a2e;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${e.name||e.value}</span></div><span class="ev-reuse-tag">${e.type}</span></div>`).join('');}
   else reuseSection.style.display='none';
   renderEvItems();updateEvCount();document.getElementById('evmod').classList.add('open');
 }
-function reuseEv(idx){const allEv=getAllEvidence();const e=allEv[idx];if(!e)return;evTempItems.push({...e});renderEvItems();updateEvCount();showToast('Evidence added','success');}
-function closeEvMod(){document.getElementById('evmod').classList.remove('open');evKdeId=null;evSelType=null;evCustomName=null;}
+function reuseEv(idx){
+  const allEv=getAllEvidence();const e=allEv[idx];if(!e)return;
+  evTempItems.push({type:e.type,value:e.value,name:e.name});
+  renderEvItems();updateEvCount();showToast('♻️ Evidence reused','success');
+}
+function closeEvMod(){document.getElementById('evmod').classList.remove('open');evKdeId=null;evSelType=null;evCustomName=null;evUploadedUrl=null;}
 function selEvType(type){
   evSelType=type;document.querySelectorAll('.ev-type').forEach(el=>el.classList.remove('sel'));document.getElementById('evt-'+type).classList.add('sel');
+  // Show the add button and input area when type selected
+  const addBtn=document.getElementById('ev-add-btn');if(addBtn)addBtn.style.display='inline-flex';
   const meta=evTypeMeta[type];document.getElementById('ev-inp-lbl').textContent=meta.lbl;document.getElementById('ev-inp').placeholder=meta.ph;document.getElementById('ev-inp').value='';
   document.getElementById('ev-input-area').classList.add('show');document.getElementById('ev-add-btn').style.display='inline-block';
   const uploadBtn=document.getElementById('ev-upload-btn'),fileInp=document.getElementById('ev-file-inp');
   if(type==='doc'||type==='cert'){uploadBtn.classList.add('show');uploadBtn.textContent='📎 Upload file instead';fileInp.setAttribute('accept','.pdf,.doc,.docx,.xls,.xlsx');}
   else if(type==='photo'){uploadBtn.classList.add('show');uploadBtn.textContent='🖼️ Upload image';fileInp.setAttribute('accept','.jpg,.jpeg,.png,.gif,.webp,.svg');}
   else uploadBtn.classList.remove('show');
-  document.getElementById('ev-file-name').classList.remove('show');document.getElementById('ev-file-name').textContent='';fileInp.value='';evCustomName=null;
+  document.getElementById('ev-file-name').classList.remove('show');document.getElementById('ev-file-name').textContent='';fileInp.value='';evCustomName=null;evUploadedUrl=null;document.getElementById('ev-inp').placeholder='';
   document.getElementById('ev-inp').oninput=function(){if(!this.value.startsWith('http'))evCustomName=this.value.trim()||null;};
   setTimeout(()=>document.getElementById('ev-inp').focus(),50);
 }
@@ -2005,44 +2064,55 @@ async function onEvFileChange(inp){
   if(!inp.files[0])return;const file=inp.files[0];const uploadBtn=document.getElementById('ev-upload-btn'),fn=document.getElementById('ev-file-name');
   uploadBtn.textContent='⏳ Uploading...';uploadBtn.style.pointerEvents='none';fn.classList.remove('show');
   try{const path=`evidence/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;const{data,error}=await db.storage.from('assessments').upload(path,file,{upsert:true});if(error)throw error;const{data:{publicUrl}}=db.storage.from('assessments').getPublicUrl(path);
-    document.getElementById('ev-inp').value=publicUrl;
-    evCustomName=file.name; // preserve original filename — NOT the supabase URL
-    const isImg=evSelType==='photo';
-    fn.innerHTML=isImg?`✓ <a href="${publicUrl}" target="_blank" style="color:#16a34a;text-decoration:underline;">${file.name}</a>`:`✓ <a href="${publicUrl}" target="_blank" style="color:#16a34a;text-decoration:underline;">${file.name}</a>`;
-    fn.classList.add('show');uploadBtn.textContent=isImg?'🖼️ Change image':'📎 Change file';}
+    // Store URL internally — NEVER show it in the visible input
+    evCustomName=file.name;
+    evUploadedUrl=publicUrl; // internal storage only
+    document.getElementById('ev-inp').value=''; // keep input clean
+    document.getElementById('ev-inp').placeholder=file.name; // show filename as placeholder
+    fn.innerHTML=`<span style="color:#16a34a;font-weight:600;">✓ ${file.name}</span> <a href="${publicUrl}" target="_blank" style="color:#9aa0b4;font-size:10px;margin-left:6px;">view ↗</a>`;
+    fn.classList.add('show');uploadBtn.textContent='📎 Change file';}
   catch(e){fn.textContent='❌ Upload failed: '+e.message;fn.classList.add('show');fn.style.color='#e63946';uploadBtn.textContent='📎 Try again';}
   uploadBtn.style.pointerEvents='auto';
 }
 function addEvItem(){
   if(!evSelType)return;
-  const val=document.getElementById('ev-inp').value.trim();
-  if(!val){document.getElementById('ev-inp').focus();return;}
+  const inp=document.getElementById('ev-inp');
+  const typedVal=inp.value.trim();
+  // Use uploaded URL if input is empty but a file was just uploaded
+  const val=typedVal||(evUploadedUrl||'');
+  if(!val){inp.focus();return;}
   const isUrl=val.startsWith('http');
-  // Priority: evCustomName (set on upload or manual typing) > raw value
   let displayName;
   if(evCustomName&&evCustomName.trim()){
-    displayName=evCustomName.trim();
+    displayName=evCustomName.trim(); // original filename from upload
   } else if(isUrl){
-    // Extract filename from URL as last resort
     try{
-      const urlParts=val.split('/');
-      const lastPart=decodeURIComponent(urlParts[urlParts.length-1]);
-      // Strip timestamp prefix like "1782794261130_"
+      const lastPart=decodeURIComponent(val.split('/').pop());
       displayName=lastPart.replace(/^\d{10,}_/,'');
     }catch(e){displayName='Uploaded file';}
   } else {
     displayName=val;
   }
   evTempItems.push({type:evSelType,value:val,name:displayName});
-  document.getElementById('ev-inp').value='';
+  // Reset input area for next item
+  inp.value='';
+  inp.placeholder='';
   document.getElementById('ev-file-name').classList.remove('show');
   document.getElementById('ev-file-name').textContent='';
+  document.getElementById('ev-upload-btn').textContent='📎 Upload file';
   evCustomName=null;
+  evUploadedUrl=null;
   renderEvItems();updateEvCount();
+  showToast('Evidence added — add another or click Done','success');
 }
 function removeEvItem(i){evTempItems.splice(i,1);renderEvItems();updateEvCount();}
 function renderEvItems(){const el=document.getElementById('ev-items');if(!evTempItems.length){el.innerHTML='';return;}const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};el.innerHTML=evTempItems.map((e,i)=>`<div class="ev-item"><div class="ev-item-l"><span style="font-size:14px;">${evIcons[e.type]||'📎'}</span><span class="ev-item-txt">${e.name||e.value}</span><span class="ev-item-tag">${e.type}</span></div><button class="ev-item-del" onclick="removeEvItem(${i})">×</button></div>`).join('');}
-function updateEvCount(){document.getElementById('ev-count').textContent=evTempItems.length?`${evTempItems.length} item${evTempItems.length>1?'s':''} added`:''; }
+function updateEvCount(){
+  const n=evTempItems.length;
+  document.getElementById('ev-count').textContent=n?`(${n} item${n>1?'s':''})` :'';
+  const wrap=document.getElementById('ev-items-wrap');
+  if(wrap)wrap.style.display=n?'block':'none';
+}
 function saveEvidence(){
   if(!evKdeId)return;if(!kResp[evKdeId])kResp[evKdeId]={};kResp[evKdeId].evidence=[...evTempItems];
   const safeId=evKdeId.replace(/[^a-zA-Z0-9]/g,'_');const card=document.getElementById('kq'+safeId);
@@ -2801,6 +2871,18 @@ function buildReview(){
         <div class="rv-kde-ans ${ansClass}">${ansLabel}</div>
       </div>`;
     });
+    // Stage comment box
+    const savedStageComment=rvKdeComments[`stage_${si}`]||'';
+    html+=`<div class="rv-stage-comment">
+      <div class="rv-stage-comment-lbl">💬 Stage Notes</div>
+      ${savedStageComment
+        ?`<div class="rv-stage-comment-posted" id="stcmt_posted_${si}">
+            <span>${savedStageComment}</span>
+            <span class="rv-stage-comment-edit" onclick="editStageComment(${si})">Edit</span>
+          </div>`
+        :`<textarea class="rv-stage-comment-ta" id="stcmt_${si}" rows="2" placeholder="Add notes for ${st.t} — e.g. evidence gaps, specific risks, recommendations..."></textarea>
+          <button class="rv-stage-comment-save" onclick="saveStageComment(${si})">Save note →</button>`}
+    </div>`;
     html+=`</div></div>`;
   });
   // Inject risk narrative (item 5) before the stage breakdown
@@ -2811,6 +2893,32 @@ function buildReview(){
   const stagesEl=document.getElementById('rv-stages-area');
   stagesEl.parentNode.insertBefore(narrativeEl,stagesEl);
   document.getElementById('rv-stages-area').innerHTML=html;
+}
+function saveStageComment(si){
+  const ta=document.getElementById('stcmt_'+si);
+  const val=(ta?.value||'').trim();
+  if(!val)return;
+  rvKdeComments[`stage_${si}`]=val;
+  // Replace composer with posted view
+  const wrap=document.getElementById('stcmt_'+si)?.closest('.rv-stage-comment');
+  if(wrap){
+    wrap.innerHTML=`<div class="rv-stage-comment-lbl">💬 Stage Notes</div>
+      <div class="rv-stage-comment-posted" id="stcmt_posted_${si}">
+        <span>${val}</span>
+        <span class="rv-stage-comment-edit" onclick="editStageComment(${si})">Edit</span>
+      </div>`;
+  }
+  showToast('Stage note saved','success');
+}
+function editStageComment(si){
+  const val=rvKdeComments[`stage_${si}`]||'';
+  const wrap=document.getElementById('stcmt_posted_'+si)?.closest('.rv-stage-comment');
+  if(wrap){
+    wrap.innerHTML=`<div class="rv-stage-comment-lbl">💬 Stage Notes</div>
+      <textarea class="rv-stage-comment-ta" id="stcmt_${si}" rows="2">${val}</textarea>
+      <button class="rv-stage-comment-save" onclick="saveStageComment(${si})">Save note →</button>`;
+    document.getElementById('stcmt_'+si)?.focus();
+  }
 }
 function toggleStage(i){const body=document.getElementById('rv-body-'+i);const chev=document.getElementById('rv-chev-'+i);body.classList.toggle('open');if(chev)chev.setAttribute('transform',body.classList.contains('open')?'rotate(180,12,12)':'');}
 // ── Score editor: Edit → number input + optional comment → Apply ──
