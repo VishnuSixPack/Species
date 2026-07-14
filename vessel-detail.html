@@ -946,19 +946,28 @@ function initQuillEditor(){
     quillEditor.keyboard.addBinding({key:'Tab'},()=>true);
   }catch(e){console.warn('Quill init failed:',e);}
 }
-async function loadNotes(){
-  const el=$('notesList'); if(!el) return;
-  // Init Quill now — #noteEditor exists in real DOM (placed by renderNotesTab)
+async function loadNotes(retry=0){
+  let el=$('notesList');
+  // #notesList may not exist yet if DOM is still being built — retry up to 5 times
+  if(!el){
+    if(retry<5){ setTimeout(()=>loadNotes(retry+1), 100); return; }
+    console.warn('loadNotes: #notesList not found after retries'); return;
+  }
+  // Init Quill if not already running
   if(isAdmin && !quillEditor) setTimeout(initQuillEditor, 60);
   const {data,error}=await sb.from('vessel_notes').select('*,profiles(first_name,last_name)').eq('vessel_id',vid).order('created_at',{ascending:false});
-  if(error){console.error('loadNotes error:',error);return;}
+  if(error){
+    console.error('loadNotes error:',error);
+    el.innerHTML='<div style="padding:20px;text-align:center;color:var(--danger);font-size:13px">Failed to load notes.</div>';
+    return;
+  }
   if(!data||!data.length){
     el.innerHTML='<div style="padding:30px;text-align:center;color:var(--soft);font-size:13px">No notes yet — use the editor above to add the first one.</div>';
     return;
   }
   el.innerHTML=data.map(n=>`<div class="note-card">
     <div class="note-card-meta">
-      <span class="note-card-author">${esc((n.profiles?.first_name||'')+' '+(n.profiles?.last_name||''))}</span>
+      <span class="note-card-author">${esc(((n.profiles?.first_name||'')+' '+(n.profiles?.last_name||'')).trim()||'Admin')}</span>
       <span class="note-card-date">${fmtDate(n.created_at)}</span>
     </div>
     <div class="note-card-body">${n.content||''}</div>
@@ -994,6 +1003,8 @@ async function saveNote(){
   if(btn){ btn.disabled=false; btn.textContent='Add Note'; }
   if(error){toast('Failed to save note',true);return;}
   quillEditor.setContents([]);
+  // Small tick to ensure any pending DOM updates complete before refreshing list
+  await new Promise(r=>setTimeout(r,50));
   await loadNotes();
   toast('Note added');
 }
