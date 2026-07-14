@@ -955,19 +955,29 @@ async function loadNotes(retry=0){
   }
   // Init Quill if not already running
   if(isAdmin && !quillEditor) setTimeout(initQuillEditor, 60);
-  const {data,error}=await sb.from('vessel_notes').select('*,profiles(first_name,last_name)').eq('vessel_id',vid).order('created_at',{ascending:false});
+  // Fetch notes without join (avoids FK schema dependency)
+  const {data,error}=await sb.from('vessel_notes').select('*').eq('vessel_id',vid).order('created_at',{ascending:false});
   if(error){
-    console.error('loadNotes error:',error);
-    el.innerHTML='<div style="padding:20px;text-align:center;color:var(--danger);font-size:13px">Failed to load notes.</div>';
+    console.error('loadNotes error:',error.message||error);
+    el.innerHTML='<div style="padding:20px;text-align:center;color:var(--soft);font-size:13px">Could not load notes — check console for details.</div>';
     return;
   }
   if(!data||!data.length){
     el.innerHTML='<div style="padding:30px;text-align:center;color:var(--soft);font-size:13px">No notes yet — use the editor above to add the first one.</div>';
     return;
   }
+  // Enrich with profile names if available (optional join — won't break if FK not exposed)
+  let profileMap={};
+  try{
+    const createdByIds=[...new Set(data.map(n=>n.created_by).filter(Boolean))];
+    if(createdByIds.length){
+      const {data:profs}=await sb.from('profiles').select('id,first_name,last_name').in('id',createdByIds);
+      (profs||[]).forEach(p=>{profileMap[p.id]=((p.first_name||'')+' '+(p.last_name||'')).trim();});
+    }
+  }catch(e){ /* profile names are optional — continue without them */ }
   el.innerHTML=data.map(n=>`<div class="note-card">
     <div class="note-card-meta">
-      <span class="note-card-author">${esc(((n.profiles?.first_name||'')+' '+(n.profiles?.last_name||'')).trim()||'Admin')}</span>
+      <span class="note-card-author">${esc(profileMap[n.created_by]||'Admin')}</span>
       <span class="note-card-date">${fmtDate(n.created_at)}</span>
     </div>
     <div class="note-card-body">${n.content||''}</div>
