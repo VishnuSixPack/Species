@@ -174,9 +174,19 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .vosi-table tr:last-child td{border-bottom:none}
 
 /* ── TIMELINE ── */
-.timeline-filter{display:flex;align-items:center;gap:12px;margin-bottom:20px}
-.timeline-filter label{font-size:13px;font-weight:500;color:var(--muted)}
-.timeline-filter select{height:38px;border:1.5px solid var(--border);border-radius:10px;padding:0 12px;font:inherit;font-size:13px;background:#fff}
+/* timeline filter custom select */
+.tl-filter-csel{position:relative}
+.tl-filter-trigger{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border:1.5px solid var(--border);border-radius:10px;background:#fff;font:inherit;font-size:13px;font-weight:500;color:var(--text);cursor:pointer;transition:.14s;white-space:nowrap}
+.tl-filter-trigger:hover{border-color:var(--line-strong)}
+.tl-filter-csel.open .tl-filter-trigger{border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,111,219,.12)}
+.tl-filter-trigger svg{color:var(--soft);transition:transform .2s,color .2s;flex-shrink:0}
+.tl-filter-csel.open .tl-filter-trigger svg{transform:rotate(180deg);color:var(--primary)}
+.tl-filter-panel{position:absolute;top:calc(100% + 6px);right:0;min-width:180px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 12px rgba(20,24,45,.07),0 20px 48px rgba(20,24,45,.11);padding:6px;z-index:90;opacity:0;visibility:hidden;transform:translateY(-6px) scale(.98);transform-origin:top right;transition:opacity .15s,transform .15s,visibility .15s}
+.tl-filter-csel.open .tl-filter-panel{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
+.tl-filter-opt{padding:9px 12px;border-radius:9px;font-size:13.5px;color:var(--text);cursor:pointer;transition:background .1s}
+.tl-filter-opt:hover{background:var(--primary-soft);color:var(--primary-dark)}
+.tl-filter-opt.active{background:var(--primary);color:#fff;font-weight:600}
+.tl-filter-opt.active:hover{background:var(--primary-dark)}
 .tl-list{display:flex;flex-direction:column;gap:0}
 .tl-date-group{margin-bottom:20px}
 .tl-date-label{display:flex;align-items:center;gap:12px;margin-bottom:12px}
@@ -852,15 +862,18 @@ function renderSustain(v){
 
 // ── NOTES ──
 function renderNotesShell(){
-  return `<div class="card">
+  // TWO separate cards: editor (never re-rendered) + list (refreshed on each save)
+  const editorCard=isAdmin?`<div class="card" style="margin-bottom:16px">
     <div class="card-head">
-      <div class="card-title">Notes</div>
-      ${isAdmin?`<button onclick="saveNote()" id="addNoteBtn" style="height:36px;padding:0 18px;border-radius:9px;background:var(--primary);color:#fff;border:none;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:.15s">Add Note</button>`:''}
+      <div class="card-title">Add Note</div>
+      <button onclick="saveNote()" id="addNoteBtn" style="height:36px;padding:0 18px;border-radius:9px;background:var(--primary);color:#fff;border:none;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:.15s">Add Note</button>
     </div>
-    ${isAdmin?`
-    <div class="notes-editor-wrap" style="margin-bottom:20px">
+    <div class="notes-editor-wrap">
       <div id="noteEditor"></div>
-    </div>`:''}
+    </div>
+  </div>`:'';
+  return editorCard+`<div class="card" id="notesListCard">
+    <div class="card-head"><div class="card-title">Notes</div></div>
     <div id="notesList"><div style="padding:20px;text-align:center;color:var(--soft);font-size:13px">Loading…</div></div>
   </div>`;
 }
@@ -886,12 +899,12 @@ function initQuillEditor(){
   }catch(e){console.warn('Quill init failed:',e);}
 }
 async function loadNotes(){
-  const {data}=await sb.from('vessel_notes').select('*,profiles(first_name,last_name)').eq('vessel_id',vid).order('created_at',{ascending:false});
   const el=$('notesList'); if(!el) return;
-  // init Quill after DOM is ready — use timeout to ensure element exists
-  if(isAdmin) setTimeout(initQuillEditor, 50);
+  // Only init Quill on first call — never re-init (editor card is never re-rendered)
+  if(isAdmin && !quillEditor) setTimeout(initQuillEditor, 80);
+  const {data}=await sb.from('vessel_notes').select('*,profiles(first_name,last_name)').eq('vessel_id',vid).order('created_at',{ascending:false});
   if(!data||!data.length){
-    el.innerHTML='<div style="padding:30px;text-align:center;color:var(--soft);font-size:13px">No notes yet. Use the editor above to add the first one.</div>';
+    el.innerHTML='<div style="padding:30px;text-align:center;color:var(--soft);font-size:13px">No notes yet — use the editor above to add the first one.</div>';
     return;
   }
   el.innerHTML=data.map(n=>`<div class="note-card">
@@ -937,20 +950,40 @@ async function saveNote(){
 }
 
 // ── TIMELINE ──
+const TL_SECTIONS=['All sections','Overview','Ownership','Compliance','RFMO','ISSF','Sustainability','History','Tags'];
+let tlActiveFilter='';
 function renderTimelineShell(){
   return `<div class="card">
-    <div class="card-head"><div class="card-title">Timeline</div></div>
-    <div class="timeline-filter">
-      <label>Filter by section:</label>
-      <select id="tlFilter" onchange="filterTimeline()" style="height:40px;border:1.5px solid var(--border);border-radius:11px;padding:0 36px 0 14px;font:inherit;font-size:13px;font-weight:500;color:var(--text);background:#fff url('data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'16\' height=\'16\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%236b7280\' stroke-width=\'2.2\'%3E%3Cpolyline points=\'6 9 12 15 18 9\'/%3E%3C/svg%3E') no-repeat right 12px center;background-size:15px;appearance:none;-webkit-appearance:none;cursor:pointer;transition:.14s;box-shadow:0 1px 3px rgba(20,24,45,.04)">
-        <option value="">All sections</option>
-        <option>Overview</option><option>Ownership</option><option>Compliance</option>
-        <option>RFMO</option><option>ISSF</option><option>Sustainability</option>
-        <option>History</option><option>Tags</option>
-      </select>
+    <div class="card-head">
+      <div class="card-title">Timeline</div>
+      <div class="tl-filter-csel" id="tlFilterCsel">
+        <button type="button" class="tl-filter-trigger" id="tlFilterBtn" onclick="toggleTLFilter(event)">
+          <span id="tlFilterLbl">All sections</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="tl-filter-panel" id="tlFilterPanel">
+          ${TL_SECTIONS.map(s=>`<div class="tl-filter-opt${s===''||s==='All sections'?' active':''}" onclick="setTLFilter('${s==='All sections'?'':s}','${s}')">${s}</div>`).join('')}
+        </div>
+      </div>
     </div>
-    <div id="tlList"><div class="empty-state">Loading…</div></div>
+    <div id="tlList"><div style="padding:20px;text-align:center;color:var(--soft);font-size:13px">Loading…</div></div>
   </div>`;
+}
+function toggleTLFilter(e){
+  e.stopPropagation();
+  const panel=$('tlFilterPanel');
+  const csel=$('tlFilterCsel');
+  const wasOpen=csel.classList.contains('open');
+  document.querySelectorAll('.tl-filter-csel.open').forEach(x=>x.classList.remove('open'));
+  if(!wasOpen) csel.classList.add('open');
+}
+function setTLFilter(val,label){
+  tlActiveFilter=val;
+  const lbl=$('tlFilterLbl'); if(lbl) lbl.textContent=label||'All sections';
+  // update active state
+  document.querySelectorAll('.tl-filter-opt').forEach(o=>o.classList.toggle('active',o.textContent===label));
+  $('tlFilterCsel')?.classList.remove('open');
+  renderTimeline();
 }
 let tlData=[];
 async function loadTimeline(){
@@ -958,12 +991,9 @@ async function loadTimeline(){
   tlData=data||[];
   renderTimeline();
 }
-function filterTimeline(){
-  renderTimeline();
-}
 function renderTimeline(){
   const el=$('tlList'); if(!el) return;
-  const f=($('tlFilter')?.value||'').toLowerCase();
+  const f=(tlActiveFilter||'').toLowerCase();
   const rows=f?tlData.filter(r=>r.tab_section.toLowerCase()===f):tlData;
   if(!rows.length){el.innerHTML='<div class="tl-empty">No timeline entries yet. Changes to this vessel will appear here.</div>';return;}
   // group by date
