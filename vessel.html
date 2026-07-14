@@ -209,6 +209,12 @@ select:focus{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
 .btn-upload:hover{border-color:var(--primary);color:var(--primary)}
 
 /* SAVE BAR */
+.icon-btn{height:var(--field-h);width:var(--field-h);border:1.5px solid var(--border);background:#fff;border-radius:var(--radius-sm);cursor:pointer;color:var(--soft);font-size:15px;display:grid;place-items:center;transition:.14s}
+.icon-btn:hover{color:var(--danger);border-color:#f3c2c8;background:var(--danger-soft)}
+.add-link{margin-top:12px;background:#fff;border:1.5px dashed var(--line-strong);color:var(--primary);font-weight:600;border-radius:var(--radius-sm);height:var(--field-h);padding:0 18px;cursor:pointer;font-family:inherit;font-size:13px;transition:.14s;display:inline-flex;align-items:center;gap:7px}
+.add-link:hover{border-color:var(--primary);background:var(--primary-soft)}
+.license-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr auto;gap:12px;align-items:end;padding:14px 0;border-top:1px dashed var(--line-strong)}
+.license-row:first-child{border-top:none;padding-top:0}
 .save-bar{display:flex;justify-content:flex-end;gap:12px;padding-top:22px;border-top:1px solid var(--line);margin-top:8px}
 .btn{height:46px;padding:0 26px;border-radius:12px;font-weight:600;font-size:14px;cursor:pointer;border:1.5px solid transparent;font-family:inherit;transition:.15s}
 .btn-ghost{background:#fff;border-color:var(--border);color:var(--text)}
@@ -354,7 +360,7 @@ select:focus{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
         <div class="field" id="imoWrap"><span>IMO Number</span><input id="imo" placeholder="e.g. 9197650"/></div>
         <div class="field"><span>MMSI</span><input id="mmsi" placeholder="e.g. 5450000863"/></div>
         <div class="field"><span>IRCS</span><input id="ircs" placeholder="e.g. UI859"/></div>
-        <div class="field"><span>Registration Number</span><input id="registration_number" placeholder="National registration number"/></div>
+        <div class="field"><span>Registration Number</span><input id="registration_number" placeholder="National registration number" oninput="autoFlagStateReg()"/></div>
         <div class="field"><span>Vessel Flag</span><select id="vessel_flag"><option value="">Select country…</option></select></div>
         <div class="field"><span>Port of Registry</span><input id="port_of_registry" placeholder="e.g. Panama City"/></div>
         <div class="field"><span>Built in Country</span><select id="built_in_country"><option value="">Select country…</option></select></div>
@@ -777,6 +783,13 @@ select:focus{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
       </div>
     </div>
 
+    <!-- ⑦ OTHER LICENSES -->
+    <div class="section" id="otherLicensesSection">
+      <div class="sec-head"><div class="sec-dot"></div><div class="sec-title">Other Licenses</div><span class="sec-badge">Multiple allowed</span></div>
+      <div id="licenseRows"></div>
+      <button type="button" class="add-link" id="addLicenseBtn" onclick="addLicenseRow()">+ Add License</button>
+    </div>
+
     <div class="save-bar">
       <button type="button" class="btn btn-ghost" onclick="location.href='vessel-list.html'">Cancel</button>
       <button type="submit" class="btn btn-primary" id="saveBtn">Save vessel</button>
@@ -797,7 +810,67 @@ let isAdmin=false, selCategory='', selSubtype='', photoUrl=null;
 let prevNames=[], prevFlags=[], pvrRFMOs=[];
 
 // ── TAG CONFLICT RULES ──────────────────────────────────────────────
+/* ── OTHER LICENSES ── */
+let licenseRows=[];
+function addLicenseRow(v={}){
+  const id='lic_'+Date.now();
+  licenseRows.push(id);
+  const row=document.createElement('div');
+  row.className='license-row'; row.id=id;
+  row.innerHTML=`
+    <div class="field"><span>Licensing Authority</span><input class="lic-authority" placeholder="e.g. MCS Fisheries" required/></div>
+    <div class="field"><span>License No.</span><input class="lic-number" placeholder="License number"/></div>
+    <div class="field"><span>Start Date</span><input class="lic-start" type="date"/></div>
+    <div class="field"><span>End Date</span><input class="lic-end" type="date"/></div>
+    <div class="field"><span>Agreement Note</span><input class="lic-note" placeholder="Optional note"/></div>
+    <button type="button" class="icon-btn" title="Remove" onclick="this.closest('.license-row').remove()">✕</button>`;
+  if(v.licensing_authority) row.querySelector('.lic-authority').value=v.licensing_authority;
+  if(v.license_number) row.querySelector('.lic-number').value=v.license_number;
+  if(v.start_date) row.querySelector('.lic-start').value=v.start_date.split('T')[0];
+  if(v.end_date) row.querySelector('.lic-end').value=v.end_date.split('T')[0];
+  if(v.agreement_note) row.querySelector('.lic-note').value=v.agreement_note;
+  document.getElementById('licenseRows')?.appendChild(row);
+}
+function getLicenseRowData(){
+  return [...document.querySelectorAll('.license-row')].map(r=>({
+    licensing_authority:r.querySelector('.lic-authority')?.value.trim()||'',
+    license_number:r.querySelector('.lic-number')?.value.trim()||'',
+    start_date:r.querySelector('.lic-start')?.value||null,
+    end_date:r.querySelector('.lic-end')?.value||null,
+    agreement_note:r.querySelector('.lic-note')?.value.trim()||'',
+  })).filter(r=>r.licensing_authority);
+}
+
+/* ── ICON BTN for remove ── */
+
 /* ── PROPER CASE ── */
+/* ── AUTO FLAG STATE REGISTRATION ── */
+const INVALID_REG=['N/A','NA','TBC','TBD','UNKNOWN','NOT AVAILABLE','NONE','NIL','-','–','—'];
+function autoFlagStateReg(){
+  const val=(document.getElementById('registration_number')?.value||'').trim().toUpperCase();
+  const cb=document.getElementById('flag_state_reg');
+  if(!cb) return;
+  const isValid=val.length>0 && !INVALID_REG.includes(val);
+  cb.checked=isValid;
+  const row=cb.closest('.toggle-row');
+  if(row) row.classList.toggle('active',isValid);
+}
+
+/* ── AUTO FOC CHECK FROM COUNTRY MODULE ── */
+async function checkFOCFromFlag(flagCountry){
+  if(!flagCountry) return;
+  const {data}=await sb.from('countries').select('flag_of_convenience').eq('country',flagCountry).single();
+  const isFOC=data&&(data.flag_of_convenience===true||data.flag_of_convenience==='true'||data.flag_of_convenience==='Yes');
+  const cb=document.getElementById('flag_state_foc');
+  if(cb){
+    // flag_state_foc means "NOT FOC" — so if country IS FOC, the toggle should be OFF
+    cb.checked=!isFOC;
+    const row=cb.closest('.toggle-row');
+    if(row) row.classList.toggle('active',cb.checked);
+    if(isFOC) toast('⚠ '+flagCountry+' is listed as a Flag of Convenience in the Country module',true);
+  }
+}
+
 function toProperCase(s){return(s||'').replace(/\w\S*/g,t=>t.charAt(0).toUpperCase()+t.slice(1).toLowerCase());}
 document.addEventListener('DOMContentLoaded',()=>{
   const skipIds=['current_name','imo','mmsi','ircs','registration_number','wcpfc_vid','wcpfc_auth_no','iattc_no','uvi_number','vds_reg_no','fsma_ral_no','ffa_id','eu_approval_no','uk_auth_no','ffa_refrigerant_type'];
@@ -1045,12 +1118,12 @@ function startForm(){
   enhanceAllSelects();
 }
 function enhanceAllSelects(){
-  // country selects get search; small selects stay native feel but get premium style
-  const searchable=['vessel_flag','built_in_country','charter_notified_by','charter_host_ccm','fsma_home_country'];
-  const plain=['tonnage_type','engine_power_unit','ais_transponder_class','hull_material',
-    'gear_type_sel','uvi_type','uvi_issf_compliant','msc_cert_status','ffa_engine_power_unit'];
-  searchable.forEach(id=>{const el=$(id);if(el)buildCsel(el,{search:true,ph:'Select country…'});});
-  plain.forEach(id=>{const el=$(id);if(el)buildCsel(el);});
+  const searchable=['vessel_flag','built_in_country','charter_notified_by','charter_host_ccm','fsma_home_country','master_nationality'];
+  searchable.forEach(id=>{const el=$(id);if(el&&!el.dataset.enh)buildCsel(el,{search:true,ph:'Select country…'});});
+  // Enhance ALL remaining selects that aren't already enhanced and aren't chip/pvr selects
+  document.querySelectorAll('select:not([data-enh]):not(.pvr-select):not(#prevFlagSelect)').forEach(el=>{
+    if(!searchable.includes(el.id)) buildCsel(el);
+  });
 }
 function applyTabVisibility(){
   Object.entries(TAB_VISIBILITY).forEach(([id,cats])=>{ const el=$(id); if(el) el.style.display=cats.includes(selCategory)?'':'none'; });
@@ -1064,6 +1137,9 @@ async function loadCountries(){
     const sel=$(id); if(!sel) return;
     countries.forEach(c=>{ const o=document.createElement('option'); o.value=c.country; o.textContent=c.country; sel.appendChild(o); });
   });
+  // wire FOC auto-check when vessel flag changes
+  const flagSel=$('vessel_flag');
+  if(flagSel) flagSel.addEventListener('change',()=>checkFOCFromFlag(flagSel.value));
   // populate previous flags csel
   const pfSel=$('prevFlagSelect');
   if(pfSel){
@@ -1211,6 +1287,12 @@ async function loadVessel(id){
     const note=document.querySelector(`.pvr-note[data-key="${m.measure_key}"]`);
     if(sel) sel.value=m.status; if(note) note.value=m.notes||'';
   });
+  // load other licenses
+  if(document.getElementById('licenseRows')){
+    const {data:lics}=await sb.from('vessel_other_licenses').select('*').eq('vessel_id',id).order('start_date');
+    document.getElementById('licenseRows').innerHTML='';
+    (lics||[]).forEach(l=>addLicenseRow(l));
+  }
   // re-sync ALL custom dropdowns so their displayed labels match restored values
   syncAllCsels();
   // re-sync year picker label
@@ -1334,6 +1416,12 @@ $('vForm').addEventListener('submit',async e=>{
       await sb.from('vessel_pvr_measures').upsert({vessel_id:vesselId,measure_key:s.dataset.key,measure_label:s.dataset.label||s.dataset.key,status:s.value,notes:note?.value||null},{onConflict:'vessel_id,measure_key'});
     }
 
+    // save other licenses
+    const licData=getLicenseRowData();
+    if(licData.length){
+      await sb.from('vessel_other_licenses').delete().eq('vessel_id',vesselId);
+      await sb.from('vessel_other_licenses').insert(licData.map(l=>({...l,vessel_id:vesselId})));
+    }
     toast(editId?'Vessel updated':'Vessel saved');
     setTimeout(()=>location.href='vessel-detail.html?id='+vesselId,900);
   }catch(err){console.error(err);toast(err.message||'Something went wrong',true);$('saveBtn').disabled=false;}

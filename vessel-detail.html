@@ -227,15 +227,21 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 <!-- Quill rich text editor -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.min.css" rel="stylesheet"/>
 <style>
-/* Quill overrides to match Manhattan style */
-.ql-toolbar.ql-snow{border:1.5px solid var(--border);border-radius:var(--radius-sm) var(--radius-sm) 0 0;background:#fafbfe;padding:8px 10px;font-family:var(--font)}
-.ql-container.ql-snow{border:1.5px solid var(--border);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);font-family:var(--font);font-size:14px}
-.ql-editor{min-height:140px;padding:14px 16px;line-height:1.65;color:var(--text)}
-.ql-editor.ql-blank::before{color:#c0c4d0;font-style:normal;font-size:13.5px}
-.ql-snow .ql-picker,.ql-snow .ql-stroke{color:var(--muted);stroke:var(--muted)}
-.ql-snow.ql-toolbar button:hover,.ql-snow .ql-toolbar button:hover{color:var(--primary)}
-.ql-snow.ql-toolbar button:hover .ql-stroke,.ql-snow .ql-toolbar button:hover .ql-stroke{stroke:var(--primary)}
+/* ── Quill rich editor — Manhattan premium theme ── */
+.notes-editor-wrap{border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;background:#fff;transition:border-color .14s,box-shadow .14s}
+.notes-editor-wrap:focus-within{border-color:var(--primary);box-shadow:0 0 0 3.5px rgba(26,111,219,.10)}
+.ql-toolbar.ql-snow{border:none;border-bottom:1px solid var(--line);background:#fafbfe;padding:10px 12px;font-family:var(--font)}
+.ql-toolbar.ql-snow .ql-formats{margin-right:10px}
+.ql-container.ql-snow{border:none;font-family:var(--font);font-size:14px;color:var(--text)}
+.ql-editor{min-height:160px;padding:16px 18px;line-height:1.7}
+.ql-editor.ql-blank::before{color:#c0c4d0;font-style:normal;font-size:13.5px;left:18px}
+.ql-snow.ql-toolbar button{border-radius:6px;padding:3px 5px;height:28px;width:28px}
+.ql-snow.ql-toolbar button:hover{background:var(--primary-soft);color:var(--primary)}
+.ql-snow.ql-toolbar button:hover .ql-stroke{stroke:var(--primary)}
+.ql-snow.ql-toolbar button.ql-active{background:var(--primary-soft)}
 .ql-snow.ql-toolbar button.ql-active .ql-stroke{stroke:var(--primary)}
+.ql-snow .ql-picker-label{border-radius:6px}
+.ql-snow .ql-picker-label:hover{color:var(--primary)}
 /* Note cards */
 .note-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:12px;transition:box-shadow .14s}
 .note-card:hover{box-shadow:0 2px 10px rgba(20,24,45,.06)}
@@ -847,33 +853,37 @@ function renderSustain(v){
 // ── NOTES ──
 function renderNotesShell(){
   return `<div class="card">
-    <div class="card-head"><div class="card-title">Notes</div></div>
+    <div class="card-head">
+      <div class="card-title">Notes</div>
+      ${isAdmin?`<button onclick="saveNote()" id="addNoteBtn" style="height:36px;padding:0 18px;border-radius:9px;background:var(--primary);color:#fff;border:none;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:.15s">Add Note</button>`:''}
+    </div>
     ${isAdmin?`
-    <div style="margin-bottom:18px">
-      <div id="noteEditor" style="border-radius:var(--radius-sm);overflow:hidden;background:#fff"></div>
-      <div style="display:flex;justify-content:flex-end;margin-top:10px">
-        <button onclick="saveNote()" style="height:40px;padding:0 22px;border-radius:10px;background:var(--primary);color:#fff;border:none;font:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 4px 12px rgba(26,111,219,.22);transition:.15s" onmouseover="this.style.background='var(--primary-dark)'" onmouseout="this.style.background='var(--primary)'">Add Note</button>
-      </div>
+    <div class="notes-editor-wrap" style="margin-bottom:20px">
+      <div id="noteEditor"></div>
     </div>`:''}
-    <div id="notesList"><div class="empty-state" style="padding:30px;text-align:center;color:var(--soft)">Loading…</div></div>
+    <div id="notesList"><div style="padding:20px;text-align:center;color:var(--soft);font-size:13px">Loading…</div></div>
   </div>`;
 }
 let quillEditor=null;
 function initQuillEditor(){
   if(quillEditor||!isAdmin) return;
   const el=$('noteEditor'); if(!el) return;
-  if(typeof Quill==='undefined'){ setTimeout(initQuillEditor,200); return; }
-  quillEditor=new Quill('#noteEditor',{
-    theme:'snow',
-    placeholder:'Write a note — supports rich formatting…',
-    modules:{toolbar:[
-      [{header:[1,2,3,false]}],
-      ['bold','italic','underline','strike'],
-      [{list:'ordered'},{list:'bullet'}],
-      ['link','blockquote'],
-      ['clean']
-    ]}
-  });
+  if(typeof Quill==='undefined'){ setTimeout(initQuillEditor,150); return; }
+  try{
+    quillEditor=new Quill('#noteEditor',{
+      theme:'snow',
+      placeholder:'Write a note here — supports bold, lists, links and more…',
+      modules:{toolbar:[
+        [{'header':[2,3,false]}],
+        ['bold','italic','underline'],
+        [{'list':'ordered'},{'list':'bullet'}],
+        ['link','blockquote','code-block'],
+        ['clean']
+      ]}
+    });
+    // tab key should not leave editor
+    quillEditor.keyboard.addBinding({key:'Tab'},()=>true);
+  }catch(e){console.warn('Quill init failed:',e);}
 }
 async function loadNotes(){
   const {data}=await sb.from('vessel_notes').select('*,profiles(first_name,last_name)').eq('vessel_id',vid).order('created_at',{ascending:false});
@@ -909,18 +919,21 @@ async function loadOtherLicenses(){
 }
 
 async function saveNote(){
-  if(!quillEditor){ initQuillEditor(); toast('Editor loading, please try again',true); return; }
+  if(!quillEditor){
+    initQuillEditor();
+    setTimeout(()=>toast('Editor initialising — please try again in a moment',true),0);
+    return;
+  }
   const html=quillEditor.root.innerHTML;
   const text=quillEditor.getText().trim();
-  if(!text){ toast('Please write something first',true); return; }
-  const btn=document.querySelector('#noteEditor').closest('.card')?.querySelector('button[onclick="saveNote()"]');
-  if(btn) btn.disabled=true;
+  if(!text||html==='<p><br></p>'){ toast('Please write something first',true); return; }
+  const btn=$('addNoteBtn'); if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
   const {error}=await sb.from('vessel_notes').insert({vessel_id:vid,content:html});
-  if(error){toast('Failed to save note',true);if(btn)btn.disabled=false;return;}
+  if(btn){ btn.disabled=false; btn.textContent='Add Note'; }
+  if(error){toast('Failed to save note',true);return;}
   quillEditor.setContents([]);
   await loadNotes();
   toast('Note added');
-  if(btn) btn.disabled=false;
 }
 
 // ── TIMELINE ──
