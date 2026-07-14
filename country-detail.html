@@ -64,6 +64,19 @@
     .source-link{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#1a6fdb;text-decoration:none;}
     .source-link:hover{text-decoration:underline;}
 
+    /* Widget description + more popup */
+    .widget-desc{font-size:10px;color:#9aa0b4;line-height:1.5;margin-top:5px;}
+    .widget-more{color:#1a6fdb;font-size:10px;font-weight:700;cursor:pointer;background:none;border:none;padding:0;font-family:inherit;}
+    .widget-more:hover{text-decoration:underline;}
+    .info-popup-overlay{display:none;position:fixed;inset:0;background:rgba(10,14,40,0.5);backdrop-filter:blur(4px);z-index:9000;align-items:center;justify-content:center;padding:20px;}
+    .info-popup-overlay.open{display:flex;}
+    .info-popup-box{background:#fff;border-radius:16px;padding:28px;max-width:420px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,0.2);position:relative;}
+    .info-popup-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;flex-shrink:0;}
+    .info-popup-title{font-size:15px;font-weight:800;color:#1a1a2e;margin-bottom:8px;}
+    .info-popup-body{font-size:13px;color:#4a4e69;line-height:1.7;}
+    .info-popup-close{position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:50%;background:#f4f6fb;border:none;cursor:pointer;font-size:16px;color:#6b7280;display:flex;align-items:center;justify-content:center;}
+    .info-popup-close:hover{background:#e8eaf0;}
+
     /* Map z-index fix */
     #countryMap{z-index:0 !important;}
     .leaflet-pane,.leaflet-top,.leaflet-bottom{z-index:0 !important;}
@@ -167,51 +180,41 @@
         <div class="widgets-row">
           <!-- FOC -->
           <div class="widget widget-foc" id="foc-widget">
-            <div class="widget-label">
-              Flag of Convenience
-              <span class="widget-info"><div class="info-tooltip-box">A vessel registered in a different country than its owner — often to exploit lower taxes or lax enforcement. WCPFC tracks beneficial owners to prevent IUU fishing.</div>i</span>
-            </div>
+            <div class="widget-label">Flag of Convenience</div>
             <div class="widget-value" id="foc-status" style="font-size:15px;margin-top:4px;">—</div>
+            <div class="widget-desc">Vessel registered outside the owner's country. <button class="widget-more" onclick="openInfoPopup('foc')">more</button></div>
           </div>
           <!-- Prevalence -->
           <div class="widget widget-prev">
-            <div class="widget-label">
-              Prevalence
-              <span class="widget-info"><div class="info-tooltip-box">Estimated victims of modern slavery per 1,000 population. Source: Walk Free Global Slavery Index.</div>i</span>
-            </div>
+            <div class="widget-label">Prevalence</div>
             <div class="widget-value" id="msi-prevalence">—</div>
             <div class="widget-sub">per 1,000 people</div>
             <div class="widget-mini-bar"><div class="widget-mini-bar-fill" id="msi-prev-bar" style="width:0%;background:#e63946;"></div></div>
+            <div class="widget-desc">Modern slavery victims per 1,000. <button class="widget-more" onclick="openInfoPopup('prevalence')">more</button></div>
           </div>
           <!-- Vulnerability -->
           <div class="widget widget-vuln">
-            <div class="widget-label">
-              Vulnerability
-              <span class="widget-info"><div class="info-tooltip-box">Social, economic and governance factors that make a population susceptible to modern slavery. Scored /100. Source: Walk Free.</div>i</span>
-            </div>
+            <div class="widget-label">Vulnerability</div>
             <div class="widget-value" id="msi-vulnerability">—</div>
             <div class="widget-sub">out of 100</div>
             <div class="widget-mini-bar"><div class="widget-mini-bar-fill" id="msi-vuln-bar" style="width:0%;background:#f59e0b;"></div></div>
+            <div class="widget-desc">Social & economic risk factors. <button class="widget-more" onclick="openInfoPopup('vulnerability')">more</button></div>
           </div>
           <!-- Gov Response -->
           <div class="widget widget-gov">
-            <div class="widget-label">
-              Gov. Response
-              <span class="widget-info"><div class="info-tooltip-box">Strength of government policies and actions against modern slavery. Higher = stronger response. Scored /100. Source: Walk Free.</div>i</span>
-            </div>
+            <div class="widget-label">Gov. Response</div>
             <div class="widget-value" id="msi-gov-response">—</div>
             <div class="widget-sub">out of 100</div>
             <div class="widget-mini-bar"><div class="widget-mini-bar-fill" id="msi-gov-bar" style="width:0%;background:#16a34a;"></div></div>
+            <div class="widget-desc">Government action against slavery. <button class="widget-more" onclick="openInfoPopup('govresponse')">more</button></div>
           </div>
           <!-- IUU Score -->
           <div class="widget widget-iuu">
-            <div class="widget-label">
-              IUU Fishing Score
-              <span class="widget-info"><div class="info-tooltip-box">Scores countries across Flag, Coastal, Port and Market state responsibilities. Higher = greater IUU fishing risk. Source: iuufishingindex.net</div>i</span>
-            </div>
+            <div class="widget-label">IUU Fishing Score</div>
             <div class="widget-value" id="iuu-score">—</div>
             <div class="widget-sub" id="iuu-year-label">out of 100</div>
             <div class="widget-mini-bar"><div class="widget-mini-bar-fill" id="iuu-bar" style="width:0%;background:#7c3aed;"></div></div>
+            <div class="widget-desc">Illegal fishing risk by role. <button class="widget-more" onclick="openInfoPopup('iuu')">more</button></div>
           </div>
         </div>
         <div style="display:flex;gap:16px;margin-top:12px;padding-top:10px;border-top:1px solid #f0f2f8;">
@@ -334,5 +337,109 @@ function openEditCountry(){
 }
 </script>
 <script src="country.js"></script>
+
+  <!-- INFO POPUP -->
+  <div class="info-popup-overlay" id="infoPopupOverlay" onclick="closeInfoPopup(event)">
+    <div class="info-popup-box">
+      <button class="info-popup-close" onclick="closeInfoPopup()">×</button>
+      <div class="info-popup-icon" id="infoPopupIcon"></div>
+      <div class="info-popup-title" id="infoPopupTitle"></div>
+      <div class="info-popup-body" id="infoPopupBody"></div>
+    </div>
+  </div>
+
+  <script>
+  var INFO_CONTENT = {
+    foc: {
+      icon: '🚩',
+      color: '#fff0f1',
+      title: 'Flag of Convenience (FOC)',
+      body: `A Flag of Convenience occurs when a vessel owner registers their ship in a country other than their own nationality — not because they operate there, but to take advantage of benefits that country offers.<br><br>
+<strong>Why owners do it:</strong> Lower registration fees, reduced taxes, minimal labour regulations, and weaker enforcement of international fishing rules make certain registries attractive to vessel owners seeking to cut costs or evade scrutiny.<br><br>
+<strong>Why it matters in seafood:</strong> FOC vessels are harder to trace back to their true beneficial owner — the person or company actually profiting from the catch. This creates a significant loophole for illegal, unreported and unregulated (IUU) fishing, as vessels can operate under flags with little oversight.<br><br>
+<strong>How it's being addressed:</strong> Regional fisheries bodies such as the WCPFC, ICCAT and IOTC now require member states and fishing companies to disclose the beneficial owner behind any vessel, regardless of its flag. IUU blacklists specifically target vessels known to change flags to evade sanctions.`
+    },
+    prevalence: {
+      icon: '👥',
+      color: '#fff5f5',
+      title: 'Modern Slavery Prevalence',
+      body: `Prevalence measures the estimated number of people living in conditions of modern slavery per 1,000 of the general population, as reported by the Walk Free Global Slavery Index.<br><br>
+<strong>What counts as modern slavery:</strong> Forced labour (including on fishing vessels), debt bondage, human trafficking, forced marriage, and child slavery. In the seafood industry, labour abuses aboard fishing vessels and in processing plants are a known and documented risk.<br><br>
+<strong>Why it matters for supply chains:</strong> A high prevalence score in a sourcing country signals elevated risk that workers in the seafood supply chain — from fishers at sea to processing plant workers — may be operating under exploitative or coercive conditions.<br><br>
+<strong>Source:</strong> Walk Free Global Slavery Index — <a href="https://www.walkfree.org/global-slavery-index/" target="_blank" style="color:#1a6fdb;">walkfree.org</a>`
+    },
+    vulnerability: {
+      icon: '⚠️',
+      color: '#fffbeb',
+      title: 'Vulnerability to Modern Slavery',
+      body: `Vulnerability measures the structural conditions that make a country's population more susceptible to modern slavery, regardless of current prevalence levels. It is scored out of 100 — a higher score means greater vulnerability.<br><br>
+<strong>What drives vulnerability:</strong>
+<ul style="margin:8px 0 8px 16px;line-height:1.8;">
+  <li>Weak rule of law and governance</li>
+  <li>High levels of poverty and inequality</li>
+  <li>Political instability or conflict</li>
+  <li>Discrimination against minorities or migrants</li>
+  <li>Limited access to education and social protection</li>
+</ul>
+<strong>Why it matters:</strong> Even countries with relatively low current prevalence can pose high future risk if underlying vulnerability conditions are deteriorating. Buyers and auditors use vulnerability scores to prioritise due diligence in sourcing regions.<br><br>
+<strong>Source:</strong> Walk Free Global Slavery Index — <a href="https://www.walkfree.org/global-slavery-index/" target="_blank" style="color:#1a6fdb;">walkfree.org</a>`
+    },
+    govresponse: {
+      icon: '🏛️',
+      color: '#f0fdf4',
+      title: 'Government Response to Modern Slavery',
+      body: `Government Response measures the strength and effectiveness of a country's policies, laws and actions to combat modern slavery. It is scored out of 100 — a higher score indicates a stronger, more comprehensive response.<br><br>
+<strong>What is assessed:</strong>
+<ul style="margin:8px 0 8px 16px;line-height:1.8;">
+  <li>National laws criminalising modern slavery and forced labour</li>
+  <li>Victim identification and support systems</li>
+  <li>Law enforcement capacity and prosecutions</li>
+  <li>Ratification of international conventions (ILO, UN Palermo Protocol)</li>
+  <li>Supply chain transparency legislation</li>
+</ul>
+<strong>Why it matters:</strong> A weak government response creates an environment where exploitation can persist with impunity. For seafood buyers operating in high-risk sourcing regions, a low gov. response score means greater reliance on private audits and certification schemes to verify labour conditions.<br><br>
+<strong>Source:</strong> Walk Free Global Slavery Index — <a href="https://www.walkfree.org/global-slavery-index/" target="_blank" style="color:#1a6fdb;">walkfree.org</a>`
+    },
+    iuu: {
+      icon: '🎣',
+      color: '#faf5ff',
+      title: 'IUU Fishing Score',
+      body: `The IUU Fishing Index scores countries on their risk of involvement in Illegal, Unreported and Unregulated (IUU) fishing across four distinct roles. A higher overall score indicates greater IUU fishing risk.<br><br>
+<strong>The four roles assessed:</strong>
+<ul style="margin:8px 0 8px 16px;line-height:1.8;">
+  <li><strong>Flag State</strong> — How well the country controls vessels flying its flag, including monitoring, control and surveillance (MCS) systems.</li>
+  <li><strong>Coastal State</strong> — How effectively the country manages fishing access in its own Exclusive Economic Zone (EEZ).</li>
+  <li><strong>Port State</strong> — Whether the country's ports are used by IUU vessels to land, tranship or sell illegal catch.</li>
+  <li><strong>Market State</strong> — The country's role as a consumer or trader of seafood, and whether it enables IUU products to enter legitimate supply chains.</li>
+</ul>
+<strong>Why it matters:</strong> Countries with high IUU scores represent elevated risk of illegal catch entering your supply chain — particularly where vessel flagging, transshipment or processing occur.<br><br>
+<strong>Source:</strong> IUU Fishing Index — <a href="https://iuufishingindex.net/" target="_blank" style="color:#1a6fdb;">iuufishingindex.net</a>`
+    }
+  };
+
+  function openInfoPopup(key) {
+    const d = INFO_CONTENT[key];
+    if (!d) return;
+    document.getElementById('infoPopupIcon').style.background = d.color;
+    document.getElementById('infoPopupIcon').textContent = d.icon;
+    document.getElementById('infoPopupTitle').textContent = d.title;
+    document.getElementById('infoPopupBody').innerHTML = d.body;
+    document.getElementById('infoPopupOverlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeInfoPopup(e) {
+    if (e && e.target !== document.getElementById('infoPopupOverlay') && !e.target.closest('.info-popup-close')) return;
+    document.getElementById('infoPopupOverlay').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      document.getElementById('infoPopupOverlay').classList.remove('open');
+      document.body.style.overflow = '';
+    }
+  });
+  </script>
 </body>
 </html>
