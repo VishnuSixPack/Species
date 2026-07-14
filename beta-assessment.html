@@ -801,7 +801,7 @@
     <div id="ev-reuse-section" style="display:none;margin-bottom:14px;">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
         <span style="font-size:12px;">♻️</span>
-        <span style="font-size:11px;font-weight:700;color:#7c3aed;">Reuse evidence from this session</span>
+        <span style="font-size:11px;font-weight:700;color:#7c3aed;">Reuse evidence from this stage</span>
         <span style="font-size:10px;color:#9aa0b4;">(click to add)</span>
       </div>
       <div class="ev-reuse-list" id="ev-reuse-list"></div>
@@ -2018,9 +2018,29 @@ let evKdeId=null,evSelType=null,evTempItems=[],evUploadedUrl=null;
 const evTypeMeta={cert:{lbl:'Certificate name or standard',ph:'e.g. MSC CoC, ASC, BRC Issue 9'},url:{lbl:'URL or web link',ph:'https://...'},doc:{lbl:'Document name or reference',ph:'e.g. BoL_2024_001.pdf'},ref:{lbl:'Reference number or ID',ph:'e.g. Permit No. FP-2024-007'},photo:{lbl:'Image file name or description',ph:'e.g. vessel_photo_jan2024.jpg'},statement:{lbl:'Statement or declaration reference',ph:'e.g. Supplier declaration Jan 2024'}};
 function getAllEvidence(){
   const all=[];const seen=new Set();
+  // Find which stage type the current KDE belongs to
+  let currentStageType=null;
+  (STAGES||[]).forEach(st=>{
+    (st.instances||[]).forEach(sub=>{
+      (sub.qs||[]).forEach(q=>{
+        if(q.id===evKdeId)currentStageType=st.type;
+      });
+    });
+  });
+  // Only show evidence from KDEs in the same stage type
   Object.entries(kResp).forEach(([id,r])=>{
-    if(id===evKdeId)return; // don't show items from currently open KDE
-    if(r&&r.evidence)r.evidence.forEach(e=>{
+    if(id===evKdeId)return; // skip current KDE
+    if(!r?.evidence?.length)return;
+    // Check if this KDE belongs to the same stage type
+    let belongsToSameStage=false;
+    (STAGES||[]).forEach(st=>{
+      if(currentStageType&&st.type!==currentStageType)return;
+      (st.instances||[]).forEach(sub=>{
+        (sub.qs||[]).forEach(q=>{if(q.id===id)belongsToSameStage=true;});
+      });
+    });
+    if(!belongsToSameStage)return;
+    r.evidence.forEach(e=>{
       const key=e.value+e.type;
       if(!seen.has(key)){seen.add(key);all.push({...e});}
     });
@@ -2861,7 +2881,11 @@ function buildReview(){
           ${r.note?`<div class="rv-kde-note">Partial note: ${r.note}</div>`:''}
           ${r.unNote?`<div class="rv-kde-note" style="color:#e63946;">Not available note: ${r.unNote}</div>`:''}
           ${evs.length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">
-            ${evs.map((e,ei)=>`<span style="display:inline-flex;align-items:center;gap:4px;background:#f4f0ff;border:1px solid #ddd6fe;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:600;color:#7c3aed;cursor:pointer;" onclick="previewEvidence('${q.id}',${ei})">${{'cert':'🏅','url':'🔗','doc':'📄','ref':'📋','photo':'🖼️','statement':'✍️'}[e.type]||'📎'} ${(e.name||e.value||'').slice(0,30)} 👁</span>`).join('')}
+            ${evs.map((e,ei)=>{
+              const safeVal=btoa(unescape(encodeURIComponent(JSON.stringify({type:e.type,value:e.value||'',name:e.name||''}))));
+              return `<span style="display:inline-flex;align-items:center;gap:4px;background:#f4f0ff;border:1px solid #ddd6fe;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:600;color:#7c3aed;cursor:pointer;" onclick="previewEvFromData(this)"
+                data-ev="${safeVal}">${{'cert':'🏅','url':'🔗','doc':'📄','ref':'📋','photo':'🖼️','statement':'✍️'}[e.type]||'📎'} ${(e.name||e.value||'').slice(0,30)} 👁</span>`;
+            }).join('')}
           </div>`:''}
           <div class="rv-score-edit" id="rvscore_${safeQid}">
             <span style="font-size:11px;color:#6b7280;">Score: <strong style="color:${isOverridden?'#e63946':'#1a1a2e'};">${currentScore}</strong>/50${isOverridden?' <span style="color:#e63946;font-weight:600;">(edited)</span>':''}</span>
@@ -2989,9 +3013,25 @@ function recalcReview(){
 }
 
 // ── Evidence preview ──
+function previewEvFromData(el){
+  try{
+    const raw=el.getAttribute('data-ev')||el.dataset.ev||'';
+    if(!raw){showToast('No evidence data found','error');return;}
+    const ev=JSON.parse(decodeURIComponent(escape(atob(raw))));
+    if(!ev||(!ev.value&&!ev.name)){showToast('No preview data available','error');return;}
+    showEvPreview(ev);
+  }catch(e){
+    console.error('preview parse error',e);
+    showToast('Could not open preview','error');
+  }
+}
 function previewEvidence(qid,evIdx){
-  const r=kResp[qid];if(!r||!r.evidence||!r.evidence[evIdx])return;
-  const ev=r.evidence[evIdx];
+  const r=kResp[qid];
+  const ev=r?.evidence?.[evIdx];
+  if(!ev){console.warn('previewEvidence: no evidence found for',qid,evIdx);return;}
+  showEvPreview(ev);
+}
+function showEvPreview(ev){
   const overlay=document.getElementById('evPreviewOverlay');
   const title=document.getElementById('evPreviewTitle');
   const body=document.getElementById('evPreviewBody');
