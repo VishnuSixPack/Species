@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Port · Project Manhattan</title>
+<link rel="icon" type="image/png" href="brand-logo.png"/>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#1a6fdb;--primary-dark:#1558b0;--primary-soft:#e8f1fc;--primary-mid:#d0e4f8;
+  --bg:#f0f2f7;--surface:#fff;--text:#1a1a2e;--muted:#6b7280;--soft:#9aa0b4;
+  --border:#e8eaf0;--line:#eef0f5;--line-strong:#dfe3ec;
+  --ok:#1f9d6b;--ok-soft:#e6f6ef;--danger:#e63946;--danger-soft:#fff0f1;
+  --warn:#f59e0b;--warn-soft:#fff7ed;
+  --radius:14px;--radius-sm:10px;--field-h:44px;
+  --shadow:0 1px 3px rgba(20,24,45,.05),0 8px 24px rgba(20,24,45,.06);
+  --shadow-lg:0 6px 14px rgba(20,24,45,.08),0 24px 48px rgba(20,24,45,.11);
+  --font:'Poppins','DM Sans',system-ui,sans-serif;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased}
+/* ── SCROLLBAR ── */
+*::-webkit-scrollbar{width:6px;height:6px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:#d1d5e0;border-radius:99px}
+*::-webkit-scrollbar-thumb:hover{background:#a0a8bc}
+html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
+/* ── NAV ── */
+.topbar{display:flex;align-items:center;padding:14px 28px;gap:20px;background:rgba(255,255,255,.7);backdrop-filter:blur(12px);position:sticky;top:0;z-index:100;border-bottom:1px solid var(--line)}
+.topbar-brand{text-decoration:none;flex-shrink:0;line-height:1.1}
+.topbar-brand-project{display:block;font-size:8px;font-weight:700;letter-spacing:2px;color:var(--soft)}
+.topbar-brand-name{display:block;font-size:16px;font-weight:800;color:var(--text)}
+.topbar-nav{flex:1;display:flex;justify-content:center}
+.nav-pill{display:inline-flex;align-items:center;gap:2px;background:#fff;border-radius:999px;padding:5px 7px;box-shadow:0 1px 6px rgba(0,0,0,.07)}
+.nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:400;color:var(--muted);text-decoration:none;transition:.15s;white-space:nowrap;position:relative}
+.nav-item:hover,.nav-item.active{background:var(--bg);color:var(--text);font-weight:600}
+.nav-item-wrap{position:relative}
+.nav-item-wrap:hover .nav-dropdown{display:block}
+.nav-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:170px;padding:6px;z-index:500}
+.nav-dropdown-item{display:flex;align-items:center;padding:8px 12px;font-size:13px;color:#4a4e69;text-decoration:none;border-radius:8px;font-weight:500;transition:.15s}
+.nav-dropdown-item:hover{background:var(--bg);color:var(--primary)}
+.nav-dropdown-item.active{background:var(--primary-soft);color:var(--primary-dark);font-weight:600}
+.topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;overflow:hidden;border:none}
+.avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:176px;overflow:hidden;z-index:999}
+.avatar-menu.open{display:block}
+.avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;color:var(--text);border-bottom:1px solid var(--border)}
+.avatar-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;color:#4a4e69;text-decoration:none}
+.avatar-menu a:hover{background:var(--bg)}
+.avatar-menu button{width:100%;padding:9px 15px;background:none;border:none;border-top:1px solid var(--border);text-align:left;font-family:var(--font);font-size:13px;color:var(--danger);cursor:pointer}
+/* ── PAGE LAYOUT ── */
+.wrap{max-width:1200px;margin:0 auto;padding:28px 28px 80px}
+.crumb{font-size:12px;color:var(--muted);margin-bottom:8px}
+.crumb a{color:var(--primary);text-decoration:none}
+/* ── HERO BANNER ── */
+.hero{height:200px;background:linear-gradient(135deg,#1a3a6b 0%,#1a6fdb 60%,#3b8be8 100%);border-radius:var(--radius);margin-bottom:-70px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
+.hero-upload{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;opacity:.6;transition:.2s}
+.hero-upload:hover{opacity:1}
+.hero-upload svg{color:#fff}
+.hero-upload span{font-size:12px;font-weight:600;color:#fff;letter-spacing:.03em}
+.hero input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer}
+/* ── IDENTITY ROW ── */
+.identity-row{display:flex;align-items:flex-end;gap:20px;padding:0 28px;margin-bottom:28px;position:relative;z-index:2}
+.port-avatar{width:100px;height:100px;border-radius:20px;background:#fff;border:3px solid #fff;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0}
+.port-avatar img{width:100%;height:100%;object-fit:cover}
+.port-avatar svg{color:var(--soft)}
+.identity-info{padding-bottom:6px;flex:1}
+.port-name{font-size:28px;font-weight:800;letter-spacing:-.5px;color:var(--text);line-height:1.1}
+.port-country{font-size:14px;color:var(--muted);margin-top:3px}
+.identity-actions{padding-bottom:10px;display:flex;gap:10px}
+/* ── TWO-COLUMN LAYOUT ── */
+.main-grid{display:grid;grid-template-columns:1fr 360px;gap:24px}
+/* ── SECTIONS ── */
+.section{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:18px;overflow:visible}
+.sec-head{padding:18px 22px 14px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.sec-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--soft);display:flex;align-items:center;gap:8px}
+.sec-title::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.sec-body{padding:20px 22px}
+/* ── FORM GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px}
+.full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:5px}
+.field span{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.01em}
+.field span small{font-weight:400;color:var(--soft);margin-left:4px}
+.field input,.field select,.field textarea{height:var(--field-h);padding:0 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font);font-size:13.5px;color:var(--text);background:#fff;transition:.14s;outline:none;width:100%}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3.5px rgba(26,111,219,.12)}
+.field textarea{height:90px;padding:12px 14px;resize:none;line-height:1.6}
+.field input::placeholder{color:#c0c4d0}
+/* ── PREMIUM CUSTOM DROPDOWN ── */
+.csel{position:relative}
+.csel>select{position:absolute;opacity:0;height:0;width:0;padding:0;border:0;pointer-events:none}
+.csel-trigger{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;height:var(--field-h);padding:0 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:#fff;cursor:pointer;font-family:inherit;font-size:13.5px;color:var(--text);transition:.14s;text-align:left}
+.csel-trigger:hover{border-color:var(--line-strong)}
+.csel.open .csel-trigger{border-color:var(--primary);box-shadow:0 0 0 3.5px rgba(26,111,219,.12)}
+.csel-trigger .csel-lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.csel-trigger .csel-lbl.ph{color:#c0c4d0}
+.csel-trigger .csel-arrow{color:var(--soft);flex-shrink:0;transition:transform .2s,color .2s}
+.csel.open .csel-trigger .csel-arrow{transform:rotate(180deg);color:var(--primary)}
+.csel-panel{position:absolute;top:calc(100% + 6px);left:0;width:100%;min-width:200px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 12px rgba(20,24,45,.07),0 20px 48px rgba(20,24,45,.11);padding:6px;z-index:9999;max-height:280px;overflow-y:auto;opacity:0;visibility:hidden;transform:translateY(-6px) scale(.98);transform-origin:top center;transition:opacity .15s,transform .15s,visibility .15s}
+.csel.open .csel-panel{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
+/* Flip upward when near bottom */
+.csel.drop-up .csel-panel{top:auto;bottom:calc(100% + 6px);transform-origin:bottom center;transform:translateY(6px) scale(.98)}
+.csel.drop-up.open .csel-panel{transform:translateY(0) scale(1)}
+.csel-search-wrap{position:sticky;top:0;background:#fff;padding:4px 4px 6px}
+.csel-search-wrap input{height:36px;width:100%;border:1.5px solid var(--border);border-radius:9px;padding:0 10px;font:inherit;font-size:13px;color:var(--text)}
+.csel-search-wrap input:focus{outline:none;border-color:var(--primary)}
+.csel-opt{padding:9px 12px;border-radius:9px;font-size:13.5px;color:var(--text);cursor:pointer;transition:background .1s}
+.csel-opt:hover{background:var(--primary-soft);color:var(--primary-dark)}
+.csel-opt.active{background:var(--primary);color:#fff;font-weight:600}
+.csel-opt.active:hover{background:var(--primary-dark)}
+.csel-opt-hint{font-size:11px;color:var(--soft);margin-top:1px}
+.csel-panel::-webkit-scrollbar{width:5px}
+.csel-panel::-webkit-scrollbar-thumb{background:#d1d5e0;border-radius:99px}
+/* ── TERMINAL SECTION ── */
+.terminal-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.terminal-card{background:#fafbfe;border:1.5px solid var(--line);border-radius:11px;padding:14px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;transition:.14s}
+.terminal-card:hover{border-color:var(--primary-mid)}
+.terminal-card-info{flex:1}
+.terminal-card-name{font-size:13.5px;font-weight:600;color:var(--text)}
+.terminal-card-meta{font-size:12px;color:var(--muted);margin-top:3px;display:flex;gap:10px;flex-wrap:wrap}
+.terminal-card-meta span{display:inline-flex;align-items:center;gap:4px}
+.terminal-actions{display:flex;gap:6px;flex-shrink:0}
+.btn-icon{width:30px;height:30px;border-radius:8px;border:1.5px solid var(--border);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--soft);transition:.14s;font-size:13px}
+.btn-icon:hover{border-color:var(--danger);color:var(--danger)}
+.add-terminal-btn{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 18px;border-radius:10px;border:1.5px dashed var(--line-strong);background:#fff;color:var(--primary);font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+.add-terminal-btn:hover{border-color:var(--primary);background:var(--primary-soft)}
+/* ── MAP PLACEHOLDER ── */
+.map-box{height:280px;border-radius:11px;overflow:hidden;background:#0f1a2e;position:relative;border:1.5px solid var(--line)}
+.map-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:rgba(255,255,255,.4)}
+.map-placeholder svg{color:rgba(255,255,255,.3)}
+.map-placeholder p{font-size:12px;font-weight:500;letter-spacing:.03em}
+.map-pin{position:absolute;top:50%;left:50%;transform:translate(-50%,-100%);color:#e63946;filter:drop-shadow(0 2px 8px rgba(230,57,70,.6))}
+/* ── LOCODE BADGE ── */
+.locode-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;background:var(--primary-soft);color:var(--primary-dark);border-radius:8px;font-size:12px;font-weight:700;font-family:monospace;letter-spacing:.05em;margin-top:6px}
+/* ── SAVE BAR ── */
+.save-bar{position:sticky;bottom:0;background:rgba(255,255,255,.9);backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:14px 28px;display:flex;justify-content:flex-end;gap:12px;z-index:50;margin:0 -28px}
+.btn{height:44px;padding:0 24px;border-radius:11px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:.15s;display:inline-flex;align-items:center;gap:8px;text-decoration:none}
+.btn-primary{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:0 4px 12px rgba(26,111,219,.25)}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+.btn-ghost{background:#fff;border-color:var(--border);color:var(--text)}
+.btn-ghost:hover{border-color:var(--line-strong)}
+/* ── TERMINAL MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(20,24,45,.5);backdrop-filter:blur(4px);z-index:300;display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:.2s}
+.modal-overlay.open{opacity:1;visibility:visible}
+.modal-box{background:#fff;border-radius:20px;box-shadow:var(--shadow-lg);width:560px;max-width:96vw;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;transform:scale(.95) translateY(8px);transition:.22s cubic-bezier(.2,.8,.2,1)}
+.modal-overlay.open .modal-box{transform:scale(1) translateY(0)}
+.modal-header{padding:22px 26px 18px;border-bottom:1px solid var(--line);flex-shrink:0}
+.modal-header h3{font-size:17px;font-weight:700;margin-bottom:3px}
+.modal-header p{font-size:12.5px;color:var(--muted)}
+.modal-body{padding:22px 26px;overflow-y:auto;flex:1}
+.modal-foot{padding:16px 26px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0}
+.parent-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--ok-soft);color:var(--ok);border-radius:8px;font-size:12.5px;font-weight:600;margin-top:8px}
+.parent-chip::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--ok)}
+.modal-sec-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--soft);margin-bottom:12px;margin-top:6px}
+/* ── GATE ── */
+.gate-msg{background:var(--danger-soft);border:1px solid #f3cdd5;color:#8a2436;padding:14px 16px;border-radius:12px;margin-bottom:18px;font-weight:500;display:none}
+/* ── TOAST ── */
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(12px);background:var(--text);color:#fff;padding:13px 22px;border-radius:11px;font-weight:600;font-size:13.5px;opacity:0;visibility:hidden;transition:opacity .25s,transform .28s cubic-bezier(.2,.8,.2,1),visibility .25s;z-index:1000}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1;visibility:visible;box-shadow:var(--shadow-lg)}
+.toast.ok{background:var(--ok)}.toast.err{background:var(--danger)}
+/* ── RESPONSIVE ── */
+@media(max-width:900px){.main-grid{grid-template-columns:1fr}.g4{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.g2,.g3{grid-template-columns:1fr}.identity-row{padding:0 16px}.wrap{padding:20px 16px 80px}}
+</style>
+</head>
+<body>
+
+<script>
+// Instant hide wizard-like flashes
+(function(){
+  const id=new URLSearchParams(location.search).get('id');
+  if(id) document.documentElement.dataset.editMode='1';
+})();
+</script>
+
+<!-- NAV -->
+<div class="topbar">
+  <a href="index.html" class="topbar-brand">
+    <span class="topbar-brand-project">PROJECT</span>
+    <span class="topbar-brand-name">Manhattan.</span>
+  </a>
+  <div class="topbar-nav">
+    <div class="nav-pill">
+      <a href="home-logged-in.html" class="nav-item">Home</a>
+      <div class="nav-item-wrap">
+        <a href="#" class="nav-item active">Atlas</a>
+        <div class="nav-dropdown">
+          <a href="Species.html" class="nav-dropdown-item">Species</a>
+          <a href="cold-storage-list.html" class="nav-dropdown-item">Cold Storage</a>
+          <a href="port-list.html" class="nav-dropdown-item active">Ports</a>
+          <a href="vessel-list.html" class="nav-dropdown-item">Vessels</a>
+          <a href="country.html" class="nav-dropdown-item">Country</a>
+        </div>
+      </div>
+      <a href="#" class="nav-item">Features</a>
+      <a href="#" class="nav-item">Messages</a>
+      <a href="#" class="nav-item">Reports</a>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div style="position:relative">
+      <button class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()"><span id="avatarInitials">··</span></button>
+      <div class="avatar-menu" id="avatarMenu">
+        <div class="avatar-menu-name" id="avatarGreeting">Hello!</div>
+        <a href="profile.html">Profile</a>
+        <button onclick="handleLogout()">Logout</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="crumb"><a href="port-list.html">Ports</a> · <span id="formCrumb">Add port</span></div>
+  <div class="gate-msg" id="gateMsg">Only admins can add or edit ports.</div>
+
+  <!-- HERO -->
+  <div class="hero" id="heroWrap">
+    <div class="hero-upload" id="heroUploadBtn">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      <span>Add port photo</span>
+      <input type="file" id="heroFile" accept="image/*" onchange="handleHeroUpload(this)"/>
+    </div>
+  </div>
+
+  <!-- IDENTITY ROW -->
+  <div class="identity-row">
+    <div class="port-avatar" id="portAvatar">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M3 12h3M18 12h3M12 3v3M12 18v3"/><path d="M5 19l2-2M17 7l2-2M5 5l2 2M17 17l2 2"/></svg>
+    </div>
+    <div class="identity-info">
+      <div class="port-name" id="portNameDisplay">New Port</div>
+      <div class="port-country" id="portCountryDisplay">Select a country</div>
+    </div>
+    <div class="identity-actions">
+      <button class="btn btn-ghost" onclick="location.href='port-list.html'">Cancel</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="savePort()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        <span id="saveBtnLbl">Save Port</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="main-grid">
+    <!-- LEFT COLUMN -->
+    <div>
+
+      <!-- PORT DETAILS -->
+      <div class="section">
+        <div class="sec-head">
+          <div class="sec-title">Port Details</div>
+        </div>
+        <div class="sec-body">
+          <div class="g2" style="margin-bottom:14px">
+            <div class="field">
+              <span>Main Port Name <span style="color:var(--danger)">*</span></span>
+              <input id="main_port_name" placeholder="e.g. Port of Aberdeen" oninput="syncDisplayName()"/>
+            </div>
+            <div class="field">
+              <span>Alternate Port Name</span>
+              <input id="alternate_port_name" placeholder="Alternative or local name"/>
+            </div>
+          </div>
+          <div class="g3" style="margin-bottom:14px">
+            <div class="field">
+              <span>Country <span style="color:var(--danger)">*</span></span>
+              <div class="csel" id="country_csel">
+                <button type="button" class="csel-trigger" id="country_trigger">
+                  <span class="csel-lbl ph" id="country_label">Select country…</span>
+                  <svg class="csel-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <input type="hidden" id="country"/>
+                <div class="csel-panel" id="country_panel">
+                  <div class="csel-search-wrap"><input type="text" placeholder="Search country…" oninput="filterCountry(this.value)" onclick="event.stopPropagation()"/></div>
+                  <div id="country_opts"></div>
+                </div>
+              </div>
+            </div>
+            <div class="field">
+              <span>Region Name</span>
+              <input id="region_name" placeholder="e.g. Scotland East Coast"/>
+            </div>
+            <div class="field">
+              <span>UN/LOCODE <small>(e.g. GB ABD)</small></span>
+              <input id="un_locode" placeholder="XX XXX" style="font-family:monospace;font-size:14px;letter-spacing:.08em" oninput="this.value=this.value.toUpperCase()"/>
+            </div>
+          </div>
+          <div class="g4" style="margin-bottom:14px">
+            <div class="field">
+              <span>World Water Body</span>
+              <input id="world_water_body" placeholder="e.g. North Sea"/>
+            </div>
+            <div class="field">
+              <span>Harbor Type</span>
+              <div class="csel" id="harbor_type_csel">
+                <button type="button" class="csel-trigger" id="harbor_type_trigger">
+                  <span class="csel-lbl ph" id="harbor_type_label">Select…</span>
+                  <svg class="csel-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <input type="hidden" id="harbor_type"/>
+                <div class="csel-panel" id="harbor_type_panel"></div>
+              </div>
+            </div>
+            <div class="field">
+              <span>Harbor Size</span>
+              <div class="csel" id="harbor_size_csel">
+                <button type="button" class="csel-trigger" id="harbor_size_trigger">
+                  <span class="csel-lbl ph" id="harbor_size_label">Select…</span>
+                  <svg class="csel-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <input type="hidden" id="harbor_size"/>
+                <div class="csel-panel" id="harbor_size_panel"></div>
+              </div>
+            </div>
+            <div class="field">
+              <span>Standard Nautical Chart</span>
+              <input id="standard_nautical_chart" placeholder="Chart reference"/>
+            </div>
+          </div>
+          <div class="g3" style="margin-bottom:14px">
+            <div class="field">
+              <span>Port Type</span>
+              <div class="csel" id="port_type_csel">
+                <button type="button" class="csel-trigger" id="port_type_trigger">
+                  <span class="csel-lbl ph" id="port_type_label">Select port type…</span>
+                  <svg class="csel-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <input type="hidden" id="port_type"/>
+                <div class="csel-panel" id="port_type_panel"></div>
+              </div>
+            </div>
+            <div class="field">
+              <span>Vessel Traffic Service</span>
+              <div class="csel" id="vts_csel">
+                <button type="button" class="csel-trigger" id="vts_trigger">
+                  <span class="csel-lbl ph" id="vts_label">Select…</span>
+                  <svg class="csel-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <input type="hidden" id="vessel_traffic_service"/>
+                <div class="csel-panel" id="vts_panel"></div>
+              </div>
+            </div>
+            <div class="field">
+              <span>Berth <small>(optional)</small></span>
+              <input id="berth" placeholder="Main berth identifier"/>
+            </div>
+          </div>
+          <div class="g2">
+            <div class="field">
+              <span>Port Authority</span>
+              <input id="port_authority" placeholder="e.g. Port of Aberdeen Authority"/>
+            </div>
+            <div class="field">
+              <span>Ownership</span>
+              <div class="csel" id="ownership_csel">
+                <button type="button" class="csel-trigger" id="ownership_trigger">
+                  <span class="csel-lbl ph" id="ownership_label">Select ownership…</span>
+                  <svg class="csel-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <input type="hidden" id="ownership"/>
+                <div class="csel-panel" id="ownership_panel"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TERMINALS & WHARVES -->
+      <div class="section">
+        <div class="sec-head">
+          <div class="sec-title">Terminals & Wharves</div>
+          <button class="btn btn-ghost" style="height:34px;padding:0 14px;font-size:12.5px" onclick="openTerminalModal()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Terminal / Wharf
+          </button>
+        </div>
+        <div class="sec-body">
+          <div class="terminal-list" id="terminalList">
+            <div style="color:var(--soft);font-size:13px;text-align:center;padding:20px 0">No terminals added yet. Click "Add Terminal / Wharf" to begin.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div>
+
+      <!-- COORDINATES & MAP -->
+      <div class="section" style="margin-bottom:18px">
+        <div class="sec-head"><div class="sec-title">Location</div></div>
+        <div class="sec-body">
+          <div class="g2" style="margin-bottom:14px">
+            <div class="field">
+              <span>Latitude</span>
+              <input id="latitude" type="number" step="any" placeholder="e.g. 57.144"/>
+            </div>
+            <div class="field">
+              <span>Longitude</span>
+              <input id="longitude" type="number" step="any" placeholder="e.g. -2.077"/>
+            </div>
+          </div>
+          <div class="map-box" id="mapBox">
+            <div class="map-placeholder" id="mapPlaceholder">
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <p>Enter lat/lon to preview</p>
+            </div>
+            <div id="mapEmbed" style="display:none;width:100%;height:100%"></div>
+          </div>
+          <div style="margin-top:10px;text-align:center">
+            <button class="btn btn-ghost" style="height:34px;padding:0 14px;font-size:12.5px;width:100%" onclick="previewMap()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Preview on map
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- UN/LOCODE INFO -->
+      <div class="section" style="margin-bottom:18px">
+        <div class="sec-head"><div class="sec-title">UN/LOCODE Info</div></div>
+        <div class="sec-body">
+          <p style="font-size:12.5px;color:var(--muted);line-height:1.65;margin-bottom:12px">The UN/LOCODE is a 5-character code: 2-letter ISO country + 3-character location identifier. Example: <span style="font-family:monospace;font-weight:700;color:var(--primary-dark)">GB ABD</span> = Aberdeen, United Kingdom.</p>
+          <div id="locodeDisplay" style="display:none">
+            <div style="font-size:11px;color:var(--soft);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Current code</div>
+            <div class="locode-badge" id="locodeBadge"></div>
+          </div>
+          <a href="https://unece.org/trade/cefact/unlocode-code-list-country-and-territory" target="_blank" rel="noopener" style="font-size:12px;color:var(--primary);display:inline-flex;align-items:center;gap:5px;margin-top:10px;text-decoration:none;font-weight:600">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+            Look up UN/LOCODE →
+          </a>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- TERMINAL MODAL -->
+<div class="modal-overlay" id="terminalOverlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>Add Terminal / Wharf</h3>
+      <p>Add a terminal, wharf, jetty or berth belonging to this port.</p>
+    </div>
+    <div class="modal-body">
+      <div class="modal-sec-title">General</div>
+      <div style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px">Parent Port</div>
+        <div class="parent-chip" id="parentChip">New Port</div>
+      </div>
+      <div class="modal-sec-title">Terminal Information</div>
+      <div class="field full" style="margin-bottom:14px">
+        <span>Type <span style="color:var(--danger)">*</span></span>
+        <div class="csel" id="t_type_csel">
+          <button type="button" class="csel-trigger" id="t_type_trigger">
+            <span class="csel-lbl ph" id="t_type_label">Select terminal type…</span>
+            <svg class="csel-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <input type="hidden" id="t_type"/>
+          <div class="csel-panel" id="t_type_panel"></div>
+        </div>
+      </div>
+      <div class="g2" style="margin-bottom:14px">
+        <div class="field">
+          <span>Terminal / Wharf Name <span style="color:var(--danger)">*</span></span>
+          <input id="t_name" placeholder="e.g. Northern Harbor"/>
+        </div>
+        <div class="field">
+          <span>Terminal / Wharf Type</span>
+          <div class="csel" id="t_wharf_type_csel">
+            <button type="button" class="csel-trigger" id="t_wharf_type_trigger">
+              <span class="csel-lbl ph" id="t_wharf_type_label">Select…</span>
+              <svg class="csel-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <input type="hidden" id="t_wharf_type"/>
+            <div class="csel-panel" id="t_wharf_type_panel"></div>
+          </div>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:16px">
+        <span>Berth <small>(optional)</small></span>
+        <input id="t_berth" placeholder="Berth number or name"/>
+      </div>
+      <div class="modal-sec-title">Coordinates</div>
+      <div class="g2">
+        <div class="field">
+          <span>Latitude</span>
+          <input id="t_lat" type="number" step="any" placeholder="e.g. 57.144"/>
+        </div>
+        <div class="field">
+          <span>Longitude</span>
+          <input id="t_lon" type="number" step="any" placeholder="e.g. -2.077"/>
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" onclick="closeTerminalModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTerminal()">Save Terminal</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
+const SUPABASE_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// ── DROPDOWN OPTION SETS ──────────────────────────────────────────────
+const PORT_TYPES=[
+  {v:'Container Port',     h:'Containerised freight — TEU-based operations'},
+  {v:'General Cargo Port', h:'Mixed cargo, break bulk, project cargo'},
+  {v:'Bulk Cargo Port',    h:'Dry bulk — grain, coal, ore, aggregates'},
+  {v:'Liquid Bulk / Tanker Port', h:'Oil, LNG, chemicals, liquid cargoes'},
+  {v:'RoRo Port',          h:'Roll-on/roll-off — vehicles, heavy cargo'},
+  {v:'Fishing Port',       h:'Commercial and artisanal fishing operations'},
+  {v:'Cruise / Passenger Port', h:'Passenger ships and cruise vessels'},
+  {v:'Multi-Purpose Port', h:'Handles multiple cargo types and vessel classes'},
+  {v:'Inland / River Port',h:'Located on river, lake or canal'},
+  {v:'Dry Port',           h:'Inland, rail/road-connected to seaport'},
+  {v:'Marina / Recreational Port', h:'Leisure craft, yachts, small boats'},
+];
+const OWNERSHIP_TYPES=[
+  {v:'Government / Public',          h:'Owned and operated by national, regional or municipal authority'},
+  {v:'Municipal',                    h:'Managed directly by local city or municipal government'},
+  {v:'Corporatised / State Enterprise',h:'Government-owned but operates commercially like a private entity'},
+  {v:'Public-Private Partnership (PPP)',h:'Joint government-private arrangement — concession or BOT model'},
+  {v:'Private',                      h:'Wholly privately owned and operated'},
+];
+const HARBOR_TYPES=['Natural','Artificial','Tidal','Non-tidal','River','Lake','Lagoon','Estuary'];
+const HARBOR_SIZES=['Very Small','Small','Medium','Large','Very Large'];
+const VTS_OPTIONS=['Yes — Full VTS','Yes — Limited VTS','No VTS','Radar coverage only'];
+const TERMINAL_TYPES=[
+  'Container Terminal','Bulk Terminal (Dry)','Bulk Terminal (Liquid)',
+  'RoRo Terminal','General Cargo Terminal','Fishing Terminal',
+  'Passenger / Cruise Terminal','Offshore Supply Terminal','Mixed / Multi-purpose Terminal',
+];
+const WHARF_TYPES=['Quay','Wharf','Jetty','Pier','Berth','Dock','Marina Pontoon','Offshore Buoy'];
+
+// ── CSEL ENGINE ───────────────────────────────────────────────────────
+function buildCsel(cfg){
+  const {triggerId,labelId,hiddenId,panelId,options,withHint,withSearch,ph='Select…',onSelect}=cfg;
+  const trigger=$(triggerId), label=$(labelId), hidden=$(hiddenId), panel=$(panelId);
+  if(!trigger||!panel) return;
+  const csel=trigger.closest('.csel');
+  function renderOpts(q=''){
+    panel.innerHTML='';
+    if(withSearch){
+      const sw=document.createElement('div'); sw.className='csel-search-wrap';
+      sw.innerHTML='<input type="text" placeholder="Search…"/>';
+      panel.appendChild(sw);
+      const si=sw.querySelector('input');
+      si.value=q;
+      si.addEventListener('input',()=>renderOpts(si.value));
+      si.addEventListener('click',e=>e.stopPropagation());
+      setTimeout(()=>si.focus(),20);
+    }
+    const f=q.toLowerCase();
+    const list=options.filter(o=>{
+      const v=typeof o==='string'?o:o.v;
+      return !f||v.toLowerCase().includes(f);
+    });
+    list.forEach(o=>{
+      const v=typeof o==='string'?o:o.v;
+      const h=typeof o==='object'?o.h:null;
+      const d=document.createElement('div'); d.className='csel-opt'+(hidden.value===v?' active':'');
+      d.innerHTML=`<div>${esc(v)}</div>${h&&withHint?`<div class="csel-opt-hint">${esc(h)}</div>`:''}`;
+      d.addEventListener('click',()=>{
+        hidden.value=v; label.textContent=v; label.classList.remove('ph');
+        closeAllCsel(); if(onSelect) onSelect(v);
+      });
+      panel.appendChild(d);
+    });
+    if(!list.length){const e=document.createElement('div');e.className='csel-opt';e.style.color='var(--soft)';e.textContent='No options';panel.appendChild(e);}
+  }
+  trigger.addEventListener('click',e=>{
+    e.preventDefault(); e.stopPropagation();
+    const wasOpen=csel.classList.contains('open');
+    closeAllCsel();
+    if(!wasOpen){
+      renderOpts();
+      // Detect if there's enough space below, flip up if not
+      const rect=trigger.getBoundingClientRect();
+      const spaceBelow=window.innerHeight - rect.bottom;
+      const spaceNeeded=Math.min(280, (options.length*42)+20);
+      if(spaceBelow < spaceNeeded && rect.top > spaceNeeded){
+        csel.classList.add('drop-up');
+      } else {
+        csel.classList.remove('drop-up');
+      }
+      csel.classList.add('open');
+    }
+  });
+}
+function closeAllCsel(){document.querySelectorAll('.csel.open').forEach(c=>c.classList.remove('open'));}
+document.addEventListener('click',()=>closeAllCsel());
+
+// ── COUNTRY DROPDOWN (searchable, from Supabase) ──────────────────────
+let countryList=[];
+async function loadCountries(){
+  const {data}=await sb.from('countries').select('country,alpha2').order('country');
+  countryList=(data||[]);
+  buildCountryCsel();
+}
+function buildCountryCsel(){
+  const trigger=$('country_trigger'), label=$('country_label'), hidden=$('country'), panel=$('country_panel');
+  const csel=trigger.closest('.csel');
+  function renderCountryOpts(q=''){
+    const optsEl=$('country_opts'); optsEl.innerHTML='';
+    const f=q.toLowerCase();
+    countryList.filter(c=>!f||c.country.toLowerCase().includes(f)).forEach(c=>{
+      const d=document.createElement('div'); d.className='csel-opt'+(hidden.value===c.country?' active':'');
+      d.textContent=c.country;
+      d.addEventListener('click',()=>{
+        hidden.value=c.country; label.textContent=c.country; label.classList.remove('ph');
+        closeAllCsel(); syncCountryDisplay(c.country);
+      });
+      optsEl.appendChild(d);
+    });
+  }
+  panel.querySelector('input')?.addEventListener('input',e=>renderCountryOpts(e.target.value));
+  panel.querySelector('input')?.addEventListener('click',e=>e.stopPropagation());
+  trigger.addEventListener('click',e=>{
+    e.preventDefault(); e.stopPropagation();
+    const wasOpen=csel.classList.contains('open');
+    closeAllCsel(); if(!wasOpen){renderCountryOpts();csel.classList.add('open');setTimeout(()=>panel.querySelector('input')?.focus(),20);}
+  });
+}
+function filterCountry(q){ $('country_opts').querySelectorAll('.csel-opt').forEach(o=>o.style.display=o.textContent.toLowerCase().includes(q.toLowerCase())?'':'none'); }
+function syncCountryDisplay(c){ $('portCountryDisplay').textContent=c||'Select a country'; }
+
+// ── BUILD ALL STATIC DROPDOWNS ────────────────────────────────────────
+function buildStaticCsels(){
+  buildCsel({triggerId:'port_type_trigger',labelId:'port_type_label',hiddenId:'port_type',panelId:'port_type_panel',options:PORT_TYPES,withHint:true});
+  buildCsel({triggerId:'ownership_trigger',labelId:'ownership_label',hiddenId:'ownership',panelId:'ownership_panel',options:OWNERSHIP_TYPES,withHint:true});
+  buildCsel({triggerId:'harbor_type_trigger',labelId:'harbor_type_label',hiddenId:'harbor_type',panelId:'harbor_type_panel',options:HARBOR_TYPES});
+  buildCsel({triggerId:'harbor_size_trigger',labelId:'harbor_size_label',hiddenId:'harbor_size',panelId:'harbor_size_panel',options:HARBOR_SIZES});
+  buildCsel({triggerId:'vts_trigger',labelId:'vts_label',hiddenId:'vessel_traffic_service',panelId:'vts_panel',options:VTS_OPTIONS});
+  // Modal dropdowns
+  buildCsel({triggerId:'t_type_trigger',labelId:'t_type_label',hiddenId:'t_type',panelId:'t_type_panel',options:TERMINAL_TYPES});
+  buildCsel({triggerId:'t_wharf_type_trigger',labelId:'t_wharf_type_label',hiddenId:'t_wharf_type',panelId:'t_wharf_type_panel',options:WHARF_TYPES});
+}
+
+// ── LIVE DISPLAY SYNC ─────────────────────────────────────────────────
+function syncDisplayName(){ const v=$('main_port_name').value.trim(); $('portNameDisplay').textContent=v||'New Port'; }
+
+// Watch locode input
+$('un_locode').addEventListener('input',function(){
+  const v=this.value.trim();
+  if(v){ $('locodeBadge').textContent=v; $('locodeDisplay').style.display='block'; }
+  else $('locodeDisplay').style.display='none';
+});
+
+// ── TERMINALS ─────────────────────────────────────────────────────────
+let terminals=[]; // {id,t_type,t_name,t_wharf_type,t_berth,t_lat,t_lon}
+function openTerminalModal(){
+  $('terminalOverlay').classList.add('open');
+  $('parentChip').textContent=$('main_port_name').value.trim()||'New Port';
+  // Clear fields
+  ['t_type','t_name','t_wharf_type','t_berth','t_lat','t_lon'].forEach(id=>{$(id).value='';});
+  [$('t_type_label'),$('t_wharf_type_label')].forEach(el=>{el.textContent=el.id==='t_type_label'?'Select terminal type…':'Select…';el.className='csel-lbl ph';});
+}
+function closeTerminalModal(){ $('terminalOverlay').classList.remove('open'); }
+$('terminalOverlay').addEventListener('click',e=>{if(e.target===$('terminalOverlay'))closeTerminalModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTerminalModal();});
+
+function saveTerminal(){
+  const name=$('t_name').value.trim();
+  if(!name){toast('Terminal name is required',false); return;}
+  const t={id:Date.now(),type:$('t_type').value,name,wharf_type:$('t_wharf_type').value,berth:$('t_berth').value,lat:$('t_lat').value,lon:$('t_lon').value};
+  terminals.push(t); renderTerminals(); closeTerminalModal();
+}
+function removeTerminal(id){ terminals=terminals.filter(t=>t.id!==id); renderTerminals(); }
+function renderTerminals(){
+  const el=$('terminalList'); if(!el) return;
+  if(!terminals.length){ el.innerHTML='<div style="color:var(--soft);font-size:13px;text-align:center;padding:20px 0">No terminals added yet.</div>'; return; }
+  el.innerHTML=terminals.map(t=>`<div class="terminal-card">
+    <div class="terminal-card-info">
+      <div class="terminal-card-name">${esc(t.name)}</div>
+      <div class="terminal-card-meta">
+        ${t.type?`<span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>${esc(t.type)}</span>`:''}
+        ${t.wharf_type?`<span>${esc(t.wharf_type)}</span>`:''}
+        ${t.berth?`<span>Berth: ${esc(t.berth)}</span>`:''}
+        ${t.lat&&t.lon?`<span>${parseFloat(t.lat).toFixed(4)}, ${parseFloat(t.lon).toFixed(4)}</span>`:''}
+      </div>
+    </div>
+    <div class="terminal-actions">
+      <button class="btn-icon" onclick="removeTerminal(${t.id})" title="Remove">✕</button>
+    </div>
+  </div>`).join('');
+}
+
+// ── MAP PREVIEW ───────────────────────────────────────────────────────
+function previewMap(){
+  const lat=parseFloat($('latitude').value), lon=parseFloat($('longitude').value);
+  if(isNaN(lat)||isNaN(lon)){toast('Enter valid latitude and longitude first',false); return;}
+  const embed=$('mapEmbed');
+  embed.innerHTML=`<iframe width="100%" height="100%" frameborder="0" style="border:0" loading="lazy"
+    src="https://www.openstreetmap.org/export/embed.html?bbox=${lon-.2}%2C${lat-.15}%2C${lon+.2}%2C${lat+.15}&layer=mapnik&marker=${lat}%2C${lon}" allowfullscreen></iframe>`;
+  embed.style.display='block'; $('mapPlaceholder').style.display='none';
+}
+
+// ── HERO PHOTO ────────────────────────────────────────────────────────
+async function handleHeroUpload(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{ $('heroWrap').style.backgroundImage=`url(${e.target.result})`; $('heroWrap').style.backgroundSize='cover'; $('heroWrap').style.backgroundPosition='center'; $('heroUploadBtn').style.opacity='0'; };
+  reader.readAsDataURL(file);
+}
+
+// ── SAVE ─────────────────────────────────────────────────────────────
+const editId=new URLSearchParams(location.search).get('id');
+async function savePort(){
+  const name=$('main_port_name').value.trim();
+  if(!name){toast('Port name is required',false); return;}
+  const country=$('country').value;
+  if(!country){toast('Country is required',false); return;}
+  $('saveBtn').disabled=true; $('saveBtnLbl').textContent='Saving…';
+  const payload={
+    main_port_name:name,
+    alternate_port_name:$('alternate_port_name').value.trim()||null,
+    un_locode:$('un_locode').value.trim()||null,
+    country,
+    region_name:$('region_name').value.trim()||null,
+    world_water_body:$('world_water_body').value.trim()||null,
+    latitude:parseFloat($('latitude').value)||null,
+    longitude:parseFloat($('longitude').value)||null,
+    port_type:$('port_type').value||null,
+    harbor_type:$('harbor_type').value||null,
+    harbor_size:$('harbor_size').value||null,
+    standard_nautical_chart:$('standard_nautical_chart').value.trim()||null,
+    vessel_traffic_service:$('vessel_traffic_service').value||null,
+    port_authority:$('port_authority').value.trim()||null,
+    ownership:$('ownership').value||null,
+    berth:$('berth').value.trim()||null,
+  };
+  try{
+    let portId=editId;
+    if(editId){
+      const {error}=await sb.from('ports').update(payload).eq('id',editId);
+      if(error) throw error;
+    } else {
+      const {data,error}=await sb.from('ports').insert(payload).select('id').single();
+      if(error) throw error; portId=data.id;
+    }
+    // Save terminals
+    if(portId&&terminals.length){
+      if(editId) await sb.from('port_terminals').delete().eq('port_id',portId);
+      const rows=terminals.map(t=>({port_id:portId,terminal_type:t.type||null,terminal_name:t.name,terminal_wharf_type:t.wharf_type||null,berth:t.berth||null,latitude:parseFloat(t.lat)||null,longitude:parseFloat(t.lon)||null}));
+      const {error}=await sb.from('port_terminals').insert(rows);
+      if(error) console.warn('Terminal save error:',error);
+    }
+    toast(editId?'Port updated':'Port saved','ok');
+    setTimeout(()=>location.href='port-detail.html?id='+portId,900);
+  }catch(e){
+    toast(e.message||'Save failed',false);
+    $('saveBtn').disabled=false; $('saveBtnLbl').textContent='Save Port';
+  }
+}
+
+// ── LOAD FOR EDIT ─────────────────────────────────────────────────────
+async function loadPort(id){
+  const {data:p}=await sb.from('ports').select('*').eq('id',id).single();
+  if(!p){toast('Port not found',false);return;}
+  // Text fields
+  ['main_port_name','alternate_port_name','un_locode','region_name','world_water_body',
+   'standard_nautical_chart','port_authority','berth'].forEach(k=>{
+    const el=$(k); if(el&&p[k]!=null) el.value=p[k];
+  });
+  // Number fields
+  ['latitude','longitude'].forEach(k=>{ const el=$(k); if(el&&p[k]!=null) el.value=p[k]; });
+  // Csel restores
+  const restoreCsel=(hiddenId,labelId)=>{
+    const h=$(hiddenId), l=$(labelId); if(!h||!l||!h.value) return;
+    l.textContent=h.value; l.classList.remove('ph');
+  };
+  if(p.country){ $('country').value=p.country; const l=$('country_label'); l.textContent=p.country; l.classList.remove('ph'); syncCountryDisplay(p.country); }
+  ['port_type','ownership','harbor_type','harbor_size','vessel_traffic_service'].forEach(k=>{
+    const el=$(k); if(el&&p[k]) el.value=p[k];
+  });
+  // Sync labels after values are set
+  restoreCsel('port_type','port_type_label');
+  restoreCsel('ownership','ownership_label');
+  restoreCsel('harbor_type','harbor_type_label');
+  restoreCsel('harbor_size','harbor_size_label');
+  restoreCsel('vessel_traffic_service','vts_label');
+  syncDisplayName(); syncCountryDisplay(p.country);
+  if(p.un_locode){ $('locodeBadge').textContent=p.un_locode; $('locodeDisplay').style.display='block'; }
+  if(p.latitude&&p.longitude) previewMap();
+  // Load terminals
+  const {data:termsDb}=await sb.from('port_terminals').select('*').eq('port_id',id).order('created_at');
+  if(termsDb&&termsDb.length){
+    terminals=termsDb.map(t=>({id:t.id,type:t.terminal_type||'',name:t.terminal_name,wharf_type:t.terminal_wharf_type||'',berth:t.berth||'',lat:t.latitude||'',lon:t.longitude||''}));
+    renderTerminals();
+  }
+}
+
+// ── AUTH ──────────────────────────────────────────────────────────────
+(async function init(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){location.href='login.html';return;}
+  const {data:p}=await sb.from('profiles').select('role,first_name,last_name,avatar_color,photo_url').eq('id',user.id).single();
+  const isAdmin=p&&['admin','operator'].includes(p.role);
+  if(!isAdmin){ $('gateMsg').style.display='block'; $('saveBtn').disabled=true; document.querySelectorAll('input,select,button:not([onclick*="location"])').forEach(e=>e.disabled=true); return; }
+  const first=p?.first_name||user.email.split('@')[0];
+  if(p?.photo_url) $('avatarBtn').innerHTML=`<img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover">`;
+  else{ $('avatarBtn').style.background=p?.avatar_color||'#1a6fdb'; $('avatarInitials').textContent=((first[0]||'')+(p?.last_name?.[0]||'')).toUpperCase()||'··'; }
+  $('avatarGreeting').textContent=`Hello, ${first}!`;
+  buildStaticCsels();
+  await loadCountries();
+  if(editId){ $('formCrumb').textContent='Edit port'; $('saveBtnLbl').textContent='Save changes'; await loadPort(editId); }
+})();
+
+function toggleAvatarMenu(){ $('avatarMenu').classList.toggle('open'); }
+document.addEventListener('click',e=>{ if(!e.target.closest('.avatar-btn')) $('avatarMenu')?.classList.remove('open'); });
+async function handleLogout(){ await sb.auth.signOut(); location.href='index.html'; }
+function toast(msg,type=''){
+  const t=$('toast'); t.textContent=msg;
+  t.className='toast show'+(type==='ok'?' ok':type===false?' err':'');
+  setTimeout(()=>t.className='toast',3200);
+}
+</script>
+</body>
+</html>

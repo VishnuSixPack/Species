@@ -181,7 +181,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .tl-filter-csel.open .tl-filter-trigger{border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,111,219,.12)}
 .tl-filter-trigger svg{color:var(--soft);transition:transform .2s,color .2s;flex-shrink:0}
 .tl-filter-csel.open .tl-filter-trigger svg{transform:rotate(180deg);color:var(--primary)}
-.tl-filter-panel{position:absolute;top:calc(100% + 6px);right:0;min-width:180px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 12px rgba(20,24,45,.07),0 20px 48px rgba(20,24,45,.11);padding:6px;z-index:90;opacity:0;visibility:hidden;transform:translateY(-6px) scale(.98);transform-origin:top right;transition:opacity .15s,transform .15s,visibility .15s}
+.tl-filter-panel{position:absolute;top:calc(100% + 6px);right:0;min-width:180px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 12px rgba(20,24,45,.07),0 20px 48px rgba(20,24,45,.11);padding:6px;z-index:9999;opacity:0;visibility:hidden;transform:translateY(-6px) scale(.98);transform-origin:top right;transition:opacity .15s,transform .15s,visibility .15s}
 .tl-filter-csel.open .tl-filter-panel{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
 .tl-filter-opt{padding:9px 12px;border-radius:9px;font-size:13.5px;color:var(--text);cursor:pointer;transition:background .1s}
 .tl-filter-opt:hover{background:var(--primary-soft);color:var(--primary-dark)}
@@ -213,8 +213,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .mcsel-trigger .mcsel-lbl.ph{color:#c0c4d0}
 .mcsel-trigger svg{flex-shrink:0;color:var(--soft);transition:transform .2s,color .2s}
 .mcsel.open .mcsel-trigger svg{transform:rotate(180deg);color:var(--primary)}
-.mcsel-panel{position:absolute;top:calc(100% + 6px);left:0;width:100%;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 12px rgba(20,24,45,.07),0 20px 48px rgba(20,24,45,.11);z-index:400;opacity:0;visibility:hidden;transform:translateY(-6px);transition:opacity .15s,transform .15s,visibility .15s;overflow:hidden}
+.mcsel-panel{position:absolute;top:calc(100% + 6px);left:0;width:100%;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 12px rgba(20,24,45,.07),0 20px 48px rgba(20,24,45,.11);z-index:9999;opacity:0;visibility:hidden;transform:translateY(-6px);transition:opacity .15s,transform .15s,visibility .15s;overflow:hidden}
 .mcsel.open .mcsel-panel{opacity:1;visibility:visible;transform:translateY(0)}
+.mcsel.drop-up .mcsel-panel{top:auto;bottom:calc(100% + 6px);transform:translateY(6px)}
+.mcsel.drop-up.open .mcsel-panel{transform:translateY(0)}
 .mcsel-search{padding:8px 8px 4px;background:#fff;position:sticky;top:0}
 .mcsel-search input{width:100%;height:36px;border:1.5px solid var(--border);border-radius:9px;padding:0 10px;font:inherit;font-size:13px}
 .mcsel-search input:focus{outline:none;border-color:var(--primary)}
@@ -1530,8 +1532,15 @@ function toggleMCsel(fid,e){
   e.stopPropagation();
   const wrap=document.getElementById('mcsel_'+fid); if(!wrap) return;
   const wasOpen=wrap.classList.contains('open');
-  document.querySelectorAll('.mcsel.open').forEach(x=>x.classList.remove('open'));
+  document.querySelectorAll('.mcsel.open').forEach(x=>x.classList.remove('open','drop-up'));
   if(!wasOpen){
+    // Detect if near bottom and flip up
+    const trigger=wrap.querySelector('.mcsel-trigger');
+    if(trigger){
+      const rect=trigger.getBoundingClientRect();
+      const spaceBelow=window.innerHeight-rect.bottom;
+      if(spaceBelow<300 && rect.top>300) wrap.classList.add('drop-up');
+    }
     wrap.classList.add('open');
     populateMCsel(fid,'');
     setTimeout(()=>wrap.querySelector('.mcsel-search input')?.focus(),30);

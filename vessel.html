@@ -100,8 +100,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .csel-trigger .csel-lbl.ph{color:#c0c4d0}
 .csel-trigger .csel-arrow{color:var(--soft);flex-shrink:0;transition:transform .2s,color .2s}
 .csel.open .csel-trigger .csel-arrow{transform:rotate(180deg);color:var(--primary)}
-.csel-panel{position:absolute;top:calc(100% + 6px);left:0;width:100%;min-width:180px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 12px rgba(20,24,45,.07),0 20px 48px rgba(20,24,45,.11);padding:6px;z-index:90;max-height:280px;overflow-y:auto;opacity:0;visibility:hidden;transform:translateY(-6px) scale(.98);transform-origin:top center;transition:opacity .15s,transform .15s,visibility .15s}
+.csel-panel{position:absolute;top:calc(100% + 6px);left:0;width:100%;min-width:180px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 12px rgba(20,24,45,.07),0 20px 48px rgba(20,24,45,.11);padding:6px;z-index:9999;max-height:280px;overflow-y:auto;opacity:0;visibility:hidden;transform:translateY(-6px) scale(.98);transform-origin:top center;transition:opacity .15s,transform .15s,visibility .15s}
 .csel.open .csel-panel{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
+.csel.drop-up .csel-panel{top:auto;bottom:calc(100% + 6px);transform-origin:bottom center;transform:translateY(6px) scale(.98)}
+.csel.drop-up.open .csel-panel{transform:translateY(0) scale(1)}
 .csel-search-wrap{position:sticky;top:0;background:#fff;padding:4px 4px 6px;z-index:1}
 .csel-search-wrap input{height:36px;width:100%;border:1.5px solid var(--border);border-radius:9px;padding:0 10px;font:inherit;font-size:13px}
 .csel-search-wrap input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,111,219,.12)}
@@ -121,7 +123,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .year-trigger .yr-lbl.ph{color:#c0c4d0}
 .year-trigger .yr-arrow{color:var(--soft);transition:transform .2s,color .2s}
 .year-picker.open .year-trigger .yr-arrow{transform:rotate(180deg);color:var(--primary)}
-.year-panel{position:absolute;top:calc(100% + 6px);left:0;width:100%;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 12px rgba(20,24,45,.07),0 20px 48px rgba(20,24,45,.11);padding:14px;z-index:90;opacity:0;visibility:hidden;transform:translateY(-6px);transition:opacity .15s,transform .15s,visibility .15s}
+.year-panel{position:absolute;top:calc(100% + 6px);left:0;width:100%;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 12px rgba(20,24,45,.07),0 20px 48px rgba(20,24,45,.11);padding:14px;z-index:9999;opacity:0;visibility:hidden;transform:translateY(-6px);transition:opacity .15s,transform .15s,visibility .15s}
 .year-picker.open .year-panel{opacity:1;visibility:visible;transform:translateY(0)}
 .year-decade-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .year-decade-lbl{font-weight:700;font-size:13px;color:var(--text)}
@@ -1586,10 +1588,22 @@ function buildCsel(selEl,opts={}){
     });
     if(!n){const e=document.createElement('div');e.className='csel-empty';e.textContent='No matches';panel.appendChild(e);}
   }
-  btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const wasOpen=wrap.classList.contains('open');closeAll();if(!wasOpen){buildOpts();wrap.classList.add('open');}});
+  btn.addEventListener('click',e=>{
+    e.preventDefault();e.stopPropagation();
+    const wasOpen=wrap.classList.contains('open');
+    closeAll();
+    if(!wasOpen){
+      buildOpts();
+      const rect=btn.getBoundingClientRect();
+      const spaceBelow=window.innerHeight-rect.bottom;
+      if(spaceBelow<300 && rect.top>300) wrap.classList.add('drop-up');
+      else wrap.classList.remove('drop-up');
+      wrap.classList.add('open');
+    }
+  });
   selEl._csync=syncLabel; syncLabel();
 }
-function closeAll(){document.querySelectorAll('.csel.open,.year-picker.open').forEach(el=>el.classList.remove('open'));}
+function closeAll(){document.querySelectorAll('.csel.open,.year-picker.open').forEach(el=>el.classList.remove('open','drop-up'));}
 function syncAllCsels(){document.querySelectorAll('.csel>select').forEach(s=>{if(s._csync)s._csync();});}
 document.addEventListener('click',()=>closeAll());
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeAll();});
