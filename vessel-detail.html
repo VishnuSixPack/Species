@@ -277,7 +277,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 /* Note cards */
 .note-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:12px;transition:box-shadow .14s}
 .note-card:hover{box-shadow:0 2px 10px rgba(20,24,45,.06)}
-.note-card-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.note-card-meta{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
 .note-card-author{font-size:12.5px;font-weight:600;color:var(--text)}
 .note-card-date{font-size:11.5px;color:var(--soft)}
 .note-card-body{font-size:13.5px;line-height:1.65;color:var(--text)}
@@ -454,6 +454,20 @@ const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmtDate=d=>d?new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';
+// Detect system timezone abbreviation once
+const TZ_NAME=(()=>{
+  try{
+    const s=new Intl.DateTimeFormat('en',{timeZoneName:'short'}).format(new Date());
+    const m=s.match(/[A-Z]{2,5}$/); return m?m[0]:'';
+  }catch(e){return '';}
+})();
+function fmtDateTime(d){
+  if(!d) return '—';
+  const dt=new Date(d);
+  const date=dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  const time=dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:true}).toUpperCase();
+  return `${date}, ${time}${TZ_NAME?' '+TZ_NAME:''}`;
+}
 const vid=new URLSearchParams(location.search).get('id');
 let vessel={}, isAdmin=false, activeTab='overview', curModalType=null;
 
@@ -833,9 +847,14 @@ function renderRFMO(v){
 // ── ISSF ──
 async function renderISSF(v){
   const {data:measures}=await sb.from('vessel_pvr_measures').select('*').eq('vessel_id',vid).order('sort_order');
-  const {data:vosi}=await sb.from('vessel_vosi').select('*').eq('vessel_id',vid).order('created_at',{ascending:false});
+  // Fetch VOSI vessel record + initiatives from new schema
+  const {data:vosiRec}=await sb.from('vessel_vosi').select('*').eq('vessel_id',vid).order('last_synced',{ascending:false}).limit(1);
+  const vosiData=vosiRec&&vosiRec[0]?vosiRec[0]:null;
+  const {data:vosiInits}=vosiData
+    ?await sb.from('vessel_vosi_initiatives').select('*').eq('vosi_id',vosiData.id).order('start_date',{ascending:false})
+    :{data:[]};
   const pvr=measures||[];
-  const vosiRows=vosi||[];
+
   const pvrRows=pvr.length?pvr.map(m=>{
     const sc=PVR_STATUS_CLASS[m.status]||'pvr-NA';
     const ic=PVR_STATUS_ICON[m.status]||'—';
@@ -844,11 +863,35 @@ async function renderISSF(v){
       <td style="padding:11px 14px;border-bottom:1px solid var(--line)"><span class="pvr-status ${sc}">${ic} ${esc(m.status)}</span></td>
       <td style="padding:11px 14px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted)">${esc(m.notes||'')}</td>
     </tr>`;
-  }).join(''):`<tr><td colspan="3" class="empty-state" style="padding:20px;text-align:center;color:var(--soft)">No PVR measures recorded. Edit vessel to add.</td></tr>`;
+  }).join(''):`<tr><td colspan="3" style="padding:20px;text-align:center;color:var(--soft)">No PVR measures recorded. Edit vessel to add.</td></tr>`;
 
-  const vosiHtml=vosiRows.length?`<table class="vosi-table"><thead><tr><th>Initiative</th><th>Reg. No.</th><th>Valid From</th><th>Valid To</th><th>Status</th></tr></thead><tbody>
-    ${vosiRows.map(r=>`<tr><td style="font-weight:500">${esc(r.initiative_name)}</td><td>${esc(r.registration_no||'—')}</td><td>${fmtDate(r.valid_from)}</td><td>${fmtDate(r.valid_to)}</td><td>${esc(r.status||'—')}</td></tr>`).join('')}
-  </tbody></table>`:'<div class="empty-state">No VOSI initiatives recorded.</div>';
+  const BP_LABELS={
+    bp_electronic_monitoring:'Electronic Monitoring',
+    bp_biodegradable_fad_trial:'Biodegradable FAD Trial',
+    bp_fad_buoy_position_data:'FAD Buoy Position Data',
+    bp_fad_echosounder_biomass:'FAD Echosounder Biomass Data',
+    bp_ne_fads_no_netting:'NE FADs (No Netting)',
+    bp_fad_recovery_initiative:'FAD Recovery Initiative',
+    bp_fins_naturally_attached:'Fins Naturally Attached',
+    bp_circle_hooks:'Circle Hooks',
+    bp_finfish_bait:'Finfish Bait',
+    bp_monofilament_lines:'Monofilament Lines',
+    bp_shark_lines_not_used:'Shark Lines NOT Used',
+  };
+  function bpBadge(val){
+    if(!val||val==='-'||val==='') return '<span style="color:var(--soft);font-size:12px">—</span>';
+    const v=val.toUpperCase();
+    if(v==='Y') return '<span class="pvr-status pvr-Y">✓ Y</span>';
+    if(v==='N') return '<span class="pvr-status pvr-N">✕ N</span>';
+    if(v==='N/A') return '<span class="pvr-status pvr-NA">N/A</span>';
+    return `<span class="pvr-status pvr-NA">${esc(val)}</span>`;
+  }
+  const initRows=(vosiInits&&vosiInits.length)?vosiInits.map(i=>`<tr>
+    <td style="padding:10px 14px;border-bottom:1px solid var(--line);font-weight:600;font-size:13px">${esc(i.initiative_type||'—')}</td>
+    <td style="padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px">${i.url?`<a href="${esc(i.url)}" target="_blank" rel="noopener" style="color:var(--primary)">${esc(i.description||i.url)}</a>`:esc(i.description||'—')}</td>
+    <td style="padding:10px 14px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted);white-space:nowrap">${fmtDate(i.start_date)}</td>
+    <td style="padding:10px 14px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted);white-space:nowrap">${fmtDate(i.end_date)}</td>
+  </tr>`).join(''):`<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--soft)">No initiatives recorded.</td></tr>`;
 
   return `<div class="card">
     <div class="card-head">
@@ -868,8 +911,54 @@ async function renderISSF(v){
     </table></div>
   </div>
   <div class="card" style="margin-top:18px">
-    <div class="card-head"><div class="card-title">VOSI — Vessels in Other Sustainability Initiatives</div></div>
-    ${vosiHtml}
+    <div class="card-head">
+      <div class="card-title">VOSI — Vessels in Other Sustainability Initiatives</div>
+      ${vosiData?`<span style="font-size:11.5px;color:var(--soft)">Last synced: ${fmtDate(vosiData.last_synced)}</span>`:''}
+    </div>
+
+    ${vosiData?`
+    <!-- Vessel-level VOSI info -->
+    <div class="sub-card" style="margin-bottom:16px">
+      <div class="sub-card-title">Registration</div>
+      <div class="dl">
+        <div><div class="dt">UVI Number</div>${val(vosiData.uvi_number)}</div>
+        <div><div class="dt">UVI Type</div>${val(vosiData.uvi_type)}</div>
+        <div><div class="dt">Radio Call Sign</div>${val(vosiData.radio_call_sign)}</div>
+        <div><div class="dt">On PVR?</div>${bool(vosiData.on_pvr)}</div>
+        <div><div class="dt">In MSC-Certified Fishery</div>${bool(vosiData.in_msc_certified)}</div>
+        <div><div class="dt">In FIP</div>${bool(vosiData.in_fip)}</div>
+        <div><div class="dt">In MSCIP</div>${bool(vosiData.in_mscip)}</div>
+      </div>
+    </div>
+
+    <!-- Improvement Projects & Certifications -->
+    <div class="sub-card" style="margin-bottom:16px">
+      <div class="sub-card-title">Improvement Projects & Certification Initiatives</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr>
+            <th style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--soft);padding:8px 14px;text-align:left;border-bottom:1.5px solid var(--line-strong)">Type</th>
+            <th style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--soft);padding:8px 14px;text-align:left;border-bottom:1.5px solid var(--line-strong)">Description / Fishery</th>
+            <th style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--soft);padding:8px 14px;text-align:left;border-bottom:1.5px solid var(--line-strong)">Start Date</th>
+            <th style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--soft);padding:8px 14px;text-align:left;border-bottom:1.5px solid var(--line-strong)">End Date</th>
+          </tr></thead>
+          <tbody>${initRows}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Best Practice Initiative Flags -->
+    <div class="sub-card">
+      <div class="sub-card-title">Best Practice Initiatives</div>
+      <div style="border:1px solid var(--line);border-radius:10px;overflow:hidden">
+        ${Object.entries(BP_LABELS).map(([key,label])=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--line)">
+          <span style="font-size:13px;font-weight:500">${label}</span>
+          ${bpBadge(vosiData[key]||'')}
+        </div>`).join('')}
+      </div>
+    </div>
+    `:`<div style="padding:24px;text-align:center;color:var(--soft);font-size:13px">No VOSI data. Use the <strong>Upload VOSI</strong> option from the vessel list to import ISSF data.</div>`}
   </div>`;
 }
 
@@ -975,14 +1064,99 @@ async function loadNotes(retry=0){
       (profs||[]).forEach(p=>{profileMap[p.id]=((p.first_name||'')+' '+(p.last_name||'')).trim();});
     }
   }catch(e){ /* profile names are optional — continue without them */ }
-  el.innerHTML=data.map(n=>`<div class="note-card">
+  el.innerHTML=data.map(n=>`<div class="note-card" id="note_${n.id}">
     <div class="note-card-meta">
-      <span class="note-card-author">${esc(profileMap[n.created_by]||'Admin')}</span>
-      <span class="note-card-date">${fmtDate(n.created_at)}</span>
+      <div style="display:flex;flex-direction:column;gap:1px">
+        <span class="note-card-author">${esc(profileMap[n.created_by]||'Admin')}</span>
+        <span class="note-card-date">${fmtDateTime(n.created_at)}</span>
+      </div>
+      ${isAdmin?`<div style="display:flex;gap:6px;flex-shrink:0">
+        <button onclick="editNote('${n.id}')" style="height:30px;padding:0 11px;border-radius:7px;border:1.5px solid var(--border);background:#fff;font:inherit;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:.14s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Edit</button>
+        <button onclick="deleteNote('${n.id}')" style="height:30px;padding:0 11px;border-radius:7px;border:1.5px solid var(--border);background:#fff;font:inherit;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:.14s" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Delete</button>
+      </div>`:''}
     </div>
-    <div class="note-card-body">${n.content||''}</div>
+    <div class="note-card-body" id="notebody_${n.id}">${n.content||''}</div>
   </div>`).join('');
 }
+async function deleteNote(noteId){
+  if(!confirm('Delete this note? This cannot be undone.')) return;
+  const {error}=await sb.from('vessel_notes').delete().eq('id',noteId);
+  if(error){toast('Failed to delete note',true);return;}
+  const card=document.getElementById('note_'+noteId);
+  if(card){card.style.opacity='0';card.style.transform='scale(.97)';card.style.transition='.2s';setTimeout(()=>card.remove(),200);}
+  toast('Note deleted');
+}
+
+let editingNoteId=null;
+function editNote(noteId){
+  if(editingNoteId&&editingNoteId!==noteId) cancelEditNote(editingNoteId);
+  editingNoteId=noteId;
+  const body=document.getElementById('notebody_'+noteId); if(!body) return;
+  const currentHtml=body.innerHTML;
+  const card=document.getElementById('note_'+noteId);
+  // Replace body with inline Quill editor
+  body.innerHTML='';
+  body.style.minHeight='120px';
+  const editWrap=document.createElement('div');
+  editWrap.className='notes-editor-wrap';
+  editWrap.style.marginTop='10px';
+  const edDiv=document.createElement('div');
+  edDiv.id='noteEditEditor_'+noteId;
+  editWrap.appendChild(edDiv);
+  body.appendChild(editWrap);
+  // Action buttons
+  const actions=document.createElement('div');
+  actions.id='noteEditActions_'+noteId;
+  actions.style.cssText='display:flex;justify-content:flex-end;gap:8px;margin-top:10px';
+  actions.innerHTML=`
+    <button onclick="cancelEditNote('${noteId}')" style="height:34px;padding:0 14px;border-radius:8px;border:1.5px solid var(--border);background:#fff;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--muted)">Cancel</button>
+    <button onclick="saveEditNote('${noteId}')" style="height:34px;padding:0 14px;border-radius:8px;border:none;background:var(--primary);color:#fff;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer">Save changes</button>`;
+  body.appendChild(actions);
+  // Init Quill for this edit
+  if(typeof Quill!=='undefined'){
+    const q=new Quill('#noteEditEditor_'+noteId,{
+      theme:'snow',
+      modules:{toolbar:[
+        [{'header':[2,3,false]}],['bold','italic','underline'],
+        [{'list':'ordered'},{'list':'bullet'}],['link'],['clean']
+      ]}
+    });
+    q.root.innerHTML=currentHtml;
+    body._editQuill=q;
+    body._origHtml=currentHtml;
+    // Auto-focus
+    setTimeout(()=>q.focus(),50);
+  }
+  // Hide edit/delete buttons while editing
+  card.querySelectorAll('button[onclick^="editNote"],button[onclick^="deleteNote"]').forEach(b=>b.style.display='none');
+}
+
+async function saveEditNote(noteId){
+  const body=document.getElementById('notebody_'+noteId); if(!body) return;
+  const q=body._editQuill; if(!q) return;
+  const html=q.root.innerHTML;
+  const text=q.getText().trim();
+  if(!text||html==='<p><br></p>'){toast('Note cannot be empty',true);return;}
+  const {error}=await sb.from('vessel_notes').update({content:html}).eq('id',noteId);
+  if(error){toast('Failed to save',true);return;}
+  body.innerHTML=html;
+  body._editQuill=null; body._origHtml=null;
+  editingNoteId=null;
+  // Restore edit/delete buttons
+  const card=document.getElementById('note_'+noteId);
+  card?.querySelectorAll('button').forEach(b=>b.style.display='');
+  toast('Note updated');
+}
+
+function cancelEditNote(noteId){
+  const body=document.getElementById('notebody_'+noteId); if(!body) return;
+  body.innerHTML=body._origHtml||'';
+  body._editQuill=null; body._origHtml=null;
+  editingNoteId=null;
+  const card=document.getElementById('note_'+noteId);
+  card?.querySelectorAll('button').forEach(b=>b.style.display='');
+}
+
 async function loadOtherLicenses(){
   const el=$('otherLicensesList'); if(!el) return;
   const {data}=await sb.from('vessel_other_licenses').select('*').eq('vessel_id',vid).order('start_date',{ascending:false});
