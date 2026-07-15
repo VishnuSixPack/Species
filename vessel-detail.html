@@ -259,6 +259,22 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 <!-- Quill rich text editor -->
 <link href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.min.css" rel="stylesheet"/>
 <style>
+/* ── PREMIUM CONFIRM MODAL ── */
+.confirm-overlay{position:fixed;inset:0;background:rgba(20,24,45,.55);backdrop-filter:blur(5px);z-index:500;display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s}
+.confirm-overlay.open{opacity:1;visibility:visible}
+.confirm-box{background:#fff;border-radius:20px;box-shadow:0 8px 32px rgba(20,24,45,.16),0 32px 64px rgba(20,24,45,.10);padding:32px 32px 28px;width:400px;max-width:94vw;transform:scale(.94) translateY(8px);transition:transform .22s cubic-bezier(.2,.8,.2,1);text-align:center}
+.confirm-overlay.open .confirm-box{transform:scale(1) translateY(0)}
+.confirm-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:22px}
+.confirm-icon.danger{background:var(--danger-soft)}
+.confirm-title{font-size:17px;font-weight:700;color:var(--text);margin-bottom:8px}
+.confirm-msg{font-size:13.5px;color:var(--muted);line-height:1.6;margin-bottom:24px}
+.confirm-actions{display:flex;gap:10px;justify-content:center}
+.confirm-btn{height:42px;padding:0 22px;border-radius:11px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:.15s}
+.confirm-btn-cancel{background:#fff;border-color:var(--border);color:var(--muted)}
+.confirm-btn-cancel:hover{border-color:var(--line-strong);color:var(--text)}
+.confirm-btn-danger{background:var(--danger);color:#fff;border-color:var(--danger);box-shadow:0 4px 12px rgba(230,57,70,.25)}
+.confirm-btn-danger:hover{background:#c62d39;border-color:#c62d39}
+
 /* ── Quill rich editor — Manhattan premium theme ── */
 .notes-editor-wrap{border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;background:#fff;transition:border-color .14s,box-shadow .14s}
 .notes-editor-wrap:focus-within{border-color:var(--primary);box-shadow:0 0 0 3.5px rgba(26,111,219,.10)}
@@ -414,6 +430,21 @@ if(new URLSearchParams(location.search).get('id')){
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- PREMIUM CONFIRM MODAL -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box" id="confirmBox">
+    <div class="confirm-icon danger" id="confirmIcon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+    </div>
+    <div class="confirm-title" id="confirmTitle">Delete this note?</div>
+    <div class="confirm-msg" id="confirmMsg">This action cannot be undone.</div>
+    <div class="confirm-actions">
+      <button class="confirm-btn confirm-btn-cancel" onclick="closeConfirm()">Cancel</button>
+      <button class="confirm-btn confirm-btn-danger" id="confirmOkBtn">Delete</button>
+    </div>
+  </div>
+</div>
 
 <!-- AIS TRACKING MODAL -->
 <div id="aisModal" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(20,24,45,.6);backdrop-filter:blur(4px);align-items:center;justify-content:center">
@@ -1078,8 +1109,36 @@ async function loadNotes(retry=0){
     <div class="note-card-body" id="notebody_${n.id}">${n.content||''}</div>
   </div>`).join('');
 }
+// ── PREMIUM CONFIRM MODAL ──
+let _confirmResolve=null;
+function showConfirm(title,msg,btnLabel='Delete',iconHtml=null){
+  return new Promise(resolve=>{
+    _confirmResolve=resolve;
+    document.getElementById('confirmTitle').textContent=title;
+    document.getElementById('confirmMsg').textContent=msg;
+    document.getElementById('confirmOkBtn').textContent=btnLabel;
+    if(iconHtml) document.getElementById('confirmIcon').innerHTML=iconHtml;
+    document.getElementById('confirmOverlay').classList.add('open');
+    document.getElementById('confirmOkBtn').onclick=()=>{closeConfirm(true);};
+  });
+}
+function closeConfirm(result=false){
+  document.getElementById('confirmOverlay').classList.remove('open');
+  if(_confirmResolve){_confirmResolve(result);_confirmResolve=null;}
+}
+// Close on overlay click
+document.getElementById('confirmOverlay')?.addEventListener('click',e=>{
+  if(e.target===document.getElementById('confirmOverlay')) closeConfirm(false);
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape') closeConfirm(false);});
+
 async function deleteNote(noteId){
-  if(!confirm('Delete this note? This cannot be undone.')) return;
+  const ok=await showConfirm(
+    'Delete this note?',
+    'This note will be permanently removed and cannot be recovered.',
+    'Delete note'
+  );
+  if(!ok) return;
   const {error}=await sb.from('vessel_notes').delete().eq('id',noteId);
   if(error){toast('Failed to delete note',true);return;}
   const card=document.getElementById('note_'+noteId);
