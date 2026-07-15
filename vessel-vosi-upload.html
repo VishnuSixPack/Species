@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -196,12 +197,12 @@ tr:hover td{background:#fafbfe}
       <strong>Match key: UVI Number (IMO/TUVI)</strong> — each row in the CSV is matched against your vessel registry using the UVI Number column. The vessel's IMO field must match. Vessels not found in your registry are flagged but not created automatically.
     </div>
     <div class="drop-zone" id="dropZone">
-      <input type="file" id="csvFile" accept=".csv,.CSV" onchange="handleFile(this.files[0])"/>
+      <input type="file" id="csvFile" accept=".csv,.CSV,.xlsx,.xls,.xlsm,.xlsb,.ods,.XLSX,.XLS" onchange="handleFile(this.files[0])"/>
       <div class="drop-icon">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       </div>
       <div class="drop-title">Drop VOSI CSV here or click to browse</div>
-      <div class="drop-sub">Download the VOSI list from <span>vessels.iss-foundation.org</span> and upload here</div>
+      <div class="drop-sub">Download the VOSI list from <span>vessels.iss-foundation.org</span> · Accepts CSV, Excel (.xlsx, .xls, .xlsm, .ods)</div>
       <div class="file-selected" id="fileSelected" style="display:none">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
         <span id="fileName"></span>
@@ -321,19 +322,37 @@ function groupRows(rows){
 }
 
 // ── FILE HANDLING ──
+const EXCEL_EXTS=['.xlsx','.xls','.xlsm','.xlsb','.ods'];
+function isExcel(name){ return EXCEL_EXTS.some(e=>name.toLowerCase().endsWith(e)); }
+
 function handleFile(file){
   if(!file) return;
   $('fileName').textContent=file.name;
   $('fileSelected').style.display='inline-flex';
-  Papa.parse(file,{
-    header:true, skipEmptyLines:true,
-    complete:(res)=>{
-      parsedRows=res.data;
-      vesselGroups=groupRows(parsedRows);
-      matchAndPreview();
-    },
-    error:(e)=>toast('CSV parse error: '+e.message,true)
-  });
+  if(isExcel(file.name)){
+    parseExcel(file);
+  } else {
+    Papa.parse(file,{
+      header:true, skipEmptyLines:true,
+      complete:(res)=>{ parsedRows=res.data; vesselGroups=groupRows(parsedRows); matchAndPreview(); },
+      error:(e)=>toast('CSV parse error: '+e.message,true)
+    });
+  }
+}
+
+function parseExcel(file){
+  if(typeof XLSX==='undefined'){ toast('Excel parser loading — please try again',true); return; }
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!rows.length){ toast('No data found in the first sheet',true); return; }
+      parsedRows=rows; vesselGroups=groupRows(parsedRows); matchAndPreview();
+    }catch(err){ toast('Failed to parse Excel: '+err.message,true); }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 // Drag and drop
