@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>VOSI Upload · Project Manhattan</title>
+<link rel="icon" type="image/png" href="brand-logo.png"/>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#1a6fdb;--primary-dark:#1558b0;--primary-soft:#e8f1fc;--primary-mid:#d0e4f8;
+  --bg:#f0f2f7;--white:#fff;--text:#1a1a2e;--muted:#6b7280;--soft:#9aa0b4;
+  --border:#e8eaf0;--line:#eef0f5;--line-strong:#dfe3ec;
+  --ok:#1f9d6b;--ok-soft:#e6f6ef;--danger:#e63946;--danger-soft:#fff0f1;
+  --warn:#f59e0b;--warn-soft:#fff7ed;
+  --radius:14px;--radius-sm:10px;
+  --shadow:0 1px 3px rgba(20,24,45,.05),0 8px 24px rgba(20,24,45,.06);
+  --shadow-lg:0 6px 14px rgba(20,24,45,.08),0 24px 48px rgba(20,24,45,.11);
+  --font:'Poppins','DM Sans',system-ui,sans-serif;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased}
+
+/* NAV */
+.topbar{display:flex;align-items:center;padding:14px 28px;gap:20px}
+.topbar-brand{text-decoration:none;flex-shrink:0;line-height:1.1}
+.topbar-brand-project{display:block;font-size:8px;font-weight:700;letter-spacing:2px;color:#9aa0b4}
+.topbar-brand-name{display:block;font-size:16px;font-weight:800;color:var(--text)}
+.topbar-nav{flex:1;display:flex;justify-content:center}
+.nav-pill{display:inline-flex;align-items:center;gap:2px;background:#fff;border-radius:999px;padding:5px 7px;box-shadow:0 1px 6px rgba(0,0,0,.07)}
+.nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:400;color:var(--muted);text-decoration:none;transition:.15s;white-space:nowrap}
+.nav-item img{width:15px;height:15px;object-fit:contain;opacity:.5;flex-shrink:0}
+.nav-item:hover,.nav-item.active{background:var(--bg);color:var(--text);font-weight:600}
+.nav-item:hover img,.nav-item.active img{opacity:1}
+.nav-item-wrap{position:relative}
+.nav-item-wrap::after{content:'';position:absolute;top:100%;left:0;width:100%;height:12px;background:transparent}
+.nav-item-wrap:hover .nav-dropdown{display:block}
+.topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.12);flex-shrink:0;overflow:hidden}
+.avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:176px;overflow:hidden;z-index:999}
+.avatar-menu.open{display:block}
+.avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;color:var(--text);border-bottom:1px solid var(--border)}
+.avatar-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;color:#4a4e69;text-decoration:none;font-weight:500}
+.avatar-menu a:hover{background:var(--bg);color:var(--primary)}
+.avatar-menu button{width:100%;padding:9px 15px;background:none;border:none;border-top:1px solid var(--border);text-align:left;font-family:var(--font);font-size:13px;color:#e63946;cursor:pointer}
+.nav-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:170px;padding:6px;z-index:500}
+.nav-dropdown-item{display:flex;align-items:center;padding:8px 12px;font-size:13px;color:#4a4e69;text-decoration:none;border-radius:8px;font-weight:500;transition:.15s;white-space:nowrap}
+.nav-dropdown-item:hover{background:var(--bg);color:var(--primary)}
+.nav-dropdown-item.active{background:var(--primary-soft);color:var(--primary-dark);font-weight:600}
+
+/* PAGE */
+.wrap{max-width:1000px;margin:0 auto;padding:8px 28px 80px}
+.crumb{font-size:12px;color:var(--muted);font-weight:500;margin-bottom:6px}
+.crumb a{color:var(--primary);text-decoration:none}
+.page-head{margin-bottom:24px}
+.page-head h1{font-size:24px;font-weight:700;letter-spacing:-.3px}
+.page-head p{color:var(--muted);font-size:13px;margin-top:6px;max-width:640px}
+
+/* CARDS */
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px 26px;margin-bottom:18px}
+.card-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--soft);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card-title::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+
+/* DROP ZONE */
+.drop-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:48px 24px;text-align:center;cursor:pointer;transition:.2s;position:relative;background:#fafbfe}
+.drop-zone:hover,.drop-zone.dragover{border-color:var(--primary);background:var(--primary-soft)}
+.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop-icon{width:52px;height:52px;background:var(--primary-soft);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+.drop-icon svg{color:var(--primary)}
+.drop-title{font-size:16px;font-weight:600;margin-bottom:4px}
+.drop-sub{font-size:13px;color:var(--muted)}
+.drop-sub span{color:var(--primary);font-weight:600}
+.file-selected{margin-top:14px;display:inline-flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:8px 14px;font-size:13px;font-weight:500}
+.file-selected svg{color:var(--ok)}
+
+/* MATCH RULES */
+.match-info{background:var(--primary-soft);border:1px solid var(--primary-mid);border-radius:11px;padding:14px 16px;font-size:13px;margin-bottom:16px}
+.match-info strong{color:var(--primary-dark)}
+
+/* PREVIEW TABLE */
+.preview-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{background:#fafbfe;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--soft);padding:10px 12px;text-align:left;border-bottom:1.5px solid var(--line-strong);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafbfe}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+.badge-ok{background:var(--ok-soft);color:var(--ok)}
+.badge-warn{background:var(--warn-soft);color:#92400e}
+.badge-err{background:var(--danger-soft);color:var(--danger)}
+.badge-new{background:var(--primary-soft);color:var(--primary-dark)}
+.bp-grid{display:flex;flex-wrap:wrap;gap:4px}
+.bp-tag{font-size:10.5px;padding:2px 7px;border-radius:6px;font-weight:600}
+.bp-Y{background:var(--ok-soft);color:var(--ok)}
+.bp-N{background:var(--line);color:var(--soft)}
+.bp-NA{background:#f1f2f6;color:var(--soft);font-style:italic}
+
+/* PROGRESS */
+.progress-wrap{margin-top:16px}
+.progress-bar-bg{height:8px;background:var(--line);border-radius:999px;overflow:hidden;margin-bottom:8px}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--primary),#5b9be8);border-radius:999px;transition:width .3s;width:0%}
+.progress-label{font-size:12.5px;color:var(--muted)}
+
+/* LOG */
+.log{background:#1a1a2e;color:#e2e8f0;border-radius:11px;padding:16px;font-family:monospace;font-size:12.5px;line-height:1.7;max-height:280px;overflow-y:auto;margin-top:12px}
+.log-ok{color:#4ade80}
+.log-warn{color:#fbbf24}
+.log-err{color:#f87171}
+.log-info{color:#93c5fd}
+
+/* BUTTONS */
+.btn{height:44px;padding:0 24px;border-radius:11px;font-weight:600;font-size:14px;cursor:pointer;border:1.5px solid transparent;font-family:inherit;transition:.15s;display:inline-flex;align-items:center;gap:8px}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(26,111,219,.28)}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+.btn-ghost{background:#fff;border-color:var(--border);color:var(--text)}
+.btn-ghost:hover{border-color:var(--line-strong)}
+
+/* STATS */
+.stats-row{display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+.stat-pill{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 16px;display:flex;flex-direction:column;gap:2px;min-width:120px}
+.stat-pill .n{font-size:22px;font-weight:700;letter-spacing:-.3px}
+.stat-pill .l{font-size:11.5px;color:var(--muted);font-weight:500}
+
+/* TOAST */
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(12px);background:var(--text);color:#fff;padding:13px 20px;border-radius:11px;font-weight:600;opacity:0;visibility:hidden;transition:opacity .25s,transform .28s cubic-bezier(.2,.8,.2,1),visibility .25s;z-index:1000}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1;visibility:visible;box-shadow:var(--shadow-lg)}
+.toast.err{background:var(--danger)}
+.toast.ok{background:var(--ok)}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<div class="topbar">
+  <a href="index.html" class="topbar-brand">
+    <span class="topbar-brand-project">PROJECT</span>
+    <span class="topbar-brand-name">Manhattan.</span>
+  </a>
+  <div class="topbar-nav">
+    <div class="nav-pill">
+      <a href="home-logged-in.html" class="nav-item"><img src="home.png" alt=""/>Home</a>
+      <div class="nav-item-wrap">
+        <a href="organisation.html" class="nav-item"><img src="my-studio.png" alt=""/>My Studio</a>
+        <div class="nav-dropdown">
+          <a href="product-list.html" class="nav-dropdown-item">Product</a>
+          <a href="organisation.html" class="nav-dropdown-item">Your Company</a>
+        </div>
+      </div>
+      <div class="nav-item-wrap">
+        <a href="Species.html" class="nav-item active"><img src="atlas.png" alt=""/>Atlas</a>
+        <div class="nav-dropdown">
+          <a href="Species.html" class="nav-dropdown-item">Species</a>
+          <a href="cold-storage-list.html" class="nav-dropdown-item">Cold Storage</a>
+          <a href="#" class="nav-dropdown-item">Ports</a>
+          <a href="vessel-list.html" class="nav-dropdown-item">Vessels</a>
+          <a href="country.html" class="nav-dropdown-item">Country</a>
+        </div>
+      </div>
+      <a href="#" class="nav-item"><img src="features.png" alt=""/>Features</a>
+      <a href="#" class="nav-item"><img src="messages.png" alt=""/>Messages</a>
+      <a href="#" class="nav-item"><img src="report.png" alt=""/>Reports</a>
+      <a href="report.html" class="nav-item"><img src="support.png" alt=""/>Support</a>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div style="position:relative;flex-shrink:0">
+      <div class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()"><span id="avatarInitials">··</span></div>
+      <div class="avatar-menu" id="avatarMenu">
+        <div class="avatar-menu-name" id="avatarGreeting">Hello!</div>
+        <a href="profile.html">Profile</a>
+        <button onclick="handleLogout()">Logout</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE -->
+<div class="wrap">
+  <div class="crumb"><a href="vessel-list.html">Vessels</a> · VOSI Upload</div>
+  <div class="page-head">
+    <h1>VOSI Bulk Upload</h1>
+    <p>Upload the ISSF VOSI CSV export to sync Vessels in Other Sustainability Initiatives. Vessels are matched by <strong>UVI Number</strong> (IMO). Existing VOSI records for matched vessels are replaced.</p>
+  </div>
+
+  <div id="gateMsg" style="display:none;background:var(--danger-soft);border:1px solid #f3cdd5;color:#8a2436;padding:14px 16px;border-radius:12px;margin-bottom:18px;font-weight:500">
+    Only Project Manhattan admins can upload VOSI data.
+  </div>
+
+  <!-- STEP 1: UPLOAD -->
+  <div class="card" id="step1">
+    <div class="card-title">Step 1 — Select VOSI CSV file</div>
+    <div class="match-info">
+      <strong>Match key: UVI Number (IMO/TUVI)</strong> — each row in the CSV is matched against your vessel registry using the UVI Number column. The vessel's IMO field must match. Vessels not found in your registry are flagged but not created automatically.
+    </div>
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="csvFile" accept=".csv,.CSV" onchange="handleFile(this.files[0])"/>
+      <div class="drop-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <div class="drop-title">Drop VOSI CSV here or click to browse</div>
+      <div class="drop-sub">Download the VOSI list from <span>vessels.iss-foundation.org</span> and upload here</div>
+      <div class="file-selected" id="fileSelected" style="display:none">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        <span id="fileName"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: PREVIEW -->
+  <div class="card" id="step2" style="display:none">
+    <div class="card-title">Step 2 — Preview & confirm</div>
+    <div class="stats-row" id="statsRow"></div>
+    <div class="preview-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Vessel Name</th>
+            <th>UVI Number</th>
+            <th>Flag</th>
+            <th>Type</th>
+            <th>RFMO IDs</th>
+            <th>PVR</th>
+            <th>MSC / FIP</th>
+            <th>Best Practices</th>
+            <th>Initiatives</th>
+            <th>Match</th>
+          </tr>
+        </thead>
+        <tbody id="previewBody"></tbody>
+      </table>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:20px;padding-top:18px;border-top:1px solid var(--line)">
+      <button class="btn btn-ghost" onclick="resetUpload()">← Start over</button>
+      <button class="btn btn-primary" id="importBtn" onclick="runImport()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        Import to database
+      </button>
+    </div>
+  </div>
+
+  <!-- STEP 3: IMPORT PROGRESS -->
+  <div class="card" id="step3" style="display:none">
+    <div class="card-title">Step 3 — Importing</div>
+    <div class="progress-wrap">
+      <div class="progress-bar-bg"><div class="progress-bar" id="progressBar"></div></div>
+      <div class="progress-label" id="progressLabel">Starting…</div>
+    </div>
+    <div class="log" id="importLog"></div>
+    <div id="doneActions" style="display:none;margin-top:18px;display:none;gap:12px;justify-content:flex-end">
+      <a href="vessel-list.html" class="btn btn-ghost">Back to Vessels</a>
+      <button class="btn btn-primary" onclick="resetUpload()">Upload another file</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
+const SUPABASE_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+let parsedRows=[], vesselGroups=[], vesselMap={};
+
+// ── COLUMN MAP from CSV headers ──
+const BP_COLS={
+  'Electronic Monitoring':'bp_electronic_monitoring',
+  'Biodegradable FAD trial':'bp_biodegradable_fad_trial',
+  'FAD buoy position data':'bp_fad_buoy_position_data',
+  'FAD echosounder biomass data':'bp_fad_echosounder_biomass',
+  'NE FADs with no netting':'bp_ne_fads_no_netting',
+  'FAD recovery initiative':'bp_fad_recovery_initiative',
+  'Fins Naturally Attached':'bp_fins_naturally_attached',
+  'Circle Hooks':'bp_circle_hooks',
+  'Finfish Bait':'bp_finfish_bait',
+  'Monofilament Lines':'bp_monofilament_lines',
+  'Shark Lines NOT Used':'bp_shark_lines_not_used',
+};
+
+function parseDateStr(s){
+  if(!s||!s.trim()) return null;
+  // "05 Aug 2021" format
+  const m=s.trim().match(/^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$/);
+  if(m){
+    const months={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+    const mo=months[m[2].toLowerCase().slice(0,3)];
+    if(mo) return `${m[3]}-${String(mo).padStart(2,'0')}-${String(m[1]).padStart(2,'0')}`;
+  }
+  // ISO fallback
+  const d=new Date(s.trim()); return isNaN(d)?null:d.toISOString().split('T')[0];
+}
+
+function boolY(v){ return v&&v.trim().toUpperCase()==='Y'; }
+
+// ── GROUP CSV ROWS BY UVI ──
+function groupRows(rows){
+  const groups={};
+  rows.forEach(r=>{
+    const uvi=(r['UVI Number']||'').trim();
+    if(!uvi) return;
+    if(!groups[uvi]) groups[uvi]={vessel:r, initiatives:[]};
+    // Each row may have an initiative
+    const itype=(r['Initiative Type']||'').trim();
+    const idesc=(r['Initiative Description']||'').trim();
+    if(itype||idesc){
+      groups[uvi].initiatives.push({
+        initiative_type:itype,
+        description:idesc,
+        url:(r['Initiative URL']||'').trim()||null,
+        start_date:parseDateStr(r['Initiative Start Date']),
+        end_date:parseDateStr(r['Initiative End Date']),
+      });
+    }
+  });
+  return Object.values(groups);
+}
+
+// ── FILE HANDLING ──
+function handleFile(file){
+  if(!file) return;
+  $('fileName').textContent=file.name;
+  $('fileSelected').style.display='inline-flex';
+  Papa.parse(file,{
+    header:true, skipEmptyLines:true,
+    complete:(res)=>{
+      parsedRows=res.data;
+      vesselGroups=groupRows(parsedRows);
+      matchAndPreview();
+    },
+    error:(e)=>toast('CSV parse error: '+e.message,true)
+  });
+}
+
+// Drag and drop
+const dz=$('dropZone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f)handleFile(f);});
+
+// ── MATCH AGAINST VESSEL REGISTRY ──
+async function matchAndPreview(){
+  // Fetch all vessels from DB — match on IMO = UVI number
+  const {data:vessels}=await sb.from('vessels').select('id,current_name,imo,uvi_number');
+  vesselMap={};
+  (vessels||[]).forEach(v=>{
+    if(v.imo) vesselMap[v.imo.trim()]=v;
+    if(v.uvi_number) vesselMap[v.uvi_number.trim()]=v;
+  });
+  buildPreview();
+}
+
+function buildPreview(){
+  let matched=0, notFound=0, totalInit=0;
+  const rows=vesselGroups.map(g=>{
+    const uvi=g.vessel['UVI Number']?.trim()||'';
+    const dbVessel=vesselMap[uvi];
+    const status=dbVessel?'matched':'not_found';
+    if(dbVessel) matched++; else notFound++;
+    totalInit+=g.initiatives.length;
+    return {g, uvi, dbVessel, status};
+  });
+
+  // Stats
+  $('statsRow').innerHTML=`
+    <div class="stat-pill"><div class="n">${vesselGroups.length}</div><div class="l">Vessels in CSV</div></div>
+    <div class="stat-pill"><div class="n" style="color:var(--ok)">${matched}</div><div class="l">Matched in Registry</div></div>
+    <div class="stat-pill"><div class="n" style="color:var(--warn)">${notFound}</div><div class="l">Not Found</div></div>
+    <div class="stat-pill"><div class="n">${totalInit}</div><div class="l">Initiatives</div></div>
+    <div class="stat-pill"><div class="n">${parsedRows.length}</div><div class="l">CSV Rows</div></div>`;
+
+  // Preview table
+  $('previewBody').innerHTML=rows.map(({g,uvi,dbVessel,status})=>{
+    const v=g.vessel;
+    const bpTags=Object.keys(BP_COLS).map(col=>{
+      const val=(v[col]||'').trim().toUpperCase();
+      if(!val||val===''||val==='-') return '';
+      const cls=val==='Y'?'bp-Y':val==='N'?'bp-N':'bp-NA';
+      const short=col.length>18?col.slice(0,16)+'…':col;
+      return `<span class="bp-tag ${cls}">${short}: ${val}</span>`;
+    }).filter(Boolean).join('');
+
+    const rfmos=[['WCPFC',v['WCPFC']],['IATTC',v['IATTC']],['IOTC',v['IOTC']],['ICCAT',v['ICCAT']],['CCSBT',v['CCSBT']]]
+      .filter(([,n])=>n&&n.trim()).map(([r,n])=>`<span style="font-size:11px;font-weight:600;color:var(--primary-dark);background:var(--primary-soft);padding:2px 6px;border-radius:5px">${r}: ${esc(n.trim())}</span>`).join(' ');
+
+    const mscFip=[
+      v['On the PVR?']==='Y'?'<span class="badge badge-ok">PVR</span>':'',
+      boolY(v['In an MSC-Certified Fishery?'])?'<span class="badge badge-ok">MSC</span>':'',
+      boolY(v['In a FIP?'])?'<span class="badge badge-new">FIP</span>':'',
+      boolY(v['In an MSCIP?'])?'<span class="badge badge-new">MSCIP</span>':'',
+    ].filter(Boolean).join(' ');
+
+    const initHtml=g.initiatives.map(i=>`<div style="font-size:11.5px;margin-bottom:3px">
+      <span style="font-weight:600">${esc(i.initiative_type||'—')}</span>
+      <span style="color:var(--muted)"> · ${esc((i.description||'').slice(0,50))}${(i.description||'').length>50?'…':''}</span>
+      ${i.start_date?`<span style="color:var(--soft)"> ${i.start_date} → ${i.end_date||'?'}</span>`:''}
+    </div>`).join('') || '<span style="color:var(--soft);font-size:12px">No initiatives</span>';
+
+    const matchBadge=status==='matched'
+      ?`<span class="badge badge-ok">✓ ${esc(dbVessel.current_name)}</span>`
+      :`<span class="badge badge-warn">⚠ Not found</span>`;
+
+    return `<tr>
+      <td style="font-weight:600">${esc(v['Vessel Name']||'')}</td>
+      <td style="font-family:monospace">${esc(uvi)}</td>
+      <td style="font-size:12px">${esc(v['Vessel Flag']||'')}</td>
+      <td style="font-size:12px">${esc(v['Vessel Type']||'')}</td>
+      <td>${rfmos||'<span style="color:var(--soft)">—</span>'}</td>
+      <td>${mscFip||'<span style="color:var(--soft)">—</span>'}</td>
+      <td>${mscFip}</td>
+      <td><div class="bp-grid">${bpTags||'<span style="color:var(--soft);font-size:12px">—</span>'}</div></td>
+      <td>${initHtml}</td>
+      <td>${matchBadge}</td>
+    </tr>`;
+  }).join('');
+
+  $('step1').style.display='none';
+  $('step2').style.display='block';
+}
+
+// ── IMPORT ──
+async function runImport(){
+  $('importBtn').disabled=true;
+  $('step2').style.display='none';
+  $('step3').style.display='block';
+  $('doneActions').style.display='none';
+  $('importLog').innerHTML='';
+
+  const matchedGroups=vesselGroups.filter(g=>vesselMap[(g.vessel['UVI Number']||'').trim()]);
+  const total=matchedGroups.length;
+  let done=0, errors=0;
+
+  log(`Starting import: ${total} vessels to process…`,'info');
+
+  for(const g of matchedGroups){
+    const uvi=(g.vessel['UVI Number']||'').trim();
+    const dbVessel=vesselMap[uvi];
+    const v=g.vessel;
+
+    try{
+      // Build VOSI record
+      const vosiRecord={
+        vessel_id:dbVessel.id,
+        uvi_number:uvi,
+        uvi_type:(v['UVI Type']||'').trim()||null,
+        vessel_flag:(v['Vessel Flag']||'').trim()||null,
+        vessel_type:(v['Vessel Type']||'').trim()||null,
+        radio_call_sign:(v['Radio Call Sign']||'').trim()||null,
+        rfmo_iccat:(v['ICCAT']||'').trim()||null,
+        rfmo_iattc:(v['IATTC']||'').trim()||null,
+        rfmo_iotc:(v['IOTC']||'').trim()||null,
+        rfmo_wcpfc:(v['WCPFC']||'').trim()||null,
+        rfmo_ccsbt:(v['CCSBT']||'').trim()||null,
+        on_pvr:(v['On the PVR?']||'').trim().toUpperCase()==='Y',
+        in_fip:boolY(v['In a FIP?']),
+        in_mscip:boolY(v['In an MSCIP?']),
+        in_msc_certified:boolY(v['In an MSC-Certified Fishery?']),
+        last_synced:new Date().toISOString(),
+      };
+      // Add best practice flags
+      Object.entries(BP_COLS).forEach(([col,field])=>{
+        vosiRecord[field]=(v[col]||'').trim()||null;
+      });
+
+      // Upsert VOSI record (replace existing for this vessel)
+      await sb.from('vessel_vosi').delete().eq('vessel_id',dbVessel.id);
+      const {data:vosi,error:vosiErr}=await sb.from('vessel_vosi').insert(vosiRecord).select('id').single();
+      if(vosiErr) throw vosiErr;
+
+      // Insert initiatives
+      if(g.initiatives.length){
+        const initRows=g.initiatives.map(i=>({
+          vessel_id:dbVessel.id,
+          vosi_id:vosi.id,
+          ...i
+        }));
+        const {error:initErr}=await sb.from('vessel_vosi_initiatives').insert(initRows);
+        if(initErr) throw initErr;
+      }
+
+      log(`✓ ${v['Vessel Name']} (${uvi}) — ${g.initiatives.length} initiative(s)`,'ok');
+    }catch(e){
+      log(`✕ ${v['Vessel Name']} (${uvi}) — ${e.message}`,'err');
+      errors++;
+    }
+
+    done++;
+    const pct=Math.round((done/total)*100);
+    $('progressBar').style.width=pct+'%';
+    $('progressLabel').textContent=`${done} of ${total} vessels processed…`;
+  }
+
+  // Summary
+  const skipped=vesselGroups.length-matchedGroups.length;
+  log('','info');
+  log(`── Import complete ──`,'info');
+  log(`✓ ${done-errors} vessels updated successfully`,'ok');
+  if(errors) log(`✕ ${errors} errors — check above`,'err');
+  if(skipped) log(`⚠ ${skipped} vessels skipped (not in your registry)`,'warn');
+  $('progressLabel').textContent=`Done — ${done-errors} updated, ${errors} errors, ${skipped} skipped`;
+  $('doneActions').style.display='flex';
+  toast(`Import complete: ${done-errors} vessels updated`,errors?false:true);
+}
+
+function log(msg,type='info'){
+  const el=$('importLog');
+  const cls={ok:'log-ok',err:'log-err',warn:'log-warn',info:'log-info'}[type]||'';
+  el.innerHTML+=`<div class="${cls}">${esc(msg)}</div>`;
+  el.scrollTop=el.scrollHeight;
+}
+
+function resetUpload(){
+  parsedRows=[];vesselGroups=[];vesselMap={};
+  $('step1').style.display='block';$('step2').style.display='none';$('step3').style.display='none';
+  $('fileSelected').style.display='none';$('importLog').innerHTML='';
+  $('progressBar').style.width='0%';$('progressLabel').textContent='';
+}
+
+// ── AUTH ──
+(async function init(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){location.href='login.html';return;}
+  const {data:p}=await sb.from('profiles').select('role,first_name,last_name,avatar_color').eq('id',user.id).single();
+  const isAdmin=p&&['admin','operator'].includes(p.role);
+  if(!isAdmin){$('gateMsg').style.display='block';document.querySelectorAll('input,button').forEach(e=>e.disabled=true);return;}
+  const first=p?.first_name||user.email.split('@')[0];
+  $('avatarInitials').textContent=((first[0]||'')+(p?.last_name?.[0]||'')).toUpperCase()||'··';
+  $('avatarBtn').style.background=p?.avatar_color||'#1a6fdb';
+  $('avatarGreeting').textContent=`Hello, ${first}!`;
+})();
+
+function toggleAvatarMenu(){$('avatarMenu').classList.toggle('open');}
+document.addEventListener('click',e=>{if(!e.target.closest('.avatar-btn'))$('avatarMenu')?.classList.remove('open');});
+async function handleLogout(){await sb.auth.signOut();location.href='index.html';}
+function toast(msg,ok=false){
+  const t=$('toast');t.textContent=msg;
+  t.className='toast show '+(ok?'ok':'err');
+  setTimeout(()=>t.className='toast',3000);
+}
+</script>
+</body>
+</html>
