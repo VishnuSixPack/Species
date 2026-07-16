@@ -710,11 +710,32 @@ function previewMap(){
 }
 
 // ── HERO PHOTO ────────────────────────────────────────────────────────
+let _heroPhotoUrl = null; // will be set after upload
 async function handleHeroUpload(input){
   const file=input.files[0]; if(!file) return;
+  // Preview immediately
   const reader=new FileReader();
-  reader.onload=e=>{ $('heroWrap').style.backgroundImage=`url(${e.target.result})`; $('heroWrap').style.backgroundSize='cover'; $('heroWrap').style.backgroundPosition='center'; $('heroUploadBtn').style.opacity='0'; };
+  reader.onload=e=>{
+    const hero=$('heroWrap');
+    hero.style.backgroundImage=`url(${e.target.result})`;
+    hero.style.backgroundSize='cover';
+    hero.style.backgroundPosition='center';
+    hero.style.backgroundRepeat='no-repeat';
+    $('heroUploadBtn').style.opacity='0';
+  };
   reader.readAsDataURL(file);
+  // Upload to Supabase Storage
+  try{
+    const ext=file.name.split('.').pop().toLowerCase();
+    const path=`port-photos/${Date.now()}.${ext}`;
+    const {data,error}=await sb.storage.from('project-manhattan').upload(path,file,{upsert:true,contentType:file.type});
+    if(error) throw error;
+    const {data:url}=sb.storage.from('project-manhattan').getPublicUrl(path);
+    _heroPhotoUrl=url.publicUrl;
+  }catch(e){
+    console.warn('Photo upload failed — will save without photo:',e.message);
+    // Not fatal — port saves without photo_url
+  }
 }
 
 // ── SAVE ─────────────────────────────────────────────────────────────
@@ -727,6 +748,7 @@ async function savePort(){
   $('saveBtn').disabled=true; $('saveBtnLbl').textContent='Saving…';
   const payload={
     main_port_name:name,
+    photo_url:_heroPhotoUrl||null,
     alternate_port_name:$('alternate_port_name').value.trim()||null,
     un_locode:$('un_locode').value.trim()||null,
     country,
@@ -770,6 +792,15 @@ async function savePort(){
 // ── LOAD FOR EDIT ─────────────────────────────────────────────────────
 async function loadPort(id){
   const {data:p}=await sb.from('ports').select('*').eq('id',id).single();
+  // Restore existing photo
+  if(p?.photo_url){
+    _heroPhotoUrl=p.photo_url;
+    const hero=$('heroWrap');
+    hero.style.backgroundImage=`url(${p.photo_url})`;
+    hero.style.backgroundSize='cover';
+    hero.style.backgroundPosition='center';
+    $('heroUploadBtn').style.opacity='0';
+  }
   if(!p){toast('Port not found',false);return;}
   // Text fields
   ['main_port_name','alternate_port_name','un_locode','region_name','world_water_body',
