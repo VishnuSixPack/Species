@@ -322,17 +322,16 @@ function renderHeader(p){
   // Always render hero — with photo if available, gradient otherwise
   const hero=$('heroBox');
   if(p.photo_url){
-    // Use background-image so it always fills and covers correctly
-    hero.style.backgroundImage=`url('${p.photo_url.replace(/'/g,'%27')}')`;
+    // Set as background image — works for both storage URLs and data URLs
+    const safeUrl=p.photo_url.startsWith('data:')
+      ? p.photo_url  // data URL — use as-is
+      : `url('${p.photo_url.replace(/'/g,'%27')}')`;
+    hero.style.backgroundImage=p.photo_url.startsWith('data:')
+      ? `url("${p.photo_url}")`
+      : `url('${p.photo_url.replace(/'/g,'%27')}')`;
     hero.style.backgroundSize='cover';
     hero.style.backgroundPosition='center';
     hero.style.backgroundRepeat='no-repeat';
-    // Keep overlay div for the gradient fade
-    if(!hero.querySelector('.hero-overlay')){
-      const ov=document.createElement('div');
-      ov.className='hero-overlay';
-      hero.appendChild(ov);
-    }
   }
 }
 

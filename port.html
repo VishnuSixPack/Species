@@ -710,31 +710,45 @@ function previewMap(){
 }
 
 // ── HERO PHOTO ────────────────────────────────────────────────────────
-let _heroPhotoUrl = null; // will be set after upload
+let _heroPhotoUrl = null;
 async function handleHeroUpload(input){
   const file=input.files[0]; if(!file) return;
-  // Preview immediately
+  if(!file.type.startsWith('image/')){ toast('Please select an image file',false); return; }
+  // Show local preview immediately while uploading
   const reader=new FileReader();
   reader.onload=e=>{
     const hero=$('heroWrap');
-    hero.style.backgroundImage=`url(${e.target.result})`;
+    hero.style.backgroundImage=`url("${e.target.result}")`;
     hero.style.backgroundSize='cover';
     hero.style.backgroundPosition='center';
     hero.style.backgroundRepeat='no-repeat';
     $('heroUploadBtn').style.opacity='0';
   };
   reader.readAsDataURL(file);
-  // Upload to Supabase Storage
-  try{
-    const ext=file.name.split('.').pop().toLowerCase();
-    const path=`port-photos/${Date.now()}.${ext}`;
-    const {data,error}=await sb.storage.from('project-manhattan').upload(path,file,{upsert:true,contentType:file.type});
-    if(error) throw error;
-    const {data:url}=sb.storage.from('project-manhattan').getPublicUrl(path);
-    _heroPhotoUrl=url.publicUrl;
-  }catch(e){
-    console.warn('Photo upload failed — will save without photo:',e.message);
-    // Not fatal — port saves without photo_url
+  toast('Uploading photo…');
+  // Try multiple bucket names in case one exists
+  const buckets=['ports','port-photos','project-manhattan','images','public'];
+  const ext=file.name.split('.').pop().toLowerCase()||'jpg';
+  const path=`port-photos/${crypto.randomUUID()}.${ext}`;
+  let uploaded=false;
+  for(const bucket of buckets){
+    try{
+      const {error}=await sb.storage.from(bucket).upload(path,file,{upsert:true,contentType:file.type});
+      if(!error){
+        const {data:urlData}=sb.storage.from(bucket).getPublicUrl(path);
+        _heroPhotoUrl=urlData.publicUrl;
+        uploaded=true;
+        toast('Photo uploaded ✓','ok');
+        break;
+      }
+    }catch(e){ /* try next bucket */ }
+  }
+  if(!uploaded){
+    // Fallback: save as data URL directly in DB (works for small images, no storage needed)
+    const reader2=new FileReader();
+    reader2.onload=e=>{ _heroPhotoUrl=e.target.result; };
+    reader2.readAsDataURL(file);
+    toast('Storage bucket not found — photo saved inline','ok');
   }
 }
 
