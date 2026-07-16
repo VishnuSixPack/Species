@@ -154,6 +154,11 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
 <!-- HERO — identity lives inside so name always overlays the photo -->
 <div class="hero" id="heroBox">
   <div class="hero-overlay"></div>
+  <!-- View photo button — top right, only shown when photo exists -->
+  <button id="viewPhotoBtn" onclick="openLightbox()" style="display:none;position:absolute;top:14px;right:16px;z-index:5;height:34px;padding:0 13px;border-radius:9px;background:rgba(255,255,255,.15);backdrop-filter:blur(8px);border:1.5px solid rgba(255,255,255,.3);color:#fff;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:.14s;display:none;align-items:center;gap:6px" onmouseover="this.style.background='rgba(255,255,255,.28)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+    View photo
+  </button>
   <div class="hero-identity">
     <div class="hero-identity-inner">
     <div class="port-avatar" id="portAvatar">
@@ -170,8 +175,12 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
         <div class="port-type-badge" id="portTypeBadge" style="display:none"></div>
       </div>
     </div>
-    <div class="identity-actions" id="editActions" style="display:none">
-      <a href="#" class="btn btn-primary" id="editBtn" style="box-shadow:0 4px 16px rgba(0,0,0,.3)">
+    <div class="identity-actions">
+      <button class="btn btn-ghost" id="viewPhotoBtn" onclick="openLightbox()" style="display:none;border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.15);color:#fff;backdrop-filter:blur(6px)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        View Photo
+      </button>
+      <a href="#" class="btn btn-primary" id="editBtn" style="display:none;box-shadow:0 4px 16px rgba(0,0,0,.3)">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         Edit Port
       </a>
@@ -233,6 +242,12 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- PHOTO LIGHTBOX -->
+<div id="photoLightbox" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:2000;align-items:center;justify-content:center;cursor:zoom-out;backdrop-filter:blur(8px)">
+  <img id="lightboxImg" style="max-width:90vw;max-height:88vh;border-radius:14px;box-shadow:0 8px 60px rgba(0,0,0,.8);object-fit:contain" alt="Port photo"/>
+  <button onclick="closeLightbox()" style="position:fixed;top:20px;right:24px;width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.3);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);font-family:inherit">✕</button>
+</div>
 
 <script>
 const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
@@ -313,6 +328,20 @@ function renderMap(p){
     src="https://www.openstreetmap.org/export/embed.html?bbox=${lon-.15}%2C${lat-.12}%2C${lon+.15}%2C${lat+.12}&layer=mapnik&marker=${lat}%2C${lon}" allowfullscreen></iframe>`;
 }
 
+let _currentPhotoUrl=null;
+function openLightbox(){
+  if(!_currentPhotoUrl) return;
+  const lb=$('photoLightbox'), img=$('lightboxImg');
+  if(img) img.src=_currentPhotoUrl;
+  if(lb){lb.style.display='flex';document.body.style.overflow='hidden';}
+}
+function closeLightbox(){
+  const lb=$('photoLightbox');
+  if(lb) lb.style.display='none';
+  document.body.style.overflow='';
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLightbox();});
+
 function renderHeader(p){
   $('portName').textContent=p.main_port_name;
   document.title=`${p.main_port_name} · Project Manhattan`;
@@ -322,16 +351,15 @@ function renderHeader(p){
   // Always render hero — with photo if available, gradient otherwise
   const hero=$('heroBox');
   if(p.photo_url){
-    // Set as background image — works for both storage URLs and data URLs
-    const safeUrl=p.photo_url.startsWith('data:')
-      ? p.photo_url  // data URL — use as-is
-      : `url('${p.photo_url.replace(/'/g,'%27')}')`;
+    _currentPhotoUrl=p.photo_url;
     hero.style.backgroundImage=p.photo_url.startsWith('data:')
       ? `url("${p.photo_url}")`
       : `url('${p.photo_url.replace(/'/g,'%27')}')`;
     hero.style.backgroundSize='cover';
     hero.style.backgroundPosition='center';
     hero.style.backgroundRepeat='no-repeat';
+    // Show view photo button
+    const vpb=$('viewPhotoBtn'); if(vpb) vpb.style.display='inline-flex';
   }
 }
 
@@ -345,7 +373,7 @@ function renderHeader(p){
   if(profile?.photo_url) $('avatarBtn').innerHTML=`<img src="${profile.photo_url}" style="width:100%;height:100%;object-fit:cover">`;
   else{ $('avatarBtn').style.background=profile?.avatar_color||'#1a6fdb'; $('avatarInitials').textContent=((first[0]||'')+(profile?.last_name?.[0]||'')).toUpperCase()||'··'; }
   $('avatarGreeting').textContent=`Hello, ${first}!`;
-  if(isAdmin){ $('editActions').style.display='flex'; $('editBtn').href=`port.html?id=${vid}`; }
+  if(isAdmin){ $('editBtn').style.display='inline-flex'; $('editBtn').href=`port.html?id=${vid}`; }
   // Load port
   const {data:p,error}=await sb.from('ports').select('*').eq('id',vid).single();
   if(error||!p){toast('Port not found','err');return;}
@@ -358,6 +386,22 @@ function renderHeader(p){
   renderTerminals(terms||[]);
 })();
 
+function openLightbox(){
+  const btn=document.getElementById('viewPhotoBtn');
+  const src=btn?._src;
+  if(!src) return;
+  const lb=document.getElementById('photoLightbox');
+  const img=document.getElementById('lightboxImg');
+  if(img) img.src=src;
+  if(lb){ lb.style.display='flex'; document.body.style.overflow='hidden'; }
+}
+function closeLightbox(){
+  const lb=document.getElementById('photoLightbox');
+  if(lb) lb.style.display='none';
+  document.body.style.overflow='';
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeLightbox(); });
+
 function toggleAvatarMenu(){ $('avatarMenu').classList.toggle('open'); }
 document.addEventListener('click',e=>{ if(!e.target.closest('.avatar-btn')) $('avatarMenu')?.classList.remove('open'); });
 async function handleLogout(){ await sb.auth.signOut(); location.href='index.html'; }
@@ -367,5 +411,10 @@ function toast(msg,type=''){
   setTimeout(()=>t.className='toast',3200);
 }
 </script>
+<!-- PHOTO LIGHTBOX -->
+<div id="photoLightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:2000;align-items:center;justify-content:center;cursor:zoom-out" onclick="closeLightbox()">
+  <img id="lightboxImg" style="max-width:95vw;max-height:92vh;border-radius:12px;box-shadow:0 8px 48px rgba(0,0,0,.6);object-fit:contain;pointer-events:none" alt="Port photo"/>
+  <button onclick="closeLightbox()" style="position:fixed;top:20px;right:24px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.3);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);transition:.14s" onmouseover="this.style.background='rgba(255,255,255,.28)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">✕</button>
+</div>
 </body>
 </html>
