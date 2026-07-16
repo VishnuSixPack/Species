@@ -121,7 +121,7 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
 .csel-panel::-webkit-scrollbar{width:5px}
 .csel-panel::-webkit-scrollbar-thumb{background:#d1d5e0;border-radius:99px}
 /* ── TERMINAL SECTION ── */
-.terminal-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.facility-list{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
 .terminal-card{background:#fafbfe;border:1.5px solid var(--line);border-radius:11px;padding:14px 16px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;transition:.14s}
 .terminal-card:hover{border-color:var(--primary-mid)}
 .terminal-card-info{flex:1}
@@ -397,19 +397,17 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
         </div>
       </div>
 
-      <!-- TERMINALS & WHARVES -->
+      <!-- PORT FACILITIES -->
       <div class="section">
         <div class="sec-head">
-          <div class="sec-title">Terminals & Wharves</div>
-          <button class="btn btn-ghost" style="height:34px;padding:0 14px;font-size:12.5px" onclick="openTerminalModal()">
+          <div class="sec-title">Port Facilities</div>
+          <button class="btn btn-ghost" style="height:34px;padding:0 14px;font-size:12.5px" onclick="openFacilityModal(null,null)">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add Terminal / Wharf
+            Add Facility
           </button>
         </div>
-        <div class="sec-body">
-          <div class="terminal-list" id="terminalList">
-            <div style="color:var(--soft);font-size:13px;text-align:center;padding:20px 0">No terminals added yet. Click "Add Terminal / Wharf" to begin.</div>
-          </div>
+        <div class="sec-body" id="facilityTreeWrap">
+          <div style="color:var(--soft);font-size:13px;text-align:center;padding:20px 0">No facilities added yet.</div>
         </div>
       </div>
 
@@ -469,69 +467,89 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
 </div>
 
 <!-- TERMINAL MODAL -->
-<div class="modal-overlay" id="terminalOverlay">
-  <div class="modal-box">
+<!-- FACILITY MODAL -->
+<div class="modal-overlay" id="facilityOverlay">
+  <div class="modal-box" style="width:620px">
     <div class="modal-header">
-      <h3>Add Terminal / Wharf</h3>
-      <p>Add a terminal, wharf, jetty or berth belonging to this port.</p>
+      <h3 id="facilityModalTitle">Add Facility</h3>
+      <p id="facilityModalSub">Add a port area, terminal, berth or other facility.</p>
     </div>
     <div class="modal-body">
-      <div class="modal-sec-title">General</div>
-      <div style="margin-bottom:16px">
-        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px">Parent Port</div>
-        <div class="parent-chip" id="parentChip">New Port</div>
+      <!-- Parent info -->
+      <div id="facilityParentRow" style="margin-bottom:16px;display:none">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:6px">Parent Facility</div>
+        <div class="parent-chip" id="facilityParentChip"></div>
       </div>
-      <div class="modal-sec-title">Terminal Information</div>
-      <div class="field full" style="margin-bottom:14px">
-        <span>Type <span style="color:var(--danger)">*</span></span>
-        <div class="csel" id="t_type_csel">
-          <button type="button" class="csel-trigger" id="t_type_trigger">
-            <span class="csel-lbl ph" id="t_type_label">Select terminal type…</span>
-            <svg class="csel-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
-          <input type="hidden" id="t_type"/>
-          <div class="csel-panel" id="t_type_panel"></div>
+      <!-- Photo upload -->
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:8px">Photo <span style="font-weight:400;text-transform:none">(optional)</span></div>
+        <div id="facilityPhotoPreview" style="width:100%;height:120px;background:linear-gradient(135deg,#1a3a6b,#1a6fdb);border-radius:10px;position:relative;overflow:hidden;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center" onclick="document.getElementById('facilityPhotoFile').click()">
+          <div id="facilityPhotoPlaceholder" style="display:flex;flex-direction:column;align-items:center;gap:6px;color:rgba(255,255,255,.6)">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span style="font-size:12px;font-weight:600">Click to add photo</span>
+          </div>
+          <img id="facilityPhotoImg" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none" alt=""/>
+        </div>
+        <input type="file" id="facilityPhotoFile" accept="image/*" style="display:none" onchange="handleFacilityPhoto(this)"/>
+        <div id="facilityPhotoActions" style="display:none;gap:8px">
+          <button type="button" class="hero-photo-btn" onclick="document.getElementById('facilityPhotoFile').click()" style="font-size:12px">Change</button>
+          <button type="button" class="hero-photo-btn danger" onclick="removeFacilityPhoto()" style="font-size:12px">Remove</button>
         </div>
       </div>
+      <!-- Type + Name -->
       <div class="g2" style="margin-bottom:14px">
         <div class="field">
-          <span>Terminal / Wharf Name <span style="color:var(--danger)">*</span></span>
-          <input id="t_name" placeholder="e.g. Northern Harbor"/>
+          <span>Facility Type</span>
+          <select id="fac_type" style="height:44px;border:1.5px solid var(--border);border-radius:10px;padding:0 12px;font:inherit;font-size:13.5px;width:100%;appearance:none;background:#fff url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2714%27 height=%2714%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%236b7280%27 stroke-width=%272.2%27%3E%3Cpolyline points=%276 9 12 15 18 9%27/%3E%3C/svg%3E') no-repeat right 12px center;background-size:14px">
+            <option value="">Select type…</option>
+            <option>Port Area</option>
+            <option>Terminal</option>
+            <option>Berth</option>
+            <option>Jetty</option>
+            <option>Wharf</option>
+            <option>Pier</option>
+            <option>Dock</option>
+            <option>Marina</option>
+            <option>Offshore Platform</option>
+            <option>Anchorage</option>
+            <option>Other</option>
+          </select>
         </div>
         <div class="field">
-          <span>Terminal / Wharf Type</span>
-          <div class="csel" id="t_wharf_type_csel">
-            <button type="button" class="csel-trigger" id="t_wharf_type_trigger">
-              <span class="csel-lbl ph" id="t_wharf_type_label">Select…</span>
-              <svg class="csel-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <input type="hidden" id="t_wharf_type"/>
-            <div class="csel-panel" id="t_wharf_type_panel"></div>
-          </div>
+          <span>Name <span style="color:var(--danger)">*</span></span>
+          <input id="fac_name" placeholder="e.g. Tuas Terminal 1"/>
         </div>
       </div>
-      <div class="field" style="margin-bottom:16px">
-        <span>Berth <small>(optional)</small></span>
-        <input id="t_berth" placeholder="Berth number or name"/>
-      </div>
-      <div class="modal-sec-title">Coordinates</div>
-      <div class="g2">
+      <!-- Coordinates -->
+      <div class="g2" style="margin-bottom:14px">
         <div class="field">
           <span>Latitude</span>
-          <input id="t_lat" type="number" step="any" placeholder="e.g. 57.144"/>
+          <input id="fac_lat" type="number" step="any" placeholder="e.g. 1.2655"/>
         </div>
         <div class="field">
           <span>Longitude</span>
-          <input id="t_lon" type="number" step="any" placeholder="e.g. -2.077"/>
+          <input id="fac_lon" type="number" step="any" placeholder="e.g. 103.6373"/>
         </div>
+      </div>
+      <!-- Notes -->
+      <div class="field">
+        <span>Notes</span>
+        <textarea id="fac_notes" placeholder="Additional details…" style="height:70px;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font:inherit;font-size:13.5px;resize:none;width:100%"></textarea>
+      </div>
+      <!-- Add child button (shown in edit/view) -->
+      <div id="facilityAddChildRow" style="display:none;margin-top:14px;padding-top:14px;border-top:1px dashed var(--line-strong)">
+        <button type="button" class="add-terminal-btn" onclick="addChildFacility()" style="width:100%;justify-content:center">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add sub-facility under this
+        </button>
       </div>
     </div>
     <div class="modal-foot">
-      <button class="btn btn-ghost" onclick="closeTerminalModal()">Cancel</button>
-      <button class="btn btn-primary" onclick="saveTerminal()">Save Terminal</button>
+      <button class="btn btn-ghost" onclick="closeFacilityModal()">Cancel</button>
+      <button class="btn btn-primary" id="facilityModalSave" onclick="saveFacility()">Save Facility</button>
     </div>
   </div>
-</div>
+</div></div>
 
 <div class="toast" id="toast"></div>
 
@@ -687,43 +705,226 @@ $('un_locode').addEventListener('input',function(){
   else $('locodeDisplay').style.display='none';
 });
 
-// ── TERMINALS ─────────────────────────────────────────────────────────
-let terminals=[]; // {id,t_type,t_name,t_wharf_type,t_berth,t_lat,t_lon}
-function openTerminalModal(){
-  $('terminalOverlay').classList.add('open');
-  $('parentChip').textContent=$('main_port_name').value.trim()||'New Port';
-  // Clear fields
-  ['t_type','t_name','t_wharf_type','t_berth','t_lat','t_lon'].forEach(id=>{$(id).value='';});
-  [$('t_type_label'),$('t_wharf_type_label')].forEach(el=>{el.textContent=el.id==='t_type_label'?'Select terminal type…':'Select…';el.className='csel-lbl ph';});
-}
-function closeTerminalModal(){ $('terminalOverlay').classList.remove('open'); }
-$('terminalOverlay').addEventListener('click',e=>{if(e.target===$('terminalOverlay'))closeTerminalModal();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTerminalModal();});
+// ── PORT FACILITIES (hierarchical tree) ──────────────────────────────
+let _facilities = []; // flat list, build tree client-side
+let _editFacilityId = null;
+let _parentFacilityId = null;
+let _facilityPhotoUrl = null;
+let _currentPortId = null; // set on edit load
 
-function saveTerminal(){
-  const name=$('t_name').value.trim();
-  if(!name){toast('Terminal name is required',false); return;}
-  const t={id:Date.now(),type:$('t_type').value,name,wharf_type:$('t_wharf_type').value,berth:$('t_berth').value,lat:$('t_lat').value,lon:$('t_lon').value};
-  terminals.push(t); renderTerminals(); closeTerminalModal();
+const FAC_TYPE_ICON = {
+  'Port Area':'🏭','Terminal':'🚢','Berth':'⚓','Jetty':'🪝',
+  'Wharf':'🏗','Pier':'🛳','Dock':'🔧','Marina':'⛵','Offshore Platform':'🛢','Anchorage':'⚓','Other':'📍'
+};
+
+function openFacilityModal(parentId=null, editFac=null){
+  _editFacilityId = editFac ? editFac.id : null;
+  _parentFacilityId = parentId;
+  _facilityPhotoUrl = editFac ? (editFac.photo_url||null) : null;
+
+  const modal = document.getElementById('facilityOverlay');
+  const title = document.getElementById('facilityModalTitle');
+  const sub   = document.getElementById('facilityModalSub');
+  const parentRow = document.getElementById('facilityParentRow');
+  const parentChip= document.getElementById('facilityParentChip');
+  const addChildRow= document.getElementById('facilityAddChildRow');
+
+  // Reset fields
+  document.getElementById('fac_type').value  = editFac ? (editFac.facility_type||'') : '';
+  document.getElementById('fac_name').value  = editFac ? (editFac.name||'') : '';
+  document.getElementById('fac_lat').value   = editFac ? (editFac.latitude||'') : '';
+  document.getElementById('fac_lon').value   = editFac ? (editFac.longitude||'') : '';
+  document.getElementById('fac_notes').value = editFac ? (editFac.notes||'') : '';
+
+  // Photo
+  const img = document.getElementById('facilityPhotoImg');
+  const ph  = document.getElementById('facilityPhotoPlaceholder');
+  const pa  = document.getElementById('facilityPhotoActions');
+  if(_facilityPhotoUrl){ img.src=_facilityPhotoUrl; img.style.display='block'; ph.style.display='none'; pa.style.display='flex'; }
+  else { img.style.display='none'; ph.style.display='flex'; pa.style.display='none'; img.src=''; }
+
+  // Parent chip
+  if(parentId){
+    const parent = _facilities.find(f=>f.id===parentId);
+    parentRow.style.display='block';
+    parentChip.textContent = parent ? parent.name : 'Unknown';
+  } else {
+    parentRow.style.display='none';
+  }
+
+  // Title
+  if(editFac){
+    title.textContent = 'Edit Facility';
+    sub.textContent = "Update this facility's details.";
+    addChildRow.style.display='block';
+  } else {
+    title.textContent = parentId ? 'Add Sub-facility' : 'Add Facility';
+    sub.textContent   = parentId ? `Adding under: ${_facilities.find(f=>f.id===parentId)?.name||''}` : 'Add a port area, terminal, berth or other facility.';
+    addChildRow.style.display='none';
+  }
+
+  modal.classList.add('open');
 }
-function removeTerminal(id){ terminals=terminals.filter(t=>t.id!==id); renderTerminals(); }
-function renderTerminals(){
-  const el=$('terminalList'); if(!el) return;
-  if(!terminals.length){ el.innerHTML='<div style="color:var(--soft);font-size:13px;text-align:center;padding:20px 0">No terminals added yet.</div>'; return; }
-  el.innerHTML=terminals.map(t=>`<div class="terminal-card">
-    <div class="terminal-card-info">
-      <div class="terminal-card-name">${esc(t.name)}</div>
-      <div class="terminal-card-meta">
-        ${t.type?`<span><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>${esc(t.type)}</span>`:''}
-        ${t.wharf_type?`<span>${esc(t.wharf_type)}</span>`:''}
-        ${t.berth?`<span>Berth: ${esc(t.berth)}</span>`:''}
-        ${t.lat&&t.lon?`<span>${parseFloat(t.lat).toFixed(4)}, ${parseFloat(t.lon).toFixed(4)}</span>`:''}
+
+function addChildFacility(){
+  closeFacilityModal();
+  setTimeout(()=>openFacilityModal(_editFacilityId, null), 100);
+}
+
+function closeFacilityModal(){
+  document.getElementById('facilityOverlay').classList.remove('open');
+  _editFacilityId=null; _parentFacilityId=null;
+}
+document.getElementById('facilityOverlay').addEventListener('click',e=>{
+  if(e.target===document.getElementById('facilityOverlay')) closeFacilityModal();
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeFacilityModal(); });
+
+async function handleFacilityPhoto(input){
+  const file=input.files[0]; if(!file) return;
+  // Preview
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=document.getElementById('facilityPhotoImg');
+    const ph =document.getElementById('facilityPhotoPlaceholder');
+    const pa =document.getElementById('facilityPhotoActions');
+    img.src=e.target.result; img.style.display='block';
+    ph.style.display='none'; pa.style.display='flex';
+  };
+  reader.readAsDataURL(file);
+  // Upload to storage
+  const ext=file.name.split('.').pop().toLowerCase()||'jpg';
+  const path=`facility-photos/${crypto.randomUUID()}.${ext}`;
+  const buckets=['ports','port-photos','project-manhattan','images','public'];
+  for(const bucket of buckets){
+    try{
+      const {error}=await sb.storage.from(bucket).upload(path,file,{upsert:true,contentType:file.type});
+      if(!error){
+        const {data:urlData}=sb.storage.from(bucket).getPublicUrl(path);
+        _facilityPhotoUrl=urlData.publicUrl;
+        toast('Photo uploaded ✓','ok');
+        break;
+      }
+    }catch(e){}
+  }
+  if(!_facilityPhotoUrl){
+    // Fallback: data URL
+    _facilityPhotoUrl=document.getElementById('facilityPhotoImg').src;
+  }
+}
+
+function removeFacilityPhoto(){
+  _facilityPhotoUrl=null;
+  const img=document.getElementById('facilityPhotoImg');
+  const ph =document.getElementById('facilityPhotoPlaceholder');
+  const pa =document.getElementById('facilityPhotoActions');
+  img.src=''; img.style.display='none';
+  ph.style.display='flex'; pa.style.display='none';
+}
+
+async function saveFacility(){
+  const name=document.getElementById('fac_name').value.trim();
+  if(!name){ toast('Facility name is required',false); return; }
+  const btn=document.getElementById('facilityModalSave');
+  btn.disabled=true; btn.textContent='Saving…';
+  const fac={
+    port_id: _currentPortId||editId,
+    parent_facility_id: _parentFacilityId||null,
+    name,
+    facility_type: document.getElementById('fac_type').value||null,
+    latitude:  parseFloat(document.getElementById('fac_lat').value)||null,
+    longitude: parseFloat(document.getElementById('fac_lon').value)||null,
+    notes: document.getElementById('fac_notes').value.trim()||null,
+    photo_url: _facilityPhotoUrl||null,
+  };
+  try{
+    if(_editFacilityId){
+      const {error}=await sb.from('port_facilities').update(fac).eq('id',_editFacilityId);
+      if(error) throw error;
+      // Update local cache
+      const idx=_facilities.findIndex(f=>f.id===_editFacilityId);
+      if(idx>-1) _facilities[idx]={..._facilities[idx],...fac};
+    } else {
+      const {data,error}=await sb.from('port_facilities').insert(fac).select('*').single();
+      if(error) throw error;
+      _facilities.push(data);
+    }
+    closeFacilityModal();
+    renderFacilityTree();
+    toast(_editFacilityId?'Facility updated':'Facility added','ok');
+  }catch(e){
+    toast(e.message||'Save failed',false);
+  }
+  btn.disabled=false; btn.textContent='Save Facility';
+}
+
+async function deleteFacility(id){
+  // Premium confirm
+  const fac=_facilities.find(f=>f.id===id);
+  const children=_facilities.filter(f=>f.parent_facility_id===id);
+  const msg=children.length
+    ? `Delete "${fac?.name}"? This will also delete ${children.length} sub-facilit${children.length>1?'ies':'y'}. This cannot be undone.`
+    : `Delete "${fac?.name}"? This cannot be undone.`;
+  if(!confirm(msg)) return;
+  try{
+    const {error}=await sb.from('port_facilities').delete().eq('id',id);
+    if(error) throw error;
+    // Remove from local cache (children cascade in DB)
+    const toRemove=new Set();
+    function collectIds(pid){ toRemove.add(pid); _facilities.filter(f=>f.parent_facility_id===pid).forEach(f=>collectIds(f.id)); }
+    collectIds(id);
+    _facilities=_facilities.filter(f=>!toRemove.has(f.id));
+    renderFacilityTree();
+    toast('Facility deleted');
+  }catch(e){ toast(e.message||'Delete failed',false); }
+}
+
+function renderFacilityTree(){
+  const wrap=document.getElementById('facilityTreeWrap'); if(!wrap) return;
+  const topLevel=_facilities.filter(f=>!f.parent_facility_id);
+  if(!topLevel.length){
+    wrap.innerHTML='<div style="color:var(--soft);font-size:13px;text-align:center;padding:20px 0">No facilities added yet. Use "Add Facility" to begin building the hierarchy.</div>';
+    return;
+  }
+  wrap.innerHTML=topLevel.map(f=>renderFacilityNode(f,0)).join('');
+}
+
+function renderFacilityNode(fac, depth){
+  const children=_facilities.filter(f=>f.parent_facility_id===fac.id);
+  const indent=depth*18;
+  const icon=FAC_TYPE_ICON[fac.facility_type]||'📍';
+  const hasPhoto=!!fac.photo_url;
+  const hasCoords=fac.latitude&&fac.longitude;
+  return `<div style="margin-left:${indent}px;margin-bottom:8px">
+    <div style="background:#fafbfe;border:1.5px solid var(--line);border-radius:11px;padding:11px 14px;display:flex;align-items:center;gap:12px;transition:.14s" onmouseover="this.style.borderColor='var(--primary-mid)'" onmouseout="this.style.borderColor='var(--line)'">
+      ${hasPhoto?`<img src="${esc(fac.photo_url)}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0" alt=""/>`:`<div style="width:40px;height:40px;border-radius:8px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${icon}</div>`}
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13.5px;font-weight:700;color:var(--text)">${esc(fac.name)}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;display:flex;gap:10px;flex-wrap:wrap">
+          ${fac.facility_type?`<span>${esc(fac.facility_type)}</span>`:''}
+          ${hasCoords?`<span style="font-family:monospace">${parseFloat(fac.latitude).toFixed(4)}, ${parseFloat(fac.longitude).toFixed(4)}</span>`:''}
+          ${fac.notes?`<span style="font-style:italic">${esc(fac.notes.slice(0,40))}${fac.notes.length>40?'…':''}</span>`:''}
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn-icon" title="Add sub-facility" onclick="openFacilityModal('${fac.id}',null)" style="color:var(--primary)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <button class="btn-icon" title="Edit" onclick="openFacilityModal(${fac.parent_facility_id?`'${fac.parent_facility_id}'`:'null'},${JSON.stringify(fac)})">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="btn-icon" title="Delete" onclick="deleteFacility('${fac.id}')">✕</button>
       </div>
     </div>
-    <div class="terminal-actions">
-      <button class="btn-icon" onclick="removeTerminal(${t.id})" title="Remove">✕</button>
-    </div>
-  </div>`).join('');
+    ${children.length?`<div style="margin-top:6px;padding-left:12px;border-left:2px solid var(--primary-mid)">${children.map(c=>renderFacilityNode(c,depth)).join('')}</div>`:''}
+  </div>`;
+}
+
+async function loadFacilities(portId){
+  _currentPortId=portId;
+  const {data}=await sb.from('port_facilities').select('*').eq('port_id',portId).order('sort_order').order('created_at');
+  _facilities=data||[];
+  renderFacilityTree();
 }
 
 // ── MAP PREVIEW ───────────────────────────────────────────────────────
@@ -738,6 +939,7 @@ function previewMap(){
 
 // ── HERO PHOTO ────────────────────────────────────────────────────────
 let _heroPhotoUrl = null;
+let _pendingFacilities = []; // for new ports before portId exists
 async function handleHeroUpload(input){
   const file=input.files[0]; if(!file) return;
   if(!file.type.startsWith('image/')){ toast('Please select an image file',false); return; }
@@ -816,13 +1018,13 @@ async function savePort(){
       const {data,error}=await sb.from('ports').insert(payload).select('id').single();
       if(error) throw error; portId=data.id;
     }
-    // Save terminals
-    if(portId&&terminals.length){
-      if(editId) await sb.from('port_terminals').delete().eq('port_id',portId);
-      const rows=terminals.map(t=>({port_id:portId,terminal_type:t.type||null,terminal_name:t.name,terminal_wharf_type:t.wharf_type||null,berth:t.berth||null,latitude:parseFloat(t.lat)||null,longitude:parseFloat(t.lon)||null}));
-      const {error}=await sb.from('port_terminals').insert(rows);
-      if(error) console.warn('Terminal save error:',error);
+    // Facilities are saved in real-time via the modal — just set port_id for new ports
+    if(portId&&!editId&&_facilities.length){
+      // Update all locally-added facilities with the real port_id
+      await sb.from('port_facilities').update({port_id:portId}).in('id',_facilities.map(f=>f.id));
     }
+    // After save, load facilities for the new port
+    if(portId) await loadFacilities(portId);
     toast(editId?'Port updated':'Port saved','ok');
     setTimeout(()=>location.href='port-detail.html?id='+portId,900);
   }catch(e){
@@ -871,12 +1073,8 @@ async function loadPort(id){
   syncDisplayName(); syncCountryDisplay(p.country);
   if(p.un_locode){ $('locodeBadge').textContent=p.un_locode; $('locodeDisplay').style.display='block'; }
   if(p.latitude&&p.longitude) previewMap();
-  // Load terminals
-  const {data:termsDb}=await sb.from('port_terminals').select('*').eq('port_id',id).order('created_at');
-  if(termsDb&&termsDb.length){
-    terminals=termsDb.map(t=>({id:t.id,type:t.terminal_type||'',name:t.terminal_name,wharf_type:t.terminal_wharf_type||'',berth:t.berth||'',lat:t.latitude||'',lon:t.longitude||''}));
-    renderTerminals();
-  }
+  // Load facilities hierarchy
+  await loadFacilities(id);
 }
 
 // ── AUTH ──────────────────────────────────────────────────────────────

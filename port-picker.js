@@ -1,5 +1,5 @@
 /**
- * PortPicker — Reusable cascading port/terminal/berth selector
+ * PortPicker — Reusable cascading port/facility/berth selector
  * Project Manhattan
  *
  * Usage:
@@ -11,7 +11,7 @@
  * Options:
  *   label        {string}   — Label above the picker (default: 'Port')
  *   required     {boolean}  — Show * on label
- *   showTerminal {boolean}  — Show terminal level (default: true)
+ *   showTerminal {boolean}  — Show facility level (default: true)
  *   showBerth    {boolean}  — Show berth field (default: true)
  *   placeholder  {string}   — Port search placeholder
  *   onChange     {function} — Called with { port_id, port_name, terminal_id, terminal_name, berth }
@@ -132,7 +132,7 @@ class PortPicker {
             <div class="pp-field-label">
               <span class="pp-connector">→</span>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-4 0v2"/></svg>
-              Terminal / Wharf <span style="font-weight:400;text-transform:none;color:var(--soft);font-size:10px">(optional)</span>
+              Facility <span style="font-weight:400;text-transform:none;color:var(--soft);font-size:10px">(optional)</span>
             </div>
             <div class="pp-input-wrap" id="ppTerminalWrap">
               <input class="pp-input" id="ppTerminalInput" placeholder="Select terminal…" autocomplete="off" readonly disabled/>
@@ -230,29 +230,31 @@ class PortPicker {
 
   async _loadTerminals(portId){
     const optsEl = document.getElementById('ppTerminalOpts'); if(!optsEl) return;
-    optsEl.innerHTML = '<div class="pp-loading">Loading terminals…</div>';
+    optsEl.innerHTML = '<div class="pp-loading">Loading facilities…</div>';
     if(!this._terminalCache[portId]){
-      const {data} = await this.sb.from('port_terminals')
-        .select('id,terminal_name,terminal_type,terminal_wharf_type,berth')
+      const {data} = await this.sb.from('port_facilities')
+        .select('id,name,facility_type,parent_facility_id,latitude,longitude')
         .eq('port_id', portId)
-        .order('terminal_name');
+        .is('parent_facility_id', null) // top-level only
+        .order('sort_order').order('created_at');
       this._terminalCache[portId] = data || [];
     }
-    const terms = this._terminalCache[portId];
-    if(!terms.length){
+    const facilities = this._terminalCache[portId];
+    if(!facilities.length){
       optsEl.innerHTML = `<div class="pp-empty" style="padding:14px">
-        <div style="margin-bottom:4px;font-weight:600">No terminals registered</div>
-        <div style="font-size:11.5px">You can still save port-only, or add terminals in the Port module.</div>
+        <div style="margin-bottom:4px;font-weight:600">No facilities registered</div>
+        <div style="font-size:11.5px">You can still save port-only, or add facilities in the Port module.</div>
       </div>`;
       return;
     }
+    const FAC_ICON={'Port Area':'🏭','Terminal':'🚢','Berth':'⚓','Jetty':'🪝','Wharf':'🏗','Pier':'🛳','Dock':'🔧','Marina':'⛵','Other':'📍'};
     optsEl.innerHTML = `<div class="pp-opt${!this._value.terminal_id?' active':''}" data-id="" data-name="">
-        <div class="pp-opt-name" style="color:var(--muted)">— Port only (no specific terminal) —</div>
+        <div class="pp-opt-name" style="color:var(--muted)">— Port only (no specific facility) —</div>
       </div>` +
-      terms.map(t=>`
-      <div class="pp-opt${this._value.terminal_id===t.id?' active':''}" data-id="${t.id}" data-name="${_esc(t.terminal_name)}">
-        <div class="pp-opt-name">${_esc(t.terminal_name)}</div>
-        <div class="pp-opt-meta">${[t.terminal_type, t.terminal_wharf_type].filter(Boolean).map(_esc).join(' · ')}</div>
+      facilities.map(f=>`
+      <div class="pp-opt${this._value.terminal_id===f.id?' active':''}" data-id="${f.id}" data-name="${_esc(f.name)}">
+        <div class="pp-opt-name">${FAC_ICON[f.facility_type]||'📍'} ${_esc(f.name)}</div>
+        <div class="pp-opt-meta">${[f.facility_type, f.latitude&&f.longitude?parseFloat(f.latitude).toFixed(4)+', '+parseFloat(f.longitude).toFixed(4):null].filter(Boolean).join(' · ')}</div>
       </div>`).join('');
     optsEl.querySelectorAll('.pp-opt').forEach(opt=>{
       opt.addEventListener('click', ()=> this._selectTerminal(opt.dataset.id, opt.dataset.name));
