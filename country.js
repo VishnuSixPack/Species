@@ -227,6 +227,11 @@ async function initDetailPage() {
 
   // show country on map
   loadCountryMap(data.alpha3, data.country);
+
+  // load vessels and ports for this country
+  if (typeof loadVesselsAndPorts === 'function') {
+    loadVesselsAndPorts(data.alpha2, data.alpha3, data.country);
+  }
 }
 
 // ── GENERAL INFORMATION ────────────────────────────────────────
