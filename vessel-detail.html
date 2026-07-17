@@ -1533,7 +1533,10 @@ const MODAL_CONFIGS={
 
 function openHistModal(type){
   if(type==='rfmo_history'){ openRFMOHistoryModal(); return; }
-  openModal(type);
+  // Safety: force close any stuck state before opening
+  const overlay=$('modalOverlay');
+  if(overlay) overlay.classList.remove('open');
+  setTimeout(()=>openModal(type), 20);
 }
 function openVosiModal(){ openModal('vosi'); }
 
@@ -1577,7 +1580,9 @@ function pickMCsel(fid,country){
   const inp=document.getElementById(fid); if(inp) inp.value=country;
   const lbl=document.getElementById('mcsel_lbl_'+fid);
   if(lbl){lbl.textContent=country;lbl.className='mcsel-lbl';}
-  document.getElementById('mcsel_'+fid)?.classList.remove('open');
+  // Close this mcsel and remove drop-up class
+  const wrap=document.getElementById('mcsel_'+fid);
+  if(wrap) wrap.classList.remove('open','drop-up');
 }
 
 function openModal(type){
@@ -1733,7 +1738,16 @@ async function saveModal(){
 }
 
 function toggleAvatarMenu(){$('avatarMenu').classList.toggle('open');}
-document.addEventListener('click',e=>{if(!e.target.closest('.avatar-btn'))$('avatarMenu')?.classList.remove('open');});
+document.addEventListener('click',e=>{
+  // Close avatar menu
+  if(!e.target.closest('.avatar-btn')) $('avatarMenu')?.classList.remove('open');
+  // Close all open mcsel dropdowns when clicking outside
+  if(!e.target.closest('.mcsel'))
+    document.querySelectorAll('.mcsel.open').forEach(el=>el.classList.remove('open','drop-up'));
+  // Close all open csel dropdowns when clicking outside
+  if(!e.target.closest('.csel'))
+    document.querySelectorAll('.csel.open').forEach(el=>el.classList.remove('open','drop-up'));
+});
 async function handleLogout(){await sb.auth.signOut();location.href='index.html';}
 
 // ── AIS LIVE TRACKING (MarineTraffic free embed) ──
