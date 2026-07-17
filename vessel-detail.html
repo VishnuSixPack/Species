@@ -1573,7 +1573,17 @@ async function populateMCsel(fid,q){
   const f=(q||'').toLowerCase();
   const filtered=f?countryList.filter(c=>c.toLowerCase().includes(f)):countryList;
   if(!filtered.length){list.innerHTML='<div class="mcsel-empty">No matches</div>';return;}
-  list.innerHTML=filtered.map(c=>`<div class="mcsel-opt${c===curVal?' active':''}" onclick="pickMCsel('${fid}','${c.replace(/'/g,"\\'")}'">${c}</div>`).join('');
+  // Use data-country attribute — never inject country names into onclick strings
+  // (apostrophes in names like "Cote d'Ivoire" break inline JS)
+  list.innerHTML=filtered.map(c=>`<div class="mcsel-opt${c===curVal?' active':''}" data-country="${c.replace(/"/g,'&quot;')}" data-fid="${fid}">${esc(c)}</div>`).join('');
+  // Delegate click via the list container (only bind once per open)
+  if(!list._ppBound){
+    list._ppBound=true;
+    list.addEventListener('click',e=>{
+      const opt=e.target.closest('.mcsel-opt'); if(!opt) return;
+      pickMCsel(opt.dataset.fid, opt.dataset.country);
+    });
+  }
 }
 function filterMCsel(fid,q){ populateMCsel(fid,q); }
 function pickMCsel(fid,country){
