@@ -1360,34 +1360,70 @@ async function loadHistory(){
   const g=$('histGrid'); if(!g) return;
   g.innerHTML=`
     ${histCard('Name History','name_history',['Name','Flag','IRCS','From','To'],
-      (nh.data||[]).map(r=>[r.name,r.flag,r.ircs,fmtDate(r.valid_from),fmtDate(r.valid_to)]))}
+      (nh.data||[]).map(r=>[r.name,r.flag,r.ircs,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
+      (nh.data||[]).map(r=>r.id))}
     ${histCard('PNA VDS','pna_vds',['VDS No.','From','To'],
-      (pna.data||[]).map(r=>[r.vds_no,fmtDate(r.valid_from),fmtDate(r.valid_to)]))}
+      (pna.data||[]).map(r=>[r.vds_no,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
+      (pna.data||[]).map(r=>r.id))}
     ${histCard('Captain History','captain_history',['Name','Nationality','From','To'],
-      (ch.data||[]).map(r=>[r.captain_name,r.nationality,fmtDate(r.valid_from),fmtDate(r.valid_to)]))}
+      (ch.data||[]).map(r=>[r.captain_name,r.nationality,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
+      (ch.data||[]).map(r=>r.id))}
     ${histCard('Charterer / Operator History','charterer_history',['Name','Address','From','To'],
-      (chr.data||[]).map(r=>[r.charterer_name,r.address,fmtDate(r.valid_from),fmtDate(r.valid_to)]))}
+      (chr.data||[]).map(r=>[r.charterer_name,r.address,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
+      (chr.data||[]).map(r=>r.id))}
     ${histCard('Owner History','owner_history',['Name','Address','From','To'],
-      (oh.data||[]).map(r=>[r.owner_name,r.address,fmtDate(r.valid_from),fmtDate(r.valid_to)]))}
+      (oh.data||[]).map(r=>[r.owner_name,r.address,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
+      (oh.data||[]).map(r=>r.id))}
     ${histCard('PNA FSMA History','pna_fsma',['RAL No.','From','To'],
-      (fsma.data||[]).map(r=>[r.ral_no,fmtDate(r.valid_from),fmtDate(r.valid_to)]))}
+      (fsma.data||[]).map(r=>[r.ral_no,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
+      (fsma.data||[]).map(r=>r.id))}
     ${histCard('FFA GS History','ffa_history',['FFA ID','From','To','Reason'],
-      (ffa.data||[]).map(r=>[r.ffa_id,fmtDate(r.valid_from),fmtDate(r.valid_to),r.reason_for_deletion]))}
+      (ffa.data||[]).map(r=>[r.ffa_id,fmtDate(r.valid_from),fmtDate(r.valid_to),r.reason_for_deletion]),
+      (ffa.data||[]).map(r=>r.id))}
     ${histCard('RFMO History','rfmo_history',['RFMO','Reg. No.','Auth No.','Start','End','Reason','Deleted'],
-      (rfmo.data||[]).map(r=>[r.rfmo_name,r.registration_no,r.auth_no,fmtDate(r.auth_start),fmtDate(r.auth_end),r.reason_for_deletion,fmtDate(r.date_of_deletion)]))}
+      (rfmo.data||[]).map(r=>[r.rfmo_name,r.registration_no,r.auth_no,fmtDate(r.auth_start),fmtDate(r.auth_end),r.reason_for_deletion,fmtDate(r.date_of_deletion)]),
+      (rfmo.data||[]).map(r=>r.id))}
   `;
 }
-function histCard(title,type,cols,rows){
-  const editBtn=isAdmin?`<button class="btn-edit" onclick="openHistModal('${type}')">✎ Add</button>`:'';
+function histCard(title,type,cols,rows,ids){
+  // ids = array of DB row IDs matching rows[], for delete
+  const editBtn=isAdmin?`<button class="btn-edit" onclick="openHistModal('${type}')">+ Add</button>`:'';
   const body=rows.length
-    ?`<table class="hist-table"><thead><tr>${cols.map(c=>`<th>${c}</th>`).join('')}</tr></thead><tbody>
-      ${rows.map(r=>`<tr>${r.map(c=>`<td>${esc(c||'—')}</td>`).join('')}</tr>`).join('')}
+    ?`<table class="hist-table"><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}${isAdmin?'<th style="width:36px"></th>':''}</tr></thead><tbody>
+      ${rows.map((r,i)=>`<tr>
+        ${r.map(c=>`<td>${esc(c||'—')}</td>`).join('')}
+        ${isAdmin&&ids?.[i]?`<td><button onclick="deleteHistRow('${type}','${ids[i]}')" style="width:26px;height:26px;border:none;background:none;cursor:pointer;color:var(--soft);border-radius:6px;display:flex;align-items:center;justify-content:center;transition:.14s" title="Delete" onmouseover="this.style.color='var(--danger)';this.style.background='var(--danger-soft)'" onmouseout="this.style.color='var(--soft)';this.style.background='none'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button></td>`:''}
+      </tr>`).join('')}
     </tbody></table>`
     :`<div class="hist-empty">No records yet.</div>`;
   return `<div class="hist-card">
     <div class="hist-head"><span class="hist-title">${title}</span>${editBtn}</div>
     ${body}
   </div>`;
+}
+
+// ── DB table map for each history type ──
+const HIST_TABLE_MAP={
+  name_history:'vessel_name_history',
+  owner_history:'vessel_owner_history',
+  captain_history:'vessel_captain_history',
+  charterer_history:'vessel_charterer_history',
+  rfmo_history:'vessel_rfmo_history',
+  pna_vds:'vessel_pna_vds_history',
+  pna_fsma:'vessel_pna_fsma_history',
+  ffa_history:'vessel_ffa_history',
+  other_license:'vessel_other_licenses',
+  vosi:'vessel_vosi_initiatives',
+};
+
+async function deleteHistRow(type,id){
+  const ok=await showConfirm('Delete this record?','This history entry will be permanently removed and cannot be recovered.','Delete');
+  if(!ok) return;
+  const table=HIST_TABLE_MAP[type]; if(!table) return;
+  const {error}=await sb.from(table).delete().eq('id',id);
+  if(error){toast(error.message||'Delete failed',true);return;}
+  toast('Record deleted');
+  await loadHistory();
 }
 
 // ── MODAL ──
@@ -1734,56 +1770,36 @@ function switchRFMOFields(){
   const key=['WCPFC','IATTC'].includes(rfmo)?rfmo:'Other';
   if(!rfmo){wrap.innerHTML='';return;}
   const cfg=RFMO_CONFIGS[key];
+  const selStyle='width:100%;height:44px;padding:0 36px 0 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13.5px;color:var(--text);background:#fff;appearance:none;-webkit-appearance:none;outline:none;cursor:pointer';
+  const inpStyle='height:44px;padding:0 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13.5px;width:100%;outline:none';
+  const chevron='<svg style="position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--soft)" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>';
   wrap.innerHTML=cfg.fields.map(f=>{
     const req=f.required?` <span style="color:var(--danger)">*</span>`:'';
+    const lbl=`<span style="font-size:12px;font-weight:600;color:var(--muted)">${f.label}${req}</span>`;
     if(f.type==='yesno') return `
       <div class="mfield">
-        <span>${f.label}${req}</span>
-        <div class="csel" id="csel_${f.id}" style="position:relative">
-          <button type="button" class="csel-trigger" id="cselbtn_${f.id}" style="width:100%" onclick="toggleRfmoCsel('${f.id}',event)">
-            <span class="csel-lbl ph" id="csellbl_${f.id}">Select…</span>
-            <svg class="csel-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
-          <input type="hidden" id="${f.id}"/>
-          <div class="csel-panel" id="cselpanel_${f.id}" style="position:absolute;top:calc(100% + 6px);left:0;width:100%;z-index:9999">
-            ${['Yes','No','Unknown'].map(o=>`<div class="csel-opt" onclick="pickRfmoCsel('${f.id}','${o}')">${o}</div>`).join('')}
-          </div>
+        ${lbl}
+        <div style="position:relative">
+          <select id="${f.id}" style="${selStyle}">
+            <option value="">Select…</option>
+            <option>Yes</option><option>No</option><option>Unknown</option>
+          </select>${chevron}
         </div>
       </div>`;
     if(f.type==='date') return `
       <div class="mfield">
-        <span>${f.label}${req}</span>
-        <input type="date" id="${f.id}" style="height:var(--field-h,42px);padding:0 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm,10px);font:inherit;font-size:13.5px;width:100%;outline:none"/>
+        ${lbl}
+        <input type="date" id="${f.id}" style="${inpStyle}"/>
       </div>`;
     return `
       <div class="mfield">
-        <span>${f.label}${req}</span>
-        <input type="text" id="${f.id}" placeholder="${f.label}…" style="height:var(--field-h,42px);padding:0 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm,10px);font:inherit;font-size:13.5px;width:100%;outline:none"/>
+        ${lbl}
+        <input type="text" id="${f.id}" placeholder="${f.label}…" style="${inpStyle}"/>
       </div>`;
   }).join('');
 }
 
-function toggleRfmoCsel(fid,e){
-  e.stopPropagation();
-  const panel=document.getElementById('cselpanel_'+fid);
-  const csel=document.getElementById('csel_'+fid);
-  const isOpen=panel.classList.contains('open');
-  // Close all rfmo csels
-  document.querySelectorAll('[id^="cselpanel_"]').forEach(p=>p.classList.remove('open'));
-  if(!isOpen){
-    // Drop-up detection
-    const rect=csel.getBoundingClientRect();
-    if(window.innerHeight-rect.bottom<150 && rect.top>150) panel.classList.add('drop-up');
-    else panel.classList.remove('drop-up');
-    panel.classList.add('open');
-  }
-}
-function pickRfmoCsel(fid,val){
-  document.getElementById(fid).value=val;
-  const lbl=document.getElementById('csellbl_'+fid);
-  if(lbl){lbl.textContent=val;lbl.className='csel-lbl';}
-  document.getElementById('cselpanel_'+fid)?.classList.remove('open');
-}
+
 function closeModal(){
   $('modalOverlay').classList.remove('open');
   curModalType=null;
