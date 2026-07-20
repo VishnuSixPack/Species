@@ -7,7 +7,6 @@
 <link rel="icon" type="image/png" href="brand-logo.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="port-picker.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -478,17 +477,7 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
         </div>
       </div>
 
-      <!-- CURRENT PORT / PORT OF CALL -->
-      <div class="sub-section" id="currentPortSection">
-        <div class="sub-sec-title">Current Port / Port of Call</div>
-        <p style="font-size:12.5px;color:var(--muted);margin-bottom:12px">Where is this vessel currently located or calling? Select just the port, or drill down to terminal and berth for precise location.</p>
-        <div id="currentPortPickerWrap"></div>
-        <input type="hidden" id="current_port_id"/>
-        <input type="hidden" id="current_terminal_id"/>
-        <input type="hidden" id="current_port_name"/>
-        <input type="hidden" id="current_terminal_name"/>
-        <input type="hidden" id="current_berth"/>
-      </div>
+
     </div>
 
     <!-- ② OWNERSHIP & MANAGEMENT -->
@@ -1180,26 +1169,6 @@ function startForm(){
   applyTabVisibility(); buildPVR(); syncRFMOChips();
   if(selSubtype==='Small Fishing Vessel') $('imoWrap').style.display='none';
   enhanceAllSelects();
-  initPortPicker();
-}
-let _portPicker=null;
-function initPortPicker(){
-  const wrap=$('currentPortPickerWrap'); if(!wrap||_portPicker) return;
-  if(typeof PortPicker==='undefined'){ setTimeout(initPortPicker,200); return; }
-  _portPicker=new PortPicker(wrap,{
-    supabase:sb,
-    label:'Current Port / Port of Call',
-    showTerminal:true,
-    showBerth:true,
-    placeholder:'Search port by name, country or UN/LOCODE…',
-    onChange:(v)=>{
-      $('current_port_id').value=v.port_id||'';
-      $('current_terminal_id').value=v.terminal_id||'';
-      $('current_port_name').value=v.port_name||'';
-      $('current_terminal_name').value=v.terminal_name||'';
-      $('current_berth').value=v.berth||'';
-    }
-  });
 }
 function enhanceAllSelects(){
   const searchable=['vessel_flag','built_in_country','charter_notified_by','charter_host_ccm','fsma_home_country','master_nationality'];
@@ -1373,19 +1342,6 @@ async function loadVessel(id){
     const note=document.querySelector(`.pvr-note[data-key="${m.measure_key}"]`);
     if(sel) sel.value=m.status; if(note) note.value=m.notes||'';
   });
-  // init and set port picker
-  initPortPicker();
-  if(v.current_port_id){
-    setTimeout(()=>{
-      _portPicker?.setValue({
-        port_id:v.current_port_id,
-        port_name:v.current_port_name||'',
-        terminal_id:v.current_terminal_id||null,
-        terminal_name:v.current_terminal_name||'',
-        berth:v.current_berth||'',
-      });
-    },300); // wait for port cache to load
-  }
   // load other licenses
   if(document.getElementById('licenseRows')){
     const {data:lics}=await sb.from('vessel_other_licenses').select('*').eq('vessel_id',id).order('start_date');
@@ -1603,6 +1559,24 @@ $('vForm').addEventListener('submit',async e=>{
         const sel=$('vosi_'+key); if(sel) vosiUpdate[key]=sel.value||null;
       });
       await sb.from('vessel_vosi').update(vosiUpdate).eq('id',vosiId);
+    }
+    // ── Sync prevNames → vessel_name_history (so they show on detail sidebar) ──
+    if(prevNames.length && vesselId){
+      const existing=await sb.from('vessel_name_history').select('name').eq('vessel_id',vesselId);
+      const existingNames=new Set((existing.data||[]).map(r=>r.name));
+      const toInsert=prevNames
+        .filter(n=>n&&n.trim()&&!existingNames.has(n.trim()))
+        .map(n=>({vessel_id:vesselId,name:n.trim(),flag:payload.vessel_flag||null}));
+      if(toInsert.length) await sb.from('vessel_name_history').insert(toInsert);
+    }
+    // ── Sync prevFlags → vessel_name_history entries without names ──
+    if(prevFlags.length && vesselId){
+      const existingFlags=await sb.from('vessel_name_history').select('flag').eq('vessel_id',vesselId);
+      const storedFlags=new Set((existingFlags.data||[]).map(r=>r.flag).filter(Boolean));
+      const flagsToInsert=prevFlags
+        .filter(f=>f&&!storedFlags.has(f)&&f!==payload.vessel_flag)
+        .map(f=>({vessel_id:vesselId,name:'(Flag change)',flag:f}));
+      if(flagsToInsert.length) await sb.from('vessel_name_history').insert(flagsToInsert);
     }
     toast(editId?'Vessel updated':'Vessel saved');
     setTimeout(()=>location.href='vessel-detail.html?id='+vesselId,900);

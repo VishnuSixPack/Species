@@ -426,10 +426,15 @@ if(new URLSearchParams(location.search).get('id')){
 </div>
 
 <!-- MODAL (shared) -->
-<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+<div class="modal-overlay" id="modalOverlay">
   <div class="modal" id="modal">
     <div class="modal-inner">
-      <h3 id="modalTitle">Add entry</h3>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px">
+        <h3 id="modalTitle" style="margin-bottom:0">Add entry</h3>
+        <button onclick="closeModal()" style="width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--soft);flex-shrink:0;transition:.14s;margin-left:12px" title="Close" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--soft)'">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
       <div class="sub" id="modalSub"></div>
       <div id="modalBody"></div>
     </div>
@@ -695,22 +700,7 @@ function renderOverview(v){
       <div><div class="dt">Registration Number</div>${val(v.registration_number)}</div>
       <div><div class="dt">Port of Registry</div>${val(v.port_of_registry)}</div>
       <div class="full" style="grid-column:1/-1;margin-top:4px">
-        ${(v.current_port_name||v.current_port_id)?`
-        <div style="background:var(--primary-soft);border:1px solid var(--primary-mid);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <div style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--soft);text-transform:uppercase;letter-spacing:.05em">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3"/></svg>
-            Current Port
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span style="font-size:13.5px;font-weight:700;color:var(--primary-dark)">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/></svg>
-              ${esc(v.current_port_name||'—')}
-            </span>
-            ${v.current_terminal_name?`<span style="color:var(--soft)">›</span><span style="font-size:13px;font-weight:600;color:var(--primary-dark)">${esc(v.current_terminal_name)}</span>`:''}
-            ${v.current_berth?`<span style="color:var(--soft)">›</span><span style="font-size:12.5px;font-weight:600;color:var(--primary-dark)">Berth: ${esc(v.current_berth)}</span>`:''}
-          </div>
-        </div>`:''}
-      </div>
+        
       <div><div class="dt">Built in Country</div>${val(v.built_in_country)}</div>
       <div><div class="dt">Built in Place</div>${val(v.built_in_place)}</div>
       <div><div class="dt">Built in Year</div>${val(v.built_in_year)}</div>
@@ -719,9 +709,9 @@ function renderOverview(v){
       <div><div class="dt">Beam (m)</div>${val(v.beam_m?v.beam_m+' m':null)}</div>
       <div><div class="dt">Depth (m)</div>${val(v.depth_m?v.depth_m+' m':null)}</div>
       <div><div class="dt">Crew Complement</div>${val(v.crew_complement)}</div>
-      <div><div class="dt">Gear Type</div>${val(v.gear_type)}</div>
       <div><div class="dt">Engine Power</div>${val(eng)}</div>
       <div><div class="dt">Fish Hold Capacity</div>${val(v.fish_hold_capacity?v.fish_hold_capacity+' m³':null)}</div>
+      <div><div class="dt">Fish Hold Capacity (m³)</div>${val(v.fish_hold_capacity)}</div>
       <div><div class="dt">Lowest Freezing Temp (°C)</div>${val(v.freezing_method)}</div>
       
       <div><div class="dt">Freezer Count</div>${val(v.freezer_count)}</div>
@@ -1644,11 +1634,25 @@ const RFMO_CONFIGS={
       {id:'mf_end',label:'Auth End',type:'date'},
       {id:'mf_species',label:'Authorised Species'},
       {id:'mf_areas',label:'Authorised Areas'},
+      {id:'mf_tranship_hs',label:'Authorised to Tranship on High Seas',type:'yesno'},
+      {id:'mf_ps_tranship',label:'Purse Seine Authorised to Tranship at Sea',type:'yesno'},
       {id:'mf_reason',label:'Reason for Deletion'},
       {id:'mf_deldate',label:'Date of Deletion',type:'date'},
       {id:'mf_url',label:'Public Registry URL'},
     ],
-    save:async(d)=>sb.from('vessel_rfmo_history').insert({vessel_id:vid,rfmo_name:'WCPFC',registration_no:d.mf_regno,auth_no:d.mf_authno,auth_form:d.mf_authform,auth_start:d.mf_start||null,auth_end:d.mf_end||null,auth_species:d.mf_species,auth_areas:d.mf_areas,reason_for_deletion:d.mf_reason,date_of_deletion:d.mf_deldate||null,registry_url:d.mf_url})
+    save:async(d)=>sb.from('vessel_rfmo_history').insert({
+      vessel_id:vid,rfmo_name:'WCPFC',
+      registration_no:d.mf_regno||null,auth_no:d.mf_authno||null,
+      auth_form:d.mf_authform||null,
+      auth_start:d.mf_start||null,auth_end:d.mf_end||null,
+      auth_species:d.mf_species||null,auth_areas:d.mf_areas||null,
+      tranship_hs:d.mf_tranship_hs==='Yes'?true:d.mf_tranship_hs==='No'?false:null,
+      ps_tranship_sea:d.mf_ps_tranship==='Yes'?true:d.mf_ps_tranship==='No'?false:null,
+      reason_for_deletion:d.mf_reason||null,
+      date_of_deletion:d.mf_deldate||null,
+      registry_url:d.mf_url||null,
+      notes:d.mf_rfmo_notes||null
+    })
   },
   IATTC:{
     label:'IATTC — Inter-American Tropical Tuna Commission',
@@ -1660,7 +1664,14 @@ const RFMO_CONFIGS={
       {id:'mf_reason',label:'Reason for Deletion'},
       {id:'mf_url',label:'Public Registry URL'},
     ],
-    save:async(d)=>sb.from('vessel_rfmo_history').insert({vessel_id:vid,rfmo_name:'IATTC',registration_no:d.mf_regno,auth_no:d.mf_status,auth_start:d.mf_start||null,auth_end:d.mf_end||null,reason_for_deletion:d.mf_reason,registry_url:d.mf_url})
+    save:async(d)=>sb.from('vessel_rfmo_history').insert({
+      vessel_id:vid,rfmo_name:'IATTC',
+      registration_no:d.mf_regno||null,auth_no:d.mf_status||null,
+      auth_start:d.mf_start||null,auth_end:d.mf_end||null,
+      reason_for_deletion:d.mf_reason||null,
+      registry_url:d.mf_url||null,
+      notes:d.mf_rfmo_notes||null
+    })
   },
   Other:{
     label:'Other RFMO',
@@ -1673,7 +1684,14 @@ const RFMO_CONFIGS={
       {id:'mf_reason',label:'Reason for Deletion'},
       {id:'mf_deldate',label:'Date of Deletion',type:'date'},
     ],
-    save:async(d)=>sb.from('vessel_rfmo_history').insert({vessel_id:vid,rfmo_name:d.mf_rfmo,registration_no:d.mf_regno,auth_no:d.mf_authno,auth_start:d.mf_start||null,auth_end:d.mf_end||null,reason_for_deletion:d.mf_reason,date_of_deletion:d.mf_deldate||null})
+    save:async(d)=>sb.from('vessel_rfmo_history').insert({
+      vessel_id:vid,rfmo_name:d.mf_rfmo||null,
+      registration_no:d.mf_regno||null,auth_no:d.mf_authno||null,
+      auth_start:d.mf_start||null,auth_end:d.mf_end||null,
+      reason_for_deletion:d.mf_reason||null,
+      date_of_deletion:d.mf_deldate||null,
+      notes:d.mf_rfmo_notes||null
+    })
   }
 };
 
@@ -1684,12 +1702,18 @@ function openRFMOHistoryModal(){
   $('modalBody').innerHTML=`
     <div class="mfield full" style="margin-bottom:16px">
       <span>RFMO <span style="color:var(--danger)">*</span></span>
-      <select id="mf_rfmo_sel" onchange="switchRFMOFields()" style="height:42px;border:1.5px solid var(--border);border-radius:10px;padding:0 12px;font:inherit;font-size:13.5px;width:100%;appearance:none;background:#fff url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2716%27 height=%2716%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%236b7280%27 stroke-width=%272.2%27%3E%3Cpolyline points=%276 9 12 15 18 9%27/%3E%3C/svg%3E') no-repeat right 12px center;background-size:15px">
-        <option value="">Select RFMO…</option>
-        <option>WCPFC</option><option>IATTC</option><option>IOTC</option>
-        <option>ICCAT</option><option>CCAMLR</option><option>NEAFC</option>
-        <option>NAFO</option><option>Other</option>
-      </select>
+      <div class="csel" id="rfmo_main_csel" style="position:relative">
+        <button type="button" class="csel-trigger" style="width:100%" onclick="toggleRfmoMainCsel(event)">
+          <span class="csel-lbl ph" id="rfmo_main_lbl">Select RFMO…</span>
+          <svg class="csel-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <input type="hidden" id="mf_rfmo_sel"/>
+        <div class="csel-panel" id="rfmo_main_panel" style="position:absolute;top:calc(100%+6px);left:0;width:100%;z-index:9999">
+          ${['WCPFC','IATTC','IOTC','ICCAT','CCSBT','CCAMLR','NEAFC','NAFO','SPRFMO','Other'].map(r=>
+            `<div class="csel-opt" onclick="pickRfmoMain('${r}')">${r}</div>`
+          ).join('')}
+        </div>
+      </div>
     </div>
     <div id="rfmoFieldsWrap" class="modal-grid"></div>
     <div class="mfield full" style="margin-top:12px">
@@ -1698,19 +1722,75 @@ function openRFMOHistoryModal(){
   $('modalOverlay').classList.add('open');
 }
 function switchRFMOFields(){
-  const rfmo=$('mf_rfmo_sel').value;
+  const rfmo=$('mf_rfmo_sel')?.value;
   const wrap=$('rfmoFieldsWrap'); if(!wrap) return;
   const key=['WCPFC','IATTC'].includes(rfmo)?rfmo:'Other';
   if(!rfmo){wrap.innerHTML='';return;}
   const cfg=RFMO_CONFIGS[key];
-  wrap.innerHTML=cfg.fields.map(f=>`
-    <div class="mfield">
-      <span>${f.label}${f.required?' <span style="color:var(--danger)">*</span>':''}</span>
-      <input type="${f.type||'text'}" step="${f.type==='number'?'any':''}" id="${f.id}" placeholder="${f.type==='date'?'':f.label+'…'}"/>
-    </div>`).join('');
+  wrap.innerHTML=cfg.fields.map(f=>{
+    const req=f.required?` <span style="color:var(--danger)">*</span>`:'';
+    if(f.type==='yesno') return `
+      <div class="mfield">
+        <span>${f.label}${req}</span>
+        <div class="csel" id="csel_${f.id}" style="position:relative">
+          <button type="button" class="csel-trigger" id="cselbtn_${f.id}" style="width:100%" onclick="toggleRfmoCsel('${f.id}',event)">
+            <span class="csel-lbl ph" id="csellbl_${f.id}">Select…</span>
+            <svg class="csel-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <input type="hidden" id="${f.id}"/>
+          <div class="csel-panel" id="cselpanel_${f.id}" style="position:absolute;top:calc(100%+6px);left:0;width:100%;z-index:9999">
+            ${['Yes','No','Unknown'].map(o=>`<div class="csel-opt" onclick="pickRfmoCsel('${f.id}','${o}')">${o}</div>`).join('')}
+          </div>
+        </div>
+      </div>`;
+    if(f.type==='date') return `
+      <div class="mfield">
+        <span>${f.label}${req}</span>
+        <input type="date" id="${f.id}" style="height:var(--field-h,42px);padding:0 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm,10px);font:inherit;font-size:13.5px;width:100%;outline:none"/>
+      </div>`;
+    return `
+      <div class="mfield">
+        <span>${f.label}${req}</span>
+        <input type="text" id="${f.id}" placeholder="${f.label}…" style="height:var(--field-h,42px);padding:0 14px;border:1.5px solid var(--border);border-radius:var(--radius-sm,10px);font:inherit;font-size:13.5px;width:100%;outline:none"/>
+      </div>`;
+  }).join('');
 }
-function closeModal(e){
-  if(e&&e.target!==$('modalOverlay')) return;
+function toggleRfmoMainCsel(e){
+  e.stopPropagation();
+  const panel=document.getElementById('rfmo_main_panel');
+  const isOpen=panel.classList.contains('open');
+  document.querySelectorAll('[id^="cselpanel_"]').forEach(p=>p.classList.remove('open'));
+  panel.classList.toggle('open',!isOpen);
+}
+function pickRfmoMain(val){
+  document.getElementById('mf_rfmo_sel').value=val;
+  const lbl=document.getElementById('rfmo_main_lbl');
+  if(lbl){lbl.textContent=val;lbl.className='csel-lbl';}
+  document.getElementById('rfmo_main_panel')?.classList.remove('open');
+  switchRFMOFields();
+}
+function toggleRfmoCsel(fid,e){
+  e.stopPropagation();
+  const panel=document.getElementById('cselpanel_'+fid);
+  const csel=document.getElementById('csel_'+fid);
+  const isOpen=panel.classList.contains('open');
+  // Close all rfmo csels
+  document.querySelectorAll('[id^="cselpanel_"]').forEach(p=>p.classList.remove('open'));
+  if(!isOpen){
+    // Drop-up detection
+    const rect=csel.getBoundingClientRect();
+    if(window.innerHeight-rect.bottom<150 && rect.top>150) panel.classList.add('drop-up');
+    else panel.classList.remove('drop-up');
+    panel.classList.add('open');
+  }
+}
+function pickRfmoCsel(fid,val){
+  document.getElementById(fid).value=val;
+  const lbl=document.getElementById('csellbl_'+fid);
+  if(lbl){lbl.textContent=val;lbl.className='csel-lbl';}
+  document.getElementById('cselpanel_'+fid)?.classList.remove('open');
+}
+function closeModal(){
   $('modalOverlay').classList.remove('open');
   curModalType=null;
 }
@@ -1728,8 +1808,9 @@ async function saveModal(){
     if(missing.length){toast(`${missing[0].label} is required`,true);return;}
     $('modalSave').disabled=true;
     const {error}=await cfg.save(d);
-    if(error){toast(error.message||'Save failed',true);$('modalSave').disabled=false;return;}
-    $('modalOverlay').classList.remove('open'); curModalType=null;
+    $('modalSave').disabled=false;
+    if(error){toast(error.message||'Save failed',true);return;}
+    closeModal();
     toast('RFMO history entry saved'); await loadHistory(); return;
   }
   const cfg=MODAL_CONFIGS[curModalType];
@@ -1740,9 +1821,9 @@ async function saveModal(){
   if(missing.length){toast(`${missing[0].label} is required`,true);return;}
   $('modalSave').disabled=true;
   const {error}=await cfg.save(d);
-  if(error){toast(error.message||'Save failed',true);$('modalSave').disabled=false;return;}
-  $('modalOverlay').classList.remove('open');
-  curModalType=null;
+  $('modalSave').disabled=false;
+  if(error){toast(error.message||'Save failed',true);return;}
+  closeModal();
   toast('Entry saved');
   await loadHistory();
 }
