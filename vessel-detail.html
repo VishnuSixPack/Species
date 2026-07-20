@@ -1553,6 +1553,70 @@ const MODAL_CONFIGS={
   },
 };
 
+// ── MODAL INLINE PREMIUM DROPDOWN HELPERS ──────────────────────────
+// Used for dropdowns injected via innerHTML (RFMO modal, yesno fields)
+// Since these panels live inside modal innerHTML they can't use the page-level csel engine
+function toggleModalCsel(panelId, lblId, arrowId, e){
+  if(e) e.stopPropagation();
+  const panel=document.getElementById(panelId); if(!panel) return;
+  const isOpen=panel.style.display!=='none';
+  // Close all modal inline panels first
+  document.querySelectorAll('[id$="_panel"]').forEach(p=>{
+    if(p.id!==panelId){ p.style.display='none'; }
+  });
+  if(isOpen){
+    panel.style.display='none';
+    const arr=document.getElementById(arrowId);
+    if(arr) arr.style.transform='';
+  } else {
+    panel.style.display='block';
+    const arr=document.getElementById(arrowId);
+    if(arr) arr.style.transform='rotate(180deg)';
+    // Drop-up detection
+    const trigger=panel.previousElementSibling;
+    if(trigger){
+      const rect=trigger.getBoundingClientRect();
+      const spaceBelow=window.innerHeight-rect.bottom;
+      if(spaceBelow<200 && rect.top>200){
+        panel.style.top='auto';
+        panel.style.bottom='calc(100% + 4px)';
+      } else {
+        panel.style.top='calc(100% + 4px)';
+        panel.style.bottom='auto';
+      }
+    }
+  }
+}
+function pickModalCsel(panelId, lblId, arrowId, hiddenId, value, callback){
+  // Update hidden input
+  const inp=document.getElementById(hiddenId); if(inp) inp.value=value;
+  // Update label
+  const lbl=document.getElementById(lblId);
+  if(lbl){ lbl.textContent=value; lbl.style.color='var(--text)'; }
+  // Close panel
+  const panel=document.getElementById(panelId);
+  if(panel) panel.style.display='none';
+  const arr=document.getElementById(arrowId);
+  if(arr) arr.style.transform='';
+  // Highlight trigger border
+  const trigger=panel?.previousElementSibling;
+  if(trigger) trigger.style.borderColor='var(--border)';
+  // Fire callback if provided
+  if(callback) callback();
+}
+// Close modal inline panels on outside click
+document.addEventListener('click', ()=>{
+  document.querySelectorAll('[id$="_panel"]').forEach(p=>{
+    if(p.style.display!=='none'){
+      p.style.display='none';
+      // Reset arrow
+      const arrowId=p.id.replace('_panel','_arr');
+      const arr=document.getElementById(arrowId);
+      if(arr) arr.style.transform='';
+    }
+  });
+});
+
 function openHistModal(type){
   if(type==='rfmo_history'){ openRFMOHistoryModal(); return; }
   // Safety: force close any stuck state before opening
@@ -1561,13 +1625,6 @@ function openHistModal(type){
   setTimeout(()=>openModal(type), 20);
 }
 function openVosiModal(){ openModal('vosi'); }
-
-let countryList=[];
-async function ensureCountries(){
-  if(countryList.length) return;
-  const {data}=await sb.from('countries').select('country').order('country');
-  countryList=(data||[]).map(c=>c.country);
-}
 
 /* ── MODAL COUNTRY SELECT (mcsel) ── */
 function toggleMCsel(fid,e){
@@ -1735,20 +1792,18 @@ function openRFMOHistoryModal(){
   $('modalBody').innerHTML=`
     <div class="mfield full" style="margin-bottom:16px">
       <span style="font-size:12px;font-weight:600;color:var(--muted)">RFMO <span style="color:var(--danger)">*</span></span>
-      <div style="position:relative">
-        <select id="mf_rfmo_sel" onchange="switchRFMOFields()" style="
-          width:100%;height:46px;padding:0 40px 0 14px;
-          border:1.5px solid var(--border);border-radius:10px;
-          font-family:inherit;font-size:13.5px;color:var(--text);
-          background:#fff;appearance:none;-webkit-appearance:none;
-          outline:none;cursor:pointer;transition:border-color .14s,box-shadow .14s">
-          <option value="">Select RFMO…</option>
-          <option>WCPFC</option><option>IATTC</option><option>IOTC</option>
-          <option>ICCAT</option><option>CCSBT</option><option>CCAMLR</option>
-          <option>NEAFC</option><option>NAFO</option><option>SPRFMO</option>
-          <option>Other</option>
-        </select>
-        <svg style="position:absolute;right:14px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--soft)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+      <div style="position:relative;z-index:200">
+        <button type="button" id="rfmoTrigger" onclick="toggleModalCsel('rfmoPanel','rfmoLbl',event)"
+          style="width:100%;height:46px;padding:0 40px 0 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13.5px;color:var(--text);background:#fff;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;transition:border-color .14s,box-shadow .14s">
+          <span id="rfmoLbl" style="color:#c0c4d0">Select RFMO…</span>
+          <svg style="color:var(--soft);flex-shrink:0;transition:transform .2s" id="rfmoArrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <input type="hidden" id="mf_rfmo_sel"/>
+        <div id="rfmoPanel" style="display:none;position:absolute;top:calc(100% + 6px);left:0;width:100%;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 12px rgba(20,24,45,.08),0 20px 48px rgba(20,24,45,.12);z-index:9999;overflow:hidden">
+          ${['WCPFC','IATTC','IOTC','ICCAT','CCSBT','CCAMLR','NEAFC','NAFO','SPRFMO','Other'].map(r=>
+            `<div onclick="pickModalCsel('rfmoPanel','rfmoLbl','rfmoArrow','mf_rfmo_sel','${r}',switchRFMOFields)" style="padding:10px 14px;font-size:13.5px;cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--primary-soft)';this.style.color='var(--primary-dark)'" onmouseout="this.style.background='';this.style.color=''">${r}</div>`
+          ).join('')}
+        </div>
       </div>
     </div>
     <div id="rfmoFieldsWrap" class="modal-grid"></div>
@@ -1765,25 +1820,28 @@ function openRFMOHistoryModal(){
   $('modalOverlay').classList.add('open');
 }
 function switchRFMOFields(){
-  const rfmo=$('mf_rfmo_sel')?.value;
-  const wrap=$('rfmoFieldsWrap'); if(!wrap) return;
+  const rfmo=document.getElementById('mf_rfmo_sel')?.value;
+  const wrap=document.getElementById('rfmoFieldsWrap'); if(!wrap) return;
   const key=['WCPFC','IATTC'].includes(rfmo)?rfmo:'Other';
   if(!rfmo){wrap.innerHTML='';return;}
   const cfg=RFMO_CONFIGS[key];
-  const selStyle='width:100%;height:44px;padding:0 36px 0 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13.5px;color:var(--text);background:#fff;appearance:none;-webkit-appearance:none;outline:none;cursor:pointer';
-  const inpStyle='height:44px;padding:0 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13.5px;width:100%;outline:none';
-  const chevron='<svg style="position:absolute;right:12px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--soft)" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>';
+  const inpStyle='height:44px;padding:0 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13.5px;width:100%;outline:none;box-sizing:border-box';
   wrap.innerHTML=cfg.fields.map(f=>{
     const req=f.required?` <span style="color:var(--danger)">*</span>`:'';
     const lbl=`<span style="font-size:12px;font-weight:600;color:var(--muted)">${f.label}${req}</span>`;
     if(f.type==='yesno') return `
       <div class="mfield">
         ${lbl}
-        <div style="position:relative">
-          <select id="${f.id}" style="${selStyle}">
-            <option value="">Select…</option>
-            <option>Yes</option><option>No</option><option>Unknown</option>
-          </select>${chevron}
+        <div style="position:relative;z-index:100">
+          <button type="button" onclick="toggleModalCsel('${f.id}_panel','${f.id}_lbl','${f.id}_arr',event)"
+            style="width:100%;height:44px;padding:0 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13.5px;background:#fff;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;box-sizing:border-box">
+            <span id="${f.id}_lbl" style="color:#c0c4d0">Select…</span>
+            <svg id="${f.id}_arr" style="color:var(--soft);transition:transform .2s;flex-shrink:0" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <input type="hidden" id="${f.id}"/>
+          <div id="${f.id}_panel" style="display:none;position:absolute;top:calc(100% + 4px);left:0;width:100%;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 4px 12px rgba(20,24,45,.08),0 16px 40px rgba(20,24,45,.12);z-index:9999;overflow:hidden">
+            ${['Yes','No','Unknown'].map(o=>`<div onclick="pickModalCsel('${f.id}_panel','${f.id}_lbl','${f.id}_arr','${f.id}','${o}')" style="padding:10px 14px;font-size:13.5px;cursor:pointer" onmouseover="this.style.background='var(--primary-soft)';this.style.color='var(--primary-dark)'" onmouseout="this.style.background='';this.style.color=''">${o}</div>`).join('')}
+          </div>
         </div>
       </div>`;
     if(f.type==='date') return `
@@ -1800,13 +1858,143 @@ function switchRFMOFields(){
 }
 
 
+// ── MODAL INLINE PREMIUM DROPDOWN HELPERS ──────────────────────────
+function toggleModalCsel(panelId, lblId, arrowId, e){
+  if(e) e.stopPropagation();
+  const panel=document.getElementById(panelId); if(!panel) return;
+  const isOpen=panel.style.display!=='none';
+  document.querySelectorAll('[id$="_panel"]').forEach(p=>{
+    if(p.style&&p.id!==panelId) p.style.display='none';
+  });
+  if(isOpen){
+    panel.style.display='none';
+    const arr=document.getElementById(arrowId);
+    if(arr) arr.style.transform='';
+  } else {
+    panel.style.display='block';
+    const arr=document.getElementById(arrowId);
+    if(arr) arr.style.transform='rotate(180deg)';
+    const trigger=panel.previousElementSibling;
+    if(trigger){
+      const rect=trigger.getBoundingClientRect();
+      if(window.innerHeight-rect.bottom<200 && rect.top>200){
+        panel.style.top='auto'; panel.style.bottom='calc(100% + 4px)';
+      } else {
+        panel.style.top='calc(100% + 4px)'; panel.style.bottom='auto';
+      }
+    }
+  }
+}
+function pickModalCsel(panelId, lblId, arrowId, hiddenId, value, callback){
+  const inp=document.getElementById(hiddenId); if(inp) inp.value=value;
+  const lbl=document.getElementById(lblId);
+  if(lbl){ lbl.textContent=value; lbl.style.color='var(--text)'; }
+  const panel=document.getElementById(panelId);
+  if(panel) panel.style.display='none';
+  const arr=document.getElementById(arrowId);
+  if(arr) arr.style.transform='';
+  if(callback) callback();
+}
+document.addEventListener('click',()=>{
+  document.querySelectorAll('[id$="_panel"]').forEach(p=>{
+    if(p.style&&p.style.display!=='none'&&p.id!=='photoLightbox'){
+      p.style.display='none';
+      const arr=document.getElementById(p.id.replace('_panel','_arr'));
+      if(arr) arr.style.transform='';
+    }
+  });
+});
+
+function openHistModal(type){
+  if(type==='rfmo_history'){ openRFMOHistoryModal(); return; }
+  // Safety: force close any stuck state before opening
+  const overlay=$('modalOverlay');
+  if(overlay) overlay.classList.remove('open');
+  setTimeout(()=>openModal(type), 20);
+}
+function openVosiModal(){ openModal('vosi'); }
+
+/* ── MODAL COUNTRY SELECT (mcsel) ── */
+function buildMCsel(fieldId){
+  return `<div class="mcsel" id="mcsel_${fieldId}">
+    <button type="button" class="mcsel-trigger" onclick="toggleMCsel('${fieldId}',event)">
+      <span class="mcsel-lbl ph" id="mcsel_lbl_${fieldId}">Select country…</span>
+      <svg class="mcsel-arr" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <input type="hidden" id="${fieldId}"/>
+    <div class="mcsel-panel">
+      <div class="mcsel-search"><input type="text" placeholder="Search country…" oninput="filterMCsel('${fieldId}',this.value)" onclick="event.stopPropagation()"/></div>
+      <div class="mcsel-list" id="mcsel_list_${fieldId}"></div>
+    </div>
+  </div>`;
+}
+function toggleMCsel(fid,e){
+  e.stopPropagation();
+  const wrap=document.getElementById('mcsel_'+fid); if(!wrap) return;
+  const wasOpen=wrap.classList.contains('open');
+  document.querySelectorAll('.mcsel.open').forEach(x=>x.classList.remove('open','drop-up'));
+  if(!wasOpen){
+    const trigger=wrap.querySelector('.mcsel-trigger');
+    if(trigger){
+      const rect=trigger.getBoundingClientRect();
+      const spaceBelow=window.innerHeight-rect.bottom;
+      if(spaceBelow<300 && rect.top>300) wrap.classList.add('drop-up');
+    }
+    wrap.classList.add('open');
+    populateMCsel(fid,'');
+    setTimeout(()=>wrap.querySelector('.mcsel-search input')?.focus(),30);
+  }
+}
+async function populateMCsel(fid,q){
+  await ensureCountries();
+  const list=document.getElementById('mcsel_list_'+fid); if(!list) return;
+  const curVal=document.getElementById(fid)?.value||'';
+  const f=(q||'').toLowerCase();
+  const filtered=f?countryList.filter(c=>c.toLowerCase().includes(f)):countryList;
+  if(!filtered.length){list.innerHTML='<div class="mcsel-empty">No matches</div>';return;}
+  list.innerHTML=filtered.map(c=>`<div class="mcsel-opt${c===curVal?' active':''}" data-country="${c.replace(/"/g,'&quot;')}" data-fid="${fid}">${esc(c)}</div>`).join('');
+  if(!list._ppBound){
+    list._ppBound=true;
+    list.addEventListener('click',e=>{
+      const opt=e.target.closest('.mcsel-opt'); if(!opt) return;
+      pickMCsel(opt.dataset.fid, opt.dataset.country);
+    });
+  }
+}
+function filterMCsel(fid,q){ populateMCsel(fid,q); }
+function pickMCsel(fid,country){
+  const inp=document.getElementById(fid); if(inp) inp.value=country;
+  const lbl=document.getElementById('mcsel_lbl_'+fid);
+  if(lbl){lbl.textContent=country;lbl.className='mcsel-lbl';}
+  const wrap=document.getElementById('mcsel_'+fid);
+  if(wrap) wrap.classList.remove('open','drop-up');
+}
+
+function openModal(type){
+  const cfg=MODAL_CONFIGS[type]; if(!cfg) return;
+  curModalType=type;
+  $('modalTitle').textContent=cfg.title;
+  $('modalSub').textContent=cfg.sub;
+  const autofills=cfg.autofill?cfg.autofill(vessel):{};
+  $('modalBody').innerHTML=`<div class="modal-grid">${cfg.fields.map(f=>`
+    <div class="mfield${f.full?' full':''}">
+      <span>${f.label}${f.required?' <span style="color:var(--danger)">*</span>':''}</span>
+      ${f.type==='textarea'
+        ?`<textarea id="${f.id}" placeholder="${f.label}…">${esc(String(autofills[f.id]||''))}</textarea>`
+        :f.type==='country'
+        ?`${buildMCsel(f.id)}<script>document.getElementById(${JSON.stringify(f.id)})&&(()=>{const v=${JSON.stringify(autofills[f.id]||'')};if(v){document.getElementById(${JSON.stringify(f.id)}).value=v;const l=document.getElementById('mcsel_lbl_'+${JSON.stringify(f.id)});if(l){l.textContent=v;l.className='mcsel-lbl';}}})();<\/script>`
+        :`<input type="${f.type==='number'?'number':f.type==='date'?'date':'text'}" step="${f.type==='number'?'any':''}" id="${f.id}" placeholder="${f.type==='date'?'':f.label+'…'}" value="${esc(String(autofills[f.id]||''))}"/>`}
+    </div>`).join('')}</div>`;
+  $('modalOverlay').classList.add('open');
+}
+
 function closeModal(){
   $('modalOverlay').classList.remove('open');
   curModalType=null;
 }
+
 async function saveModal(){
   if(!curModalType) return;
-  // Handle custom RFMO history modal
   if(curModalType==='rfmo_history_custom'){
     const rfmo=$('mf_rfmo_sel')?.value;
     if(!rfmo){toast('Please select an RFMO',true);return;}
@@ -1840,51 +2028,32 @@ async function saveModal(){
 
 function toggleAvatarMenu(){$('avatarMenu').classList.toggle('open');}
 document.addEventListener('click',e=>{
-  // Close avatar menu
   if(!e.target.closest('.avatar-btn')) $('avatarMenu')?.classList.remove('open');
-  // Close all open mcsel dropdowns when clicking outside
   if(!e.target.closest('.mcsel'))
     document.querySelectorAll('.mcsel.open').forEach(el=>el.classList.remove('open','drop-up'));
-  // Close all open csel dropdowns when clicking outside
   if(!e.target.closest('.csel'))
     document.querySelectorAll('.csel.open').forEach(el=>el.classList.remove('open','drop-up'));
 });
 async function handleLogout(){await sb.auth.signOut();location.href='index.html';}
 
-// ── AIS LIVE TRACKING (MarineTraffic free embed) ──
 function openTracking(){
   const modal=$('aisModal');
-  const mmsi=vessel.mmsi;
-  const imo=vessel.imo;
-  const name=vessel.current_name;
+  const mmsi=vessel.mmsi; const imo=vessel.imo; const name=vessel.current_name;
   modal.style.display='flex';
   $('aisTitle').textContent=`Live Tracking · ${name}`;
-
-  if(!mmsi && !imo){
-    $('aisContent').style.display='none';
-    $('aisNoMMSI').style.display='block';
-    return;
-  }
-  $('aisContent').style.display='block';
-  $('aisNoMMSI').style.display='none';
-  $('aisLoading').style.display='flex';
-  $('aisFrame').style.display='none';
-
-  // MarineTraffic free embed — works with MMSI or IMO
-  // MMSI gives real-time position; IMO gives vessel page
-  let embedUrl, extUrl;
+  if(!mmsi&&!imo){$('aisContent').style.display='none';$('aisNoMMSI').style.display='block';return;}
+  $('aisContent').style.display='block';$('aisNoMMSI').style.display='none';
+  $('aisLoading').style.display='flex';$('aisFrame').style.display='none';
+  let embedUrl,extUrl;
   if(mmsi){
-    // Centered map on the vessel with 10nm zoom
     embedUrl=`https://www.marinetraffic.com/en/ais/embed/maptype:0/mmsi:${mmsi}/zoom:10/shownames:true/`;
     extUrl=`https://www.marinetraffic.com/en/ais/details/ships/mmsi:${mmsi}`;
-    $('aisSub').textContent=`MMSI: ${mmsi} · Powered by MarineTraffic · AIS data`;
+    $('aisSub').textContent=`MMSI: ${mmsi} · Powered by MarineTraffic`;
   } else {
-    // Fallback to IMO vessel page
     embedUrl=`https://www.marinetraffic.com/en/ais/embed/maptype:0/imo:${imo}/zoom:5/shownames:true/`;
     extUrl=`https://www.marinetraffic.com/en/ais/details/ships/imo:${imo}`;
-    $('aisSub').textContent=`IMO: ${imo} · Powered by MarineTraffic · AIS data`;
+    $('aisSub').textContent=`IMO: ${imo} · Powered by MarineTraffic`;
   }
-
   $('aisExtLink').href=extUrl;
   const frame=$('aisFrame');
   frame.onload=()=>{$('aisLoading').style.display='none';frame.style.display='block';};
@@ -1895,8 +2064,8 @@ function closeTracking(){
   const frame=$('aisFrame'); frame.src=''; frame.style.display='none';
   $('aisLoading').style.display='flex';
 }
-// Close modal on overlay click
 $('aisModal')?.addEventListener('click',e=>{if(e.target===$('aisModal'))closeTracking();});
+
 function toast(msg,err=false){
   const t=$('toast');t.textContent=msg;t.className='toast show'+(err?' err':'');
   setTimeout(()=>t.className='toast',2800);
