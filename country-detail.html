@@ -395,9 +395,9 @@ async function loadVesselsAndPorts(alpha2, alpha3, countryName) {
   // ── VESSELS (flag_state matches country) ──
   const { data: vessels } = await db
     .from('vessels')
-    .select('id, vessel_name, imo_number, ircs, vessel_type')
-    .or(`flag_state.eq.${alpha2},flag_state.eq.${alpha3},flag_state.eq.${countryName}`)
-    .order('vessel_name');
+    .select('id, current_name, imo, ircs, vessel_category, vessel_flag')
+    .or(`vessel_flag.eq.${alpha2},vessel_flag.eq.${alpha3},vessel_flag.eq.${countryName}`)
+    .order('current_name');
 
   const vesselBody = document.getElementById('vessels-body');
   const vesselCount = document.getElementById('vessel-count');
@@ -418,11 +418,11 @@ async function loadVesselsAndPorts(alpha2, alpha3, countryName) {
           <tr>
             <td><a href="vessel-detail.html?id=${v.id}" class="module-link">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 20h20M5 20V8l7-5 7 5v12"/></svg>
-              ${v.vessel_name || '—'}
+              ${v.current_name || '—'}
             </a></td>
-            <td>${v.imo_number || '—'}</td>
+            <td>${v.imo || '—'}</td>
             <td>${v.ircs || '—'}</td>
-            <td>${v.vessel_type ? `<span class="module-badge">${v.vessel_type}</span>` : '—'}</td>
+            <td>${v.vessel_category ? `<span class="module-badge">${v.vessel_category}</span>` : '—'}</td>
           </tr>`).join('')}
         </tbody>
       </table>`;
@@ -431,9 +431,9 @@ async function loadVesselsAndPorts(alpha2, alpha3, countryName) {
   // ── PORTS (country matches) ──
   const { data: ports } = await db
     .from('ports')
-    .select('id, port_name, alternative_name, un_locode, port_type')
+    .select('id, main_port_name, alternate_port_name, un_locode, port_type')
     .or(`country.eq.${alpha2},country.eq.${alpha3},country.eq.${countryName}`)
-    .order('port_name');
+    .order('main_port_name');
 
   const portBody = document.getElementById('ports-body');
   const portCount = document.getElementById('port-count');
@@ -454,9 +454,9 @@ async function loadVesselsAndPorts(alpha2, alpha3, countryName) {
           <tr>
             <td><a href="port-detail.html?id=${p.id}" class="module-link">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-              ${p.port_name || '—'}
+              ${p.main_port_name || '—'}
             </a></td>
-            <td>${p.alternative_name || '—'}</td>
+            <td>${p.alternate_port_name || '—'}</td>
             <td>${p.un_locode ? `<span class="module-badge">${p.un_locode}</span>` : '—'}</td>
             <td>${p.port_type ? `<span class="module-badge">${p.port_type}</span>` : '—'}</td>
           </tr>`).join('')}

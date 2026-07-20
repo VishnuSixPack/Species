@@ -946,6 +946,7 @@
   </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="kde-explanations.js"></script>
 <script>
 // ══ SUPABASE — beta_assessments only ══
 const SU='https://enbdaajcromxmhgcverp.supabase.co',SK='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
@@ -1015,12 +1016,12 @@ async function openAIModal(encodedQ){
     </div>`;
   document.getElementById('aiModalOv').classList.add('open');
   try{
-    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+    const resp=await fetch('https://api.groq.com/openai/v1/chat/completions',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','Authorization':'Bearer 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'},
       body:JSON.stringify({
-        model:'claude-sonnet-4-6',
-        max_tokens:1000,
+        model:'llama-3.3-70b-versatile',
+        max_tokens:600,
         messages:[{role:'user',content:`You are a seafood traceability expert. A user is filling out a supply chain traceability assessment and clicked "Explain" on this question: "${q}"
 
 Reply in exactly this format with three short sections:
@@ -1038,7 +1039,7 @@ Use plain friendly language. No jargon. Address the user directly.`}]
       })
     });
     const data=await resp.json();
-    const text=data.content?.[0]?.text||'No explanation available.';
+    const text=data.choices?.[0]?.message?.content||'No explanation available.';
     const sections=[
       {key:'WHAT IT IS',icon:'📌',lbl:'What it is'},
       {key:'WHERE TO FIND IT',icon:'🔍',lbl:'Where to find it'},
@@ -1066,15 +1067,33 @@ Use plain friendly language. No jargon. Address the user directly.`}]
         <div class="ai-bot-bubble">${bubbleHtml}</div>
       </div>`;
   }catch(e){
-    body.innerHTML=`
-      <div class="ai-user-row">
-        <div class="ai-user-avatar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
-        <div class="ai-user-bubble">Explain : ${q}</div>
-      </div>
-      <div class="ai-bot-row">
-        <div class="ai-bot-avatar">🤖</div>
-        <div class="ai-bot-bubble" style="color:#e63946;">Could not load explanation. Please check your connection and try again.</div>
-      </div>`;
+    // Try fallback from kde-explanations.js
+    const fallback=typeof getKDEFallback==='function'?getKDEFallback(q):null;
+    if(fallback){
+      const bubbleHtml=`
+        <div class="ai-bot-section"><div class="ai-bot-section-lbl">📌 What it is</div><div class="ai-bot-section-text">${fallback.w}</div></div>
+        <div class="ai-bot-section"><div class="ai-bot-section-lbl">🔍 Where to find it</div><div class="ai-bot-section-text">${fallback.f}</div></div>
+        <div class="ai-bot-section"><div class="ai-bot-section-lbl">⚠️ Why it matters</div><div class="ai-bot-section-text">${fallback.m}</div></div>`;
+      body.innerHTML=`
+        <div class="ai-user-row">
+          <div class="ai-user-avatar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
+          <div class="ai-user-bubble">Explain : ${q}</div>
+        </div>
+        <div class="ai-bot-row">
+          <div class="ai-bot-avatar">🤖</div>
+          <div class="ai-bot-bubble">${bubbleHtml}</div>
+        </div>`;
+    } else {
+      body.innerHTML=`
+        <div class="ai-user-row">
+          <div class="ai-user-avatar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
+          <div class="ai-user-bubble">Explain : ${q}</div>
+        </div>
+        <div class="ai-bot-row">
+          <div class="ai-bot-avatar">🤖</div>
+          <div class="ai-bot-bubble" style="color:#e63946;">Could not load explanation. Please check your connection and try again.</div>
+        </div>`;
+    }
   }
 }
 function closeAIModal(){
