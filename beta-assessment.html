@@ -899,7 +899,7 @@
     <!-- Header -->
     <div class="ai-modal-hd">
       <div style="display:flex;align-items:center;gap:10px;">
-        <div style="width:32px;height:32px;border-radius:10px;background:#f4f0ff;display:flex;align-items:center;justify-content:center;font-size:17px;">✦</div>
+        <div style="width:32px;height:32px;border-radius:10px;background:#1a1a2e;display:flex;align-items:center;justify-content:center;font-size:15px;color:#fff;">✦</div>
         <span class="ai-modal-title">Ask our Manhattan A.I</span>
       </div>
       <button onclick="closeAIModal()" style="width:30px;height:30px;border-radius:50%;background:#e63946;border:none;cursor:pointer;font-size:15px;color:#fff;flex-shrink:0;font-weight:700;box-shadow:0 2px 8px rgba(230,57,70,0.4);">×</button>
@@ -1109,14 +1109,40 @@ function showSCCompletePopup(){
   const hasLanding=prods.some(p=>(p.chain||[]).some(n=>n.type==='landing'));
   const hasProc=prods.some(p=>(p.chain||[]).some(n=>n.type==='processing'));
   const hasSR=prods.some(p=>(p.chain||[]).some(n=>n.type==='shipreceive'));
+  // Build dynamic checklist from actual SC chain
+  const allChain=prods.flatMap(p=>p.chain||[]);
+  const hasOVP=allChain.some(n=>n.type==='onvessel');
+  const hasVL=allChain.some(n=>n.type==='vessel_landing');
+  const hasAgg=allChain.some(n=>n.type==='aggregation');
+  const hasFarm=allChain.some(n=>n.type==='farm');
+  const hasHatchery=allChain.some(n=>n.type==='hatchery');
+  const hasFeedmill=allChain.some(n=>n.type==='feedmill');
+  const multiVessel=allChain.some(n=>n.type==='harvest'&&(n.vesselCount||1)>1);
+  const hasMSC=prods.some(p=>p.cert==='MSC');
+  const hasASC=prods.some(p=>p.cert==='ASC');
+  const hasEUMkt=prods.some(p=>(p.markets||[]).some(m=>EU27.includes(m)));
+  const hasUSMkt=prods.some(p=>(p.markets||[]).includes('US'));
+
   const docs=[];
-  if(hasHarvest)docs.push('🎣 Vessel certificates, fishing licences, catch records');
-  if(hasTS)docs.push('🔄 Transshipment authorisation, carrier vessel documents');
-  if(hasLanding)docs.push('⚓ Landing declarations, port receipts, weigh tickets');
-  if(hasProc)docs.push('🏭 Processing facility approvals, HACCP certificates');
+  if(hasHarvest){
+    docs.push('🎣 Fishing licences, vessel registration documents, catch records');
+    if(multiVessel)docs.push('🚢 One document per vessel — you can upload multiple files per question');
+  }
+  if(hasOVP)docs.push('🔧 On-vessel processing records, batch/lot codes assigned at sea');
+  if(hasTS)docs.push('🔄 Transshipment authorisation, RFMO carrier vessel listings');
+  if(hasLanding||hasVL)docs.push('⚓ Landing declarations, port receipts, weigh tickets');
+  if(hasProc)docs.push('🏭 Facility approval numbers, HACCP plan, processing records');
+  if(hasAgg)docs.push('📦 Aggregation/lot records, input-output reconciliation documents');
   if(hasSR)docs.push('🚢 Bills of Lading, packing lists, commercial invoices');
-  docs.push('🏅 Any certifications: MSC, ASC, BRC, ISO, EU approvals');
-  docs.push('🔗 Registry links, URLs to verify vessel/facility status');
+  if(hasFarm)docs.push('🌾 Farm licence, stocking records, water quality reports');
+  if(hasHatchery)docs.push('🐟 Hatchery registration, broodstock records, disease treatment logs');
+  if(hasFeedmill)docs.push('🌾 Feedmill registration, feed formulation, ingredient traceability');
+  if(hasMSC)docs.push('🏅 MSC Certificate of Conformity, Chain of Custody certificate');
+  if(hasASC)docs.push('🏅 ASC Chain of Custody certificate');
+  if(hasEUMkt)docs.push('🇪🇺 EU catch certificate, competent authority validation, designated port confirmation');
+  if(hasUSMkt)docs.push('🇺🇸 SIMP entry filing records, FSMA 204 traceability lot codes');
+  if(!hasMSC&&!hasASC)docs.push('🏅 Any third-party certifications you hold (BRC, ISO, GLOBALG.A.P.)');
+  docs.push('🔗 Registry hyperlinks to verify vessel/facility listings (Marine Traffic, RFMO portals)');
   const existing=document.getElementById('sc-complete-modal');
   if(existing)existing.remove();
   const modal=document.createElement('div');
