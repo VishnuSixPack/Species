@@ -699,8 +699,6 @@ function renderOverview(v){
       <div><div class="dt">MMSI</div>${val(v.mmsi)}</div>
       <div><div class="dt">Registration Number</div>${val(v.registration_number)}</div>
       <div><div class="dt">Port of Registry</div>${val(v.port_of_registry)}</div>
-      <div class="full" style="grid-column:1/-1;margin-top:4px">
-        
       <div><div class="dt">Built in Country</div>${val(v.built_in_country)}</div>
       <div><div class="dt">Built in Place</div>${val(v.built_in_place)}</div>
       <div><div class="dt">Built in Year</div>${val(v.built_in_year)}</div>
@@ -710,10 +708,8 @@ function renderOverview(v){
       <div><div class="dt">Depth (m)</div>${val(v.depth_m?v.depth_m+' m':null)}</div>
       <div><div class="dt">Crew Complement</div>${val(v.crew_complement)}</div>
       <div><div class="dt">Engine Power</div>${val(eng)}</div>
-      <div><div class="dt">Fish Hold Capacity</div>${val(v.fish_hold_capacity?v.fish_hold_capacity+' m³':null)}</div>
-      <div><div class="dt">Fish Hold Capacity (m³)</div>${val(v.fish_hold_capacity)}</div>
+      <div><div class="dt">Fish Hold Capacity (m³)</div>${val(v.fish_hold_capacity?v.fish_hold_capacity+' m³':null)}</div>
       <div><div class="dt">Lowest Freezing Temp (°C)</div>${val(v.freezing_method)}</div>
-      
       <div><div class="dt">Freezer Count</div>${val(v.freezer_count)}</div>
       <div><div class="dt">Freezing Capacity</div>${val(v.freezing_capacity)}</div>
       <div><div class="dt">Hull Material</div>${val(v.hull_material)}</div>
@@ -1699,26 +1695,37 @@ function openRFMOHistoryModal(){
   curModalType='rfmo_history_custom';
   $('modalTitle').textContent='Add RFMO History';
   $('modalSub').textContent='Select the RFMO — fields will update based on your selection.';
+  // Use a styled native select — reliable inside dynamically injected HTML
   $('modalBody').innerHTML=`
     <div class="mfield full" style="margin-bottom:16px">
-      <span>RFMO <span style="color:var(--danger)">*</span></span>
-      <div class="csel" id="rfmo_main_csel" style="position:relative">
-        <button type="button" class="csel-trigger" style="width:100%" onclick="toggleRfmoMainCsel(event)">
-          <span class="csel-lbl ph" id="rfmo_main_lbl">Select RFMO…</span>
-          <svg class="csel-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <input type="hidden" id="mf_rfmo_sel"/>
-        <div class="csel-panel" id="rfmo_main_panel" style="position:absolute;top:calc(100%+6px);left:0;width:100%;z-index:9999">
-          ${['WCPFC','IATTC','IOTC','ICCAT','CCSBT','CCAMLR','NEAFC','NAFO','SPRFMO','Other'].map(r=>
-            `<div class="csel-opt" onclick="pickRfmoMain('${r}')">${r}</div>`
-          ).join('')}
-        </div>
+      <span style="font-size:12px;font-weight:600;color:var(--muted)">RFMO <span style="color:var(--danger)">*</span></span>
+      <div style="position:relative">
+        <select id="mf_rfmo_sel" onchange="switchRFMOFields()" style="
+          width:100%;height:46px;padding:0 40px 0 14px;
+          border:1.5px solid var(--border);border-radius:10px;
+          font-family:inherit;font-size:13.5px;color:var(--text);
+          background:#fff;appearance:none;-webkit-appearance:none;
+          outline:none;cursor:pointer;transition:border-color .14s,box-shadow .14s">
+          <option value="">Select RFMO…</option>
+          <option>WCPFC</option><option>IATTC</option><option>IOTC</option>
+          <option>ICCAT</option><option>CCSBT</option><option>CCAMLR</option>
+          <option>NEAFC</option><option>NAFO</option><option>SPRFMO</option>
+          <option>Other</option>
+        </select>
+        <svg style="position:absolute;right:14px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--soft)" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
     </div>
     <div id="rfmoFieldsWrap" class="modal-grid"></div>
     <div class="mfield full" style="margin-top:12px">
-      <span>Notes</span><textarea id="mf_rfmo_notes" placeholder="Notes…"></textarea>
+      <span style="font-size:12px;font-weight:600;color:var(--muted)">Notes</span>
+      <textarea id="mf_rfmo_notes" placeholder="Notes…" style="height:80px;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font:inherit;font-size:13.5px;resize:none;width:100%;outline:none;transition:border-color .14s"></textarea>
     </div>`;
+  // Apply focus style on select
+  const sel=document.getElementById('mf_rfmo_sel');
+  if(sel){
+    sel.addEventListener('focus',()=>{ sel.style.borderColor='var(--primary)'; sel.style.boxShadow='0 0 0 3.5px rgba(26,111,219,.12)'; });
+    sel.addEventListener('blur',()=>{ sel.style.borderColor='var(--border)'; sel.style.boxShadow='none'; });
+  }
   $('modalOverlay').classList.add('open');
 }
 function switchRFMOFields(){
@@ -1738,7 +1745,7 @@ function switchRFMOFields(){
             <svg class="csel-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
           </button>
           <input type="hidden" id="${f.id}"/>
-          <div class="csel-panel" id="cselpanel_${f.id}" style="position:absolute;top:calc(100%+6px);left:0;width:100%;z-index:9999">
+          <div class="csel-panel" id="cselpanel_${f.id}" style="position:absolute;top:calc(100% + 6px);left:0;width:100%;z-index:9999">
             ${['Yes','No','Unknown'].map(o=>`<div class="csel-opt" onclick="pickRfmoCsel('${f.id}','${o}')">${o}</div>`).join('')}
           </div>
         </div>
@@ -1755,20 +1762,7 @@ function switchRFMOFields(){
       </div>`;
   }).join('');
 }
-function toggleRfmoMainCsel(e){
-  e.stopPropagation();
-  const panel=document.getElementById('rfmo_main_panel');
-  const isOpen=panel.classList.contains('open');
-  document.querySelectorAll('[id^="cselpanel_"]').forEach(p=>p.classList.remove('open'));
-  panel.classList.toggle('open',!isOpen);
-}
-function pickRfmoMain(val){
-  document.getElementById('mf_rfmo_sel').value=val;
-  const lbl=document.getElementById('rfmo_main_lbl');
-  if(lbl){lbl.textContent=val;lbl.className='csel-lbl';}
-  document.getElementById('rfmo_main_panel')?.classList.remove('open');
-  switchRFMOFields();
-}
+
 function toggleRfmoCsel(fid,e){
   e.stopPropagation();
   const panel=document.getElementById('cselpanel_'+fid);
