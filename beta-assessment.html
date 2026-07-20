@@ -1126,63 +1126,182 @@ function confirmDelete(id,btn){
 // ── SC Complete popup — document checklist ──
 function showSCCompletePopup(){
   const prods=products.filter(Boolean);
-  const hasHarvest=prods.some(p=>(p.chain||[]).some(n=>n.type==='harvest'));
-  const hasTS=prods.some(p=>(p.chain||[]).some(n=>n.type==='transshipment'));
-  const hasLanding=prods.some(p=>(p.chain||[]).some(n=>n.type==='landing'));
-  const hasProc=prods.some(p=>(p.chain||[]).some(n=>n.type==='processing'));
-  const hasSR=prods.some(p=>(p.chain||[]).some(n=>n.type==='shipreceive'));
-  // Build dynamic checklist from actual SC chain
   const allChain=prods.flatMap(p=>p.chain||[]);
+
+  // Chain presence
+  const hasHarvest=allChain.some(n=>n.type==='harvest');
   const hasOVP=allChain.some(n=>n.type==='onvessel');
-  const hasVL=allChain.some(n=>n.type==='vessel_landing');
+  const hasTS=allChain.some(n=>n.type==='transshipment');
+  const hasLanding=allChain.some(n=>n.type==='landing')||allChain.some(n=>n.type==='vessel_landing');
+  const hasProc=allChain.some(n=>n.type==='processing');
   const hasAgg=allChain.some(n=>n.type==='aggregation');
+  const hasSR=allChain.some(n=>n.type==='shipreceive');
   const hasFarm=allChain.some(n=>n.type==='farm');
   const hasHatchery=allChain.some(n=>n.type==='hatchery');
   const hasFeedmill=allChain.some(n=>n.type==='feedmill');
-  const multiVessel=allChain.some(n=>n.type==='harvest'&&(n.vesselCount||1)>1);
+
+  // Markets & certs
   const hasMSC=prods.some(p=>p.cert==='MSC');
   const hasASC=prods.some(p=>p.cert==='ASC');
-  const hasEUMkt=prods.some(p=>(p.markets||[]).some(m=>EU27.includes(m)));
-  const hasUSMkt=prods.some(p=>(p.markets||[]).includes('US'));
+  const hasEU=prods.some(p=>(p.markets||[]).some(m=>EU27.includes(m)));
+  const hasUS=prods.some(p=>(p.markets||[]).includes('US'));
+  const isFrozen=prods.some(p=>p.form==='Frozen'||p.form==='Smoked');
 
-  const docs=[];
+  // Multi-vessel
+  const multiVessel=allChain.some(n=>n.type==='harvest'&&(n.vesselCount||1)>1);
+  const vesselCount=allChain.filter(n=>n.type==='harvest').reduce((a,n)=>a+(n.vesselCount||1),0);
+
+  // Build precise evidence groups — each group = one document type + which questions it answers
+  const groups=[];
+
   if(hasHarvest){
-    docs.push('🎣 Fishing licences, vessel registration documents, catch records');
-    if(multiVessel)docs.push('🚢 One document per vessel — you can upload multiple files per question');
+    const items=['Vessel name & IMO number (fv_name, fv_imo)','Flag state & registration (fv_flag)','RFMO & vessel registry listing with hyperlink (fv_rfmo)','Fishing licence / authorisation (fv_permit)','VMS / AIS tracking confirmation (fv_vms, fv_ais)','IUU blacklist check result (fv_iuu_check)'];
+    if(multiVessel)items.push(`You have ${vesselCount} vessels — upload one document per vessel where needed`);
+    groups.push({icon:'🎣',title:'Fishing Vessel Documents',color:'#f0fdf4',border:'#bbf7d0',items});
   }
-  if(hasOVP)docs.push('🔧 On-vessel processing records, batch/lot codes assigned at sea');
-  if(hasTS)docs.push('🔄 Transshipment authorisation, RFMO carrier vessel listings');
-  if(hasLanding||hasVL)docs.push('⚓ Landing declarations, port receipts, weigh tickets');
-  if(hasProc)docs.push('🏭 Facility approval numbers, HACCP plan, processing records');
-  if(hasAgg)docs.push('📦 Aggregation/lot records, input-output reconciliation documents');
-  if(hasSR)docs.push('🚢 Bills of Lading, packing lists, commercial invoices');
-  if(hasFarm)docs.push('🌾 Farm licence, stocking records, water quality reports');
-  if(hasHatchery)docs.push('🐟 Hatchery registration, broodstock records, disease treatment logs');
-  if(hasFeedmill)docs.push('🌾 Feedmill registration, feed formulation, ingredient traceability');
-  if(hasMSC)docs.push('🏅 MSC Certificate of Conformity, Chain of Custody certificate');
-  if(hasASC)docs.push('🏅 ASC Chain of Custody certificate');
-  if(hasEUMkt)docs.push('🇪🇺 EU catch certificate, competent authority validation, designated port confirmation');
-  if(hasUSMkt)docs.push('🇺🇸 SIMP entry filing records, FSMA 204 traceability lot codes');
-  if(!hasMSC&&!hasASC)docs.push('🏅 Any third-party certifications you hold (BRC, ISO, GLOBALG.A.P.)');
-  docs.push('🔗 Registry hyperlinks to verify vessel/facility listings (Marine Traffic, RFMO portals)');
+  if(hasHarvest){
+    groups.push({icon:'📋',title:'Catch Records',color:'#f0f9ff',border:'#bae6fd',items:[
+      'Catch logbook or e-logbook (species, weight, area, date)',
+      'FAO catch area or fishing zone record (fv_area)',
+      'Geo-coordinates of fishing events (fv_coords)',
+      ...(hasEU?['EU catch certificate validated by flag state competent authority']:['Catch certificate or equivalent document']),
+    ]});
+  }
+  if(hasOVP){
+    groups.push({icon:'🔧',title:'On-Vessel Processing Records',color:'#fff7ed',border:'#fed7aa',items:[
+      'On-board processing log (species, input weight, output weight)',
+      'Lot or batch code assigned at sea',
+      'Processing type record (e.g. headed & gutted, filleted)',
+    ]});
+  }
+  if(hasTS){
+    groups.push({icon:'🔄',title:'Transshipment Documents',color:'#fdf4ff',border:'#e9d5ff',items:[
+      'Transshipment authorisation from flag state',
+      'RFMO carrier vessel listing / authorisation',
+      'Bill of Lading or carrier receipt',
+      'Observer report or electronic monitoring record',
+      ...(hasEU?['RFMO at-sea transshipment notification confirmation']:[]),
+    ]});
+  }
+  if(hasLanding){
+    groups.push({icon:'⚓',title:'Landing Documents',color:'#f0fdf4',border:'#bbf7d0',items:[
+      'Landing declaration submitted to port authority',
+      'Weigh ticket / port authority receipt (net weight)',
+      'Landing authorisation from port authority',
+      ...(hasEU?[
+        'EU-designated port confirmation',
+        'Port inspection report (if inspected)',
+        'Competent authority validation of catch certificate',
+      ]:[]),
+    ]});
+  }
+  if(hasProc){
+    groups.push({icon:'🏭',title:'Processing Facility Documents',color:'#fff7ed',border:'#fed7aa',items:[
+      'EU establishment approval number (if EU market)',
+      'HACCP plan',
+      'Chain of Custody certificate (MSC/ASC/BRC/IFS)',
+      'Production/lot records linking input batch to output lot',
+      ...(hasMSC||hasASC?['CoC audit report or certificate scope statement']:[]),
+    ]});
+  }
+  if(hasAgg){
+    groups.push({icon:'📦',title:'Aggregation Records',color:'#f0f9ff',border:'#bae6fd',items:[
+      'Input lot codes and output lot codes (parent-child record)',
+      'Weight reconciliation document (input vs output weight)',
+      'EU establishment approval number for aggregation facility',
+    ]});
+  }
+  if(hasSR){
+    const srItems=['Commercial invoice','Packing list with lot codes and species (scientific name)','Bill of Lading (sea) / Air Waybill / CMR (road)','Container number and seal number'];
+    if(hasEU)srItems.push('EU health certificate from exporting country competent authority');
+    if(hasUS)srItems.push('SIMP entry filing confirmation','FSMA 204 traceability lot code documentation');
+    if(isFrozen)srItems.push('Reefer temperature log / cold chain continuity record');
+    groups.push({icon:'🚢',title:'Shipping & Export Documents',color:'#f0fdf4',border:'#bbf7d0',items:srItems});
+  }
+  if(hasFarm){
+    groups.push({icon:'🌾',title:'Farm / Aquaculture Documents',color:'#fdf4ff',border:'#e9d5ff',items:[
+      'Farm registration or aquaculture licence',
+      'Stocking date and stocking density records',
+      'Water quality monitoring logs',
+      'Disease treatment and medication records',
+      ...(hasASC?['ASC farm certificate (verifiable on asc-aqua.org)']:['Farm audit report or CoC certificate']),
+    ]});
+  }
+  if(hasHatchery){
+    groups.push({icon:'🐟',title:'Hatchery Documents',color:'#fff7ed',border:'#fed7aa',items:[
+      'Hatchery registration or licence',
+      'Broodstock health certificate',
+      'Juvenile batch and stocking records',
+      'Disease treatment records',
+    ]});
+  }
+  if(hasFeedmill){
+    groups.push({icon:'🌱',title:'Feedmill Documents',color:'#f0fdf4',border:'#bbf7d0',items:[
+      'Feedmill registration or operating licence',
+      'Feed formulation / full ingredient list',
+      'Marine ingredient source certificate (IFFO RS or MarinTrust)',
+      'GMP+ or FAMI-QS feedmill audit certificate',
+    ]});
+  }
+  if(hasMSC){
+    groups.push({icon:'🏅',title:'MSC Certification Documents',color:'#f0fdf4',border:'#bbf7d0',items:[
+      'Your MSC Chain of Custody certificate (verify at msc.org)',
+      'MSC supplier CoC certificate for each upstream supplier',
+      'Transaction certificate for each MSC purchase',
+      'Species separation evidence at transshipment / processing',
+    ]});
+  }
+  if(hasASC){
+    groups.push({icon:'🏅',title:'ASC Certification Documents',color:'#fdf4ff',border:'#e9d5ff',items:[
+      'Your ASC Chain of Custody certificate (verify at asc-aqua.org)',
+      'ASC farm certificate for each farm in your supply chain',
+      'Transaction certificate for each ASC purchase',
+    ]});
+  }
+  if(hasUS){
+    groups.push({icon:'🇺🇸',title:'US Import Compliance',color:'#fffbeb',border:'#fde68a',items:[
+      'NOAA IFTP (International Fisheries Trade Permit)',
+      'SIMP entry filing record for each shipment',
+      'FSMA 204 KDE records (traceability lot code at each CTE)',
+      'FSVP file for this foreign supplier',
+    ]});
+  }
+
+  // Render
   const existing=document.getElementById('sc-complete-modal');
   if(existing)existing.remove();
   const modal=document.createElement('div');
   modal.id='sc-complete-modal';
   modal.style.cssText='position:fixed;inset:0;background:rgba(8,12,32,0.5);backdrop-filter:blur(6px);z-index:700;display:flex;align-items:center;justify-content:center;padding:24px;';
-  modal.innerHTML=`<div style="background:#fff;border-radius:20px;padding:28px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.18);">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-      <div style="width:40px;height:40px;border-radius:12px;background:#f4f0ff;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">📋</div>
-      <div>
-        <div style="font-size:15px;font-weight:800;color:#1a1a2e;">Supply chain saved — before you start</div>
-        <div style="font-size:11px;color:#9aa0b4;margin-top:2px;">Have these ready to upload as supporting evidence:</div>
+
+  const groupHtml=groups.map(g=>`
+    <div style="background:${g.color};border:1.5px solid ${g.border};border-radius:12px;padding:12px 14px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="font-size:16px;">${g.icon}</span>
+        <span style="font-size:12px;font-weight:800;color:#1a1a2e;">${g.title}</span>
+      </div>
+      <ul style="margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;">
+        ${g.items.map(i=>`<li style="font-size:11px;color:#4a4e69;line-height:1.5;">${i}</li>`).join('')}
+      </ul>
+    </div>`).join('');
+
+  modal.innerHTML=`<div style="background:#fff;border-radius:20px;padding:0;max-width:520px;width:100%;max-height:88vh;box-shadow:0 20px 60px rgba(0,0,0,0.18);display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:20px 24px 16px;border-bottom:1px solid #f0f2f8;flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:40px;height:40px;border-radius:12px;background:#f4f0ff;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">📋</div>
+        <div>
+          <div style="font-size:15px;font-weight:800;color:#1a1a2e;">Before you start — have these ready</div>
+          <div style="font-size:11px;color:#9aa0b4;margin-top:2px;">Based on your supply chain, here are the exact documents you'll need to upload as evidence.</div>
+        </div>
       </div>
     </div>
-    <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:20px;">
-      ${docs.map(d=>`<div style="display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#4a4e69;padding:8px 10px;background:#f9fafc;border-radius:8px;line-height:1.5;">${d}</div>`).join('')}
+    <div style="flex:1;overflow-y:auto;padding:16px 24px;">
+      ${groupHtml}
+      <div style="font-size:11px;color:#9aa0b4;margin-top:4px;padding:10px 0;">💡 <strong style="color:#7c3aed;">Tip:</strong> You can upload multiple files per question — and reuse the same document across questions in the same stage.</div>
     </div>
-    <div style="font-size:11px;color:#9aa0b4;margin-bottom:16px;">💡 Tip: You can reuse any document across multiple questions in the same stage — so upload once, use many times.</div>
-    <button onclick="document.getElementById('sc-complete-modal').remove()" style="width:100%;padding:13px;border:none;border-radius:12px;background:#8b5cf6;font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;color:#fff;cursor:pointer;">Got it — Start Assessment →</button>
+    <div style="padding:16px 24px;border-top:1px solid #f0f2f8;flex-shrink:0;">
+      <button onclick="document.getElementById('sc-complete-modal').remove()" style="width:100%;padding:13px;border:none;border-radius:12px;background:#8b5cf6;font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;color:#fff;cursor:pointer;">Got it — Start Assessment →</button>
+    </div>
   </div>`;
   document.body.appendChild(modal);
 }
