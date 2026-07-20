@@ -396,7 +396,7 @@ async function loadVesselsAndPorts(alpha2, alpha3, countryName) {
   const { data: vessels } = await db
     .from('vessels')
     .select('id, current_name, imo, ircs, vessel_category, vessel_flag')
-    .or(`vessel_flag.eq.${alpha2},vessel_flag.eq.${alpha3},vessel_flag.eq.${countryName}`)
+    .in('vessel_flag', [alpha2, alpha3, countryName])
     .order('current_name');
 
   const vesselBody = document.getElementById('vessels-body');
@@ -432,7 +432,7 @@ async function loadVesselsAndPorts(alpha2, alpha3, countryName) {
   const { data: ports } = await db
     .from('ports')
     .select('id, main_port_name, alternate_port_name, un_locode, port_type')
-    .or(`country.eq.${alpha2},country.eq.${alpha3},country.eq.${countryName}`)
+    .in('country', [alpha2, alpha3, countryName])
     .order('main_port_name');
 
   const portBody = document.getElementById('ports-body');
