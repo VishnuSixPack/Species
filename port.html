@@ -959,26 +959,23 @@ function previewMap(){
 // ── HERO PHOTO ────────────────────────────────────────────────────────
 let _heroPhotoUrl = null;
 let _pendingFacilities = []; // for new ports before portId exists
-// ── PHOTO UPLOAD — cached bucket discovery ──
-let _photoBucket=null; // cached after first successful upload
-async function detectBucket(){
-  if(_photoBucket) return _photoBucket;
-  const buckets=['ports','port-photos','project-manhattan','images','public'];
-  for(const b of buckets){
-    // Probe by listing - a 403/404 tells us bucket doesn't exist
-    const {error}=await sb.storage.from(b).list('',{limit:1});
-    if(!error){ _photoBucket=b; return b; }
-  }
-  return null;
-}
+// ── PHOTO UPLOAD ──
+// Bucket 'ports' is the configured bucket — run storage_fix.sql in Supabase if uploads fail
+const STORAGE_BUCKET='ports';
+
 async function uploadFileToStorage(file){
-  const bucket=await detectBucket();
-  if(!bucket) return null;
   const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
   const path=`port-photos/${crypto.randomUUID()}.${ext}`;
-  const {error}=await sb.storage.from(bucket).upload(path,file,{upsert:true,contentType:file.type});
-  if(error){ console.error('Upload error:',error); return null; }
-  const {data}=sb.storage.from(bucket).getPublicUrl(path);
+  const {error}=await sb.storage.from(STORAGE_BUCKET).upload(path,file,{upsert:true,contentType:file.type});
+  if(error){
+    console.error('Upload error:',error);
+    // Surface useful message for RLS issues
+    if(error.message&&error.message.includes('security policy')){
+      toast('Storage permission denied — run storage_fix.sql in Supabase',false);
+    }
+    return null;
+  }
+  const {data}=sb.storage.from(STORAGE_BUCKET).getPublicUrl(path);
   return data.publicUrl;
 }
 async function handleHeroUpload(input){
