@@ -22,6 +22,7 @@
 }
 body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased}
 /* ── SCROLLBAR ── */
+@keyframes guardPop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
 *::-webkit-scrollbar{width:6px;height:6px}
 *::-webkit-scrollbar-track{background:transparent}
 *::-webkit-scrollbar-thumb{background:#d1d5e0;border-radius:99px}
@@ -95,6 +96,8 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3.5px rgba(26,111,219,.12)}
 .field textarea{height:90px;padding:12px 14px;resize:none;line-height:1.6}
 .field input::placeholder{color:#c0c4d0}
+.field-link{color:var(--primary);margin-left:4px;vertical-align:middle;text-decoration:none;opacity:.7;transition:opacity .15s}
+.field-link:hover{opacity:1}
 /* ── PREMIUM CUSTOM DROPDOWN ── */
 .csel{position:relative}
 .csel>select{position:absolute;opacity:0;height:0;width:0;padding:0;border:0;pointer-events:none}
@@ -149,6 +152,26 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
 .btn-primary:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
 .btn-ghost{background:#fff;border-color:var(--border);color:var(--text)}
 .btn-ghost:hover{border-color:var(--line-strong)}
+/* ── PREMIUM TOOLTIP ── */
+[data-tip]{position:relative}
+[data-tip]::after{
+  content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%) translateY(4px);
+  background:rgba(20,24,45,.92);color:#fff;font-size:11.5px;font-weight:500;white-space:nowrap;
+  padding:5px 10px;border-radius:8px;pointer-events:none;opacity:0;visibility:hidden;
+  transition:opacity .18s,transform .18s,visibility .18s;z-index:9999;letter-spacing:.01em;
+  box-shadow:0 4px 12px rgba(0,0,0,.2);
+}
+[data-tip]::before{
+  content:'';position:absolute;bottom:calc(100% + 2px);left:50%;transform:translateX(-50%) translateY(4px);
+  border:5px solid transparent;border-top-color:rgba(20,24,45,.92);
+  pointer-events:none;opacity:0;visibility:hidden;transition:opacity .18s,transform .18s,visibility .18s;z-index:9999;
+}
+[data-tip]:hover::after,[data-tip]:hover::before{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+/* right-aligned tooltip variant */
+[data-tip-right]::after{left:auto;right:0;transform:translateX(0) translateY(4px)}
+[data-tip-right]::before{left:auto;right:12px;transform:translateX(0) translateY(4px)}
+[data-tip-right]:hover::after,[data-tip-right]:hover::before{transform:translateX(0) translateY(0)}
+
 /* ── TERMINAL MODAL ── */
 .modal-overlay{position:fixed;inset:0;background:rgba(20,24,45,.5);backdrop-filter:blur(4px);z-index:300;display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:.2s}
 .modal-overlay.open{opacity:1;visibility:visible}
@@ -233,16 +256,16 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
     </div>
     <!-- Photo actions toolbar: shown when photo exists -->
     <div class="hero-photo-bar" id="heroPhotoBar" style="display:none">
-      <label class="hero-photo-btn" title="Change photo">
+      <label class="hero-photo-btn" data-tip="Change photo">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         Change photo
         <input type="file" accept="image/*" onchange="handleHeroUpload(this)" style="display:none"/>
       </label>
-      <button class="hero-photo-btn" onclick="viewPhoto()" title="View full photo">
+      <button class="hero-photo-btn" onclick="viewPhoto()" data-tip="View full photo">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
         View photo
       </button>
-      <button class="hero-photo-btn danger" onclick="removePhoto()" title="Remove photo">
+      <button class="hero-photo-btn danger" onclick="removePhoto()" data-tip="Remove photo">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
         Remove photo
       </button>
@@ -377,7 +400,7 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
               <input id="berth" placeholder="Main berth identifier"/>
             </div>
           </div>
-          <div class="g2">
+          <div class="g3" style="margin-bottom:14px">
             <div class="field">
               <span>Port Authority</span>
               <input id="port_authority" placeholder="e.g. Port of Aberdeen Authority"/>
@@ -393,6 +416,21 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
                 <div class="csel-panel" id="ownership_panel"></div>
               </div>
             </div>
+            <div class="field">
+              <span>PSMA Party
+                <a href="https://psma-gies.fao.org/designated-ports?pageIndex=0&pageLen=20&sortColumn=portname&sortDirection=ascending" target="_blank" rel="noopener" class="field-link" title="View PSMA Designated Ports list">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                </a>
+              </span>
+              <div class="csel" id="psma_csel">
+                <button type="button" class="csel-trigger" id="psma_trigger">
+                  <span class="csel-lbl ph" id="psma_label">Select…</span>
+                  <svg class="csel-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <input type="hidden" id="psma_party"/>
+                <div class="csel-panel" id="psma_panel"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -405,6 +443,13 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Add Facility
           </button>
+        </div>
+        <div id="facilityGuard" style="display:none;align-items:center;gap:12px;padding:12px 16px;margin:0 0 14px;background:var(--warn-soft);border:1px solid #fcd34d;border-radius:11px;animation:guardPop .25s ease">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warn-dark)" stroke-width="2.2" style="flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--warn-dark)">Save port first</div>
+            <div style="font-size:12px;color:var(--warn-dark);opacity:.85">Please save the port before adding facilities.</div>
+          </div>
         </div>
         <div class="sec-body" id="facilityTreeWrap">
           <div style="color:var(--soft);font-size:13px;text-align:center;padding:20px 0">No facilities added yet.</div>
@@ -687,6 +732,7 @@ function syncCountryDisplay(c){ $('portCountryDisplay').textContent=c||'Select a
 function buildStaticCsels(){
   buildCsel({triggerId:'port_type_trigger',labelId:'port_type_label',hiddenId:'port_type',panelId:'port_type_panel',options:PORT_TYPES,withHint:true});
   buildCsel({triggerId:'ownership_trigger',labelId:'ownership_label',hiddenId:'ownership',panelId:'ownership_panel',options:OWNERSHIP_TYPES,withHint:true});
+  buildCsel({triggerId:'psma_trigger',labelId:'psma_label',hiddenId:'psma_party',panelId:'psma_panel',options:[{v:'Yes',h:'This port is a designated PSMA party port'},{v:'No',h:'Not a PSMA designated port'},{v:'Unknown',h:'Status not confirmed'}],withHint:true});
   buildCsel({triggerId:'harbor_type_trigger',labelId:'harbor_type_label',hiddenId:'harbor_type',panelId:'harbor_type_panel',options:HARBOR_TYPES});
   buildCsel({triggerId:'harbor_size_trigger',labelId:'harbor_size_label',hiddenId:'harbor_size',panelId:'harbor_size_panel',options:HARBOR_SIZES});
   buildCsel({triggerId:'vts_trigger',labelId:'vts_label',hiddenId:'vessel_traffic_service',panelId:'vts_panel',options:VTS_OPTIONS});
@@ -718,6 +764,10 @@ const FAC_TYPE_ICON = {
 };
 
 function openFacilityModal(parentId=null, editFac=null){
+  // Guard: port must be saved first (needs a real ID)
+  if(!editId && !_currentPortId){
+    showPortSaveGuard(); return;
+  }
   _editFacilityId = editFac ? editFac.id : null;
   _parentFacilityId = parentId;
   _facilityPhotoUrl = editFac ? (editFac.photo_url||null) : null;
@@ -780,38 +830,7 @@ document.getElementById('facilityOverlay').addEventListener('click',e=>{
 });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeFacilityModal(); });
 
-async function handleFacilityPhoto(input){
-  const file=input.files[0]; if(!file) return;
-  // Preview
-  const reader=new FileReader();
-  reader.onload=e=>{
-    const img=document.getElementById('facilityPhotoImg');
-    const ph =document.getElementById('facilityPhotoPlaceholder');
-    const pa =document.getElementById('facilityPhotoActions');
-    img.src=e.target.result; img.style.display='block';
-    ph.style.display='none'; pa.style.display='flex';
-  };
-  reader.readAsDataURL(file);
-  // Upload to storage
-  const ext=file.name.split('.').pop().toLowerCase()||'jpg';
-  const path=`facility-photos/${crypto.randomUUID()}.${ext}`;
-  const buckets=['ports','port-photos','project-manhattan','images','public'];
-  for(const bucket of buckets){
-    try{
-      const {error}=await sb.storage.from(bucket).upload(path,file,{upsert:true,contentType:file.type});
-      if(!error){
-        const {data:urlData}=sb.storage.from(bucket).getPublicUrl(path);
-        _facilityPhotoUrl=urlData.publicUrl;
-        toast('Photo uploaded ✓','ok');
-        break;
-      }
-    }catch(e){}
-  }
-  if(!_facilityPhotoUrl){
-    // Fallback: data URL
-    _facilityPhotoUrl=document.getElementById('facilityPhotoImg').src;
-  }
-}
+
 
 function removeFacilityPhoto(){
   _facilityPhotoUrl=null;
@@ -907,13 +926,13 @@ function renderFacilityNode(fac, depth){
         </div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
-        <button class="btn-icon" title="Add sub-facility" onclick="openFacilityModal('${fac.id}',null)" style="color:var(--primary)">
+        <button class="btn-icon" data-tip="Add sub-facility" onclick="openFacilityModal('${fac.id}',null)" style="color:var(--primary)">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
-        <button class="btn-icon" title="Edit" onclick="openFacilityModal(${fac.parent_facility_id?`'${fac.parent_facility_id}'`:'null'},${JSON.stringify(fac)})">
+        <button class="btn-icon" data-tip="Edit" onclick="openFacilityModal(${fac.parent_facility_id?`'${fac.parent_facility_id}'`:'null'},${JSON.stringify(fac)})">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
-        <button class="btn-icon" title="Delete" onclick="deleteFacility('${fac.id}')">✕</button>
+        <button class="btn-icon" data-tip="Delete" onclick="deleteFacility('${fac.id}')">✕</button>
       </div>
     </div>
     ${children.length?`<div style="margin-top:6px;padding-left:12px;border-left:2px solid var(--primary-mid)">${children.map(c=>renderFacilityNode(c,depth)).join('')}</div>`:''}
@@ -940,45 +959,72 @@ function previewMap(){
 // ── HERO PHOTO ────────────────────────────────────────────────────────
 let _heroPhotoUrl = null;
 let _pendingFacilities = []; // for new ports before portId exists
+// ── PHOTO UPLOAD — cached bucket discovery ──
+let _photoBucket=null; // cached after first successful upload
+async function detectBucket(){
+  if(_photoBucket) return _photoBucket;
+  const buckets=['ports','port-photos','project-manhattan','images','public'];
+  for(const b of buckets){
+    // Probe by listing - a 403/404 tells us bucket doesn't exist
+    const {error}=await sb.storage.from(b).list('',{limit:1});
+    if(!error){ _photoBucket=b; return b; }
+  }
+  return null;
+}
+async function uploadFileToStorage(file){
+  const bucket=await detectBucket();
+  if(!bucket) return null;
+  const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
+  const path=`port-photos/${crypto.randomUUID()}.${ext}`;
+  const {error}=await sb.storage.from(bucket).upload(path,file,{upsert:true,contentType:file.type});
+  if(error){ console.error('Upload error:',error); return null; }
+  const {data}=sb.storage.from(bucket).getPublicUrl(path);
+  return data.publicUrl;
+}
 async function handleHeroUpload(input){
   const file=input.files[0]; if(!file) return;
   if(!file.type.startsWith('image/')){ toast('Please select an image file',false); return; }
-  // Show local preview immediately while uploading
+  // Show local preview immediately
   const reader=new FileReader();
   reader.onload=e=>{
     const hero=$('heroWrap');
     hero.style.backgroundImage=`url("${e.target.result}")`;
-    hero.style.backgroundSize='cover';
-    hero.style.backgroundPosition='center';
+    hero.style.backgroundSize='cover'; hero.style.backgroundPosition='center';
     hero.style.backgroundRepeat='no-repeat';
     showPhotoBar();
   };
   reader.readAsDataURL(file);
   toast('Uploading photo…');
-  // Try multiple bucket names in case one exists
-  const buckets=['ports','port-photos','project-manhattan','images','public'];
-  const ext=file.name.split('.').pop().toLowerCase()||'jpg';
-  const path=`port-photos/${crypto.randomUUID()}.${ext}`;
-  let uploaded=false;
-  for(const bucket of buckets){
-    try{
-      const {error}=await sb.storage.from(bucket).upload(path,file,{upsert:true,contentType:file.type});
-      if(!error){
-        const {data:urlData}=sb.storage.from(bucket).getPublicUrl(path);
-        _heroPhotoUrl=urlData.publicUrl;
-        uploaded=true;
-        showPhotoBar();
-        toast('Photo uploaded ✓','ok');
-        break;
-      }
-    }catch(e){ /* try next bucket */ }
+  const publicUrl=await uploadFileToStorage(file);
+  if(publicUrl){
+    _heroPhotoUrl=publicUrl;
+    toast('Photo uploaded ✓','ok');
+  } else {
+    // Storage unavailable — save data URL directly in photo_url column
+    const r2=new FileReader();
+    r2.onload=e=>{ _heroPhotoUrl=e.target.result; toast('Saved photo (no storage bucket found)','ok'); };
+    r2.readAsDataURL(file);
   }
-  if(!uploaded){
-    // Fallback: save as data URL directly in DB (works for small images, no storage needed)
-    const reader2=new FileReader();
-    reader2.onload=e=>{ _heroPhotoUrl=e.target.result; showPhotoBar(); };
-    reader2.readAsDataURL(file);
-    toast('Storage bucket not found — photo saved inline','ok');
+}
+// Expose uploadFileToStorage for facility photo uploads too
+async function handleFacilityPhoto(input){
+  const file=input.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=document.getElementById('facilityPhotoImg');
+    const ph=document.getElementById('facilityPhotoPlaceholder');
+    const pa=document.getElementById('facilityPhotoActions');
+    img.src=e.target.result; img.style.display='block';
+    ph.style.display='none'; pa.style.display='flex';
+  };
+  reader.readAsDataURL(file);
+  toast('Uploading…');
+  const url=await uploadFileToStorage(file);
+  if(url){ _facilityPhotoUrl=url; toast('Photo uploaded ✓','ok'); }
+  else{
+    const r2=new FileReader();
+    r2.onload=e=>{ _facilityPhotoUrl=e.target.result; toast('Saved photo inline','ok'); };
+    r2.readAsDataURL(file);
   }
 }
 
@@ -1007,6 +1053,7 @@ async function savePort(){
     vessel_traffic_service:$('vessel_traffic_service').value||null,
     port_authority:$('port_authority').value.trim()||null,
     ownership:$('ownership').value||null,
+    psma_party:$('psma_party').value||null,
     berth:$('berth').value.trim()||null,
   };
   try{
@@ -1067,6 +1114,7 @@ async function loadPort(id){
   // Sync labels after values are set
   restoreCsel('port_type','port_type_label');
   restoreCsel('ownership','ownership_label');
+  if(p.psma_party){ $('psma_party').value=p.psma_party; restoreCsel('psma_party','psma_label'); }
   restoreCsel('harbor_type','harbor_type_label');
   restoreCsel('harbor_size','harbor_size_label');
   restoreCsel('vessel_traffic_service','vts_label');
@@ -1131,6 +1179,14 @@ function toast(msg,type=''){
   const t=$('toast'); t.textContent=msg;
   t.className='toast show'+(type==='ok'?' ok':type===false?' err':'');
   setTimeout(()=>t.className='toast',3200);
+}
+function showPortSaveGuard(){
+  // Premium inline notification — port must be saved before adding facilities
+  const guard=$('facilityGuard');
+  if(!guard) return;
+  guard.style.display='flex';
+  guard.style.animation='guardPop .25s cubic-bezier(.2,.8,.2,1)';
+  setTimeout(()=>{ guard.style.display='none'; }, 4000);
 }
 </script>
 </body>
