@@ -90,6 +90,10 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 .vessel-sub{font-size:13px;color:var(--muted);margin-top:3px}
 .header-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
 .btn{height:38px;padding:0 18px;border-radius:10px;font-weight:600;font-size:13px;cursor:pointer;border:1.5px solid var(--border);background:#fff;color:var(--text);text-decoration:none;display:inline-flex;align-items:center;gap:7px;font-family:inherit;transition:.15s}
+.btn.secondary{background:rgba(255,255,255,.1);border:1.5px solid var(--border);color:var(--text)}
+.btn.secondary:hover{background:var(--bg)}
+.btn.danger{background:var(--danger-soft);border:1.5px solid #f3cdd5;color:var(--danger)}
+.btn.danger:hover{background:#fde8ea}
 .btn:hover{border-color:var(--line-strong)}
 .btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(26,111,219,.25)}
 .btn.primary:hover{background:var(--primary-dark)}
@@ -595,7 +599,10 @@ function renderHeader(){
   const v=vessel;
   $('hdrTitle').textContent=v.current_name;
   $('hdrSub').textContent=`${v.vessel_subtype||v.vessel_category||'Vessel'} · ${v.vessel_flag||'Flag unknown'}`;
-  $('hdrActions').innerHTML=isAdmin?`<a class="btn primary" href="vessel.html?id=${v.id}">Edit vessel</a>`:'';
+  const backBtn=`<a href="vessel-list.html" class="btn secondary" style="margin-right:8px">← Vessels</a>`;
+  const editBtn=isAdmin?`<a class="btn primary" href="vessel.html?id=${v.id}">Edit vessel</a>`:'';
+  const delBtn=isAdmin?`<button class="btn danger" onclick="confirmDelete('${v.id}')" style="margin-left:8px">Delete vessel</button>`:'';
+  $('hdrActions').innerHTML=backBtn+editBtn+delBtn;
   document.title=`${v.current_name} · Project Manhattan`;
 }
 
@@ -687,34 +694,87 @@ async function renderNotesTab(tc){
 
 // ── OVERVIEW ──
 function renderOverview(v){
-  const ton=v.vessel_tonnage?(v.vessel_tonnage+' '+(v.tonnage_type||'GT')):null;
+  const cat=v.vessel_category||'';
+  const isFishing=cat==='Fishing Vessel';
+  const isReefer=cat==='Carrier/Reefer';
+  const isCargo=cat==='Cargo/Transport';
+  const isSupport=cat==='Support/Tender';
+  const isReeferOrFish=isFishing||isReefer;
+  const lu=v.length_unit||'m';
+  const du=v.draught_unit||'m';
+  const dwtu=v.dwt_unit||'MT';
   const eng=v.engine_power?(v.engine_power+' '+(v.engine_power_unit||'kW')):null;
+
+  // Base fields — shown for ALL types
+  const base=[
+    ['Vessel Category',val(v.vessel_category)],
+    ['Vessel Subtype',val(v.vessel_subtype)],
+    v.general_vessel_type?['General Type',val(v.general_vessel_type)]:null,
+    v.detailed_vessel_type?['Detailed Type',val(v.detailed_vessel_type)]:null,
+    ['Vessel Flag',val(v.vessel_flag)],
+    ['IRCS',val(v.ircs)],
+    ['IMO Number',val(v.imo)],
+    ['MMSI',val(v.mmsi)],
+    ['Registration Number',val(v.registration_number)],
+    v.official_number?['Official Number',val(v.official_number)]:null,
+    ['Port of Registry',val(v.port_of_registry)],
+    ['Built in Country',val(v.built_in_country)],
+    ['Built in Place',val(v.built_in_place)],
+    ['Built in Year',val(v.built_in_year)],
+    ['Hull Material',val(v.hull_material)],
+    ['Crew Complement',val(v.crew_complement)],
+    ['Engine Power',val(eng)],
+    ['AIS Transponder Class',val(v.ais_transponder_class)],
+    v.class_society?['Class Society',val(v.class_society)]:null,
+    v.class_number?['Class Number',val(v.class_number)]:null,
+    ['Flag State Not FOC',bool(v.flag_state_foc)],
+  ].filter(Boolean);
+
+  // Tonnage fields
+  const tonnage=[
+    v.grt?['GRT',val(v.grt+' GRT')]:null,
+    v.vessel_tonnage?['GT / Gross Tonnage',val(v.vessel_tonnage+' '+(v.tonnage_type||'GT'))]:null,
+    v.nrt?['NRT',val(v.nrt+' NRT')]:null,
+    v.dwt?['DWT',val(v.dwt+' '+dwtu)]:null,
+    (isCargo&&v.teu_capacity)?['TEU Capacity',val(v.teu_capacity+' TEUs')]:null,
+  ].filter(Boolean);
+
+  // Dimension fields
+  const dims=[
+    v.registered_length?['Registered Length',val(v.registered_length+' '+lu)]:null,
+    v.loa?['L.O.A',val(v.loa+' '+lu)]:null,
+    v.lbp?['L.B.P',val(v.lbp+' '+lu)]:null,
+    v.beam_m?['Beam',val(v.beam_m+' m')]:null,
+    v.depth_m?['Depth',val(v.depth_m+' m')]:null,
+    v.draught?['Draught',val(v.draught+' '+du)]:null,
+  ].filter(Boolean);
+
+  // Reefer/fishing only fields
+  const reefer=isReeferOrFish?[
+    v.fish_hold_capacity?['Fish Hold Capacity',val(v.fish_hold_capacity+' m³')]:null,
+    v.freezer_type?['Freezing Method',val(v.freezer_type)]:null,
+    v.freezing_method?['Lowest Freezing Temp',val(v.freezing_method+' °C')]:null,
+    v.freezer_count?['Freezer Count',val(v.freezer_count)]:null,
+    v.freezing_capacity?['Freezing Capacity',val(v.freezing_capacity)]:null,
+  ].filter(Boolean):[];
+
+  // Fishing-only
+  const fishing=isFishing?[
+    v.gear_type?['Gear Type',val(v.gear_type)]:null,
+  ].filter(Boolean):[];
+
+  function row([l,v]){ return `<div><div class="dt">${l}</div>${v}</div>`; }
+
+  const sections=[];
+  if(base.length) sections.push(`<div class="card-sub-title" style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft)">Identity</div><div class="dl dl3" style="margin-bottom:16px">${base.map(row).join('')}</div>`);
+  if(tonnage.length) sections.push(`<div class="card-sub-title" style="margin:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft)">Tonnage</div><div class="dl dl3" style="margin-bottom:16px">${tonnage.map(row).join('')}</div>`);
+  if(dims.length) sections.push(`<div class="card-sub-title" style="margin:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft)">Dimensions</div><div class="dl dl3" style="margin-bottom:16px">${dims.map(row).join('')}</div>`);
+  if(reefer.length) sections.push(`<div class="card-sub-title" style="margin:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft)">Reefer / Cold Storage</div><div class="dl dl3" style="margin-bottom:16px">${reefer.map(row).join('')}</div>`);
+  if(fishing.length) sections.push(`<div class="card-sub-title" style="margin:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft)">Fishing</div><div class="dl dl3" style="margin-bottom:16px">${fishing.map(row).join('')}</div>`);
+
   return `<div class="card">
     <div class="card-head"><div class="card-title">Vessel Details</div></div>
-    <div class="dl dl3">
-      <div><div class="dt">Vessel Type</div>${val(v.vessel_subtype||v.vessel_category)}</div>
-      <div><div class="dt">Vessel Flag</div>${val(v.vessel_flag)}</div>
-      <div><div class="dt">IRCS</div>${val(v.ircs)}</div>
-      <div><div class="dt">IMO Number</div>${val(v.imo)}</div>
-      <div><div class="dt">MMSI</div>${val(v.mmsi)}</div>
-      <div><div class="dt">Registration Number</div>${val(v.registration_number)}</div>
-      <div><div class="dt">Port of Registry</div>${val(v.port_of_registry)}</div>
-      <div><div class="dt">Built in Country</div>${val(v.built_in_country)}</div>
-      <div><div class="dt">Built in Place</div>${val(v.built_in_place)}</div>
-      <div><div class="dt">Built in Year</div>${val(v.built_in_year)}</div>
-      <div><div class="dt">Vessel Tonnage</div>${val(ton)}</div>
-      <div><div class="dt">Length (m)</div>${val(v.vessel_length?v.vessel_length+' m':null)}</div>
-      <div><div class="dt">Beam (m)</div>${val(v.beam_m?v.beam_m+' m':null)}</div>
-      <div><div class="dt">Depth (m)</div>${val(v.depth_m?v.depth_m+' m':null)}</div>
-      <div><div class="dt">Crew Complement</div>${val(v.crew_complement)}</div>
-      <div><div class="dt">Engine Power</div>${val(eng)}</div>
-      <div><div class="dt">Fish Hold Capacity (m³)</div>${val(v.fish_hold_capacity?v.fish_hold_capacity+' m³':null)}</div>
-      <div><div class="dt">Lowest Freezing Temp (°C)</div>${val(v.freezing_method)}</div>
-      <div><div class="dt">Freezer Count</div>${val(v.freezer_count)}</div>
-      <div><div class="dt">Freezing Capacity</div>${val(v.freezing_capacity)}</div>
-      <div><div class="dt">Hull Material</div>${val(v.hull_material)}</div>
-      <div><div class="dt">Flag State Not FOC</div>${bool(v.flag_state_foc)}</div>
-    </div>
+    ${sections.join('')}
   </div>`;
 }
 
@@ -2024,6 +2084,26 @@ async function saveModal(){
   await loadHistory();
 }
 
+async function confirmDelete(vesselId){
+  // Step 1: premium confirm
+  const ok=await showConfirm(
+    'Delete this vessel?',
+    'This will permanently remove all vessel data including history, VOSI, and compliance records. This cannot be undone.',
+    'Continue to delete'
+  );
+  if(!ok) return;
+  // Step 2: password gate
+  const pwd=prompt('Enter deletion password to confirm:');
+  if(pwd!=='369123'){
+    if(pwd!==null) alert('Incorrect password. Deletion cancelled.');
+    return;
+  }
+  // Delete
+  const {error}=await sb.from('vessels').delete().eq('id',vesselId);
+  if(error){ toast('Delete failed: '+error.message,true); return; }
+  toast('Vessel deleted');
+  setTimeout(()=>location.href='vessel-list.html',1000);
+}
 function toggleAvatarMenu(){$('avatarMenu').classList.toggle('open');}
 document.addEventListener('click',e=>{
   if(!e.target.closest('.avatar-btn')) $('avatarMenu')?.classList.remove('open');

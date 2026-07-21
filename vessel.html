@@ -425,15 +425,47 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
       </div>
 
       <div class="g3" style="margin-top:16px">
-        <div class="field"><span>Vessel Tonnage</span>
+        <!-- General vessel type fields -->
+        <div class="field"><span>General Vessel Type</span><input id="general_vessel_type" placeholder="e.g. Fishing Vessel, Cargo Ship"/></div>
+        <div class="field"><span>Detailed Vessel Type</span><input id="detailed_vessel_type" placeholder="e.g. Purse Seiner, Container Ship"/></div>
+        <div class="field"><span>Official Number</span><input id="official_number" placeholder="Official registration number"/></div>
+        <!-- Tonnage -->
+        <div class="field"><span>GRT <small>Gross Register Tonnage</small></span><input id="grt" type="number" placeholder="e.g. 1825" step="any"/></div>
+        <div class="field"><span>GT <small>Gross Tonnage</small></span>
           <div class="inline-pair">
             <input id="vessel_tonnage" type="number" placeholder="e.g. 1200" step="any"/>
             <select id="tonnage_type"><option value="GT">GT</option><option value="GRT">GRT</option><option value="NT">NT</option></select>
           </div>
         </div>
-        <div class="field"><span>Length (m)</span><input id="vessel_length" type="number" placeholder="e.g. 65" step="any"/></div>
+        <div class="field"><span>NRT <small>Net Register Tonnage</small></span><input id="nrt" type="number" placeholder="e.g. 550" step="any"/></div>
+        <div class="field"><span>DWT <small>Dead Weight Tonnage</small></span>
+          <div class="inline-pair">
+            <input id="dwt" type="number" placeholder="e.g. 5000" step="any"/>
+            <select id="dwt_unit"><option value="MT">MT</option><option value="LT">LT</option><option value="ST">ST</option></select>
+          </div>
+        </div>
+        <div class="field" id="teuWrap"><span>TEU Capacity</span><input id="teu_capacity" type="number" placeholder="e.g. 1200 TEUs" step="any"/></div>
+        <!-- Dimensions -->
+        <div class="field"><span>Registered Length</span>
+          <div class="inline-pair">
+            <input id="registered_length" type="number" placeholder="e.g. 74.9" step="any"/>
+            <select id="length_unit"><option value="m">m</option><option value="ft">ft</option></select>
+          </div>
+        </div>
+        <div class="field"><span>L.O.A <small>Length Overall</small></span><input id="loa" type="number" placeholder="e.g. 76.5" step="any"/></div>
+        <div class="field"><span>L.B.P <small>Length Between Perp.</small></span><input id="lbp" type="number" placeholder="e.g. 72.0" step="any"/></div>
         <div class="field"><span>Beam (m)</span><input id="beam_m" type="number" placeholder="e.g. 12" step="any"/></div>
         <div class="field"><span>Depth (m)</span><input id="depth_m" type="number" placeholder="e.g. 5" step="any"/></div>
+        <div class="field"><span>Draught</span>
+          <div class="inline-pair">
+            <input id="draught" type="number" placeholder="e.g. 6.5" step="any"/>
+            <select id="draught_unit"><option value="m">m</option><option value="ft">ft</option></select>
+          </div>
+        </div>
+        <!-- Classification & technical -->
+        <div class="field"><span>Class Society</span><input id="class_society" placeholder="e.g. Lloyd's Register, DNV"/></div>
+        <div class="field"><span>Class Number</span><input id="class_number" placeholder="Classification number"/></div>
+        <div class="field"><span>AIS Transponder Class</span><select id="ais_transponder_class"><option value="">Select…</option><option>Class A</option><option>Class B</option><option>Class B+</option><option>None</option></select></div>
         <div class="field"><span>Crew Complement</span><input id="crew_complement" type="number" placeholder="e.g. 24" step="any"/></div>
         <div class="field" id="gearWrap"><span>Gear Type</span><input id="gear_type" placeholder="e.g. Purse Seine, Longline, Trawl…"/></div>
         <div class="field"><span>Engine Power</span>
@@ -442,6 +474,7 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
             <select id="engine_power_unit"><option value="kW">kW</option><option value="PS">PS</option><option value="BHP">BHP</option></select>
           </div>
         </div>
+        <!-- Reefer/fishing fields -->
         <div class="field" id="fishHoldWrap"><span>Fish Hold Capacity (m³)</span><input id="fish_hold_capacity" type="number" placeholder="e.g. 800" step="any"/></div>
         <div class="field" id="freezerWrap"><span>Freezing Method</span><input id="freezer_type" placeholder="e.g. RSW, Blast freeze, Brine"/></div>
         <div class="field" id="freezingMethodWrap"><span>Lowest Freezing Temp (°C)</span><input id="freezing_method" type="number" step="any" placeholder="e.g. -60"/></div>
@@ -1148,6 +1181,9 @@ const TAB_VISIBILITY={
   fishHoldWrap:['Fishing Vessel','Carrier/Reefer'],
   freezerWrap:['Fishing Vessel','Carrier/Reefer'],
   freezerCntWrap:['Fishing Vessel','Carrier/Reefer'],
+  freezingMethodWrap:['Fishing Vessel','Carrier/Reefer'],
+  freezingCapWrap:['Fishing Vessel','Carrier/Reefer'],
+  teuWrap:['Cargo/Transport'],
 };
 
 document.querySelectorAll('.wiz-cat-opt').forEach(o=>{
@@ -1291,6 +1327,9 @@ async function loadVessel(id){
   const texts=['current_name','imo','mmsi','ircs','registration_number','vessel_flag','port_of_registry','built_in_country','built_in_year','built_in_place',
     'vessel_tonnage','vessel_length','beam_m','depth_m','crew_complement','fish_hold_capacity',
     'gear_type','engine_power','freezer_type','freezer_count','freezing_capacity','freezing_method','hull_material','vessel_master_name','master_nationality',
+    'general_vessel_type','detailed_vessel_type','official_number','grt','nrt','dwt','dwt_unit','teu_capacity',
+    'registered_length','loa','lbp','length_unit','draught','draught_unit',
+    'class_society','class_number','ais_transponder_class',
     'registered_owner','registered_owner_addr','beneficial_owner','beneficial_owner_addr',
     'operator_manager','operator_addr','charterer','charterer_addr','charter_notified_by','charter_host_ccm','charter_notes',
     'uk_auth_no','uk_activities','eu_approval_no','ffa_id','ffa_status','ffa_registrant_acting','ffa_reason_deregistration',
@@ -1451,6 +1490,12 @@ $('vForm').addEventListener('submit',async e=>{
     tags:getSelectedTags(),photo_url:finalPhotoUrl||null,
     vessel_flag:g('vessel_flag'),port_of_registry:g('port_of_registry'),
     built_in_country:g('built_in_country'),built_in_year:g('built_in_year')||null,built_in_place:g('built_in_place')||null,
+    general_vessel_type:g('general_vessel_type')||null,detailed_vessel_type:g('detailed_vessel_type')||null,official_number:g('official_number')||null,
+    grt:parseFloat(g('grt'))||null,nrt:parseFloat(g('nrt'))||null,dwt:parseFloat(g('dwt'))||null,dwt_unit:g('dwt_unit')||'MT',
+    teu_capacity:parseInt(g('teu_capacity'))||null,
+    registered_length:parseFloat(g('registered_length'))||null,loa:parseFloat(g('loa'))||null,lbp:parseFloat(g('lbp'))||null,length_unit:g('length_unit')||'m',
+    draught:parseFloat(g('draught'))||null,draught_unit:g('draught_unit')||'m',
+    class_society:g('class_society')||null,class_number:g('class_number')||null,ais_transponder_class:g('ais_transponder_class')||null,
     previous_names:prevNames.length?prevNames:null,
     previous_flags:prevFlags.length?prevFlags:null,
     vessel_tonnage:g('vessel_tonnage')||null,tonnage_type:g('tonnage_type')||null,

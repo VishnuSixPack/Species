@@ -173,6 +173,10 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
       </div>
     </div>
     <div class="identity-actions">
+      <a href="port-list.html" class="btn btn-ghost" style="border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.15);color:#fff;backdrop-filter:blur(6px)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        Ports
+      </a>
       <a href="#" class="btn btn-primary" id="editBtn" style="display:none;box-shadow:0 4px 16px rgba(0,0,0,.3)">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         Edit Port
@@ -240,6 +244,48 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
 
 <div class="toast" id="toast"></div>
 
+<!-- FACILITY DETAIL MODAL -->
+<div id="facModal" onclick="if(event.target===this)closeFacModal()" style="display:none;position:fixed;inset:0;background:rgba(20,24,45,.55);backdrop-filter:blur(5px);z-index:400;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:20px;box-shadow:0 8px 32px rgba(20,24,45,.16),0 32px 64px rgba(20,24,45,.10);width:560px;max-width:95vw;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;transform:scale(.95);transition:transform .22s cubic-bezier(.2,.8,.2,1)" id="facModalBox">
+    <!-- Photo hero -->
+    <div id="facModalPhoto" style="height:180px;background:linear-gradient(135deg,#1a3a6b,#1a6fdb);position:relative;flex-shrink:0;overflow:hidden">
+      <div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(10,20,50,.6))"></div>
+      <button onclick="closeFacModal()" style="position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.35);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);z-index:2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div style="position:absolute;bottom:14px;left:18px;z-index:2">
+        <div id="facModalIcon" style="font-size:28px;margin-bottom:4px"></div>
+        <div id="facModalName" style="font-size:20px;font-weight:800;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.5)"></div>
+        <div id="facModalType" style="font-size:12px;color:rgba(255,255,255,.8);margin-top:3px;font-weight:600"></div>
+      </div>
+    </div>
+    <!-- Content -->
+    <div style="overflow-y:auto;flex:1;padding:22px 24px">
+      <!-- Details grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px" id="facModalDetails"></div>
+      <!-- Map -->
+      <div id="facModalMapWrap" style="display:none;margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:8px">Location</div>
+        <div id="facModalMap" style="height:200px;border-radius:11px;overflow:hidden;border:1.5px solid var(--line)"></div>
+      </div>
+      <!-- Notes -->
+      <div id="facModalNotesWrap" style="display:none">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:6px">Notes</div>
+        <div id="facModalNotes" style="font-size:13.5px;color:var(--text);line-height:1.65;background:var(--bg);border-radius:9px;padding:12px 14px"></div>
+      </div>
+      <!-- Sub-facilities -->
+      <div id="facModalChildrenWrap" style="display:none;margin-top:16px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:8px">Sub-facilities</div>
+        <div id="facModalChildren"></div>
+      </div>
+    </div>
+    <!-- Footer -->
+    <div style="padding:14px 24px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;flex-shrink:0">
+      <button onclick="closeFacModal()" style="height:40px;padding:0 20px;border-radius:10px;border:1.5px solid var(--border);background:#fff;font:inherit;font-size:13.5px;font-weight:600;color:var(--text);cursor:pointer">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- PHOTO LIGHTBOX -->
 <div id="photoLightbox" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:2000;align-items:center;justify-content:center;cursor:zoom-out;backdrop-filter:blur(8px)">
   <img id="lightboxImg" style="max-width:90vw;max-height:88vh;border-radius:14px;box-shadow:0 8px 60px rgba(0,0,0,.8);object-fit:contain" alt="Port photo"/>
@@ -302,6 +348,7 @@ function renderTerminals(facilities){
             ${fac.notes?`<span>${esc(fac.notes.slice(0,60))}${fac.notes.length>60?'…':''}</span>`:''}
           </div>
         </div>
+        <button onclick="openFacilityDetail(${JSON.stringify(fac).replace(/'/g,'&apos;')})" style="height:30px;padding:0 12px;border-radius:8px;border:1.5px solid var(--border);background:#fff;font:inherit;font-size:12px;font-weight:600;color:var(--primary);cursor:pointer;flex-shrink:0;transition:.14s;white-space:nowrap" onmouseover="this.style.background='var(--primary-soft)'" onmouseout="this.style.background='#fff'">View</button>
       </div>
       ${children.length?`<div style="padding-left:12px;margin-top:4px">${children.map(c=>renderNode(c,depth+1)).join('')}</div>`:''}
     </div>`;
@@ -388,6 +435,7 @@ function renderHeader(p){
   renderQuickFacts(p);
   // Load terminals
   const {data:terms}=await sb.from('port_facilities').select('*').eq('port_id',vid).order('sort_order').order('created_at');
+  _allFacilities=terms||[];
   renderTerminals(terms||[]);
 })();
 
@@ -396,6 +444,70 @@ function closeLightbox(){
   const lb=document.getElementById('photoLightbox');
   if(lb) lb.style.display='none';
   document.body.style.overflow='';
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){ closeLightbox(); closeFacModal(); }
+});
+
+// ── FACILITY DETAIL MODAL ──
+let _allFacilities=[];
+const FAC_ICON_MAP={'Port Area':'🏭','Terminal':'🚢','Berth':'⚓','Jetty':'🪝','Wharf':'🏗','Pier':'🛳','Dock':'🔧','Marina':'⛵','Other':'📍'};
+
+function openFacilityDetail(fac){
+  const modal=$('facModal'); if(!modal) return;
+  const icon=FAC_ICON_MAP[fac.facility_type]||'📍';
+  const photo=$('facModalPhoto');
+  if(fac.photo_url){
+    photo.style.backgroundImage=`url('${fac.photo_url.replace(/'/g,'%27')}')`;
+    photo.style.backgroundSize='cover'; photo.style.backgroundPosition='center';
+  } else {
+    photo.style.backgroundImage='linear-gradient(135deg,#1a3a6b,#1a6fdb)';
+  }
+  $('facModalIcon').textContent=icon;
+  $('facModalName').textContent=fac.name;
+  $('facModalType').textContent=fac.facility_type||'';
+  const details=[];
+  if(fac.facility_type) details.push(['Type', fac.facility_type]);
+  if(fac.latitude&&fac.longitude) details.push(['Coordinates', `${parseFloat(fac.latitude).toFixed(5)}, ${parseFloat(fac.longitude).toFixed(5)}`]);
+  $('facModalDetails').innerHTML=details.map(([l,v])=>`
+    <div>
+      <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--soft);margin-bottom:3px">${esc(l)}</div>
+      <div style="font-size:13.5px;font-weight:500;color:var(--text);font-family:${l==='Coordinates'?'monospace':'inherit'}">${esc(v)}</div>
+    </div>`).join('');
+  const mapWrap=$('facModalMapWrap'), mapEl=$('facModalMap');
+  if(fac.latitude&&fac.longitude){
+    const lat=parseFloat(fac.latitude), lon=parseFloat(fac.longitude);
+    mapEl.innerHTML=`<iframe width="100%" height="100%" frameborder="0" style="border:0" loading="lazy"
+      src="https://www.openstreetmap.org/export/embed.html?bbox=${lon-.05}%2C${lat-.04}%2C${lon+.05}%2C${lat+.04}&layer=mapnik&marker=${lat}%2C${lon}" allowfullscreen></iframe>`;
+    mapWrap.style.display='block';
+  } else { mapWrap.style.display='none'; }
+  const notesWrap=$('facModalNotesWrap');
+  if(fac.notes){ $('facModalNotes').textContent=fac.notes; notesWrap.style.display='block'; }
+  else notesWrap.style.display='none';
+  const children=_allFacilities.filter(f=>f.parent_facility_id===fac.id);
+  const childWrap=$('facModalChildrenWrap'), childEl=$('facModalChildren');
+  if(children.length){
+    childEl.innerHTML=children.map(c=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:9px;margin-bottom:6px;cursor:pointer" onclick="openFacilityDetail(${JSON.stringify(c).replace(/'/g,'&apos;')})" onmouseover="this.style.background='var(--primary-soft)'" onmouseout="this.style.background='var(--bg)'">
+        <span style="font-size:18px">${FAC_ICON_MAP[c.facility_type]||'📍'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(c.name)}</div>
+          <div style="font-size:11.5px;color:var(--muted)">${esc(c.facility_type||'')}${c.latitude&&c.longitude?' · '+parseFloat(c.latitude).toFixed(4)+', '+parseFloat(c.longitude).toFixed(4):''}</div>
+        </div>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--soft)" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>`).join('');
+    childWrap.style.display='block';
+  } else { childWrap.style.display='none'; }
+  modal.style.display='flex';
+  document.body.style.overflow='hidden';
+  requestAnimationFrame(()=>{ $('facModalBox').style.transform='scale(1)'; });
+}
+
+function closeFacModal(){
+  const modal=$('facModal'); if(!modal||modal.style.display==='none') return;
+  $('facModalBox').style.transform='scale(.95)';
+  setTimeout(()=>{ modal.style.display='none'; document.body.style.overflow=''; $('facModalBox').style.transform='scale(.95)'; },180);
 }
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeLightbox(); });
 
@@ -408,6 +520,48 @@ function toast(msg,type=''){
   setTimeout(()=>t.className='toast',3200);
 }
 </script>
+<!-- FACILITY DETAIL MODAL -->
+<div id="facModal" onclick="if(event.target===this)closeFacModal()" style="display:none;position:fixed;inset:0;background:rgba(20,24,45,.55);backdrop-filter:blur(5px);z-index:400;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:20px;box-shadow:0 8px 32px rgba(20,24,45,.16),0 32px 64px rgba(20,24,45,.10);width:560px;max-width:95vw;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;transform:scale(.95);transition:transform .22s cubic-bezier(.2,.8,.2,1)" id="facModalBox">
+    <!-- Photo hero -->
+    <div id="facModalPhoto" style="height:180px;background:linear-gradient(135deg,#1a3a6b,#1a6fdb);position:relative;flex-shrink:0;overflow:hidden">
+      <div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(10,20,50,.6))"></div>
+      <button onclick="closeFacModal()" style="position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.35);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);z-index:2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div style="position:absolute;bottom:14px;left:18px;z-index:2">
+        <div id="facModalIcon" style="font-size:28px;margin-bottom:4px"></div>
+        <div id="facModalName" style="font-size:20px;font-weight:800;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.5)"></div>
+        <div id="facModalType" style="font-size:12px;color:rgba(255,255,255,.8);margin-top:3px;font-weight:600"></div>
+      </div>
+    </div>
+    <!-- Content -->
+    <div style="overflow-y:auto;flex:1;padding:22px 24px">
+      <!-- Details grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px" id="facModalDetails"></div>
+      <!-- Map -->
+      <div id="facModalMapWrap" style="display:none;margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:8px">Location</div>
+        <div id="facModalMap" style="height:200px;border-radius:11px;overflow:hidden;border:1.5px solid var(--line)"></div>
+      </div>
+      <!-- Notes -->
+      <div id="facModalNotesWrap" style="display:none">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:6px">Notes</div>
+        <div id="facModalNotes" style="font-size:13.5px;color:var(--text);line-height:1.65;background:var(--bg);border-radius:9px;padding:12px 14px"></div>
+      </div>
+      <!-- Sub-facilities -->
+      <div id="facModalChildrenWrap" style="display:none;margin-top:16px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:8px">Sub-facilities</div>
+        <div id="facModalChildren"></div>
+      </div>
+    </div>
+    <!-- Footer -->
+    <div style="padding:14px 24px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;flex-shrink:0">
+      <button onclick="closeFacModal()" style="height:40px;padding:0 20px;border-radius:10px;border:1.5px solid var(--border);background:#fff;font:inherit;font-size:13.5px;font-weight:600;color:var(--text);cursor:pointer">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- PHOTO LIGHTBOX -->
 <div id="photoLightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:2000;align-items:center;justify-content:center;cursor:zoom-out" onclick="closeLightbox()">
   <img id="lightboxImg" style="max-width:95vw;max-height:92vh;border-radius:12px;box-shadow:0 8px 48px rgba(0,0,0,.6);object-fit:contain;pointer-events:none" alt="Port photo"/>
