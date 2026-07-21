@@ -545,20 +545,26 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
       <div class="g2" style="margin-bottom:14px">
         <div class="field">
           <span>Facility Type</span>
-          <select id="fac_type" style="height:44px;border:1.5px solid var(--border);border-radius:10px;padding:0 12px;font:inherit;font-size:13.5px;width:100%;appearance:none;background:#fff url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2714%27 height=%2714%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%236b7280%27 stroke-width=%272.2%27%3E%3Cpolyline points=%276 9 12 15 18 9%27/%3E%3C/svg%3E') no-repeat right 12px center;background-size:14px">
-            <option value="">Select type…</option>
-            <option>Port Area</option>
-            <option>Terminal</option>
-            <option>Berth</option>
-            <option>Jetty</option>
-            <option>Wharf</option>
-            <option>Pier</option>
-            <option>Dock</option>
-            <option>Marina</option>
-            <option>Offshore Platform</option>
-            <option>Anchorage</option>
-            <option>Other</option>
-          </select>
+          <div class="csel" id="fac_type_csel" style="position:relative">
+            <button type="button" class="csel-trigger" onclick="toggleFacTypeCsel(event)">
+              <span class="csel-lbl ph" id="fac_type_label">Select type…</span>
+              <svg class="csel-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <input type="hidden" id="fac_type"/>
+            <div class="csel-panel" id="fac_type_panel">
+            <div class="csel-opt" onclick="pickFacType('Port Area')">Port Area</div>
+            <div class="csel-opt" onclick="pickFacType('Terminal')">Terminal</div>
+            <div class="csel-opt" onclick="pickFacType('Berth')">Berth</div>
+            <div class="csel-opt" onclick="pickFacType('Jetty')">Jetty</div>
+            <div class="csel-opt" onclick="pickFacType('Wharf')">Wharf</div>
+            <div class="csel-opt" onclick="pickFacType('Pier')">Pier</div>
+            <div class="csel-opt" onclick="pickFacType('Dock')">Dock</div>
+            <div class="csel-opt" onclick="pickFacType('Marina')">Marina</div>
+            <div class="csel-opt" onclick="pickFacType('Offshore Platform')">Offshore Platform</div>
+            <div class="csel-opt" onclick="pickFacType('Anchorage')">Anchorage</div>
+            <div class="csel-opt" onclick="pickFacType('Other')">Other</div>
+            </div>
+          </div>
         </div>
         <div class="field">
           <span>Name <span style="color:var(--danger)">*</span></span>
@@ -763,6 +769,23 @@ const FAC_TYPE_ICON = {
   'Wharf':'🏗','Pier':'🛳','Dock':'🔧','Marina':'⛵','Offshore Platform':'🛢','Anchorage':'⚓','Other':'📍'
 };
 
+function toggleFacTypeCsel(e){
+  e.stopPropagation();
+  const wrap=document.getElementById('fac_type_csel'); if(!wrap) return;
+  const wasOpen=wrap.classList.contains('open');
+  document.querySelectorAll('.csel.open').forEach(el=>el.classList.remove('open','drop-up'));
+  if(!wasOpen){
+    const rect=wrap.querySelector('.csel-trigger').getBoundingClientRect();
+    if(window.innerHeight-rect.bottom<220&&rect.top>220) wrap.classList.add('drop-up');
+    wrap.classList.add('open');
+  }
+}
+function pickFacType(val){
+  document.getElementById('fac_type').value=val;
+  const lbl=document.getElementById('fac_type_label');
+  if(lbl){lbl.textContent=val;lbl.className='csel-lbl';}
+  document.getElementById('fac_type_csel')?.classList.remove('open','drop-up');
+}
 function openFacilityModal(parentId=null, editFac=null){
   // Guard: port must be saved first (needs a real ID)
   if(!editId && !_currentPortId){
@@ -779,8 +802,9 @@ function openFacilityModal(parentId=null, editFac=null){
   const parentChip= document.getElementById('facilityParentChip');
   const addChildRow= document.getElementById('facilityAddChildRow');
 
-  // Reset fields
-  document.getElementById('fac_type').value  = editFac ? (editFac.facility_type||'') : '';
+  // Reset fields — use pickFacType to sync csel label
+  if(editFac?.facility_type) pickFacType(editFac.facility_type);
+  else { document.getElementById('fac_type').value=''; const l=document.getElementById('fac_type_label'); if(l){l.textContent='Select type…';l.className='csel-lbl ph';} }
   document.getElementById('fac_name').value  = editFac ? (editFac.name||'') : '';
   document.getElementById('fac_lat').value   = editFac ? (editFac.latitude||'') : '';
   document.getElementById('fac_lon').value   = editFac ? (editFac.longitude||'') : '';
@@ -860,9 +884,10 @@ async function saveFacility(){
     if(_editFacilityId){
       const {error}=await sb.from('port_facilities').update(fac).eq('id',_editFacilityId);
       if(error) throw error;
-      // Update local cache
+      // Reload from DB to get accurate photo_url and all fields
+      const {data:fresh}=await sb.from('port_facilities').select('*').eq('id',_editFacilityId).single();
       const idx=_facilities.findIndex(f=>f.id===_editFacilityId);
-      if(idx>-1) _facilities[idx]={..._facilities[idx],...fac};
+      if(idx>-1&&fresh) _facilities[idx]=fresh;
     } else {
       const {data,error}=await sb.from('port_facilities').insert(fac).select('*').single();
       if(error) throw error;
@@ -908,6 +933,13 @@ function renderFacilityTree(){
   wrap.innerHTML=topLevel.map(f=>renderFacilityNode(f,0)).join('');
 }
 
+function editFacilityById(id){
+  // Look up facility from cache — avoids JSON in onclick attribute
+  const fac=_facilities.find(f=>f.id===id);
+  if(!fac) return;
+  openFacilityModal(fac.parent_facility_id||null, fac);
+}
+
 function renderFacilityNode(fac, depth){
   const children=_facilities.filter(f=>f.parent_facility_id===fac.id);
   const indent=depth*18;
@@ -929,7 +961,7 @@ function renderFacilityNode(fac, depth){
         <button class="btn-icon" data-tip="Add sub-facility" onclick="openFacilityModal('${fac.id}',null)" style="color:var(--primary)">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         </button>
-        <button class="btn-icon" data-tip="Edit" onclick="openFacilityModal(${fac.parent_facility_id?`'${fac.parent_facility_id}'`:'null'},${JSON.stringify(fac)})">
+        <button class="btn-icon" data-tip="Edit" onclick="editFacilityById('${fac.id}')">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
         <button class="btn-icon" data-tip="Delete" onclick="deleteFacility('${fac.id}')">✕</button>

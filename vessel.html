@@ -428,7 +428,7 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
         <!-- General vessel type fields -->
         <div class="field"><span>General Vessel Type</span><input id="general_vessel_type" placeholder="e.g. Fishing Vessel, Cargo Ship"/></div>
         <div class="field"><span>Detailed Vessel Type</span><input id="detailed_vessel_type" placeholder="e.g. Purse Seiner, Container Ship"/></div>
-        <div class="field"><span>Official Number</span><input id="official_number" placeholder="Official registration number"/></div>
+        <div class="field" id="officialNumWrap"><span>Official Number</span><input id="official_number" placeholder="Official registration number"/></div>
         <!-- Tonnage -->
         <div class="field"><span>Gross Tonnage</span>
           <div class="inline-pair">
@@ -436,8 +436,8 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
             <select id="tonnage_type"><option value="GT">GT</option><option value="GRT">GRT</option></select>
           </div>
         </div>
-        <div class="field"><span>NRT <small>Net Register Tonnage</small></span><input id="nrt" type="number" placeholder="e.g. 550" step="any"/></div>
-        <div class="field"><span>DWT <small>Dead Weight Tonnage</small></span>
+        <div class="field" id="nrtWrap"><span>NRT <small>Net Register Tonnage</small></span><input id="nrt" type="number" placeholder="e.g. 550" step="any"/></div>
+        <div class="field" id="dwtWrap"><span>DWT <small>Dead Weight Tonnage</small></span>
           <div class="inline-pair">
             <input id="dwt" type="number" placeholder="e.g. 5000" step="any"/>
             <select id="dwt_unit"><option value="MT">MT</option><option value="LT">LT</option><option value="ST">ST</option></select>
@@ -445,26 +445,26 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
         </div>
         <div class="field" id="teuWrap"><span>TEU Capacity</span><input id="teu_capacity" type="number" placeholder="e.g. 1200 TEUs" step="any"/></div>
         <!-- Dimensions -->
-        <div class="field"><span>Registered Length</span>
+        <div class="field" id="regLenWrap"><span>Registered Length</span>
           <div class="inline-pair">
             <input id="registered_length" type="number" placeholder="e.g. 74.9" step="any"/>
             <select id="length_unit"><option value="m">m</option><option value="ft">ft</option></select>
           </div>
         </div>
-        <div class="field"><span>L.O.A <small>Length Overall</small></span><input id="loa" type="number" placeholder="e.g. 76.5" step="any"/></div>
-        <div class="field"><span>L.B.P <small>Length Between Perp.</small></span><input id="lbp" type="number" placeholder="e.g. 72.0" step="any"/></div>
+        <div class="field" id="loaWrap"><span>L.O.A <small>Length Overall</small></span><input id="loa" type="number" placeholder="e.g. 76.5" step="any"/></div>
+        <div class="field" id="lbpWrap"><span>L.B.P <small>Length Between Perp.</small></span><input id="lbp" type="number" placeholder="e.g. 72.0" step="any"/></div>
         <div class="field"><span>Beam (m)</span><input id="beam_m" type="number" placeholder="e.g. 12" step="any"/></div>
         <div class="field"><span>Depth (m)</span><input id="depth_m" type="number" placeholder="e.g. 5" step="any"/></div>
-        <div class="field"><span>Draught</span>
+        <div class="field" id="draughtWrap"><span>Draught</span>
           <div class="inline-pair">
             <input id="draught" type="number" placeholder="e.g. 6.5" step="any"/>
             <select id="draught_unit"><option value="m">m</option><option value="ft">ft</option></select>
           </div>
         </div>
         <!-- Classification & technical -->
-        <div class="field"><span>Class Society</span><input id="class_society" placeholder="e.g. Lloyd's Register, DNV"/></div>
-        <div class="field"><span>Class Number</span><input id="class_number" placeholder="Classification number"/></div>
-        <div class="field"><span>AIS Transponder Class</span><select id="ais_transponder_class"><option value="">Select…</option><option>Class A</option><option>Class B</option><option>Class B+</option><option>None</option></select></div>
+        <div class="field" id="classSocWrap"><span>Class Society</span><input id="class_society" placeholder="e.g. Lloyd's Register, DNV"/></div>
+        <div class="field" id="classNumWrap"><span>Class Number</span><input id="class_number" placeholder="Classification number"/></div>
+        <div class="field" id="aisWrap"><span>AIS Transponder Class</span><select id="ais_transponder_class"><option value="">Select…</option><option>Class A</option><option>Class B</option><option>Class B+</option><option>None</option></select></div>
         <div class="field"><span>Crew Complement</span><input id="crew_complement" type="number" placeholder="e.g. 24" step="any"/></div>
         <div class="field" id="gearWrap"><span>Gear Type</span><input id="gear_type" placeholder="e.g. Purse Seine, Longline, Trawl…"/></div>
         <div class="field"><span>Engine Power</span>
@@ -1171,18 +1171,32 @@ const SUBTYPES={
   'Support/Tender':[{v:'Supply and Tender',h:'Supply or tender vessel'},{v:'Other',h:'Other support type'}],
 };
 const TAB_VISIBILITY={
+  // Fishing + Carrier/Reefer only
   complianceSection:['Fishing Vessel','Carrier/Reefer'],
   rfmoSection:['Fishing Vessel','Carrier/Reefer'],
-  issfSection:['Fishing Vessel'],
-  sustainSection:['Fishing Vessel'],
-  vosiSection:['Fishing Vessel'],
-  gearWrap:['Fishing Vessel'],
   fishHoldWrap:['Fishing Vessel','Carrier/Reefer'],
   freezerWrap:['Fishing Vessel','Carrier/Reefer'],
   freezerCntWrap:['Fishing Vessel','Carrier/Reefer'],
   freezingMethodWrap:['Fishing Vessel','Carrier/Reefer'],
   freezingCapWrap:['Fishing Vessel','Carrier/Reefer'],
+  // Fishing only
+  issfSection:['Fishing Vessel'],
+  sustainSection:['Fishing Vessel'],
+  vosiSection:['Fishing Vessel'],
+  gearWrap:['Fishing Vessel'],
+  // Cargo/Transport only
   teuWrap:['Cargo/Transport'],
+  // Cargo/Transport + Support/Tender only
+  dwtWrap:['Cargo/Transport','Support/Tender'],
+  nrtWrap:['Cargo/Transport','Support/Tender'],
+  draughtWrap:['Cargo/Transport','Support/Tender'],
+  aisWrap:['Cargo/Transport','Support/Tender'],
+  officialNumWrap:['Cargo/Transport','Support/Tender'],
+  loaWrap:['Cargo/Transport','Support/Tender'],
+  regLenWrap:['Cargo/Transport','Support/Tender'],
+  lbpWrap:['Cargo/Transport','Support/Tender'],
+  classSocWrap:['Cargo/Transport','Support/Tender'],
+  classNumWrap:['Cargo/Transport','Support/Tender'],
 };
 
 document.querySelectorAll('.wiz-cat-opt').forEach(o=>{

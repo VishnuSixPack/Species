@@ -706,6 +706,7 @@ function renderOverview(v){
   const eng=v.engine_power?(v.engine_power+' '+(v.engine_power_unit||'kW')):null;
 
   // Base fields — shown for ALL types
+  const isCargoOrSupport=isCargo||isSupport;
   const base=[
     ['Vessel Category',val(v.vessel_category)],
     ['Vessel Subtype',val(v.vessel_subtype)],
@@ -716,7 +717,7 @@ function renderOverview(v){
     ['IMO Number',val(v.imo)],
     ['MMSI',val(v.mmsi)],
     ['Registration Number',val(v.registration_number)],
-    v.official_number?['Official Number',val(v.official_number)]:null,
+    (isCargoOrSupport&&v.official_number)?['Official Number',val(v.official_number)]:null,
     ['Port of Registry',val(v.port_of_registry)],
     ['Built in Country',val(v.built_in_country)],
     ['Built in Place',val(v.built_in_place)],
@@ -724,28 +725,28 @@ function renderOverview(v){
     ['Hull Material',val(v.hull_material)],
     ['Crew Complement',val(v.crew_complement)],
     ['Engine Power',val(eng)],
-    ['AIS Transponder Class',val(v.ais_transponder_class)],
-    v.class_society?['Class Society',val(v.class_society)]:null,
-    v.class_number?['Class Number',val(v.class_number)]:null,
+    isCargoOrSupport?['AIS Transponder Class',val(v.ais_transponder_class)]:null,
+    (isCargoOrSupport&&v.class_society)?['Class Society',val(v.class_society)]:null,
+    (isCargoOrSupport&&v.class_number)?['Class Number',val(v.class_number)]:null,
     ['Flag State Not FOC',bool(v.flag_state_foc)],
   ].filter(Boolean);
 
   // Tonnage fields
   const tonnage=[
     v.vessel_tonnage?['Gross Tonnage',val(v.vessel_tonnage+' '+(v.tonnage_type||'GT'))]:null,
-    v.nrt?['NRT',val(v.nrt+' NRT')]:null,
-    v.dwt?['DWT',val(v.dwt+' '+dwtu)]:null,
+    (isCargoOrSupport&&v.nrt)?['NRT',val(v.nrt+' NRT')]:null,
+    (isCargoOrSupport&&v.dwt)?['DWT',val(v.dwt+' '+dwtu)]:null,
     (isCargo&&v.teu_capacity)?['TEU Capacity',val(v.teu_capacity+' TEUs')]:null,
   ].filter(Boolean);
 
-  // Dimension fields
+  // Dimension fields — lengths only for Cargo/Transport + Support/Tender
   const dims=[
-    v.registered_length?['Registered Length',val(v.registered_length+' '+lu)]:null,
-    v.loa?['L.O.A',val(v.loa+' '+lu)]:null,
-    v.lbp?['L.B.P',val(v.lbp+' '+lu)]:null,
+    (isCargoOrSupport&&v.registered_length)?['Registered Length',val(v.registered_length+' '+lu)]:null,
+    (isCargoOrSupport&&v.loa)?['L.O.A',val(v.loa+' '+lu)]:null,
+    (isCargoOrSupport&&v.lbp)?['L.B.P',val(v.lbp+' '+lu)]:null,
     v.beam_m?['Beam',val(v.beam_m+' m')]:null,
     v.depth_m?['Depth',val(v.depth_m+' m')]:null,
-    v.draught?['Draught',val(v.draught+' '+du)]:null,
+    (isCargoOrSupport&&v.draught)?['Draught',val(v.draught+' '+du)]:null,
   ].filter(Boolean);
 
   // Reefer/fishing only fields
