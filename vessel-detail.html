@@ -732,8 +732,7 @@ function renderOverview(v){
 
   // Tonnage fields
   const tonnage=[
-    v.grt?['GRT',val(v.grt+' GRT')]:null,
-    v.vessel_tonnage?['GT / Gross Tonnage',val(v.vessel_tonnage+' '+(v.tonnage_type||'GT'))]:null,
+    v.vessel_tonnage?['Gross Tonnage',val(v.vessel_tonnage+' '+(v.tonnage_type||'GT'))]:null,
     v.nrt?['NRT',val(v.nrt+' NRT')]:null,
     v.dwt?['DWT',val(v.dwt+' '+dwtu)]:null,
     (isCargo&&v.teu_capacity)?['TEU Capacity',val(v.teu_capacity+' TEUs')]:null,
@@ -1418,32 +1417,49 @@ async function loadHistory(){
     sb.from('vessel_ffa_history').select('*').eq('vessel_id',vid).order('valid_from',{ascending:false}),
   ]);
   const g=$('histGrid'); if(!g) return;
-  g.innerHTML=`
-    ${histCard('Name History','name_history',['Name','Flag','IRCS','From','To'],
-      (nh.data||[]).map(r=>[r.name,r.flag,r.ircs,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
-      (nh.data||[]).map(r=>r.id))}
-    ${histCard('PNA VDS','pna_vds',['VDS No.','From','To'],
-      (pna.data||[]).map(r=>[r.vds_no,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
-      (pna.data||[]).map(r=>r.id))}
-    ${histCard('Captain History','captain_history',['Name','Nationality','From','To'],
-      (ch.data||[]).map(r=>[r.captain_name,r.nationality,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
-      (ch.data||[]).map(r=>r.id))}
-    ${histCard('Charterer / Operator History','charterer_history',['Name','Address','From','To'],
-      (chr.data||[]).map(r=>[r.charterer_name,r.address,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
-      (chr.data||[]).map(r=>r.id))}
-    ${histCard('Owner History','owner_history',['Name','Address','From','To'],
-      (oh.data||[]).map(r=>[r.owner_name,r.address,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
-      (oh.data||[]).map(r=>r.id))}
-    ${histCard('PNA FSMA History','pna_fsma',['RAL No.','From','To'],
-      (fsma.data||[]).map(r=>[r.ral_no,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
-      (fsma.data||[]).map(r=>r.id))}
-    ${histCard('FFA GS History','ffa_history',['FFA ID','From','To','Reason'],
-      (ffa.data||[]).map(r=>[r.ffa_id,fmtDate(r.valid_from),fmtDate(r.valid_to),r.reason_for_deletion]),
-      (ffa.data||[]).map(r=>r.id))}
-    ${histCard('RFMO History','rfmo_history',['RFMO','Reg. No.','Auth No.','Start','End','Reason','Deleted'],
+  // Visibility rules
+  const cat=vessel.vessel_category||'';
+  const sub=vessel.vessel_subtype||'';
+  const isFish=cat==='Fishing Vessel';
+  const isReefer=cat==='Carrier/Reefer';
+  const isFishOrReefer=isFish||isReefer;
+  // PNA FSMA is only for Purse Seiners
+  const isPurseSeine=isFish&&(sub.includes('Purse Seine')||sub==='Purse Seine Large'||sub==='Purse Seine Small');
+
+  const cards=[];
+  // Always shown
+  cards.push(histCard('Name History','name_history',['Name','Flag','IRCS','From','To'],
+    (nh.data||[]).map(r=>[r.name,r.flag,r.ircs,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
+    (nh.data||[]).map(r=>r.id)));
+  cards.push(histCard('Owner History','owner_history',['Name','Address','From','To'],
+    (oh.data||[]).map(r=>[r.owner_name,r.address,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
+    (oh.data||[]).map(r=>r.id)));
+  cards.push(histCard('Captain History','captain_history',['Name','Nationality','From','To'],
+    (ch.data||[]).map(r=>[r.captain_name,r.nationality,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
+    (ch.data||[]).map(r=>r.id)));
+  cards.push(histCard('Charterer / Operator History','charterer_history',['Name','Address','From','To'],
+    (chr.data||[]).map(r=>[r.charterer_name,r.address,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
+    (chr.data||[]).map(r=>r.id)));
+  // Fishing + Carrier/Reefer only
+  if(isFishOrReefer){
+    cards.push(histCard('RFMO History','rfmo_history',['RFMO','Reg. No.','Auth No.','Start','End','Reason','Deleted'],
       (rfmo.data||[]).map(r=>[r.rfmo_name,r.registration_no,r.auth_no,fmtDate(r.auth_start),fmtDate(r.auth_end),r.reason_for_deletion,fmtDate(r.date_of_deletion)]),
-      (rfmo.data||[]).map(r=>r.id))}
-  `;
+      (rfmo.data||[]).map(r=>r.id)));
+    cards.push(histCard('FFA GS History','ffa_history',['FFA ID','From','To','Reason'],
+      (ffa.data||[]).map(r=>[r.ffa_id,fmtDate(r.valid_from),fmtDate(r.valid_to),r.reason_for_deletion]),
+      (ffa.data||[]).map(r=>r.id)));
+    cards.push(histCard('PNA VDS','pna_vds',['VDS No.','From','To'],
+      (pna.data||[]).map(r=>[r.vds_no,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
+      (pna.data||[]).map(r=>r.id)));
+  }
+  // Purse Seine only
+  if(isPurseSeine){
+    cards.push(histCard('PNA FSMA History','pna_fsma',['RAL No.','From','To'],
+      (fsma.data||[]).map(r=>[r.ral_no,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
+      (fsma.data||[]).map(r=>r.id)));
+  }
+
+  g.innerHTML=cards.join('');
 }
 function histCard(title,type,cols,rows,ids){
   // ids = array of DB row IDs matching rows[], for delete
