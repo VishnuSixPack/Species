@@ -6,9 +6,126 @@
   <title>Platform — Project Manhattan</title>
   <link rel="icon" type="image/png" href="brand-logo.png"/>
   <link rel="stylesheet" href="teaser.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
+    *{box-sizing:border-box;}
+    html,body{background:#0b0714;margin:0;font-family:'Poppins',sans-serif;}
+    h1,h2,h3,h4,h5,p,a,span,div,button{font-family:'Poppins',sans-serif;}
+
+    /* ── SUBTLE SCROLLBAR ── */
+    ::-webkit-scrollbar{width:3px;height:3px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+    ::-webkit-scrollbar-thumb{background:rgba(139,92,246,0.28);border-radius:999px;}
+    ::-webkit-scrollbar-thumb:hover{background:rgba(139,92,246,0.45);}
+    ::-webkit-scrollbar-corner{background:transparent;}
+    *{scrollbar-width:thin;scrollbar-color:rgba(139,92,246,0.28) transparent;}
+
+    /* ══════════════════════════════════════════
+       LIQUID MARBLE BACKGROUND (fixed, whole page)
+       ══════════════════════════════════════════ */
+    .pm-marble{position:fixed;inset:0;z-index:-2;overflow:hidden;pointer-events:none;
+      background:
+        radial-gradient(ellipse 900px 700px at 15% 8%, rgba(168,113,255,0.50), transparent 60%),
+        radial-gradient(ellipse 800px 900px at 92% 22%, rgba(91,33,182,0.55), transparent 55%),
+        radial-gradient(ellipse 1000px 800px at 40% 96%, rgba(124,58,237,0.32), transparent 60%),
+        linear-gradient(160deg,#050308 0%,#160b2b 35%,#1f1038 65%,#08040d 100%);
+    }
+    .pm-marble::before{content:'';position:absolute;inset:-18%;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.006 0.015' numOctaves='4' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.6 0 0 0 0 0.4 0 0 0 0 0.98 0 0 0 0.55 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size:cover;mix-blend-mode:screen;opacity:0.6;
+      animation:pmDrift 70s linear infinite;
+    }
+    .pm-marble::after{content:'';position:absolute;inset:0;
+      background:
+        radial-gradient(circle at 7% 11%, rgba(255,255,255,0.4) 0 2px, transparent 3px),
+        radial-gradient(circle at 21% 5%, rgba(255,255,255,0.25) 0 2px, transparent 3px),
+        radial-gradient(circle at 3% 24%, rgba(255,255,255,0.2) 0 1.5px, transparent 2.5px);
+    }
+    @keyframes pmDrift{0%{transform:translate(0,0) rotate(0deg);}100%{transform:translate(-4%,3%) rotate(6deg);}}
+    @media(prefers-reduced-motion:reduce){.pm-marble::before{animation:none;}}
+
+    /* ══════════════════════════════════════════
+       LIQUID GLASS NAV — transparent bar, white glass pills
+       ══════════════════════════════════════════ */
+    .lg-nav{position:sticky;top:0;z-index:100;background:transparent;padding:20px 48px;display:flex;align-items:center;border:none;box-shadow:none;outline:none;}
+    .lg-logo{display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:0;min-width:190px;
+      background:rgba(255,255,255,0.97);padding:9px 20px 9px 12px;border-radius:999px;
+      box-shadow:0 8px 24px rgba(0,0,0,0.22),inset 0 1px 0 rgba(255,255,255,0.9);}
+    .lg-logo img{width:28px;height:28px;object-fit:contain;}
+    .lg-brand{display:flex;flex-direction:column;line-height:1.1;}
+    .lg-brand-project{font-size:8px;font-weight:700;letter-spacing:2px;color:#9aa0b4;text-transform:uppercase;}
+    .lg-brand-name{font-size:16px;font-weight:800;color:#1a1a2e;}
+    .lg-center{flex:1;display:flex;justify-content:center;align-items:center;}
+    .lg-pill{display:inline-flex;align-items:center;gap:2px;padding:5px 7px;border-radius:999px;position:relative;
+      background:rgba(255,255,255,0.97);border:1px solid rgba(255,255,255,0.6);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,0.9),0 8px 24px rgba(0,0,0,0.22);}
+    .lg-indicator{position:absolute;top:5px;height:calc(100% - 10px);border-radius:999px;background:rgba(26,26,46,0.08);border-top:1px solid rgba(255,255,255,0.9);border-bottom:1px solid rgba(26,26,46,0.06);box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),0 2px 6px rgba(0,0,0,0.08);transition:left 0.38s cubic-bezier(0.34,1.56,0.64,1),width 0.38s cubic-bezier(0.34,1.56,0.64,1),opacity 0.18s ease;pointer-events:none;opacity:0;z-index:1;}
+    .lg-item{padding:7px 14px;border-radius:999px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:400;color:#6b7280;text-decoration:none;position:relative;z-index:2;white-space:nowrap;transition:color 0.15s;}
+    .lg-item.active{color:#1a1a2e;font-weight:600;}
+    .lg-right{display:flex;align-items:center;gap:10px;flex-shrink:0;min-width:190px;justify-content:flex-end;}
+
+    /* ══════════════════════════════════════════
+       TEASER SECTIONS — floating glass/white cards on marble
+       ══════════════════════════════════════════ */
+    .teaser-wrap{padding:56px 24px 8px;}
+    .tsr-card{max-width:1680px;margin:0 auto 28px;border-radius:40px;background:#fff;
+      box-shadow:0 40px 90px rgba(0,0,0,0.35);overflow:hidden;
+      opacity:0;transform:translateY(56px) scale(0.965);
+      transition:opacity .35s ease-out, transform .35s cubic-bezier(.16,1,.3,1);
+      will-change:opacity,transform;}
+    .teaser-content{display:flex;align-items:center;gap:56px;min-height:500px;padding:56px 64px;}
+    .teaser-content-reverse{flex-direction:row-reverse;}
+    .teaser-left{flex:1;}
+    .teaser-right{flex:1;height:440px;border-radius:26px;overflow:hidden;}
+    .teaser-right img{width:100%;height:100%;object-fit:cover;display:block;}
+    .teaser-tag{display:inline-flex;align-items:center;background:#f4f0ff;color:#7c3aed;font-size:12px;font-weight:700;
+      padding:6px 16px;border-radius:999px;margin-bottom:20px;letter-spacing:0.2px;}
+    .teaser-title{font-size:34px;font-weight:700;color:#1a1a2e;line-height:1.28;margin:0 0 16px;letter-spacing:-0.01em;}
+    .teaser-desc{font-size:14px;color:#6b7280;line-height:1.85;margin:0 0 28px;max-width:480px;}
+    .teaser-btns{display:flex;gap:14px;flex-wrap:wrap;}
+    .teaser-btn-primary{display:inline-flex;align-items:center;justify-content:center;background:#1a1a2e;color:#fff;
+      padding:13px 26px;border-radius:999px;font-size:13px;font-weight:600;text-decoration:none;transition:background .2s,transform .15s;}
+    .teaser-btn-primary:hover{background:#2d2d50;transform:translateY(-1px);}
+    .teaser-btn-secondary{display:inline-flex;align-items:center;justify-content:center;background:#fff;color:#1a1a2e;
+      padding:12px 26px;border-radius:999px;font-size:13px;font-weight:600;text-decoration:none;
+      border:1.5px solid #e0e3ed;transition:border-color .2s,color .2s;}
+    .teaser-btn-secondary:hover{border-color:#8b5cf6;color:#7c3aed;}
+
+    /* ── Compliance strip — glass band ── */
+    .tsr-compliance-card{max-width:1680px;margin:0 auto 28px;border-radius:32px;
+      background:rgba(22,13,38,0.38);border:1px solid rgba(255,255,255,0.14);
+      box-shadow:0 30px 80px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+      backdrop-filter:blur(26px) saturate(150%);-webkit-backdrop-filter:blur(26px) saturate(150%);
+      padding:36px 48px;text-align:center;
+      opacity:0;transform:translateY(40px);
+      transition:opacity .35s ease-out, transform .35s cubic-bezier(.16,1,.3,1);}
+    .teaser-compliance-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;
+      color:rgba(255,255,255,0.5);margin:0 0 24px;}
+    .teaser-compliance-logos{display:flex;justify-content:center;align-items:center;gap:40px;flex-wrap:wrap;}
+    .teaser-compliance-logos img{height:26px;width:auto;object-fit:contain;opacity:0.75;filter:brightness(0) invert(1);}
+
+    /* ── CTA section — floating card with bg image ── */
+    .tsr-cta-card{max-width:1680px;margin:0 auto 28px;border-radius:40px;overflow:hidden;position:relative;
+      min-height:340px;display:flex;align-items:center;justify-content:center;text-align:center;
+      box-shadow:0 40px 90px rgba(0,0,0,0.4);
+      opacity:0;transform:translateY(48px) scale(0.97);
+      transition:opacity .35s ease-out, transform .35s cubic-bezier(.16,1,.3,1);}
+    .teaser-cta h2{font-size:36px;font-weight:700;color:#fff;margin:0 0 12px;letter-spacing:-0.01em;}
+    .teaser-cta p{font-size:15px;color:rgba(255,255,255,0.75);margin:0 0 28px;}
+
+    @media(prefers-reduced-motion:reduce){
+      .tsr-card,.tsr-compliance-card,.tsr-cta-card{opacity:1 !important;transform:none !important;transition:none !important;}
+    }
+    @media(max-width:900px){
+      .lg-nav{padding:16px 20px;}
+      .teaser-content,.teaser-content-reverse{flex-direction:column;padding:36px 28px;gap:28px;}
+      .teaser-right{height:240px;width:100%;}
+      .tsr-card{border-radius:28px;}
+      .teaser-compliance-logos{gap:24px;}
+    }
+
     /* ── PREMIUM FOOTER ── */
-    .pf-footer{background:#1a1a2e;color:#fff;padding:64px 48px 0;}
+    .pf-footer{background:#1a1a2e;color:#fff;padding:64px 48px 0;position:relative;z-index:1;margin-top:24px;}
     .pf-grid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1.2fr;gap:48px;margin-bottom:48px;}
     .pf-brand{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
     .pf-brand img{width:28px;height:28px;object-fit:contain;}
@@ -30,57 +147,11 @@
     .pf-bottom-links a:hover{color:rgba(255,255,255,0.6);}
     @media(max-width:900px){.pf-grid{grid-template-columns:1fr 1fr;gap:32px;}.pf-footer{padding:48px 28px 0;}}
     @media(max-width:560px){.pf-grid{grid-template-columns:1fr;}}
-  
-    /* ── LIQUID GLASS NAV ── */
-    .lg-nav{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid #e8e8e8;padding:14px 48px;display:flex;align-items:center;}
-    .lg-logo{display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:0;min-width:200px;}
-    .lg-logo img{width:28px;height:28px;object-fit:contain;}
-    .lg-brand{display:flex;flex-direction:column;line-height:1.1;}
-    .lg-brand-project{font-size:8px;font-weight:700;letter-spacing:2px;color:#9aa0b4;text-transform:uppercase;}
-    .lg-brand-name{font-size:16px;font-weight:800;color:#1a1a2e;}
-    .lg-center{flex:1;display:flex;justify-content:center;align-items:center;}
-    /* Pill wrapper */
-    .lg-pill{display:inline-flex;align-items:center;gap:2px;padding:5px 7px;border-radius:999px;position:relative;background:rgba(26,26,46,0.04);border:1px solid rgba(26,26,46,0.08);box-shadow:inset 0 1px 0 rgba(255,255,255,0.8),0 1px 4px rgba(0,0,0,0.06);}
-    /* Sliding indicator */
-    .lg-indicator{position:absolute;top:5px;height:calc(100% - 10px);border-radius:999px;background:rgba(26,26,46,0.08);border-top:1px solid rgba(255,255,255,0.9);border-bottom:1px solid rgba(26,26,46,0.06);box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),0 2px 6px rgba(0,0,0,0.08);transition:left 0.38s cubic-bezier(0.34,1.56,0.64,1),width 0.38s cubic-bezier(0.34,1.56,0.64,1),opacity 0.18s ease;pointer-events:none;opacity:0;z-index:1;}
-    /* Nav items */
-    .lg-item{padding:7px 14px;border-radius:999px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:400;color:#6b7280;text-decoration:none;position:relative;z-index:2;white-space:nowrap;transition:color 0.15s;}
-    .lg-item.active{color:#1a1a2e;font-weight:600;}
-    /* Right side */
-    .lg-right{display:flex;align-items:center;gap:10px;flex-shrink:0;min-width:200px;justify-content:flex-end;}
-    /* Take the Test — liquid glass purple */
-    .lg-test{
-      padding:8px 20px;border-radius:999px;
-      font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;
-      color:#fff;text-decoration:none;white-space:nowrap;
-      background:rgba(139,92,246,0.9);
-      border-top:1px solid rgba(255,255,255,0.4);
-      border-bottom:1px solid rgba(100,60,200,0.3);
-      box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),0 2px 12px rgba(139,92,246,0.35);
-      animation:lg-pulse 2s ease-in-out infinite;
-      transition:background 0.2s;
-    }
-    .lg-test:hover{background:rgba(124,58,237,0.95);}
-    @keyframes lg-pulse{
-      0%{box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),0 0 0 0 rgba(139,92,246,0.5);}
-      50%{box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),0 0 0 8px rgba(139,92,246,0.08),0 0 20px 4px rgba(139,92,246,0.15);}
-      100%{box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),0 0 0 0 rgba(139,92,246,0);}
-    }
-    /* Login — liquid glass dark */
-    .lg-login{
-      padding:8px 20px;border-radius:999px;
-      font-family:'Poppins',sans-serif;font-size:13px;font-weight:500;
-      color:#1a1a2e;text-decoration:none;white-space:nowrap;
-      background:rgba(26,26,46,0.06);
-      border-top:1px solid rgba(255,255,255,0.9);
-      border-bottom:1px solid rgba(26,26,46,0.08);
-      box-shadow:inset 0 1px 0 rgba(255,255,255,0.8),0 1px 4px rgba(0,0,0,0.08);
-      transition:background 0.2s,box-shadow 0.2s;
-    }
-    .lg-login:hover{background:rgba(26,26,46,0.1);box-shadow:inset 0 1px 0 rgba(255,255,255,0.9),0 2px 8px rgba(0,0,0,0.12);}
   </style>
 </head>
 <body>
+
+  <div class="pm-marble"></div>
 
   <!-- LIQUID GLASS NAV -->
   <nav class="lg-nav">
@@ -97,13 +168,13 @@
         <a href="index.html" class="lg-item">Home</a><a href="teaser.html" class="lg-item active">Platform</a><a href="index.html#what-we-do" class="lg-item">What do we do?</a><a href="contact.html" class="lg-item">Contact</a><a href="about.html" class="lg-item">About</a>
       </div>
     </div>
-    <div style="flex-shrink:0;min-width:200px;display:flex;justify-content:flex-end;">
+    <div class="lg-right">
       <div id="ctaPill" style="
         display:inline-flex;align-items:center;gap:2px;padding:5px 7px;
         border-radius:999px;position:relative;
-        background:rgba(26,26,46,0.04);
-        border:1px solid rgba(26,26,46,0.08);
-        box-shadow:inset 0 1px 0 rgba(255,255,255,0.8),0 1px 4px rgba(0,0,0,0.06);
+        background:rgba(255,255,255,0.97);
+        border:1px solid rgba(255,255,255,0.6);
+        box-shadow:inset 0 1px 0 rgba(255,255,255,0.9),0 8px 24px rgba(0,0,0,0.22);
       ">
         <div id="ctaIndicator" style="
           position:absolute;top:5px;height:calc(100% - 10px);
@@ -129,85 +200,89 @@
     </div>
   </nav>
 
-  <!-- SECTION 1 — SPECIES -->
-  <section class="teaser-section">
-    <div class="teaser-content">
-      <div class="teaser-left">
-        <span class="teaser-tag">Seafood Intelligence Platform</span>
-        <h1 class="teaser-title">Know Your Species.<br/>Master Your Data.</h1>
-        <p class="teaser-desc">A comprehensive species management system built for seafood professionals. Track taxonomy, dimensions, habitat, harvest data and more — all in one place.</p>
-        <div class="teaser-btns">
+  <div class="teaser-wrap">
+
+    <!-- SECTION 1 — SPECIES -->
+    <div class="tsr-card">
+      <section class="teaser-content">
+        <div class="teaser-left">
+          <span class="teaser-tag">Seafood Intelligence Platform</span>
+          <h1 class="teaser-title">Know Your Species.<br/>Master Your Data.</h1>
+          <p class="teaser-desc">A comprehensive species management system built for seafood professionals. Track taxonomy, dimensions, habitat, harvest data and more — all in one place.</p>
+          <div class="teaser-btns">
+            <a href="login.html" class="teaser-btn-primary">Login</a>
+            <a href="contact.html" class="teaser-btn-secondary">Request Access</a>
+          </div>
+        </div>
+        <div class="teaser-right">
+          <img src="teaser-species.jpg" alt="Species Management"/>
+        </div>
+      </section>
+    </div>
+
+    <!-- SECTION 2 — PRODUCT -->
+    <div class="tsr-card">
+      <section class="teaser-content teaser-content-reverse">
+        <div class="teaser-left">
+          <span class="teaser-tag">Product Module</span>
+          <h2 class="teaser-title">From Ocean to Market.<br/>Track Every Product.</h2>
+          <p class="teaser-desc">Link your seafood products directly to species data. Whether it's Canned Tuna or Fresh Fillet — manage sourcing, composition and compliance effortlessly.</p>
+          <div class="teaser-btns">
+            <a href="login.html" class="teaser-btn-primary">Get Started</a>
+            <a href="contact.html" class="teaser-btn-secondary">Learn More</a>
+          </div>
+        </div>
+        <div class="teaser-right">
+          <img src="teaser-product.jpg" alt="Product Management"/>
+        </div>
+      </section>
+    </div>
+
+    <!-- SECTION 3 — REPORTS -->
+    <div class="tsr-card">
+      <section class="teaser-content">
+        <div class="teaser-left">
+          <span class="teaser-tag">Analytics &amp; Reports</span>
+          <h2 class="teaser-title">Data-Driven Decisions.<br/>Powerful Insights.</h2>
+          <p class="teaser-desc">Turn your seafood data into actionable intelligence. Generate reports on species distribution, product performance and supply chain compliance with ease.</p>
+          <div class="teaser-btns">
+            <a href="login.html" class="teaser-btn-primary">Explore Reports</a>
+            <a href="contact.html" class="teaser-btn-secondary">Request Demo</a>
+          </div>
+        </div>
+        <div class="teaser-right">
+          <img src="teaser-report.jpg" alt="Reports & Analytics"/>
+        </div>
+      </section>
+    </div>
+
+    <!-- COMPLIANCE STRIP -->
+    <div class="tsr-compliance-card">
+      <h5 class="teaser-compliance-label">Compliant With Industry Standards</h5>
+      <div class="teaser-compliance-logos">
+        <img src="logo-gs1.png" alt="GS1"/>
+        <img src="logo-gsdt.png" alt="GSDT"/>
+        <img src="logo-issf.png" alt="ISSF"/>
+        <img src="logo-fao.png" alt="FAO"/>
+        <img src="logo-msc.png" alt="MSC"/>
+        <img src="logo-asc.png" alt="ASC"/>
+      </div>
+    </div>
+
+    <!-- CTA SECTION -->
+    <div class="tsr-cta-card" style="background-image:url('ready-to-start.jpg');background-size:cover;background-position:center;">
+      <div style="position:absolute;inset:0;background:rgba(10,14,40,0.75);"></div>
+      <section class="teaser-cta" style="position:relative;z-index:1;padding:56px 24px;">
+        <h2>Ready to get started?</h2>
+        <p>Join the platform built for the modern seafood industry.</p>
+        <div class="teaser-btns" style="justify-content:center;">
           <a href="login.html" class="teaser-btn-primary">Login</a>
           <a href="contact.html" class="teaser-btn-secondary">Request Access</a>
         </div>
-      </div>
-      <div class="teaser-right">
-        <img src="teaser-species.jpg" alt="Species Management"/>
-      </div>
+      </section>
     </div>
-  </section>
 
-  <!-- SECTION 2 — PRODUCT -->
-  <section class="teaser-section teaser-section-alt">
-    <div class="teaser-content teaser-content-reverse">
-      <div class="teaser-left">
-        <span class="teaser-tag">Product Module</span>
-        <h2 class="teaser-title">From Ocean to Market.<br/>Track Every Product.</h2>
-        <p class="teaser-desc">Link your seafood products directly to species data. Whether it's Canned Tuna or Fresh Fillet — manage sourcing, composition and compliance effortlessly.</p>
-        <div class="teaser-btns">
-          <a href="login.html" class="teaser-btn-primary">Get Started</a>
-          <a href="contact.html" class="teaser-btn-secondary">Learn More</a>
-        </div>
-      </div>
-      <div class="teaser-right">
-        <img src="teaser-product.jpg" alt="Product Management"/>
-      </div>
-    </div>
-  </section>
-
-  <!-- SECTION 3 — REPORTS -->
-  <section class="teaser-section">
-    <div class="teaser-content">
-      <div class="teaser-left">
-        <span class="teaser-tag">Analytics & Reports</span>
-        <h2 class="teaser-title">Data-Driven Decisions.<br/>Powerful Insights.</h2>
-        <p class="teaser-desc">Turn your seafood data into actionable intelligence. Generate reports on species distribution, product performance and supply chain compliance with ease.</p>
-        <div class="teaser-btns">
-          <a href="login.html" class="teaser-btn-primary">Explore Reports</a>
-          <a href="contact.html" class="teaser-btn-secondary">Request Demo</a>
-        </div>
-      </div>
-      <div class="teaser-right">
-        <img src="teaser-report.jpg" alt="Reports & Analytics"/>
-      </div>
-    </div>
-  </section>
-
-  <!-- COMPLIANCE STRIP -->
-  <section class="teaser-compliance">
-    <h5 class="teaser-compliance-label">Compliant With Industry Standards</h5>
-    <div class="teaser-compliance-logos">
-      <img src="logo-gs1.png" alt="GS1"/>
-      <img src="logo-gsdt.png" alt="GSDT"/>
-      <img src="logo-issf.png" alt="ISSF"/>
-      <img src="logo-fao.png" alt="FAO"/>
-      <img src="logo-msc.png" alt="MSC"/>
-      <img src="logo-asc.png" alt="ASC"/>
-    </div>
-  </section>
-
-  <!-- CTA SECTION -->
-  <section class="teaser-cta" style="background-image:url('ready-to-start.jpg');background-size:cover;background-position:center;position:relative;">
-    <div style="position:absolute;inset:0;background:rgba(10,14,40,0.75);"></div>
-    <div style="position:relative;z-index:1;">
-    <h2>Ready to get started?</h2>
-    <p>Join the platform built for the modern seafood industry.</p>
-    <div class="teaser-btns" style="justify-content:center;">
-      <a href="login.html" class="teaser-btn-primary">Login</a>
-      <a href="contact.html" class="teaser-btn-secondary">Request Access</a>
-    </div>
-    </div>
-  </section>
+  </div>
 
   <!-- PREMIUM FOOTER -->
   <footer class="pf-footer">
@@ -379,6 +454,34 @@
     });
     test.addEventListener('click',  () => { current = 'test'; });
     login.addEventListener('click', () => { current = 'login'; });
+  })();
+  </script>
+
+  <!-- SCROLL FADE-IN/OUT ANIMATION — same treatment as homepage -->
+  <script>
+  (function(){
+    const cards = document.querySelectorAll('.tsr-card, .tsr-compliance-card, .tsr-cta-card');
+    if(!cards.length) return;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(reduceMotion){
+      cards.forEach(c=>{c.style.opacity='1';c.style.transform='none';});
+      return;
+    }
+    const thresholds = [];
+    for(let i=0;i<=1;i+=0.02) thresholds.push(i);
+
+    const io = new IntersectionObserver((entries)=>{
+      entries.forEach(entry=>{
+        const ratio = entry.intersectionRatio;
+        const eased = Math.min(1, ratio / 0.6);
+        entry.target.style.opacity = eased;
+        const isCompliance = entry.target.classList.contains('tsr-compliance-card');
+        const dist = isCompliance ? 40 : 56;
+        entry.target.style.transform = `translateY(${(1-eased)*dist}px) scale(${0.965 + eased*0.035})`;
+      });
+    }, { threshold: thresholds });
+
+    cards.forEach(card => io.observe(card));
   })();
   </script>
 </body>
