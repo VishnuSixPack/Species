@@ -2036,8 +2036,11 @@ function buildCertQs(hasMSC,hasASC,hasEU,hasUS,hasTuna){
     // MSC/ASC — only ask if product is certified; rephrase for external roles
     ...(hasMSC?[{id:'c_msc',q:isExternal?'Does the supplier or processor in your supply chain hold a valid MSC Chain of Custody certificate?':'Does your company hold a valid MSC Chain of Custody certificate?'}]:[]),
     ...(hasASC?[{id:'c_asc',q:isExternal?'Does the supplier or processor in your supply chain hold a valid ASC Chain of Custody certificate?':'Does your company hold a valid ASC Chain of Custody certificate?'}]:[]),
-    // ISSF PVR — only relevant for fishing/vessel operators
-    ...(hasTuna&&!['importer','brand','trader','auditor','assessor'].includes(assessorRole)?[{id:'c_issf_pvr',q:'Are your fishing vessels listed on the ISSF ProActive Vessel Register (PVR)?'}]:[]),
+    // ISSF PVR — relevant for all roles in tuna supply chains; rephrase for non-vessel-owning roles
+    ...(hasTuna?[{id:'c_issf_pvr',q:(()=>{
+      if(assessorRole==='exporter')return 'Are your fishing vessels listed on the ISSF ProActive Vessel Register (PVR)?';
+      return 'Are the fishing vessels supplying tuna in your supply chain listed on the ISSF ProActive Vessel Register (PVR)?';
+    })()}]:[]),
     // BRC/IFS — relevant for processors, exporters; not for auditors assessing the system
     ...(!['auditor','assessor'].includes(assessorRole)?[{id:'c_brc',q:`${whoOr} a current BRC Global Standard or IFS Food certification?`}]:[]),
     {id:'c_haccp',q:`${whoPrefix} have a documented food safety plan? (e.g. HACCP or equivalent — any formal record of how food safety hazards are identified and controlled)`},
