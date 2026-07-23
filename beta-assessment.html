@@ -1773,7 +1773,6 @@ function buildTransshipmentQs(inst,vc,hasEU,own){
     {id:`${inst.id}_cr_name`,q:`Is the name of ${N} ${vessel} used for transshipment available?`},
     {id:`${inst.id}_cr_imo`,q:`Do you know the IMO number of ${N} ${vessel}?`},
     ...(kResp[`${inst.id}_cr_imo`]?.ans==='un'||kResp[`${inst.id}_cr_imo`]?.ans==='pa'?[{id:`${inst.id}_cr_uid`,q:`Is a unique vessel identification number (if no IMO) available for ${N} ${vessel}?`}]:[]),
-    {id:`${inst.id}_cr_reg`,q:'Is the carrier vessel\'s unique vessel ID available?'},
     {id:`${inst.id}_cr_flag`,q:`Is the flag state of ${N} ${vessel} known and documented?`},
     {id:`${inst.id}_cr_rfmo`,q:`Is ${vc===1?'the carrier vessel':'each carrier vessel'} registered on the relevant RFMO register?`},
     ...(hasEU?[{id:`${inst.id}_cr_eu_approval`,q:`Does ${N} ${vessel} hold a valid EU approved vessel listing?`}]:[]),
@@ -2375,12 +2374,13 @@ function setAns(id,ans){
   document.getElementById('kun'+safeId)?.classList.toggle('show',ans==='un');
   const evs=card.querySelector('.ev-summary');if(evs)evs.style.display=(ans==='av'||ans==='pa')?'flex':'none';
 
-  // Re-render if this is a trigger question — so conditional questions appear/disappear immediately
+  // Re-render if this is a trigger question — rebuild STAGES so conditional questions appear/disappear
   const triggerSuffixes=['_fv_imo','_cr_imo'];
   if(triggerSuffixes.some(s=>id.endsWith(s))){
     setTimeout(()=>{
       const scrollEl=document.getElementById('kcontent');
       const scrollTop=scrollEl?.scrollTop||0;
+      STAGES=buildStages(); // rebuild so conditional qs are included/excluded
       renderKDE();
       if(scrollEl)scrollEl.scrollTop=scrollTop;
     },50);
@@ -2839,7 +2839,6 @@ const KDE_PARTIAL_SCORES={
   'cr_name':50,
   'cr_imo':50,
   'cr_uid':10,
-  'cr_reg':10,
   'cr_flag':50,
   'cr_rfmo':30,
   'cr_eu_approval':30,
@@ -3010,7 +3009,7 @@ const DEFAULT_WEIGHTS={
   ht_name:3,ht_license:4,ht_broodstock:4,ht_lot:4,ht_species:4,ht_stocking:3,
   ht_disease:4,ht_water:3,ht_coc:4,ht_audit:3,ht_welfare:2,
   // Transshipment
-  cr_name:3,cr_imo:5,cr_uid:3,cr_reg:3,cr_flag:4,cr_rfmo:4,cr_eu_approval:3,
+  cr_name:3,cr_imo:5,cr_uid:3,cr_flag:4,cr_rfmo:4,cr_eu_approval:3,
   cr_iuu_check:5,cr_location:4,cr_invoice:4,cr_bol:4,cr_planogram:3,cr_separation:4,
   cr_linking:4,cr_weight:4,cr_approval:5,cr_auth_doc:4,cr_ts_port_auth:4,cr_ts_port_obs:3,
   cr_ts_atsea_notify:5,cr_coc:3,cr_welfare_policy:2,cr_welfare_standards:2,
