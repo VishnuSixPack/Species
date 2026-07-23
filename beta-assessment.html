@@ -517,7 +517,11 @@
         <div class="logo-icon"><img src="brand-logo.png" style="width:28px;height:28px;object-fit:contain;"/></div>
         <div style="display:flex;flex-direction:column;line-height:1.1;"><span class="logo-project">Project</span><span class="logo-name">Manhattan.</span></div>
       </a>
-      <button class="btn-ghost" onclick="saveAndExit()" style="font-size:12px;padding:8px 18px;">💾 Save &amp; Exit</button>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div id="kdeRolePill" style="display:none;font-size:11px;font-weight:600;color:#4a4e69;background:#f4f6fb;border:1px solid #e0e3ed;border-radius:999px;padding:4px 12px;"></div>
+        <div id="kdeNamePill" style="font-size:11px;color:#9aa0b4;font-weight:500;"></div>
+        <button class="btn-ghost" onclick="saveAndExit()" style="font-size:12px;padding:8px 18px;">💾 Save &amp; Exit</button>
+      </div>
     </div>
     <div class="kprog">
       <div class="ktrack"><div class="kfill" id="kfill" style="width:0%"></div></div>
@@ -1663,6 +1667,12 @@ const EU27=['AT','BE','BG','HR','CY','CZ','DK','EE','FI','FR','DE','GR','HU','IE
 let STAGES=[];
 
 function toKDE(){
+  // Show role and name in KDE header
+  const ROLE_LABELS={'importer':'🚢 Importer / Buyer','exporter':'📦 Exporter / Supplier','processor':'🏭 Processor','trader':'🔄 Trader / Broker','brand':'🏷️ Brand / Retailer','auditor':'🔍 Auditor / Assessor'};
+  const rp=document.getElementById('kdeRolePill');
+  const np=document.getElementById('kdeNamePill');
+  if(rp&&assessorRole){rp.textContent=ROLE_LABELS[assessorRole]||assessorRole;rp.style.display='inline-flex';}
+  if(np&&assessorName){np.textContent=assessorName;}
   if(!products.filter(Boolean).length){showToast('Please add at least one product.','error');return;}
   STAGES=buildStages();
   kIdx=0;renderKDE();goTo('sKDE');
@@ -1718,7 +1728,7 @@ function buildStages(){
       else if(type==='transshipment'){qs=buildTransshipmentQs(inst,vc,hasEU,own);hasSubQ=true;}
       else if(type==='landing')  {qs=[];hasSubQ=true;}
       else if(type==='processing'){qs=buildProcessingQs(hasEU,own,inst);}
-      else if(type==='aggregation'){qs=buildAggregationQs(own,inst);}
+      else if(type==='aggregation'){qs=buildAggregationQs(own,inst,hasEU);}
       else if(type==='shipreceive'){qs=[];hasSubQ=true;}
       else if(type==='feedmill') {qs=buildFeedmillQs(own,inst);}
       else if(type==='hatchery') {qs=buildHatcheryQs(own,inst);}
@@ -1941,7 +1951,7 @@ function buildProcessingQs(hasEU,own,inst){
   {id:p+'pp_welfare_policy',   q:`Does ${entity(own,'processing facility')} have a documented Human Welfare Policy?`},
   {id:p+'pp_welfare_standards',q:`Does ${entity(own,'processing facility')} comply with recognized human welfare standards?`},
 ];}
-function buildAggregationQs(own,inst){
+function buildAggregationQs(own,inst,hasEU=false){
   const p=inst?inst.id+'_':'';
   const hasMSC_agg=products.filter(Boolean).some(pr=>pr.cert==='MSC');
   return [
@@ -1950,7 +1960,7 @@ function buildAggregationQs(own,inst){
     {id:p+'agg_weight',q:'Do you perform and document a weight reconciliation after this handling stage?'},
     {id:p+'agg_ownership',q:'Can you clearly document product ownership at this stage?'},
     {id:p+'agg_location',q:'Do you have the facility location documented on your records for this stage?'},
-    {id:p+'agg_eu_approval',q:'Does the facility in your supply chain hold a valid EU establishment approval number?'},
+    ...(hasEU?[{id:p+'agg_eu_approval',q:'Does the facility in your supply chain hold a valid EU establishment approval number?'}]:[]),
     {id:p+'agg_msc_coc',q:hasMSC_agg?'Does this facility hold a valid MSC Chain of Custody certificate — confirming MSC product is kept separate from non-certified product?':'Does this facility hold a valid Chain of Custody certification?'},
     ...(hasMSC_agg?[
       {id:p+'agg_msc_separation',q:'Is MSC-certified product physically separated from non-certified product at all times in this facility (e.g. labelled containers, separate storage)?'},
@@ -2233,6 +2243,19 @@ function renderKDE(){
     }
 
     // Default: just render the questions
+    // Role note for Certifications stage
+    if(st.k==='certifications'){
+      const ROLE_LABELS_CERT={'importer':'🚢 Importer / Buyer','exporter':'📦 Exporter / Supplier','processor':'🏭 Processor','trader':'🔄 Trader / Broker','brand':'🏷️ Brand / Retailer','auditor':'🔍 Auditor / Assessor'};
+      const roleLabel=ROLE_LABELS_CERT[assessorRole]||assessorRole||'your role';
+      const externalRoles=['auditor','assessor','importer','brand','trader'];
+      const isExt=externalRoles.includes(assessorRole);
+      const roleNote=isExt
+        ?`As a <strong>${roleLabel}</strong>, these questions are phrased from the perspective of the supply chain companies you work with — not your own company.`
+        :`As a <strong>${roleLabel}</strong>, these questions relate to your own company's certifications and systems.`;
+      html+=`<div style="background:#f4f0ff;border:1px solid #ddd6fe;border-radius:10px;padding:11px 15px;margin-bottom:14px;font-size:12px;color:#5b21b6;line-height:1.6;">
+        🎯 ${roleNote} Questions are automatically tailored to your role.
+      </div>`;
+    }
     // Multi-vessel warning — show whenever vesselCount > 1, regardless of multiInst
     const vc=inst?.vesselCount||1;
     if(vc>1&&(st.type==='harvest'||st.type==='transshipment')){
