@@ -2374,6 +2374,17 @@ function setAns(id,ans){
   document.getElementById('kp'+safeId)?.classList.toggle('show',ans==='pa');
   document.getElementById('kun'+safeId)?.classList.toggle('show',ans==='un');
   const evs=card.querySelector('.ev-summary');if(evs)evs.style.display=(ans==='av'||ans==='pa')?'flex':'none';
+
+  // Re-render if this is a trigger question — so conditional questions appear/disappear immediately
+  const triggerSuffixes=['_fv_imo','_cr_imo'];
+  if(triggerSuffixes.some(s=>id.endsWith(s))){
+    setTimeout(()=>{
+      const scrollEl=document.getElementById('kcontent');
+      const scrollTop=scrollEl?.scrollTop||0;
+      renderKDE();
+      if(scrollEl)scrollEl.scrollTop=scrollTop;
+    },50);
+  }
 }
 // ── Comment-style note system: compose → submit → posted (edit/delete) ──
 function renderNoteArea(qid,type,savedValue){
