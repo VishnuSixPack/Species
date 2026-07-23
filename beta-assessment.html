@@ -641,7 +641,7 @@
       <button class="ovcls" onclick="closePF()">×</button>
     </div>
     <div class="fg">
-      <div class="fgg" style="grid-column:1/-1;"><label class="fl">Product Description *</label><input type="text" class="fi" id="pfd" placeholder="e.g. Skipjack Tuna Loin — Canned"/></div>
+      <div class="fgg" style="grid-column:1/-1;"><label class="fl">Product Description *</label><input type="text" class="fi" id="pfd" placeholder="e.g. Skipjack Tuna Loin — Canned" oninput="autoCOOFromDesc(this.value)"/></div>
       <div class="fgg"><label class="fl">Species *</label>
         <div class="spw"><input type="text" class="fi" id="pfsp" placeholder="Search species..." oninput="filterSp(this.value)" onfocus="openSpDD()" autocomplete="off"/>
         <div class="spdd" id="spdd"><div style="padding:12px;font-size:12px;color:#c0c4d0;">Loading...</div></div></div>
@@ -956,7 +956,7 @@ const db=window._sharedSupabase||(window._sharedSupabase=supabase.createClient(S
 const GROQ_API_KEY='gsk_KagTtJXDz2t7ES2S'+'MbKlWGdyb3FY4PD5tfWqRyORbm6euu6vZrZq'; // split to avoid GitHub secret scanning
 
 // ══ STATE ══
-let products=[],curPI=0,mkSel=[],cooSel=null,faoSel=null,allC=[],allSp=[],curChain=[];
+let products=[],curPI=0,mkSel=[],cooSel=null,faoSel=[],allC=[],allSp=[],curChain=[];
 let assessorName='';
 let activeSubIdx=0; // tracks which sub-instance is expanded per stage
 let kIdx=0,kResp={},pref='email',draftId=null,evCustomName=null,rvOverrides={},rvKdeComments={};
@@ -1007,17 +1007,40 @@ function selRole(role){
 async function openAIModal(encodedQ){
   const q=decodeURIComponent(encodedQ);
   const body=document.getElementById('aiModalBody');
-  // Show user bubble + typing indicator
-  body.innerHTML=`
+
+  // ── Step 1: Show fallback immediately (always works, no API needed) ──
+  const fallback=typeof getKDEFallback==='function'?getKDEFallback(q):null;
+
+  const userBubble=`
     <div class="ai-user-row">
       <div class="ai-user-avatar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
       <div class="ai-user-bubble">Explain : ${q}</div>
-    </div>
-    <div class="ai-bot-row">
+    </div>`;
+
+  const typingBubble=`
+    <div class="ai-bot-row" id="aiTypingRow">
       <div class="ai-bot-avatar">🤖</div>
       <div class="ai-typing"><span></span><span></span><span></span></div>
     </div>`;
+
+  if(fallback){
+    // Show fallback answer immediately
+    const fallbackHtml=`
+      <div class="ai-bot-section"><div class="ai-bot-section-lbl">📌 What it is</div><div class="ai-bot-section-text">${fallback.w}</div></div>
+      <div class="ai-bot-section"><div class="ai-bot-section-lbl">🔍 Where to find it</div><div class="ai-bot-section-text">${fallback.f}</div></div>
+      <div class="ai-bot-section"><div class="ai-bot-section-lbl">⚠️ Why it matters</div><div class="ai-bot-section-text">${fallback.m}</div></div>`;
+    body.innerHTML=userBubble+`
+      <div class="ai-bot-row" id="aiBotAnswer">
+        <div class="ai-bot-avatar">🤖</div>
+        <div class="ai-bot-bubble" id="aiBotBubble">${fallbackHtml}</div>
+      </div>`;
+  } else {
+    // No fallback — show typing
+    body.innerHTML=userBubble+typingBubble;
+  }
   document.getElementById('aiModalOv').classList.add('open');
+
+  // ── Step 2: Try Groq in the background — upgrade if it works ──
   try{
     const resp=await fetch('https://api.groq.com/openai/v1/chat/completions',{
       method:'POST',
@@ -1042,7 +1065,8 @@ Use plain friendly language. No jargon. Address the user directly.`}]
       })
     });
     const data=await resp.json();
-    const text=data.choices?.[0]?.message?.content||'No explanation available.';
+    const text=data.choices?.[0]?.message?.content||'';
+    if(!text)return; // keep fallback shown
     const sections=[
       {key:'WHAT IT IS',icon:'📌',lbl:'What it is'},
       {key:'WHERE TO FIND IT',icon:'🔍',lbl:'Where to find it'},
@@ -1050,7 +1074,7 @@ Use plain friendly language. No jargon. Address the user directly.`}]
     ];
     let bubbleHtml='';
     sections.forEach(s=>{
-      const regex=new RegExp(s.key+':?[\s]?([\s\S]*?)(?=\n(?:WHAT IT IS|WHERE TO FIND IT|WHY IT MATTERS)|$)');
+      const regex=new RegExp(s.key+':?[\\s]?([\\s\\S]*?)(?=\\n(?:WHAT IT IS|WHERE TO FIND IT|WHY IT MATTERS)|$)');
       const match=text.match(regex);
       if(match&&match[1].trim()){
         bubbleHtml+=`<div class="ai-bot-section">
@@ -1060,45 +1084,31 @@ Use plain friendly language. No jargon. Address the user directly.`}]
       }
     });
     if(!bubbleHtml)bubbleHtml=`<div class="ai-bot-section-text">${text}</div>`;
-    body.innerHTML=`
-      <div class="ai-user-row">
-        <div class="ai-user-avatar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
-        <div class="ai-user-bubble">Explain : ${q}</div>
-      </div>
-      <div class="ai-bot-row">
-        <div class="ai-bot-avatar">🤖</div>
-        <div class="ai-bot-bubble">${bubbleHtml}</div>
-      </div>`;
-  }catch(e){
-    // Try fallback from kde-explanations.js
-    const fallback=typeof getKDEFallback==='function'?getKDEFallback(q):null;
-    if(fallback){
-      const bubbleHtml=`
-        <div class="ai-bot-section"><div class="ai-bot-section-lbl">📌 What it is</div><div class="ai-bot-section-text">${fallback.w}</div></div>
-        <div class="ai-bot-section"><div class="ai-bot-section-lbl">🔍 Where to find it</div><div class="ai-bot-section-text">${fallback.f}</div></div>
-        <div class="ai-bot-section"><div class="ai-bot-section-lbl">⚠️ Why it matters</div><div class="ai-bot-section-text">${fallback.m}</div></div>`;
-      body.innerHTML=`
-        <div class="ai-user-row">
-          <div class="ai-user-avatar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
-          <div class="ai-user-bubble">Explain : ${q}</div>
-        </div>
+    // Upgrade the displayed answer with live AI response
+    document.getElementById('aiTypingRow')?.remove();
+    const bubble=document.getElementById('aiBotBubble');
+    if(bubble){bubble.innerHTML=bubbleHtml;}
+    else{
+      body.innerHTML=userBubble+`
         <div class="ai-bot-row">
           <div class="ai-bot-avatar">🤖</div>
           <div class="ai-bot-bubble">${bubbleHtml}</div>
         </div>`;
-    } else {
-      body.innerHTML=`
-        <div class="ai-user-row">
-          <div class="ai-user-avatar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
-          <div class="ai-user-bubble">Explain : ${q}</div>
-        </div>
+    }
+  }catch(e){
+    // Groq failed — fallback is already showing, nothing to do
+    document.getElementById('aiTypingRow')?.remove();
+    if(!fallback){
+      // No fallback either — show error
+      body.innerHTML=userBubble+`
         <div class="ai-bot-row">
           <div class="ai-bot-avatar">🤖</div>
-          <div class="ai-bot-bubble" style="color:#e63946;">Could not load explanation. Please check your connection and try again.</div>
+          <div class="ai-bot-bubble" style="color:#e63946;font-size:12px;">Could not load explanation. Please check your connection and try again.</div>
         </div>`;
     }
   }
 }
+
 function closeAIModal(){
   document.getElementById('aiModalOv').classList.remove('open');
   document.getElementById('aiModalBody').innerHTML='';
@@ -1571,8 +1581,7 @@ function saveSC(){
   const ordered=topoOrder(scNodes,scEdges);
   curChain=ordered.map(n=>({id:n.id,type:n.type,l:n.cfg.l,i:n.cfg.i,b:n.cfg.b,own:n.own,entityName:n.entityName||null,vesselCount:n.vesselCount,instanceNum:n.instanceNum,subMode:n.subMode}));
   updateSCPrev();
-  const fao=document.getElementById('pffao').value;
-  if(fao){const zone=FAO_ZONES.find(z=>z.z===fao);if(zone){const b=document.getElementById('rfmo-banner');b.textContent=`🌊 FAO ${fao} (${zone.n}) — ${zone.rfmo} jurisdiction.`;b.classList.add('show');}}
+  updateRFMOBanner();
   closeSCB();showToast(`✓ Supply chain saved — ${curChain.length} CTEs`,'success');
   setTimeout(()=>showSCCompletePopup(curChain),300);
 }
@@ -1580,7 +1589,10 @@ function updateSCPrev(){
   const p=document.getElementById('scprev');if(!p)return;
   if(!curChain.length){p.innerHTML='<span class="scempty">No supply chain built yet</span>';return;}
   const typeCounts={};curChain.forEach(n=>{typeCounts[n.type]=(typeCounts[n.type]||0)+1;});
-  p.innerHTML=curChain.map((n,i)=>{const numLabel=ROMAN[n.instanceNum-1]||n.instanceNum;const hasMultiple=typeCounts[n.type]>1;return `${i>0?'<span class="scarrow">→</span>':''}<span class="scchip">${n.i} ${n.l}${hasMultiple?' '+numLabel:''}</span>`;}).join('');
+  const faoArr=Array.isArray(faoSel)?faoSel:[];
+  const rfmos=[...new Set(faoArr.flatMap(z=>{const zone=FAO_ZONES.find(f=>f.z===z);return zone?zone.rfmo.split(' / '):[];}))];
+  const rfmoChips=rfmos.length?rfmos.map(r=>`<span class="scchip" style="background:#f4f0ff;color:#7c3aed;">🌊 ${r}</span>`).join(''):'';
+  p.innerHTML=curChain.map((n,i)=>{const numLabel=ROMAN[n.instanceNum-1]||n.instanceNum;const hasMultiple=typeCounts[n.type]>1;return `${i>0?'<span class="scarrow">→</span>':''}<span class="scchip">${n.i} ${n.l}${hasMultiple?' '+numLabel:''}</span>`;}).join('')+(rfmoChips?`<span class="scarrow">·</span>${rfmoChips}`:'');
 }
 
 // ══ PRODUCT FORM ══
@@ -1590,19 +1602,30 @@ function openPF(idx){
   setDropVal('cert',p.cert||'');setDropVal('form',p.form||'');setDropVal('harvest',p.harvest||'');
   mkSel=p.markets?[...p.markets]:[];updateMKChips();
   cooSel=p.coo||null;document.getElementById('pfcoo').value=cooSel||'';updateCOOChip();
-  faoSel=p.fao||null;document.getElementById('pffao').value=faoSel||'';updateFAOChip();
+  faoSel=Array.isArray(p.fao)?p.fao:(p.fao?[p.fao]:[]);document.getElementById('pffao').value=faoSel.join(',');updateFAOChip();updateRFMOBanner();
   const b=document.getElementById('rfmo-banner');
-  if(faoSel){const zone=FAO_ZONES.find(z=>z.z===faoSel);if(zone){b.textContent=`🌊 FAO ${faoSel} (${zone.n}) — ${zone.rfmo} jurisdiction.`;b.classList.add('show');}}else{b.classList.remove('show');}
+  updateRFMOBanner();
   curChain=p.chain?[...p.chain]:[];clearCV();
   if(p.scNodes){p.scNodes.forEach(n=>{scNodes.push({...n});renderNode({...n,cfg:CTE_CFG[n.type]});});scEdges=[...(p.scEdges||[])];drawConnections();if(scNodes.length)document.getElementById('cvhint').classList.add('gone');}
   updateSCPrev();document.getElementById('pfov').classList.add('open');
 }
 function closePF(){document.getElementById('pfov').classList.remove('open');}
+function autoCOOFromDesc(v){
+  const form=document.getElementById('pfform')?.value||'';
+  if(form!=='Canned')return;
+  if(!v||!allC.length)return;
+  const lower=v.toLowerCase();
+  const match=allC.find(ctry=>ctry.length>3&&lower.includes(ctry.toLowerCase()));
+  if(match&&match!==cooSel){
+    cooSel=match;document.getElementById('pfcoo').value=match;updateCOOChip();
+    showToast(`🏭 COO auto-set: ${match} — canned product uses country of manufacture`,'success');
+  }
+}
 function savePF(){
   const d=document.getElementById('pfd').value.trim();
   if(!d){showToast('Please enter a product description.','error');return;}
   if(!curChain.length){showToast('Please build a supply chain first.','error');document.getElementById('btnbuild').style.animation='shake 0.4s ease';setTimeout(()=>document.getElementById('btnbuild').style.animation='',400);return;}
-  products[curPI]={desc:d,species:document.getElementById('pfsp').value,cert:document.getElementById('pfcert').value,form:document.getElementById('pfform').value,harvest:document.getElementById('pfharvest').value,markets:[...mkSel],coo:cooSel,fao:faoSel,chain:[...curChain],scNodes:scNodes.map(n=>({...n,cfg:undefined})),scEdges:[...scEdges]};
+  products[curPI]={desc:d,species:document.getElementById('pfsp').value,cert:document.getElementById('pfcert').value,form:document.getElementById('pfform').value,harvest:document.getElementById('pfharvest').value,markets:[...mkSel],coo:cooSel,fao:[...(Array.isArray(faoSel)?faoSel:[faoSel].filter(Boolean))],chain:[...curChain],scNodes:scNodes.map(n=>({...n,cfg:undefined})),scEdges:[...scEdges]};
   fillSlot(curPI);document.getElementById('pfov').classList.remove('open');
 }
 function fillSlot(i){
@@ -1728,7 +1751,7 @@ function buildHarvestQs(inst,vc,hasEU,prods,own){
     {id:`${inst.id}_fv_flag`,q:`Is the flag state of ${N} fishing ${vessel} known and documented?`},
     {id:`${inst.id}_fv_vms`,q:`Is VMS (Vessel Monitoring System) active for ${N} fishing ${vessel}?`},
     {id:`${inst.id}_fv_ais`,q:`Is AIS tracking active and publicly verifiable for ${N} fishing ${vessel}?`},
-    {id:`${inst.id}_fv_rfmo`,q:`Is ${vc===1?'the vessel':'each vessel'} listed on a public vessel registry and the relevant RFMO register (with a verifiable hyperlink or reference)?`},
+    {id:`${inst.id}_fv_rfmo`,q:(()=>{const faoArr=Array.isArray(faoSel)?faoSel:[];const rfmos=[...new Set(faoArr.flatMap(z=>{const zone=FAO_ZONES.find(f=>f.z===z);return zone?zone.rfmo.split(' / '):[];}))];const rfmoStr=rfmos.length?` (${rfmos.join('/')})`:'';return `Is ${vc===1?'the vessel':'each vessel'} listed on a public vessel registry and the relevant RFMO register${rfmoStr} — with a verifiable hyperlink or URL?`;})()},
     ...(hasEU?[{id:`${inst.id}_fv_eu_approval`,q:`Does ${vc===1?'the vessel':'each vessel'} hold a valid EU approved vessel listing?`}]:[]),
     {id:`${inst.id}_fv_iuu_check`,q:`Has ${vc===1?'the vessel':'each vessel'} been checked against IUU vessel blacklists (RFMO, EU, PSMA)?`},
     
@@ -1749,7 +1772,7 @@ function buildTransshipmentQs(inst,vc,hasEU,own){
   return [
     {id:`${inst.id}_cr_name`,q:`Is the name of ${N} ${vessel} used for transshipment available?`},
     {id:`${inst.id}_cr_imo`,q:`Do you know the IMO number of ${N} ${vessel}?`},
-    {id:`${inst.id}_cr_uid`,q:`Is a unique vessel ID available for ${N} ${vessel}?`},
+    ...(kResp[`${inst.id}_cr_imo`]?.ans==='un'||kResp[`${inst.id}_cr_imo`]?.ans==='pa'?[{id:`${inst.id}_cr_uid`,q:`Is a unique vessel identification number (if no IMO) available for ${N} ${vessel}?`}]:[]),
     {id:`${inst.id}_cr_reg`,q:'Is the carrier vessel\'s unique vessel ID available?'},
     {id:`${inst.id}_cr_flag`,q:`Is the flag state of ${N} ${vessel} known and documented?`},
     {id:`${inst.id}_cr_rfmo`,q:`Is ${vc===1?'the carrier vessel':'each carrier vessel'} registered on the relevant RFMO register?`},
@@ -1810,7 +1833,12 @@ function buildLandingQs(inst,mode,hasEU){
 }
 function buildShipReceiveQs(inst,mode,transport,hasEU,hasUS,isFrozen=false){
   // ── INTERNAL TRANSFER (no transport mode needed) ──
+  // Determine if it's a dry transfer (canned after processing) or chilled (fish product)
+  const isCanned=products.filter(Boolean).some(p=>p.form==='Canned');
+  // Internal: ask transport type if not canned→canned
+  const needsTransportQ=mode==='internal';
   if(mode==='internal') return [
+    {id:`${inst.id}_lfp_transport_type`,q:isCanned?'Was this internal transfer made by dry/standard truck (no refrigeration required)?':'Was this internal transfer made by refrigerated (reefer) truck to maintain cold chain?'},
     {id:`${inst.id}_lfp_ownership`,q:'Is product ownership clearly documented for this internal transfer?'},
     {id:`${inst.id}_lfp_gtin`,q:'Do you carry the GTIN/item code through on your internal transfer documents?'},
     {id:`${inst.id}_lfp_linking`,q:'Do you maintain the linking KDE on your internal transfer documents?'},
@@ -1907,12 +1935,32 @@ function buildProcessingQs(hasEU,own,inst){
 
   {id:p+'proc_haccp',          q:`Does ${entity(own,'processing facility')} have a documented food safety plan? (e.g. HACCP or equivalent — any formal record of how food safety hazards are controlled)`},
   {id:p+'proc_digital',        q:'Are processing records captured digitally?'},
+  ...(products.filter(Boolean).some(pr=>pr.cert==='MSC')?[
+    {id:p+'pp_msc_batch',     q:'Do you have the MSC batch number available at processing — traceable back to the certified catch?'},
+    {id:p+'pp_msc_coc_proc',  q:'Does your processing facility hold a valid MSC Chain of Custody certificate covering this processing step?'},
+  ]:[]),
   {id:p+'pp_welfare_policy',   q:`Does ${entity(own,'processing facility')} have a documented Human Welfare Policy?`},
   {id:p+'pp_welfare_standards',q:`Does ${entity(own,'processing facility')} comply with recognized human welfare standards?`},
 ];}
 function buildAggregationQs(own,inst){
   const p=inst?inst.id+'_':'';
-  return [{id:p+'agg_lot_code',q:'Do you assign a new lot/batch code after aggregation or disaggregation?'},{id:p+'agg_linking',q:'Do you document the link between input and output lots (parent-child traceability)?'},{id:p+'agg_weight',q:'Do you perform and document a weight reconciliation after aggregation?'},{id:p+'agg_ownership',q:'Can you clearly document product ownership at the aggregation stage?'},{id:p+'agg_location',q:'Do you have the facility location documented on your aggregation records?'},{id:p+'agg_eu_approval',q:'Does the aggregation facility in your supply chain hold a valid EU establishment approval number?'},{id:p+'agg_msc_coc',q:'Does the aggregation facility in your supply chain hold a valid MSC Chain of Custody certificate?'},{id:p+'agg_sizing',q:'Does the discharged quantity undergo sizing at this aggregation/disaggregation stage?'},{id:p+'agg_digital',q:'Do you capture aggregation records in a digital system?'}];}
+  const hasMSC_agg=products.filter(Boolean).some(pr=>pr.cert==='MSC');
+  return [
+    {id:p+'agg_lot_code',q:hasMSC_agg?'Do you assign a new MSC lot code to keep MSC-certified product separately identifiable after this stage?':'Do you assign a new lot/batch code after aggregation or disaggregation?'},
+    {id:p+'agg_linking',q:hasMSC_agg?'Do you document the link between input MSC-certified lots and the output lot code (parent-child traceability)?':'Do you document the link between input and output lots (parent-child traceability)?'},
+    {id:p+'agg_weight',q:'Do you perform and document a weight reconciliation after this handling stage?'},
+    {id:p+'agg_ownership',q:'Can you clearly document product ownership at this stage?'},
+    {id:p+'agg_location',q:'Do you have the facility location documented on your records for this stage?'},
+    {id:p+'agg_eu_approval',q:'Does the facility in your supply chain hold a valid EU establishment approval number?'},
+    {id:p+'agg_msc_coc',q:hasMSC_agg?'Does this facility hold a valid MSC Chain of Custody certificate — confirming MSC product is kept separate from non-certified product?':'Does this facility hold a valid Chain of Custody certification?'},
+    ...(hasMSC_agg?[
+      {id:p+'agg_msc_separation',q:'Is MSC-certified product physically separated from non-certified product at all times in this facility (e.g. labelled containers, separate storage)?'},
+      {id:p+'agg_msc_batch',q:'Do you have the MSC batch/lot number traceable to the original certified catch?'},
+    ]:[]),
+    {id:p+'agg_sizing',q:'Does the discharged quantity undergo sizing at this stage?'},
+    {id:p+'agg_digital',q:'Do you capture records digitally for this handling stage?'},
+  ];
+}
 function buildFarmQs(own,inst){
   const p=inst?inst.id+'_':'';
   return [
@@ -1969,27 +2017,37 @@ function buildVesselLandingQs(hasEU,own,inst){
 function buildOnVesselQs(own,inst){
   const p=inst?inst.id+'_':'';
   return [{id:p+'ov_species',q:'Do you have the species documented in your on-vessel processing records?'},{id:p+'ov_vessel',q:'Do you have the vessel name and IMO number on the processing record?'},{id:p+'ov_weight_in',q:'Do you record input weight before on-vessel processing begins?'},{id:p+'ov_weight_out',q:'Do you record output weight after on-vessel processing?'},{id:p+'ov_process_type',q:'Do you document the type of processing carried out (e.g. headed, gutted, filleted)?'},{id:p+'ov_date',q:'Do you document the processing date and time for each batch at sea?'},{id:p+'ov_lot',q:'Do you assign a lot or batch code to the processed product while on vessel?'}];}
-function buildCertQs(hasMSC,hasASC,hasEU,hasUS,hasTuna){return [
-  ...(hasMSC?[{id:'c_msc',q:'Does your company hold a valid MSC Chain of Custody certificate?'}]:[]),
-  ...(hasASC?[{id:'c_asc',q:'Does your company hold a valid ASC Chain of Custody certificate?'}]:[]),
-  ...(hasTuna?[{id:'c_issf_pvr',q:'Are your fishing vessels listed on the ISSF ProActive Vessel Register (PVR)?'}]:[]),
-  {id:'c_brc',          q:'Does your company or your processor hold a current BRC Global Standard or IFS Food certification?'},
-  {id:'c_haccp',        q:'Does your company or processing facility have a documented food safety plan? (This could be a HACCP plan, food safety manual, or any formal document describing how food safety risks are identified and controlled)'},
-  {id:'c_iso',          q:'Does your company or your processor hold an ISO 22000 or equivalent food safety management system certification?'},
-  ...(hasEU?[{id:'c_eu',q:'Does your company or your processing facility hold an EU Facility Approval number?'}]:[]),
-  {id:'c_audit',        q:'Has your company or your supply chain passed an independent third-party traceability audit in the last 12 months?'},
-  {id:'c_internal',     q:'Does your company have an internal traceability system linking every batch from source to sale?'},
-  {id:'c_recall',       q:'Can your company complete a full product recall or withdrawal within 4 hours?'},
-  {id:'c_digital',      q:'Is your company\'s traceability data captured digitally (not paper-based)?'},
-  {id:'c_interop',      q:'Can your company share traceability data digitally with supply chain partners or regulators?'},
-  {id:'c_welfare_org',  q:'Does your company have a documented company-wide Human Welfare Policy?'},
-  {id:'c_welfare_audit',q:'Has your company been audited against a recognized human welfare standard in the last 2 years?'},
-  ...(hasUS?[
-    {id:'s_iftp',     q:'Does your company or the importer of record hold a valid NOAA International Fisheries Trade Permit (IFTP)? (Required by SIMP for US entry)'},
-    {id:'c_fsma_kde', q:'Does your company maintain an FSMA 204 KDE record for each lot shipped to the US?'},
-    {id:'c_fsvp',     q:'Is a Foreign Supplier Verification Program (FSVP) on file for this supplier? (US-bound)'},
-  ]:[]),
-];}
+function buildCertQs(hasMSC,hasASC,hasEU,hasUS,hasTuna){
+  // Roles that don't hold certifications themselves — ask from supply chain perspective
+  const externalRoles=['auditor','assessor','importer','brand','trader'];
+  const isExternal=externalRoles.includes(assessorRole);
+  const whoPrefix=isExternal?'Does the supply chain company/processor you are assessing':'Does your company';
+  const whoOr=isExternal?'Does the supply chain include':'Does your company or processor hold';
+  return [
+    // MSC/ASC — only ask if product is certified; rephrase for external roles
+    ...(hasMSC?[{id:'c_msc',q:isExternal?'Does the supplier or processor in your supply chain hold a valid MSC Chain of Custody certificate?':'Does your company hold a valid MSC Chain of Custody certificate?'}]:[]),
+    ...(hasASC?[{id:'c_asc',q:isExternal?'Does the supplier or processor in your supply chain hold a valid ASC Chain of Custody certificate?':'Does your company hold a valid ASC Chain of Custody certificate?'}]:[]),
+    // ISSF PVR — only relevant for fishing/vessel operators
+    ...(hasTuna&&!['importer','brand','trader','auditor','assessor'].includes(assessorRole)?[{id:'c_issf_pvr',q:'Are your fishing vessels listed on the ISSF ProActive Vessel Register (PVR)?'}]:[]),
+    // BRC/IFS — relevant for processors, exporters; not for auditors assessing the system
+    ...(!['auditor','assessor'].includes(assessorRole)?[{id:'c_brc',q:`${whoOr} a current BRC Global Standard or IFS Food certification?`}]:[]),
+    {id:'c_haccp',q:`${whoPrefix} have a documented food safety plan? (e.g. HACCP or equivalent — any formal record of how food safety hazards are identified and controlled)`},
+    ...(!['auditor','assessor'].includes(assessorRole)?[{id:'c_iso',q:`${whoOr} an ISO 22000 or equivalent food safety management system certification?`}]:[]),
+    ...(hasEU?[{id:'c_eu',q:isExternal?'Does the processing or handling facility in your supply chain hold an EU Facility Approval number?':`Does your company or processing facility hold an EU Facility Approval number?`}]:[]),
+    {id:'c_audit',q:isExternal?'Has the supply chain passed an independent third-party traceability audit in the last 12 months?':'Has your company or supply chain passed an independent third-party traceability audit in the last 12 months?'},
+    {id:'c_internal',q:isExternal?'Does the company you are assessing have an internal traceability system linking every batch from source to sale?':'Does your company have an internal traceability system linking every batch from source to sale?'},
+    {id:'c_recall',q:isExternal?'Can the company being assessed complete a full product recall within 4 hours?':'Can your company complete a full product recall or withdrawal within 4 hours?'},
+    {id:'c_digital',q:isExternal?'Is traceability data captured digitally across the supply chain (not paper-based)?':"Is your company's traceability data captured digitally (not paper-based)?"},
+    {id:'c_interop',q:isExternal?'Can the supply chain share traceability data digitally with partners or regulators on request?':'Can your company share traceability data digitally with supply chain partners or regulators?'},
+    {id:'c_welfare_org',q:isExternal?'Does the company or vessel operator in your supply chain have a documented Human Welfare Policy?':'Does your company have a documented company-wide Human Welfare Policy?'},
+    {id:'c_welfare_audit',q:isExternal?'Has the company been audited against a recognized human welfare standard in the last 2 years?':'Has your company been audited against a recognized human welfare standard in the last 2 years?'},
+    ...(hasUS?[
+      {id:'s_iftp',q:isExternal?'Does the importer of record hold a valid NOAA International Fisheries Trade Permit (IFTP)?':'Does your company or the importer of record hold a valid NOAA IFTP? (Required by SIMP for US entry)'},
+      {id:'c_fsma_kde',q:'Are FSMA 204 KDE records maintained for each lot shipped to the US?'},
+      {id:'c_fsvp',q:isExternal?'Is a Foreign Supplier Verification Program (FSVP) on file for suppliers in this chain?':'Is a Foreign Supplier Verification Program (FSVP) on file for this supplier? (US-bound)'},
+    ]:[]),
+  ];
+}
 
 // ══ KDE Render ══
 function renderKDE(){
@@ -3686,11 +3744,59 @@ function updateCOOChip(){const sel=document.getElementById('coosel');const ph=do
 function clearCOO(){cooSel=null;document.getElementById('pfcoo').value='';updateCOOChip();renderCOOOpts(allC);}
 
 // ── FAO Zone (single-select) ──
-function initFAOList(){const el=document.getElementById('faolist');if(!el)return;el.innerHTML=FAO_ZONES.map(z=>`<div class="mkopt" onclick="selFAO('${z.z}')"><span>FAO ${z.z} — ${z.n}</span><span style="font-size:10px;color:#7c3aed;font-weight:600;">${z.rfmo}</span></div>`).join('');}
+function initFAOList(){
+  const el=document.getElementById('faolist');if(!el)return;
+  el.innerHTML=FAO_ZONES.map(z=>`<div class="mkopt" onclick="selFAO('${z.z}')" id="fao_opt_${z.z}" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span id="fao_chk_${z.z}" style="width:14px;height:14px;border-radius:4px;border:1.5px solid #e0e3ed;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;font-size:9px;"></span>
+      <span>FAO ${z.z} — ${z.n}</span>
+    </div>
+    <span style="font-size:10px;color:#7c3aed;font-weight:600;">${z.rfmo}</span>
+  </div>`).join('');
+  refreshFAOListChecks();
+}
+function refreshFAOListChecks(){
+  FAO_ZONES.forEach(z=>{
+    const chk=document.getElementById('fao_chk_'+z.z);
+    if(!chk)return;
+    const sel=Array.isArray(faoSel)&&faoSel.includes(z.z);
+    chk.style.background=sel?'#8b5cf6':'';
+    chk.style.borderColor=sel?'#8b5cf6':'#e0e3ed';
+    chk.innerHTML=sel?'✓':'';
+    chk.style.color='#fff';
+  });
+}
 function toggleFAO(){document.getElementById('mkdd')?.classList.remove('open');document.getElementById('coodd')?.classList.remove('open');document.getElementById('faodd').classList.toggle('open');}
-function selFAO(z){faoSel=z;document.getElementById('pffao').value=z;updateFAOChip();document.getElementById('faodd').classList.remove('open');const zone=FAO_ZONES.find(f=>f.z===z);if(zone){const b=document.getElementById('rfmo-banner');b.textContent=`🌊 FAO ${z} (${zone.n}) — ${zone.rfmo} jurisdiction.`;b.classList.add('show');}}
-function updateFAOChip(){const sel=document.getElementById('faosel');const ph=document.getElementById('faoph');sel.querySelectorAll('.mkchip').forEach(e=>e.remove());if(faoSel){const zone=FAO_ZONES.find(f=>f.z===faoSel);ph.style.display='none';const chip=document.createElement('span');chip.className='mkchip';chip.innerHTML=`FAO ${faoSel}${zone?' — '+zone.rfmo:''}<span class="mkx" onclick="event.stopPropagation();clearFAO()">×</span>`;sel.insertBefore(chip,ph);}else ph.style.display='block';}
-function clearFAO(){faoSel=null;document.getElementById('pffao').value='';updateFAOChip();document.getElementById('rfmo-banner').classList.remove('show');}
+function selFAO(z){
+  if(!Array.isArray(faoSel))faoSel=[];
+  if(faoSel.includes(z)){faoSel=faoSel.filter(f=>f!==z);}else{faoSel.push(z);}
+  document.getElementById('pffao').value=faoSel.join(',');
+  updateFAOChip();updateRFMOBanner();refreshFAOListChecks();
+  // Don't close dropdown — allow multi-select
+}
+function updateFAOChip(){
+  const sel=document.getElementById('faosel');const ph=document.getElementById('faoph');
+  sel.querySelectorAll('.mkchip').forEach(e=>e.remove());
+  if(Array.isArray(faoSel)&&faoSel.length){
+    ph.style.display='none';
+    faoSel.forEach(z=>{
+      const zone=FAO_ZONES.find(f=>f.z===z);
+      const chip=document.createElement('span');chip.className='mkchip';
+      chip.innerHTML=`FAO ${z}${zone?' ('+zone.n+')':''}<span class="mkx" onclick="event.stopPropagation();removeFAO('${z}')">×</span>`;
+      sel.insertBefore(chip,ph);
+    });
+  } else {ph.style.display='block';}
+}
+function removeFAO(z){faoSel=(faoSel||[]).filter(f=>f!==z);document.getElementById('pffao').value=faoSel.join(',');updateFAOChip();updateRFMOBanner();}
+function updateRFMOBanner(){
+  const b=document.getElementById('rfmo-banner');
+  if(!Array.isArray(faoSel)||!faoSel.length){b.classList.remove('show');return;}
+  const rfmos=[...new Set(faoSel.flatMap(z=>{const zone=FAO_ZONES.find(f=>f.z===z);return zone?zone.rfmo.split(' / '):[];}))];
+  const zones=faoSel.map(z=>{const zone=FAO_ZONES.find(f=>f.z===z);return zone?`FAO ${z} (${zone.n})`:z;}).join(', ');
+  b.innerHTML=`🌊 ${zones} — <strong>${rfmos.join(' / ')}</strong> jurisdiction`;
+  b.classList.add('show');
+}
+function clearFAO(){faoSel=[];document.getElementById('pffao').value='';updateFAOChip();document.getElementById('rfmo-banner').classList.remove('show');}
 
 // ── Species ──
 async function loadSpecies(){const{data}=await db.from('species').select('species_name,scientific_name').is('deleted_at',null).order('species_name');allSp=data||[];renderSpOpts(allSp);}
