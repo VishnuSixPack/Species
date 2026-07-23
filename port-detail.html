@@ -339,6 +339,11 @@ function renderDetails(p){
     ${p.berth?`<div style="margin-top:14px"><div class="dt">Berth</div>${val(p.berth)}</div>`:''}`;
 }
 
+// Facility lookup by ID — avoids JSON serialisation in onclick attrs
+function getFacById(id){ return _allFacilities.find(f=>f.id===id); }
+function selectFacilityById(id){ const f=getFacById(id); if(f) selectFacility(f); }
+function openFacilityDetailById(id){ const f=getFacById(id); if(f) openFacilityDetail(f); }
+
 function renderTerminals(facilities){
   const el=$('terminalsBody'); if(!el) return;
   const top=facilities.filter(f=>!f.parent_facility_id);
@@ -349,11 +354,12 @@ function renderTerminals(facilities){
     const children=facilities.filter(f=>f.parent_facility_id===fac.id);
     const icon=FAC_ICON[fac.facility_type]||'📍';
     const hasCoords=fac.latitude&&fac.longitude;
-    const facJson=JSON.stringify(fac).replace(/'/g,'&apos;');
+    // Use data-id — never put JSON in onclick attributes
     return `<div style="margin-left:${depth*16}px;margin-bottom:8px">
       <div class="terminal-item fac-item" id="facItem_${fac.id}"
-        style="${depth>0?'border-left:2px solid var(--primary-mid);border-radius:0 10px 10px 0':''}cursor:pointer;transition:border-color .15s,box-shadow .15s,background .15s"
-        onclick="selectFacility(${facJson})"
+        data-facid="${fac.id}"
+        style="${depth>0?'border-left:2px solid var(--primary-mid);border-radius:0 10px 10px 0;':''}cursor:pointer;transition:border-color .15s,box-shadow .15s,background .15s"
+        onclick="selectFacilityById('${fac.id}')"
         onmouseover="if(!this.classList.contains('fac-active'))this.style.borderColor='var(--primary-mid)'"
         onmouseout="if(!this.classList.contains('fac-active'))this.style.borderColor=''">
         <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
@@ -368,7 +374,7 @@ function renderTerminals(facilities){
             </div>
           </div>
         </div>
-        <button onclick="event.stopPropagation();openFacilityDetail(${facJson})"
+        <button onclick="event.stopPropagation();openFacilityDetailById('${fac.id}')"
           style="height:28px;padding:0 10px;border-radius:7px;border:1.5px solid var(--border);background:#fff;font:inherit;font-size:11.5px;font-weight:600;color:var(--primary);cursor:pointer;flex-shrink:0;transition:.14s;white-space:nowrap"
           onmouseover="this.style.background='var(--primary-soft)'" onmouseout="this.style.background='#fff'">Details</button>
       </div>
@@ -399,15 +405,15 @@ function renderMap(p){
   _portData=p;
   if(!p.latitude||!p.longitude){ return; }
   const lat=parseFloat(p.latitude), lon=parseFloat(p.longitude);
-  $('coordsLbl').textContent=`${lat.toFixed(4)}, ${lon.toFixed(4)}`;
-  $('mapPlaceholder').style.display='none';
+  const cl=$('coordsLbl'); if(cl) cl.textContent=`${lat.toFixed(4)}, ${lon.toFixed(4)}`;
   zoomMapTo(lat, lon, 0.15, 0.12);
 }
 
 function zoomMapTo(lat, lon, bboxW, bboxH){
-  $('mapBox').innerHTML=`<iframe width="100%" height="100%" frameborder="0" style="border:0" loading="lazy"
+  const box=$('mapBox'); if(!box) return;
+  box.innerHTML=`<iframe width="100%" height="100%" frameborder="0" style="border:0" loading="lazy"
     src="https://www.openstreetmap.org/export/embed.html?bbox=${lon-bboxW}%2C${lat-bboxH}%2C${lon+bboxW}%2C${lat+bboxH}&layer=mapnik&marker=${lat}%2C${lon}" allowfullscreen></iframe>`;
-  $('mapPlaceholder').style.display='none';
+  const ph=$('mapPlaceholder'); if(ph) ph.style.display='none';
 }
 
 function selectFacility(fac){
@@ -507,13 +513,20 @@ function renderHeader(p){
   const {data:p,error}=await sb.from('ports').select('*').eq('id',vid).single();
   if(error||!p){toast('Port not found','err');return;}
   renderHeader(p);
-  renderDetails(p);
-  renderMap(p);
-  renderQuickFacts(p);
-  // Load terminals
-  const {data:terms}=await sb.from('port_facilities').select('*').eq('port_id',vid).order('sort_order').order('created_at');
-  _allFacilities=terms||[];
-  renderTerminals(terms||[]);
+  try{ renderDetails(p); } catch(e){ console.warn('renderDetails error:',e); }
+  try{ renderMap(p); } catch(e){ console.warn('renderMap error:',e); }
+  try{ renderQuickFacts(p); } catch(e){ console.warn('renderQuickFacts error:',e); }
+  // Load terminals — always runs even if above steps error
+  try{
+    const {data:terms,error:tErr}=await sb.from('port_facilities').select('*').eq('port_id',vid).order('sort_order').order('created_at');
+    if(tErr) throw tErr;
+    _allFacilities=terms||[];
+    renderTerminals(terms||[]);
+  } catch(e){
+    console.error('Facilities load error:',e);
+    const tb=document.getElementById('terminalsBody');
+    if(tb) tb.innerHTML='<div class="empty-state">Error loading facilities: '+e.message+'</div>';
+  }
 })();
 
 
@@ -566,7 +579,7 @@ function openFacilityDetail(fac){
   const childWrap=$('facModalChildrenWrap'), childEl=$('facModalChildren');
   if(children.length){
     childEl.innerHTML=children.map(c=>`
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:9px;margin-bottom:6px;cursor:pointer" onclick="openFacilityDetail(${JSON.stringify(c).replace(/'/g,'&apos;')})" onmouseover="this.style.background='var(--primary-soft)'" onmouseout="this.style.background='var(--bg)'">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:9px;margin-bottom:6px;cursor:pointer" onclick="openFacilityDetailById('${c.id}')" onmouseover="this.style.background='var(--primary-soft)'" onmouseout="this.style.background='var(--bg)'">
         <span style="font-size:18px">${FAC_ICON_MAP[c.facility_type]||'📍'}</span>
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(c.name)}</div>
