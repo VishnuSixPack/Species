@@ -1,850 +1,526 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Home — Project Manhattan</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="icon" type="image/png" href="brand-logo.png" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Manhattan A.I</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <link rel="icon" type="image/png" href="brand-logo.png"/>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root { --primary:#1a6fdb; --bg:#f0f2f7; --white:#ffffff; --text:#374151; --muted:#6b7280; --border:#e8eaf0; }
-    html,body { overflow:hidden; height:100%; }
-    body { font-family:'Poppins','DM Sans',sans-serif; background:var(--bg); color:#374151; height:100vh; display:flex; flex-direction:column; font-weight:400; }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    html,body{height:100%;overflow:hidden;}
+    body{font-family:'Inter',sans-serif;display:flex;background:#fff;}
 
-    /* ── TOP BAR ── */
-    .topbar { display:flex; align-items:center; padding:10px 28px; gap:20px; flex-shrink:0; }
-    .topbar-brand { text-decoration:none; flex-shrink:0; line-height:1.1; }
-    .topbar-brand-project { display:block; font-size:8px; font-weight:700; letter-spacing:2px; color:#9aa0b4; }
-    .topbar-brand-name { display:block; font-size:16px; font-weight:800; color:#374151; }
-    .topbar-nav { flex:1; display:flex; justify-content:center; }
-    .nav-pill { display:inline-flex; align-items:center; gap:2px; background:var(--white); border-radius:999px; padding:5px 7px; box-shadow:0 1px 6px rgba(0,0,0,0.07); }
-    .nav-item { display:flex; align-items:center; gap:6px; padding:7px 14px; border-radius:999px; font-size:13px; font-weight:400; color:var(--muted); text-decoration:none; transition:background 0.15s,color 0.15s; white-space:nowrap; }
-    .nav-item img { width:15px; height:15px; object-fit:contain; opacity:0.5; flex-shrink:0; }
-    .nav-item:hover { background:var(--bg); color:#374151; }
-    .nav-item.active { background:var(--bg); color:#374151; font-weight:600; }
-    .nav-item:hover img,.nav-item.active img { opacity:1; }
-    .nav-item-wrap { position:relative; }
-    .nav-item-wrap::after { content:''; position:absolute; top:100%; left:0; width:100%; height:12px; background:transparent; }
-    .nav-item-wrap:hover .nav-dropdown { display:block; }
-    .nav-dropdown { display:none; position:absolute; top:calc(100% + 8px); left:0; background:var(--white); border:1px solid var(--border); border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.10); min-width:160px; z-index:500; padding:6px; }
-    .nav-dropdown-item { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; font-size:13px; color:#4a4e69; text-decoration:none; border-radius:8px; font-weight:500; transition:background 0.15s; white-space:nowrap; cursor:pointer; position:relative; }
-    .nav-dropdown-item:hover { background:var(--bg); color:var(--primary); }
-    .nav-dropdown-sub { display:none; position:absolute; left:calc(100% + 4px); top:0; background:var(--white); border:1px solid var(--border); border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.10); min-width:160px; padding:6px; z-index:501; }
-    .nav-dropdown-item:hover .nav-dropdown-sub { display:block; }
-    .topbar-right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
-    .search-pill { display:flex; align-items:center; gap:8px; background:var(--white); border-radius:999px; padding:8px 16px; font-size:12px; color:#c0c4d0; box-shadow:0 1px 4px rgba(0,0,0,0.06); min-width:150px; cursor:text; }
-    .notif-btn { width:36px; height:36px; border-radius:50%; background:var(--white); display:flex; align-items:center; justify-content:center; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,0.07); position:relative; flex-shrink:0; }
-    .notif-btn img { width:17px; height:17px; object-fit:contain; opacity:0.65; }
-    .notif-dot { position:absolute; top:5px; right:5px; width:8px; height:8px; background:#e63946; border-radius:50%; border:2px solid var(--bg); }
-    .avatar-btn { width:36px; height:36px; border-radius:50%; background:var(--primary); color:var(--white); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; box-shadow:0 1px 4px rgba(0,0,0,0.12); flex-shrink:0; }
-    .avatar-menu { display:none; position:absolute; top:calc(100% + 8px); right:0; background:var(--white); border:1px solid var(--border); border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.10); min-width:176px; overflow:hidden; z-index:999; }
-    .avatar-menu.open { display:block; }
-    .avatar-menu-name { padding:11px 15px 7px; font-size:12px; font-weight:700; color:#374151; border-bottom:1px solid var(--border); }
-    .avatar-menu a { display:flex; align-items:center; gap:8px; padding:9px 15px; font-size:13px; color:#4a4e69; text-decoration:none; font-weight:500; }
-    .avatar-menu a:hover { background:var(--bg); color:var(--primary); }
-    .avatar-menu button { width:100%; padding:9px 15px; background:none; border:none; border-top:1px solid var(--border); text-align:left; font-family:'Poppins',sans-serif; font-size:13px; color:#e63946; cursor:pointer; }
-    .avatar-menu button:hover { background:#fff0f1; }
-
-    /* ── BODY ── */
-    .body-layout { display:flex; flex:1; padding:0 20px 14px; gap:14px; align-items:flex-start; min-height:0; }
+    /* ── ANIMATED GRADIENT BACKGROUND ── */
+    @keyframes gradientShift{
+      0%  {background-position:0% 50%;}
+      50% {background-position:100% 50%;}
+      100%{background-position:0% 50%;}
+    }
+    @keyframes fadeIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+    @keyframes fadeInFast{from{opacity:0;}to{opacity:1;}}
+    @keyframes slideInLeft{from{opacity:0;transform:translateX(-16px);}to{opacity:1;transform:translateX(0);}}
+    @keyframes slideInUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+    @keyframes dots{0%,60%,100%{transform:translateY(0);opacity:.35;}30%{transform:translateY(-5px);opacity:1;}}
+    @keyframes pulse-ring{0%{transform:scale(1);opacity:.6;}100%{transform:scale(1.6);opacity:0;}}
 
     /* ── SIDEBAR ── */
-    .sidebar-col { display:flex; flex-direction:column; align-items:center; flex-shrink:0; gap:0; align-self:stretch; min-height:calc(100vh - 80px); }
-    .sidebar-icons { display:flex; flex-direction:column; gap:8px; flex:1; min-height:0; }
-    .si { width:42px; height:42px; border-radius:999px; background:var(--white); box-shadow:0 1px 4px rgba(0,0,0,0.08); display:flex; align-items:center; overflow:hidden; white-space:nowrap; cursor:pointer; text-decoration:none; transition:width 0.22s ease,box-shadow 0.2s; flex-shrink:0; }
-    .si:hover:not(.si-disabled) { width:148px; box-shadow:0 3px 10px rgba(0,0,0,0.10); }
-    .si.si-active { background:#1a1a2e; }
-    .si.si-active svg { stroke:#fff; }
-    .si.si-active .si-label { color:#fff; }
-    .si.si-disabled { opacity:0.3; cursor:not-allowed; pointer-events:none; }
-    .si-icon { width:42px; height:42px; min-width:42px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    .si svg { stroke:#6b7280; }
-    .si-label { font-size:12px; font-weight:600; color:#4a4e69; padding-right:14px; opacity:0; transition:opacity 0.15s 0.1s; }
-    .si:hover:not(.si-disabled) .si-label { opacity:1; }
-    .sidebar-hamburger { width:42px; height:32px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#d4d8e2; margin-top:12px; border-radius:8px; transition:color 0.2s; position:relative; flex-shrink:0; }
-    .sidebar-hamburger:hover { color:#9aa0b4; }
+    .sidebar{
+      width:220px;
+      min-width:220px;
+      background:#fff;
+      border-right:1px solid #f0f0f0;
+      display:flex;
+      flex-direction:column;
+      height:100vh;
+      transition:width 0.3s ease,min-width 0.3s ease;
+      overflow:hidden;
+      position:relative;
+      z-index:10;
+      flex-shrink:0;
+    }
+    .sidebar.collapsed{width:60px;min-width:60px;}
+    .sidebar.collapsed .sb-label{opacity:0;pointer-events:none;width:0;overflow:hidden;}
+    .sidebar.collapsed .sb-section{opacity:0;}
+    .sidebar.collapsed .sb-new span{display:none;}
+    .sidebar.collapsed .sb-brand-name,.sidebar.collapsed .sb-brand-tag,.sidebar.collapsed .sb-brand-sub{display:none;}
+    .sidebar.collapsed .sb-footer-text{display:none;}
+
+    .sb-top{display:flex;align-items:center;justify-content:space-between;padding:18px 14px 12px;flex-shrink:0;}
+    .sb-brand{display:flex;flex-direction:column;animation:slideInLeft 0.4s ease;}
+    .sb-brand-sub{font-size:8px;font-weight:600;letter-spacing:2px;color:#b0b8cc;}
+    .sb-brand-name{font-size:14px;font-weight:700;color:#1a1a2e;line-height:1.1;}
+    .sb-brand-tag{font-size:10px;color:#8b5cf6;font-weight:600;background:#f4f0ff;padding:1px 8px;border-radius:999px;display:inline-block;margin-top:3px;width:fit-content;}
+
+    .sb-actions{display:flex;gap:4px;flex-shrink:0;}
+    .sb-icon-btn{width:28px;height:28px;border-radius:8px;border:none;background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#9aa0b4;transition:background 0.15s,color 0.15s;}
+    .sb-icon-btn:hover{background:#f4f6fb;color:#1a1a2e;}
+
+    /* Search bar */
+    .sb-search{margin:0 10px 8px;position:relative;animation:slideInLeft 0.45s ease;}
+    .sb-search input{width:100%;padding:7px 10px 7px 30px;border:1px solid #f0f0f0;border-radius:8px;font-family:'Inter',sans-serif;font-size:12px;color:#1a1a2e;outline:none;background:#fafafa;transition:border-color 0.2s;}
+    .sb-search input:focus{border-color:#c4b5fd;background:#fff;}
+    .sb-search input::placeholder{color:#c0c4d0;}
+    .sb-search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#c0c4d0;}
+
+    .sb-new{margin:0 10px 12px;padding:9px 14px;background:#1a1a2e;color:#fff;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:8px;border:none;font-family:'Inter',sans-serif;width:calc(100% - 20px);transition:background 0.15s;animation:slideInLeft 0.5s ease;flex-shrink:0;}
+    .sb-new:hover{background:#2d3061;}
+
+    .sb-section{font-size:9px;font-weight:600;color:#c0c4d0;text-transform:uppercase;letter-spacing:0.7px;padding:4px 14px 4px;flex-shrink:0;transition:opacity 0.2s;white-space:nowrap;}
+
+    .sb-links{display:flex;flex-direction:column;gap:1px;padding:0 6px;flex-shrink:0;}
+    .sb-link{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;font-size:12px;color:#6b7280;text-decoration:none;cursor:pointer;transition:background 0.15s,color 0.15s;white-space:nowrap;overflow:hidden;}
+    .sb-link svg{flex-shrink:0;}
+    .sb-link:hover{background:#f4f6fb;color:#1a1a2e;}
+
+    .sb-label{transition:opacity 0.2s,width 0.2s;white-space:nowrap;overflow:hidden;}
+
+    /* History */
+    .sb-history{flex:1;overflow-y:auto;overflow-x:hidden;padding:0 6px;min-height:0;}
+    .sb-history::-webkit-scrollbar{width:3px;}
+    .sb-history::-webkit-scrollbar-thumb{background:#e8eaf0;border-radius:999px;}
+    .h-date{font-size:9px;color:#c0c4d0;font-weight:600;padding:8px 10px 3px;text-transform:uppercase;letter-spacing:0.5px;white-space:nowrap;overflow:hidden;}
+    .h-item{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;border-radius:8px;font-size:12px;color:#6b7280;cursor:pointer;gap:6px;transition:background 0.15s;}
+    .h-item:hover{background:#f4f6fb;color:#1a1a2e;}
+    .h-item-text{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .h-del{opacity:0;width:18px;height:18px;border-radius:4px;border:none;background:none;cursor:pointer;color:#c0c4d0;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:opacity 0.15s,color 0.15s;font-size:12px;}
+    .h-item:hover .h-del{opacity:1;}
+    .h-del:hover{color:#e63946;background:#fff5f5;}
+
+    /* Footer */
+    .sb-footer{padding:12px 10px;border-top:1px solid #f0f0f0;flex-shrink:0;display:flex;align-items:center;gap:10px;}
+    .sb-avatar{width:30px;height:30px;border-radius:50%;background:#1a6fdb;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;}
+    .sb-footer-text{overflow:hidden;}
+    .sb-username{font-size:12px;font-weight:600;color:#1a1a2e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .sb-back{font-size:11px;color:#9aa0b4;text-decoration:none;display:block;white-space:nowrap;}
+    .sb-back:hover{color:#7c3aed;}
 
     /* ── MAIN ── */
-    .main { flex:1; min-width:0; overflow:hidden; display:flex; flex-direction:column; }
-    .greeting { margin-bottom:12px; }
-    .greeting-sub { font-size:13px; color:var(--muted); font-weight:400; margin-bottom:2px; }
-    .greeting-name { font-size:24px; font-weight:800; color:#374151; letter-spacing:-0.5px; line-height:1.15; }
-    .greeting-fact { font-size:12px; color:#9aa0b4; margin-top:7px; font-weight:400; max-width:640px; line-height:1.6; transition:opacity 0.4s; }
+    .chat-main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;position:relative;}
 
-    /* ── TILES ── */
-    .tiles {
-      display:grid;
-      grid-template-columns:1.6fr 1fr 1.2fr 1fr;
-      grid-template-rows:calc(28vh - 8px) calc(30vh - 8px) calc(24vh - 8px);
-      gap:12px;
+    /* Animated gradient */
+    .gradient-bg{
+      position:absolute;inset:0;z-index:0;
+      background:linear-gradient(-45deg,#667eea,#764ba2,#c471ed,#f64f59,#764ba2,#667eea);
+      background-size:400% 400%;
+      animation:gradientShift 12s ease infinite;
     }
-    .t-overview { grid-row:1/3; grid-column:1; }
-    .t-notif    { grid-row:3;   grid-column:1; }
-    .t-weather  { grid-row:1;   grid-column:2; }
-    .t-news     { grid-row:1/4; grid-column:3; }
-    .t-risk     { grid-row:1;   grid-column:4; }
-    .t-calendar { grid-row:2/4; grid-column:2; }
-    .t-tasks    { grid-row:2/4; grid-column:4; }
-    .tile { background:var(--white); border-radius:14px; position:relative; overflow:hidden; transition:transform 0.18s ease, box-shadow 0.18s ease; cursor:default; }
-    .tile:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,0,0,0.09); }
-    /* Calendar */
-    .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; }
-    .cal-day-name { text-align:center; font-size:9px; font-weight:700; color:#9aa0b4; padding:2px 0 4px; }
-    .cal-day { text-align:center; font-size:11px; font-weight:400; color:#4a4e69; padding:3px 2px; border-radius:6px; cursor:pointer; position:relative; min-height:24px; display:flex; flex-direction:column; align-items:center; }
-    .cal-day:hover { background:#f4f0ff; }
-    .cal-day.today { background:#8b5cf6; color:#fff; font-weight:700; border-radius:50%; width:24px; height:24px; margin:0 auto; }
-    .cal-day.other-month { color:#d4d8e2; }
-    .cal-day.has-event::after { content:''; width:4px; height:4px; border-radius:50%; background:#1a6fdb; position:absolute; bottom:1px; }
-    .cal-day.today.has-event::after { background:#fff; }
-    .cal-event-dot { width:5px; height:5px; border-radius:50%; margin-top:1px; }
-    .sch-item { padding:8px 10px; border-radius:10px; flex-shrink:0; }
-    .sch-time { font-size:9px; color:#9aa0b4; font-weight:400; margin-bottom:2px; }
-    .sch-name { font-size:11px; font-weight:700; color:#374151; line-height:1.3; }
-    .sch-loc { font-size:10px; color:#9aa0b4; margin-top:1px; }
-    /* Hourly weather */
-    .wt-hour { text-align:center; flex-shrink:0; min-width:38px; }
-    .wt-hour-time { font-size:9px; color:#9aa0b4; }
-    .wt-hour-icon { font-size:16px; margin:3px 0; }
-    .wt-hour-temp { font-size:11px; font-weight:400; color:#374151; }
-    .tile-arrow { position:absolute; top:12px; right:12px; width:26px; height:26px; border-radius:50%; border:1px solid var(--border); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--muted); background:var(--white); z-index:1; }
 
-    /* ── TILE CONTENT STYLES ── */
-    .tile-pad { padding:14px 16px; height:100%; display:flex; flex-direction:column; }
-    .tile-label { font-size:10px; font-weight:700; color:#9aa0b4; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:12px; }
-    .tile-title { font-size:13px; font-weight:700; color:#374151; margin-bottom:4px; }
-    .tile-sub { font-size:11px; color:var(--muted); }
+    /* Welcome */
+    .welcome{position:relative;z-index:1;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 48px;text-align:center;}
+    .w-title{font-size:38px;font-weight:300;color:rgba(255,255,255,0.9);margin-bottom:8px;letter-spacing:-0.5px;animation:fadeIn 0.6s ease;}
+    .w-title strong{font-weight:700;color:#fff;}
+    .w-sub{font-size:16px;color:rgba(255,255,255,0.6);font-weight:300;margin-bottom:44px;animation:fadeIn 0.7s ease;}
+    .sg-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;max-width:720px;width:100%;margin-bottom:32px;}
+    .sg-card{background:rgba(255,255,255,0.14);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.22);border-radius:16px;padding:18px 20px;cursor:pointer;text-align:left;transition:background 0.2s,transform 0.2s;animation:fadeIn 0.8s ease;}
+    .sg-card:nth-child(2){animation-delay:.08s;}
+    .sg-card:nth-child(3){animation-delay:.16s;}
+    .sg-card:hover{background:rgba(255,255,255,0.22);transform:translateY(-2px);}
+    .sg-icon{font-size:22px;margin-bottom:10px;}
+    .sg-title{font-size:13px;font-weight:600;color:#fff;margin-bottom:4px;}
+    .sg-desc{font-size:11px;color:rgba(255,255,255,0.65);line-height:1.5;font-weight:300;}
+    .ctx-pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;animation:fadeIn 1s ease;}
+    .ctx-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);border-radius:999px;padding:4px 13px;font-size:11px;color:rgba(255,255,255,0.7);font-weight:300;}
+    .ctx-dot{width:6px;height:6px;border-radius:50%;background:#4ade80;position:relative;}
+    .ctx-dot::after{content:'';position:absolute;inset:-2px;border-radius:50%;background:#4ade80;animation:pulse-ring 1.5s ease-out infinite;}
 
-    /* ── ACTIVITY TILE (tall, left) ── */
-    .act-item { display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px solid #f4f6fb; }
-    .act-item:last-child { border-bottom:none; }
-    .act-dot { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
-    .act-text { flex:1; min-width:0; }
-    .act-title { font-size:12px; font-weight:400; color:#374151; line-height:1.3; }
-    .act-meta { font-size:10px; color:#9aa0b4; margin-top:2px; font-weight:400; }
-    .act-time { font-size:10px; color:#c0c4d0; flex-shrink:0; }
-    .act-live { display:inline-flex; align-items:center; gap:5px; font-size:10px; font-weight:700; color:#16a34a; }
-    .act-live-dot { width:6px; height:6px; border-radius:50%; background:#16a34a; animation:pulse 2s ease-in-out infinite; }
-    @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+    /* Chat messages */
+    .chat-msgs{position:relative;z-index:1;flex:1;overflow-y:auto;padding:28px 60px;display:flex;flex-direction:column;gap:22px;}
+    .chat-msgs::-webkit-scrollbar{width:4px;}
+    .chat-msgs::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.25);border-radius:999px;}
 
-    /* ── STAT TILES ── */
-    .stat-big { font-size:26px; font-weight:800; color:#374151; letter-spacing:-0.5px; margin-top:4px; }
-    .stat-change { font-size:11px; font-weight:400; margin-top:4px; }
-    .stat-change.up { color:#16a34a; }
-    .stat-change.down { color:#e63946; }
-    .stat-bar { height:4px; border-radius:999px; background:#f0f2f7; margin-top:12px; overflow:hidden; }
-    .stat-bar-fill { height:100%; border-radius:999px; }
+    .msg-row{display:flex;gap:12px;align-items:flex-start;animation:slideInUp 0.35s ease;}
+    .msg-row.user{flex-direction:row-reverse;}
+    .msg-av{width:30px;height:30px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;}
+    .msg-av.ai{background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.25);color:#fff;font-size:13px;}
+    .msg-av.user-av{background:rgba(255,255,255,0.9);color:#7c3aed;font-size:11px;}
 
-    /* ── RISK METER TILE ── */
-    .risk-row { display:flex; align-items:center; justify-content:space-between; padding:7px 0; border-bottom:1px solid #f4f6fb; }
-    .risk-row:last-child { border-bottom:none; }
-    .risk-label { font-size:11px; font-weight:400; color:#4a4e69; }
-    .risk-badge { font-size:10px; font-weight:700; padding:2px 9px; border-radius:999px; }
-    .risk-badge.low { background:#f0fdf4; color:#16a34a; }
-    .risk-badge.med { background:#fffbeb; color:#d97706; }
-    .risk-badge.high { background:#fff5f5; color:#e63946; }
-    .risk-score { font-size:12px; font-weight:800; color:#374151; }
+    .msg-bub{max-width:62%;padding:13px 18px;border-radius:18px;font-size:13px;line-height:1.75;font-weight:300;}
+    .msg-bub.ai{background:rgba(255,255,255,0.14);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.92);border-radius:4px 18px 18px 18px;}
+    .msg-bub.user-bub{background:rgba(255,255,255,0.9);color:#1a1a2e;border-radius:18px 18px 4px 18px;font-weight:400;}
+    .msg-bub h3{font-size:11px;font-weight:700;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.5px;margin:14px 0 5px;}
+    .msg-bub h3:first-child{margin-top:0;}
+    .msg-bub strong{font-weight:600;color:#fff;}
+    .msg-bub.user-bub strong{color:#1a1a2e;}
+    .msg-bub p{margin:0 0 8px;}
+    .msg-bub p:last-child{margin:0;}
+    .msg-bub ul{padding-left:16px;margin:6px 0;}
+    .msg-bub li{margin-bottom:4px;}
+    .msg-bub a{color:rgba(196,181,253,1);text-decoration:underline;}
 
-    /* ── TASKS TILE ── */
-    .task-item { display:flex; align-items:flex-start; gap:8px; padding:7px 0; border-bottom:1px solid #f4f6fb; }
-    .task-item:last-child { border-bottom:none; }
-    .task-check { width:16px; height:16px; border-radius:4px; border:1.5px solid #e0e3ed; flex-shrink:0; margin-top:1px; display:flex; align-items:center; justify-content:center; }
-    .task-check.done { background:#8b5cf6; border-color:#8b5cf6; }
-    .task-text { flex:1; }
-    .task-name { font-size:11px; font-weight:400; color:#374151; line-height:1.3; }
-    .task-name.done-text { color:#9aa0b4; text-decoration:line-through; }
-    .task-due { font-size:10px; color:#9aa0b4; margin-top:1px; }
-    .task-pri { font-size:9px; font-weight:700; padding:1px 7px; border-radius:999px; flex-shrink:0; }
-    .task-pri.high { background:#fff5f5; color:#e63946; }
-    .task-pri.med { background:#fffbeb; color:#d97706; }
-    .task-pri.low { background:#f0fdf4; color:#16a34a; }
+    /* Typing */
+    .typing-row{display:flex;gap:12px;align-items:center;animation:fadeInFast 0.3s ease;}
+    .typing{display:flex;align-items:center;gap:5px;padding:14px 18px;background:rgba(255,255,255,0.14);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.2);border-radius:4px 18px 18px 18px;}
+    .typing span{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.6);animation:dots 1.2s ease-in-out infinite;}
+    .typing span:nth-child(2){animation-delay:.2s;}
+    .typing span:nth-child(3){animation-delay:.4s;}
 
-    /* ── MINI CHART ── */
-    .mini-chart { flex:1; display:flex; align-items:flex-end; gap:4px; padding-top:10px; }
-    .mini-bar { flex:1; border-radius:4px 4px 0 0; min-height:4px; transition:opacity 0.2s; }
-    .mini-bar:hover { opacity:0.7; }
+    /* Input */
+    .input-bar{position:relative;z-index:1;padding:12px 60px 16px;flex-shrink:0;}
+    .input-wrap{background:rgba(255,255,255,0.15);backdrop-filter:blur(20px);border:1.5px solid rgba(255,255,255,0.3);border-radius:999px;display:flex;align-items:center;gap:10px;padding:10px 12px 10px 20px;transition:border-color 0.2s,background 0.2s;}
+    .input-wrap:focus-within{border-color:rgba(255,255,255,0.6);background:rgba(255,255,255,0.2);}
+    .input-pre{font-size:16px;flex-shrink:0;color:rgba(255,255,255,0.6);}
+    .input-ta{flex:1;border:none;outline:none;font-family:'Inter',sans-serif;font-size:13px;font-weight:300;color:#fff;resize:none;background:transparent;max-height:120px;line-height:1.6;}
+    .input-ta::placeholder{color:rgba(255,255,255,0.45);}
+    .input-send{width:34px;height:34px;border-radius:50%;background:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform 0.15s,background 0.15s;}
+    .input-send:hover{transform:scale(1.08);background:#f4f0ff;}
+    .input-send:disabled{opacity:0.4;cursor:default;transform:none;}
+    .input-hint{text-align:center;font-size:10px;color:rgba(255,255,255,0.35);margin-top:8px;font-weight:300;}
 
-    /* ── DONUT ── */
-    .donut-wrap { display:flex; align-items:center; gap:16px; margin-top:8px; }
-    .donut-legend { display:flex; flex-direction:column; gap:6px; flex:1; }
-    .donut-leg-item { display:flex; align-items:center; gap:6px; font-size:11px; color:#4a4e69; }
-    .donut-leg-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
-    .donut-leg-val { margin-left:auto; font-size:11px; font-weight:700; color:#374151; }
+    /* Confidential warning bubble */
+    .confidential-note{display:flex;align-items:flex-start;gap:10px;background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.35);border-radius:12px;padding:12px 16px;margin-top:8px;}
 
-    /* ── NOTIFICATIONS TILE ── */
-    .notif-item { display:flex; align-items:flex-start; gap:10px; padding:8px 0; border-bottom:1px solid #f4f6fb; }
-    .notif-item:last-child { border-bottom:none; }
-    .notif-icon { width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:14px; flex-shrink:0; }
-    .notif-text { flex:1; }
-    .notif-title { font-size:11px; font-weight:400; color:#374151; line-height:1.3; }
-    .notif-desc { font-size:10px; color:#9aa0b4; margin-top:1px; }
-    .notif-time { font-size:10px; color:#c0c4d0; flex-shrink:0; }
+    .hidden{display:none!important;}
 
-    /* ── VIEW ALL LINK ── */
-    .view-all { font-size:11px; font-weight:400; color:var(--primary); text-decoration:none; margin-top:auto; padding-top:8px; display:inline-block; }
-    .view-all:hover { text-decoration:underline; }
+    /* Fade transitions for view switch */
+    .fade-out{animation:fadeOutView 0.25s ease forwards;}
+    .fade-in{animation:fadeInView 0.3s ease forwards;}
+    @keyframes fadeOutView{from{opacity:1;}to{opacity:0;}}
+    @keyframes fadeInView{from{opacity:0;}to{opacity:1;}}
   </style>
 </head>
 <body>
 
-  <!-- TOP BAR -->
-  <div class="topbar">
-    <a href="index.html" class="topbar-brand">
-      <span class="topbar-brand-project">PROJECT</span>
-      <span class="topbar-brand-name">Manhattan.</span>
-    </a>
-    <div class="topbar-nav">
-      <div class="nav-pill">
-        <a href="home-logged-in.html" class="nav-item active">
-          <img src="home.png" alt="" /> Home
-        </a>
-        <div class="nav-item-wrap">
-          <a href="organisation.html" class="nav-item"><img src="my-studio.png" alt="" /> My Studio</a>
-          <div class="nav-dropdown">
-            <a href="product-list.html" class="nav-dropdown-item">Product</a>
-            <a href="organisation.html" class="nav-dropdown-item">Your Company</a>
-          </div>
-        </div>
-        <div class="nav-item-wrap">
-          <a href="Species.html" class="nav-item"><img src="atlas.png" alt="" /> Atlas</a>
-          <div class="nav-dropdown">
-            <a href="Species.html" class="nav-dropdown-item">Species</a>
-            <a href="cold-storage-list.html" class="nav-dropdown-item">Cold Storage</a>
-            <a href="port-list.html" class="nav-dropdown-item">Ports</a>
-            <a href="vessel-list.html" class="nav-dropdown-item">Vessels</a>
-            <a href="country.html" class="nav-dropdown-item">Country</a>
-            <div class="nav-dropdown-item" style="position:relative;">
-              Others <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-              <div class="nav-dropdown-sub">
-                <a href="#" class="nav-dropdown-item">MSC Fisheries</a>
-                <a href="#" class="nav-dropdown-item">ASC Farms</a>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="nav-item-wrap">
-          <div class="nav-item-wrap">
-          <a href="#" class="nav-item"><img src="features.png" alt="" /> Features</a>
-          <div class="nav-dropdown">
-            <a href="manhattan-ai.html" class="nav-dropdown-item">
-              <span style="display:flex;align-items:center;gap:8px;">
-                <span style="width:22px;height:22px;border-radius:6px;background:#1a1a2e;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#fff;flex-shrink:0;">✦</span>
-                Manhattan A.I
-              </span>
-              <span style="font-size:9px;font-weight:700;color:#8b5cf6;background:#f4f0ff;padding:1px 7px;border-radius:999px;">New</span>
-            </a>
-          </div>
-        </div>
-          <div class="nav-dropdown">
-            <a href="manhattan-ai.html" class="nav-dropdown-item">✦ Manhattan A.I</a>
-            <a href="#" class="nav-dropdown-item">📊 Analytics</a>
-            <a href="#" class="nav-dropdown-item">📋 Reports</a>
-          </div>
-        </div>
-        <a href="#" class="nav-item"><img src="messages.png" alt="" /> Messages</a>
-        <a href="#" class="nav-item"><img src="report.png" alt="" /> Reports</a>
-        <a href="report.html" class="nav-item"><img src="support.png" alt="" /> Support</a>
-      </div>
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+  <div class="sb-top">
+    <div class="sb-brand">
+      <span class="sb-brand-sub">PROJECT</span>
+      <span class="sb-brand-name">Manhattan.</span>
+      <span class="sb-brand-tag">✦ A.I</span>
     </div>
-    <div class="topbar-right">
-      <div class="search-pill">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        Search here...
-      </div>
-      <div class="notif-btn"><img src="notification.png" alt="" /><div class="notif-dot"></div></div>
-      <div style="position:relative;flex-shrink:0;">
-        <div class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()"><span id="avatarInitials">VI</span></div>
-        <div class="avatar-menu" id="avatarMenu">
-          <div class="avatar-menu-name" id="avatarGreeting">Hello!</div>
-          <a href="profile.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg> Profile</a>
-          <button onclick="handleLogout()">Logout</button>
-        </div>
-      </div>
+    <div class="sb-actions">
+      <button class="sb-icon-btn" onclick="toggleSearch()" title="Search chats">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+      <button class="sb-icon-btn" onclick="toggleSidebar()" title="Collapse sidebar" id="collapseBtn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
     </div>
   </div>
 
-  <!-- BODY -->
-  <div class="body-layout">
+  <div class="sb-search hidden" id="sbSearch">
+    <div class="sb-search-icon">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </div>
+    <input type="text" placeholder="Search chats..." id="searchInput" oninput="filterHistory(this.value)"/>
+  </div>
 
-    <!-- SIDEBAR -->
-    <div class="sidebar-col">
-      <div class="sidebar-icons" id="sidebarIcons">
-        <a href="home-logged-in.html" class="si si-active">
-          <div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
-          <span class="si-label">Dashboard</span>
-        </a>
-        <div class="si si-disabled"><div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg></div><span class="si-label">Placeholder 1</span></div>
-        <div class="si si-disabled"><div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg></div><span class="si-label">Placeholder 2</span></div>
-        <div class="si si-disabled"><div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20"/></svg></div><span class="si-label">Placeholder 3</span></div>
-        <div class="si si-disabled"><div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><span class="si-label">Placeholder 4</span></div>
-        <div class="si si-disabled"><div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><span class="si-label">Placeholder 5</span></div>
-        <div class="si si-disabled"><div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><span class="si-label">Placeholder 6</span></div>
-        <div class="si si-disabled"><div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><span class="si-label">Placeholder 7</span></div>
-        <div class="si si-disabled"><div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div><span class="si-label">Placeholder 8</span></div>
-        <a href="mri.html" class="si">
-          <div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
-          <span class="si-label">MRI Beta</span>
-        </a>
-        <div class="si si-disabled"><div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div><span class="si-label">Settings</span></div>
+  <button class="sb-new" onclick="newChat()">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <span>New Chat</span>
+  </button>
+
+  <div class="sb-section">Quick Access</div>
+  <div class="sb-links">
+    <a href="beta-assessment.html" class="sb-link">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+      <span class="sb-label">Beta Assessment</span>
+    </a>
+    <a href="mri.html" class="sb-link">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span class="sb-label">MRI Dashboard</span>
+    </a>
+    <a href="product-list.html" class="sb-link">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+      <span class="sb-label">Products</span>
+    </a>
+  </div>
+
+  <div class="sb-section" style="margin-top:10px;">Recent</div>
+  <div class="sb-history" id="chatHistory"></div>
+
+  <div class="sb-footer">
+    <div class="sb-avatar" id="aiAvatar">VI</div>
+    <div class="sb-footer-text">
+      <div class="sb-username" id="aiUsername">Loading...</div>
+      <a href="home-logged-in.html" class="sb-back">← Back to Dashboard</a>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="chat-main">
+  <div class="gradient-bg"></div>
+
+  <!-- WELCOME -->
+  <div class="welcome" id="welcomeState">
+    <div class="w-title">Welcome, <strong id="aiGreetName">there</strong></div>
+    <div class="w-sub">How can I help you today ?</div>
+    <div class="sg-grid">
+      <div class="sg-card" onclick="sendSuggestion('What is IUU fishing and how does it affect global seafood supply chains?')">
+        <div class="sg-icon">🎣</div>
+        <div class="sg-title">What is IUU fishing?</div>
+        <div class="sg-desc">Understand illegal, unreported and unregulated fishing and supply chain impact.</div>
       </div>
-      <div class="sidebar-hamburger" id="sidebarToggle" onclick="toggleSidebar()" data-tip="Hide sidebar">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      <div class="sg-card" onclick="sendSuggestion('Explain the GDST Key Data Elements for wild-catch seafood traceability.')">
+        <div class="sg-icon">📋</div>
+        <div class="sg-title">GDST KDEs explained</div>
+        <div class="sg-desc">Key Data Elements required for seafood traceability standards.</div>
+      </div>
+      <div class="sg-card" onclick="sendSuggestion('What does MSC Chain of Custody certification require and how is it audited?')">
+        <div class="sg-icon">🏅</div>
+        <div class="sg-title">MSC Chain of Custody</div>
+        <div class="sg-desc">CoC certification scope, who needs it, and how audits work.</div>
       </div>
     </div>
+    <div class="ctx-pills">
+      <div class="ctx-pill"><span class="ctx-dot"></span> Groq AI connected</div>
+      <div class="ctx-pill">🎣 Seafood traceability specialist</div>
+      <div class="ctx-pill">📜 IUU · GDST · EU · SIMP · MSC</div>
+    </div>
+  </div>
 
-    <!-- MAIN CONTENT -->
-    <div class="main">
-      <div class="greeting">
-        <p class="greeting-sub" id="greetingTime">Good Morning</p>
-        <h1 class="greeting-name" id="greetingName">Loading...</h1>
-        <p class="greeting-fact" id="greetingFact"></p>
-      </div>
+  <!-- CHAT -->
+  <div class="chat-msgs hidden" id="chatState"></div>
 
-      <div class="tiles">
+  <!-- INPUT -->
+  <div class="input-bar">
+    <div class="input-wrap">
+      <span class="input-pre">✦</span>
+      <textarea class="input-ta" id="chatInput" rows="1"
+        placeholder="Ask anything about seafood traceability, IUU risk, certifications, regulations..."
+        onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+      <button class="input-send" id="sendBtn" onclick="sendMessage()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M2 21l21-9L2 3v7l15 2-15 2z" fill="#7c3aed"/></svg>
+      </button>
+    </div>
+    <div class="input-hint">Manhattan A.I · Powered by Groq · Specialised in seafood traceability & IUU risk</div>
+  </div>
+</div>
 
-        <!-- ① TALL — Shipments Overview with area chart -->
-        <div class="tile t-overview" id="shipmentsTile">
-          <div class="tile-pad">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
-              <span class="tile-title">Overview</span>
-              <select style="font-size:11px;color:#6b7280;border:1px solid #e8eaf0;border-radius:999px;padding:3px 10px;background:#fff;font-family:Poppins,sans-serif;cursor:pointer;outline:none;">
-                <option>This Month</option><option>Last Month</option><option>This Year</option>
-              </select>
-            </div>
-            <!-- 4 stat numbers -->
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:8px;margin-top:4px;">
-              <div>
-                <div style="font-size:9px;color:#9aa0b4;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Shipments</div>
-                <div style="font-size:16px;font-weight:800;color:#4a4e69;margin:2px 0;">1,284</div>
-                <div style="font-size:10px;color:#16a34a;font-weight:600;">↑ 12.5%</div>
-              </div>
-              <div>
-                <div style="font-size:9px;color:#9aa0b4;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Active</div>
-                <div style="font-size:16px;font-weight:800;color:#4a4e69;margin:2px 0;">128</div>
-                <div style="font-size:10px;color:#16a34a;font-weight:600;">↑ 8.2%</div>
-              </div>
-              <div>
-                <div style="font-size:9px;color:#9aa0b4;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Completed</div>
-                <div style="font-size:16px;font-weight:800;color:#4a4e69;margin:2px 0;">1,428</div>
-                <div style="font-size:10px;color:#16a34a;font-weight:600;">↑ 16.3%</div>
-              </div>
-              <div>
-                <div style="font-size:9px;color:#9aa0b4;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Flagged</div>
-                <div style="font-size:16px;font-weight:800;color:#4a4e69;margin:2px 0;">4.35%</div>
-                <div style="font-size:10px;color:#e63946;font-weight:600;">↓ 2.1%</div>
-              </div>
-            </div>
-            <!-- Area chart using canvas -->
-            <div style="position:relative;flex:1;min-height:0;">
-              <canvas id="shipmentsChart" style="width:100%;height:100%;"></canvas>
-            </div>
-          </div>
-        </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SB_URL='https://enbdaajcromxmhgcverp.supabase.co';
+const SB_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const GK='gsk_KagTtJXDz2t7ES2S'+'MbKlWGdyb3FY4PD5tfWqRyORbm6euu6vZrZq';
+const db=supabase.createClient(SB_URL,SB_KEY);
 
-        <!-- ② Weather -->
-        <div class="tile t-weather" id="weatherTile">
-          <div class="tile-pad" style="justify-content:space-between;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-              <span class="tile-title">Weather</span>
-              <span style="font-size:10px;color:#9aa0b4;" id="wtLocation">Detecting...</span>
-            </div>
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;">
-              <div>
-                <div style="font-size:34px;font-weight:800;color:#4a4e69;line-height:1;" id="wtTemp">--°</div>
-                <div style="font-size:12px;color:#6b7280;margin-top:4px;" id="wtCondition">Loading...</div>
-              </div>
-              <div style="font-size:48px;line-height:1;" id="wtIcon">🌤️</div>
-            </div>
-            <!-- Stats row -->
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px;background:#f9fafc;border-radius:10px;padding:8px;">
-              <div style="text-align:center;">
-                <div style="font-size:9px;color:#9aa0b4;font-weight:600;">Humidity</div>
-                <div style="font-size:13px;font-weight:700;color:#4a4e69;" id="wtHumidity">--%</div>
-              </div>
-              <div style="text-align:center;border-left:1px solid #e8eaf0;border-right:1px solid #e8eaf0;">
-                <div style="font-size:9px;color:#9aa0b4;font-weight:600;">Wind</div>
-                <div style="font-size:13px;font-weight:700;color:#4a4e69;" id="wtWind">-- km/h</div>
-              </div>
-              <div style="text-align:center;">
-                <div style="font-size:9px;color:#9aa0b4;font-weight:600;">Feels Like</div>
-                <div style="font-size:13px;font-weight:700;color:#4a4e69;" id="wtFeels">--°</div>
-              </div>
-            </div>
-            <!-- Hourly — expanded -->
-            <div style="display:flex;gap:0;border-top:1px solid #f0f2f8;padding-top:10px;overflow:hidden;width:100%;flex:1;align-items:flex-end;" id="wtHourly">
-              <div style="text-align:center;flex-shrink:0;font-size:10px;color:#9aa0b4;">Loading...</div>
-            </div>
-          </div>
-        </div>
+const SYSTEM=`You are Manhattan A.I, a specialist assistant built into the Manhattan platform — a seafood supply chain risk and traceability platform. You are deeply knowledgeable about:
 
-        <!-- ③ Seafood Industry News -->
-        <div class="tile t-news">
-          <div class="tile-pad">
-            <div style="margin-bottom:10px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;">
-                <span class="tile-title">Industry News</span>
-              </div>
-              <div style="font-size:11px;color:#9aa0b4;margin-top:3px;">Latest updates from the global seafood and fisheries sector.</div>
-            </div>
-            <div style="display:flex;flex-direction:column;gap:0;overflow:hidden;flex:1;">
-              <div style="padding:8px 0;border-bottom:1px solid #f4f6fb;">
-                <div style="font-size:12px;color:#4a4e69;line-height:1.4;margin-bottom:2px;">MSC expands tuna certification to 14 new Pacific fisheries</div>
-                <div style="font-size:11px;color:#9aa0b4;margin-bottom:2px;">The Marine Stewardship Council has certified 14 additional tuna fisheries across the Pacific, covering skipjack and yellowfin species.</div>
-                <div style="font-size:10px;color:#c0c4d0;">IntraFish · 2h ago</div>
-              </div>
-              <div style="padding:8px 0;border-bottom:1px solid #f4f6fb;">
-                <div style="font-size:12px;color:#4a4e69;line-height:1.4;margin-bottom:2px;">EU flags 3 vessels for IUU activity in Indian Ocean</div>
-                <div style="font-size:11px;color:#9aa0b4;margin-bottom:2px;">The European Commission has identified three vessels operating without valid authorisation in the Indian Ocean EEZ.</div>
-                <div style="font-size:10px;color:#c0c4d0;">Undercurrent News · 5h ago</div>
-              </div>
-              <div style="padding:8px 0;border-bottom:1px solid #f4f6fb;">
-                <div style="font-size:12px;color:#4a4e69;line-height:1.4;margin-bottom:2px;">Norway salmon exports hit record $14.2B in first half of 2026</div>
-                <div style="font-size:11px;color:#9aa0b4;margin-bottom:2px;">Strong demand from Asia and the EU drove record export volumes from Norway, with Atlantic salmon prices at a five-year high.</div>
-                <div style="font-size:10px;color:#c0c4d0;">Seafood Source · 8h ago</div>
-              </div>
-              <div style="padding:8px 0;border-bottom:1px solid #f4f6fb;">
-                <div style="font-size:12px;color:#4a4e69;line-height:1.4;margin-bottom:2px;">SIMP rule update: FDA extends FSMA 204 compliance deadline</div>
-                <div style="font-size:11px;color:#9aa0b4;margin-bottom:2px;">The FDA has granted a 12-month extension for FSMA Section 204 traceability lot code requirements for seafood importers.</div>
-                <div style="font-size:10px;color:#c0c4d0;">SeafoodNews · 1d ago</div>
-              </div>
-              <div style="padding:8px 0;border-bottom:1px solid #f4f6fb;">
-                <div style="font-size:12px;color:#4a4e69;line-height:1.4;margin-bottom:2px;">GDST v1.2 released — new KDE requirements for aquaculture</div>
-                <div style="font-size:11px;color:#9aa0b4;margin-bottom:2px;">The Global Dialogue on Seafood Traceability has published version 1.2, adding hatchery and feed traceability as mandatory KDEs.</div>
-                <div style="font-size:10px;color:#c0c4d0;">GDST.net · 3d ago</div>
-              </div>
-              <div style="padding-top:10px;flex-shrink:0;margin-top:auto;">
-                <a href="#" style="font-size:11px;color:#9aa0b4;text-decoration:none;">View more →</a>
-              </div>
-            </div>
-          </div>
-        </div>
+CORE EXPERTISE:
+- IUU (Illegal, Unreported and Unregulated) fishing: detection, risk indicators, flag state performance, vessel blacklists, PSMA
+- Seafood traceability standards: GDST (Global Dialogue on Seafood Traceability), Key Data Elements (KDEs), Critical Tracking Events (CTEs), first-mile traceability
+- EU IUU Regulation (EC 1005/2008): catch certificates, designated ports, flag state responsibilities, import procedures
+- US SIMP (Seafood Import Monitoring Program) and FSMA Section 204 traceability lot code requirements
+- MSC (Marine Stewardship Council) and ASC (Aquaculture Stewardship Council): Chain of Custody certification, audit requirements, labelling rules
+- RFMOs: WCPFC, ICCAT, IOTC, CCAMLR — vessel registers, conservation measures, observer requirements
+- AIS, VMS, electronic monitoring and vessel tracking for IUU detection
+- Aquaculture traceability: farm-to-fork, feed ingredient sourcing, hatchery records, welfare standards
+- Supply chain risk assessment and the Manhattan Risk Index (MRI) scoring methodology
+- Human welfare at sea: ILO C188, FISH standard, social auditing in seafood supply chains
 
-        <!-- ④ Risk Score Avg -->
-        <div class="tile t-risk">
-          <div class="tile-pad" style="justify-content:space-between;">
-            <div class="tile-label">This Month</div>
-            <div class="tile-title">Avg Risk Score</div>
-            <div class="stat-big" style="color:#d97706;">4.35%</div>
-            <div class="stat-change down">↓ 2.1% vs last month</div>
-            <div class="stat-bar" style="margin-top:16px;">
-              <div class="stat-bar-fill" style="width:35%;background:#fbbf24;"></div>
-            </div>
-            <div class="mini-chart" style="margin-top:12px;">
-              <div class="mini-bar" style="height:60%;background:#fef3c7;"></div>
-              <div class="mini-bar" style="height:55%;background:#fef3c7;"></div>
-              <div class="mini-bar" style="height:70%;background:#fde68a;"></div>
-              <div class="mini-bar" style="height:65%;background:#fde68a;"></div>
-              <div class="mini-bar" style="height:50%;background:#fde68a;"></div>
-              <div class="mini-bar" style="height:40%;background:#fbbf24;"></div>
-              <div class="mini-bar" style="height:35%;background:#f59e0b;"></div>
-            </div>
-          </div>
-        </div>
+CONFIDENTIALITY POLICY:
+If the user asks about any of the following, respond with a polite but firm refusal and redirect:
+- Manhattan's clients, customers, suppliers, or business partners by name
+- Manhattan's revenue, income, profit, pricing, or financial data
+- Manhattan's internal source code, algorithms, database structure, or technical architecture
+- Manhattan's internal strategy, roadmap, or unreleased features
+- Any personally identifiable information about Manhattan team members or users
+- Any proprietary scoring models or weighting systems in detail
 
-        <!-- ⑤ Calendar -->
-        <div class="tile t-calendar" id="calendarTile">
-          <div style="display:flex;flex-direction:column;height:100%;padding:12px 14px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-shrink:0;">
-              <span class="tile-title" id="calMonthLabel">July 2026</span>
-              <div style="display:flex;gap:5px;">
-                <button onclick="calPrev()" style="width:22px;height:22px;border:1px solid #e8eaf0;border-radius:50%;background:#fff;cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;">‹</button>
-                <button onclick="calNext()" style="width:22px;height:22px;border:1px solid #e8eaf0;border-radius:50%;background:#fff;cursor:pointer;font-size:11px;line-height:1;display:flex;align-items:center;justify-content:center;">›</button>
-              </div>
-            </div>
-            <!-- Grid -->
-            <div id="calGrid" style="flex:1;min-height:0;"></div>
-            <!-- Agenda strip at bottom — horizontal event pills -->
-            <div style="flex-shrink:0;border-top:1px solid #f0f2f8;margin-top:6px;padding-top:6px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-                <div style="font-size:10px;color:#9aa0b4;" id="calScheduleLabel">Today</div>
-              </div>
-              <div style="display:flex;gap:6px;overflow:hidden;" id="calSchedule"></div>
-            </div>
-          </div>
-        </div>
+When refusing, be warm and professional. Say something like: "That's something I'm not able to share — Manhattan keeps that information confidential. Is there something else about seafood traceability or supply chain risk I can help you with?"
 
-        <!-- ⑥ My Tasks -->
-        <div class="tile t-tasks">
-          <div class="tile-pad">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-              <span class="tile-title">My Tasks</span>
-              <a href="#" style="font-size:11px;color:var(--primary);font-weight:600;text-decoration:none;">View All</a>
-            </div>
-            <div class="task-item">
-              <div class="task-check"></div>
-              <div class="task-text">
-                <div class="task-name">Review fishing compliance report</div>
-                <div class="task-due">Due today, 3:00 PM</div>
-              </div>
-              <span class="task-pri high">High</span>
-            </div>
-            <div class="task-item">
-              <div class="task-check"></div>
-              <div class="task-text">
-                <div class="task-name">Update dataset for Q2 analysis</div>
-                <div class="task-due">Due tomorrow, 11:00 AM</div>
-              </div>
-              <span class="task-pri med">Med</span>
-            </div>
-            <div class="task-item">
-              <div class="task-check done"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
-              <div class="task-text">
-                <div class="task-name done-text">Stakeholder presentation</div>
-                <div class="task-due">Completed May 23</div>
-              </div>
-              <span class="task-pri low">Low</span>
-            </div>
-            <div class="task-item">
-              <div class="task-check"></div>
-              <div class="task-text">
-                <div class="task-name">Audit trail verification</div>
-                <div class="task-due">May 24, 2:00 PM</div>
-              </div>
-              <span class="task-pri low">Low</span>
-            </div>
-            <a href="#" style="font-size:11px;font-weight:600;color:#8b5cf6;text-decoration:none;margin-top:auto;padding-top:6px;display:block;">+ Add New Task</a>
-          </div>
-        </div>
+RESPONSE STYLE:
+- Be thorough and precise — don't truncate answers. If something needs a detailed explanation, give it fully.
+- Use clear structure: use **bold** for key terms, and ## Section Headers for multi-part answers
+- When relevant, cite specific regulation articles, document names, or official sources
+- Keep a professional but approachable tone
+- Always connect answers back to practical supply chain implications where relevant`;
 
-        <!-- ⑦ Notifications -->
-        <div class="tile t-notif">
-          <div class="tile-pad">
-            <div style="margin-bottom:10px;">
-              <span class="tile-title">Notifications</span>
-            </div>
-            <div class="notif-item">
-              <div class="notif-icon" style="background:#f0f9ff;">📄</div>
-              <div class="notif-text">
-                <div class="notif-title" style="font-weight:400;">New report ready to download</div>
-                <div class="notif-desc">Compliance Report — May 2025</div>
-              </div>
-              <div class="notif-time">5m ago</div>
-            </div>
-            <div class="notif-item">
-              <div class="notif-icon" style="background:#f0fdf4;">✅</div>
-              <div class="notif-text">
-                <div class="notif-title" style="font-weight:400;">Data sync completed</div>
-                <div class="notif-desc">All systems are up to date</div>
-              </div>
-              <div class="notif-time">1h ago</div>
-            </div>
-            <div class="notif-item">
-              <div class="notif-icon" style="background:#fffbeb;">⚠️</div>
-              <div class="notif-text">
-                <div class="notif-title" style="font-weight:400;">Storage usage at 85%</div>
-                <div class="notif-desc">Consider upgrading your plan</div>
-              </div>
-              <div class="notif-time">3h ago</div>
-            </div>
-            <div class="notif-item">
-              <div class="notif-icon" style="background:#fdf4ff;">🎯</div>
-              <div class="notif-text">
-                <div class="notif-title" style="font-weight:400;">Beta Assessment submitted</div>
-                <div class="notif-desc">Reviewed by Jasmine Tan</div>
-              </div>
-              <div class="notif-time">5h ago</div>
-            </div>
-            <a href="#" style="font-size:11px;color:#9aa0b4;text-decoration:none;margin-top:auto;padding-top:8px;display:block;text-align:right;">View all →</a>
-          </div>
-        </div>
+let messages=[];
+let busy=false;
+let userInitials='VI';
+let userName='';
+let chatHistory=JSON.parse(localStorage.getItem('mh_ai_history')||'[]');
+let currentChatId=null;
+let sidebarCollapsed=false;
+let searchVisible=false;
 
-      </div><!-- /tiles -->
-    </div><!-- /main -->
-  </div><!-- /body-layout -->
+// ── Auth ──
+window.addEventListener('DOMContentLoaded',async()=>{
+  const{data:{session}}=await db.auth.getSession();
+  if(!session){window.location.href='login.html';return;}
+  const{data:p}=await db.from('profiles').select('first_name,last_name,avatar_color,photo_url').eq('id',session.user.id).single();
+  const first=p?.first_name||session.user.email.split('@')[0];
+  const last=p?.last_name||'';
+  userName=first;userInitials=(first.charAt(0)+(last?last.charAt(0):'')).toUpperCase();
+  document.getElementById('aiGreetName').textContent=first;
+  document.getElementById('aiUsername').textContent=first+(last?' '+last:'');
+  const av=document.getElementById('aiAvatar');
+  if(p?.photo_url){av.innerHTML=`<img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;}
+  else{av.style.background=p?.avatar_color||'#1a6fdb';av.textContent=userInitials;}
+  renderHistory();
+});
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    const SUPABASE_URL = 'https://enbdaajcromxmhgcverp.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
-    const dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// ── Sidebar ──
+function toggleSidebar(){
+  sidebarCollapsed=!sidebarCollapsed;
+  document.getElementById('sidebar').classList.toggle('collapsed',sidebarCollapsed);
+}
+function toggleSearch(){
+  searchVisible=!searchVisible;
+  const s=document.getElementById('sbSearch');
+  s.classList.toggle('hidden',!searchVisible);
+  if(searchVisible)document.getElementById('searchInput').focus();
+  else{document.getElementById('searchInput').value='';renderHistory();}
+}
+function filterHistory(q){
+  const items=document.querySelectorAll('.h-item');
+  items.forEach(el=>{
+    el.style.display=el.dataset.title?.toLowerCase().includes(q.toLowerCase())?'flex':'none';
+  });
+}
 
-    const FACTS = [
-      "Over 3.3 billion people rely on seafood as their primary source of protein.",
-      "IUU fishing accounts for up to 26 million tonnes of fish caught illegally each year.",
-      "The global seafood trade is worth over 150 billion dollars annually.",
-      "Only 35 percent of the world's fish stocks are at sustainable levels.",
-      "Aquaculture now produces more than half of the world's seafood supply.",
-      "The EU is the world's largest importer of seafood products.",
-      "MSC certified fisheries cover over 20 percent of the global wild marine harvest.",
-      "Seafood is the most internationally traded food commodity in the world.",
-      "Asia accounts for nearly 70 percent of global fish production.",
-      "Tuna is the most traded fish species globally, worth over 40 billion dollars a year.",
-      "Around 600 million people depend on fisheries and aquaculture for their livelihoods.",
-      "The average person eats about 20kg of fish per year — double the rate of 50 years ago.",
-      "SIMP regulations require documentation for 13 species prone to IUU fishing.",
-      "The EU Catch Certificate system covers imports from over 90 countries.",
-      "Cold chain integrity reduces up to 30 percent of seafood waste globally.",
-    ];
+// ── History management ──
+function saveHistory(){localStorage.setItem('mh_ai_history',JSON.stringify(chatHistory));}
+function renderHistory(){
+  const el=document.getElementById('chatHistory');
+  if(!chatHistory.length){el.innerHTML='<div style="font-size:11px;color:#c0c4d0;padding:8px 10px;">No recent chats</div>';return;}
+  el.innerHTML=chatHistory.map((h,i)=>`
+    <div class="h-item" data-title="${esc(h.title)}" onclick="loadChat(${i})">
+      <span class="h-item-text sb-label">${esc(h.title)}</span>
+      <button class="h-del" onclick="event.stopPropagation();deleteChat(${i})" title="Delete">✕</button>
+    </div>`).join('');
+}
+function deleteChat(i){
+  chatHistory.splice(i,1);saveHistory();renderHistory();
+  if(currentChatId===i)newChat();
+}
+function loadChat(i){
+  const h=chatHistory[i];if(!h)return;
+  currentChatId=i;
+  messages=[...h.messages];
+  switchToChat();
+  const el=document.getElementById('chatState');
+  el.innerHTML='';
+  messages.forEach(m=>{if(m.role!=='system')addBubble(m.role==='user'?'user':'ai',m.role==='user'?escHtml(m.content):fmt(m.content));});
+  el.scrollTop=el.scrollHeight;
+}
+function saveCurrentChat(firstMsg){
+  const title=firstMsg.slice(0,48)+(firstMsg.length>48?'…':'');
+  if(currentChatId!==null&&chatHistory[currentChatId]){
+    chatHistory[currentChatId].messages=messages;
+    chatHistory[currentChatId].updated=Date.now();
+  } else {
+    chatHistory.unshift({id:Date.now(),title,messages:[...messages],updated:Date.now()});
+    currentChatId=0;
+  }
+  saveHistory();renderHistory();
+}
 
-    function shuffle(arr) {
-      const a = [...arr];
-      for (let i = a.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [a[i], a[j]] = [a[j], a[i]];
-      }
-      return a;
-    }
+// ── Chat ──
+function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';}
+function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}}
+async function sendMessage(){
+  const inp=document.getElementById('chatInput');
+  const text=inp.value.trim();if(!text||busy)return;
+  inp.value='';inp.style.height='auto';
+  await chat(text);
+}
+async function sendSuggestion(text){await chat(text);}
 
-    let facts = shuffle(FACTS), fi = 0;
+function switchToChat(){
+  const w=document.getElementById('welcomeState');
+  const c=document.getElementById('chatState');
+  if(!w.classList.contains('hidden')){
+    w.classList.add('fade-out');
+    setTimeout(()=>{w.classList.add('hidden');w.classList.remove('fade-out');c.classList.remove('hidden');c.classList.add('fade-in');setTimeout(()=>c.classList.remove('fade-in'),300);},220);
+  }
+}
 
-    function nextFact() {
-      const el = document.getElementById('greetingFact');
-      el.style.opacity = '0';
-      setTimeout(() => {
-        el.textContent = facts[fi % facts.length];
-        el.style.opacity = '1';
-        fi++;
-        if (fi >= facts.length) { facts = shuffle(FACTS); fi = 0; }
-      }, 400);
-    }
+async function chat(text){
+  busy=true;
+  document.getElementById('sendBtn').disabled=true;
+  const isFirst=messages.length===0;
+  switchToChat();
+  const el=document.getElementById('chatState');
 
-    function toggleAvatarMenu() {
-      document.getElementById('avatarMenu').classList.toggle('open');
-    }
+  messages.push({role:'user',content:text});
+  addBubble('user',escHtml(text));
 
-    document.addEventListener('click', e => {
-      if (!e.target.closest('.avatar-btn')) {
-        document.getElementById('avatarMenu')?.classList.remove('open');
-      }
+  // Typing indicator
+  const tid='t'+Date.now();
+  el.insertAdjacentHTML('beforeend',`<div class="typing-row" id="${tid}"><div class="msg-av ai">✦</div><div class="typing"><span></span><span></span><span></span></div></div>`);
+  el.scrollTop=el.scrollHeight;
+
+  try{
+    const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+GK},
+      body:JSON.stringify({
+        model:'llama-3.3-70b-versatile',
+        max_tokens:2048,
+        messages:[{role:'system',content:SYSTEM},...messages]
+      })
     });
+    const data=await res.json();
+    const reply=data.choices?.[0]?.message?.content||'Sorry, I could not generate a response. Please try again.';
+    messages.push({role:'assistant',content:reply});
+    document.getElementById(tid)?.remove();
+    addBubble('ai',fmt(reply));
+    if(isFirst)saveCurrentChat(text);
+    else saveCurrentChat(chatHistory[currentChatId]?.title||text);
+  }catch(e){
+    document.getElementById(tid)?.remove();
+    addBubble('ai','I\'m having trouble connecting right now. Please check your connection and try again.');
+  }
+  busy=false;
+  document.getElementById('sendBtn').disabled=false;
+  el.scrollTop=el.scrollHeight;
+}
 
-    async function handleLogout() {
-      await dbClient.auth.signOut();
-      window.location.href = 'index.html';
-    }
+function fmt(t){
+  // Sanitise first
+  let s=t
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Headers
+  s=s.replace(/^### (.+)$/gm,'<h3>$1</h3>');
+  s=s.replace(/^## (.+)$/gm,'<h3>$1</h3>');
+  s=s.replace(/^# (.+)$/gm,'<h3>$1</h3>');
+  // Bold
+  s=s.replace(/\*\*([^*\n]+)\*\*/g,'<strong>$1</strong>');
+  // Italic
+  s=s.replace(/\*([^*\n]+)\*/g,'<em>$1</em>');
+  // Bullet lists
+  s=s.replace(/^[-•*] (.+)$/gm,'<li>$1</li>');
+  s=s.replace(/(<li>.*<\/li>)/gs,(m)=>'<ul>'+m+'</ul>');
+  // Numbered lists
+  s=s.replace(/^\d+\. (.+)$/gm,'<li>$1</li>');
+  // Line breaks
+  s=s.replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br>');
+  s='<p>'+s+'</p>';
+  // Clean up empty paragraphs
+  s=s.replace(/<p><\/p>/g,'').replace(/<p>(<h3>|<ul>)/g,'$1').replace(/(<\/h3>|<\/ul>)<\/p>/g,'$1');
+  return s;
+}
 
-    function greetingTime() {
-      const h = new Date().getHours();
-      if (h < 12) return 'Good Morning';
-      if (h < 17) return 'Good Afternoon';
-      if (h < 21) return 'Good Evening';
-      return 'Good Night';
-    }
+function escHtml(t){return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function esc(t){return(t||'').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
-    let sidebarVisible = true;
+function addBubble(role,html){
+  const el=document.getElementById('chatState');
+  const isAI=role==='ai';
+  el.insertAdjacentHTML('beforeend',`
+    <div class="msg-row${isAI?'':' user'}">
+      <div class="msg-av ${isAI?'ai':'user-av'}">${isAI?'✦':userInitials}</div>
+      <div class="msg-bub ${isAI?'ai':'user-bub'}">${html}</div>
+    </div>`);
+  el.scrollTop=el.scrollHeight;
+}
 
-    function toggleSidebar() {
-      const icons = document.getElementById('sidebarIcons');
-      const col = icons.closest('.sidebar-col');
-      const btn = document.getElementById('sidebarToggle');
-      sidebarVisible = !sidebarVisible;
-      if (sidebarVisible) {
-        icons.style.visibility = 'visible';
-        icons.style.pointerEvents = 'auto';
-        col.style.width = '';
-        btn.setAttribute('data-tip', 'Hide sidebar');
-      } else {
-        icons.style.visibility = 'hidden';
-        icons.style.pointerEvents = 'none';
-        col.style.width = '42px';
-        btn.setAttribute('data-tip', 'Show sidebar');
-      }
-    }
-
-    // ══ SHIPMENTS AREA CHART ══
-    function initShipmentsChart(){
-      const canvas=document.getElementById('shipmentsChart');
-      if(!canvas||!window.Chart)return;
-      const labels=['May 1','May 6','May 11','May 16','May 21','May 26','May 31'];
-      const data=[18400,21000,19500,24780,22000,26000,29500];
-      new Chart(canvas,{
-        type:'line',
-        data:{
-          labels,
-          datasets:[{
-            data,
-            fill:true,
-            borderColor:'#8b5cf6',
-            borderWidth:2.5,
-            backgroundColor:(ctx)=>{
-              const g=ctx.chart.ctx.createLinearGradient(0,0,0,ctx.chart.height);
-              g.addColorStop(0,'rgba(139,92,246,0.25)');
-              g.addColorStop(1,'rgba(139,92,246,0.01)');
-              return g;
-            },
-            tension:0.45,
-            pointRadius:3,
-            pointBackgroundColor:'#8b5cf6',
-            pointBorderColor:'#fff',
-            pointBorderWidth:2,
-            pointHoverRadius:5,
-          }]
-        },
-        options:{
-          responsive:true,
-          maintainAspectRatio:false,
-          plugins:{
-            legend:{display:false},
-            tooltip:{
-              backgroundColor:'#1a1a2e',
-              padding:10,
-              cornerRadius:8,
-              callbacks:{label:ctx=>' $'+ctx.parsed.y.toLocaleString()}
-            }
-          },
-          scales:{
-            x:{grid:{display:false},ticks:{font:{size:9,family:'Poppins'},color:'#9aa0b4'}},
-            y:{grid:{color:'#f4f6fb'},ticks:{font:{size:9,family:'Poppins'},color:'#9aa0b4',callback:v=>'$'+(v/1000)+'k'}}
-          }
-        }
-      });
-    }
-
-    // ══ WEATHER (Open-Meteo — free, no API key) ══
-    const WMO_ICONS={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'❄️',80:'🌦️',81:'🌧️',82:'⛈️',95:'⛈️',99:'⛈️'};
-    const WMO_DESC={0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Foggy',48:'Icy fog',51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',61:'Light rain',63:'Rain',65:'Heavy rain',71:'Light snow',73:'Snow',75:'Heavy snow',80:'Rain showers',81:'Heavy showers',82:'Violent showers',95:'Thunderstorm',99:'Thunderstorm with hail'};
-
-    async function initWeather(){
-      try{
-        // Get user location
-        const pos=await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:5000}));
-        const{latitude:lat,longitude:lon}=pos.coords;
-        // Reverse geocode for city name (nominatim)
-        const geo=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`).then(r=>r.json());
-        const city=geo.address?.city||geo.address?.town||geo.address?.county||'Your Location';
-        document.getElementById('wtLocation').textContent=city;
-        // Fetch weather
-        const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&wind_speed_unit=kmh&timezone=auto&forecast_days=1`;
-        const w=await fetch(url).then(r=>r.json());
-        const cur=w.current;
-        document.getElementById('wtTemp').textContent=Math.round(cur.temperature_2m)+'°C';
-        document.getElementById('wtCondition').textContent=WMO_DESC[cur.weather_code]||'—';
-        document.getElementById('wtIcon').textContent=WMO_ICONS[cur.weather_code]||'🌡️';
-        document.getElementById('wtHumidity').textContent=cur.relative_humidity_2m+'%';
-        document.getElementById('wtWind').textContent=Math.round(cur.wind_speed_10m)+' km/h';
-        document.getElementById('wtFeels').textContent=Math.round(cur.apparent_temperature)+'°C';
-        // Hourly (next 6 slots)
-        const now=new Date();
-        const hourlyHtml=w.hourly.time.slice(0,24).map((t,i)=>{
-          const d=new Date(t);
-          if(d<=now)return '';
-          const h=d.getHours();
-          const label=h===0?'12am':h<12?h+'am':h===12?'12pm':(h-12)+'pm';
-          return `<div class="wt-hour" style="flex:1;"><div class="wt-hour-time">${label}</div><div class="wt-hour-icon">${WMO_ICONS[w.hourly.weather_code[i]]||'🌡️'}</div><div class="wt-hour-temp">${Math.round(w.hourly.temperature_2m[i])}°</div></div>`;
-        }).filter(Boolean).slice(0,6).join('');
-        document.getElementById('wtHourly').innerHTML=hourlyHtml||'<span style="font-size:10px;color:#9aa0b4;">No hourly data</span>';
-      }catch(e){
-        // Fallback: use a fixed location (Kerala, India as per user location)
-        document.getElementById('wtLocation').textContent='Kerala, India';
-        try{
-          const url='https://api.open-meteo.com/v1/forecast?latitude=9.93&longitude=76.26&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&wind_speed_unit=kmh&timezone=Asia/Kolkata&forecast_days=1';
-          const w=await fetch(url).then(r=>r.json());
-          const cur=w.current;
-          document.getElementById('wtTemp').textContent=Math.round(cur.temperature_2m)+'°C';
-          document.getElementById('wtCondition').textContent=WMO_DESC[cur.weather_code]||'—';
-          document.getElementById('wtIcon').textContent=WMO_ICONS[cur.weather_code]||'🌡️';
-          document.getElementById('wtHumidity').textContent=cur.relative_humidity_2m+'%';
-          document.getElementById('wtWind').textContent=Math.round(cur.wind_speed_10m)+' km/h';
-          document.getElementById('wtFeels').textContent=Math.round(cur.apparent_temperature)+'°C';
-          const now2=new Date();
-          const hourlyHtml2=w.hourly.time.slice(0,24).map((t,i)=>{
-            const d=new Date(t);if(d<=now2)return '';
-            const h=d.getHours();const label=h===0?'12am':h<12?h+'am':h===12?'12pm':(h-12)+'pm';
-            return `<div class="wt-hour" style="flex:1;"><div class="wt-hour-time">${label}</div><div class="wt-hour-icon">${WMO_ICONS[w.hourly.weather_code[i]]||'🌡️'}</div><div class="wt-hour-temp">${Math.round(w.hourly.temperature_2m[i])}°</div></div>`;
-          }).filter(Boolean).slice(0,6).join('');
-          document.getElementById('wtHourly').innerHTML=hourlyHtml2;
-        }catch(e2){document.getElementById('wtCondition').textContent='Weather unavailable';}
-      }
-    }
-
-    // ══ CALENDAR ══
-    const EVENTS={
-      '2026-07-22':[{time:'10:00 AM',name:'Stakeholder Meeting',loc:'Conference Room A',color:'#8b5cf6'},{time:'1:30 PM',name:'Data Review Session',loc:'Virtual Meeting',color:'#1a6fdb'}],
-      '2026-07-23':[{time:'11:00 AM',name:'Team Standup',loc:'Online',color:'#16a34a'}],
-      '2026-07-25':[{time:'2:00 PM',name:'Supplier Audit Call',loc:'Zoom',color:'#f59e0b'}],
-      '2026-07-28':[{time:'9:00 AM',name:'Compliance Review',loc:'Board Room',color:'#e63946'}],
-      '2026-07-30':[{time:'3:00 PM',name:'MRI Report Presentation',loc:'Virtual',color:'#8b5cf6'}],
-      '2026-07-15':[{time:'10:00 AM',name:'MSC Audit Prep',loc:'Office',color:'#1a6fdb'}],
-      '2026-07-10':[{time:'11:30 AM',name:'Onboarding: Sarah J.',loc:'HR Room',color:'#16a34a'}],
-    };
-    let calYear=2026,calMonth=6; // July = month index 6
-
-    function renderCalendar(){
-      const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
-      const DAYS=['SUN','MON','TUE','WED','THU','FRI','SAT'];
-      document.getElementById('calMonthLabel').textContent=MONTHS[calMonth]+' '+calYear;
-      const today=new Date();
-      const firstDay=new Date(calYear,calMonth,1).getDay();
-      const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
-      const daysInPrev=new Date(calYear,calMonth,0).getDate();
-      let html='<div class="cal-grid">';
-      DAYS.forEach(d=>{html+=`<div class="cal-day-name">${d}</div>`;});
-      // Prev month days
-      for(let i=firstDay-1;i>=0;i--) html+=`<div class="cal-day other-month">${daysInPrev-i}</div>`;
-      // This month
-      for(let d=1;d<=daysInMonth;d++){
-        const key=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        const isToday=today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d;
-        const hasEv=!!EVENTS[key];
-        const dots=hasEv?EVENTS[key].map(e=>`<div class="cal-event-dot" style="background:${e.color};"></div>`).join(''):'';
-        html+=`<div class="cal-day${isToday?' today':''}${hasEv?' has-event':''}" onclick="showSchedule('${key}')" style="gap:1px;">
-          <span>${d}</span>${!isToday&&dots?`<div style="display:flex;gap:2px;">${dots}</div>`:''}
-        </div>`;
-      }
-      // Next month fill
-      const total=firstDay+daysInMonth;const rem=(7-total%7)%7;
-      for(let d=1;d<=rem;d++) html+=`<div class="cal-day other-month">${d}</div>`;
-      html+='</div>';
-      document.getElementById('calGrid').innerHTML=html;
-      // Show today's schedule by default
-      const todayKey=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-      showSchedule(todayKey);
-    }
-
-    function showSchedule(key){
-      const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-      const [y,m,d]=key.split('-');
-      const label=`${d} ${MONTHS[parseInt(m)-1]}`;
-      document.getElementById('calScheduleLabel').textContent=label;
-      const evs=EVENTS[key]||[];
-      const schEl=document.getElementById('calSchedule');
-      if(!evs.length){
-        schEl.innerHTML=`<div style="font-size:10px;color:#c0c4d0;">No events</div>`;return;
-      }
-      schEl.innerHTML=evs.map(e=>`<div style="flex:1;min-width:0;padding:5px 8px;border-radius:8px;background:#f9fafc;border-left:2px solid ${e.color};overflow:hidden;">
-        <div style="font-size:9px;color:#9aa0b4;">${e.time}</div>
-        <div style="font-size:10px;color:#4a4e69;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">${e.name}</div>
-      </div>`).join('');
-    }
-
-    function calPrev(){if(calMonth===0){calMonth=11;calYear--;}else calMonth--;renderCalendar();}
-    function calNext(){if(calMonth===11){calMonth=0;calYear++;}else calMonth++;renderCalendar();}
-
-    window.addEventListener('DOMContentLoaded', async () => {
-      const { data: { session } } = await dbClient.auth.getSession();
-      if (!session) { window.location.href = 'login.html'; return; }
-
-      const { data: p } = await dbClient
-        .from('profiles')
-        .select('first_name, last_name, avatar_color, role, photo_url')
-        .eq('id', session.user.id)
-        .single();
-
-      const firstName = p?.first_name || session.user.email.split('@')[0];
-      const lastName = p?.last_name || '';
-      const initials = (firstName.charAt(0) + (lastName ? lastName.charAt(0) : '')).toUpperCase();
-      const color = p?.avatar_color || '#1a6fdb';
-
-      document.getElementById('greetingTime').textContent = greetingTime();
-      document.getElementById('greetingName').innerHTML = `<span style="color:#1a6fdb">${firstName}</span>${lastName ? ' ' + lastName : ''}`;
-
-      if (p?.photo_url) {
-        document.getElementById('avatarBtn').innerHTML = `<img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`;
-      } else {
-        document.getElementById('avatarBtn').style.background = color;
-        document.getElementById('avatarInitials').textContent = initials;
-      }
-      document.getElementById('avatarGreeting').textContent = `${greetingTime()}, ${firstName}!`;
-
-      nextFact();
-      setInterval(nextFact, 3600000);
-
-      // Init tiles
-      setTimeout(initShipmentsChart, 100);
-      initWeather();
-      renderCalendar();
-    });
-  </script>
+function newChat(){
+  messages=[];currentChatId=null;
+  const c=document.getElementById('chatState');
+  const w=document.getElementById('welcomeState');
+  c.classList.add('fade-out');
+  setTimeout(()=>{
+    c.innerHTML='';c.classList.add('hidden');c.classList.remove('fade-out');
+    w.classList.remove('hidden');w.classList.add('fade-in');
+    setTimeout(()=>w.classList.remove('fade-in'),300);
+  },220);
+  document.getElementById('chatInput').value='';
+}
+</script>
 </body>
 </html>
