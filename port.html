@@ -891,7 +891,7 @@ async function saveFacility(){
     } else {
       const {data,error}=await sb.from('port_facilities').insert(fac).select('*').single();
       if(error) throw error;
-      _facilities.push(data);
+      if(data) _facilities.push(data);
     }
     closeFacilityModal();
     renderFacilityTree();
@@ -948,7 +948,7 @@ function renderFacilityNode(fac, depth){
   const hasCoords=fac.latitude&&fac.longitude;
   return `<div style="margin-left:${indent}px;margin-bottom:8px">
     <div style="background:#fafbfe;border:1.5px solid var(--line);border-radius:11px;padding:11px 14px;display:flex;align-items:center;gap:12px;transition:.14s" onmouseover="this.style.borderColor='var(--primary-mid)'" onmouseout="this.style.borderColor='var(--line)'">
-      ${hasPhoto?`<img src="${esc(fac.photo_url)}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0" alt=""/>`:`<div style="width:40px;height:40px;border-radius:8px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${icon}</div>`}
+      ${hasPhoto?`<img src="${esc(fac.photo_url)}" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><div style="width:40px;height:40px;border-radius:8px;background:var(--primary-soft);display:none;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${icon}</div>`:`<div style="width:40px;height:40px;border-radius:8px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0">${icon}</div>`}
       <div style="flex:1;min-width:0">
         <div style="font-size:13.5px;font-weight:700;color:var(--text)">${esc(fac.name)}</div>
         <div style="font-size:12px;color:var(--muted);margin-top:2px;display:flex;gap:10px;flex-wrap:wrap">
@@ -995,9 +995,9 @@ let _pendingFacilities = []; // for new ports before portId exists
 // Bucket 'ports' is the configured bucket — run storage_fix.sql in Supabase if uploads fail
 const STORAGE_BUCKET='ports';
 
-async function uploadFileToStorage(file){
+async function uploadFileToStorage(file, folder='port-photos'){
   const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
-  const path=`port-photos/${crypto.randomUUID()}.${ext}`;
+  const path=`${folder}/${crypto.randomUUID()}.${ext}`;
   const {error}=await sb.storage.from(STORAGE_BUCKET).upload(path,file,{upsert:true,contentType:file.type});
   if(error){
     console.error('Upload error:',error);
@@ -1048,7 +1048,7 @@ async function handleFacilityPhoto(input){
   };
   reader.readAsDataURL(file);
   toast('Uploading…');
-  const url=await uploadFileToStorage(file);
+  const url=await uploadFileToStorage(file,'port-photos');
   if(url){ _facilityPhotoUrl=url; toast('Photo uploaded ✓','ok'); }
   else{
     const r2=new FileReader();
@@ -1217,6 +1217,368 @@ function showPortSaveGuard(){
   guard.style.animation='guardPop .25s cubic-bezier(.2,.8,.2,1)';
   setTimeout(()=>{ guard.style.display='none'; }, 4000);
 }
+</script>
+
+<!-- HELP MODAL -->
+<div id="helpModal" onclick="if(event.target===this)closeHelpModal()" style="display:none;position:fixed;inset:0;background:rgba(20,24,45,.55);backdrop-filter:blur(5px);z-index:500;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:20px;box-shadow:0 8px 32px rgba(20,24,45,.16),0 32px 64px rgba(20,24,45,.10);width:480px;max-width:95vw;overflow:hidden" id="helpModalBox">
+    <!-- Header -->
+    <div style="padding:22px 24px 0;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:17px;font-weight:800;color:var(--text)">Port Terminology Guide</div>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:3px">Understanding facility types</div>
+      </div>
+      <button onclick="closeHelpModal()" style="width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--soft)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <!-- Slides -->
+    <div style="padding:20px 24px" id="helpSlides">
+          <div class="help-slide" data-idx="0" style="display:block">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">
+                🏭
+              </div>
+              <div>
+                <div style="font-size:22px;font-weight:800;color:var(--text)">Port</div>
+                <div style="font-size:13px;color:var(--muted);margin-top:2px">1 of 8</div>
+              </div>
+            </div>
+            <div style="display:grid;gap:12px">
+              <div style="background:var(--bg);border-radius:11px;padding:14px 16px">
+                <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:6px">What it is</div>
+                <div style="font-size:14px;font-weight:600;color:var(--text)">An entire harbour or maritime facility</div>
+              </div>
+              <div style="background:var(--primary-soft);border-radius:11px;padding:14px 16px">
+                <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--primary-dark);opacity:.7;margin-bottom:6px">Primary Purpose</div>
+                <div style="font-size:13.5px;color:var(--primary-dark)">A place where ships arrive, load/unload cargo, and receive services.</div>
+              </div>
+            </div>
+          </div>
+          <div class="help-slide" data-idx="1" style="display:none">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">
+                🚢
+              </div>
+              <div>
+                <div style="font-size:22px;font-weight:800;color:var(--text)">Terminal</div>
+                <div style="font-size:13px;color:var(--muted);margin-top:2px">2 of 8</div>
+              </div>
+            </div>
+            <div style="display:grid;gap:12px">
+              <div style="background:var(--bg);border-radius:11px;padding:14px 16px">
+                <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:6px">What it is</div>
+                <div style="font-size:14px;font-weight:600;color:var(--text)">A specialised area within a port</div>
+              </div>
+              <div style="background:var(--primary-soft);border-radius:11px;padding:14px 16px">
+                <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--primary-dark);opacity:.7;margin-bottom:6px">Primary Purpose</div>
+                <div style="font-size:13.5px;color:var(--primary-dark)">Handles a specific type of cargo — containers, oil, LNG, passengers, etc.</div>
+              </div>
+            </div>
+          </div>
+          <div class="help-slide" data-idx="2" style="display:none">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">
+                ⚓
+              </div>
+              <div>
+                <div style="font-size:22px;font-weight:800;color:var(--text)">Berth</div>
+                <div style="font-size:13px;color:var(--muted);margin-top:2px">3 of 8</div>
+              </div>
+            </div>
+            <div style="display:grid;gap:12px">
+              <div style="background:var(--bg);border-radius:11px;padding:14px 16px">
+                <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:6px">What it is</div>
+                <div style="font-size:14px;font-weight:600;color:var(--text)">The exact location where a ship ties up</div>
+              </div>
+              <div style="background:var(--primary-soft);border-radius:11px;padding:14px 16px">
+                <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--primary-dark);opacity:.7;margin-bottom:6px">Primary Purpose</div>
+                <div style="font-size:13.5px;color:var(--primary-dark)">Assigns a ship to a loading/unloading position inside a terminal or alongside a wharf.</div>
+              </div>
+            </div>
+          </div>
+          <div class="help-slide" data-idx="3" style="display:none">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">
+                🏗
+              </div>
+              <div>
+                <div style="font-size:22px;font-weight:800;color:var(--text)">Wharf</div>
+                <div style="font-size:13px;color:var(--muted);margin-top:2px">4 of 8</div>
+              </div>
+            </div>
+            <div style="display:grid;gap:12px">
+              <div style="background:var(--bg);border-radius:11px;padding:14px 16px">
+                <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:6px">What it is</div>
+                <div style="font-size:14px;font-weight:600;color:var(--text)">A long platform built alongside the shore</div>
+              </div>
+              <div style="background:var(--primary-soft);border-radius:11px;padding:14px 16px">
+                <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--primary-dark);opacity:.7;margin-bottom:6px">Primary Purpose</div>
+                <div style="font-size:13.5px;color:var(--primary-dark)">Ships moor directly alongside it for loading and unloading.</div>
+              </div>
+            </div>
+          </div>
+          <div class="help-slide" data-idx="4" style="display:none">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">
+                🛳
+              </div>
+              <div>
+                <div style="font-size:22px;font-weight:800;color:var(--text)">Pier</div>
+                <div style="font-size:13px;color:var(--muted);margin-top:2px">5 of 8</div>
+              </div>
+            </div>
+            <div style="display:grid;gap:12px">
+              <div style="background:var(--bg);border-radius:11px;padding:14px 16px">
+                <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:6px">What it is</div>
+                <div style="font-size:14px;font-weight:600;color:var(--text)">A structure extending out into the water</div>
+              </div>
+              <div style="background:var(--primary-soft);border-radius:11px;padding:14px 16px">
+                <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--primary-dark);opacity:.7;margin-bottom:6px">Primary Purpose</div>
+                <div style="font-size:13.5px;color:var(--primary-dark)">Ships can berth on one or both sides, often used for passenger ferries.</div>
+              </div>
+            </div>
+          </div>
+          <div class="help-slide" data-idx="5" style="display:none">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">
+                🔧
+              </div>
+              <div>
+                <div style="font-size:22px;font-weight:800;color:var(--text)">Dock</div>
+                <div style="font-size:13px;color:var(--muted);margin-top:2px">6 of 8</div>
+              </div>
+            </div>
+            <div style="display:grid;gap:12px">
+              <div style="background:var(--bg);border-radius:11px;padding:14px 16px">
+                <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:6px">What it is</div>
+                <div style="font-size:14px;font-weight:600;color:var(--text)">A docking area or enclosed basin</div>
+              </div>
+              <div style="background:var(--primary-soft);border-radius:11px;padding:14px 16px">
+                <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--primary-dark);opacity:.7;margin-bottom:6px">Primary Purpose</div>
+                <div style="font-size:13.5px;color:var(--primary-dark)">Often used generally as "where ships dock." Can be dry dock (for repair) or wet dock.</div>
+              </div>
+            </div>
+          </div>
+          <div class="help-slide" data-idx="6" style="display:none">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">
+                🪝
+              </div>
+              <div>
+                <div style="font-size:22px;font-weight:800;color:var(--text)">Jetty</div>
+                <div style="font-size:13px;color:var(--muted);margin-top:2px">7 of 8</div>
+              </div>
+            </div>
+            <div style="display:grid;gap:12px">
+              <div style="background:var(--bg);border-radius:11px;padding:14px 16px">
+                <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:6px">What it is</div>
+                <div style="font-size:14px;font-weight:600;color:var(--text)">Structure extending into water</div>
+              </div>
+              <div style="background:var(--primary-soft);border-radius:11px;padding:14px 16px">
+                <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--primary-dark);opacity:.7;margin-bottom:6px">Primary Purpose</div>
+                <div style="font-size:13.5px;color:var(--primary-dark)">Usually built for wave protection; sometimes used for mooring or berthing smaller vessels.</div>
+              </div>
+            </div>
+          </div>
+          <div class="help-slide" data-idx="7" style="display:none">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">
+              <div style="width:44px;height:44px;border-radius:12px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">
+                🇪🇺
+              </div>
+              <div>
+                <div style="font-size:22px;font-weight:800;color:var(--text)">Quay</div>
+                <div style="font-size:13px;color:var(--muted);margin-top:2px">8 of 8</div>
+              </div>
+            </div>
+            <div style="display:grid;gap:12px">
+              <div style="background:var(--bg);border-radius:11px;padding:14px 16px">
+                <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:6px">What it is</div>
+                <div style="font-size:14px;font-weight:600;color:var(--text)">A waterfront structure similar to a wharf</div>
+              </div>
+              <div style="background:var(--primary-soft);border-radius:11px;padding:14px 16px">
+                <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--primary-dark);opacity:.7;margin-bottom:6px">Primary Purpose</div>
+                <div style="font-size:13.5px;color:var(--primary-dark)">Common term in Europe. Ships berth alongside it for loading and unloading cargo.</div>
+              </div>
+            </div>
+          </div>
+    </div>
+    <!-- Nav dots + arrows -->
+    <div style="padding:0 24px 22px;display:flex;align-items:center;justify-content:space-between">
+      <button onclick="helpNav(-1)" style="width:36px;height:36px;border-radius:10px;border:1.5px solid var(--border);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text);transition:.14s" id="helpPrev">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div style="display:flex;gap:6px" id="helpDots">
+        <div onclick="helpGoTo(0)" style="width:24px;height:7px;border-radius:99px;background:var(--primary);cursor:pointer;transition:all .25s" id="helpDot_0"></div><div onclick="helpGoTo(1)" style="width:7px;height:7px;border-radius:99px;background:var(--line-strong);cursor:pointer;transition:all .25s" id="helpDot_1"></div><div onclick="helpGoTo(2)" style="width:7px;height:7px;border-radius:99px;background:var(--line-strong);cursor:pointer;transition:all .25s" id="helpDot_2"></div><div onclick="helpGoTo(3)" style="width:7px;height:7px;border-radius:99px;background:var(--line-strong);cursor:pointer;transition:all .25s" id="helpDot_3"></div><div onclick="helpGoTo(4)" style="width:7px;height:7px;border-radius:99px;background:var(--line-strong);cursor:pointer;transition:all .25s" id="helpDot_4"></div><div onclick="helpGoTo(5)" style="width:7px;height:7px;border-radius:99px;background:var(--line-strong);cursor:pointer;transition:all .25s" id="helpDot_5"></div><div onclick="helpGoTo(6)" style="width:7px;height:7px;border-radius:99px;background:var(--line-strong);cursor:pointer;transition:all .25s" id="helpDot_6"></div><div onclick="helpGoTo(7)" style="width:7px;height:7px;border-radius:99px;background:var(--line-strong);cursor:pointer;transition:all .25s" id="helpDot_7"></div>
+      </div>
+      <button onclick="helpNav(1)" style="width:36px;height:36px;border-radius:10px;border:1.5px solid var(--border);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text);transition:.14s" id="helpNext">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+  <!-- HELP BUTTON -->
+  <div style="text-align:center;padding:12px 0 20px">
+    <button type="button" onclick="openHelpModal()" style="background:none;border:1.5px solid var(--border);color:var(--muted);font:inherit;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;padding:8px 18px;border-radius:999px;transition:.14s" onmouseover="this.style.color='var(--primary)';this.style.borderColor='var(--primary-mid)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      What do Port Facility terms mean?
+    </button>
+  </div>
+
+<script>
+let _helpIdx=0;
+const _helpTotal=8;
+function openHelpModal(){
+  _helpIdx=0; helpGoTo(0);
+  const m=document.getElementById('helpModal');
+  m.style.display='flex';
+  document.body.style.overflow='hidden';
+}
+function closeHelpModal(){
+  document.getElementById('helpModal').style.display='none';
+  document.body.style.overflow='';
+}
+function helpNav(dir){
+  helpGoTo((_helpIdx+dir+_helpTotal)%_helpTotal);
+}
+function helpGoTo(idx){
+  // Hide old
+  const old=document.querySelector('.help-slide[data-idx="'+_helpIdx+'"]');
+  if(old) old.style.display='none';
+  // Show new
+  const nw=document.querySelector('.help-slide[data-idx="'+idx+'"]');
+  if(nw) nw.style.display='block';
+  // Update dots
+  for(let i=0;i<_helpTotal;i++){
+    const d=document.getElementById('helpDot_'+i);
+    if(!d) continue;
+    d.style.width=i===idx?'24px':'7px';
+    d.style.background=i===idx?'var(--primary)':'var(--line-strong)';
+  }
+  _helpIdx=idx;
+  document.getElementById('helpPrev').style.opacity=idx===0?'.3':'1';
+  document.getElementById('helpNext').style.opacity=idx===_helpTotal-1?'.3':'1';
+}
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('helpModal').style.display==='flex'){
+    if(e.key==='ArrowRight') helpNav(1);
+    if(e.key==='ArrowLeft') helpNav(-1);
+    if(e.key==='Escape') closeHelpModal();
+  }
+});
+</script>
+
+<!-- HELP MODAL -->
+<div id="helpModal" onclick="if(event.target===this)closeHelpModal()" style="display:none;position:fixed;inset:0;background:rgba(20,24,45,.55);backdrop-filter:blur(5px);z-index:600;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:22px;box-shadow:0 8px 40px rgba(20,24,45,.18);width:440px;max-width:94vw;overflow:hidden">
+    <!-- Header -->
+    <div style="padding:22px 24px 0;display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--primary);margin-bottom:3px">Port Terminology</div>
+        <div style="font-size:18px;font-weight:800;color:var(--text)">Understanding Port Facilities</div>
+      </div>
+      <button onclick="closeHelpModal()" style="width:32px;height:32px;border-radius:50%;border:1.5px solid var(--border);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--soft);flex-shrink:0">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <!-- Slides -->
+    <div style="padding:20px 24px;min-height:200px;position:relative">
+      
+      <div class="help-slide" id="helpSlide0" style="display:flex;flex-direction:column;gap:0;height:100%">
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 8px">
+          <div style="font-size:42px;font-weight:900;color:var(--primary);margin-bottom:6px;letter-spacing:-.02em">Port</div>
+          <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:10px;line-height:1.4">An entire harbor or maritime facility</div>
+          <div style="font-size:13.5px;color:var(--muted);line-height:1.65;padding:14px 16px;background:var(--bg);border-radius:11px;border-left:3px solid var(--primary-mid)">A place where ships arrive, load/unload cargo, and receive services.</div>
+        </div>
+      </div>
+      <div class="help-slide" id="helpSlide1" style="display:none;flex-direction:column;gap:0;height:100%">
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 8px">
+          <div style="font-size:42px;font-weight:900;color:var(--primary);margin-bottom:6px;letter-spacing:-.02em">Terminal</div>
+          <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:10px;line-height:1.4">A specialized area within a port</div>
+          <div style="font-size:13.5px;color:var(--muted);line-height:1.65;padding:14px 16px;background:var(--bg);border-radius:11px;border-left:3px solid var(--primary-mid)">Handles a specific type of cargo (containers, oil, LNG, passengers, etc.).</div>
+        </div>
+      </div>
+      <div class="help-slide" id="helpSlide2" style="display:none;flex-direction:column;gap:0;height:100%">
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 8px">
+          <div style="font-size:42px;font-weight:900;color:var(--primary);margin-bottom:6px;letter-spacing:-.02em">Berth</div>
+          <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:10px;line-height:1.4">The exact location where a ship ties up</div>
+          <div style="font-size:13.5px;color:var(--muted);line-height:1.65;padding:14px 16px;background:var(--bg);border-radius:11px;border-left:3px solid var(--primary-mid)">Assigns a ship to a loading/unloading position.</div>
+        </div>
+      </div>
+      <div class="help-slide" id="helpSlide3" style="display:none;flex-direction:column;gap:0;height:100%">
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 8px">
+          <div style="font-size:42px;font-weight:900;color:var(--primary);margin-bottom:6px;letter-spacing:-.02em">Wharf</div>
+          <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:10px;line-height:1.4">A long platform alongside the shore</div>
+          <div style="font-size:13.5px;color:var(--muted);line-height:1.65;padding:14px 16px;background:var(--bg);border-radius:11px;border-left:3px solid var(--primary-mid)">Ships moor directly alongside it.</div>
+        </div>
+      </div>
+      <div class="help-slide" id="helpSlide4" style="display:none;flex-direction:column;gap:0;height:100%">
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 8px">
+          <div style="font-size:42px;font-weight:900;color:var(--primary);margin-bottom:6px;letter-spacing:-.02em">Pier</div>
+          <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:10px;line-height:1.4">A structure extending into the water</div>
+          <div style="font-size:13.5px;color:var(--muted);line-height:1.65;padding:14px 16px;background:var(--bg);border-radius:11px;border-left:3px solid var(--primary-mid)">Ships can berth on one or both sides.</div>
+        </div>
+      </div>
+      <div class="help-slide" id="helpSlide5" style="display:none;flex-direction:column;gap:0;height:100%">
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 8px">
+          <div style="font-size:42px;font-weight:900;color:var(--primary);margin-bottom:6px;letter-spacing:-.02em">Dock</div>
+          <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:10px;line-height:1.4">Can mean either a docking area or an enclosed basin</div>
+          <div style="font-size:13.5px;color:var(--muted);line-height:1.65;padding:14px 16px;background:var(--bg);border-radius:11px;border-left:3px solid var(--primary-mid)">Often used generally as 'where ships dock.'</div>
+        </div>
+      </div>
+      <div class="help-slide" id="helpSlide6" style="display:none;flex-direction:column;gap:0;height:100%">
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 8px">
+          <div style="font-size:42px;font-weight:900;color:var(--primary);margin-bottom:6px;letter-spacing:-.02em">Jetty</div>
+          <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:10px;line-height:1.4">Structure extending into water to protect the harbor or support mooring</div>
+          <div style="font-size:13.5px;color:var(--muted);line-height:1.65;padding:14px 16px;background:var(--bg);border-radius:11px;border-left:3px solid var(--primary-mid)">Usually for wave protection; sometimes used for berthing.</div>
+        </div>
+      </div>
+      <div class="help-slide" id="helpSlide7" style="display:none;flex-direction:column;gap:0;height:100%">
+        <div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 8px">
+          <div style="font-size:42px;font-weight:900;color:var(--primary);margin-bottom:6px;letter-spacing:-.02em">Quay</div>
+          <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:10px;line-height:1.4">A waterfront structure similar to a wharf</div>
+          <div style="font-size:13.5px;color:var(--muted);line-height:1.65;padding:14px 16px;background:var(--bg);border-radius:11px;border-left:3px solid var(--primary-mid)">Common term in Europe.</div>
+        </div>
+      </div>
+    </div>
+    <!-- Dots + Nav -->
+    <div style="padding:0 24px 20px;display:flex;align-items:center;justify-content:space-between">
+      <button onclick="prevHelpSlide()" style="width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--soft);transition:.14s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--soft)'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div style="display:flex;gap:7px;align-items:center"><div class="help-dot active" id="helpDot0" onclick="goHelpSlide(0)" style="width:8px;height:8px;border-radius:50%;cursor:pointer;transition:.2s;background:var(--primary)"></div><div class="help-dot " id="helpDot1" onclick="goHelpSlide(1)" style="width:8px;height:8px;border-radius:50%;cursor:pointer;transition:.2s;background:var(--border)"></div><div class="help-dot " id="helpDot2" onclick="goHelpSlide(2)" style="width:8px;height:8px;border-radius:50%;cursor:pointer;transition:.2s;background:var(--border)"></div><div class="help-dot " id="helpDot3" onclick="goHelpSlide(3)" style="width:8px;height:8px;border-radius:50%;cursor:pointer;transition:.2s;background:var(--border)"></div><div class="help-dot " id="helpDot4" onclick="goHelpSlide(4)" style="width:8px;height:8px;border-radius:50%;cursor:pointer;transition:.2s;background:var(--border)"></div><div class="help-dot " id="helpDot5" onclick="goHelpSlide(5)" style="width:8px;height:8px;border-radius:50%;cursor:pointer;transition:.2s;background:var(--border)"></div><div class="help-dot " id="helpDot6" onclick="goHelpSlide(6)" style="width:8px;height:8px;border-radius:50%;cursor:pointer;transition:.2s;background:var(--border)"></div><div class="help-dot " id="helpDot7" onclick="goHelpSlide(7)" style="width:8px;height:8px;border-radius:50%;cursor:pointer;transition:.2s;background:var(--border)"></div></div>
+      <button onclick="nextHelpSlide()" style="width:36px;height:36px;border-radius:50%;border:1.5px solid var(--border);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:justify;color:var(--soft);transition:.14s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--soft)'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+    <!-- Footer label -->
+    <div style="text-align:center;padding:0 24px 20px;font-size:11.5px;color:var(--soft)" id="helpSlideCount">1 of 8</div>
+  </div>
+</div>
+
+<script>
+let _helpSlide=0;
+const HELP_TOTAL=8;
+function openHelpModal(){ document.getElementById('helpModal').style.display='flex'; goHelpSlide(0); }
+function closeHelpModal(){ document.getElementById('helpModal').style.display='none'; }
+function goHelpSlide(n){
+  document.getElementById('helpSlide'+_helpSlide).style.display='none';
+  document.getElementById('helpDot'+_helpSlide).style.background='var(--border)';
+  _helpSlide=((n%HELP_TOTAL)+HELP_TOTAL)%HELP_TOTAL;
+  document.getElementById('helpSlide'+_helpSlide).style.display='flex';
+  document.getElementById('helpDot'+_helpSlide).style.background='var(--primary)';
+  document.getElementById('helpSlideCount').textContent=(_helpSlide+1)+' of '+HELP_TOTAL;
+}
+function nextHelpSlide(){ goHelpSlide(_helpSlide+1); }
+function prevHelpSlide(){ goHelpSlide(_helpSlide-1); }
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('helpModal').style.display==='flex'){
+    if(e.key==='ArrowRight') nextHelpSlide();
+    else if(e.key==='ArrowLeft') prevHelpSlide();
+    else if(e.key==='Escape') closeHelpModal();
+  }
+});
 </script>
 </body>
 </html>
