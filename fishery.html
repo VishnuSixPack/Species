@@ -334,7 +334,16 @@
               <input type="file" id="pdfInput" accept=".pdf" onchange="handlePDFFile(this.files[0])"/>
               <div class="upload-zone-icon">📋</div>
               <div class="upload-zone-title">Drop Vessel List PDF here</div>
-              <div class="upload-zone-sub">Upload the MSC vessel list PDF — Claude will extract vessel data using OCR and compare against current database</div>
+              <div class="upload-zone-sub">OCR runs entirely in your browser using Tesseract.js — no API key, no upload to any server</div>
+            </div>
+            <!-- Tesseract progress bar (shown during OCR) -->
+            <div id="tesseractProgressWrap" class="hidden" style="margin-top:12px;">
+              <div style="font-size:11px;color:var(--muted);margin-bottom:5px;display:flex;justify-content:space-between;">
+                <span>OCR Progress</span><span id="tesseractPct">0%</span>
+              </div>
+              <div style="height:6px;background:#f0f2f7;border-radius:999px;overflow:hidden;">
+                <div id="ocrProgressBar" style="height:100%;background:var(--accent);border-radius:999px;width:0%;transition:width 0.2s;"></div>
+              </div>
             </div>
             <div id="ocrProgress" class="hidden" style="margin-top:16px;">
               <div id="ocrSteps"></div>
@@ -706,7 +715,12 @@ function openOCRPanel(){
   document.getElementById('pdfInput').value='';
   window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
 }
-function closeOCRPanel(){document.getElementById('ocrPanel').classList.add('hidden');}
+function closeOCRPanel(){
+  document.getElementById('ocrPanel').classList.add('hidden');
+  document.getElementById('tesseractProgressWrap')?.classList.add('hidden');
+  const bar=document.getElementById('ocrProgressBar');
+  if(bar)bar.style.width='0%';
+}
 
 function handlePDFDrop(e){
   e.preventDefault();document.getElementById('pdfDropZone').classList.remove('drag-over');
@@ -720,9 +734,9 @@ async function handlePDFFile(file){
   pendingDiff=null;
 
   const steps=[
-    {id:'s1',label:'Reading PDF pages...'},
-    {id:'s2',label:'Sending pages to Claude AI (OCR)...'},
-    {id:'s3',label:'Extracting vessel data...'},
+    {id:'s1',label:'Reading PDF pages with PDF.js...'},
+    {id:'s2',label:'Running Tesseract OCR on each page...'},
+    {id:'s3',label:'Parsing vessel names, IMOs and flag states...'},
     {id:'s4',label:'Comparing against database...'},
     {id:'s5',label:'Diff complete — review below'},
   ];
@@ -742,9 +756,12 @@ async function handlePDFFile(file){
     const base64Pages=await pdfToBase64Pages(file);
     setStep(1);
 
-    // Step 2+3: Send each page to Claude (vision) to extract vessel data
+    // Step 2+3: OCR each page with Tesseract.js
     const allVessels=[];
-    for(let i=0;i<Math.min(base64Pages.length,20);i++){
+    for(let i=0;i<base64Pages.length;i++){
+      setStep(1); // keep step 2 active
+      document.getElementById('ocrSteps').querySelector('.ocr-step:nth-child(2) span').textContent=
+        `Running OCR on page ${i+1} of ${base64Pages.length}...`;
       const extracted=await extractVesselsFromPage(base64Pages[i],i+1,base64Pages.length);
       allVessels.push(...extracted);
     }
@@ -802,69 +819,100 @@ async function handlePDFFile(file){
 }
 
 async function pdfToBase64Pages(file){
-  // Convert PDF pages to images using canvas via PDF.js CDN
+  // Render PDF pages to canvas elements for Tesseract OCR
   return new Promise(async(resolve,reject)=>{
     try{
       const arrayBuffer=await file.arrayBuffer();
-      // Use PDF.js if available, otherwise send raw PDF
-      if(window.pdfjsLib){
-        const pdf=await window.pdfjsLib.getDocument({data:arrayBuffer}).promise;
-        const pages=[];
-        for(let i=1;i<=Math.min(pdf.numPages,20);i++){
-          const page=await pdf.getPage(i);
-          const viewport=page.getViewport({scale:2});
-          const canvas=document.createElement('canvas');
-          canvas.width=viewport.width;canvas.height=viewport.height;
-          await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
-          pages.push(canvas.toDataURL('image/jpeg',0.85).split(',')[1]);
-        }
-        resolve(pages);
-      } else {
-        // Fallback: send the raw base64 PDF bytes and ask Claude to read it as a document
-        const bytes=new Uint8Array(arrayBuffer);
-        let binary='';bytes.forEach(b=>binary+=String.fromCharCode(b));
-        resolve([btoa(binary)]);
+      if(!window.pdfjsLib){reject(new Error('PDF.js not loaded'));return;}
+      const pdf=await window.pdfjsLib.getDocument({data:arrayBuffer}).promise;
+      const pages=[];
+      for(let i=1;i<=Math.min(pdf.numPages,30);i++){
+        const page=await pdf.getPage(i);
+        // Scale 2.5x for better OCR accuracy on small text
+        const viewport=page.getViewport({scale:2.5});
+        const canvas=document.createElement('canvas');
+        canvas.width=viewport.width;canvas.height=viewport.height;
+        const ctx=canvas.getContext('2d');
+        ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+        await page.render({canvasContext:ctx,viewport}).promise;
+        pages.push(canvas); // return canvas directly for Tesseract
       }
+      resolve(pages);
     }catch(e){reject(e);}
   });
 }
 
-async function extractVesselsFromPage(base64,pageNum,totalPages){
-  const isPDF=totalPages===1&&!window.pdfjsLib;
-  const res=await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{'Content-Type':'application/json','x-api-key':'sk-ant-api03-placeholder','anthropic-version':'2023-06-01'},
-    body:JSON.stringify({
-      model:'claude-sonnet-4-6',max_tokens:4000,
-      messages:[{role:'user',content:[
-        isPDF
-          ?{type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}}
-          :{type:'image',source:{type:'base64',media_type:'image/jpeg',data:base64}},
-        {type:'text',text:`This is page ${pageNum} of ${totalPages} from an MSC vessel list PDF.
-Extract ALL vessels listed on this page into a JSON array.
-Each vessel object must have:
-- "name": vessel name (string)
-- "imo": IMO number (string, 7 digits, or null if not present)
-- "flag": flag state / country (string, or null if not present)
-- "rfmo": RFMO listing if mentioned (string, or null)
+// ── Tesseract.js OCR — runs entirely in browser, no API key needed ──
+let tesseractWorker=null;
 
-Return ONLY valid JSON array, no other text. Example:
-[{"name":"MV OCEAN STAR","imo":"1234567","flag":"Papua New Guinea","rfmo":"WCPFC"},{"name":"FV PACIFIC","imo":null,"flag":"Kiribati","rfmo":null}]
-
-If no vessels on this page (e.g. cover page or index), return empty array: []`}
-      ]}]
-    })
+async function getTesseractWorker(){
+  if(tesseractWorker)return tesseractWorker;
+  tesseractWorker=await Tesseract.createWorker('eng',1,{
+    logger:m=>{
+      if(m.status==='recognizing text'){
+        const pct=Math.round((m.progress||0)*100);
+        const bar=document.getElementById('ocrProgressBar');
+        const wrap=document.getElementById('tesseractProgressWrap');
+        const pctEl=document.getElementById('tesseractPct');
+        if(wrap)wrap.classList.remove('hidden');
+        if(bar)bar.style.width=pct+'%';
+        if(pctEl)pctEl.textContent=pct+'%';
+      }
+    }
   });
-  const data=await res.json();
-  const text=data.content?.[0]?.text||'[]';
-  try{
-    const clean=text.replace(/```json|```/g,'').trim();
-    return JSON.parse(clean);
-  }catch{return[];}
+  return tesseractWorker;
 }
 
-// Note: The Anthropic API key above is a placeholder — replace with your actual key
-// or route this through a backend proxy for security
+async function extractVesselsFromPage(canvas,pageNum,totalPages){
+  // canvas is now a real canvas element (not base64)
+  const worker=await getTesseractWorker();
+  const{data:{text}}=await worker.recognize(canvas);
+  return parseVesselText(text);
+}
+
+function parseVesselText(text){
+  const lines=text.split('\n').map(l=>l.trim()).filter(l=>l.length>3);
+  const vessels=[];
+  // IMO is always a 7-digit number — use that as anchor
+  const imoRegex=/\b(\d{7})\b/;
+  // Country names commonly found in vessel lists
+  const flags=['Papua New Guinea','PNG','Kiribati','Micronesia','Marshall Islands','Nauru',
+    'Palau','Solomon Islands','Tuvalu','Philippines','Indonesia','China','Taiwan','Japan',
+    'South Korea','Korea','Vanuatu','Fiji','Tonga','Samoa','Cook Islands','New Zealand',
+    'Australia','United States','USA','Panama','Belize','Honduras','Marshall Is',
+    'Federated States','FSM','Republic of Palau','Spain','France','Norway','Ecuador',
+    'Peru','Chile','Mexico','Costa Rica','El Salvador','Guatemala'];
+  const flagRegex=new RegExp('('+flags.map(f=>f.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|')+')','i');
+
+  lines.forEach(line=>{
+    // Skip header lines
+    if(/vessel name|imo number|flag state|country|rfmo|no\.?\s*$/i.test(line))return;
+    if(/^[\s\-=_]+$/.test(line))return;
+    if(line.length<4)return;
+
+    const imoMatch=line.match(imoRegex);
+    const flagMatch=line.match(flagRegex);
+
+    if(imoMatch||flagMatch){
+      // Extract IMO
+      const imo=imoMatch?imoMatch[1]:null;
+      // Extract flag
+      const flag=flagMatch?flagMatch[1]:null;
+      // Vessel name: everything before the IMO number (or before flag if no IMO)
+      let name=line;
+      if(imo)name=line.split(imo)[0].trim();
+      else if(flag)name=line.split(flag)[0].trim();
+      // Clean up name — remove leading numbers, dots, dashes
+      name=name.replace(/^[\d\.\-\s]+/,'').replace(/[\s]+$/,'').trim();
+      if(name.length>2&&name.length<80){
+        // Avoid duplicate IMOs
+        if(imo&&vessels.find(v=>v.imo===imo))return;
+        vessels.push({name:name||'Unknown',imo,flag,rfmo:null});
+      }
+    }
+  });
+  return vessels;
+}
 
 async function applyDiff(){
   if(!pendingDiff||!currentFisheryId)return;
@@ -1088,12 +1136,18 @@ function showToast(msg,type='info'){
 }
 </script>
 
-<!-- Load PDF.js for PDF-to-image rendering -->
+<!-- PDF.js — renders PDF pages to canvas for OCR -->
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <script>
 if(window.pdfjsLib){
   pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
 }
+</script>
+<!-- Tesseract.js — in-browser OCR, no API key required -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script>
+// Wire Tesseract progress bar percentage display
+const _origGet=window.getTesseractWorker;
 </script>
 </body>
 </html>
