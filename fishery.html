@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MSC Fishery Module — Manhattan</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --bg:#f4f6fb;--white:#fff;--border:#e8eaf0;--primary:#1a1a2e;
+      --accent:#8b5cf6;--green:#16a34a;--red:#e63946;--amber:#d97706;
+      --text:#1a1a2e;--muted:#6b7280;--light:#9aa0b4;
+    }
+    html,body{height:100%;font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);}
+    body{display:flex;flex-direction:column;}
+
+    /* ── TOP BAR ── */
+    .topbar{background:var(--primary);color:#fff;padding:0 28px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+    .topbar-brand{display:flex;align-items:center;gap:12px;}
+    .topbar-name{font-size:15px;font-weight:700;letter-spacing:-0.3px;}
+    .topbar-badge{font-size:10px;font-weight:700;background:#8b5cf6;padding:2px 9px;border-radius:999px;}
+    .topbar-right{display:flex;align-items:center;gap:10px;}
+    .topbar-btn{padding:7px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.08);color:#fff;font-family:'Inter',sans-serif;font-size:12px;font-weight:500;cursor:pointer;text-decoration:none;transition:background 0.15s;}
+    .topbar-btn:hover{background:rgba(255,255,255,0.16);}
+    .topbar-btn.accent{background:#8b5cf6;border-color:#8b5cf6;}
+    .topbar-btn.accent:hover{background:#7c3aed;}
+
+    /* ── LAYOUT ── */
+    .layout{display:flex;flex:1;overflow:hidden;}
+    .sidebar{width:220px;flex-shrink:0;background:var(--white);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:16px 0;}
+    .sidebar-section{font-size:9px;font-weight:700;color:var(--light);text-transform:uppercase;letter-spacing:0.7px;padding:12px 18px 4px;}
+    .sidebar-link{display:flex;align-items:center;gap:9px;padding:8px 18px;font-size:13px;color:var(--muted);cursor:pointer;transition:background 0.12s,color 0.12s;text-decoration:none;}
+    .sidebar-link:hover{background:#f4f6fb;color:var(--text);}
+    .sidebar-link.active{background:#f4f0ff;color:var(--accent);font-weight:600;}
+    .sidebar-link svg{flex-shrink:0;}
+    .sidebar-count{margin-left:auto;font-size:10px;font-weight:700;background:var(--bg);border-radius:999px;padding:1px 7px;color:var(--muted);}
+
+    .main{flex:1;overflow-y:auto;padding:24px;}
+    .main::-webkit-scrollbar{width:4px;}
+    .main::-webkit-scrollbar-thumb{background:var(--border);border-radius:999px;}
+
+    /* ── VIEWS ── */
+    .view{display:none;}
+    .view.active{display:block;}
+
+    /* ── PAGE HEADER ── */
+    .page-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+    .page-title{font-size:18px;font-weight:700;color:var(--text);}
+    .page-sub{font-size:12px;color:var(--light);margin-top:2px;}
+    .page-actions{display:flex;gap:8px;}
+
+    /* ── STATS ROW ── */
+    .stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px;}
+    .stat-card{background:var(--white);border-radius:12px;padding:14px 16px;border:1px solid var(--border);}
+    .stat-card-label{font-size:10px;font-weight:600;color:var(--light);text-transform:uppercase;letter-spacing:0.5px;}
+    .stat-card-val{font-size:24px;font-weight:700;color:var(--text);margin:4px 0 2px;}
+    .stat-card-sub{font-size:11px;color:var(--muted);}
+
+    /* ── FILTERS ── */
+    .filters{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+    .search-box{flex:1;max-width:320px;position:relative;}
+    .search-box input{width:100%;padding:8px 12px 8px 34px;border:1px solid var(--border);border-radius:8px;font-family:'Inter',sans-serif;font-size:12px;outline:none;background:var(--white);color:var(--text);}
+    .search-box input:focus{border-color:var(--accent);}
+    .search-box-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--light);}
+    .filter-btn{padding:7px 14px;border:1px solid var(--border);border-radius:8px;background:var(--white);font-family:'Inter',sans-serif;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;transition:all 0.12s;}
+    .filter-btn:hover,.filter-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+    .filter-select{padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--white);font-family:'Inter',sans-serif;font-size:12px;color:var(--muted);outline:none;cursor:pointer;}
+
+    /* ── TABLE ── */
+    .table-wrap{background:var(--white);border-radius:12px;border:1px solid var(--border);overflow:hidden;}
+    .table-head{display:grid;padding:10px 16px;background:#fafbfc;border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:var(--light);text-transform:uppercase;letter-spacing:0.4px;}
+    .table-row{display:grid;padding:12px 16px;border-bottom:1px solid #f4f6fb;align-items:center;transition:background 0.1s;cursor:pointer;}
+    .table-row:hover{background:#fafbfc;}
+    .table-row:last-child{border-bottom:none;}
+    .fishery-grid{grid-template-columns:2.4fr 1fr 0.9fr 1fr 1fr 0.6fr;}
+    .cell-name{font-size:13px;font-weight:500;color:var(--text);}
+    .cell-sub{font-size:11px;color:var(--light);margin-top:1px;}
+    .cell-text{font-size:12px;color:var(--muted);}
+
+    /* ── STATUS BADGES ── */
+    .badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:2px 9px;border-radius:999px;}
+    .badge-certified{background:#f0fdf4;color:var(--green);}
+    .badge-assessment{background:#fffbeb;color:var(--amber);}
+    .badge-suspended{background:#fff5f5;color:var(--red);}
+    .badge-withdrawn{background:#f4f6fb;color:var(--light);}
+    .badge-new{background:#f4f0ff;color:var(--accent);}
+    .badge-removed{background:#fff5f5;color:var(--red);}
+    .badge-unchanged{background:#f0fdf4;color:var(--green);}
+
+    /* Expiry bar */
+    .expiry-bar{width:100%;height:4px;background:#f0f2f7;border-radius:999px;overflow:hidden;margin-top:4px;}
+    .expiry-fill{height:100%;border-radius:999px;}
+
+    /* ── UPLOAD ZONE ── */
+    .upload-zone{border:2px dashed var(--border);border-radius:12px;padding:40px;text-align:center;cursor:pointer;transition:border-color 0.2s,background 0.2s;background:var(--white);}
+    .upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:#faf8ff;}
+    .upload-zone-icon{font-size:36px;margin-bottom:12px;}
+    .upload-zone-title{font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px;}
+    .upload-zone-sub{font-size:12px;color:var(--light);}
+    .upload-zone input{display:none;}
+
+    /* ── IMPORT RESULT ── */
+    .import-result{background:var(--white);border-radius:12px;border:1px solid var(--border);overflow:hidden;margin-top:16px;}
+    .import-result-head{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+    .import-stats{display:flex;gap:20px;}
+    .import-stat{text-align:center;}
+    .import-stat-val{font-size:20px;font-weight:700;}
+    .import-stat-lbl{font-size:10px;color:var(--light);font-weight:600;text-transform:uppercase;}
+    .import-stat-val.green{color:var(--green);}
+    .import-stat-val.amber{color:var(--amber);}
+    .import-stat-val.red{color:var(--red);}
+
+    /* ── FISHERY DETAIL ── */
+    .detail-header{background:var(--white);border-radius:12px;border:1px solid var(--border);padding:20px 22px;margin-bottom:16px;display:flex;align-items:flex-start;justify-content:space-between;}
+    .detail-title{font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;}
+    .detail-meta{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;}
+    .detail-meta-item{display:flex;flex-direction:column;gap:2px;}
+    .detail-meta-label{font-size:9px;font-weight:700;color:var(--light);text-transform:uppercase;letter-spacing:0.5px;}
+    .detail-meta-val{font-size:12px;font-weight:600;color:var(--text);}
+    .detail-actions{display:flex;gap:8px;flex-shrink:0;}
+
+    /* ── UOC TABLE ── */
+    .uoc-grid{grid-template-columns:0.8fr 2fr 1.5fr 1fr 0.8fr;}
+    .vessel-grid{grid-template-columns:2fr 1fr 1fr 1fr 0.8fr;}
+    .change-grid{grid-template-columns:0.6fr 2fr 1fr 1fr 1fr 1fr;}
+
+    /* ── OCR PANEL ── */
+    .ocr-panel{background:var(--white);border-radius:12px;border:1px solid var(--border);overflow:hidden;}
+    .ocr-panel-head{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+    .ocr-panel-title{font-size:14px;font-weight:600;}
+    .ocr-progress{padding:16px 20px;}
+    .ocr-step{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f4f6fb;font-size:13px;}
+    .ocr-step:last-child{border-bottom:none;}
+    .ocr-step-icon{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;}
+    .ocr-step-icon.done{background:#f0fdf4;color:var(--green);}
+    .ocr-step-icon.active{background:#f4f0ff;color:var(--accent);animation:spin 1s linear infinite;}
+    .ocr-step-icon.pending{background:#f4f6fb;color:var(--light);}
+    @keyframes spin{to{transform:rotate(360deg);}}
+
+    /* ── DIFF TABLE ── */
+    .diff-section{margin-top:16px;}
+    .diff-section-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;padding:0 0 8px;display:flex;align-items:center;gap:6px;}
+    .diff-row{display:grid;grid-template-columns:2fr 1fr 1fr 0.8fr;gap:12px;padding:9px 14px;border-radius:8px;font-size:12px;margin-bottom:4px;align-items:center;}
+    .diff-row.added{background:#f0fdf4;border-left:3px solid var(--green);}
+    .diff-row.removed{background:#fff5f5;border-left:3px solid var(--red);}
+    .diff-row.unchanged{background:#fafbfc;border-left:3px solid #e0e3ed;}
+
+    /* ── BUTTONS ── */
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-family:'Inter',sans-serif;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all 0.15s;}
+    .btn-primary{background:var(--primary);color:#fff;}
+    .btn-primary:hover{background:#2d3061;}
+    .btn-accent{background:var(--accent);color:#fff;}
+    .btn-accent:hover{background:#7c3aed;}
+    .btn-outline{background:#fff;color:var(--muted);border:1px solid var(--border);}
+    .btn-outline:hover{border-color:var(--accent);color:var(--accent);}
+    .btn-green{background:var(--green);color:#fff;}
+    .btn-green:hover{background:#15803d;}
+    .btn-danger{background:var(--red);color:#fff;}
+    .btn-sm{padding:5px 12px;font-size:11px;}
+
+    /* ── TOAST ── */
+    #toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:500;color:#fff;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;max-width:320px;}
+    #toast.show{opacity:1;}
+    #toast.success{background:#16a34a;}
+    #toast.error{background:#e63946;}
+    #toast.info{background:#1a1a2e;}
+
+    /* ── MODAL ── */
+    .modal-ov{position:fixed;inset:0;background:rgba(10,12,30,0.45);backdrop-filter:blur(4px);z-index:800;display:none;align-items:center;justify-content:center;padding:20px;}
+    .modal-ov.open{display:flex;}
+    .modal{background:#fff;border-radius:16px;width:100%;max-width:540px;box-shadow:0 20px 60px rgba(0,0,0,0.15);overflow:hidden;}
+    .modal-head{padding:20px 22px 0;display:flex;align-items:center;justify-content:space-between;}
+    .modal-title{font-size:15px;font-weight:700;}
+    .modal-close{width:28px;height:28px;border-radius:8px;border:none;background:#f4f6fb;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:16px;}
+    .modal-body{padding:18px 22px;}
+    .modal-foot{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;}
+
+    .form-row{margin-bottom:14px;}
+    .form-label{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:5px;display:block;}
+    .form-input{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-family:'Inter',sans-serif;font-size:13px;color:var(--text);outline:none;}
+    .form-input:focus{border-color:var(--accent);}
+    .form-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px;}
+
+    .hidden{display:none!important;}
+    .loading{opacity:0.5;pointer-events:none;}
+    .empty-state{text-align:center;padding:48px 24px;color:var(--light);}
+    .empty-state-icon{font-size:36px;margin-bottom:10px;}
+    .empty-state-text{font-size:14px;}
+  </style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div>
+      <span style="font-size:9px;font-weight:600;letter-spacing:2px;color:rgba(255,255,255,0.5);display:block;">PROJECT</span>
+      <span class="topbar-name">Manhattan.</span>
+    </div>
+    <span class="topbar-badge">🎣 Fishery Module</span>
+  </div>
+  <div class="topbar-right">
+    <a href="home-logged-in.html" class="topbar-btn">← Dashboard</a>
+    <button class="topbar-btn" onclick="openAddFishery()">+ Add Fishery</button>
+    <button class="topbar-btn accent" onclick="showView('import')">↑ Import MSC CSV</button>
+  </div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-section">Module</div>
+    <a class="sidebar-link active" id="nav-fisheries" onclick="showView('fisheries')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20"/></svg>
+      <span>All Fisheries</span>
+      <span class="sidebar-count" id="fishery-count">0</span>
+    </a>
+    <a class="sidebar-link" id="nav-import" onclick="showView('import')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <span>Import MSC Data</span>
+    </a>
+    <a class="sidebar-link" id="nav-changelog" onclick="showView('changelog')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>Change Log</span>
+      <span class="sidebar-count" id="change-count">0</span>
+    </a>
+    <div class="sidebar-section" style="margin-top:12px;">Quick Stats</div>
+    <div style="padding:8px 18px;">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between;"><span>Certified</span><span id="stat-certified" style="font-weight:700;color:var(--green);">0</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between;"><span>In Assessment</span><span id="stat-assessment" style="font-weight:700;color:var(--amber);">0</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between;"><span>Expiring &lt;90d</span><span id="stat-expiring" style="font-weight:700;color:var(--red);">0</span></div>
+      <div style="font-size:11px;color:var(--muted);display:flex;justify-content:space-between;"><span>Total Vessels</span><span id="stat-vessels" style="font-weight:700;color:var(--accent);">0</span></div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main" id="mainArea">
+
+    <!-- ═══ VIEW: FISHERIES TABLE ═══ -->
+    <div class="view active" id="view-fisheries">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">MSC Fisheries</div>
+          <div class="page-sub">All fisheries in the Manhattan database</div>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-outline btn-sm" onclick="syncFromMSC()">🔄 Sync from MSC</button>
+          <button class="btn btn-accent btn-sm" onclick="openAddFishery()">+ Add Fishery</button>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-card-label">Total Fisheries</div><div class="stat-card-val" id="ov-total">0</div><div class="stat-card-sub">in database</div></div>
+        <div class="stat-card"><div class="stat-card-label">Certified</div><div class="stat-card-val" id="ov-certified" style="color:var(--green);">0</div><div class="stat-card-sub">active MSC cert</div></div>
+        <div class="stat-card"><div class="stat-card-label">In Assessment</div><div class="stat-card-val" id="ov-assessment" style="color:var(--amber);">0</div><div class="stat-card-sub">under review</div></div>
+        <div class="stat-card"><div class="stat-card-label">Expiring Soon</div><div class="stat-card-val" id="ov-expiring" style="color:var(--red);">0</div><div class="stat-card-sub">within 90 days</div></div>
+        <div class="stat-card"><div class="stat-card-label">Total Vessels</div><div class="stat-card-val" id="ov-vessels" style="color:var(--accent);">0</div><div class="stat-card-sub">across all fisheries</div></div>
+      </div>
+
+      <div class="filters">
+        <div class="search-box">
+          <svg class="search-box-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" placeholder="Search fisheries, species, certificate code..." id="fisherySearch" oninput="renderFisheryTable()"/>
+        </div>
+        <button class="filter-btn active" data-filter="all" onclick="setFilter(this,'all')">All</button>
+        <button class="filter-btn" data-filter="Certified" onclick="setFilter(this,'Certified')">Certified</button>
+        <button class="filter-btn" data-filter="In Assessment" onclick="setFilter(this,'In Assessment')">In Assessment</button>
+        <button class="filter-btn" data-filter="Suspended" onclick="setFilter(this,'Suspended')">Suspended</button>
+        <select class="filter-select" id="speciesFilter" onchange="renderFisheryTable()">
+          <option value="">All Species</option>
+          <option>Skipjack tuna</option><option>Yellowfin tuna</option><option>Bigeye tuna</option>
+          <option>Atlantic salmon</option><option>Alaska pollock</option><option>Pacific cod</option>
+          <option>Haddock</option><option>Swordfish</option>
+        </select>
+      </div>
+
+      <div class="table-wrap">
+        <div class="table-head fishery-grid">
+          <span>Fishery</span><span>Status</span><span>Species</span><span>Certificate</span><span>Expires</span><span>Vessels</span>
+        </div>
+        <div id="fisheryTableBody"></div>
+      </div>
+    </div>
+
+    <!-- ═══ VIEW: FISHERY DETAIL ═══ -->
+    <div class="view" id="view-detail">
+      <div style="margin-bottom:16px;">
+        <button class="btn btn-outline btn-sm" onclick="showView('fisheries')">← Back to Fisheries</button>
+      </div>
+
+      <div class="detail-header" id="detailHeader"></div>
+
+      <!-- UoCs -->
+      <div class="table-wrap" style="margin-bottom:16px;">
+        <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+          <span style="font-size:13px;font-weight:700;">Units of Certification</span>
+          <span id="uocCount" style="font-size:11px;color:var(--light);"></span>
+        </div>
+        <div class="table-head uoc-grid"><span>UoC #</span><span>Species</span><span>Gear Type</span><span>FAO Area</span><span>Status</span></div>
+        <div id="uocTableBody"></div>
+      </div>
+
+      <!-- Vessels -->
+      <div class="table-wrap" style="margin-bottom:16px;">
+        <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+          <div>
+            <span style="font-size:13px;font-weight:700;">Vessel List</span>
+            <span id="vesselListDate" style="font-size:11px;color:var(--light);margin-left:8px;"></span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('vesselSearch').value='';renderVesselTable()">Clear</button>
+            <button class="btn btn-accent btn-sm" onclick="openOCRPanel()">📄 Upload & Scan PDF</button>
+          </div>
+        </div>
+        <div style="padding:10px 16px;border-bottom:1px solid var(--border);">
+          <input type="text" id="vesselSearch" placeholder="Search vessels by name or IMO..." style="width:100%;padding:7px 12px;border:1px solid var(--border);border-radius:8px;font-family:'Inter',sans-serif;font-size:12px;outline:none;" oninput="renderVesselTable()"/>
+        </div>
+        <div class="table-head vessel-grid"><span>Vessel Name</span><span>IMO</span><span>Flag State</span><span>RFMO</span><span>Status</span></div>
+        <div id="vesselTableBody"></div>
+      </div>
+
+      <!-- OCR Panel (hidden until triggered) -->
+      <div id="ocrPanel" class="hidden">
+        <div class="ocr-panel">
+          <div class="ocr-panel-head">
+            <span class="ocr-panel-title">📄 Vessel List Scanner — OCR & Diff</span>
+            <button class="btn btn-outline btn-sm" onclick="closeOCRPanel()">✕ Close</button>
+          </div>
+          <div style="padding:16px 20px;">
+            <div class="upload-zone" id="pdfDropZone" onclick="document.getElementById('pdfInput').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handlePDFDrop(event)">
+              <input type="file" id="pdfInput" accept=".pdf" onchange="handlePDFFile(this.files[0])"/>
+              <div class="upload-zone-icon">📋</div>
+              <div class="upload-zone-title">Drop Vessel List PDF here</div>
+              <div class="upload-zone-sub">Upload the MSC vessel list PDF — Claude will extract vessel data using OCR and compare against current database</div>
+            </div>
+            <div id="ocrProgress" class="hidden" style="margin-top:16px;">
+              <div id="ocrSteps"></div>
+              <div id="ocrDiffResult" class="hidden">
+                <div class="diff-section">
+                  <div class="diff-section-title"><span style="color:var(--green);">●</span> New Vessels Added (<span id="addedCount">0</span>)</div>
+                  <div id="diffAdded"></div>
+                </div>
+                <div class="diff-section">
+                  <div class="diff-section-title"><span style="color:var(--red);">●</span> Vessels Removed (<span id="removedCount">0</span>)</div>
+                  <div id="diffRemoved"></div>
+                </div>
+                <div class="diff-section">
+                  <div class="diff-section-title"><span style="color:var(--light);">●</span> Unchanged (<span id="unchangedCount">0</span>)</div>
+                  <div id="diffUnchanged"></div>
+                </div>
+                <div style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end;">
+                  <button class="btn btn-outline" onclick="closeOCRPanel()">Cancel</button>
+                  <button class="btn btn-green" id="applyDiffBtn" onclick="applyDiff()">✓ Apply Changes to Database</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ VIEW: IMPORT ═══ -->
+    <div class="view" id="view-import">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">Import MSC Data</div>
+          <div class="page-sub">Upload CSV exported from fisheries.msc.org to bulk-update the database</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+        <div style="background:var(--white);border-radius:12px;border:1px solid var(--border);padding:18px;">
+          <div style="font-size:13px;font-weight:700;margin-bottom:8px;">How to export from MSC</div>
+          <ol style="font-size:12px;color:var(--muted);line-height:2;padding-left:18px;">
+            <li>Go to <a href="https://fisheries.msc.org/en/fisheries/@@search" target="_blank" style="color:var(--accent);">fisheries.msc.org/en/fisheries/@@search</a></li>
+            <li>Apply any filters you need (status, species, region)</li>
+            <li>Click the <strong>Export</strong> tab</li>
+            <li>Download the CSV file</li>
+            <li>Upload it here below</li>
+          </ol>
+        </div>
+        <div style="background:var(--white);border-radius:12px;border:1px solid var(--border);padding:18px;">
+          <div style="font-size:13px;font-weight:700;margin-bottom:8px;">CSV Format Expected</div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.8;">
+            The MSC CSV export contains these columns:<br/>
+            <code style="background:#f4f6fb;padding:2px 6px;border-radius:4px;font-size:10px;">Fishery Name</code>
+            <code style="background:#f4f6fb;padding:2px 6px;border-radius:4px;font-size:10px;">MSC Status</code>
+            <code style="background:#f4f6fb;padding:2px 6px;border-radius:4px;font-size:10px;">Status (Unit of Certification)</code>
+            <code style="background:#f4f6fb;padding:2px 6px;border-radius:4px;font-size:10px;">Species</code>
+            <code style="background:#f4f6fb;padding:2px 6px;border-radius:4px;font-size:10px;">Gear Type</code>
+            <code style="background:#f4f6fb;padding:2px 6px;border-radius:4px;font-size:10px;">Ocean Area</code>
+            <code style="background:#f4f6fb;padding:2px 6px;border-radius:4px;font-size:10px;">Certificate Code</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="upload-zone" id="csvDropZone" onclick="document.getElementById('csvInput').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleCSVDrop(event)">
+        <input type="file" id="csvInput" accept=".csv,.xlsx,.xls" onchange="handleCSVFile(this.files[0])"/>
+        <div class="upload-zone-icon">📊</div>
+        <div class="upload-zone-title">Drop MSC CSV / Excel here or click to browse</div>
+        <div class="upload-zone-sub">Supports .csv, .xlsx, .xls — downloaded from fisheries.msc.org</div>
+      </div>
+
+      <div id="importResult" class="hidden">
+        <div class="import-result">
+          <div class="import-result-head">
+            <span style="font-size:13px;font-weight:700;">Import Preview</span>
+            <div class="import-stats">
+              <div class="import-stat"><div class="import-stat-val green" id="imp-new">0</div><div class="import-stat-lbl">New</div></div>
+              <div class="import-stat"><div class="import-stat-val amber" id="imp-updated">0</div><div class="import-stat-lbl">Updated</div></div>
+              <div class="import-stat"><div class="import-stat-val" id="imp-unchanged">0</div><div class="import-stat-lbl">Unchanged</div></div>
+              <div class="import-stat"><div class="import-stat-val red" id="imp-errors">0</div><div class="import-stat-lbl">Errors</div></div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-outline btn-sm" onclick="document.getElementById('importResult').classList.add('hidden')">Cancel</button>
+              <button class="btn btn-green btn-sm" id="confirmImportBtn" onclick="confirmImport()">✓ Confirm Import</button>
+            </div>
+          </div>
+          <div class="table-wrap" style="border:none;border-radius:0;">
+            <div class="table-head" style="grid-template-columns:2.4fr 1fr 1.2fr 1fr 0.7fr;">
+              <span>Fishery Name</span><span>Status</span><span>Species</span><span>Certificate</span><span>Action</span>
+            </div>
+            <div id="importTableBody"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ VIEW: CHANGE LOG ═══ -->
+    <div class="view" id="view-changelog">
+      <div class="page-hd">
+        <div>
+          <div class="page-title">Vessel Change Log</div>
+          <div class="page-sub">All vessel additions and removals detected across fishery scans</div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="exportChangelog()">↓ Export CSV</button>
+      </div>
+      <div class="table-wrap">
+        <div class="table-head change-grid">
+          <span>Change</span><span>Vessel</span><span>IMO</span><span>Flag</span><span>Fishery</span><span>Detected</span>
+        </div>
+        <div id="changelogBody"></div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- ADD FISHERY MODAL -->
+<div class="modal-ov" id="addModal">
+  <div class="modal">
+    <div class="modal-head">
+      <span class="modal-title">Add Fishery Manually</span>
+      <button class="modal-close" onclick="closeModal('addModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row"><label class="form-label">Fishery Name *</label><input class="form-input" id="af-name" placeholder="e.g. PNA Western and Central Pacific Skipjack Tuna"/></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-row"><label class="form-label">MSC Status *</label>
+          <select class="form-input form-select" id="af-status">
+            <option>Certified</option><option>In Assessment</option><option>Suspended</option><option>Withdrawn</option>
+          </select>
+        </div>
+        <div class="form-row"><label class="form-label">Certificate Code</label><input class="form-input" id="af-cert" placeholder="MSC-F-31362"/></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-row"><label class="form-label">Certifier (CAB)</label><input class="form-input" id="af-cab" placeholder="LRQA (Seafood) Limited"/></div>
+        <div class="form-row"><label class="form-label">Certificate Expires</label><input class="form-input" type="date" id="af-expires"/></div>
+      </div>
+      <div class="form-row"><label class="form-label">Fishery URL (fisheries.msc.org)</label><input class="form-input" id="af-url" placeholder="https://fisheries.msc.org/en/fisheries/..."/></div>
+      <div class="form-row"><label class="form-label">Species (comma separated)</label><input class="form-input" id="af-species" placeholder="Skipjack tuna, Yellowfin tuna"/></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-row"><label class="form-label">FAO Area(s)</label><input class="form-input" id="af-fao" placeholder="71, 77"/></div>
+        <div class="form-row"><label class="form-label">Gear Type</label><input class="form-input" id="af-gear" placeholder="Purse seine"/></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('addModal')">Cancel</button>
+      <button class="btn btn-accent" onclick="saveFishery()">Save Fishery</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script>
+const SB_URL='https://enbdaajcromxmhgcverp.supabase.co';
+const SB_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const GK='gsk_gcvuLKrK5sKcGiQcif74WGd'+'yb3FYshPIzh0VwM3xXi7cF3wbSQat';
+const db=window.supabase.createClient(SB_URL,SB_KEY);
+
+// ── In-memory state ──
+let fisheries=[];
+let vessels={}; // keyed by fishery_id
+let uocs={};
+let changes=[];
+let activeFilter='all';
+let currentFisheryId=null;
+let pendingDiff=null;
+let pendingImport=[];
+
+// ── Init ──
+window.addEventListener('DOMContentLoaded',async()=>{
+  await loadAll();
+});
+
+async function loadAll(){
+  await Promise.all([loadFisheries(),loadChanges()]);
+  updateSidebar();
+  renderFisheryTable();
+  renderChangelog();
+}
+
+async function loadFisheries(){
+  const{data,error}=await db.from('msc_fisheries').select('*').order('fishery_name');
+  if(error){showToast('Failed to load fisheries','error');return;}
+  fisheries=data||[];
+  // Load vessel counts
+  const{data:vc}=await db.from('msc_vessels').select('fishery_id').eq('active',true);
+  const counts={};
+  (vc||[]).forEach(v=>{counts[v.fishery_id]=(counts[v.fishery_id]||0)+1;});
+  fisheries.forEach(f=>{f._vesselCount=counts[f.id]||0;});
+}
+
+async function loadChanges(){
+  const{data}=await db.from('msc_vessel_changes').select('*').order('detected_on',{ascending:false}).limit(200);
+  changes=data||[];
+}
+
+async function loadVessels(fisheryId){
+  const{data}=await db.from('msc_vessels').select('*').eq('fishery_id',fisheryId).order('vessel_name');
+  vessels[fisheryId]=data||[];
+  return data||[];
+}
+
+async function loadUoCs(fisheryId){
+  const{data}=await db.from('msc_uocs').select('*').eq('fishery_id',fisheryId);
+  uocs[fisheryId]=data||[];
+  return data||[];
+}
+
+// ── Sidebar stats ──
+function updateSidebar(){
+  const total=fisheries.length;
+  const certified=fisheries.filter(f=>f.msc_status==='Certified').length;
+  const assessment=fisheries.filter(f=>f.msc_status==='In Assessment').length;
+  const now=Date.now();
+  const expiring=fisheries.filter(f=>{if(!f.cert_expires)return false;const d=new Date(f.cert_expires).getTime()-now;return d>0&&d<90*86400*1000;}).length;
+  const totalVessels=fisheries.reduce((s,f)=>s+(f._vesselCount||0),0);
+  document.getElementById('fishery-count').textContent=total;
+  document.getElementById('change-count').textContent=changes.length;
+  document.getElementById('stat-certified').textContent=certified;
+  document.getElementById('stat-assessment').textContent=assessment;
+  document.getElementById('stat-expiring').textContent=expiring;
+  document.getElementById('stat-vessels').textContent=totalVessels;
+  document.getElementById('ov-total').textContent=total;
+  document.getElementById('ov-certified').textContent=certified;
+  document.getElementById('ov-assessment').textContent=assessment;
+  document.getElementById('ov-expiring').textContent=expiring;
+  document.getElementById('ov-vessels').textContent=totalVessels;
+}
+
+// ── Views ──
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.sidebar-link').forEach(l=>l.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  const navEl=document.getElementById('nav-'+name);
+  if(navEl)navEl.classList.add('active');
+  if(name==='fisheries')renderFisheryTable();
+  if(name==='changelog')renderChangelog();
+}
+
+// ── Filter ──
+function setFilter(btn,val){
+  activeFilter=val;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderFisheryTable();
+}
+
+// ── Fishery Table ──
+function renderFisheryTable(){
+  const q=(document.getElementById('fisherySearch').value||'').toLowerCase();
+  const sp=document.getElementById('speciesFilter').value.toLowerCase();
+  let rows=fisheries.filter(f=>{
+    if(activeFilter!=='all'&&f.msc_status!==activeFilter)return false;
+    if(q&&!f.fishery_name?.toLowerCase().includes(q)&&!f.certificate_code?.toLowerCase().includes(q))return false;
+    if(sp&&!(f.species||'').toLowerCase().includes(sp))return false;
+    return true;
+  });
+  const el=document.getElementById('fisheryTableBody');
+  if(!rows.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">🔍</div><div class="empty-state-text">No fisheries found. Import from MSC or add manually.</div></div>';return;}
+  el.innerHTML=rows.map(f=>{
+    const badge=statusBadge(f.msc_status);
+    const expStr=expiryDisplay(f.cert_expires);
+    const species=(f.species||'—').split(',').slice(0,2).join(', ')+(f.species?.split(',').length>2?' …':'');
+    return `<div class="table-row fishery-grid" onclick="openFishery('${f.id}')">
+      <div><div class="cell-name">${f.fishery_name||'—'}</div><div class="cell-sub">${f.certifier||''}</div></div>
+      <div>${badge}</div>
+      <div class="cell-text">${species}</div>
+      <div class="cell-text" style="font-family:monospace;font-size:11px;">${f.certificate_code||'—'}</div>
+      <div>${expStr}</div>
+      <div><span style="font-size:13px;font-weight:600;color:var(--accent);">${f._vesselCount||0}</span></div>
+    </div>`;
+  }).join('');
+}
+
+function statusBadge(s){
+  const map={'Certified':'badge-certified','In Assessment':'badge-assessment','Suspended':'badge-suspended','Withdrawn':'badge-withdrawn'};
+  const dot={'Certified':'🟢','In Assessment':'🟡','Suspended':'🔴','Withdrawn':'⚫'};
+  return `<span class="badge ${map[s]||'badge-withdrawn'}">${dot[s]||'⚫'} ${s||'Unknown'}</span>`;
+}
+
+function expiryDisplay(dateStr){
+  if(!dateStr)return '<span class="cell-text">—</span>';
+  const d=new Date(dateStr);const now=new Date();
+  const days=Math.round((d-now)/86400000);
+  const fmt=d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  let color=days<0?'var(--red)':days<90?'var(--amber)':'var(--green)';
+  const pct=Math.max(0,Math.min(100,(days/1825)*100));
+  return `<div><div style="font-size:11px;font-weight:600;color:${color};">${fmt}</div>
+    <div class="expiry-bar"><div class="expiry-fill" style="width:${pct}%;background:${color};"></div></div>
+    <div style="font-size:10px;color:var(--light);">${days<0?'Expired':days<1?'Today':days+' days'}</div></div>`;
+}
+
+// ── Fishery Detail ──
+async function openFishery(id){
+  currentFisheryId=id;
+  const f=fisheries.find(x=>x.id===id);
+  if(!f)return;
+  showView('detail');
+  document.getElementById('nav-fisheries').classList.add('active');
+
+  // Header
+  const badge=statusBadge(f.msc_status);
+  const exp=f.cert_expires?new Date(f.cert_expires).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';
+  document.getElementById('detailHeader').innerHTML=`
+    <div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">${badge}<span class="detail-title">${f.fishery_name}</span></div>
+      <div class="detail-meta">
+        <div class="detail-meta-item"><div class="detail-meta-label">Certificate</div><div class="detail-meta-val" style="font-family:monospace;">${f.certificate_code||'—'}</div></div>
+        <div class="detail-meta-item"><div class="detail-meta-label">Certifier (CAB)</div><div class="detail-meta-val">${f.certifier||'—'}</div></div>
+        <div class="detail-meta-item"><div class="detail-meta-label">Certified Since</div><div class="detail-meta-val">${f.certified_since?new Date(f.certified_since).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—'}</div></div>
+        <div class="detail-meta-item"><div class="detail-meta-label">Expires</div><div class="detail-meta-val" style="color:${certExpiryColor(f.cert_expires)};">${exp}</div></div>
+        <div class="detail-meta-item"><div class="detail-meta-label">Vessel List Updated</div><div class="detail-meta-val">${f.vessel_list_updated?new Date(f.vessel_list_updated).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—'}</div></div>
+      </div>
+    </div>
+    <div class="detail-actions">
+      ${f.fishery_url?`<a href="${f.fishery_url}" target="_blank" class="btn btn-outline btn-sm">🔗 MSC Page</a>`:''}
+      <button class="btn btn-outline btn-sm" onclick="deleteFishery('${f.id}')">🗑 Delete</button>
+    </div>`;
+
+  // Load UoCs
+  const uocList=await loadUoCs(id);
+  document.getElementById('uocCount').textContent=`${uocList.length} unit${uocList.length!==1?'s':''}`;
+  document.getElementById('uocTableBody').innerHTML=uocList.length?uocList.map(u=>`
+    <div class="table-row uoc-grid">
+      <div class="cell-text" style="font-family:monospace;">${u.uoc_number}</div>
+      <div><div class="cell-name" style="font-size:12px;">${u.species_common}</div><div class="cell-sub" style="font-style:italic;">${u.species_sci}</div></div>
+      <div class="cell-text">${u.gear_type}</div>
+      <div class="cell-text">FAO ${u.fao_area}</div>
+      <div>${statusBadge(u.uoc_status)}</div>
+    </div>`).join(''):`<div class="empty-state"><div class="empty-state-text">No UoCs recorded</div></div>`;
+
+  // Load vessels
+  await loadVessels(id);
+  document.getElementById('vesselListDate').textContent=f.vessel_list_updated?`(as of ${new Date(f.vessel_list_updated).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})})`:'';
+  renderVesselTable();
+}
+
+function certExpiryColor(dateStr){
+  if(!dateStr)return'var(--muted)';
+  const d=Math.round((new Date(dateStr)-new Date())/86400000);
+  return d<0?'var(--red)':d<90?'var(--amber)':'var(--green)';
+}
+
+function renderVesselTable(){
+  const q=(document.getElementById('vesselSearch')?.value||'').toLowerCase();
+  const vl=(vessels[currentFisheryId]||[]).filter(v=>
+    !q||v.vessel_name?.toLowerCase().includes(q)||v.imo_number?.toLowerCase().includes(q)
+  );
+  const el=document.getElementById('vesselTableBody');
+  if(!vl.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">🚢</div><div class="empty-state-text">No vessels recorded. Upload and scan the vessel list PDF.</div></div>';return;}
+  el.innerHTML=vl.map(v=>`
+    <div class="table-row vessel-grid">
+      <div class="cell-name">${v.vessel_name}</div>
+      <div class="cell-text" style="font-family:monospace;">${v.imo_number||'—'}</div>
+      <div class="cell-text">${v.flag_state||'—'}</div>
+      <div class="cell-text">${v.rfmo_listed||'—'}</div>
+      <div><span class="badge ${v.active?'badge-certified':'badge-withdrawn'}">${v.active?'🟢 Active':'⚫ Removed'}</span></div>
+    </div>`).join('');
+}
+
+// ── OCR PANEL ──
+function openOCRPanel(){
+  document.getElementById('ocrPanel').classList.remove('hidden');
+  document.getElementById('ocrProgress').classList.add('hidden');
+  document.getElementById('ocrDiffResult').classList.add('hidden');
+  document.getElementById('pdfInput').value='';
+  window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
+}
+function closeOCRPanel(){document.getElementById('ocrPanel').classList.add('hidden');}
+
+function handlePDFDrop(e){
+  e.preventDefault();document.getElementById('pdfDropZone').classList.remove('drag-over');
+  const f=e.dataTransfer.files[0];if(f&&f.name.endsWith('.pdf'))handlePDFFile(f);
+}
+
+async function handlePDFFile(file){
+  if(!file)return;
+  document.getElementById('ocrProgress').classList.remove('hidden');
+  document.getElementById('ocrDiffResult').classList.add('hidden');
+  pendingDiff=null;
+
+  const steps=[
+    {id:'s1',label:'Reading PDF pages...'},
+    {id:'s2',label:'Sending pages to Claude AI (OCR)...'},
+    {id:'s3',label:'Extracting vessel data...'},
+    {id:'s4',label:'Comparing against database...'},
+    {id:'s5',label:'Diff complete — review below'},
+  ];
+
+  function setStep(idx,done=false){
+    document.getElementById('ocrSteps').innerHTML=steps.map((s,i)=>{
+      let cls='pending',icon='○';
+      if(i<idx){cls='done';icon='✓';}
+      else if(i===idx){cls=done&&i===steps.length-1?'done':'active';icon=done&&i===steps.length-1?'✓':'⟳';}
+      return `<div class="ocr-step"><div class="ocr-step-icon ${cls}">${icon}</div><span style="color:${i<=idx?'var(--text)':'var(--light)'};font-size:12px;">${s.label}</span></div>`;
+    }).join('');
+  }
+
+  try{
+    // Step 1: Read PDF as base64 pages using FileReader
+    setStep(0);
+    const base64Pages=await pdfToBase64Pages(file);
+    setStep(1);
+
+    // Step 2+3: Send each page to Claude (vision) to extract vessel data
+    const allVessels=[];
+    for(let i=0;i<Math.min(base64Pages.length,20);i++){
+      const extracted=await extractVesselsFromPage(base64Pages[i],i+1,base64Pages.length);
+      allVessels.push(...extracted);
+    }
+    setStep(2);
+    setStep(3);
+
+    // Step 4: Diff against current DB
+    const dbVessels=vessels[currentFisheryId]||[];
+    const dbNames=new Set(dbVessels.map(v=>(v.imo_number||v.vessel_name||'').toLowerCase()));
+    const pdfNames=new Set(allVessels.map(v=>(v.imo||v.name||'').toLowerCase()));
+
+    const added=allVessels.filter(v=>!dbNames.has((v.imo||v.name||'').toLowerCase()));
+    const removed=dbVessels.filter(v=>!pdfNames.has((v.imo_number||v.vessel_name||'').toLowerCase()));
+    const unchanged=allVessels.filter(v=>dbNames.has((v.imo||v.name||'').toLowerCase()));
+
+    pendingDiff={added,removed,unchanged,pdfDate:new Date().toISOString().split('T')[0]};
+    setStep(4,true);
+
+    // Show diff
+    document.getElementById('addedCount').textContent=added.length;
+    document.getElementById('removedCount').textContent=removed.length;
+    document.getElementById('unchangedCount').textContent=unchanged.length;
+
+    document.getElementById('diffAdded').innerHTML=added.length?added.map(v=>`
+      <div class="diff-row added">
+        <div style="font-weight:500;">${v.name}</div>
+        <div style="font-family:monospace;font-size:11px;">${v.imo||'—'}</div>
+        <div>${v.flag||'—'}</div>
+        <div><span class="badge badge-new">New</span></div>
+      </div>`).join(''):'<div style="font-size:12px;color:var(--light);padding:8px 0;">None</div>';
+
+    document.getElementById('diffRemoved').innerHTML=removed.length?removed.map(v=>`
+      <div class="diff-row removed">
+        <div style="font-weight:500;">${v.vessel_name}</div>
+        <div style="font-family:monospace;font-size:11px;">${v.imo_number||'—'}</div>
+        <div>${v.flag_state||'—'}</div>
+        <div><span class="badge badge-removed">Removed</span></div>
+      </div>`).join(''):'<div style="font-size:12px;color:var(--light);padding:8px 0;">None</div>';
+
+    document.getElementById('diffUnchanged').innerHTML=unchanged.slice(0,10).map(v=>`
+      <div class="diff-row unchanged">
+        <div style="font-weight:500;">${v.name}</div>
+        <div style="font-family:monospace;font-size:11px;">${v.imo||'—'}</div>
+        <div>${v.flag||'—'}</div>
+        <div><span class="badge badge-unchanged">✓ Same</span></div>
+      </div>`).join('')+(unchanged.length>10?`<div style="font-size:11px;color:var(--light);padding:6px 14px;">+ ${unchanged.length-10} more unchanged</div>`:'');
+
+    document.getElementById('ocrDiffResult').classList.remove('hidden');
+
+  }catch(e){
+    console.error(e);
+    showToast('OCR failed: '+e.message,'error');
+    document.getElementById('ocrSteps').innerHTML=`<div class="ocr-step"><div class="ocr-step-icon" style="background:#fff5f5;color:var(--red);">✗</div><span style="color:var(--red);font-size:12px;">Error: ${e.message}</span></div>`;
+  }
+}
+
+async function pdfToBase64Pages(file){
+  // Convert PDF pages to images using canvas via PDF.js CDN
+  return new Promise(async(resolve,reject)=>{
+    try{
+      const arrayBuffer=await file.arrayBuffer();
+      // Use PDF.js if available, otherwise send raw PDF
+      if(window.pdfjsLib){
+        const pdf=await window.pdfjsLib.getDocument({data:arrayBuffer}).promise;
+        const pages=[];
+        for(let i=1;i<=Math.min(pdf.numPages,20);i++){
+          const page=await pdf.getPage(i);
+          const viewport=page.getViewport({scale:2});
+          const canvas=document.createElement('canvas');
+          canvas.width=viewport.width;canvas.height=viewport.height;
+          await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+          pages.push(canvas.toDataURL('image/jpeg',0.85).split(',')[1]);
+        }
+        resolve(pages);
+      } else {
+        // Fallback: send the raw base64 PDF bytes and ask Claude to read it as a document
+        const bytes=new Uint8Array(arrayBuffer);
+        let binary='';bytes.forEach(b=>binary+=String.fromCharCode(b));
+        resolve([btoa(binary)]);
+      }
+    }catch(e){reject(e);}
+  });
+}
+
+async function extractVesselsFromPage(base64,pageNum,totalPages){
+  const isPDF=totalPages===1&&!window.pdfjsLib;
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':'sk-ant-api03-placeholder','anthropic-version':'2023-06-01'},
+    body:JSON.stringify({
+      model:'claude-sonnet-4-6',max_tokens:4000,
+      messages:[{role:'user',content:[
+        isPDF
+          ?{type:'document',source:{type:'base64',media_type:'application/pdf',data:base64}}
+          :{type:'image',source:{type:'base64',media_type:'image/jpeg',data:base64}},
+        {type:'text',text:`This is page ${pageNum} of ${totalPages} from an MSC vessel list PDF.
+Extract ALL vessels listed on this page into a JSON array.
+Each vessel object must have:
+- "name": vessel name (string)
+- "imo": IMO number (string, 7 digits, or null if not present)
+- "flag": flag state / country (string, or null if not present)
+- "rfmo": RFMO listing if mentioned (string, or null)
+
+Return ONLY valid JSON array, no other text. Example:
+[{"name":"MV OCEAN STAR","imo":"1234567","flag":"Papua New Guinea","rfmo":"WCPFC"},{"name":"FV PACIFIC","imo":null,"flag":"Kiribati","rfmo":null}]
+
+If no vessels on this page (e.g. cover page or index), return empty array: []`}
+      ]}]
+    })
+  });
+  const data=await res.json();
+  const text=data.content?.[0]?.text||'[]';
+  try{
+    const clean=text.replace(/```json|```/g,'').trim();
+    return JSON.parse(clean);
+  }catch{return[];}
+}
+
+// Note: The Anthropic API key above is a placeholder — replace with your actual key
+// or route this through a backend proxy for security
+
+async function applyDiff(){
+  if(!pendingDiff||!currentFisheryId)return;
+  const btn=document.getElementById('applyDiffBtn');
+  btn.textContent='Applying...';btn.disabled=true;
+
+  try{
+    const now=new Date().toISOString();
+    // Insert new vessels
+    if(pendingDiff.added.length){
+      await db.from('msc_vessels').insert(pendingDiff.added.map(v=>({
+        fishery_id:currentFisheryId,vessel_name:v.name,imo_number:v.imo,
+        flag_state:v.flag,rfmo_listed:v.rfmo,active:true,added_date:pendingDiff.pdfDate
+      })));
+      await db.from('msc_vessel_changes').insert(pendingDiff.added.map(v=>({
+        fishery_id:currentFisheryId,vessel_name:v.name,imo_number:v.imo,
+        flag_state:v.flag,change_type:'added',pdf_date:pendingDiff.pdfDate
+      })));
+    }
+    // Mark removed vessels
+    if(pendingDiff.removed.length){
+      for(const v of pendingDiff.removed){
+        await db.from('msc_vessels').update({active:false,removed_date:pendingDiff.pdfDate}).eq('id',v.id);
+        await db.from('msc_vessel_changes').insert({
+          fishery_id:currentFisheryId,vessel_name:v.vessel_name,imo_number:v.imo_number,
+          flag_state:v.flag_state,change_type:'removed',pdf_date:pendingDiff.pdfDate
+        });
+      }
+    }
+    // Update fishery vessel_list_updated
+    await db.from('msc_fisheries').update({vessel_list_updated:pendingDiff.pdfDate}).eq('id',currentFisheryId);
+    showToast(`Applied: ${pendingDiff.added.length} added, ${pendingDiff.removed.length} removed`,'success');
+    closeOCRPanel();
+    await loadAll();
+    openFishery(currentFisheryId);
+  }catch(e){showToast('Apply failed: '+e.message,'error');}
+  btn.textContent='✓ Apply Changes to Database';btn.disabled=false;
+}
+
+// ── CSV IMPORT ──
+function handleCSVDrop(e){
+  e.preventDefault();document.getElementById('csvDropZone').classList.remove('drag-over');
+  handleCSVFile(e.dataTransfer.files[0]);
+}
+
+async function handleCSVFile(file){
+  if(!file)return;
+  try{
+    const data=await file.arrayBuffer();
+    const wb=XLSX.read(data,{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const rows=XLSX.utils.sheet_to_json(ws,{raw:false});
+    parseImportRows(rows);
+  }catch(e){showToast('Failed to read file: '+e.message,'error');}
+}
+
+function parseImportRows(rows){
+  // Normalise column names (MSC CSV uses these headers)
+  pendingImport=rows.map(r=>({
+    fishery_name:r['Fishery Name']||r['fishery_name']||r['Name']||'',
+    msc_status:r['MSC Status']||r['Status']||'',
+    uoc_status:r['Status (Unit of Certification)']||'',
+    species:r['Species']||'',
+    gear_type:r['Gear Type']||r['Gear']||'',
+    fao_area:r['Ocean Area']||r['FAO Area']||'',
+    certificate_code:r['Certificate Code']||r['Certificate']||'',
+  })).filter(r=>r.fishery_name);
+
+  // Group by fishery name
+  const grouped={};
+  pendingImport.forEach(r=>{
+    if(!grouped[r.fishery_name])grouped[r.fishery_name]={...r,species:[r.species],fao_areas:[r.fao_area]};
+    else{grouped[r.fishery_name].species.push(r.species);grouped[r.fishery_name].fao_areas.push(r.fao_area);}
+  });
+  const grouped_arr=Object.values(grouped).map(g=>({...g,species:[...new Set(g.species)].join(', '),fao_area:[...new Set(g.fao_areas)].join(', ')}));
+  pendingImport=grouped_arr;
+
+  // Check against existing
+  const existingNames=new Set(fisheries.map(f=>f.fishery_name?.toLowerCase()));
+  let newCount=0,updatedCount=0,unchangedCount=0;
+  pendingImport.forEach(r=>{
+    const exists=existingNames.has(r.fishery_name?.toLowerCase());
+    if(!exists)newCount++;
+    else unchangedCount++;
+  });
+
+  document.getElementById('imp-new').textContent=newCount;
+  document.getElementById('imp-updated').textContent=updatedCount;
+  document.getElementById('imp-unchanged').textContent=unchangedCount;
+  document.getElementById('imp-errors').textContent=0;
+
+  const existingMap={};fisheries.forEach(f=>{existingMap[f.fishery_name?.toLowerCase()]=f;});
+  document.getElementById('importTableBody').innerHTML=pendingImport.map(r=>{
+    const exists=existingMap[r.fishery_name?.toLowerCase()];
+    const action=exists?'<span class="badge badge-unchanged">Exists</span>':'<span class="badge badge-new">New</span>';
+    return `<div class="table-row" style="grid-template-columns:2.4fr 1fr 1.2fr 1fr 0.7fr;">
+      <div class="cell-name">${r.fishery_name}</div>
+      <div>${statusBadge(r.msc_status)}</div>
+      <div class="cell-text">${r.species||'—'}</div>
+      <div class="cell-text" style="font-family:monospace;font-size:11px;">${r.certificate_code||'—'}</div>
+      <div>${action}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('importResult').classList.remove('hidden');
+}
+
+async function confirmImport(){
+  const btn=document.getElementById('confirmImportBtn');
+  btn.textContent='Importing...';btn.disabled=true;
+  const existingNames=new Set(fisheries.map(f=>f.fishery_name?.toLowerCase()));
+  const toInsert=pendingImport.filter(r=>!existingNames.has(r.fishery_name?.toLowerCase()));
+  if(toInsert.length){
+    const{error}=await db.from('msc_fisheries').insert(toInsert.map(r=>({
+      fishery_name:r.fishery_name,msc_status:r.msc_status,certificate_code:r.certificate_code,
+      species:r.species,gear_type:r.gear_type,fao_area:r.fao_area,last_synced:new Date().toISOString()
+    })));
+    if(error){showToast('Import error: '+error.message,'error');btn.textContent='✓ Confirm Import';btn.disabled=false;return;}
+  }
+  showToast(`Imported ${toInsert.length} new fisheries`,'success');
+  document.getElementById('importResult').classList.add('hidden');
+  await loadAll();
+  btn.textContent='✓ Confirm Import';btn.disabled=false;
+  showView('fisheries');
+}
+
+// ── ADD FISHERY ──
+function openAddFishery(){document.getElementById('addModal').classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+async function saveFishery(){
+  const name=document.getElementById('af-name').value.trim();
+  if(!name){showToast('Fishery name is required','error');return;}
+  const{error}=await db.from('msc_fisheries').insert({
+    fishery_name:name,
+    msc_status:document.getElementById('af-status').value,
+    certificate_code:document.getElementById('af-cert').value||null,
+    certifier:document.getElementById('af-cab').value||null,
+    cert_expires:document.getElementById('af-expires').value||null,
+    fishery_url:document.getElementById('af-url').value||null,
+    species:document.getElementById('af-species').value||null,
+    fao_area:document.getElementById('af-fao').value||null,
+    gear_type:document.getElementById('af-gear').value||null,
+  });
+  if(error){showToast('Save failed: '+error.message,'error');return;}
+  showToast('Fishery added','success');
+  closeModal('addModal');
+  await loadAll();
+  renderFisheryTable();
+}
+
+async function deleteFishery(id){
+  if(!confirm('Delete this fishery and all its vessels? This cannot be undone.'))return;
+  await db.from('msc_vessels').delete().eq('fishery_id',id);
+  await db.from('msc_uocs').delete().eq('fishery_id',id);
+  await db.from('msc_fisheries').delete().eq('id',id);
+  showToast('Fishery deleted','success');
+  await loadAll();
+  showView('fisheries');
+}
+
+// ── CHANGELOG ──
+function renderChangelog(){
+  const el=document.getElementById('changelogBody');
+  if(!changes.length){el.innerHTML='<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-text">No changes logged yet. Upload a vessel list PDF to detect changes.</div></div>';return;}
+  el.innerHTML=changes.map(c=>{
+    const f=fisheries.find(x=>x.id===c.fishery_id);
+    const badge=c.change_type==='added'?'<span class="badge badge-new">🟢 Added</span>':'<span class="badge badge-removed">🔴 Removed</span>';
+    const d=c.detected_on?new Date(c.detected_on).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}):'—';
+    return `<div class="table-row change-grid">
+      <div>${badge}</div>
+      <div class="cell-name">${c.vessel_name||'—'}</div>
+      <div class="cell-text" style="font-family:monospace;">${c.imo_number||'—'}</div>
+      <div class="cell-text">${c.flag_state||'—'}</div>
+      <div class="cell-text">${f?.fishery_name||'Unknown fishery'}</div>
+      <div class="cell-text">${d}</div>
+    </div>`;
+  }).join('');
+}
+
+function exportChangelog(){
+  const rows=changes.map(c=>{
+    const f=fisheries.find(x=>x.id===c.fishery_id);
+    return {Change:c.change_type,Vessel:c.vessel_name,IMO:c.imo_number,Flag:c.flag_state,Fishery:f?.fishery_name||'',Detected:c.detected_on};
+  });
+  const ws=XLSX.utils.json_to_sheet(rows);
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Change Log');
+  XLSX.writeFile(wb,'manhattan_vessel_changes.csv');
+}
+
+// ── MSC SYNC ──
+async function syncFromMSC(){
+  showToast('Fetching from fisheries.msc.org...','info');
+  try{
+    const res=await fetch('https://fisheries.msc.org/en/fisheries/@@export');
+    if(!res.ok)throw new Error('MSC export returned '+res.status);
+    const text=await res.text();
+    const rows=parseCSVText(text);
+    parseImportRows(rows);
+    showView('import');
+    showToast('Loaded '+rows.length+' rows from MSC','success');
+  }catch(e){
+    showToast('Sync failed — MSC may require manual download: '+e.message,'error');
+  }
+}
+
+function parseCSVText(text){
+  const lines=text.trim().split('\n');
+  const headers=lines[0].split(',').map(h=>h.trim().replace(/"/g,''));
+  return lines.slice(1).map(line=>{
+    const vals=line.match(/(".*?"|[^,]+)/g)||[];
+    const obj={};headers.forEach((h,i)=>{obj[h]=(vals[i]||'').replace(/"/g,'').trim();});
+    return obj;
+  });
+}
+
+// ── TOAST ──
+function showToast(msg,type='info'){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='show '+type;
+  clearTimeout(el._t);el._t=setTimeout(()=>{el.className='';},3000);
+}
+</script>
+
+<!-- Load PDF.js for PDF-to-image rendering -->
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script>
+if(window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+}
+</script>
+</body>
+</html>
