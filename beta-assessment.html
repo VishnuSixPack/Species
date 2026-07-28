@@ -1473,6 +1473,9 @@ function agreeAndContinue(){
   }
   assessorName=name;
   goTo('sProducts');
+  // Load dropdown data for product form
+  loadCountries().catch(e=>console.warn('loadCountries:',e));
+  loadSpecies().catch(e=>console.warn('loadSpecies:',e));
 }
 
 // ══ SC BUILDER ══
@@ -1731,8 +1734,11 @@ function updateSCPrev(){
 }
 
 // ══ PRODUCT FORM ══
-function openPF(idx){
+async function openPF(idx){
   curPI=idx;const p=products[idx]||{};
+  // Ensure dropdown data is loaded first
+  if(!allC.length)await loadCountries().catch(()=>{});
+  if(!allSp.length)await loadSpecies().catch(()=>{});
   document.getElementById('pfd').value=p.desc||'';document.getElementById('pfsp').value=p.species||'';
   setDropVal('cert',p.cert||'');setDropVal('form',p.form||'');setDropVal('harvest',p.harvest||'');
   mkSel=p.markets?[...p.markets]:[];updateMKChips();
@@ -5370,6 +5376,9 @@ async function saveReviewStatus(status){
 let _continueData=[]; // cache for client-side filtering
 let _contActiveTab='draft';
 async function loadContinue(){
+  // Pre-load dropdown data in case user goes back to Products screen
+  loadCountries().catch(e=>console.warn('loadCountries:',e));
+  loadSpecies().catch(e=>console.warn('loadSpecies:',e));
   const el=document.getElementById('cont-list');el.innerHTML='<div style="text-align:center;padding:40px;color:#9aa0b4;font-size:13px;">Loading...</div>';
   try{
     const{data,error}=await db.from('beta_assessments').select('*').in('status',['draft','submitted']).order('updated_at',{ascending:false,nullsFirst:false});
