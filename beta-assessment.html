@@ -189,6 +189,20 @@
     .btnknext:hover{background:#7c3aed;}
     .ev-summary{margin-top:8px;display:flex;flex-wrap:wrap;gap:5px;align-items:center;}
     .ev-add-chip{display:inline-flex;align-items:center;gap:4px;background:#f4f6fb;border:1.5px dashed #c0c4d0;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:600;color:#9aa0b4;cursor:pointer;}
+    .ev-bucket-chip{display:inline-flex;align-items:center;gap:4px;background:#eef4fd;border:1.5px dashed #93c5fd;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:600;color:#1d4ed8;cursor:pointer;}
+    .ev-bucket-chip:hover{border-color:#2563eb;background:#dbeafe;}
+    .bucket-modal{position:fixed;inset:0;background:rgba(10,12,30,0.4);backdrop-filter:blur(6px);z-index:850;display:none;align-items:center;justify-content:center;padding:20px;}
+    .bucket-modal.open{display:flex;}
+    .bucket-box{background:#fff;border-radius:16px;width:100%;max-width:540px;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.15);}
+    .bucket-head{padding:18px 22px;border-bottom:1px solid #f0f2f7;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1;}
+    .bucket-item{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid #f7f8fb;cursor:pointer;transition:background 0.1s;}
+    .bucket-item:hover{background:#f4f0ff;}
+    .bucket-item-icon{font-size:18px;flex-shrink:0;}
+    .bucket-item-name{font-size:12px;font-weight:600;color:#1a1a2e;flex:1;}
+    .bucket-item-sub{font-size:10px;color:#9aa0b4;}
+    .bucket-item-used{font-size:10px;color:#7c3aed;font-weight:700;}
+    /* Available note field */
+    .kpta.av-note{border-color:#bbf7d0;background:#f0fdf4;}
     .ev-add-chip:hover{border-color:#8b5cf6;color:#8b5cf6;background:#faf5ff;}
     .ev-add-chip-done{border-color:#16a34a!important;color:#16a34a!important;background:#f0fdf4!important;border-style:solid!important;}
     .ev-chip{display:inline-flex;align-items:center;gap:4px;background:#f4f0ff;border:1px solid #ddd6fe;border-radius:6px;padding:2px 9px;font-size:11px;font-weight:600;color:#7c3aed;cursor:pointer;}
@@ -2504,9 +2518,15 @@ function renderVesselVerifyBanner(result){
     ${rows}
     ${iuuDetail}
     ${rfmoDetail}
-    <div style="font-size:10px;color:#9aa0b4;margin-top:6px;">
+    <div style="font-size:10px;color:#9aa0b4;margin-top:6px;line-height:1.8;">
       Verified against vessel history tables — RFMO, FFA, IUU, VDS, FSMA.
       All KDEs auto-populated. Override manually if needed.
+      <br/>
+      <a href="https://www.ffa.int/good-standing" target="_blank" style="color:#7c3aed;text-decoration:none;">🔗 FFA Good Standing Register</a>
+      &nbsp;·&nbsp;
+      <a href="https://iuu-vessels.org" target="_blank" style="color:#7c3aed;text-decoration:none;">🔗 IUU Vessel Register</a>
+      &nbsp;·&nbsp;
+      <a href="https://www.wcpfc.int/record-fishing-vessel" target="_blank" style="color:#7c3aed;text-decoration:none;">🔗 WCPFC Vessel Records</a>
     </div>
   </div>`;
 }
@@ -3511,7 +3531,7 @@ function renderKDE(){
       <div class="ksbadge">${st.i} ${st.t}</div>
       <span class="sc-pos-badge" id="sc-pos-badge" onclick="openSCPopupActive()"><span class="dot"></span> <span id="sc-pos-label">See where you are in the supply chain</span></span>
     </div>
-    <div class="kstitle">${st.t}</div>
+    <div class="kstitle">${st.t} <span style="font-size:10px;font-weight:600;color:#9aa0b4;vertical-align:middle;margin-left:4px;">v4</span></div>
     <div class="kssub">${multiInst?`${st.instances.length} instances in your supply chain — fill each sub-section below.`:'Select the availability of each data element for your operations.'}</div>
   </div>`;
 
@@ -3970,6 +3990,7 @@ function renderMSCFisheryKDE(q){
       <div class="kopt ${r.ans==='pa'?'pa':''}" onclick="setAns('${q.id}','pa')">◑ Partial</div>
       <div class="kopt ${r.ans==='un'?'un':''}" onclick="setAns('${q.id}','un')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Not Available</div>
     </div>
+    <div class="knotebox ${r.ans==='av'?'show':''}" id="kav${safeId}" style="margin-top:6px;">${renderNoteArea(q.id,'av',r.avNote)}</div>
     <div class="knotebox ${r.ans==='pa'?'show':''}" id="kp${safeId}">${renderNoteArea(q.id,'pa',r.note)}</div>
     <div class="knotebox ${r.ans==='un'?'show':''}" id="kun${safeId}">${renderNoteArea(q.id,'un',r.unNote)}</div>
     ${showEv?`<div class="ev-summary">${evChips}${addChip}</div>`:`<div class="ev-summary" style="display:none;">${addChip}</div>`}
@@ -4022,7 +4043,7 @@ function renderQ(q){
     </div>
     <div class="knotebox ${r.ans==='pa'?'show':''}" id="kp${safeId}">${renderNoteArea(q.id,'pa',r.note)}</div>
     <div class="knotebox ${r.ans==='un'?'show':''}" id="kun${safeId}">${renderNoteArea(q.id,'un',r.unNote)}</div>
-    ${showEv?`<div class="ev-summary">${evChips}${addChip}</div>`:`<div class="ev-summary" style="display:none;">${addChip}</div>`}
+    ${showEv?`<div class="ev-summary">${evChips}${addChip}<span class="ev-bucket-chip" onclick="openBucketModal('${q.id}')">📦 Bucket</span></div>`:`<div class="ev-summary" style="display:none;">${addChip}</div>`}
   </div>`;
 }
 function setAns(id,ans){
@@ -4059,8 +4080,31 @@ function setAns(id,ans){
   }
   // Remove partial note if switching away from pa
   if(ans!=='pa')card.querySelector('.partial-score-note')?.remove();
-  document.getElementById('kp'+safeId)?.classList.toggle('show',ans==='pa');
-  document.getElementById('kun'+safeId)?.classList.toggle('show',ans==='un');
+  // Preserve note text when switching answer types
+  // Read current textarea values before toggling visibility
+  const paBox=document.getElementById('kp'+safeId);
+  const unBox=document.getElementById('kun'+safeId);
+  const paTa=paBox?.querySelector('textarea');
+  const unTa=unBox?.querySelector('textarea');
+  if(paTa&&paTa.value.trim()){if(!kResp[id])kResp[id]={};kResp[id]._draftNote=paTa.value;}
+  if(unTa&&unTa.value.trim()){if(!kResp[id])kResp[id]={};kResp[id]._draftUnNote=unTa.value;}
+
+  const avBox=document.getElementById('kav'+safeId);
+  avBox?.classList.toggle('show',ans==='av');
+  paBox?.classList.toggle('show',ans==='pa');
+  unBox?.classList.toggle('show',ans==='un');
+
+  // Restore draft text if switching to a note box that has a saved draft
+  if(ans==='pa'&&kResp[id]?._draftNote){
+    const ta2=paBox?.querySelector('textarea');
+    if(ta2&&!ta2.value)ta2.value=kResp[id]._draftNote;
+  }
+  if(ans==='un'&&kResp[id]?._draftUnNote){
+    const ta2=unBox?.querySelector('textarea');
+    if(ta2&&!ta2.value)ta2.value=kResp[id]._draftUnNote;
+  }
+
+  // Show evidence for av and pa; show note prompt for av too
   const evs=card.querySelector('.ev-summary');if(evs)evs.style.display=(ans==='av'||ans==='pa')?'flex':'none';
 
   // Re-render if this is a trigger question — rebuild STAGES so conditional questions appear/disappear
@@ -4078,15 +4122,17 @@ function setAns(id,ans){
 // ── Comment-style note system: compose → submit → posted (edit/delete) ──
 function renderNoteArea(qid,type,savedValue){
   const safeId=qid.replace(/[^a-zA-Z0-9]/g,'_');
-  const areaId=(type==='pa'?'kp':'kun')+safeId;
+  const areaId=(type==='av'?'kav':type==='pa'?'kp':'kun')+safeId;
   if(savedValue&&savedValue.trim()){
     // POSTED state — show as a comment with Edit/Delete
     return renderPostedNote(qid,type,savedValue);
   }
   // COMPOSER state — textarea + submit button
-  const placeholder=type==='pa'?'Describe what data you currently have...':'Explain why this is not available...';
-  const btnColor=type==='pa'?'#f59e0b':'#e63946';
-  const cls=type==='pa'?'kpta':'kpta un-note';
+  const placeholder=type==='av'?'Add a note about this evidence (optional)...'
+    :type==='pa'?'Describe what data you currently have...'
+    :'Explain why this is not available...';
+  const btnColor=type==='av'?'#16a34a':type==='pa'?'#f59e0b':'#e63946';
+  const cls=type==='av'?'kpta av-note':type==='pa'?'kpta':'kpta un-note';
   return `<div class="knote-composer">
     <textarea class="${cls}" rows="2" placeholder="${placeholder}" id="ta_${areaId}"></textarea>
     <button class="knote-submit-btn" style="background:${btnColor};" onclick="submitNote('${qid}','${type}')">Submit</button>
@@ -4109,41 +4155,45 @@ function renderPostedNote(qid,type,value){
 }
 function submitNote(qid,type){
   const safeId=qid.replace(/[^a-zA-Z0-9]/g,'_');
-  const areaId=(type==='pa'?'kp':'kun')+safeId;
+  const areaId=(type==='av'?'kav':type==='pa'?'kp':'kun')+safeId;
   const ta=document.getElementById('ta_'+areaId);
   const val=(ta?.value||'').trim();
   if(!val){if(ta)ta.focus();return;}
   if(!kResp[qid])kResp[qid]={};
-  if(type==='pa')kResp[qid].note=val;else kResp[qid].unNote=val;
+  if(type==='av')kResp[qid].avNote=val;
+  else if(type==='pa'){kResp[qid].note=val;delete kResp[qid]._draftNote;}
+  else{kResp[qid].unNote=val;delete kResp[qid]._draftUnNote;}
   const box=document.getElementById(areaId);
   if(box)box.innerHTML=renderPostedNote(qid,type,val);
   showToast('Comment posted','success');
 }
 function editNote(qid,type){
   const safeId=qid.replace(/[^a-zA-Z0-9]/g,'_');
-  const areaId=(type==='pa'?'kp':'kun')+safeId;
+  const areaId=(type==='av'?'kav':type==='pa'?'kp':'kun')+safeId;
   const box=document.getElementById(areaId);
   const r=kResp[qid]||{};
-  const currentVal=type==='pa'?(r.note||''):(r.unNote||'');
-  const placeholder=type==='pa'?'Describe what data you currently have...':'Explain why this is not available...';
-  const btnColor=type==='pa'?'#f59e0b':'#e63946';
-  const cls=type==='pa'?'kpta':'kpta un-note';
-  if(box)box.innerHTML=`<div class="knote-composer">
-    <textarea class="${cls}" rows="2" id="ta_${areaId}" placeholder="${placeholder}">${currentVal}</textarea>
-    <button class="knote-submit-btn" style="background:${btnColor};" onclick="submitNote('${qid}','${type}')">Save Changes</button>
-  </div>`;
+  const currentVal=type==='av'?(r.avNote||''):type==='pa'?(r.note||''):(r.unNote||'');
+  const placeholder=type==='av'?'Add a note about this evidence...'
+    :type==='pa'?'Describe what data you currently have...'
+    :'Explain why this is not available...';
+  const btnColor=type==='av'?'#16a34a':type==='pa'?'#f59e0b':'#e63946';
+  const cls=type==='av'?'kpta av-note':type==='pa'?'kpta':'kpta un-note';
+  if(box)box.innerHTML='<div class="knote-composer"><textarea class="'+cls+'" rows="2" id="ta_'+areaId+'" placeholder="'+placeholder+'">'+currentVal+'</textarea><button class="knote-submit-btn" style="background:'+btnColor+';" onclick="submitNote(\''+qid+'\',\''+type+'\')">Save Changes</button></div>';
   document.getElementById('ta_'+areaId)?.focus();
 }
 function deleteNote(qid,type){
   if(!confirm('Delete this comment?'))return;
   if(!kResp[qid])kResp[qid]={};
-  if(type==='pa')kResp[qid].note='';else kResp[qid].unNote='';
+  if(type==='av')kResp[qid].avNote='';
+  else if(type==='pa')kResp[qid].note='';
+  else kResp[qid].unNote='';
   const safeId=qid.replace(/[^a-zA-Z0-9]/g,'_');
-  const areaId=(type==='pa'?'kp':'kun')+safeId;
+  const areaId=(type==='av'?'kav':type==='pa'?'kp':'kun')+safeId;
   const box=document.getElementById(areaId);
   if(box)box.innerHTML=renderNoteArea(qid,type,'');
   showToast('Comment deleted','info');
 }
+
 function kPrev(){
   const st=STAGES[kIdx];
   if(st?.instances?.length>1&&activeSubIdx>0){
@@ -4369,6 +4419,8 @@ function updateEvCount(){
 }
 function saveEvidence(){
   if(!evKdeId)return;if(!kResp[evKdeId])kResp[evKdeId]={};kResp[evKdeId].evidence=[...evTempItems];
+  // Add all new evidence items to global bucket
+  evTempItems.forEach(ev=>addToBucket(ev,evKdeId));
   const safeId=evKdeId.replace(/[^a-zA-Z0-9]/g,'_');const card=document.getElementById('kq'+safeId);
   if(card){const evSummary=card.querySelector('.ev-summary');if(evSummary){const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};const evs=evTempItems;const evChips=evs.map(e=>`<span class="ev-chip" onclick="openEvMod('${evKdeId}')">${evIcons[e.type]||'📎'} ${(e.name||e.value).slice(0,22)}</span>`).join('');const addChip=evs.length>0?`<span class="ev-add-chip ev-add-chip-done" onclick="openEvMod('${evKdeId}')">✓ ${evs.length} Evidence</span>`:`<span class="ev-add-chip" onclick="openEvMod('${evKdeId}')">+ Add Evidence</span>`;evSummary.innerHTML=evChips+addChip;evSummary.style.display='flex';}}
   // If answer is 'av' and evidence just added, remove the no-evidence alert
@@ -5941,6 +5993,63 @@ function applyZoom(){
   const lbl=document.getElementById('zoom-lbl');if(lbl)lbl.textContent=Math.round(cvScale*100)+'%';
 }
 
+// ══ GLOBAL EVIDENCE BUCKET ══
+function getBucket(){return kResp['_evidenceBucket']||(kResp['_evidenceBucket']=[]);}
+function addToBucket(ev,sourceKdeId){
+  const bucket=getBucket();
+  const exists=bucket.find(b=>b.name===ev.name&&b.type===ev.type);
+  if(!exists)bucket.push({...ev,_addedBy:sourceKdeId,_addedAt:Date.now()});
+}
+function openBucketModal(targetKdeId){
+  const bucket=getBucket();
+  const existing=kResp[targetKdeId]?.evidence||[];
+  const existingNames=new Set(existing.map(e=>e.name));
+  const el=document.getElementById('bucketList');
+  const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};
+  if(!bucket.length){
+    el.innerHTML='<div style="padding:32px;text-align:center;color:#9aa0b4;"><div style="font-size:32px;margin-bottom:10px;">📦</div><div style="font-size:13px;">No evidence in bucket yet.</div><div style="font-size:11px;margin-top:4px;">Evidence uploaded to any KDE is saved here for reuse.</div></div>';
+  } else {
+    el.innerHTML=bucket.map((ev,i)=>{
+      const alreadyAdded=existingNames.has(ev.name);
+      const icon=evIcons[ev.type]||'📎';
+      const name=ev.name||ev.value||'Evidence';
+      const sub=ev.type+(ev._addedBy?' · from '+ev._addedBy.split('_').slice(-2).join(' '):'');
+      const btn=alreadyAdded
+        ?'<span class="bucket-item-used">✓ Added</span>'
+        :'<button onclick="addFromBucket('+i+',this.dataset.kde)" data-kde="'+targetKdeId+'" style="height:26px;padding:0 10px;border:none;border-radius:6px;background:#7c3aed;color:#fff;font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;">+ Use</button>';
+      return '<div class="bucket-item"><span class="bucket-item-icon">'+icon+'</span><div style="flex:1;"><div class="bucket-item-name">'+name+'</div><div class="bucket-item-sub">'+sub+'</div></div>'+btn+'</div>';
+    }).join('');
+  }
+  document.getElementById('bucketModal').classList.add('open');
+}
+
+function closeBucketModal(){document.getElementById('bucketModal').classList.remove('open');}
+function addFromBucket(bucketIdx,kdeId){
+  // kdeId may come from dataset attribute on button
+  if(typeof kdeId!=='string')kdeId=kdeId||'';
+  const ev={...getBucket()[bucketIdx]};
+  if(!kResp[kdeId])kResp[kdeId]={};
+  if(!kResp[kdeId].evidence)kResp[kdeId].evidence=[];
+  const exists=kResp[kdeId].evidence.find(e=>e.name===ev.name);
+  if(!exists)kResp[kdeId].evidence.push(ev);
+  closeBucketModal();STAGES=buildStages();renderKDE();
+  showToast('Evidence added from bucket','success');
+}
+document.addEventListener('click',e=>{if(e.target.id==='bucketModal')closeBucketModal();});
+
 </script>
+<!-- ══ Evidence Bucket Modal ══ -->
+<div class="bucket-modal" id="bucketModal">
+  <div class="bucket-box">
+    <div class="bucket-head">
+      <div>
+        <div style="font-size:14px;font-weight:700;color:#1a1a2e;">📦 Evidence Bucket</div>
+        <div style="font-size:11px;color:#9aa0b4;margin-top:2px;">Reuse previously uploaded evidence across any KDE</div>
+      </div>
+      <button onclick="closeBucketModal()" style="width:28px;height:28px;border-radius:8px;border:none;background:#f4f6fb;cursor:pointer;font-size:16px;color:#6b7280;">✕</button>
+    </div>
+    <div id="bucketList" style="padding:8px 0;min-height:80px;"></div>
+  </div>
+</div>
 </body>
 </html>
