@@ -15,19 +15,30 @@ let allCountries = [];
 
 // All supported certifications
 const CERT_TYPES = [
-  { key: 'MSC_CoC', label: 'MSC CoC (Chain of Custody)' },
-  { key: 'ASC_CoC', label: 'ASC CoC (Chain of Custody)' },
-  { key: 'BRC', label: 'BRC (British Retail Consortium)' },
-  { key: 'IFS', label: 'IFS (International Featured Standards)' },
-  { key: 'EU_Approved', label: 'EU Approved' },
-  { key: 'UK_Approved', label: 'UK Approved' },
-  { key: 'BAP', label: 'BAP (Best Aquaculture Practices)' },
-  { key: 'GLOBALG_AP', label: 'GLOBALG.A.P' },
-  { key: 'Friend_of_Sea', label: 'Friend of the Sea' },
-  { key: 'Halal', label: 'Halal Certified' },
-  { key: 'Kosher', label: 'Kosher Certified' },
-  { key: 'Organic_EU', label: 'Organic EU' },
-  { key: 'Fairtrade', label: 'Fairtrade' },
+  // ── Food Safety ──
+  { key: 'HACCP',        label: 'HACCP / Food Safety Plan',             group: 'Food Safety' },
+  { key: 'BRC',          label: 'BRC / BRCGS (British Retail Consortium)', group: 'Food Safety' },
+  { key: 'IFS',          label: 'IFS Food (International Featured Standards)', group: 'Food Safety' },
+  { key: 'ISO22000',     label: 'ISO 22000 (Food Safety Management)',   group: 'Food Safety' },
+  { key: 'SQF',          label: 'SQF (Safe Quality Food)',              group: 'Food Safety' },
+  { key: 'GFSI',         label: 'GFSI Benchmarked Scheme',              group: 'Food Safety' },
+  // ── Sustainability ──
+  { key: 'MSC_CoC',      label: 'MSC CoC (Chain of Custody)',           group: 'Sustainability' },
+  { key: 'ASC_CoC',      label: 'ASC CoC (Chain of Custody)',           group: 'Sustainability' },
+  { key: 'BAP',          label: 'BAP (Best Aquaculture Practices)',      group: 'Sustainability' },
+  { key: 'GLOBALG_AP',   label: 'GLOBALG.A.P',                          group: 'Sustainability' },
+  { key: 'Friend_of_Sea',label: 'Friend of the Sea',                    group: 'Sustainability' },
+  { key: 'Organic_EU',   label: 'Organic EU',                           group: 'Sustainability' },
+  { key: 'Fairtrade',    label: 'Fairtrade',                            group: 'Sustainability' },
+  // ── Regulatory ──
+  { key: 'EU_Approved',  label: 'EU Facility Approval',                 group: 'Regulatory' },
+  { key: 'UK_Approved',  label: 'UK Facility Approval',                 group: 'Regulatory' },
+  { key: 'IFTP',         label: 'NOAA IFTP (International Fisheries Trade Permit)', group: 'Regulatory' },
+  { key: 'FSVP',         label: 'FSVP (Foreign Supplier Verification Program)', group: 'Regulatory' },
+  { key: 'FSMA',         label: 'FSMA 204 Registration',                group: 'Regulatory' },
+  // ── Dietary / Religious ──
+  { key: 'Halal',        label: 'Halal Certified',                      group: 'Dietary' },
+  { key: 'Kosher',       label: 'Kosher Certified',                     group: 'Dietary' },
 ];
 
 // ── AUTH ──────────────────────────────────────────────────────
@@ -584,12 +595,142 @@ async function viewCertHistory(companyId, certType, certLabel) {
           <span class="cert-history-status ${cert.is_active ? 'active' : 'expired'}">${cert.is_active ? 'Active' : 'Expired'}</span>
         </div>
         ${cert.cert_number ? `<div class="cert-history-number">Cert No: ${cert.cert_number}</div>` : ''}
+        ${cert.cert_body ? `<div style="font-size:11px;color:#6b7280;margin-top:2px;">Issued by: ${cert.cert_body}</div>` : ''}
+        ${cert.scope ? `<div style="font-size:11px;color:#9aa0b4;margin-top:2px;">Scope: ${cert.scope}</div>` : ''}
         ${cert.url ? `<a href="${cert.url}" target="_blank" style="font-size:11px; color:#1a6fdb;">View Certificate ↗</a>` : ''}
       </div>
     `).join('');
   }
 
   document.getElementById('certHistoryModal').classList.remove('hidden');
+}
+
+// ── CAPABILITIES ───────────────────────────────────────────────
+const CAPABILITIES = [
+  {
+    group: 'Traceability',
+    items: [
+      { key: 'traceability_digital',   label: 'Digital Traceability System',    hint: 'Organisation uses a digital system to track product from source to sale' },
+      { key: 'traceability_interop',   label: 'Data Sharing / Interoperability', hint: 'Can electronically share traceability data with customers or regulators' },
+      { key: 'internal_traceability',  label: 'Internal Batch Linking',          hint: 'Internal system links each batch from source through all processing steps to sale' },
+      { key: 'third_party_audit',      label: 'Third-Party Traceability Audit',  hint: 'Passed an independent traceability audit within the last 12 months' },
+    ]
+  },
+  {
+    group: 'Recall & Safety',
+    items: [
+      { key: 'recall_4hr',             label: 'Recall Within 4 Hours',           hint: 'Capable of completing a full product recall within 4 hours' },
+    ]
+  },
+  {
+    group: 'Human Welfare',
+    items: [
+      { key: 'welfare_policy',         label: 'Documented Human Welfare Policy', hint: 'Has a formal written policy covering labour rights and worker welfare' },
+      { key: 'welfare_audited',        label: 'Welfare Audit on Record',          hint: 'Has been audited against a welfare standard within the last 2 years' },
+    ]
+  },
+  {
+    group: 'US Regulatory',
+    items: [
+      { key: 'fsma_registered',        label: 'FSMA 204 KDE Records',            hint: 'Maintains Key Data Element records as required by FSMA 204' },
+      { key: 'fsvp_on_file',           label: 'FSVP On File',                    hint: 'Foreign Supplier Verification Program documentation maintained' },
+    ]
+  },
+];
+
+function renderCapabilitiesPanel(existingCaps) {
+  const container = document.getElementById('capabilitiesPanel');
+  if (!container) return;
+
+  container.innerHTML = CAPABILITIES.map(group => `
+    <div class="cert-group" style="margin-bottom:16px;">
+      <div class="cert-group-label">${group.group}</div>
+      ${group.items.map(item => {
+        const val = existingCaps ? existingCaps[item.key] : null;
+        return `
+          <div class="cap-item">
+            <div class="cap-item-info">
+              <div class="cap-item-label">${item.label}</div>
+              <div class="cap-item-hint">${item.hint}</div>
+            </div>
+            <div class="cap-toggle-group" id="capToggle_${item.key}">
+              <button type="button"
+                class="cap-btn cap-btn-yes ${val === true ? 'active' : ''}"
+                onclick="setCapability('${item.key}', true)">✓ Yes</button>
+              <button type="button"
+                class="cap-btn cap-btn-no ${val === false ? 'active' : ''}"
+                onclick="setCapability('${item.key}', false)">✗ No</button>
+              <button type="button"
+                class="cap-btn cap-btn-unknown ${val === null || val === undefined ? 'active' : ''}"
+                onclick="setCapability('${item.key}', null)">— Unknown</button>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `).join('');
+
+  // Also render additional identifiers
+  container.innerHTML += `
+    <div class="cert-group">
+      <div class="cert-group-label">Additional Identifiers</div>
+      <div class="cert-details-grid" style="padding:12px 0 0;">
+        <div class="form-group">
+          <label>DUNS Number</label>
+          <input type="text" id="cap_duns" placeholder="e.g. 12-345-6789"
+            value="${existingCaps?.duns_number || ''}" />
+        </div>
+        <div class="form-group">
+          <label>LEI Code <span style="font-weight:400;color:#9aa0b4;">(Legal Entity Identifier)</span></label>
+          <input type="text" id="cap_lei" placeholder="20-digit LEI code"
+            value="${existingCaps?.lei_code || ''}" />
+        </div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label>Capabilities Notes</label>
+          <textarea id="cap_notes" rows="2" style="width:100%;padding:8px;border:1.5px solid #e0e3ed;border-radius:7px;font-family:inherit;font-size:12px;resize:none;"
+            placeholder="Any additional capability notes...">${existingCaps?.notes || ''}</textarea>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Store current values in memory
+  window._capValues = {};
+  CAPABILITIES.forEach(g => g.items.forEach(item => {
+    const val = existingCaps ? existingCaps[item.key] : null;
+    window._capValues[item.key] = val;
+  }));
+}
+
+function setCapability(key, value) {
+  if (!window._capValues) window._capValues = {};
+  window._capValues[key] = value;
+
+  // Update toggle button states
+  const group = document.getElementById(`capToggle_${key}`);
+  if (!group) return;
+  group.querySelector('.cap-btn-yes').classList.toggle('active', value === true);
+  group.querySelector('.cap-btn-no').classList.toggle('active', value === false);
+  group.querySelector('.cap-btn-unknown').classList.toggle('active', value === null || value === undefined);
+}
+
+async function saveCapabilities(companyId) {
+  if (!window._capValues) return;
+
+  const payload = { company_id: companyId, ...window._capValues };
+
+  // Add identifiers
+  payload.duns_number = document.getElementById('cap_duns')?.value.trim() || null;
+  payload.lei_code    = document.getElementById('cap_lei')?.value.trim()  || null;
+  payload.notes       = document.getElementById('cap_notes')?.value.trim() || null;
+  payload.updated_at  = new Date().toISOString();
+
+  // Upsert — one row per company
+  const { error } = await dbClient
+    .from('company_capabilities')
+    .upsert(payload, { onConflict: 'company_id' });
+
+  if (error) console.error('Capabilities save error:', error);
 }
 
 // ── COMPANY FORM (Create & Edit) ──────────────────────────────
@@ -608,6 +749,7 @@ document.getElementById('companyFormTitle').textContent = isEditMode ? 'Edit Org
     document.getElementById('tab-basic').classList.add('hidden');
     document.getElementById('tab-location').classList.add('hidden');
     document.getElementById('tab-certifications').classList.add('hidden');
+    document.getElementById('tab-capabilities').classList.add('hidden');
     document.getElementById('tab-users').classList.remove('hidden');
     document.getElementById('btnSaveCompanyForm').classList.add('hidden');
     switchFormTab('users', document.getElementById('tab-users'));
@@ -616,6 +758,7 @@ document.getElementById('companyFormTitle').textContent = isEditMode ? 'Edit Org
     document.getElementById('tab-basic').classList.remove('hidden');
     document.getElementById('tab-location').classList.remove('hidden');
     document.getElementById('tab-certifications').classList.remove('hidden');
+    document.getElementById('tab-capabilities').classList.remove('hidden');
     document.getElementById('tab-users').classList.remove('hidden');
     document.getElementById('btnSaveCompanyForm').classList.remove('hidden');
     switchFormTab('basic', document.querySelector('.form-tab[data-ftab="basic"]'));
@@ -704,14 +847,30 @@ document.getElementById('companyFormTitle').textContent = isEditMode ? 'Edit Org
           if (checkbox) {
             checkbox.checked = true;
             toggleCertDetails(cert.cert_type, true);
-            document.getElementById(`cert_no_${cert.cert_type}`).value = cert.cert_number || '';
-            document.getElementById(`cert_start_${cert.cert_type}`).value = cert.start_date || '';
-            document.getElementById(`cert_end_${cert.cert_type}`).value = cert.end_date || '';
-            document.getElementById(`cert_url_${cert.cert_type}`).value = cert.url || '';
+            document.getElementById(`cert_no_${cert.cert_type}`).value    = cert.cert_number || '';
+            const bodyEl = document.getElementById(`cert_body_${cert.cert_type}`);
+            if (bodyEl) bodyEl.value = cert.cert_body || '';
+            const scopeEl = document.getElementById(`cert_scope_${cert.cert_type}`);
+            if (scopeEl) scopeEl.value = cert.scope || '';
+            document.getElementById(`cert_start_${cert.cert_type}`).value = cert.start_date  || '';
+            document.getElementById(`cert_end_${cert.cert_type}`).value   = cert.end_date    || '';
+            document.getElementById(`cert_url_${cert.cert_type}`).value   = cert.url         || '';
           }
         });
       }
+
+      // Load capabilities
+      const { data: existingCaps } = await dbClient
+        .from('company_capabilities')
+        .select('*')
+        .eq('company_id', companyId)
+        .single();
+      renderCapabilitiesPanel(existingCaps || null);
+
     }
+  } else {
+    // New company — render empty capabilities panel
+    renderCapabilitiesPanel(null);
   }
 
   document.getElementById('companyFormModal').classList.remove('hidden');
@@ -799,10 +958,12 @@ async function saveCertifications(companyId) {
     const checkbox = document.getElementById(`cert_${cert.key}`);
     if (!checkbox?.checked) continue;
 
-    const certNo = document.getElementById(`cert_no_${cert.key}`)?.value.trim();
-    const startDate = document.getElementById(`cert_start_${cert.key}`)?.value;
-    const endDate = document.getElementById(`cert_end_${cert.key}`)?.value;
-    const url = document.getElementById(`cert_url_${cert.key}`)?.value.trim();
+    const certNo   = document.getElementById(`cert_no_${cert.key}`)?.value.trim();
+    const certBody = document.getElementById(`cert_body_${cert.key}`)?.value.trim();
+    const startDate= document.getElementById(`cert_start_${cert.key}`)?.value;
+    const endDate  = document.getElementById(`cert_end_${cert.key}`)?.value;
+    const url      = document.getElementById(`cert_url_${cert.key}`)?.value.trim();
+    const scope    = document.getElementById(`cert_scope_${cert.key}`)?.value.trim();
 
     // Mark old active cert as inactive
     await dbClient
@@ -814,49 +975,75 @@ async function saveCertifications(companyId) {
 
     // Insert new cert record
     await dbClient.from('organisation_certifications').insert({
-      company_id: companyId,
-      cert_type: cert.key,
-      cert_number: certNo || null,
-      start_date: startDate || null,
-      end_date: endDate || null,
-      url: url || null,
-      is_active: true,
+      company_id:  companyId,
+      cert_type:   cert.key,
+      cert_number: certNo    || null,
+      cert_body:   certBody  || null,
+      start_date:  startDate || null,
+      end_date:    endDate   || null,
+      url:         url       || null,
+      scope:       scope     || null,
+      is_active:   true,
     });
   }
+
+  // Save capabilities
+  await saveCapabilities(companyId);
 }
 
 // ── CERT FORM LIST ────────────────────────────────────────────
 function renderCertFormList() {
   const container = document.getElementById('certFormList');
-  container.innerHTML = CERT_TYPES.map(cert => `
-    <div class="cert-item" id="certItem_${cert.key}">
-      <button type="button" class="cert-toggle" onclick="toggleCertItem('${cert.key}')">
-        <input type="checkbox" class="cert-checkbox" id="cert_${cert.key}"
-          onclick="event.stopPropagation(); toggleCertDetails('${cert.key}', this.checked)" />
-        <span class="cert-name">${cert.label}</span>
-      </button>
-      <div class="cert-details" id="certDetails_${cert.key}">
-        <div class="cert-details-grid">
-          <div class="form-group">
-            <label>Certificate Number</label>
-            <input type="text" id="cert_no_${cert.key}" placeholder="e.g. MSC-C-12345" />
+  if (!container) return;
+
+  // Group by cert group
+  const groups = [...new Set(CERT_TYPES.map(c => c.group))];
+
+  container.innerHTML = groups.map(group => {
+    const certs = CERT_TYPES.filter(c => c.group === group);
+    return `
+      <div class="cert-group">
+        <div class="cert-group-label">${group}</div>
+        ${certs.map(cert => `
+          <div class="cert-item" id="certItem_${cert.key}">
+            <button type="button" class="cert-toggle" onclick="toggleCertItem('${cert.key}')">
+              <input type="checkbox" class="cert-checkbox" id="cert_${cert.key}"
+                onclick="event.stopPropagation(); toggleCertDetails('${cert.key}', this.checked)" />
+              <span class="cert-name">${cert.label}</span>
+            </button>
+            <div class="cert-details" id="certDetails_${cert.key}">
+              <div class="cert-details-grid">
+                <div class="form-group">
+                  <label>Certificate Number</label>
+                  <input type="text" id="cert_no_${cert.key}" placeholder="e.g. MSC-C-12345" />
+                </div>
+                <div class="form-group">
+                  <label>Issuing Body / CAB</label>
+                  <input type="text" id="cert_body_${cert.key}" placeholder="e.g. SGS, Bureau Veritas, LRQA" />
+                </div>
+                <div class="form-group">
+                  <label>Valid From</label>
+                  <input type="date" id="cert_start_${cert.key}" />
+                </div>
+                <div class="form-group">
+                  <label>Valid Until / Expiry</label>
+                  <input type="date" id="cert_end_${cert.key}" />
+                </div>
+                <div class="form-group" style="grid-column:1/-1;">
+                  <label>Scope <span style="font-weight:400;color:#9aa0b4;">(optional)</span></label>
+                  <input type="text" id="cert_scope_${cert.key}" placeholder="e.g. Frozen seafood processing, canning" />
+                </div>
+                <div class="form-group" style="grid-column:1/-1;">
+                  <label>Certificate URL</label>
+                  <input type="text" id="cert_url_${cert.key}" placeholder="https://..." />
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label>Certificate URL</label>
-            <input type="text" id="cert_url_${cert.key}" placeholder="https://..." />
-          </div>
-          <div class="form-group">
-            <label>Start Date</label>
-            <input type="date" id="cert_start_${cert.key}" />
-          </div>
-          <div class="form-group">
-            <label>End Date</label>
-            <input type="date" id="cert_end_${cert.key}" />
-          </div>
-        </div>
+        `).join('')}
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 function toggleCertItem(key) {
@@ -1195,3 +1382,48 @@ async function changeMemberRole(memberId, newRole, name) {
   showToast(`${name} is now ${newRole === 'company_admin' ? 'Administrator' : newRole === 'contributor' ? 'Contributor' : 'Member'}.`, 'success');
   await loadFormMembers(selectedCompanyId);
 }
+// ── CAPABILITIES CSS (injected once) ──────────────────────────
+(function injectCapCSS() {
+  if (document.getElementById('cap-styles')) return;
+  const s = document.createElement('style');
+  s.id = 'cap-styles';
+  s.textContent = `
+    /* Cert groups */
+    .cert-group { margin-bottom: 20px; }
+    .cert-group-label {
+      font-size: 10px; font-weight: 700; color: #9aa0b4;
+      text-transform: uppercase; letter-spacing: 0.7px;
+      padding: 0 0 8px; margin-bottom: 6px;
+      border-bottom: 1px solid #f0f2f7;
+    }
+
+    /* Cert body + scope fields */
+    .cert-details-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    /* Capabilities */
+    .cap-item {
+      display: flex; align-items: flex-start;
+      justify-content: space-between; gap: 16px;
+      padding: 11px 0; border-bottom: 1px solid #f4f6fb;
+    }
+    .cap-item:last-child { border-bottom: none; }
+    .cap-item-info { flex: 1; }
+    .cap-item-label { font-size: 13px; font-weight: 600; color: #1a1a2e; }
+    .cap-item-hint  { font-size: 11px; color: #9aa0b4; margin-top: 2px; line-height: 1.5; }
+    .cap-toggle-group { display: flex; gap: 5px; flex-shrink: 0; }
+    .cap-btn {
+      height: 28px; padding: 0 10px;
+      border-radius: 6px; border: 1.5px solid #e0e3ed;
+      font-family: inherit; font-size: 11px; font-weight: 600;
+      cursor: pointer; background: #fff; color: #9aa0b4;
+      transition: all 0.12s;
+    }
+    .cap-btn:hover { border-color: #1a1a2e; color: #1a1a2e; }
+    .cap-btn-yes.active  { background: #f0fdf4; border-color: #86efac; color: #166534; }
+    .cap-btn-no.active   { background: #fff5f5; border-color: #fca5a5; color: #991b1b; }
+    .cap-btn-unknown.active { background: #f8f9fc; border-color: #c8ccd8; color: #6b7280; }
+  `;
+  document.head.appendChild(s);
+})();
