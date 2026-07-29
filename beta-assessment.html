@@ -266,6 +266,36 @@
     .ev-db-item-label{font-size:12px;font-weight:600;color:#6d28d9;flex:1;}
     .ev-db-item-sub{font-size:10px;color:#9aa0b4;}
     .ev-db-item-add{font-size:11px;font-weight:700;color:#7c3aed;}
+    /* Module tab */
+    .ev-mod-selector{display:flex;flex-direction:column;gap:8px;}
+    .ev-mod-btn{display:flex;align-items:center;gap:10px;padding:11px 14px;border:1.5px solid #e8eaf0;border-radius:10px;background:#fff;cursor:pointer;transition:.14s;text-align:left;width:100%;}
+    .ev-mod-btn:hover{border-color:#8b5cf6;background:#faf8ff;}
+    .ev-mod-btn.active{border-color:#8b5cf6;background:#f4f0ff;}
+    .ev-mod-btn-icon{font-size:20px;flex-shrink:0;}
+    .ev-mod-btn-name{font-size:13px;font-weight:700;color:#1a1a2e;}
+    .ev-mod-btn-sub{font-size:10px;color:#9aa0b4;margin-top:1px;}
+    .ev-mod-picker{margin-top:12px;display:none;}
+    .ev-mod-picker.show{display:block;}
+    .ev-mod-search{width:100%;height:34px;border:1.5px solid #e0e3ed;border-radius:8px;padding:0 12px;font-family:'Poppins',sans-serif;font-size:12px;outline:none;margin-bottom:8px;}
+    .ev-mod-search:focus{border-color:#8b5cf6;}
+    .ev-mod-result-list{max-height:200px;overflow-y:auto;border:1.5px solid #e0e3ed;border-radius:8px;}
+    .ev-mod-result-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #f4f6fb;cursor:pointer;transition:.1s;}
+    .ev-mod-result-row:last-child{border-bottom:none;}
+    .ev-mod-result-row:hover{background:#f4f0ff;}
+    .ev-mod-result-name{font-size:12px;font-weight:600;color:#1a1a2e;flex:1;}
+    .ev-mod-result-sub{font-size:10px;color:#9aa0b4;}
+    .ev-mod-selected{margin-top:10px;display:none;}
+    .ev-mod-selected.show{display:block;}
+    .ev-mod-selected-hd{font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+    .ev-mod-ev-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1.5px solid #e8eaf0;border-radius:8px;margin-bottom:5px;background:#fafbfe;}
+    .ev-mod-ev-row:hover{border-color:#8b5cf6;background:#f4f0ff;}
+    .ev-mod-ev-icon{font-size:14px;flex-shrink:0;}
+    .ev-mod-ev-label{font-size:12px;font-weight:600;color:#1a1a2e;flex:1;}
+    .ev-mod-ev-sub{font-size:10px;color:#9aa0b4;}
+    .ev-mod-ev-add{height:26px;padding:0 10px;border:none;border-radius:6px;background:#8b5cf6;color:#fff;font-family:'Poppins',sans-serif;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;}
+    .ev-mod-ev-add.added{background:#16a34a;}
+    .ev-mod-back{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#8b5cf6;cursor:pointer;margin-bottom:10px;font-weight:600;}
+    .ev-mod-back:hover{text-decoration:underline;}
     /* Tab styles */
     .evtab-active{color:#8b5cf6!important;border-bottom-color:#8b5cf6!important;font-weight:700!important;}
     .ev-reuse-item{display:flex;align-items:center;justify-content:space-between;padding:7px 12px;border:1px solid #e8eaf0;border-radius:9px;cursor:pointer;transition:background 0.15s;}
@@ -1063,6 +1093,10 @@
         style="flex:1;padding:11px 0;border:none;background:none;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;color:#9aa0b4;border-bottom:2px solid transparent;cursor:pointer;transition:.15s;">
         + Add New
       </button>
+      <button id="evtab-module" onclick="switchEvTab('module')"
+        style="flex:1;padding:11px 0;border:none;background:none;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;color:#9aa0b4;border-bottom:2px solid transparent;cursor:pointer;transition:.15s;">
+        ✦ Modules
+      </button>
     </div>
 
     <!-- Tab: This Stage -->
@@ -1113,6 +1147,13 @@
       <div id="ev-items-wrap" style="display:none;margin-top:12px;">
         <div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;">Added <span id="ev-count" style="color:#8b5cf6;"></span></div>
         <div class="ev-items" id="ev-items"></div>
+      </div>
+    </div>
+
+    <!-- Tab: Modules -->
+    <div id="evpanel-module" style="display:none;flex-direction:column;flex:1;overflow-y:auto;padding:14px 20px;">
+      <div id="ev-module-content">
+        <div style="text-align:center;padding:24px;color:#9aa0b4;font-size:12px;">Loading module options...</div>
       </div>
     </div>
 
@@ -4873,8 +4914,8 @@ let _evTab='stage'; // 'stage' | 'bucket' | 'add'
 
 function switchEvTab(tab){
   _evTab=tab;
-  // Update tab buttons
-  ['stage','bucket','add'].forEach(t=>{
+  // Update all 4 tab buttons
+  ['stage','bucket','add','module'].forEach(t=>{
     const btn=document.getElementById('evtab-'+t);
     if(!btn)return;
     const active=t===tab;
@@ -4882,18 +4923,387 @@ function switchEvTab(tab){
     btn.style.borderBottomColor=active?'#8b5cf6':'transparent';
     btn.style.fontWeight=active?'700':'600';
   });
-  // Show/hide panels — use flex for add panel (needs flex layout)
+  // Show/hide panels
   document.getElementById('evpanel-stage').style.display=tab==='stage'?'block':'none';
   document.getElementById('evpanel-bucket').style.display=tab==='bucket'?'block':'none';
   document.getElementById('evpanel-add').style.display=tab==='add'?'flex':'none';
+  document.getElementById('evpanel-module').style.display=tab==='module'?'flex':'none';
   if(tab==='stage')renderEvStagePanel();
   if(tab==='bucket')renderEvBucketPanel();
+  if(tab==='module')renderEvModulePanel();
   if(tab==='add'){
-    // Make sure type buttons are shown
-    document.getElementById('ev-input-area').style.display=evSelType?'block':'none';
+    const inputArea=document.getElementById('ev-input-area');
+    if(inputArea){
+      if(evSelType){inputArea.classList.add('show');inputArea.style.display='block';}
+      else{inputArea.classList.remove('show');inputArea.style.display='';}
+    }
     document.getElementById('ev-items-wrap').style.display=evTempItems.length?'block':'none';
     renderEvItems();updateEvCount();
   }
+}
+
+// ── KDE → MODULE MAPPING ──────────────────────────────────
+// Returns which modules are relevant for a given KDE suffix
+function getModulesForKDE(kdeId){
+  if(!kdeId)return[];
+  // Extract the KDE suffix (remove instance prefix like 'n12345_')
+  const suffix=kdeId.replace(/^[a-z0-9]+_/,'');
+  const map={
+    // Harvest — Vessel module
+    'fv_name':['vessel'],'fv_imo':['vessel'],'fv_uid':['vessel'],
+    'fv_flag':['vessel','country'],'fv_vms':['vessel'],'fv_ais':['vessel'],
+    'fv_rfmo':['vessel'],'fv_eu_approval':['vessel'],
+    'fv_iuu_check':['vessel'],'fv_permit':['vessel'],
+    'fv_welfare_policy':['vessel','country'],'fv_welfare_standards':['vessel','country'],
+    'fv_coc':['company'],'fv_msc_fishery':['fishery'],
+    // Transshipment — Carrier vessel
+    'cr_name':['vessel'],'cr_imo':['vessel'],'cr_uid':['vessel'],
+    'cr_flag':['vessel','country'],'cr_rfmo':['vessel'],
+    'cr_eu_approval':['vessel'],'cr_iuu_check':['vessel'],
+    'cr_coc':['company'],'cr_welfare_policy':['vessel','country'],
+    'cr_atsea_obs':['vessel'],'cr_atsea_hs':['vessel'],
+    // Landing — Port module
+    'fcl_port':['port'],'fcl_eu':['port'],'fcl_eu_designated':['port'],
+    'fcl_port_inspection':['port'],'fcl_port_receipt':['port'],
+    'fcl_ca_validation':['port'],'fcl_coc':['company'],
+    'fcl_welfare':['company','country'],
+    'fcl_carrier_name':['vessel'],'fcl_carrier_imo':['vessel'],
+    // Vessel landing — Port + Vessel
+    'vl_port':['port'],'vl_vessel':['vessel'],
+    // Certifications — Company + Fishery
+    'c_msc':['fishery','company'],'c_asc':['company'],
+    'c_issf_pvr':['vessel'],'c_brc':['company'],'c_haccp':['company'],
+    'c_iso':['company'],'c_eu':['company'],'c_audit':['company'],
+    'c_recall':['company'],'c_digital':['company'],'c_interop':['company'],
+    'c_welfare_org':['company','country'],'c_welfare_audit':['company','country'],
+    'c_fsma_kde':['company'],'c_fsvp':['company'],
+    // Ship/Receive — Company
+    'lfp_shipper':['company'],'lfp_receiver':['company'],
+    's_iftp':['company'],
+    // Processing — Company + Country
+    'pp_welfare_standards':['company','country'],
+    'pp_welfare_policy':['company','country'],
+    'pp_coc':['company'],
+  };
+  return map[suffix]||map[kdeId]||[];
+}
+
+// Module metadata for display
+const EV_MODULE_META={
+  vessel:{icon:'🚢',label:'Vessel Module',sub:'Fishing & carrier vessels',
+    loadFn:()=>loadVesselModule().then(()=>_vesselCache),
+    searchFn:(q)=>_vesselCache.filter(v=>v.current_name?.toLowerCase().includes(q.toLowerCase())||v.imo?.toLowerCase().includes(q.toLowerCase())).slice(0,15),
+    rowLabel:(v)=>v.current_name||'Unknown',
+    rowSub:(v)=>`IMO: ${v.imo||'—'} · ${v.vessel_flag||'—'}`,
+    evFn:(v,kdeId)=>buildVesselEvItems(v,kdeId),
+    searchPlaceholder:'Search vessel by name or IMO...',
+  },
+  port:{icon:'⚓',label:'Port Module',sub:'Ports, terminals, landing sites',
+    loadFn:()=>loadPortModule().then(()=>_portCache),
+    searchFn:(q)=>_portCache.filter(p=>p.main_port_name?.toLowerCase().includes(q.toLowerCase())||p.un_locode?.toLowerCase().includes(q.toLowerCase())||p.country?.toLowerCase().includes(q.toLowerCase())).slice(0,15),
+    rowLabel:(p)=>p.main_port_name,
+    rowSub:(p)=>`${p.country||'—'}${p.un_locode?' · LOCODE: '+p.un_locode:''}${p.psma_party?' · PSMA: '+p.psma_party:''}`,
+    evFn:(p,kdeId)=>buildPortEvItems(p,kdeId),
+    searchPlaceholder:'Search port by name, country or LOCODE...',
+  },
+  company:{icon:'🏢',label:'Company Module',sub:'Processors, traders, importers',
+    loadFn:()=>loadCompanyModule().then(()=>_companyCache),
+    searchFn:(q)=>_companyCache.filter(co=>co.company_name?.toLowerCase().includes(q.toLowerCase())||co.country?.toLowerCase().includes(q.toLowerCase())||co.gln?.includes(q)).slice(0,15),
+    rowLabel:(co)=>co.company_name,
+    rowSub:(co)=>`${co.country||'—'}${co.gln?' · GLN: '+co.gln:''}`,
+    evFn:(co,kdeId)=>buildCompanyEvItems(co,kdeId),
+    searchPlaceholder:'Search company by name, country or GLN...',
+  },
+  fishery:{icon:'🎣',label:'Fishery Module',sub:'MSC certified fisheries',
+    loadFn:()=>loadFisheryModule().then(()=>_fisheryCache),
+    searchFn:(q)=>_fisheryCache.filter(f=>f.fishery_name?.toLowerCase().includes(q.toLowerCase())||f.certificate_code?.toLowerCase().includes(q.toLowerCase())).slice(0,15),
+    rowLabel:(f)=>f.fishery_name,
+    rowSub:(f)=>`${f.msc_status||'—'} · ${f.certificate_code||'No cert code'}`,
+    evFn:(f,kdeId)=>buildFisheryEvItems(f,kdeId),
+    searchPlaceholder:'Search MSC fishery by name or certificate...',
+  },
+  country:{icon:'🌍',label:'Country Module',sub:'Country risk, FoC, MSI, IUU score',
+    loadFn:()=>loadCountriesRisk().then(()=>Object.keys(_countriesRiskCache).map(name=>({name,risk:_countriesRiskCache[name]}))),
+    searchFn:(q)=>Object.entries(_countriesRiskCache).filter(([name])=>name.toLowerCase().includes(q.toLowerCase())).slice(0,20).map(([name,risk])=>({name,risk})),
+    rowLabel:(c)=>c.name,
+    rowSub:(c)=>`IUU: ${c.risk?.iuu?.toFixed(1)||'—'} · MSI: ${c.risk?.msi?.toFixed(1)||'—'}${c.risk?.isFoc?' · FoC':''}`,
+    evFn:(c,kdeId)=>buildCountryEvItems(c,kdeId),
+    searchPlaceholder:'Search country...',
+  },
+};
+
+// Module panel state
+let _evModuleState={selectedModule:null,selectedItem:null};
+
+async function renderEvModulePanel(){
+  const el=document.getElementById('ev-module-content');
+  if(!el)return;
+
+  const relevantModules=getModulesForKDE(evKdeId);
+  if(!relevantModules.length){
+    el.innerHTML='<div style="padding:24px;text-align:center;color:#9aa0b4;font-size:12px;">No module connections available for this KDE.</div>';
+    return;
+  }
+
+  // If no module selected yet — show module selector
+  if(!_evModuleState.selectedModule){
+    const btns=relevantModules.map(mKey=>{
+      const m=EV_MODULE_META[mKey];if(!m)return'';
+      return `<button class="ev-mod-btn" onclick="evModSelectModule('${mKey}')">
+        <span class="ev-mod-btn-icon">${m.icon}</span>
+        <div><div class="ev-mod-btn-name">${m.label}</div><div class="ev-mod-btn-sub">${m.sub}</div></div>
+        <span style="margin-left:auto;color:#8b5cf6;font-size:16px;">›</span>
+      </button>`;
+    }).join('');
+    el.innerHTML=`<div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Select a module to populate evidence</div>
+      <div class="ev-mod-selector">${btns}</div>`;
+    return;
+  }
+
+  // Module selected — show search
+  const mKey=_evModuleState.selectedModule;
+  const m=EV_MODULE_META[mKey];if(!m)return;
+
+  if(!_evModuleState.selectedItem){
+    // Show search input for this module
+    el.innerHTML=`<span class="ev-mod-back" onclick="evModBack()">← Back to modules</span>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <span style="font-size:18px;">${m.icon}</span>
+        <div><div style="font-size:13px;font-weight:700;color:#1a1a2e;">${m.label}</div><div style="font-size:10px;color:#9aa0b4;">${m.sub}</div></div>
+      </div>
+      <input class="ev-mod-search" id="evModSearch" placeholder="${m.searchPlaceholder}" oninput="evModSearch(this.value)"/>
+      <div class="ev-mod-result-list" id="evModResults">
+        <div style="padding:12px;text-align:center;color:#9aa0b4;font-size:12px;">Type to search...</div>
+      </div>`;
+    // Load module data in background
+    m.loadFn().catch(()=>{});
+    // Auto-focus search
+    setTimeout(()=>document.getElementById('evModSearch')?.focus(),50);
+    return;
+  }
+
+  // Item selected — show evidence items to add
+  renderEvModuleItemPanel(mKey,_evModuleState.selectedItem);
+}
+
+function evModBack(){
+  if(_evModuleState.selectedItem){
+    _evModuleState.selectedItem=null;
+  } else {
+    _evModuleState.selectedModule=null;
+  }
+  renderEvModulePanel();
+}
+
+function evModSelectModule(mKey){
+  _evModuleState.selectedModule=mKey;
+  _evModuleState.selectedItem=null;
+  renderEvModulePanel();
+}
+
+async function evModSearch(q){
+  const mKey=_evModuleState.selectedModule;
+  const m=EV_MODULE_META[mKey];if(!m)return;
+  const el=document.getElementById('evModResults');if(!el)return;
+  if(!q||q.length<1){
+    el.innerHTML='<div style="padding:12px;text-align:center;color:#9aa0b4;font-size:12px;">Type to search...</div>';
+    return;
+  }
+  // Ensure loaded
+  try{await m.loadFn();}catch(e){}
+  const results=m.searchFn(q);
+  if(!results.length){
+    el.innerHTML='<div style="padding:12px;text-align:center;color:#9aa0b4;font-size:12px;">No results found</div>';
+    return;
+  }
+  // Store results for selection
+  window._evModResults=results;
+  el.innerHTML=results.map((item,i)=>`
+    <div class="ev-mod-result-row" onclick="evModSelectItem(${i})">
+      <div style="flex:1;">
+        <div class="ev-mod-result-name">${m.icon} ${m.rowLabel(item)}</div>
+        <div class="ev-mod-result-sub">${m.rowSub(item)}</div>
+      </div>
+      <span style="color:#8b5cf6;font-size:16px;">›</span>
+    </div>`).join('');
+}
+
+function evModSelectItem(idx){
+  const item=window._evModResults?.[idx];
+  if(!item)return;
+  _evModuleState.selectedItem=item;
+  renderEvModulePanel();
+}
+
+function renderEvModuleItemPanel(mKey,item){
+  const el=document.getElementById('ev-module-content');if(!el)return;
+  const m=EV_MODULE_META[mKey];if(!m)return;
+  const evItems=m.evFn(item,evKdeId);
+  const rows=evItems.map((ev,i)=>{
+    const alreadyAdded=evTempItems.find(t=>t.name===ev.name&&t.type===ev.type);
+    return `<div class="ev-mod-ev-row">
+      <span class="ev-mod-ev-icon">${ev.icon||'📎'}</span>
+      <div style="flex:1;">
+        <div class="ev-mod-ev-label">${ev.label}</div>
+        ${ev.sub?`<div class="ev-mod-ev-sub">${ev.sub}</div>`:''}
+      </div>
+      <button class="ev-mod-ev-add ${alreadyAdded?'added':''}"
+        onclick="evModAddEvidence(${i})"
+        ${alreadyAdded?'disabled':''}>
+        ${alreadyAdded?'✓ Added':'+ Add'}
+      </button>
+    </div>`;
+  }).join('');
+
+  el.innerHTML=`<span class="ev-mod-back" onclick="evModBack()">← Back to search</span>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+      <span style="font-size:18px;">${m.icon}</span>
+      <div><div style="font-size:13px;font-weight:700;color:#1a1a2e;">${m.rowLabel(item)}</div>
+      <div style="font-size:10px;color:#9aa0b4;">${m.rowSub(item)}</div></div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:#7c3aed;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Available evidence for this KDE</div>
+    ${rows||'<div style="padding:12px;color:#9aa0b4;font-size:12px;">No evidence items available</div>'}`;
+
+  // Store ev items for addEvidence
+  window._evModItemEvidence=evItems;
+}
+
+function evModAddEvidence(idx){
+  const ev=window._evModItemEvidence?.[idx];if(!ev)return;
+  if(evTempItems.find(t=>t.name===ev.name&&t.type===ev.type))return;
+  evTempItems.push({type:ev.type,value:ev.value,name:ev.name});
+  addToBucket({type:ev.type,value:ev.value,name:ev.name},evKdeId);
+  // Re-render panel to show "Added" state
+  renderEvModuleItemPanel(_evModuleState.selectedModule,_evModuleState.selectedItem);
+  updateEvCount();
+  showToast('Evidence added — click Done to save','success');
+}
+
+// ── Evidence item builders per module ──────────────────────
+
+function buildVesselEvItems(v,kdeId){
+  const items=[];
+  const suffix=kdeId.replace(/^[a-z0-9]+_/,'');
+  const fmt=d=>d?new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';
+  const hist=_vHistory[v.id]||{rfmo:[],iuu:[],ffa:[],vds:[]};
+  const isFoC=_countriesFocCache[v.vessel_flag]!==undefined?_countriesFocCache[v.vessel_flag]:!!v.flag_state_foc;
+
+  // IMO / Name
+  if(v.imo)items.push({icon:'🔢',label:'IMO: '+v.imo+' — '+v.current_name,sub:'Unique vessel identifier',type:'ref',value:'IMO '+v.imo,name:'IMO: '+v.imo+' — '+v.current_name});
+  if(v.current_name)items.push({icon:'🚢',label:'Vessel name: '+v.current_name,sub:v.vessel_flag?'Flag: '+v.vessel_flag:'',type:'ref',value:v.current_name,name:'Vessel name: '+v.current_name});
+
+  // Flag
+  if(v.vessel_flag)items.push({icon:isFoC?'⚠️':'✅',label:(isFoC?'⚠ FoC Flag: ':'Flag: ')+v.vessel_flag,sub:isFoC?'Flag of Convenience — verify welfare compliance':'Flag state verified via Country Module',type:'ref',value:'Flag state: '+v.vessel_flag+(isFoC?' [FoC]':''),name:'Flag: '+v.vessel_flag});
+
+  // IUU
+  const iuuBad=v.iuu_listed||hist.iuu.some(r=>r.date_listed&&!r.delisted_date);
+  items.push({icon:iuuBad?'❌':'✅',label:iuuBad?'IUU LISTED — '+v.current_name:'IUU Clear — '+v.current_name,sub:iuuBad?'Vessel is on IUU blacklist':'No IUU listing found',type:'url',value:'https://iuu-vessels.org',name:'IUU Check — '+v.current_name});
+  items.push({icon:'🔗',label:'IUU Register URL',sub:'Verify at iuu-vessels.org',type:'url',value:'https://iuu-vessels.org',name:'IUU Vessel Register'});
+
+  // RFMO
+  const rfmoRecs=hist.rfmo;
+  if(rfmoRecs.length){
+    rfmoRecs.slice(0,3).forEach(r=>items.push({icon:'✅',label:r.rfmo_name+' Auth: '+fmt(r.auth_start)+' → '+fmt(r.auth_end),sub:r.auth_no?'Auth #: '+r.auth_no:'',type:'ref',value:r.rfmo_name+' Auth #'+(r.auth_no||'on record')+' '+fmt(r.auth_start)+'→'+fmt(r.auth_end),name:r.rfmo_name+' Auth — '+v.current_name}));
+  }
+  if(v.rfmo_wcpfc)items.push({icon:'🔗',label:'WCPFC Vessel Registry URL',sub:'wcpfc.int — vessel record',type:'url',value:'https://www.wcpfc.int/record-fishing-vessel',name:'WCPFC Registry — '+v.current_name});
+
+  // FFA
+  const ffaRec=hist.ffa[0];
+  if(ffaRec||v.ffa_id){
+    items.push({icon:'✅',label:'FFA Good Standing'+(ffaRec?' — '+fmt(ffaRec.valid_from)+'→'+fmt(ffaRec.valid_to):''),sub:'FFA ID: '+(ffaRec?.ffa_id||v.ffa_id||'—'),type:'url',value:'https://www.ffa.int/good-standing',name:'FFA Good Standing — '+v.current_name});
+  }
+
+  // VDS
+  const vdsRec=hist.vds[0];
+  if(vdsRec||v.vds_reg_no){
+    items.push({icon:'✅',label:'PNA VDS '+(vdsRec?fmt(vdsRec.valid_from)+'→'+fmt(vdsRec.valid_to):'on record'),sub:'VDS #: '+(vdsRec?.vds_no||v.vds_reg_no||'—'),type:'ref',value:'PNA VDS #'+(vdsRec?.vds_no||v.vds_reg_no||'—')+' — '+v.current_name,name:'PNA VDS — '+v.current_name});
+  }
+
+  // EU Approval
+  if(v.eu_approved)items.push({icon:'✅',label:'EU Vessel Approval #'+(v.eu_approval_no||'on record'),sub:'EU approved fishing vessel',type:'ref',value:'EU Approval #'+(v.eu_approval_no||'on record')+' — '+v.current_name,name:'EU Approval — '+v.current_name});
+
+  // ISSF PVR
+  if(v.uvi_issf_compliant)items.push({icon:'✅',label:'ISSF PVR Listed — '+v.current_name,sub:v.uvi_number?'UVI: '+v.uvi_number:'',type:'url',value:'https://www.issf-online.org/knowledgebase/pvr.php',name:'ISSF PVR — '+v.current_name});
+
+  return items;
+}
+
+function buildPortEvItems(p,kdeId){
+  const items=[];
+  const psmaOk=p.psma_party==='Yes'||p.psma_party===true;
+  // Port name + LOCODE
+  items.push({icon:'⚓',label:'Port: '+p.main_port_name+(p.un_locode?' ('+p.un_locode+')':''),sub:(p.country||'')+(p.port_type?' · '+p.port_type:''),type:'ref',value:'Port: '+p.main_port_name+(p.un_locode?' ('+p.un_locode+')':''),name:'Port: '+p.main_port_name});
+  // PSMA
+  items.push({icon:psmaOk?'✅':p.psma_party==='No'?'❌':'⚠️',label:psmaOk?'PSMA Designated Port — '+p.main_port_name:p.psma_party==='No'?'NOT PSMA Designated — '+p.main_port_name:'PSMA Status Unknown — '+p.main_port_name,sub:(p.country||'')+(p.un_locode?' · LOCODE: '+p.un_locode:''),type:'ref',value:'PSMA: '+(psmaOk?'Yes':'No')+' — '+p.main_port_name,name:'PSMA Status — '+p.main_port_name});
+  // PSMA database link
+  items.push({icon:'🔗',label:'PSMA Designated Ports Database',sub:'FAO PSMA official list',type:'url',value:'https://psma-gies.fao.org/designated-ports',name:'PSMA Database'});
+  // UN LOCODE
+  if(p.un_locode)items.push({icon:'🔗',label:'UN/LOCODE: '+p.un_locode,sub:'United Nations Code for Trade and Transport Locations',type:'url',value:'https://unece.org/trade/cefact/unlocode-code-list-country-and-territory',name:'UN LOCODE: '+p.un_locode});
+  // Port Authority
+  if(p.port_authority)items.push({icon:'🏛️',label:'Port Authority: '+p.port_authority,sub:'',type:'ref',value:'Port Authority: '+p.port_authority,name:'Port Authority: '+p.port_authority});
+  return items;
+}
+
+function buildCompanyEvItems(co,kdeId){
+  const items=[];
+  const certs=kResp['_companyCerts_cert']||[];
+  const caps=kResp['_companyCaps_cert']||null;
+  // GLN
+  if(co.gln)items.push({icon:'🏢',label:'GLN: '+co.gln+' — '+co.company_name,sub:'Global Location Number',type:'ref',value:'GLN: '+co.gln+' — '+co.company_name,name:'GLN: '+co.gln});
+  // Company identifier
+  items.push({icon:'🏢',label:'Company: '+co.company_name,sub:(co.country||'')+(co.gln?' · GLN: '+co.gln:''),type:'ref',value:'Company: '+co.company_name+(co.country?' ('+co.country+')':''),name:'Company: '+co.company_name});
+  // Certifications relevant to this KDE
+  const suffix=kdeId.replace(/^[a-z0-9]+_/,'');
+  const certTypeMap={c_haccp:'HACCP',c_brc:'BRC',c_iso:'ISO22000',c_msc:'MSC_CoC',c_asc:'ASC_CoC',c_eu:'EU_Approved',c_eu_uk:'UK_Approved'};
+  const relevantCertType=certTypeMap[suffix];
+  if(relevantCertType){
+    const cert=certs.find(c=>c.cert_type===relevantCertType&&c.status!=='withdrawn');
+    if(cert)items.push({icon:'🏅',label:(cert.cert_number?cert.cert_type+' #'+cert.cert_number:cert.cert_type)+' — '+co.company_name,sub:(cert.cert_body?cert.cert_body+' · ':'')+(cert.expiry_date?'Exp: '+new Date(cert.expiry_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'No expiry recorded'),type:'cert',value:cert.cert_type+(cert.cert_number?' #'+cert.cert_number:'')+' — '+co.company_name,name:cert.cert_type+(cert.cert_number?' #'+cert.cert_number:'')+' — '+co.company_name});
+    if(cert?.url)items.push({icon:'🔗',label:'Certificate URL — '+cert.cert_type,sub:'View certificate online',type:'url',value:cert.url,name:'Cert URL — '+cert.cert_type+' — '+co.company_name});
+  }
+  // All certs
+  certs.filter(cert=>cert.status!=='withdrawn').forEach(cert=>{
+    if(!relevantCertType||cert.cert_type!==relevantCertType){
+      items.push({icon:'🏅',label:cert.cert_type+(cert.cert_number?' #'+cert.cert_number:''),sub:(cert.cert_body||'')+(cert.expiry_date?' · Exp: '+new Date(cert.expiry_date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):''),type:'cert',value:cert.cert_type+(cert.cert_number?' #'+cert.cert_number:'')+' — '+co.company_name,name:cert.cert_type+(cert.cert_number?' #'+cert.cert_number:'')+' — '+co.company_name});
+    }
+  });
+  // Capabilities
+  if(caps){
+    const capLabels={recall_4hr:'Recall <4hr capability',traceability_digital:'Digital traceability',traceability_interop:'Data sharing',welfare_policy:'Welfare policy',welfare_audited:'Welfare audit',third_party_audit:'3rd party audit'};
+    Object.entries(capLabels).forEach(([key,label])=>{
+      if(caps[key]!==null&&caps[key]!==undefined)items.push({icon:caps[key]?'✅':'❌',label:label+' — '+co.company_name,sub:caps[key]?'Confirmed on record':'Not confirmed',type:'ref',value:label+': '+(caps[key]?'Yes':'No')+' — '+co.company_name,name:label+' — '+co.company_name});
+    });
+  }
+  // GS1 lookup
+  if(co.gln)items.push({icon:'🔗',label:'GS1 GLN Lookup',sub:'Verify GLN at GS1',type:'url',value:'https://www.gs1.org/services/verified-by-gs1/results',name:'GS1 GLN Lookup — '+co.gln});
+  return items;
+}
+
+function buildFisheryEvItems(f,kdeId){
+  const items=[];
+  // Fishery name + status
+  items.push({icon:'🎣',label:'MSC Fishery: '+f.fishery_name,sub:(f.msc_status||'')+(f.certificate_code?' · Cert: '+f.certificate_code:''),type:'cert',value:'MSC Fishery: '+f.fishery_name+(f.certificate_code?' Cert: '+f.certificate_code:''),name:'MSC Fishery: '+f.fishery_name});
+  // Certificate
+  if(f.certificate_code)items.push({icon:'🏅',label:'MSC Certificate: '+f.certificate_code,sub:'Status: '+(f.msc_status||'—')+(f.cert_expires?' · Expires: '+new Date(f.cert_expires).toLocaleDateString('en-GB'):''),type:'cert',value:'MSC Cert: '+f.certificate_code,name:'MSC Cert: '+f.certificate_code+' — '+f.fishery_name});
+  // Database links
+  items.push({icon:'🔗',label:'MSC Certificate Database',sub:'Search and verify at cert.msc.org',type:'url',value:'https://cert.msc.org',name:'MSC Certificate Database'});
+  items.push({icon:'🔗',label:'MSC Fishery Tracker',sub:'fisheries.msc.org',type:'url',value:'https://fisheries.msc.org',name:'MSC Fishery Tracker — '+f.fishery_name});
+  return items;
+}
+
+function buildCountryEvItems(co,kdeId){
+  const items=[];
+  const r=co.risk||{};
+  // FoC status
+  items.push({icon:r.isFoc?'⚠️':'✅',label:(r.isFoc?'⚠ FoC Country: ':'Not FoC: ')+co.name,sub:r.isFoc?'Flag of Convenience — higher risk':'Not classified as Flag of Convenience',type:'ref',value:'Country: '+co.name+(r.isFoc?' [FoC]':''),name:'Country FoC Status — '+co.name});
+  // MSI score
+  if(r.msi)items.push({icon:r.msi>6?'❌':r.msi>3?'⚠️':'✅',label:'Modern Slavery Index: '+r.msi?.toFixed(1)+' — '+co.name,sub:'Prevalence score 0–10 (higher = more risk)',type:'url',value:'https://www.walkfree.org/global-slavery-index/',name:'MSI: '+r.msi?.toFixed(1)+' — '+co.name});
+  // IUU score
+  if(r.iuu)items.push({icon:r.iuu>6?'❌':r.iuu>3?'⚠️':'✅',label:'IUU Country Score: '+r.iuu?.toFixed(1)+' — '+co.name,sub:'IUU fishing risk score',type:'url',value:'https://www.oecd.org/fisheries/',name:'IUU Score: '+r.iuu?.toFixed(1)+' — '+co.name});
+  // Country databases
+  items.push({icon:'🔗',label:'Walk Free Global Slavery Index — '+co.name,sub:'Modern slavery data',type:'url',value:'https://www.walkfree.org/global-slavery-index/',name:'MSI Database — '+co.name});
+  items.push({icon:'🔗',label:'ITF Flags of Convenience list',sub:'International Transport Workers Federation',type:'url',value:'https://www.itfglobal.org/en/sector/seafarers/flags-of-convenience',name:'FOC List — '+co.name});
+  return items;
 }
 
 function renderEvStagePanel(){
@@ -5249,7 +5659,13 @@ function openEvMod(id){
   _evTab='stage';
   // reset type selection
   document.querySelectorAll('.ev-type').forEach(el=>el.classList.remove('sel'));
-  document.getElementById('ev-input-area').style.display='none';
+  // Reset input area — remove both inline style and class so CSS default (display:none) applies
+  const evInputArea=document.getElementById('ev-input-area');
+  if(evInputArea){evInputArea.classList.remove('show');evInputArea.style.display='';}
+  const evUploadBtn=document.getElementById('ev-upload-btn');
+  if(evUploadBtn){evUploadBtn.classList.remove('show');evUploadBtn.style.display='';}
+  const evPreview=document.getElementById('ev-preview');
+  if(evPreview){evPreview.style.display='none';evPreview.innerHTML='';}
   document.getElementById('ev-items-wrap').style.display=evTempItems.length?'block':'none';
   renderEvItems();updateEvCount();
   // Set KDE label in modal header
@@ -5325,11 +5741,21 @@ function selEvType(type){
   // Show the add button and input area when type selected
   const addBtn=document.getElementById('ev-add-btn');if(addBtn)addBtn.style.display='inline-flex';
   const meta=evTypeMeta[type];document.getElementById('ev-inp-lbl').textContent=meta.lbl;document.getElementById('ev-inp').placeholder=meta.ph;document.getElementById('ev-inp').value='';
-  document.getElementById('ev-input-area').classList.add('show');document.getElementById('ev-add-btn').style.display='inline-block';
+  document.getElementById('ev-input-area').classList.add('show');
+  document.getElementById('ev-input-area').style.display='block';
+  document.getElementById('ev-add-btn').style.display='inline-block';
   const uploadBtn=document.getElementById('ev-upload-btn'),fileInp=document.getElementById('ev-file-inp');
-  if(type==='doc'||type==='cert'){uploadBtn.classList.add('show');uploadBtn.textContent='📎 Upload file instead';fileInp.setAttribute('accept','.pdf,.doc,.docx,.xls,.xlsx');}
-  else if(type==='photo'){uploadBtn.classList.add('show');uploadBtn.textContent='🖼️ Upload image';fileInp.setAttribute('accept','.jpg,.jpeg,.png,.gif,.webp,.svg');}
-  else uploadBtn.classList.remove('show');
+  if(type==='doc'||type==='cert'){
+    uploadBtn.classList.add('show');uploadBtn.style.display='block';
+    uploadBtn.textContent='📎 Upload file';
+    fileInp.setAttribute('accept','.pdf,.doc,.docx,.xls,.xlsx');
+  } else if(type==='photo'){
+    uploadBtn.classList.add('show');uploadBtn.style.display='block';
+    uploadBtn.textContent='🖼️ Upload image';
+    fileInp.setAttribute('accept','.jpg,.jpeg,.png,.gif,.webp,.svg');
+  } else {
+    uploadBtn.classList.remove('show');uploadBtn.style.display='none';
+  }
   document.getElementById('ev-file-name').classList.remove('show');document.getElementById('ev-file-name').textContent='';fileInp.value='';evCustomName=null;evUploadedUrl=null;document.getElementById('ev-inp').placeholder='';
   document.getElementById('ev-inp').oninput=function(){if(!this.value.startsWith('http'))evCustomName=this.value.trim()||null;};
   setTimeout(()=>document.getElementById('ev-inp').focus(),50);
