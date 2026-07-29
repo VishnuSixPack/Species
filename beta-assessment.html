@@ -1086,7 +1086,7 @@
     </div>
 
     <!-- Tab: Add New -->
-    <div id="evpanel-add" style="display:none;flex:1;overflow-y:auto;padding:14px 20px;">
+    <div id="evpanel-add" style="display:none;flex-direction:column;flex:1;overflow-y:auto;padding:14px 20px;">
       <!-- Type selector -->
       <div style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;">1. Select evidence type</div>
       <div class="ev-types">
@@ -1100,7 +1100,8 @@
       <!-- Input area -->
       <div class="ev-input-area" id="ev-input-area">
         <div class="ev-inp-lbl" id="ev-inp-lbl">2. Enter details or upload file</div>
-        <input class="ev-inp" id="ev-inp" placeholder="" onkeydown="if(event.key==='Enter')addEvItem()"/>
+        <input class="ev-inp" id="ev-inp" placeholder="" onkeydown="if(event.key==='Enter')addEvItem()" oninput="updateEvPreview(this.value)"/>
+      <div id="ev-preview" style="display:none;margin-top:8px;"></div>
         <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
           <button class="ev-upload-btn" id="ev-upload-btn" onclick="triggerEvUpload()">📎 Upload file</button>
           <button class="ev-add-btn" id="ev-add-btn" onclick="addEvItem()">+ Add to list</button>
@@ -4110,7 +4111,7 @@ function renderKDE(){
 
     // Stage header bar — compact, non-distracting
     if(inst){
-      html+=`${renderDateXCheckBanner()}
+      html+=`${(()=>{try{return renderDateXCheckBanner();}catch(e){return '';}})()}
       ${(st.type==='harvest')?`
       <div class="stage-header-bar">
         <div class="shb-row">
@@ -4124,7 +4125,7 @@ function renderKDE(){
             onchange="saveCatchPeriod('${inst.id}',document.getElementById('cp_from_${inst.id}')?.value||'',this.value)"/>
         </div>
         <div class="shb-row shb-fleet-row">
-          ${renderFleetPicker(inst.id,inst.vesselCount||1)}
+          ${(()=>{try{return renderFleetPicker(inst.id,inst.vesselCount||1);}catch(e){console.error('renderFleetPicker:',e);return '<span style="font-size:11px;color:#e63946;">Fleet picker error</span>';}})()}
         </div>
       </div>
       `:``}
@@ -4881,14 +4882,18 @@ function switchEvTab(tab){
     btn.style.borderBottomColor=active?'#8b5cf6':'transparent';
     btn.style.fontWeight=active?'700':'600';
   });
-  // Show/hide panels
-  const panels={stage:'evpanel-stage',bucket:'evpanel-bucket',add:'evpanel-add'};
-  Object.entries(panels).forEach(([t,id])=>{
-    const el=document.getElementById(id);
-    if(el)el.style.display=t===tab?'block':'none';
-  });
+  // Show/hide panels — use flex for add panel (needs flex layout)
+  document.getElementById('evpanel-stage').style.display=tab==='stage'?'block':'none';
+  document.getElementById('evpanel-bucket').style.display=tab==='bucket'?'block':'none';
+  document.getElementById('evpanel-add').style.display=tab==='add'?'flex':'none';
   if(tab==='stage')renderEvStagePanel();
   if(tab==='bucket')renderEvBucketPanel();
+  if(tab==='add'){
+    // Make sure type buttons are shown
+    document.getElementById('ev-input-area').style.display=evSelType?'block':'none';
+    document.getElementById('ev-items-wrap').style.display=evTempItems.length?'block':'none';
+    renderEvItems();updateEvCount();
+  }
 }
 
 function renderEvStagePanel(){
@@ -5266,8 +5271,57 @@ function reuseEv(idx){
   renderEvItems();updateEvCount();showToast('♻️ Evidence reused','success');
 }
 function closeEvMod(){document.getElementById('evmod').classList.remove('open');evKdeId=null;evSelType=null;evCustomName=null;evUploadedUrl=null;}
+
+function updateEvPreview(val){
+  const el=document.getElementById('ev-preview');if(!el)return;
+  if(!val||!val.trim()){el.style.display='none';el.innerHTML='';return;}
+  const isUrl=val.startsWith('http')||val.startsWith('www.');
+  if(evSelType==='url'&&isUrl){
+    // URL preview card
+    let domain='';try{domain=new URL(val.startsWith('http')?val:'https://'+val).hostname;}catch(e){}
+    el.style.display='block';
+    el.innerHTML='<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#f4f0ff;border:1.5px solid #ddd6fe;border-radius:8px;">'
+      +'<span style="font-size:16px;">🔗</span>'
+      +'<div style="flex:1;min-width:0;">'
+      +'<div style="font-size:11px;font-weight:700;color:#1a1a2e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+val+'</div>'
+      +(domain?'<div style="font-size:10px;color:#9aa0b4;">'+domain+'</div>':'')
+      +'</div>'
+      +'<a href="'+(val.startsWith('http')?val:'https://'+val)+'" target="_blank" style="font-size:10px;color:#7c3aed;font-weight:700;text-decoration:none;white-space:nowrap;">Preview ↗</a>'
+      +'</div>';
+  } else if(evSelType==='cert'||evSelType==='ref'){
+    el.style.display='block';
+    el.innerHTML='<div style="padding:6px 10px;background:#fafbfe;border:1px solid #e0e3ed;border-radius:7px;font-size:11px;color:#6b7280;">Will add: <strong style="color:#1a1a2e;">'+val+'</strong></div>';
+  } else {
+    el.style.display='none';el.innerHTML='';
+  }
+}
+
+// Image preview when file selected
+function showEvFilePreview(file){
+  const el=document.getElementById('ev-preview');if(!el)return;
+  if(file&&file.type.startsWith('image/')){
+    const reader=new FileReader();
+    reader.onload=e=>{
+      el.style.display='block';
+      el.innerHTML='<div style="margin-top:4px;">'
+        +'<img src="'+e.target.result+'" style="max-width:100%;max-height:120px;border-radius:8px;object-fit:contain;border:1.5px solid #e0e3ed;"/>'
+        +'<div style="font-size:10px;color:#9aa0b4;margin-top:4px;">'+file.name+' ('+Math.round(file.size/1024)+'KB)</div>'
+        +'</div>';
+    };
+    reader.readAsDataURL(file);
+  } else if(file){
+    el.style.display='block';
+    el.innerHTML='<div style="padding:6px 10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:7px;font-size:11px;color:#166534;">📄 '+file.name+' ('+Math.round(file.size/1024)+'KB) — ready to upload</div>';
+  } else {
+    el.style.display='none';el.innerHTML='';
+  }
+}
 function selEvType(type){
-  evSelType=type;document.querySelectorAll('.ev-type').forEach(el=>el.classList.remove('sel'));document.getElementById('evt-'+type).classList.add('sel');
+  evSelType=type;
+  document.querySelectorAll('.ev-type').forEach(el=>el.classList.remove('sel'));
+  document.getElementById('evt-'+type)?.classList.add('sel');
+  // Make sure we're on Add New tab
+  if(_evTab!=='add')switchEvTab('add');
   // Show the add button and input area when type selected
   const addBtn=document.getElementById('ev-add-btn');if(addBtn)addBtn.style.display='inline-flex';
   const meta=evTypeMeta[type];document.getElementById('ev-inp-lbl').textContent=meta.lbl;document.getElementById('ev-inp').placeholder=meta.ph;document.getElementById('ev-inp').value='';
@@ -5282,6 +5336,7 @@ function selEvType(type){
 }
 function triggerEvUpload(){document.getElementById('ev-file-inp').click();}
 async function onEvFileChange(inp){
+  showEvFilePreview(inp.files[0]);
   if(!inp.files[0])return;const file=inp.files[0];const uploadBtn=document.getElementById('ev-upload-btn'),fn=document.getElementById('ev-file-name');
   uploadBtn.textContent='⏳ Uploading...';uploadBtn.style.pointerEvents='none';fn.classList.remove('show');
   try{const path=`evidence/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;const{data,error}=await db.storage.from('assessments').upload(path,file,{upsert:true});if(error)throw error;const{data:{publicUrl}}=db.storage.from('assessments').getPublicUrl(path);
@@ -6387,7 +6442,7 @@ function setDropVal(key,val){if(val)selSingle(key,val);else clearSingle(key);}
 
 // ── Markets (multi-select) ──
 async function loadCountries(){const{data}=await db.from('countries').select('country,alpha2').order('country');allC=data||[];renderMKOpts(allC);renderCOOOpts(allC);}
-function renderMKOpts(list){const el=document.getElementById('mklist');if(!el)return;el.innerHTML=list.map(c=>`<div class="mkopt ${mkSel.includes(c.alpha2)?'sel':''}" onclick="togMK('${c.alpha2}')"><span>${c.country}</span>${mkSel.includes(c.alpha2)?'<span>✓</span>':''}</div>`).join('');}
+function renderMKOpts(list){const el=document.getElementById('mklist');if(!el)return;el.innerHTML=list.map(c=>{const isSel=mkSel.includes(c.country)||mkSel.includes(c.alpha2);return `<div class="mkopt ${isSel?'sel':''}" onclick="togMK('${c.country}')"><span>${c.country}</span>${isSel?'<span>✓</span>':''}</div>`;}).join('');}
 function filterMK(q){renderMKOpts(allC.filter(c=>c.country.toLowerCase().includes(q.toLowerCase())));}
 function toggleMK(){document.getElementById('coodd')?.classList.remove('open');document.getElementById('faodd')?.classList.remove('open');document.getElementById('mkdd').classList.toggle('open');}
 function togMK(a2){
@@ -6397,21 +6452,58 @@ function togMK(a2){
   if(searchInp)searchInp.value='';
   renderMKOpts(allC);
 }
-function updateMKChips(){const w=document.getElementById('mksel');w.querySelectorAll('.mkchip').forEach(e=>e.remove());const ph=document.getElementById('mkph');if(!mkSel.length){ph.style.display='block';return;}ph.style.display='none';mkSel.forEach(a2=>{const c=allC.find(c=>c.alpha2===a2);if(!c)return;const ch=document.createElement('span');ch.className='mkchip';ch.innerHTML=`${c.country}<span class="mkx" onclick="event.stopPropagation();rmMK('${a2}')">×</span>`;w.insertBefore(ch,ph);});}
+function updateMKChips(){
+  const w=document.getElementById('mksel');
+  w.querySelectorAll('.mkchip').forEach(e=>e.remove());
+  const ph=document.getElementById('mkph');
+  if(!mkSel.length){ph.style.display='block';return;}
+  ph.style.display='none';
+  mkSel.forEach(val=>{
+    const cObj=allC.find(c=>c.country===val||c.alpha2===val);
+    const displayName=cObj?cObj.country:val;
+    const ch=document.createElement('span');
+    ch.className='mkchip';
+    ch.dataset.val=val;
+    ch.innerHTML=displayName+'<span class="mkx" onclick="event.stopPropagation();rmMK(this.parentElement.dataset.val)">×</span>';
+    w.insertBefore(ch,ph);
+  });
+}
 function rmMK(a2){mkSel=mkSel.filter(m=>m!==a2);updateMKChips();renderMKOpts(allC);}
 
 // ── Country of Origin (single-select) ──
-function renderCOOOpts(list){const el=document.getElementById('coolist');if(!el)return;el.innerHTML=list.map(c=>`<div class="mkopt ${cooSel===c.alpha2?'sel':''}" onclick="selCOO('${c.alpha2}')"><span>${c.country}</span>${cooSel===c.alpha2?'<span>✓</span>':''}</div>`).join('');}
+function renderCOOOpts(list){
+  const el=document.getElementById('coolist');if(!el)return;
+  // cooSel may be alpha2 or country name — match either
+  el.innerHTML=list.map(c=>{
+    const isSel=cooSel&&(cooSel===c.alpha2||cooSel===c.country);
+    return `<div class="mkopt ${isSel?'sel':''}" onclick="selCOO('${c.country}','${c.alpha2}')"><span>${c.country}</span>${isSel?'<span>✓</span>':''}</div>`;
+  }).join('');
+}
 function filterCOO(q){renderCOOOpts(allC.filter(c=>c.country.toLowerCase().includes(q.toLowerCase())));}
 function toggleCOO(){document.getElementById('mkdd')?.classList.remove('open');document.getElementById('faodd')?.classList.remove('open');document.getElementById('coodd').classList.toggle('open');}
-function selCOO(a2){
-  cooSel=a2;document.getElementById('pfcoo').value=a2;updateCOOChip();
+function selCOO(countryName,a2){
+  // Store country name for display, also keep alpha2
+  cooSel=countryName;
+  document.getElementById('pfcoo').value=countryName;
+  updateCOOChip();
   document.getElementById('coodd').classList.remove('open');
   const searchInp=document.querySelector('#coodd .mksearch input');
   if(searchInp)searchInp.value='';
   renderCOOOpts(allC);
 }
-function updateCOOChip(){const sel=document.getElementById('coosel');const ph=document.getElementById('cooph');sel.querySelectorAll('.mkchip').forEach(e=>e.remove());if(cooSel){const c=allC.find(c=>c.alpha2===cooSel);if(!c)return;ph.style.display='none';const chip=document.createElement('span');chip.className='mkchip';chip.innerHTML=`${c.country}<span class="mkx" onclick="event.stopPropagation();clearCOO()">×</span>`;sel.insertBefore(chip,ph);}else ph.style.display='block';}
+function updateCOOChip(){
+  const sel=document.getElementById('coosel');const ph=document.getElementById('cooph');
+  sel.querySelectorAll('.mkchip').forEach(e=>e.remove());
+  if(cooSel){
+    // Find by country name or alpha2
+    const cObj=allC.find(c=>c.country===cooSel||c.alpha2===cooSel);
+    const displayName=cObj?cObj.country:cooSel;
+    ph.style.display='none';
+    const chip=document.createElement('span');chip.className='mkchip';
+    chip.innerHTML=displayName+'<span class="mkx" onclick="event.stopPropagation();clearCOO()">×</span>';
+    sel.insertBefore(chip,ph);
+  } else {ph.style.display='block';}
+}
 function clearCOO(){cooSel=null;document.getElementById('pfcoo').value='';updateCOOChip();renderCOOOpts(allC);}
 
 // ── FAO Zone (single-select) ──
