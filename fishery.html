@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>MSC Fishery Module — Manhattan</title>
 <link rel="icon" type="image/png" href="brand-logo.png"/>
+<link rel="icon" type="image/png" href="brand-logo.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet"/>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
@@ -239,6 +240,9 @@ body{display:flex;}
 #toast.error{background:var(--red);}
 #toast.info{background:var(--primary);}
 .hidden{display:none!important;}
+
+.fcl-row{display:grid;grid-template-columns:130px 1fr 120px 120px 100px;padding:11px 16px;border-bottom:1px solid var(--border);align-items:center;font-size:12px;transition:background .1s;cursor:default;}
+.fcl-row:hover{background:#fafbfe;}
 </style>
 </head>
 <body>
@@ -449,8 +453,31 @@ body{display:flex;}
 
   <!-- ═══ CHANGELOG ═══ -->
   <div class="view" id="view-changelog">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;"><div><div style="font-size:18px;font-weight:700;letter-spacing:-0.4px;">Vessel Change Log</div><div style="font-size:13px;color:var(--light);margin-top:3px;">All vessel additions and removals detected via PDF scans</div></div><button class="btn btn-outline" onclick="exportChangelog()">↓ Export CSV</button></div>
-    <div class="tbl-wrap"><div class="tbl-head g-change"><span>Change</span><span>Vessel</span><span>IMO</span><span>Flag</span><span>Fishery</span><span>Detected</span></div><div id="changelogBody"></div></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div>
+        <div style="font-size:18px;font-weight:700;letter-spacing:-0.4px;">Change Log</div>
+        <div style="font-size:13px;color:var(--light);margin-top:3px;">Track vessel and fishery certification changes over time</div>
+      </div>
+      <button class="btn btn-outline" onclick="exportChangelog()">↓ Export</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:18px;">
+      <button id="cl-tab-vessel" onclick="switchChangelogTab('vessel')" style="padding:6px 16px;border-radius:999px;border:1.5px solid var(--accent);background:var(--accent);color:#fff;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;">🚢 Vessel Changes</button>
+      <button id="cl-tab-fishery" onclick="switchChangelogTab('fishery')" style="padding:6px 16px;border-radius:999px;border:1.5px solid var(--border);background:#fff;color:var(--light);font-family:inherit;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;">🎣 Fishery Changes</button>
+    </div>
+    <div id="cl-panel-vessel">
+      <div class="tbl-wrap">
+        <div class="tbl-head g-change"><span>Change</span><span>Vessel</span><span>IMO</span><span>Flag</span><span>Fishery</span><span>Detected</span></div>
+        <div id="changelogBody"></div>
+      </div>
+    </div>
+    <div id="cl-panel-fishery" style="display:none;">
+      <div class="tbl-wrap">
+        <div style="display:grid;grid-template-columns:130px 1fr 120px 120px 100px;padding:10px 16px;font-size:11px;font-weight:700;color:var(--light);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);">
+          <span>Type</span><span>Fishery</span><span>Previous</span><span>New Value</span><span>Date</span>
+        </div>
+        <div id="fisheryChangelogBody"></div>
+      </div>
+    </div>
   </div>
 
 </div><!-- /main -->
@@ -1209,19 +1236,79 @@ async function confirmImport(){
   document.getElementById('importResult').classList.add('hidden');
   await loadAll();showView('fisheries');
 }
+// ── CHANGELOG TABS ──
+let _clTab='vessel';
+function switchChangelogTab(tab){
+  _clTab=tab;
+  const vBtn=document.getElementById('cl-tab-vessel');
+  const fBtn=document.getElementById('cl-tab-fishery');
+  if(tab==='vessel'){
+    vBtn.style.background='var(--accent)';vBtn.style.color='#fff';vBtn.style.borderColor='var(--accent)';
+    fBtn.style.background='#fff';fBtn.style.color='var(--light)';fBtn.style.borderColor='var(--border)';
+    document.getElementById('cl-panel-vessel').style.display='block';
+    document.getElementById('cl-panel-fishery').style.display='none';
+  } else {
+    fBtn.style.background='var(--accent)';fBtn.style.color='#fff';fBtn.style.borderColor='var(--accent)';
+    vBtn.style.background='#fff';vBtn.style.color='var(--light)';vBtn.style.borderColor='var(--border)';
+    document.getElementById('cl-panel-vessel').style.display='none';
+    document.getElementById('cl-panel-fishery').style.display='block';
+    loadFisheryChangelog();
+  }
+}
+let _fisheryChanges=[],_fisheryChangelogLoaded=false;
+async function loadFisheryChangelog(){
+  if(_fisheryChangelogLoaded){renderFisheryChangelog();return;}
+  const el=document.getElementById('fisheryChangelogBody');
+  if(!el)return;
+  el.innerHTML='<div class="empty"><span class="empty-icon">⏳</span><div class="empty-text">Loading...</div></div>';
+  try{
+    const[certRes,fishRes]=await Promise.all([
+      db.from('msc_certificate_history').select('*,fishery:fishery_id(fishery_name)').order('created_at',{ascending:false}).limit(400),
+      db.from('msc_fisheries').select('id,fishery_name,msc_status,certificate_code,cert_expiry,updated_at').order('updated_at',{ascending:false})
+    ]);
+    _fisheryChanges=[];
+    const fmtDate=d=>d?new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';
+    (certRes.data||[]).forEach(h=>{_fisheryChanges.push({type:'cert_period',fishery:h.fishery?.fishery_name||'Unknown',prev:fmtDate(h.cert_from),next:fmtDate(h.cert_to),status:h.status||'—',date:h.created_at,certCode:h.certificate_code||''});});
+    (fishRes.data||[]).forEach(f=>{if(f.updated_at&&f.msc_status)_fisheryChanges.push({type:'status',fishery:f.fishery_name,prev:'—',next:f.msc_status,status:f.msc_status,date:f.updated_at,certCode:f.certificate_code||''});});
+    _fisheryChanges.sort((a,b)=>new Date(b.date)-new Date(a.date));
+    _fisheryChangelogLoaded=true;
+    renderFisheryChangelog();
+  }catch(e){if(el)el.innerHTML='<div class="empty"><span class="empty-icon">⚠️</span><div class="empty-text">Error loading</div><div class="empty-sub">'+e.message+'</div></div>';}
+}
+function renderFisheryChangelog(){
+  const el=document.getElementById('fisheryChangelogBody');if(!el)return;
+  if(!_fisheryChanges.length){el.innerHTML='<div class="empty"><span class="empty-icon">🎣</span><div class="empty-text">No fishery changes yet</div><div class="empty-sub">Changes appear when cert periods or status update</div></div>';return;}
+  const sp=s=>{const m={Certified:'#e6f9f0;#1a7f4b',Suspended:'#fff4e5;#b45309',Withdrawn:'#ffe8e8;#b91c1c','In Assessment':'#eef4fd;#1d4ed8',Conditioning:'#fdf4ff;#7c3aed'};const[bg,co]=(m[s]||'#f4f6fb;#6b7280').split(';');return '<span style="padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:'+bg+';color:'+co+';">'+s+'</span>';};
+  const tl={'cert_period':'📜 Cert Period','status':'📊 Status'};
+  el.innerHTML=_fisheryChanges.slice(0,200).map(ch=>{
+    const rowStyle='display:grid;grid-template-columns:130px 1fr 120px 120px 100px;padding:11px 16px;border-bottom:1px solid var(--border);align-items:center;font-size:12px;';
+    const typeSpan='<span style="padding:3px 8px;border-radius:5px;font-size:10px;font-weight:700;background:#f4f0ff;color:#7c3aed;">'+(tl[ch.type]||ch.type)+'</span>';
+    const nameCell='<div><div style="font-weight:600;color:var(--dark);">'+ch.fishery+'</div>'+(ch.certCode?'<div style="font-size:10px;color:var(--light);font-family:monospace;">'+ch.certCode+'</div>':'')+'</div>';
+    const newVal=ch.type==='status'?sp(ch.next):'<span style="color:#1a7f4b;font-weight:600;font-size:11px;">'+ch.next+'</span>';
+    const dateVal=ch.date?new Date(ch.date).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';
+    return '<div class="fcl-row">'
+      +'<div>'+typeSpan+'</div>'
+      +nameCell
+      +'<div style="color:var(--light);font-size:11px;">'+ch.prev+'</div>'
+      +'<div>'+newVal+'</div>'
+      +'<div style="color:var(--light);font-size:11px;">'+dateVal+'</div>'
+      +'</div>';
+  }).join('');
+}
 function renderChangelog(){
   const el=document.getElementById('changelogBody');
   if(!changes.length){el.innerHTML='<div class="empty"><span class="empty-icon">📋</span><div class="empty-text">No changes logged yet</div><div class="empty-sub">Upload a vessel list PDF to detect changes</div></div>';return;}
-  el.innerHTML=changes.map(ch=>{
-    const f=fisheries.find(x=>x.id===ch.fishery_id);
-    const d=ch.detected_on?new Date(ch.detected_on).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';
-    return '<div class="tbl-row g-change" style="cursor:default;"><div><span class="badge '+(ch.change_type==='added'?'b-new':'b-removed')+'">'+(ch.change_type==='added'?'+ Added':'− Removed')+'</span></div><div class="cell-name">'+(ch.vessel_name||'—')+'</div><div class="cell-mono">'+(ch.imo_number||'—')+'</div><div class="cell">'+(ch.flag_state||'—')+'</div><div class="cell">'+((f?.fishery_name||'Unknown').substring(0,40))+'</div><div class="cell">'+d+'</div></div>';
-  }).join('');
+  el.innerHTML=changes.map(ch=>{const f=fisheries.find(x=>x.id===ch.fishery_id);const d=ch.detected_on?new Date(ch.detected_on).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';return '<div class="tbl-row g-change" style="cursor:default;"><div><span class="badge '+(ch.change_type==='added'?'b-new':'b-removed')+'">'+(ch.change_type==='added'?'+ Added':'− Removed')+'</span></div><div class="cell-name">'+(ch.vessel_name||'—')+'</div><div class="cell-mono">'+(ch.imo_number||'—')+'</div><div class="cell">'+(ch.flag_state||'—')+'</div><div class="cell">'+((f?.fishery_name||'Unknown').substring(0,40))+'</div><div class="cell">'+d+'</div></div>';}).join('');
 }
 function exportChangelog(){
-  const rows=changes.map(ch=>{const f=fisheries.find(x=>x.id===ch.fishery_id);return{Change:ch.change_type,Vessel:ch.vessel_name,IMO:ch.imo_number,Flag:ch.flag_state,Fishery:f?.fishery_name||'',Detected:ch.detected_on};});
-  const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Changes');XLSX.writeFile(wb,'manhattan_vessel_changes.csv');
+  const wb=XLSX.utils.book_new();
+  const vR=changes.map(ch=>{const f=fisheries.find(x=>x.id===ch.fishery_id);return{Change:ch.change_type,Vessel:ch.vessel_name,IMO:ch.imo_number,Flag:ch.flag_state,Fishery:f?.fishery_name||'',Detected:ch.detected_on};});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(vR.length?vR:[{Note:'No vessel changes'}]),'Vessel Changes');
+  const fR=_fisheryChanges.map(ch=>({Type:ch.type,Fishery:ch.fishery,Certificate:ch.certCode,Previous:ch.prev,New:ch.next,Date:ch.date}));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(fR.length?fR:[{Note:'No fishery changes'}]),'Fishery Changes');
+  XLSX.writeFile(wb,'manhattan_changelog.xlsx');
 }
+
 async function syncFromMSC(){
   showToast('Fetching from fisheries.msc.org...','info');
   try{
