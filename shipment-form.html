@@ -1802,41 +1802,32 @@ function applyExtracted(d){
 }
 
 /* Tolerant save: drops unknown columns and retries */
-async function saveTolerant(table, payload, id){
+async function saveTolerant(table, payload, id, _tries){
+  _tries=_tries||0; if(_tries>5) throw new Error('Too many column errors');
   const clean={...payload};
-  // Remove undefined/function values
   Object.keys(clean).forEach(k=>{ if(clean[k]===undefined) delete clean[k]; });
 
+  var result,error;
   if(id){
-    const {error}=await dbClient.from(table).update(clean).eq('id',id);
-    if(error){
-      if(error.message && error.message.includes('column')){
-        // Extract the bad column name and retry without it
-        const col=error.message.match(/"(\w+)"/)?.[1];
-        if(col && clean[col]!==undefined){
-          console.warn('Dropping unknown column:',col);
-          delete clean[col];
-          return saveTolerant(table,clean,id);
-        }
-      }
-      throw error;
-    }
-    return {data:{id},error:null};
+    result=await dbClient.from(table).update(clean).eq('id',id);
+    error=result.error;
   }else{
-    const {data,error}=await dbClient.from(table).insert(clean).select('id').single();
-    if(error){
-      if(error.message && error.message.includes('column')){
-        const col=error.message.match(/"(\w+)"/)?.[1];
-        if(col && clean[col]!==undefined){
-          console.warn('Dropping unknown column:',col);
-          delete clean[col];
-          return saveTolerant(table,clean,id);
-        }
-      }
-      throw error;
-    }
-    return {data,error:null};
+    result=await dbClient.from(table).insert(clean).select('id').single();
+    error=result.error;
   }
+
+  if(error){
+    var msg=error.message||error.details||error.hint||JSON.stringify(error);
+    // Match: "Could not find the 'xxx' column" or '"xxx" column'
+    var colMatch=msg.match(/['"](\w+)['"]\s*column/i) || msg.match(/column\s*['"](\w+)['"]/i);
+    if(colMatch && clean[colMatch[1]]!==undefined){
+      console.warn('Dropping unknown column:',colMatch[1]);
+      delete clean[colMatch[1]];
+      return saveTolerant(table,clean,id,_tries+1);
+    }
+    throw new Error(msg);
+  }
+  return id ? {data:{id},error:null} : {data:result.data,error:null};
 }
 
 async function save(){
@@ -1857,14 +1848,14 @@ async function save(){
     const header={...collectHeader(),organisation_id:ORG_ID};
     let sid=EDIT_ID;
     if(EDIT_ID){
-      const {error}=await dbClient.from('shipments').update(header).eq('id',EDIT_ID);
+      const {error}=await saveTolerant('shipments',header,EDIT_ID);
       if(error) throw error;
       await dbClient.from('shipment_batches').delete().eq('shipment_id',EDIT_ID);
       await dbClient.from('shipment_items').delete().eq('shipment_id',EDIT_ID);
       await dbClient.from('shipment_vessels').delete().eq('shipment_id',EDIT_ID);
       await dbClient.from('shipment_legs').delete().eq('shipment_id',EDIT_ID);
     }else{
-      const {data,error}=await dbClient.from('shipments').insert(header).select('id').single();
+      const {data,error}=await saveTolerant('shipments',header,null);
       if(error) throw error; sid=data.id;
     }
     const legRows=LEGS.filter(l=>l.origin_name||l.destination_name).map((l,n)=>({

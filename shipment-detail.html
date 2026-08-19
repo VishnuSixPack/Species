@@ -298,6 +298,11 @@
     <div class="grid" id="trackGrid"></div>
   </div>
 
+  <div class="card">
+    <div class="card-head"><div><div class="card-title">Finance</div></div></div>
+    <div class="grid" id="finGrid"></div>
+  </div>
+
   <!-- ============ LIVE TRACKING ============ -->
   <div class="card">
     <div class="card-head">
@@ -567,7 +572,8 @@ function cell(label, raw, kind, pkgType){
 }
 
 function renderGrid(hostId, fields, src){
-  $(hostId).innerHTML = fields.map(f => cell(f[0], src[f[1]], f[2])).join('');
+  var el=$(hostId); if(!el) return;
+  el.innerHTML = fields.map(f => cell(f[0], src[f[1]], f[2])).join('');
 }
 
 function openModal(id){ $(id).classList.add('open'); document.body.style.overflow='hidden'; }
@@ -584,6 +590,7 @@ const sumBy = (arr,k) => arr.reduce((a,x)=>a+(Number(x[k])||0),0);
    ===================================================================== */
 function render(){
   renderItems();
+  try{
   var s=SHIPMENT;
   var mode=MODES[s.transport_mode]||MODES.Sea;
   $('crumbRef').textContent=s.shipment_ref||'—';
@@ -646,6 +653,7 @@ function render(){
   renderGrid('finGrid',[['L/C No','lc_no'],['L/C Issue','lc_issue_date','date'],['L/C Due','lc_due_date','date'],['L/C Bank','lc_bank']],s);
   var nh=s.notes_html?safeHTML(s.notes_html):'';var nc=$('notesCard');if(nc)nc.style.display=nh.trim()?'block':'none';var nH=$('notesHost');if(nh.trim()&&nH)nH.innerHTML=nh;
   var vc=$('vesselCard');if(vc)vc.style.display='none';
+  }catch(renderErr){console.warn('Render error:',renderErr.message);}
 }
 
 function renderItems(){
