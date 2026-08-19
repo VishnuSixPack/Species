@@ -56,6 +56,19 @@
   .btn{padding:8px 15px;border-radius:9px;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;
        border:1px solid var(--border);background:var(--surface);color:var(--text);transition:all .15s;}
   .btn:hover{border-color:var(--primary);color:var(--primary);}
+  .btn-danger{border-color:var(--bad-fg);color:var(--bad-fg);}
+  .btn-danger:hover{background:var(--bad-bg);color:var(--bad-fg);}
+  .trash-modal{position:fixed;inset:0;background:rgba(10,12,18,.6);z-index:950;display:none;align-items:center;justify-content:center;padding:20px;}
+  .trash-modal.open{display:flex;}
+  .trash-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px;max-width:440px;width:90%;box-shadow:0 20px 60px rgba(10,12,18,.25);text-align:center;}
+  .trash-icon{width:56px;height:56px;border-radius:50%;background:var(--bad-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;}
+  .trash-icon svg{width:26px;height:26px;color:var(--bad-fg);}
+  .trash-title{font-size:17px;font-weight:700;margin-bottom:8px;}
+  .trash-desc{font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:24px;}
+  .trash-desc b{color:var(--text);}
+  .trash-btns{display:flex;gap:10px;justify-content:center;}
+  .trash-btns .btn-confirm{background:var(--bad-fg);border-color:var(--bad-fg);color:#fff;padding:11px 24px;}
+  .trash-btns .btn-confirm:hover{opacity:.9;}
   .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff;}
   .btn-primary:hover{background:var(--primary-hover);color:#fff;}
 
@@ -231,6 +244,9 @@
       <div style="font-size:12px;color:var(--muted);margin-top:3px;" id="headSub">—</div>
     </div>
     <div class="page-actions">
+      <button class="btn btn-danger" onclick="openTrashModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+        Trash</button>
       <button class="btn" onclick="goEdit()">Edit shipment</button>
       <button class="btn" onclick="goCarbon()">Calculate carbon footprint</button>
       <button class="btn btn-primary" onclick="goEuCatch()">Create EU Catch document</button>
@@ -773,6 +789,28 @@ function buildBatchTable(it){
    ===================================================================== */
 const params = () => new URLSearchParams(location.search);
 function currentId(){ return params().get('id'); }
+function openTrashModal(){ $('trashModal').classList.add('open'); document.body.style.overflow='hidden'; }
+function closeTrashModal(){ $('trashModal').classList.remove('open'); document.body.style.overflow=''; }
+async function doTrash(){
+  closeTrashModal();
+  var id=currentId(); if(!id||!dbClient) return;
+  try{
+    var orgId=SHIPMENT.organisation_id||SHIPMENT.company_id||SHIPMENT.org_id; var {error}=await dbClient.from('shipments').update({deleted_at:new Date().toISOString(), organisation_id:orgId}).eq('id',id);
+    if(error) throw error;
+    toast('Moved to Trash');
+    setTimeout(function(){ location.href='shipment-list.html'; },800);
+  }catch(e){
+    toast('Could not trash: '+(e.message||e));
+  }
+}
+
+function toast(m){
+  var t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:11px 22px;border-radius:10px;font-size:13px;font-weight:500;z-index:999;';
+  t.textContent=m; document.body.appendChild(t);
+  setTimeout(function(){t.remove();},2800);
+}
+
 function goEdit(){    location.href = 'shipment-form.html' + (currentId()?('?id='+currentId()):''); }
 function goEuCatch(){ location.href = 'eu-catch-support.html?shipment=' + (currentId()||''); }
 function goCarbon(){  location.href = 'carbon-calculator.html?shipment=' + (currentId()||''); }
@@ -864,5 +902,24 @@ async function loadProfile(){
 load();
 loadProfile();
 </script>
+<!-- Trash confirmation modal -->
+<div class="trash-modal" id="trashModal" onclick="if(event.target===this)closeTrashModal()">
+  <div class="trash-box">
+    <div class="trash-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+    </div>
+    <div class="trash-title">Move to Trash?</div>
+    <div class="trash-desc">
+      This shipment will be moved to the Trash.<br>
+      It won't appear in lists or reports, but you can <b>restore it anytime</b> from the Trash page.<br><br>
+      Nothing is permanently deleted.
+    </div>
+    <div class="trash-btns">
+      <button class="btn" onclick="closeTrashModal()">Cancel</button>
+      <button class="btn btn-confirm" onclick="doTrash()">Yes, move to Trash</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
