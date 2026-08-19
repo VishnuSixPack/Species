@@ -1857,6 +1857,7 @@ async function save(){
     }else{
       const {data,error}=await saveTolerant('shipments',header,null);
       if(error) throw error; sid=data.id;
+      EDIT_ID=sid; // so a retry does UPDATE not INSERT
     }
     const legRows=LEGS.filter(l=>l.origin_name||l.destination_name).map((l,n)=>({
       shipment_id:sid, organisation_id:ORG_ID, leg_no:n+1,
@@ -1875,8 +1876,10 @@ async function save(){
       driver_name:l.driver_name||null, train_no:l.train_no||null, wagon_no:l.wagon_no||null,
     }));
     if(legRows.length){
-      const {error}=await dbClient.from('shipment_legs').insert(legRows);
-      if(error) throw error;
+      for(const row of legRows){
+        const {error}=await saveTolerant('shipment_legs',row,null);
+        if(error) throw error;
+      }
     }
 
     // vessels per leg
@@ -1890,8 +1893,10 @@ async function save(){
       });
     });
     if(vslRows.length){
-      const {error}=await dbClient.from('shipment_vessels').insert(vslRows);
-      if(error) throw error;
+      for(const row of vslRows){
+        const {error}=await saveTolerant('shipment_vessels',row,null);
+        if(error) throw error;
+      }
     }
 
     for(const [n,it] of ITEMS.entries()){
@@ -1905,13 +1910,18 @@ async function save(){
         net_weight_kg:it.net_weight_kg?Number(it.net_weight_kg):null,
         packaging_material:it.packaging_material||null,
         packaging_weight_kg:it.packaging_weight_kg?Number(it.packaging_weight_kg):null};
-      const {data:ins,error:e2}=await dbClient.from('shipment_items').insert(row).select('id').single();
+      const {data:ins,error:e2}=await saveTolerant('shipment_items',row,null);
       if(e2) throw e2;
       const lots=(it.batches||[]).filter(b=>b.packages||b.batch_lot).map((b,j)=>({
         shipment_item_id:ins.id,shipment_id:sid,organisation_id:ORG_ID,line_no:j+1,
         packages:num(b.packages),batch_lot:b.batch_lot||null,processing_date:b.processing_date||null,
         expiry_date:b.expiry_date||null,raw_material_ref:b.raw_material_ref||null}));
-      if(lots.length){ const {error:e3}=await dbClient.from('shipment_batches').insert(lots); if(e3) throw e3; }
+      if(lots.length){
+        for(const lot of lots){
+          const {error:e3}=await saveTolerant('shipment_batches',lot,null);
+          if(e3) throw e3;
+        }
+      }
     }
     toast('Shipment saved');
     setTimeout(()=>location.href='shipment-detail.html?id='+sid,700);
