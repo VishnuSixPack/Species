@@ -838,7 +838,7 @@ const INCOTERMS=['EXW','FCA','FAS','FOB','CFR','CIF','CPT','CIP','DAP','DPU','DD
 let S={transport_mode:'Sea',status:'Draft',shipment_type:'Export',load_type:'FCL',transit_names:[]};
 let ITEMS=[],LEGS=[];
 let LOOK={products:[],species:[],ports:[],companies:[],countries:[],vessels:[]};
-let ORG_ID=null, SAVING=false, REF_AUTO=true;
+let ORG_ID=null, SAVING=false;
 const EDIT_ID=new URLSearchParams(location.search).get('id');
 
 /* =====================================================================
@@ -869,7 +869,7 @@ function field(label,key,kind,required){
     return wrap(label,required,
       `<div class="ctl"><input class="ctl-in" data-h="${key}" value="${esc(v||'')}"
         placeholder="Generating…"/></div>`,
-      REF_AUTO?'Generated automatically — edit if you use a different reference':'Custom reference');
+'Enter your shipment reference');
   }
   if(kind==='date')  return wrap(label,required, datePicker(v,setter(key)));
   if(kind==='date_with_same') return wrap(label,required, datePicker(v,setter(key))
@@ -1235,7 +1235,7 @@ function bindPlain(){
     el.oninput=()=>{
       const k=el.dataset.h;
       S[k]=el.dataset.list?el.value.split(',').map(x=>x.trim()).filter(Boolean):el.value;
-      if(k==='shipment_ref'){ REF_AUTO=false; el.classList.toggle('err',!el.value.trim()); }
+      if(k==='shipment_ref'){ el.classList.toggle('err',!el.value.trim()); }
     };
   });
 }
@@ -1825,18 +1825,6 @@ async function saveTolerant(table, payload, id, _tries){
       delete clean[colMatch[1]];
       return saveTolerant(table,clean,id,_tries+1);
     }
-    // Duplicate shipment_ref: auto-increment and retry
-    if(/duplicate.*shipment_ref|unique.*shipment_ref/i.test(msg) && clean.shipment_ref && _tries<5){
-      var ref=clean.shipment_ref;
-      var m=ref.match(/(\d+)\s*$/);
-      if(m){
-        var next=parseInt(m[1],10)+1;
-        clean.shipment_ref=ref.replace(/(\d+)\s*$/,String(next).padStart(m[1].length,'0'));
-        S.shipment_ref=clean.shipment_ref;
-        console.warn('Ref taken, trying:',clean.shipment_ref);
-        return saveTolerant(table,clean,id,_tries+1);
-      }
-    }
     throw new Error(msg);
   }
   return id ? {data:{id},error:null} : {data:result.data,error:null};
@@ -1943,7 +1931,7 @@ async function loadExisting(){
   try{
     const {data:s,error}=await dbClient.from('shipments').select('*').eq('id',EDIT_ID).single();
     if(error) throw error;
-    S={...s,transit_names:s.transit_names||[]}; REF_AUTO=false;
+    S={...s,transit_names:s.transit_names||[]};
     if(s.previous_shipment_id){
       S.previous_shipment_id=s.previous_shipment_id;
       // resolve the ref for display
@@ -1994,7 +1982,7 @@ async function loadExisting(){
   const [,, ref] = await Promise.all([
     loadExisting(),
     loadLookups(),
-    (!EDIT_ID && REF_AUTO) ? generateRef() : Promise.resolve(null),
+    Promise.resolve(null),
   ]);
 
   if(ref && !S.shipment_ref) S.shipment_ref = ref;
