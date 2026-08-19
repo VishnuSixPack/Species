@@ -262,7 +262,7 @@ function renderList(){
 }
 
 async function load(){
-  if(!dbClient){ renderDemo(); return; }
+  if(!dbClient){ BUCKETS=[]; renderList(); return; }
   try{
     const {data:{session}}=await dbClient.auth.getSession();
     if(!session) return;
@@ -276,30 +276,26 @@ async function load(){
       $('avatarGreeting').textContent=greetingTime()+', '+f+'!';
     }
 
-    const {data,error}=await dbClient.from('evidence_bucket_summary').select('*');
+    let data,error;
+    try{
+      const r=await dbClient.from('evidence_bucket_summary').select('*');
+      data=r.data; error=r.error;
+    }catch(e){
+      // View might not exist — fall back to base table
+      const r=await dbClient.from('evidence_buckets').select('*').order('created_at',{ascending:false});
+      data=(r.data||[]).map(b=>({...b,document_count:0,ocr_done_count:0,doc_types:[]}));
+      error=r.error;
+    }
     if(error) throw error;
     BUCKETS=data||[];
     renderList();
   }catch(e){
     console.warn('Evidence load:',e.message);
-    renderDemo();
+    BUCKETS=[]; renderList();
   }
 }
 
-function renderDemo(){
-  BUCKETS=[
-    {id:'d1',bucket_ref:'PO-VDB-2026-118',purchase_order_no:'PO-VDB-2026-118',invoice_no:'INV-2026-0482',
-     status:'Linked',document_count:4,ocr_done_count:3,shipment_id:'s1',
-     doc_types:['Invoice','Bill of Lading','Packing List','Certificate of Origin'],created_at:'2026-07-25T10:30:00Z'},
-    {id:'d2',bucket_ref:'PO-VDB-2026-119',purchase_order_no:'PO-VDB-2026-119',invoice_no:null,
-     status:'Open',document_count:2,ocr_done_count:0,shipment_id:null,
-     doc_types:['Invoice','Packing List'],created_at:'2026-08-01T14:20:00Z'},
-    {id:'d3',bucket_ref:'PO-STC-2026-044',purchase_order_no:'PO-STC-2026-044',invoice_no:'INV-2026-0499',
-     status:'Open',document_count:0,ocr_done_count:0,shipment_id:null,
-     doc_types:[],created_at:'2026-08-10T09:00:00Z'},
-  ];
-  renderList();
-}
+
 
 load();
 </script>

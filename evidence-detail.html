@@ -208,12 +208,16 @@ async function handleUpload(fileList){
     try{
       const {error:ue}=await dbClient.storage.from('evidence').upload(path,file);
       if(ue) throw ue;
-      const {error:de}=await dbClient.from('evidence_documents').insert({
-        bucket_id:EDIT_ID, organisation_id:ORG_ID,
+      var docRow={bucket_id:EDIT_ID, organisation_id:ORG_ID,
         file_name:file.name, mime_type:file.type, size_bytes:file.size,
-        storage_path:path, doc_type:guessDocType(file.name)
-      });
-      if(de) throw de;
+        storage_path:path, doc_type:guessDocType(file.name)};
+      var {error:de}=await dbClient.from('evidence_documents').insert(docRow);
+      if(de){
+        // Try dropping unknown columns
+        var colMatch=(de.message||'').match(/['"](\w+)['"]\s*column/i);
+        if(colMatch){ delete docRow[colMatch[1]]; var r2=await dbClient.from('evidence_documents').insert(docRow); if(r2.error) throw r2.error; }
+        else throw de;
+      }
     }catch(e){toast('Upload failed: '+e.message);continue;}
 
     /* If it's a multi-page PDF, offer the splitter */
@@ -422,7 +426,7 @@ async function loadDocs(){
 }
 
 async function load(){
-  if(!dbClient){renderDemo();return;}
+  if(!dbClient){ BUCKET={bucket_ref:'—',status:'Open'}; DOCS=[]; render(); return; }
   try{
     const {data:{session}}=await dbClient.auth.getSession();
     if(!session) return;
@@ -435,28 +439,16 @@ async function load(){
       $('avatarInitials').textContent=(f.charAt(0)+(l?l.charAt(0):'')).toUpperCase();
       $('avatarGreeting').textContent=greetingTime()+', '+f+'!';
     }
-    if(!EDIT_ID){renderDemo();return;}
+    if(!EDIT_ID){ BUCKET={bucket_ref:'—',status:'Open'}; DOCS=[]; render(); return; }
     const {data:b,error}=await dbClient.from('evidence_buckets').select('*').eq('id',EDIT_ID).single();
     if(error) throw error;
     BUCKET=b;
     await loadDocs();
     render();
-  }catch(e){console.error(e);renderDemo();}
+  }catch(e){console.error(e); BUCKET={bucket_ref:'Error loading',status:'Open'}; DOCS=[]; render(); }
 }
 
-function renderDemo(){
-  BUCKET={bucket_ref:'PO-VDB-2026-118',purchase_order_no:'PO-VDB-2026-118',
-    invoice_no:'INV-2026-0482',status:'Open',notes:'Yellowfin consignment to Netherlands'};
-  DOCS=[
-    {id:'d1',file_name:'INV-2026-0482.pdf',doc_type:'Invoice',mime_type:'application/pdf',
-     size_bytes:284000,ocr_status:'done',created_at:'2026-07-25T10:30:00Z'},
-    {id:'d2',file_name:'BL-MSCUBOM482913.pdf',doc_type:'Bill of Lading',mime_type:'application/pdf',
-     size_bytes:412000,ocr_status:'done',created_at:'2026-07-25T10:32:00Z'},
-    {id:'d3',file_name:'PackingList-0482.pdf',doc_type:'Packing List',mime_type:'application/pdf',
-     size_bytes:156000,ocr_status:'pending',created_at:'2026-07-25T10:33:00Z'},
-  ];
-  render();
-}
+
 
 load();
 </script>
