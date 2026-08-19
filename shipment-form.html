@@ -1825,6 +1825,18 @@ async function saveTolerant(table, payload, id, _tries){
       delete clean[colMatch[1]];
       return saveTolerant(table,clean,id,_tries+1);
     }
+    // Duplicate shipment_ref: auto-increment and retry
+    if(/duplicate.*shipment_ref|unique.*shipment_ref/i.test(msg) && clean.shipment_ref && _tries<5){
+      var ref=clean.shipment_ref;
+      var m=ref.match(/(\d+)\s*$/);
+      if(m){
+        var next=parseInt(m[1],10)+1;
+        clean.shipment_ref=ref.replace(/(\d+)\s*$/,String(next).padStart(m[1].length,'0'));
+        S.shipment_ref=clean.shipment_ref;
+        console.warn('Ref taken, trying:',clean.shipment_ref);
+        return saveTolerant(table,clean,id,_tries+1);
+      }
+    }
     throw new Error(msg);
   }
   return id ? {data:{id},error:null} : {data:result.data,error:null};
