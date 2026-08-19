@@ -1446,17 +1446,18 @@ function detailHTML(c,i){
 
     if((c.transship_where||'At sea')==='At sea'){
       html+=`${t('Latitude','latitude','e.g. 4.2033 or 4°12′N',1)}
-        ${t('Longitude','longitude','e.g. 132.6667 or 132°40′E',1)}
-        <div><label>Observer aboard</label>${picker(
-          c.observer_present===true?'Yes':(c.observer_present===false?'No':''),
-          opt(['Yes','No']), v=>{ CATCHES[i].observer_present = v==='Yes'; renderCatches(); })}</div>
-        ${t('Observer Name','observer_name')}`;
+        ${t('Longitude','longitude','e.g. 132.6667 or 132°40′E',1)}`;
     }else{
       html+=`<div><label>Port</label>${picker(c.transfer_location,[],(v,row)=>{
         CATCHES[i].transfer_location=v; },{searchable:true,allowNew:true,source:'ports',
         placeholder:'Search ports…'})}</div>`;
     }
-    html+=`</div>`;
+    // Observer applies to both at-sea and in-port transfers
+    html+=`<div><label>Observer aboard</label>${picker(
+        c.observer_present===true?'Yes':(c.observer_present===false?'No':''),
+        opt(['Yes','No']), v=>{ CATCHES[i].observer_present = v==='Yes'; renderCatches(); })}</div>
+      ${t('Observer Name','observer_name')}
+    </div>`;
 
     if(to==='Reefer container'){
       const conts=c.containers||[];
@@ -2071,10 +2072,10 @@ async function loadLookups(){
     _sub:pick(s,['scientific_name','afsis_3a_code'])})).filter(x=>x._label);
   LOOK.companies=co.map(c=>({_id:c.id,_label:pick(c,['company_name','name']),_sub:pick(c,['country','industry'])})).filter(x=>x._label);
   LOOK.countries=ct.map(c=>({_id:c.id,_label:pick(c,['country','country_name','name']),_sub:pick(c,['alpha3','alpha2'])})).filter(x=>x._label);
-  LOOK.vessels=ve.map(v=>({_id:v.id,_label:pick(v,['vessel_name','name']),_imo:pick(v,['imo','imo_number']),
+  LOOK.vessels=ve.map(v=>({_id:v.id,_label:pick(v,['current_name','vessel_name','name']),_imo:pick(v,['imo','imo_number','imo_no']),
     _flag:pick(v,['flag','flag_state']),
     _sub:[pick(v,['imo','imo_number'])&&('IMO '+pick(v,['imo','imo_number'])),pick(v,['flag','flag_state'])].filter(Boolean).join(' · ')})).filter(x=>x._label);
-  LOOK.ports=po.map(p=>({_id:p.id,_label:pick(p,['port_name','name','port']),
+  LOOK.ports=po.map(p=>({_id:p.id,_label:pick(p,['main_port_name','port_name','name','port']),
     _country:pick(p,['country','country_name']),
     _sub:[pick(p,['country','country_name']),pick(p,['unlocode','locode'])].filter(Boolean).join(' · ')})).filter(x=>x._label);
 
