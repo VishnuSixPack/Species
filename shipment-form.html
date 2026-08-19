@@ -1892,6 +1892,7 @@ async function save(){
           imo:v.imo||null, voyage_no:v.voyage_no||null});
       });
     });
+    console.log('Saving',vslRows.length,'vessels');
     if(vslRows.length){
       for(const row of vslRows){
         const {error}=await saveTolerant('shipment_vessels',row,null);
@@ -1899,6 +1900,7 @@ async function save(){
       }
     }
 
+    console.log('Saving',ITEMS.length,'items');
     for(const [n,it] of ITEMS.entries()){
       const row={shipment_id:sid,organisation_id:ORG_ID,line_no:n+1,
         product_id:safeUuid(it.product_id),product_name:it.product_name||null,
@@ -1910,6 +1912,7 @@ async function save(){
         net_weight_kg:it.net_weight_kg?Number(it.net_weight_kg):null,
         packaging_material:it.packaging_material||null,
         packaging_weight_kg:it.packaging_weight_kg?Number(it.packaging_weight_kg):null};
+      console.log('Item',n+1,'saving:',row.product_name);
       const {data:ins,error:e2}=await saveTolerant('shipment_items',row,null);
       if(e2) throw e2;
       const lots=(it.batches||[]).filter(b=>b.packages||b.batch_lot).map((b,j)=>({

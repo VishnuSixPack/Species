@@ -628,7 +628,9 @@ function render(){
       var meta=[l.carrier_name,l.document_no].filter(Boolean).join(' \u00b7 ');
       var fields=[];
       fields.push(['Departure',fmtDate(l.departure_date)],['Arrival',fmtDate(l.arrival_date)]);
-      fields.push(['Carrier',l.carrier_name],[l.document_type||'Document',l.document_no]);
+      var modeLabels={Sea:['Shipping Line','B/L'],Air:['Airline','AWB'],Road:['Haulier','CMR'],Rail:['Rail Operator','Rail Doc']};
+      var ml=modeLabels[l.transport_mode]||['Carrier','Document'];
+      fields.push([ml[0],l.carrier_name],[l.document_type||ml[1],l.document_no]);
       if(l.container_type) fields.push(['Container Type',l.container_type]);
       if(l.container_no) fields.push(['Container',l.container_no]);
       if(l.seal_number) fields.push(['Seal',l.seal_number]);
@@ -642,6 +644,9 @@ function render(){
           (empty?'\u2014':esc(String(v)))+'</div></div>';
       }).join('');
 
+      if(!vs.length && l.vessel_name){
+        vs=[{role:'Mother',vessel_name:l.vessel_name,imo:l.imo||'',voyage_no:l.voyage_no||''}];
+      }
       var vesselHtml='';
       if(vs.length){
         vesselHtml='<div class="leg-vessels"><table><thead><tr><th>Role</th><th>Vessel</th><th>IMO</th><th>Voyage</th></tr></thead><tbody>'+
@@ -667,6 +672,8 @@ function render(){
   var pg2=$('procGrid');if(pg2)pg2.innerHTML=(s.exporter_is_processor?'<div class="tally ok" style="margin-bottom:14px;">Exporter is also the processor</div>':'')+[['Processor','processor_name'],['Processing Country','processing_country'],['Container Type','container_type']].map(function(f){return cell(f[0],s[f[1]]);}).join('');
   renderGrid('trackGrid',[['Invoice No','invoice_no'],['Invoice Date','invoice_date','date'],['Purchase Order','purchase_order_no'],['On-Board Date','on_board_date','date'],['Container Discharge','container_discharge_date','date']],s);
   renderGrid('finGrid',[['L/C No','lc_no'],['L/C Issue','lc_issue_date','date'],['L/C Due','lc_due_date','date'],['L/C Bank','lc_bank']],s);
+  var finCard=$('finGrid')?.closest('.card');
+  if(finCard){ var hasFin=[s.lc_no,s.lc_issue_date,s.lc_due_date,s.lc_bank].some(function(v){return v;}); finCard.style.display=hasFin?'':'none'; }
   var nh=s.notes_html?safeHTML(s.notes_html):'';var nc=$('notesCard');if(nc)nc.style.display=nh.trim()?'block':'none';var nH=$('notesHost');if(nh.trim()&&nH)nH.innerHTML=nh;
   var vc=$('vesselCard');if(vc)vc.style.display='none';
   }catch(renderErr){console.warn('Render error:',renderErr.message);}
