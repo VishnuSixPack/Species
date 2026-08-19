@@ -1,0 +1,968 @@
+/* ==========================================================================
+   PROJECT MANHATTAN — AI VOICE ASSISTANT
+   Stylesheet
+   --------------------------------------------------------------------------
+   Namespace: every class is prefixed `mh-va-` (Manhattan Voice Assistant)
+   so it can be dropped into an existing site without collisions.
+
+   Design language:
+   - White/cream glass panels with a gold accent, matching the brand
+     reference — gold reserved for primary controls (mic button, active
+     state pill, user bubble), everything else stays light and quiet.
+   - Poppins throughout, matching the rest of Project Manhattan.
+   - Brand red (#e63946) reused for error toasts — same red already used
+     for hover/cancel states elsewhere in Project Manhattan.
+   - Signature motif: "sonar ping" rings on the mic button while listening,
+     styled after AIS/VMS vessel-tracking pings — the same metaphor this
+     app already uses for tracking vessels, applied to tracking *voice*.
+   ========================================================================== */
+
+:root {
+  --mh-va-bg-glass: rgba(255, 255, 255, 0.82);
+  --mh-va-bg-glass-solid: rgba(255, 253, 248, 0.98);
+  --mh-va-border-glass: rgba(20, 20, 30, 0.08);
+  --mh-va-border-glass-strong: rgba(20, 20, 30, 0.14);
+
+  --mh-va-grad-a: #f6c453; /* light gold */
+  --mh-va-grad-b: #c9962f; /* deep gold  */
+  --mh-va-gradient: linear-gradient(135deg, var(--mh-va-grad-a), var(--mh-va-grad-b));
+
+  --mh-va-error: #e63946;
+  --mh-va-success: #22c55e;
+  --mh-va-warn: #d97706;
+
+  --mh-va-text: #1a1a2e;
+  --mh-va-text-muted: #6b7280;
+  --mh-va-text-faint: #9aa0b4;
+
+  --mh-va-radius-lg: 22px;
+  --mh-va-radius-md: 14px;
+  --mh-va-radius-full: 999px;
+
+  --mh-va-font-ui: 'Poppins', 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --mh-va-font-mono: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  --mh-va-shadow-float: 0 10px 28px rgba(20, 20, 40, 0.14), 0 2px 6px rgba(20, 20, 40, 0.08);
+  --mh-va-shadow-panel: 0 26px 64px rgba(20, 20, 40, 0.18), 0 4px 16px rgba(20, 20, 40, 0.1);
+
+  --mh-va-z: 2147483000; /* sit above nearly everything, incl. modals */
+}
+
+/* --------------------------------------------------------------------------
+   Root container — fixed, does not affect page layout
+   -------------------------------------------------------------------------- */
+.mh-va-root {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: var(--mh-va-z);
+  font-family: var(--mh-va-font-ui);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 14px;
+  color: var(--mh-va-text);
+}
+
+.mh-va-root * {
+  box-sizing: border-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mh-va-root, .mh-va-root * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Page glow — ambient edge-glow across the whole viewport while the
+   assistant is actively listening/thinking/speaking (Gemini/Apple-
+   Intelligence style "the whole screen is alive" effect). Pure CSS,
+   driven entirely by the existing [data-state] attribute on the root —
+   no extra JS needed. Sits low in the root's own stacking context so it
+   always paints under the panel and button, but — because the root
+   itself sits at --mh-va-z — still above all normal page content.
+   -------------------------------------------------------------------------- */
+.mh-va-page-glow {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.mh-va-root[data-state="listening"] .mh-va-page-glow { opacity: 1; }
+.mh-va-root[data-state="thinking"] .mh-va-page-glow { opacity: 0.55; }
+.mh-va-root[data-state="speaking"] .mh-va-page-glow { opacity: 0.8; }
+.mh-va-root[data-state="idle"] .mh-va-page-glow,
+.mh-va-root[data-state="error"] .mh-va-page-glow { opacity: 0; }
+
+.mh-va-glow-edge {
+  position: absolute;
+  background: linear-gradient(90deg, #f6c453, #c9962f, #f0b429, #f6c453);
+  background-size: 300% 100%;
+  filter: blur(28px);
+  animation: mh-va-glow-shift-h 7s linear infinite, mh-va-glow-breathe 2.1s ease-in-out infinite;
+}
+
+.mh-va-glow-top { top: -34px; left: 0; right: 0; height: 70px; }
+.mh-va-glow-bottom { bottom: -34px; left: 0; right: 0; height: 70px; }
+
+.mh-va-glow-left,
+.mh-va-glow-right {
+  background: linear-gradient(180deg, #f6c453, #c9962f, #f0b429, #f6c453);
+  background-size: 100% 300%;
+  animation: mh-va-glow-shift-v 7s linear infinite, mh-va-glow-breathe 2.1s ease-in-out infinite;
+}
+
+.mh-va-glow-left { top: 0; bottom: 0; left: -34px; width: 70px; }
+.mh-va-glow-right { top: 0; bottom: 0; right: -34px; width: 70px; }
+
+/* Thinking dims the shimmer speed slightly slower/steadier; speaking runs a touch faster/livelier */
+.mh-va-root[data-state="thinking"] .mh-va-glow-edge { animation-duration: 9s, 1.6s; }
+.mh-va-root[data-state="speaking"] .mh-va-glow-edge { animation-duration: 5s, 0.9s; }
+
+@keyframes mh-va-glow-shift-h {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 300% 50%; }
+}
+
+@keyframes mh-va-glow-shift-v {
+  0% { background-position: 50% 0%; }
+  100% { background-position: 50% 300%; }
+}
+
+@keyframes mh-va-glow-breathe {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+@media (max-width: 640px) {
+  .mh-va-glow-edge { filter: blur(20px); }
+  .mh-va-glow-top, .mh-va-glow-bottom { height: 46px; }
+  .mh-va-glow-left, .mh-va-glow-right { width: 46px; }
+}
+
+/* --------------------------------------------------------------------------
+   Floating mic button
+   -------------------------------------------------------------------------- */
+.mh-va-fab-wrap {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  transition: opacity 0.2s ease;
+}
+
+.mh-va-root[data-panel-open="true"] .mh-va-fab-wrap {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mh-va-fab {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: var(--mh-va-radius-full);
+  border: 1px solid var(--mh-va-border-glass-strong);
+  background: var(--mh-va-bg-glass);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: var(--mh-va-shadow-float), 0 0 0 0 rgba(201, 150, 47, 0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.25s ease,
+              border-color 0.25s ease;
+  animation: mh-va-breathe 3.6s ease-in-out infinite;
+}
+
+.mh-va-fab::before {
+  /* inner gradient ring, always faintly present */
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: var(--mh-va-gradient);
+  opacity: 0.55;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.mh-va-fab:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: var(--mh-va-shadow-float), 0 0 24px 2px rgba(201, 150, 47, 0.25);
+}
+
+.mh-va-fab:active {
+  transform: translateY(0) scale(0.96);
+}
+
+.mh-va-fab:focus-visible {
+  outline: 2px solid var(--mh-va-grad-a);
+  outline-offset: 3px;
+}
+
+.mh-va-fab-icon {
+  position: relative;
+  z-index: 2;
+  width: 22px;
+  height: 22px;
+  color: var(--mh-va-text);
+  transition: transform 0.2s ease;
+}
+
+/* Sonar ping rings — signature element, shown while LISTENING.
+   Modeled on AIS/VMS vessel-ping visuals used elsewhere in Project Manhattan. */
+.mh-va-sonar {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1.5px solid var(--mh-va-grad-a);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mh-va-root[data-state="listening"] .mh-va-sonar {
+  animation: mh-va-sonar-ping 2.1s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+}
+
+.mh-va-root[data-state="listening"] .mh-va-sonar:nth-child(1) { animation-delay: 0s; }
+.mh-va-root[data-state="listening"] .mh-va-sonar:nth-child(2) { animation-delay: 0.7s; }
+.mh-va-root[data-state="listening"] .mh-va-sonar:nth-child(3) { animation-delay: 1.4s; }
+
+.mh-va-root[data-state="listening"] .mh-va-fab {
+  animation: none;
+  border-color: rgba(201, 150, 47, 0.55);
+  box-shadow: var(--mh-va-shadow-float), 0 0 30px 4px rgba(201, 150, 47, 0.3);
+}
+
+.mh-va-root[data-state="listening"] .mh-va-fab::before {
+  opacity: 1;
+}
+
+/* Thinking — soft rotating gradient sweep */
+.mh-va-root[data-state="thinking"] .mh-va-fab {
+  animation: none;
+  border-color: transparent;
+}
+
+.mh-va-root[data-state="thinking"] .mh-va-fab::before {
+  opacity: 1;
+  animation: mh-va-spin 1.1s linear infinite;
+}
+
+.mh-va-root[data-state="thinking"] .mh-va-fab-icon {
+  animation: mh-va-pulse-scale 1s ease-in-out infinite;
+}
+
+/* Speaking — icon swaps to an EQ glyph via JS; button gently pulses */
+.mh-va-root[data-state="speaking"] .mh-va-fab {
+  animation: none;
+  border-color: rgba(201, 150, 47, 0.6);
+  box-shadow: var(--mh-va-shadow-float), 0 0 26px 3px rgba(201, 150, 47, 0.3);
+}
+
+/* Error — brand red flash + shake, self-corrects */
+.mh-va-root[data-state="error"] .mh-va-fab {
+  animation: mh-va-shake 0.42s ease;
+  border-color: var(--mh-va-error);
+  box-shadow: var(--mh-va-shadow-float), 0 0 22px 2px rgba(230, 57, 70, 0.35);
+}
+
+/* Status chip that appears above the button (state label) */
+.mh-va-status-chip {
+  position: absolute;
+  bottom: 70px;
+  right: 0;
+  padding: 6px 12px;
+  border-radius: var(--mh-va-radius-full);
+  background: var(--mh-va-bg-glass-solid);
+  border: 1px solid var(--mh-va-border-glass);
+  font-size: 12px;
+  font-family: var(--mh-va-font-mono);
+  letter-spacing: 0.02em;
+  color: var(--mh-va-text-muted);
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+  box-shadow: var(--mh-va-shadow-float);
+}
+
+.mh-va-root[data-state="listening"] .mh-va-status-chip,
+.mh-va-root[data-state="thinking"] .mh-va-status-chip,
+.mh-va-root[data-state="speaking"] .mh-va-status-chip,
+.mh-va-root[data-state="error"] .mh-va-status-chip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.mh-va-root[data-state="listening"] .mh-va-status-chip::before { content: '● '; color: var(--mh-va-grad-a); }
+.mh-va-root[data-state="thinking"] .mh-va-status-chip::before { content: '● '; color: var(--mh-va-grad-b); }
+.mh-va-root[data-state="speaking"] .mh-va-status-chip::before { content: '● '; color: var(--mh-va-grad-b); }
+.mh-va-root[data-state="error"] .mh-va-status-chip::before { content: '● '; color: var(--mh-va-error); }
+
+/* --------------------------------------------------------------------------
+   Modal launcher — replaces the small docked drawer. Click the corner fab
+   to launch a centered modal frame: greeting, conversation, a live
+   Listening/Thinking/Speaking status row, and a large mic control flanked
+   by waveform bars — the primary way to talk to the assistant once open.
+   -------------------------------------------------------------------------- */
+.mh-va-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 9, 18, 0.6);
+  backdrop-filter: blur(6px) saturate(120%);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.mh-va-root[data-panel-open="true"] .mh-va-backdrop {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mh-va-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 560px;
+  max-width: calc(100vw - 40px);
+  max-height: min(680px, calc(100vh - 48px));
+  border-radius: 28px;
+  background: var(--mh-va-bg-glass-solid);
+  backdrop-filter: blur(28px) saturate(150%);
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  border: 1px solid var(--mh-va-border-glass);
+  box-shadow: var(--mh-va-shadow-panel);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: translate(-50%, -50%) scale(0.94);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease;
+}
+
+.mh-va-root[data-panel-open="true"] .mh-va-panel {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Header */
+.mh-va-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 14px;
+  flex-shrink: 0;
+}
+
+.mh-va-panel-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mh-va-modal-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--mh-va-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(201, 150, 47, 0.35);
+}
+
+.mh-va-modal-icon svg { width: 16px; height: 16px; color: #fff; }
+
+.mh-va-panel-title-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.mh-va-panel-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.mh-va-panel-title .mh-va-grad-text {
+  background: var(--mh-va-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.mh-va-panel-subtitle {
+  font-size: 11.5px;
+  color: var(--mh-va-text-muted);
+  font-family: var(--mh-va-font-mono);
+}
+
+.mh-va-close-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--mh-va-radius-full);
+  border: 1px solid var(--mh-va-border-glass);
+  background: rgba(20, 20, 30, 0.04);
+  color: var(--mh-va-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.mh-va-close-btn:hover {
+  background: rgba(230, 57, 70, 0.12);
+  color: var(--mh-va-error);
+}
+
+.mh-va-close-btn:focus-visible {
+  outline: 2px solid var(--mh-va-grad-a);
+  outline-offset: 2px;
+}
+
+.mh-va-close-btn svg { width: 14px; height: 14px; }
+
+/* Greeting heading */
+.mh-va-modal-heading {
+  padding: 4px 24px 14px;
+  flex-shrink: 0;
+}
+
+.mh-va-modal-eyebrow {
+  font-family: var(--mh-va-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mh-va-grad-a);
+  margin-bottom: 6px;
+}
+
+.mh-va-modal-heading h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  color: var(--mh-va-text);
+}
+
+/* Message list */
+.mh-va-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 24px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(20, 20, 30, 0.18) transparent;
+  min-height: 120px;
+}
+
+.mh-va-messages::-webkit-scrollbar { width: 6px; }
+.mh-va-messages::-webkit-scrollbar-thumb {
+  background: rgba(20, 20, 30, 0.16);
+  border-radius: var(--mh-va-radius-full);
+}
+
+.mh-va-empty-state {
+  margin: auto 0;
+  text-align: center;
+  padding: 24px 12px;
+  color: var(--mh-va-text-faint);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.mh-va-empty-state strong {
+  display: block;
+  color: var(--mh-va-text-muted);
+  font-size: 13.5px;
+  margin-bottom: 4px;
+}
+
+.mh-va-msg {
+  max-width: 86%;
+  padding: 10px 13px;
+  border-radius: var(--mh-va-radius-md);
+  font-size: 13.5px;
+  line-height: 1.5;
+  animation: mh-va-bubble-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  word-wrap: break-word;
+  white-space: pre-wrap;
+}
+
+.mh-va-msg-user {
+  align-self: flex-end;
+  background: var(--mh-va-gradient);
+  color: #ffffff;
+  border-bottom-right-radius: 4px;
+}
+
+.mh-va-msg-ai {
+  align-self: flex-start;
+  background: rgba(20, 20, 30, 0.045);
+  border: 1px solid var(--mh-va-border-glass);
+  color: var(--mh-va-text);
+  border-bottom-left-radius: 4px;
+}
+
+.mh-va-msg-error {
+  align-self: center;
+  background: rgba(230, 57, 70, 0.12);
+  border: 1px solid rgba(230, 57, 70, 0.3);
+  color: #c53030;
+  font-size: 12.5px;
+  text-align: center;
+}
+
+/* Live transcript bubble — grows in place as the user speaks, sits where
+   the real user message will land once recognition finalizes. */
+.mh-va-live-bubble {
+  align-self: flex-end;
+  max-width: 86%;
+  padding: 10px 13px;
+  border-radius: var(--mh-va-radius-md);
+  border-bottom-right-radius: 4px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  background: rgba(201, 150, 47, 0.1);
+  border: 1.5px dashed rgba(201, 150, 47, 0.45);
+  color: var(--mh-va-text);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  animation: mh-va-bubble-in 0.2s ease;
+}
+
+.mh-va-live-bubble-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--mh-va-error);
+  flex-shrink: 0;
+  margin-top: 5px;
+  animation: mh-va-rec-pulse 1.3s ease-in-out infinite;
+}
+
+.mh-va-live-bubble-text {
+  flex: 1;
+  min-height: 1.5em;
+  color: var(--mh-va-text-muted);
+}
+
+.mh-va-live-bubble-text.mh-va-live-has-text {
+  color: var(--mh-va-text);
+}
+
+@keyframes mh-va-rec-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.8); }
+}
+
+.mh-va-msg-meta {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  font-family: var(--mh-va-font-mono);
+  opacity: 0.6;
+}
+
+/* Thinking indicator bubble */
+.mh-va-thinking-dots {
+  align-self: flex-start;
+  display: flex;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: var(--mh-va-radius-md);
+  background: rgba(20, 20, 30, 0.045);
+  border: 1px solid var(--mh-va-border-glass);
+}
+
+.mh-va-thinking-dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--mh-va-grad-a);
+  animation: mh-va-dot-bounce 1.1s ease-in-out infinite;
+}
+
+.mh-va-thinking-dots span:nth-child(2) { animation-delay: 0.15s; background: #f0b429; }
+.mh-va-thinking-dots span:nth-child(3) { animation-delay: 0.3s; background: var(--mh-va-grad-b); }
+
+/* --------------------------------------------------------------------------
+   State pill row — Listening / Thinking / Speaking status, only the
+   active one is lit. Purely a status readout driven by [data-state].
+   -------------------------------------------------------------------------- */
+.mh-va-state-pills {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 24px 18px;
+  flex-shrink: 0;
+}
+
+.mh-va-state-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--mh-va-radius-full);
+  border: 1px solid var(--mh-va-border-glass);
+  background: rgba(20, 20, 30, 0.035);
+  color: var(--mh-va-text-faint);
+  font-size: 12px;
+  font-weight: 600;
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mh-va-state-pill svg { width: 13px; height: 13px; }
+
+.mh-va-state-pill.mh-va-pill-active {
+  color: #fff;
+  border-color: transparent;
+  background: var(--mh-va-gradient);
+  box-shadow: 0 4px 14px rgba(201, 150, 47, 0.35);
+}
+
+/* --------------------------------------------------------------------------
+   Mic row — the primary control once the modal is open: a large mic
+   button flanked by two mirrored waveform canvases.
+   -------------------------------------------------------------------------- */
+.mh-va-mic-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 4px 20px;
+  flex-shrink: 0;
+}
+
+.mh-va-modal-wave {
+  flex: 1;
+  height: 46px;
+  max-width: 180px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.mh-va-modal-wave-left { transform: scaleX(-1); }
+
+.mh-va-root[data-state="listening"] .mh-va-modal-wave,
+.mh-va-root[data-state="speaking"] .mh-va-modal-wave {
+  opacity: 1;
+}
+
+.mh-va-modal-mic-wrap {
+  position: relative;
+  width: 78px;
+  height: 78px;
+  flex-shrink: 0;
+}
+
+.mh-va-modal-mic {
+  position: relative;
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
+  border: none;
+  background: var(--mh-va-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(201, 150, 47, 0.4), 0 4px 12px rgba(201, 150, 47, 0.25);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+  animation: mh-va-modal-mic-breathe 3.6s ease-in-out infinite;
+}
+
+.mh-va-modal-mic:hover { transform: scale(1.05); }
+.mh-va-modal-mic:active { transform: scale(0.96); }
+.mh-va-modal-mic:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+.mh-va-modal-mic svg { width: 26px; height: 26px; color: #fff; }
+
+.mh-va-root[data-state="listening"] .mh-va-modal-mic {
+  animation: none;
+  box-shadow: 0 10px 34px rgba(201, 150, 47, 0.55), 0 0 0 8px rgba(201, 150, 47, 0.12);
+}
+
+.mh-va-root[data-state="thinking"] .mh-va-modal-mic {
+  animation: mh-va-pulse-scale 1s ease-in-out infinite;
+}
+
+.mh-va-root[data-state="speaking"] .mh-va-modal-mic {
+  animation: none;
+  box-shadow: 0 10px 34px rgba(201, 150, 47, 0.55), 0 0 0 8px rgba(201, 150, 47, 0.12);
+}
+
+@keyframes mh-va-modal-mic-breathe {
+  0%, 100% { box-shadow: 0 10px 30px rgba(201, 150, 47, 0.4), 0 4px 12px rgba(201, 150, 47, 0.25); }
+  50% { box-shadow: 0 10px 34px rgba(201, 150, 47, 0.55), 0 4px 16px rgba(201, 150, 47, 0.35); }
+}
+
+/* Sonar rings around the big mic, reusing the same signature motif as the corner fab */
+.mh-va-modal-mic-wrap .mh-va-sonar {
+  border-color: rgba(201, 150, 47, 0.55);
+}
+
+/* Helper / live-transcript line under the mic */
+.mh-va-modal-helper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px 24px 4px;
+  text-align: center;
+  color: var(--mh-va-text-faint);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.mh-va-modal-helper svg { width: 13px; height: 13px; flex-shrink: 0; opacity: 0.7; }
+
+.mh-va-root[data-state="listening"] .mh-va-modal-helper {
+  color: var(--mh-va-text);
+  font-family: var(--mh-va-font-mono);
+  font-size: 12.5px;
+}
+
+#mh-va-modal-helper-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 380px;
+}
+
+/* Text fallback input (unsupported browsers, or optional always-on typed entry) */
+.mh-va-text-fallback {
+  display: none;
+  gap: 8px;
+  padding: 14px 24px 20px;
+}
+
+.mh-va-root[data-text-fallback="true"] .mh-va-text-fallback {
+  display: flex;
+}
+
+.mh-va-text-input {
+  flex: 1;
+  background: rgba(20, 20, 30, 0.03);
+  border: 1px solid var(--mh-va-border-glass);
+  border-radius: var(--mh-va-radius-full);
+  padding: 9px 14px;
+  font-size: 13px;
+  font-family: var(--mh-va-font-ui);
+  color: var(--mh-va-text);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.mh-va-text-input::placeholder { color: var(--mh-va-text-faint); }
+
+.mh-va-text-input:focus {
+  border-color: var(--mh-va-grad-a);
+}
+
+.mh-va-text-send {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: none;
+  background: var(--mh-va-gradient);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.mh-va-text-send:hover { transform: scale(1.05); }
+.mh-va-text-send:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.mh-va-text-send svg { width: 14px; height: 14px; }
+
+/* Voice unsupported: the corner fab still opens the modal normally (the
+   text fallback works fine) — only the big in-modal mic control dims,
+   since it's the piece that can't actually do anything here. */
+.mh-va-root[data-mic-supported="false"] .mh-va-modal-mic {
+  opacity: 0.4;
+  cursor: not-allowed;
+  animation: none;
+}
+
+.mh-va-root[data-mic-supported="false"] .mh-va-modal-wave {
+  display: none;
+}
+
+/* --------------------------------------------------------------------------
+   Keyframes
+   -------------------------------------------------------------------------- */
+@keyframes mh-va-breathe {
+  0%, 100% { box-shadow: var(--mh-va-shadow-float), 0 0 0 0 rgba(201, 150, 47, 0); }
+  50% { box-shadow: var(--mh-va-shadow-float), 0 0 18px 2px rgba(201, 150, 47, 0.16); }
+}
+
+@keyframes mh-va-sonar-ping {
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2.15); opacity: 0; }
+}
+
+@keyframes mh-va-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes mh-va-pulse-scale {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+@keyframes mh-va-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+
+@keyframes mh-va-bubble-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes mh-va-dot-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30% { transform: translateY(-4px); opacity: 1; }
+}
+
+/* --------------------------------------------------------------------------
+   Toast — errors surface here, never inside the modal frame, so the
+   pill/mic/waveform animation is never interrupted by a banner.
+   -------------------------------------------------------------------------- */
+.mh-va-toast {
+  position: fixed;
+  top: 28px;
+  left: 50%;
+  transform: translate(-50%, -12px);
+  z-index: calc(var(--mh-va-z) + 10);
+  max-width: min(420px, calc(100vw - 40px));
+  padding: 12px 18px;
+  border-radius: var(--mh-va-radius-md);
+  background: #fffdf8;
+  border: 1px solid rgba(230, 57, 70, 0.18);
+  border-left: 3px solid var(--mh-va-error);
+  color: var(--mh-va-text);
+  font-family: var(--mh-va-font-ui);
+  font-size: 13px;
+  line-height: 1.45;
+  box-shadow: var(--mh-va-shadow-panel);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.mh-va-toast-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+
+@media (max-width: 640px) {
+  .mh-va-toast {
+    left: 16px;
+    right: 16px;
+    max-width: none;
+    transform: translateY(-12px);
+  }
+
+  .mh-va-toast-visible {
+    transform: translateY(0);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Embedded mode — for a dedicated full page (e.g. manhattan-assistant.html)
+   rather than a floating launcher. No fab, no backdrop, always open, sits
+   inline in the page's own layout instead of position:fixed.
+   -------------------------------------------------------------------------- */
+.mh-va-root[data-embedded="true"] {
+  position: static;
+  display: block;
+  width: 100%;
+}
+
+.mh-va-root[data-embedded="true"] .mh-va-backdrop,
+.mh-va-root[data-embedded="true"] .mh-va-fab-wrap,
+.mh-va-root[data-embedded="true"] .mh-va-close-btn {
+  display: none;
+}
+
+.mh-va-root[data-embedded="true"] .mh-va-panel {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  width: 100%;
+  max-width: 720px;
+  margin: 0 auto;
+  max-height: none;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mh-va-root[data-embedded="true"] .mh-va-messages {
+  min-height: 260px;
+}
+
+.mh-va-root[data-embedded="true"] .mh-va-modal-heading h2 {
+  font-size: 26px;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive — mobile becomes a docked bottom sheet
+   -------------------------------------------------------------------------- */
+@media (max-width: 640px) {
+  .mh-va-root {
+    right: 16px;
+    bottom: 16px;
+  }
+
+  .mh-va-panel {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 48px);
+  }
+
+  .mh-va-modal-heading h2 { font-size: 19px; }
+  .mh-va-modal-wave { display: none; }
+  .mh-va-state-pills { flex-wrap: wrap; }
+
+  .mh-va-status-chip {
+    right: 4px;
+  }
+}

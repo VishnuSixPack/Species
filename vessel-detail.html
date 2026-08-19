@@ -1,0 +1,2185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Vessel · SmarTuna concept</title>
+<link rel="icon" type="image/png" href="sc-blue-logo.png"/>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+    /* ── SMARTUNA WORDMARK ── */
+    @font-face {
+      font-family: 'Bitsumis';
+      src: url('BITSUMIS.TTF') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+    .sc-wm { display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1;gap:0;text-decoration:none; }
+    .sc-wm-top { font-family:'Bitsumis',sans-serif !important;font-weight:900 !important;font-size:15px;letter-spacing:.04em;text-transform:uppercase;background:linear-gradient(90deg,#1a6fdb,#1a6fdb) !important;-webkit-background-clip:text !important;-webkit-text-fill-color:transparent !important;background-clip:text !important; }
+    .sc-wm-sub { font-family:'Bitsumis',sans-serif !important;font-weight:700 !important;font-size:7px;letter-spacing:.22em;text-transform:uppercase;color:#1a1a2e;-webkit-text-fill-color:#1a1a2e !important;margin-top:2px; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#1a6fdb;--primary-dark:#1558b0;--primary-soft:#e8f1fc;--primary-mid:#d0e4f8;
+  --bg:#f0f2f7;--white:#fff;--text:#1a1a2e;--muted:#6b7280;--soft:#9aa0b4;
+  --border:#e8eaf0;--line:#eef0f5;--line-strong:#dfe3ec;
+  --ok:#1f9d6b;--ok-soft:#e6f6ef;--danger:#e63946;--danger-soft:#fff0f1;
+  --warn:#f59e0b;--warn-soft:#fff7ed;
+  --radius:14px;--font:'Poppins','DM Sans',system-ui,sans-serif;
+  --shadow:0 1px 3px rgba(20,24,45,.05),0 8px 24px rgba(20,24,45,.06);
+  --shadow-lg:0 6px 14px rgba(20,24,45,.08),0 24px 48px rgba(20,24,45,.12);
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased}
+
+/* ── NAV ── */
+.topbar{display:flex;align-items:center;padding:14px 28px;gap:20px}
+.topbar-brand{text-decoration:none;flex-shrink:0;line-height:1.1}
+.topbar-brand-project{display:block;font-size:8px;font-weight:700;letter-spacing:2px;color:#9aa0b4}
+.topbar-brand-name{display:block;font-size:16px;font-weight:800;color:var(--text)}
+.topbar-nav{flex:1;display:flex;justify-content:center}
+.nav-pill{display:inline-flex;align-items:center;gap:2px;background:#fff;border-radius:999px;padding:5px 7px;box-shadow:0 1px 6px rgba(0,0,0,.07)}
+.nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:400;color:var(--muted);text-decoration:none;transition:.15s;white-space:nowrap}
+.nav-item img{width:15px;height:15px;object-fit:contain;opacity:.5;flex-shrink:0}
+.nav-item:hover,.nav-item.active{background:var(--bg);color:var(--text);font-weight:600}
+.nav-item:hover img,.nav-item.active img{opacity:1}
+.nav-item-wrap{position:relative}
+.nav-item-wrap::after{content:'';position:absolute;top:100%;left:0;width:100%;height:12px;background:transparent}
+.nav-item-wrap:hover .nav-dropdown{display:block}
+.topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.search-pill{display:flex;align-items:center;gap:8px;background:#fff;border-radius:999px;padding:8px 16px;font-size:12px;color:#c0c4d0;box-shadow:0 1px 4px rgba(0,0,0,.06);min-width:150px;cursor:text}
+.notif-btn{width:36px;height:36px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.07);position:relative;flex-shrink:0}
+.notif-btn img{width:17px;height:17px;object-fit:contain;opacity:.65}
+.notif-dot{position:absolute;top:5px;right:5px;width:8px;height:8px;background:#e63946;border-radius:50%;border:2px solid var(--bg)}
+.avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;box-shadow:0 1px 4px rgba(0,0,0,.12);flex-shrink:0;overflow:hidden}
+.avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:176px;overflow:hidden;z-index:999}
+.avatar-menu.open{display:block}
+.avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;color:var(--text);border-bottom:1px solid var(--border)}
+.avatar-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;color:#4a4e69;text-decoration:none;font-weight:500}
+.avatar-menu a:hover{background:var(--bg);color:var(--primary)}
+.avatar-menu button{width:100%;padding:9px 15px;background:none;border:none;border-top:1px solid var(--border);text-align:left;font-family:var(--font);font-size:13px;color:#e63946;cursor:pointer}
+.avatar-menu button:hover{background:#fff0f1}
+.nav-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:170px;padding:6px;z-index:500}
+.nav-dropdown-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;font-size:13px;color:#4a4e69;text-decoration:none;border-radius:8px;font-weight:500;transition:.15s;white-space:nowrap;cursor:pointer;position:relative}
+.nav-dropdown-item:hover{background:var(--bg);color:var(--primary)}
+.nav-dropdown-item.active{background:var(--primary-soft);color:var(--primary-dark);font-weight:600}
+.nav-dropdown-sub{display:none;position:absolute;left:calc(100% + 4px);top:0;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:160px;padding:6px;z-index:501}
+.nav-dropdown-item:hover .nav-dropdown-sub{display:block}
+
+/* ── LAYOUT ── */
+.page{display:flex;gap:0;min-height:calc(100vh - 68px)}
+
+/* ── SIDEBAR ── */
+.sidebar{width:240px;flex-shrink:0;background:#fff;border-right:1px solid var(--line);padding:0;position:sticky;top:0;height:calc(100vh - 68px);overflow-y:auto;display:flex;flex-direction:column}
+.sidebar-photo{width:100%;height:160px;object-fit:cover;background:var(--line);display:flex;align-items:center;justify-content:center;color:var(--soft);font-size:48px;overflow:hidden;flex-shrink:0}
+.sidebar-photo img{width:100%;height:100%;object-fit:cover}
+.sidebar-body{padding:18px 18px 24px;flex:1}
+.sidebar-name{font-size:17px;font-weight:700;letter-spacing:-.2px;line-height:1.25;margin-bottom:4px}
+.sidebar-flag{font-size:12.5px;color:var(--muted);margin-bottom:14px;display:flex;align-items:center;gap:5px}
+.sidebar-tags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:16px}
+.stag{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:999px}
+.stag-Active{background:var(--ok-soft);color:var(--ok)}
+.stag-Inactive{background:#f1f2f6;color:var(--soft)}
+.stag-Suspicious{background:var(--warn-soft);color:#c2410c}
+.stag-default{background:var(--primary-soft);color:var(--primary-dark)}
+.sidebar-fields{display:flex;flex-direction:column;gap:12px}
+.sf{display:flex;flex-direction:column;gap:2px}
+.sf .lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--soft)}
+.sf .val{font-size:13px;font-weight:500;color:var(--text);word-break:break-word}
+.sf .val.muted{color:var(--soft)}
+.sidebar-divider{height:1px;background:var(--line);margin:14px 0}
+.btn-tracking{width:100%;height:40px;border-radius:10px;background:var(--primary);color:#fff;border:none;font:inherit;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;margin-top:16px;box-shadow:0 4px 12px rgba(26,111,219,.25);transition:.15s}
+.btn-tracking:hover{background:var(--primary-dark)}
+
+/* ── MAIN ── */
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+
+/* ── VESSEL HEADER ── */
+.vessel-header{background:#fff;border-bottom:1px solid var(--line);padding:18px 28px 0;display:flex;flex-direction:column;gap:0}
+.vessel-header-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding-bottom:16px}
+.vessel-title{font-size:22px;font-weight:700;letter-spacing:-.3px}
+.vessel-sub{font-size:13px;color:var(--muted);margin-top:3px}
+.header-actions{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.btn{height:38px;padding:0 18px;border-radius:10px;font-weight:600;font-size:13px;cursor:pointer;border:1.5px solid var(--border);background:#fff;color:var(--text);text-decoration:none;display:inline-flex;align-items:center;gap:7px;font-family:inherit;transition:.15s}
+.btn.secondary{background:rgba(255,255,255,.1);border:1.5px solid var(--border);color:var(--text)}
+.btn.secondary:hover{background:var(--bg)}
+.btn.danger{background:var(--danger-soft);border:1.5px solid #f3cdd5;color:var(--danger)}
+.btn.danger:hover{background:#fde8ea}
+.btn:hover{border-color:var(--line-strong)}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(26,111,219,.25)}
+.btn.primary:hover{background:var(--primary-dark)}
+
+/* ── TABS ── */
+.tab-bar-wrap{position:relative;display:flex;align-items:center}
+.tab-bar{display:flex;gap:2px;overflow-x:auto;padding-bottom:0;scrollbar-width:none;scroll-behavior:smooth;flex:1}
+.tab-arrow{width:30px;height:36px;border:none;background:linear-gradient(to right,rgba(255,255,255,0),#fff 60%);cursor:pointer;color:var(--muted);font-size:18px;display:none;align-items:center;justify-content:center;flex-shrink:0;position:relative;z-index:2}
+.tab-arrow.left{background:linear-gradient(to left,rgba(255,255,255,0),#fff 60%)}
+.tab-arrow.show{display:flex}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab{padding:10px 16px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2.5px solid transparent;white-space:nowrap;transition:.14s;user-select:none}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--primary);border-bottom-color:var(--primary);font-weight:600}
+
+/* ── TAB CONTENT ── */
+.tab-content{flex:1;padding:24px 28px 60px;overflow-y:auto}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* ── CARDS ── */
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px 22px;margin-bottom:18px}
+.sub-card{background:#fafbfe;border:1px solid var(--line);border-radius:11px;padding:16px 18px}
+.sub-card-title{font-size:12px;font-weight:700;color:var(--primary-dark);margin-bottom:14px;display:flex;align-items:center;gap:7px}
+.sub-card-title::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--primary)}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--soft);display:flex;align-items:center;gap:8px}
+.card-title::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.btn-edit{height:32px;padding:0 12px;border-radius:8px;border:1.5px solid var(--border);background:#fff;font:inherit;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:5px;transition:.14s}
+.btn-edit:hover{border-color:var(--primary);color:var(--primary)}
+
+/* ── DL GRID ── */
+.dl{display:grid;grid-template-columns:1fr 1fr;gap:16px 26px}
+.dl.dl3{grid-template-columns:1fr 1fr 1fr}
+.dl.dl4{grid-template-columns:repeat(4,1fr)}
+@media(max-width:700px){.dl,.dl.dl3,.dl.dl4{grid-template-columns:1fr 1fr}}
+.full{grid-column:1/-1}
+.dt{font-size:11px;font-weight:600;color:var(--soft);margin-bottom:4px;letter-spacing:0}
+.dd{font-size:14px;font-weight:500;color:var(--text);word-break:break-word}
+.dd.muted{color:var(--soft)}
+
+/* ── BOOL BADGE ── */
+.bool{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;padding:3px 10px;border-radius:999px}
+.bool.yes{background:var(--ok-soft);color:var(--ok)}
+.bool.no{background:var(--danger-soft);color:var(--danger)}
+.bool.na{background:var(--line);color:var(--soft)}
+
+/* ── HISTORY TABLES ── */
+.hist-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:900px){.hist-grid{grid-template-columns:1fr}}
+.hist-card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.hist-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);background:#fafbfe}
+.hist-title{font-size:12.5px;font-weight:700;color:var(--text)}
+.hist-table{width:100%;border-collapse:collapse}
+.hist-table th{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--soft);padding:8px 12px;text-align:left;background:#fafbfe;border-bottom:1px solid var(--line)}
+.hist-table td{padding:9px 12px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--text)}
+.hist-table tr:last-child td{border-bottom:none}
+.hist-table tr:hover td{background:#f8fafd}
+.hist-empty{padding:20px;text-align:center;font-size:12.5px;color:var(--soft)}
+
+/* ── PVR MEASURES ── */
+.pvr-wrap{overflow-x:auto}
+.pvr-table{width:100%;border-collapse:collapse}
+.pvr-table th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);padding:10px 14px;text-align:left;border-bottom:1.5px solid var(--line-strong);white-space:nowrap}
+.pvr-table td{padding:11px 14px;border-bottom:1px solid var(--line);font-size:13px;vertical-align:middle}
+.pvr-table tr:last-child td{border-bottom:none}
+.pvr-table tr:hover td{background:#fafbfe}
+.pvr-status{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.pvr-Y{background:var(--ok-soft);color:var(--ok)}
+.pvr-N{background:var(--danger-soft);color:var(--danger)}
+.pvr-IP{background:var(--warn-soft);color:#c2410c}
+.pvr-NA{background:var(--line);color:var(--soft)}
+.pvr-dash{color:var(--soft);font-size:16px}
+.pvr-Delisted{background:#f1f2f6;color:var(--soft)}
+.pvr-Unknown{background:#fef3c7;color:#92400e}
+.pvr-Relocated{background:#ede9fe;color:#6d28d9}
+.pvr-note{font-size:11.5px;color:var(--muted);margin-top:3px}
+
+/* ── VOSI TABLE ── */
+.vosi-table{width:100%;border-collapse:collapse}
+.vosi-table th{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--soft);padding:9px 12px;text-align:left;border-bottom:1.5px solid var(--line-strong)}
+.vosi-table td{padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px}
+.vosi-table tr:last-child td{border-bottom:none}
+
+/* ── TIMELINE ── */
+/* timeline filter custom select */
+.tl-filter-csel{position:relative}
+.tl-filter-trigger{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border:1.5px solid var(--border);border-radius:10px;background:#fff;font:inherit;font-size:13px;font-weight:500;color:var(--text);cursor:pointer;transition:.14s;white-space:nowrap}
+.tl-filter-trigger:hover{border-color:var(--line-strong)}
+.tl-filter-csel.open .tl-filter-trigger{border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,111,219,.12)}
+.tl-filter-trigger svg{color:var(--soft);transition:transform .2s,color .2s;flex-shrink:0}
+.tl-filter-csel.open .tl-filter-trigger svg{transform:rotate(180deg);color:var(--primary)}
+.tl-filter-panel{position:absolute;top:calc(100% + 6px);right:0;min-width:180px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 12px rgba(20,24,45,.07),0 20px 48px rgba(20,24,45,.11);padding:6px;z-index:9999;opacity:0;visibility:hidden;transform:translateY(-6px) scale(.98);transform-origin:top right;transition:opacity .15s,transform .15s,visibility .15s}
+.tl-filter-csel.open .tl-filter-panel{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
+.tl-filter-opt{padding:9px 12px;border-radius:9px;font-size:13.5px;color:var(--text);cursor:pointer;transition:background .1s}
+.tl-filter-opt:hover{background:var(--primary-soft);color:var(--primary-dark)}
+.tl-filter-opt.active{background:var(--primary);color:#fff;font-weight:600}
+.tl-filter-opt.active:hover{background:var(--primary-dark)}
+.tl-list{display:flex;flex-direction:column;gap:0}
+.tl-date-group{margin-bottom:20px}
+.tl-date-label{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.tl-dot{width:12px;height:12px;border-radius:50%;background:#fff;border:2.5px solid var(--primary);flex-shrink:0}
+.tl-date{font-size:13px;font-weight:700;color:var(--text)}
+.tl-line{flex:1;height:1px;background:var(--line)}
+.tl-entries{margin-left:6px;border-left:2px solid var(--line);padding-left:18px;display:flex;flex-direction:column;gap:8px}
+.tl-entry{background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.tl-entry-field{font-weight:600;font-size:13px;margin-bottom:4px}
+.tl-entry-change{display:flex;align-items:center;gap:8px;font-size:12.5px}
+.tl-from{color:var(--muted)}
+.tl-arrow{color:var(--soft)}
+.tl-to{font-weight:600;color:var(--text)}
+.tl-tab-badge{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;background:var(--primary-soft);color:var(--primary-dark);margin-left:auto}
+.tl-empty{text-align:center;padding:40px;color:var(--soft)}
+
+/* ── MODAL ── */
+/* modal custom country select */
+.mcsel{position:relative}
+.mcsel-trigger{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;height:42px;padding:0 12px;border:1.5px solid var(--border);border-radius:10px;background:#fff;font:inherit;font-size:13.5px;color:var(--text);cursor:pointer;transition:.14s;text-align:left}
+.mcsel-trigger:hover{border-color:var(--line-strong)}
+.mcsel.open .mcsel-trigger{border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,111,219,.12)}
+.mcsel-trigger .mcsel-lbl{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mcsel-trigger .mcsel-lbl.ph{color:#c0c4d0}
+.mcsel-trigger svg{flex-shrink:0;color:var(--soft);transition:transform .2s,color .2s}
+.mcsel.open .mcsel-trigger svg{transform:rotate(180deg);color:var(--primary)}
+.mcsel-panel{position:absolute;top:calc(100% + 6px);left:0;width:100%;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 12px rgba(20,24,45,.07),0 20px 48px rgba(20,24,45,.11);z-index:9999;opacity:0;visibility:hidden;transform:translateY(-6px);transition:opacity .15s,transform .15s,visibility .15s;overflow:hidden}
+.mcsel.open .mcsel-panel{opacity:1;visibility:visible;transform:translateY(0)}
+.mcsel.drop-up .mcsel-panel{top:auto;bottom:calc(100% + 6px);transform:translateY(6px)}
+.mcsel.drop-up.open .mcsel-panel{transform:translateY(0)}
+.mcsel-search{padding:8px 8px 4px;background:#fff;position:sticky;top:0}
+.mcsel-search input{width:100%;height:36px;border:1.5px solid var(--border);border-radius:9px;padding:0 10px;font:inherit;font-size:13px}
+.mcsel-search input:focus{outline:none;border-color:var(--primary)}
+.mcsel-list{max-height:220px;overflow-y:auto;padding:4px 6px 6px}
+.mcsel-list::-webkit-scrollbar{width:8px}
+.mcsel-list::-webkit-scrollbar-thumb{background:#e2e6ee;border-radius:6px;border:2px solid #fff}
+.mcsel-opt{padding:9px 10px;border-radius:9px;font-size:13.5px;cursor:pointer;transition:background .1s;color:var(--text)}
+.mcsel-opt:hover{background:var(--primary-soft);color:var(--primary-dark)}
+.mcsel-opt.active{background:var(--primary);color:#fff;font-weight:600}
+.mcsel-empty{padding:14px;text-align:center;color:var(--soft);font-size:12.5px}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(20,24,45,.5);backdrop-filter:blur(3px);z-index:300;display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:.2s}
+.modal-overlay.open{opacity:1;visibility:visible}
+.modal{background:#fff;border-radius:18px;box-shadow:var(--shadow-lg);padding:28px 30px;width:540px;max-width:96vw;max-height:90vh;overflow-y:auto;transform:translateY(8px);transition:.2s}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal h3{font-size:17px;font-weight:700;margin-bottom:6px}
+.modal .sub{font-size:13px;color:var(--muted);margin-bottom:22px}
+.modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.modal-grid .full{grid-column:1/-1}
+.mfield{display:flex;flex-direction:column;gap:6px;font-size:12.5px;font-weight:500}
+.mfield input,.mfield select,.mfield textarea{font-family:inherit;font-size:13.5px;height:42px;border:1.5px solid var(--border);border-radius:10px;padding:0 12px;width:100%;transition:.14s}
+.mfield input:focus,.mfield select:focus,.mfield textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,111,219,.12)}
+.mfield textarea{height:auto;min-height:72px;padding:10px 12px;resize:vertical}
+.modal-foot{background:#fff;border-radius:0 0 18px 18px}
+.mbtn{height:42px;padding:0 22px;border-radius:10px;font-weight:600;font-size:13.5px;cursor:pointer;border:1.5px solid var(--border);background:#fff;color:var(--text);font-family:inherit;transition:.15s}
+.mbtn.primary{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(26,111,219,.25)}
+.mbtn.primary:hover{background:var(--primary-dark)}
+
+/* ── NOTES ── */
+
+
+/* ── SKEL / EMPTY ── */
+.skel{height:120px;border-radius:var(--radius);background:linear-gradient(90deg,#eef1f6,#f7f9fc,#eef1f6);background-size:200% 100%;animation:sh 1.3s infinite;margin-bottom:16px}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.empty-state{text-align:center;padding:40px;color:var(--soft);font-size:13px}
+
+/* ── TOAST ── */
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(12px);background:var(--text);color:#fff;padding:13px 20px;border-radius:11px;font-weight:600;opacity:0;visibility:hidden;transition:opacity .25s,transform .28s cubic-bezier(.2,.8,.2,1),visibility .25s;z-index:1000}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1;visibility:visible;box-shadow:var(--shadow-lg)}
+.toast.err{background:var(--danger)}
+
+/* ── PREMIUM THIN SCROLLBAR ── */
+*::-webkit-scrollbar{width:6px;height:6px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:#d1d5e0;border-radius:99px}
+*::-webkit-scrollbar-thumb:hover{background:#a0a8bc}
+html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
+</style>
+<!-- Quill rich text editor -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.snow.min.css" rel="stylesheet"/>
+<style>
+/* ── PREMIUM CONFIRM MODAL ── */
+.confirm-overlay{position:fixed;inset:0;background:rgba(20,24,45,.55);backdrop-filter:blur(5px);z-index:500;display:flex;align-items:center;justify-content:center;opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s}
+.confirm-overlay.open{opacity:1;visibility:visible}
+.confirm-box{background:#fff;border-radius:20px;box-shadow:0 8px 32px rgba(20,24,45,.16),0 32px 64px rgba(20,24,45,.10);padding:32px 32px 28px;width:400px;max-width:94vw;transform:scale(.94) translateY(8px);transition:transform .22s cubic-bezier(.2,.8,.2,1);text-align:center}
+.confirm-overlay.open .confirm-box{transform:scale(1) translateY(0)}
+.confirm-icon{width:52px;height:52px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:22px}
+.confirm-icon.danger{background:var(--danger-soft)}
+.confirm-title{font-size:17px;font-weight:700;color:var(--text);margin-bottom:8px}
+.confirm-msg{font-size:13.5px;color:var(--muted);line-height:1.6;margin-bottom:24px}
+.confirm-actions{display:flex;gap:10px;justify-content:center}
+.confirm-btn{height:42px;padding:0 22px;border-radius:11px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:.15s}
+.confirm-btn-cancel{background:#fff;border-color:var(--border);color:var(--muted)}
+.confirm-btn-cancel:hover{border-color:var(--line-strong);color:var(--text)}
+.confirm-btn-danger{background:var(--danger);color:#fff;border-color:var(--danger);box-shadow:0 4px 12px rgba(230,57,70,.25)}
+.confirm-btn-danger:hover{background:#c62d39;border-color:#c62d39}
+
+/* ── Quill rich editor — Manhattan premium theme ── */
+.notes-editor-wrap{border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden;background:#fff;transition:border-color .14s,box-shadow .14s}
+.notes-editor-wrap:focus-within{border-color:var(--primary);box-shadow:0 0 0 3.5px rgba(26,111,219,.10)}
+.ql-toolbar.ql-snow{border:none;border-bottom:1px solid var(--line);background:#fafbfe;padding:10px 12px;font-family:var(--font)}
+.ql-toolbar.ql-snow .ql-formats{margin-right:10px}
+.ql-container.ql-snow{border:none;font-family:var(--font);font-size:14px;color:var(--text)}
+.ql-editor{min-height:160px;padding:16px 18px;line-height:1.7}
+.ql-editor.ql-blank::before{color:#c0c4d0;font-style:normal;font-size:13.5px;left:18px}
+.ql-snow.ql-toolbar button{border-radius:6px;padding:3px 5px;height:28px;width:28px}
+.ql-snow.ql-toolbar button:hover{background:var(--primary-soft);color:var(--primary)}
+.ql-snow.ql-toolbar button:hover .ql-stroke{stroke:var(--primary)}
+.ql-snow.ql-toolbar button.ql-active{background:var(--primary-soft)}
+.ql-snow.ql-toolbar button.ql-active .ql-stroke{stroke:var(--primary)}
+.ql-snow .ql-picker-label{border-radius:6px}
+.ql-snow .ql-picker-label:hover{color:var(--primary)}
+/* Note cards */
+.note-card{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:12px;transition:box-shadow .14s}
+.note-card:hover{box-shadow:0 2px 10px rgba(20,24,45,.06)}
+.note-card-meta{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+.note-card-author{font-size:12.5px;font-weight:600;color:var(--text)}
+.note-card-date{font-size:11.5px;color:var(--soft)}
+.note-card-body{font-size:13.5px;line-height:1.65;color:var(--text)}
+.note-card-body h1,.note-card-body h2,.note-card-body h3{font-size:15px;font-weight:700;margin-bottom:4px}
+.note-card-body p{margin-bottom:8px}
+.note-card-body p:last-child{margin-bottom:0}
+.note-card-body ul,.note-card-body ol{padding-left:20px;margin-bottom:8px}
+.note-card-body strong{font-weight:700}
+.note-card-body em{font-style:italic}
+.note-card-body a{color:var(--primary);text-decoration:underline}
+</style>
+</head>
+<body>
+<script>
+// Hide wizard immediately if editing an existing vessel — prevents flash
+if(new URLSearchParams(location.search).get('id')){
+  document.addEventListener('DOMContentLoaded',()=>{
+    const w=document.getElementById('wizard');
+    if(w) w.style.display='none';
+  });
+  // Also set display:none inline before DOM ready via style injection
+  const s=document.createElement('style');
+  s.textContent='#wizard{display:none!important}';
+  document.head.appendChild(s);
+}
+</script>
+
+<!-- NAV -->
+<div class="topbar">
+  <a href="index.html" class="topbar-brand" style="display:flex;align-items:center;gap:9px;">
+    <img src="sc-blue-logo.png" alt="SmarTuna" style="width:26px;height:26px;object-fit:contain;flex-shrink:0;"/>
+      <span class="sc-wm">
+        <span class="sc-wm-top">SmarTuna</span>
+        <span class="sc-wm-sub">concept</span>
+      </span>
+  </a>
+  <div class="topbar-nav">
+    <div class="nav-pill">
+      <a href="home-logged-in.html" class="nav-item"><img src="home.png" alt=""/>Home</a>
+      <div class="nav-item-wrap">
+        <a href="organisation.html" class="nav-item"><img src="my-studio.png" alt=""/>My Studio</a>
+        <div class="nav-dropdown">
+          <a href="product-list.html" class="nav-dropdown-item">Product</a>
+          <a href="organisation.html" class="nav-dropdown-item">Your Company</a>
+        </div>
+      </div>
+      <div class="nav-item-wrap">
+        <a href="Species.html" class="nav-item active"><img src="atlas.png" alt=""/>Atlas</a>
+        <div class="nav-dropdown">
+          <a href="Species.html" class="nav-dropdown-item">Species</a>
+          <a href="cold-storage-list.html" class="nav-dropdown-item">Cold Storage</a>
+          <a href="#" class="nav-dropdown-item">Ports</a>
+          <a href="vessel-list.html" class="nav-dropdown-item active">Vessels</a>
+          <a href="country.html" class="nav-dropdown-item">Country</a>
+          <div class="nav-dropdown-item" style="position:relative;">Others
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+            <div class="nav-dropdown-sub">
+              <a href="#" class="nav-dropdown-item">MSC Fisheries</a>
+              <a href="#" class="nav-dropdown-item">ASC Farms</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <a href="#" class="nav-item"><img src="features.png" alt=""/>Features</a>
+      <a href="#" class="nav-item"><img src="messages.png" alt=""/>Messages</a>
+      <a href="#" class="nav-item"><img src="report.png" alt=""/>Reports</a>
+      <a href="report.html" class="nav-item"><img src="support.png" alt=""/>Support</a>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="search-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search here...</div>
+    <div class="notif-btn"><img src="notification.png" alt=""/><div class="notif-dot"></div></div>
+    <div style="position:relative;flex-shrink:0">
+      <div class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()"><span id="avatarInitials">··</span></div>
+      <div class="avatar-menu" id="avatarMenu">
+        <div class="avatar-menu-name" id="avatarGreeting">Hello!</div>
+        <a href="profile.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Profile</a>
+        <button onclick="handleLogout()">Logout</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BODY -->
+<div class="page">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-photo" id="sidePhoto">🚢</div>
+    <div class="sidebar-body">
+      <div class="sidebar-name" id="sideName">Loading…</div>
+      <div class="sidebar-flag" id="sideFlag"></div>
+      <div class="sidebar-tags" id="sideTags"></div>
+      <div class="sidebar-fields" id="sideFields"></div>
+      <div class="sidebar-divider"></div>
+      <button class="btn-tracking" id="trackingBtn" onclick="openTracking()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+        Live Tracking
+      </button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="vessel-header">
+      <div class="vessel-header-top">
+        <div>
+          <div class="vessel-title" id="hdrTitle">Loading…</div>
+          <div class="vessel-sub" id="hdrSub"></div>
+        </div>
+        <div class="header-actions" id="hdrActions"></div>
+      </div>
+      <div class="tab-bar-wrap">
+        <button class="tab-arrow left" id="tabArrowL" onclick="scrollTabs(-1)">‹</button>
+        <div class="tab-bar" id="tabBar"></div>
+        <button class="tab-arrow right" id="tabArrowR" onclick="scrollTabs(1)">›</button>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tabContent">
+      <div class="skel"></div><div class="skel"></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL (shared) -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modal">
+    <div class="modal-inner">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px">
+        <h3 id="modalTitle" style="margin-bottom:0">Add entry</h3>
+        <button onclick="closeModal()" style="width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--soft);flex-shrink:0;transition:.14s;margin-left:12px" title="Close" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--soft)'">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="sub" id="modalSub"></div>
+      <div id="modalBody"></div>
+    </div>
+    <div class="modal-foot" style="padding:16px 24px;border-top:1px solid var(--line);flex-shrink:0;display:flex;justify-content:flex-end;gap:10px">
+      <button class="mbtn" onclick="closeModal()">Cancel</button>
+      <button class="mbtn primary" id="modalSave" onclick="saveModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- PREMIUM CONFIRM MODAL -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box" id="confirmBox">
+    <div class="confirm-icon danger" id="confirmIcon">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+    </div>
+    <div class="confirm-title" id="confirmTitle">Delete this note?</div>
+    <div class="confirm-msg" id="confirmMsg">This action cannot be undone.</div>
+    <div class="confirm-actions">
+      <button class="confirm-btn confirm-btn-cancel" onclick="closeConfirm()">Cancel</button>
+      <button class="confirm-btn confirm-btn-danger" id="confirmOkBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- AIS TRACKING MODAL -->
+<div id="aisModal" style="display:none;position:fixed;inset:0;z-index:400;background:rgba(20,24,45,.6);backdrop-filter:blur(4px);align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:20px;box-shadow:0 8px 32px rgba(20,24,45,.18);width:900px;max-width:97vw;max-height:90vh;overflow:hidden;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 22px;border-bottom:1px solid var(--line);flex-shrink:0">
+      <div>
+        <div style="font-size:16px;font-weight:700" id="aisTitle">Live Vessel Tracking</div>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:2px" id="aisSub">Powered by MarineTraffic · AIS data</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <a id="aisExtLink" href="#" target="_blank" rel="noopener"
+          style="height:36px;padding:0 14px;border-radius:9px;border:1.5px solid var(--border);background:#fff;font:inherit;font-size:12.5px;font-weight:600;color:var(--text);text-decoration:none;display:inline-flex;align-items:center;gap:6px">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Open in MarineTraffic
+        </a>
+        <button onclick="closeTracking()" style="width:34px;height:34px;border-radius:50%;border:1.5px solid var(--border);background:#fff;cursor:pointer;font-size:17px;color:var(--soft);display:flex;align-items:center;justify-content:center;transition:.14s" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--soft)'">✕</button>
+      </div>
+    </div>
+    <div id="aisContent" style="flex:1;min-height:0;position:relative;background:#f0f2f7">
+      <div id="aisLoading" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--muted)">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        <span style="font-size:13px">Loading vessel position…</span>
+      </div>
+      <iframe id="aisFrame" style="width:100%;height:520px;border:none;display:none" allowfullscreen></iframe>
+    </div>
+    <div id="aisNoMMSI" style="display:none;padding:32px;text-align:center;color:var(--muted)">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--soft)" stroke-width="1.5" style="margin-bottom:12px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px">No MMSI number recorded</div>
+      <div style="font-size:13px">AIS tracking requires an MMSI number. Add one to this vessel record to enable live tracking.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
+const SUPABASE_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtDate=d=>d?new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):'—';
+// Detect system timezone abbreviation once
+const TZ_NAME=(()=>{
+  try{
+    const s=new Intl.DateTimeFormat('en',{timeZoneName:'short'}).format(new Date());
+    const m=s.match(/[A-Z]{2,5}$/); return m?m[0]:'';
+  }catch(e){return '';}
+})();
+function fmtDateTime(d){
+  if(!d) return '—';
+  const dt=new Date(d);
+  const date=dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+  const time=dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',hour12:true}).toUpperCase();
+  return `${date}, ${time}${TZ_NAME?' '+TZ_NAME:''}`;
+}
+const vid=new URLSearchParams(location.search).get('id');
+let vessel={}, isAdmin=false, activeTab='overview', curModalType=null;
+
+const PVR_STATUS_CLASS={'Y':'pvr-Y','N':'pvr-N','IP':'pvr-IP','N/A':'pvr-NA','-':'pvr-NA','Delisted':'pvr-Delisted','Status Unknown':'pvr-Unknown','Relocated':'pvr-Relocated'};
+const PVR_STATUS_ICON={'Y':'✓','N':'✕','IP':'⟳','N/A':'N/A','-':'–','Delisted':'–','Status Unknown':'⚠','Relocated':'→'};
+
+// ── TABS BY CATEGORY ──
+const ALL_TABS=[
+  {id:'overview',label:'Overview'},
+  {id:'ownership',label:'Ownership & Management'},
+  {id:'compliance',label:'Compliance & Listings',cats:['Fishing Vessel','Carrier/Reefer']},
+  {id:'rfmo',label:'RFMO Authorizations',cats:['Fishing Vessel','Carrier/Reefer']},
+  {id:'issf',label:'ISSF Records',cats:['Fishing Vessel']},
+  {id:'sustain',label:'Sustainability & Certifications',cats:['Fishing Vessel']},
+  {id:'notes',label:'Note'},
+  {id:'timeline',label:'Timeline'},
+  {id:'history',label:'History'},
+];
+
+function bool(v,naLabel){
+  if(v===null||v===undefined) return `<span class="bool na">${naLabel||'—'}</span>`;
+  return v?`<span class="bool yes">✓ Yes</span>`:`<span class="bool no">✕ No</span>`;
+}
+function val(v){return v==null||v===''?`<span class="dd muted">—</span>`:`<span class="dd">${esc(v)}</span>`;}
+
+// ── INIT ──
+(async function init(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){location.href='login.html';return;}
+  if(!vid){$('tabContent').innerHTML='<div class="empty-state">No vessel specified.</div>';return;}
+  const {data:p}=await sb.from('profiles').select('role,first_name,last_name,avatar_color,photo_url').eq('id',user.id).single();
+  isAdmin=p&&['admin','operator'].includes(p.role);
+  const first=p?.first_name||user.email.split('@')[0];
+  const last=p?.last_name||'';
+  if(p?.photo_url) $('avatarBtn').innerHTML=`<img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover">`;
+  else{$('avatarBtn').style.background=p?.avatar_color||'#1a6fdb';$('avatarInitials').textContent=((first[0]||'')+(last[0]||'')).toUpperCase()||'··';}
+  $('avatarGreeting').textContent=`Hello, ${first}!`;
+
+  const {data:v,error}=await sb.from('vessels').select('*').eq('id',vid).single();
+  if(error||!v){$('tabContent').innerHTML='<div class="empty-state">Vessel not found.</div>';return;}
+  vessel=v;
+  renderSidebar();
+  renderHeader();
+  buildTabs();
+  renderTab(activeTab);
+})();
+
+// ── SIDEBAR ──
+function renderSidebar(){
+  const v=vessel;
+  if(v.photo_url) $('sidePhoto').innerHTML=`<img src="${esc(v.photo_url)}" alt="">`;
+  $('sideName').textContent=v.current_name;
+  $('sideFlag').innerHTML=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> Flag: ${esc(v.vessel_flag||'Unknown')}`;
+  const tags=v.tags||[];
+  $('sideTags').innerHTML=tags.length?tags.map(t=>`<span class="stag stag-${t.replace(/\s/g,'')}" style="${!['Active','Inactive','Suspicious'].includes(t)?'background:var(--primary-soft);color:var(--primary-dark)':''}">${esc(t)}</span>`).join(''):'';
+  // derive previous names/flags from name history — shown after load
+  const fields=[
+    {l:'IMO',v:v.imo},
+    {l:'MMSI',v:v.mmsi},
+    {l:'Previous Names',v:'—',id:'sidePrevNames'},
+    {l:'Previous Flags',v:'—',id:'sidePrevFlags'},
+    {l:'Port of Registry',v:v.port_of_registry},
+    {l:'Registered Owner',v:v.registered_owner},
+  ];
+  $('sideFields').innerHTML=fields.map(f=>`<div class="sf"><div class="lbl">${f.l}</div><div class="dd val" ${f.id?`id="${f.id}"`:''}>${esc(f.v||'—')}</div></div>`).join('');
+  // load name history for previous names/flags
+  sb.from('vessel_name_history').select('name,flag').eq('vessel_id',vid).order('valid_from',{ascending:false}).then(({data})=>{
+    if(!data||!data.length) return;
+    const names=[...new Set(data.map(r=>r.name).filter(n=>n!==vessel.current_name))];
+    const flags=[...new Set(data.map(r=>r.flag).filter(Boolean).filter(f=>f!==vessel.vessel_flag))];
+    if($('sidePrevNames')) $('sidePrevNames').textContent=names.length?names.join(', '):'—';
+    if($('sidePrevFlags')) $('sidePrevFlags').textContent=flags.length?flags.join(', '):'—';
+  });
+}
+
+// ── HEADER ──
+function renderHeader(){
+  const v=vessel;
+  $('hdrTitle').textContent=v.current_name;
+  $('hdrSub').textContent=`${v.vessel_subtype||v.vessel_category||'Vessel'} · ${v.vessel_flag||'Flag unknown'}`;
+  const backBtn=`<a href="vessel-list.html" class="btn secondary" style="margin-right:8px">← Vessels</a>`;
+  const editBtn=isAdmin?`<a class="btn primary" href="vessel.html?id=${v.id}">Edit vessel</a>`:'';
+  const delBtn=isAdmin?`<button class="btn danger" onclick="confirmDelete('${v.id}')" style="margin-left:8px">Delete vessel</button>`:'';
+  $('hdrActions').innerHTML=backBtn+editBtn+delBtn;
+  document.title=`${v.current_name} · SmarTuna concept`;
+}
+
+// ── TABS ──
+function buildTabs(){
+  const cat=vessel.vessel_category;
+  const visible=ALL_TABS.filter(t=>!t.cats||t.cats.includes(cat));
+  $('tabBar').innerHTML=visible.map(t=>`<div class="tab${t.id===activeTab?' active':''}" data-tab="${t.id}" onclick="switchTab('${t.id}')">${t.label}</div>`).join('');
+  checkTabArrows();
+  $('tabBar').addEventListener('scroll',checkTabArrows);
+  window.addEventListener('resize',checkTabArrows);
+}
+function checkTabArrows(){
+  const bar=$('tabBar'); if(!bar) return;
+  const al=$('tabArrowL'), ar=$('tabArrowR');
+  if(!al||!ar) return;
+  al.classList.toggle('show', bar.scrollLeft > 10);
+  ar.classList.toggle('show', bar.scrollLeft < bar.scrollWidth - bar.clientWidth - 10);
+}
+function scrollTabs(dir){
+  const bar=$('tabBar'); if(!bar) return;
+  bar.scrollBy({left:dir*180,behavior:'smooth'});
+  setTimeout(checkTabArrows,350);
+}
+function switchTab(id){
+  activeTab=id;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===id));
+  renderTab(id);
+}
+
+// ── RENDER TAB ──
+async function renderTab(id){
+  const tc=$('tabContent');
+  const v=vessel;
+
+  // Notes tab: never use innerHTML (destroys Quill) — use dedicated function
+  if(id==='notes'){
+    await renderNotesTab(tc);
+    return;
+  }
+
+  tc.innerHTML='<div class="skel"></div><div class="skel"></div>';
+  switch(id){
+    case 'overview': tc.innerHTML=renderOverview(v); break;
+    case 'ownership': tc.innerHTML=renderOwnership(v); break;
+    case 'compliance': tc.innerHTML=await renderCompliance(v); break;
+    case 'rfmo': tc.innerHTML=renderRFMO(v); break;
+    case 'issf': tc.innerHTML=await renderISSF(v); break;
+    case 'sustain': tc.innerHTML=renderSustain(v); await loadOtherLicenses(); break;
+    case 'timeline': tc.innerHTML=renderTimelineShell(); await loadTimeline(); break;
+    case 'history': tc.innerHTML=renderHistoryShell(); await loadHistory(); break;
+  }
+}
+
+async function renderNotesTab(tc){
+  // Build the two-card layout directly into DOM (not via innerHTML)
+  // This keeps the editor card alive across tab switches
+  tc.innerHTML=''; // clear previous tab content
+
+  if(isAdmin){
+    // Editor card — built once, Quill attaches to real DOM node
+    const editorCard=document.createElement('div');
+    editorCard.className='card';
+    editorCard.style.marginBottom='16px';
+    editorCard.innerHTML=`
+      <div class="card-head">
+        <div class="card-title">Add Note</div>
+        <button onclick="saveNote()" id="addNoteBtn" style="height:36px;padding:0 18px;border-radius:9px;background:var(--primary);color:#fff;border:none;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:.15s">Add Note</button>
+      </div>
+      <div class="notes-editor-wrap">
+        <div id="noteEditor"></div>
+      </div>`;
+    tc.appendChild(editorCard);
+  }
+
+  // List card
+  const listCard=document.createElement('div');
+  listCard.className='card';
+  listCard.id='notesListCard';
+  listCard.innerHTML=`
+    <div class="card-head"><div class="card-title">Notes</div></div>
+    <div id="notesList"><div style="padding:20px;text-align:center;color:var(--soft);font-size:13px">Loading…</div></div>`;
+  tc.appendChild(listCard);
+
+  // Reset quillEditor so it re-inits into the fresh #noteEditor div
+  quillEditor=null;
+  await loadNotes();
+}
+
+// ── OVERVIEW ──
+function renderOverview(v){
+  const cat=v.vessel_category||'';
+  const isFishing=cat==='Fishing Vessel';
+  const isReefer=cat==='Carrier/Reefer';
+  const isCargo=cat==='Cargo/Transport';
+  const isSupport=cat==='Support/Tender';
+  const isReeferOrFish=isFishing||isReefer;
+  const lu=v.length_unit||'m';
+  const du=v.draught_unit||'m';
+  const dwtu=v.dwt_unit||'MT';
+  const eng=v.engine_power?(v.engine_power+' '+(v.engine_power_unit||'kW')):null;
+
+  // Base fields — shown for ALL types
+  const isCargoOrSupport=isCargo||isSupport;
+  const base=[
+    ['Vessel Category',val(v.vessel_category)],
+    ['Vessel Subtype',val(v.vessel_subtype)],
+    v.general_vessel_type?['General Type',val(v.general_vessel_type)]:null,
+    v.detailed_vessel_type?['Detailed Type',val(v.detailed_vessel_type)]:null,
+    ['Vessel Flag',val(v.vessel_flag)],
+    ['IRCS',val(v.ircs)],
+    ['IMO Number',val(v.imo)],
+    ['MMSI',val(v.mmsi)],
+    ['Registration Number',val(v.registration_number)],
+    (isCargoOrSupport&&v.official_number)?['Official Number',val(v.official_number)]:null,
+    ['Port of Registry',val(v.port_of_registry)],
+    ['Built in Country',val(v.built_in_country)],
+    ['Built in Place',val(v.built_in_place)],
+    ['Built in Year',val(v.built_in_year)],
+    ['Hull Material',val(v.hull_material)],
+    ['Crew Complement',val(v.crew_complement)],
+    ['Engine Power',val(eng)],
+    isCargoOrSupport?['AIS Transponder Class',val(v.ais_transponder_class)]:null,
+    (isCargoOrSupport&&v.class_society)?['Class Society',val(v.class_society)]:null,
+    (isCargoOrSupport&&v.class_number)?['Class Number',val(v.class_number)]:null,
+    ['Flag State Not FOC',bool(v.flag_state_foc)],
+  ].filter(Boolean);
+
+  // Tonnage fields
+  const tonnage=[
+    v.vessel_tonnage?['Gross Tonnage',val(v.vessel_tonnage+' '+(v.tonnage_type||'GT'))]:null,
+    (isCargoOrSupport&&v.nrt)?['NRT',val(v.nrt+' NRT')]:null,
+    (isCargoOrSupport&&v.dwt)?['DWT',val(v.dwt+' '+dwtu)]:null,
+    (isCargo&&v.teu_capacity)?['TEU Capacity',val(v.teu_capacity+' TEUs')]:null,
+  ].filter(Boolean);
+
+  // Dimension fields — lengths only for Cargo/Transport + Support/Tender
+  const dims=[
+    (isCargoOrSupport&&v.registered_length)?['Registered Length',val(v.registered_length+' '+lu)]:null,
+    (isCargoOrSupport&&v.loa)?['L.O.A',val(v.loa+' '+lu)]:null,
+    (isCargoOrSupport&&v.lbp)?['L.B.P',val(v.lbp+' '+lu)]:null,
+    v.beam_m?['Beam',val(v.beam_m+' m')]:null,
+    v.depth_m?['Depth',val(v.depth_m+' m')]:null,
+    (isCargoOrSupport&&v.draught)?['Draught',val(v.draught+' '+du)]:null,
+  ].filter(Boolean);
+
+  // Reefer/fishing only fields
+  const reefer=isReeferOrFish?[
+    v.fish_hold_capacity?['Fish Hold Capacity',val(v.fish_hold_capacity+' m³')]:null,
+    v.freezer_type?['Freezing Method',val(v.freezer_type)]:null,
+    v.freezing_method?['Lowest Freezing Temp',val(v.freezing_method+' °C')]:null,
+    v.freezer_count?['Freezer Count',val(v.freezer_count)]:null,
+    v.freezing_capacity?['Freezing Capacity',val(v.freezing_capacity)]:null,
+  ].filter(Boolean):[];
+
+  // Fishing-only
+  const fishing=isFishing?[
+    v.gear_type?['Gear Type',val(v.gear_type)]:null,
+  ].filter(Boolean):[];
+
+  function row([l,v]){ return `<div><div class="dt">${l}</div>${v}</div>`; }
+
+  const sections=[];
+  if(base.length) sections.push(`<div class="card-sub-title" style="margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft)">Identity</div><div class="dl dl3" style="margin-bottom:16px">${base.map(row).join('')}</div>`);
+  if(tonnage.length) sections.push(`<div class="card-sub-title" style="margin:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft)">Tonnage</div><div class="dl dl3" style="margin-bottom:16px">${tonnage.map(row).join('')}</div>`);
+  if(dims.length) sections.push(`<div class="card-sub-title" style="margin:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft)">Dimensions</div><div class="dl dl3" style="margin-bottom:16px">${dims.map(row).join('')}</div>`);
+  if(reefer.length) sections.push(`<div class="card-sub-title" style="margin:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft)">Reefer / Cold Storage</div><div class="dl dl3" style="margin-bottom:16px">${reefer.map(row).join('')}</div>`);
+  if(fishing.length) sections.push(`<div class="card-sub-title" style="margin:10px 0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft)">Fishing</div><div class="dl dl3" style="margin-bottom:16px">${fishing.map(row).join('')}</div>`);
+
+  return `<div class="card">
+    <div class="card-head"><div class="card-title">Vessel Details</div></div>
+    ${sections.join('')}
+  </div>`;
+}
+
+// ── OWNERSHIP ──
+function renderOwnership(v){
+  const charter=v.charterer?`
+    <div class="sub-card" style="margin-top:16px">
+      <div class="sub-card-title">Charter</div>
+      <div class="dl">
+        <div><div class="dt">Charterer</div>${val(v.charterer)}</div>
+        <div><div class="dt">Address</div>${val(v.charterer_addr)}</div>
+        <div><div class="dt">Charter Start</div>${val(fmtDate(v.charter_start))}</div>
+        <div><div class="dt">Charter End</div>${val(fmtDate(v.charter_end))}</div>
+        <div><div class="dt">Notified Date</div>${val(fmtDate(v.charter_notified_date))}</div>
+        <div><div class="dt">Notified by</div>${val(v.charter_notified_by)}</div>
+        <div><div class="dt">Host CCM</div>${val(v.charter_host_ccm)}</div>
+        <div><div class="dt">Updated</div>${val(fmtDate(v.charter_updated))}</div>
+        ${v.charter_notes?`<div class="full"><div class="dt">Notes</div>${val(v.charter_notes)}</div>`:''}
+      </div>
+    </div>`:'';
+  return `<div class="card">
+    <div class="card-head"><div class="card-title">Ownership & Management</div></div>
+    <div class="sub-card">
+      <div class="sub-card-title">Registered Owner</div>
+      <div class="dl">
+        <div><div class="dt">Name</div>${val(v.registered_owner)}</div>
+        <div><div class="dt">Address</div>${val(v.registered_owner_addr)}</div>
+      </div>
+    </div>
+    <div class="sub-card" style="margin-top:16px">
+      <div class="sub-card-title">Beneficial Owner</div>
+      <div class="dl">
+        <div><div class="dt">Name</div>${val(v.beneficial_owner)}</div>
+        <div><div class="dt">Address</div>${val(v.beneficial_owner_addr)}</div>
+      </div>
+    </div>
+    <div class="sub-card" style="margin-top:16px">
+      <div class="sub-card-title">Operator / Manager</div>
+      <div class="dl">
+        <div><div class="dt">Name</div>${val(v.operator_manager)}</div>
+        <div><div class="dt">Address</div>${val(v.operator_addr)}</div>
+      </div>
+    </div>
+    <div class="sub-card" style="margin-top:16px">
+      <div class="sub-card-title">Vessel Master</div>
+      <div class="dl">
+        <div><div class="dt">Master Name</div>${val(v.vessel_master_name)}</div>
+        <div><div class="dt">Nationality</div>${val(v.master_nationality)}</div>
+      </div>
+    </div>
+    ${charter}
+  </div>`;
+}
+
+// ── COMPLIANCE ──
+async function renderCompliance(v){
+  const {data:iuuHist}=await sb.from('vessel_iuu_history').select('*').eq('vessel_id',vid).order('created_at',{ascending:false});
+  const iuu=iuuHist&&iuuHist[0];
+  return `<div class="card">
+    <div class="card-head"><div class="card-title">Compliance & Listings</div></div>
+
+    <div class="sub-card">
+      <div class="sub-card-title">IUU Listing</div>
+      <div class="dl">
+        <div><div class="dt">IUU Listed</div>${bool(v.iuu_listed)}</div>
+        ${iuu?`
+        <div><div class="dt">Previously Listed</div>${bool(iuu.previously_listed)}</div>
+        <div><div class="dt">IUU List Name</div>${val(iuu.iuu_list_name)}</div>
+        <div><div class="dt">Date Listed</div>${val(fmtDate(iuu.date_listed))}</div>
+        <div><div class="dt">Delisted Date</div>${val(fmtDate(iuu.delisted_date))}</div>
+        <div><div class="dt">Delisted Reason</div>${val(iuu.delisted_reason)}</div>
+        <div class="full"><div class="dt">Reason for Removal from Delist</div>${val(iuu.reason_removal)}</div>
+        `:'<div class="full"><span style="color:var(--soft);font-size:13px">No IUU listing recorded.</span></div>'}
+      </div>
+    </div>
+
+    <div class="sub-card" style="margin-top:16px">
+      <div class="sub-card-title">UK Approval</div>
+      <div class="dl">
+        <div><div class="dt">UK Approved</div>${bool(v.uk_approved)}</div>
+        ${v.uk_approved?`
+        <div><div class="dt">UK Auth. No.</div>${val(v.uk_auth_no)}</div>
+        <div><div class="dt">Activities</div>${val(v.uk_activities)}</div>
+        <div><div class="dt">Date of Request</div>${val(fmtDate(v.uk_date_of_request))}</div>
+        `:''}
+      </div>
+    </div>
+
+    <div class="sub-card" style="margin-top:16px">
+      <div class="sub-card-title">EU Approval</div>
+      <div class="dl">
+        <div><div class="dt">EU Approved</div>${bool(v.eu_approved)}</div>
+        ${v.eu_approved?`
+        <div><div class="dt">EU Approval No.</div>${val(v.eu_approval_no)}</div>
+        <div><div class="dt">Publishing Date</div>${val(fmtDate(v.eu_publishing_date))}</div>
+        `:''}
+      </div>
+    </div>
+
+    <div class="sub-card" style="margin-top:16px">
+      <div class="sub-card-title">FFA Good Standing</div>
+      <div class="dl">
+        <div><div class="dt">Good Standing</div>${bool(v.ffa_good_standing)}</div>
+        ${v.ffa_good_standing?`
+        <div><div class="dt">FFA ID</div>${val(v.ffa_id)}</div>
+        <div><div class="dt">Status</div>${val(v.ffa_status)}</div>
+        <div><div class="dt">Registration Date</div>${val(fmtDate(v.ffa_registration_date))}</div>
+        <div><div class="dt">Registration End</div>${val(fmtDate(v.ffa_registration_end))}</div>
+        <div><div class="dt">Registrant Acting As</div>${val(v.ffa_registrant_acting)}</div>
+        <div><div class="dt">Reason Deregistration</div>${val(v.ffa_reason_deregistration)}</div>
+        <div><div class="dt">Refrigerant Type</div>${val(v.ffa_refrigerant_type)}</div>
+        <div><div class="dt">Refrigerant Capacity</div>${val(v.ffa_refrigerant_cap?(v.ffa_refrigerant_cap+' '+(v.ffa_refrigerant_unit||'')).trim():null)}</div>
+        <div><div class="dt">Engine Model</div>${val(v.ffa_engine_model)}</div>
+        <div><div class="dt">Total Engine Power</div>${val(v.ffa_total_engine_power)}</div>
+        <div><div class="dt">Rated Speed</div>${val(v.ffa_rated_speed?(v.ffa_rated_speed+' '+(v.ffa_rated_speed_unit||'')).trim():null)}</div>
+        <div><div class="dt">Total Fuel Capacity</div>${val(v.ffa_fuel_capacity?(v.ffa_fuel_capacity+' '+(v.ffa_fuel_unit||'')).trim():null)}</div>
+        `:''}
+      </div>
+    </div>
+
+    <div class="sub-card" style="margin-top:16px">
+      <div class="sub-card-title">Flag State</div>
+      <div class="dl">
+        <div><div class="dt">Flag State Registration</div>${bool(v.flag_state_reg)}</div>
+        <div><div class="dt">Flag State Not FOC</div>${bool(v.flag_state_foc)}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── RFMO ──
+function renderRFMO(v){
+  const others=(v.rfmo_others||[]).join(', ');
+  const rfmoChips=['WCPFC','IATTC','IOTC','ICCAT','CCAMLR','NEAFC','NAFO'].map(r=>{
+    const key='rfmo_'+r.toLowerCase(); const on=v[key];
+    return `<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 11px;border-radius:999px;font-size:12px;font-weight:700;background:${on?'var(--ok-soft)':'var(--line)'};color:${on?'var(--ok)':'var(--soft)'}">${on?'✓':''} ${r}</span>`;
+  }).join('');
+  return `<div class="card">
+    <div class="card-head"><div class="card-title">RFMO Authorizations</div></div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">${rfmoChips}</div>
+
+    ${v.rfmo_wcpfc?`<div class="sub-card">
+      <div class="sub-card-title">WCPFC — Western & Central Pacific Fisheries Commission</div>
+      <div class="dl dl3">
+        <div><div class="dt">WCPFC VID</div>${val(v.wcpfc_vid)}</div>
+        <div><div class="dt">Auth. No. by Flag State</div>${val(v.wcpfc_auth_no)}</div>
+        <div><div class="dt">Form of Authorisation</div>${val(v.wcpfc_auth_form)}</div>
+        <div><div class="dt">Auth Start</div>${val(fmtDate(v.wcpfc_auth_start))}</div>
+        <div><div class="dt">Auth End</div>${val(fmtDate(v.wcpfc_auth_end))}</div>
+        <div><div class="dt">Authorised Species</div>${val(v.wcpfc_species)}</div>
+        <div><div class="dt">Authorised Areas</div>${val(v.wcpfc_auth_areas)}</div>
+        <div><div class="dt">Tranship on High Seas</div>${bool(v.wcpfc_tranship_hs)}</div>
+        <div><div class="dt">PS Tranship at Sea</div>${bool(v.wcpfc_ps_tranship_sea)}</div>
+        ${v.wcpfc_deletion_reason?`<div><div class="dt">Deletion Reason</div>${val(v.wcpfc_deletion_reason)}</div>`:''}
+        ${v.wcpfc_registry_url?`<div class="full"><div class="dt">Public Registry</div><a href="${esc(v.wcpfc_registry_url)}" target="_blank" rel="noopener" style="color:var(--primary)">${esc(v.wcpfc_registry_url)}</a></div>`:''}
+      </div>
+    </div>`:''}
+
+    ${v.rfmo_iattc?`<div class="sub-card" style="margin-top:16px">
+      <div class="sub-card-title">IATTC — Inter-American Tropical Tuna Commission</div>
+      <div class="dl">
+        <div><div class="dt">IATTC No.</div>${val(v.iattc_no)}</div>
+        <div><div class="dt">Register Status</div>${val(v.iattc_status)}</div>
+        ${v.iattc_registry_url?`<div class="full"><div class="dt">Public Registry</div><a href="${esc(v.iattc_registry_url)}" target="_blank" rel="noopener" style="color:var(--primary)">${esc(v.iattc_registry_url)}</a></div>`:''}
+      </div>
+    </div>`:''}
+
+    ${others?`<div class="sub-card" style="margin-top:16px">
+      <div class="sub-card-title">Other RFMOs</div>
+      <div class="dd">${esc(others)}</div>
+    </div>`:''}
+  </div>`;
+}
+
+// ── ISSF ──
+async function renderISSF(v){
+  const {data:measures}=await sb.from('vessel_pvr_measures').select('*').eq('vessel_id',vid).order('sort_order');
+  // Fetch VOSI vessel record + initiatives from new schema
+  const {data:vosiRec}=await sb.from('vessel_vosi').select('*').eq('vessel_id',vid).order('last_synced',{ascending:false}).limit(1);
+  const vosiData=vosiRec&&vosiRec[0]?vosiRec[0]:null;
+  const {data:vosiInits}=vosiData
+    ?await sb.from('vessel_vosi_initiatives').select('*').eq('vosi_id',vosiData.id).order('start_date',{ascending:false})
+    :{data:[]};
+  const pvr=measures||[];
+
+  const pvrRows=pvr.length?pvr.map(m=>{
+    const sc=PVR_STATUS_CLASS[m.status]||'pvr-NA';
+    const ic=PVR_STATUS_ICON[m.status]||'—';
+    return `<tr>
+      <td style="font-weight:500;padding:11px 14px;border-bottom:1px solid var(--line)">${esc(m.measure_label||m.measure_key)}</td>
+      <td style="padding:11px 14px;border-bottom:1px solid var(--line)"><span class="pvr-status ${sc}">${ic} ${esc(m.status)}</span></td>
+      <td style="padding:11px 14px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted)">${esc(m.notes||'')}</td>
+    </tr>`;
+  }).join(''):`<tr><td colspan="3" style="padding:20px;text-align:center;color:var(--soft)">No PVR measures recorded. Edit vessel to add.</td></tr>`;
+
+  const BP_LABELS={
+    bp_electronic_monitoring:'Electronic Monitoring',
+    bp_biodegradable_fad_trial:'Biodegradable FAD Trial',
+    bp_fad_buoy_position_data:'FAD Buoy Position Data',
+    bp_fad_echosounder_biomass:'FAD Echosounder Biomass Data',
+    bp_ne_fads_no_netting:'NE FADs (No Netting)',
+    bp_fad_recovery_initiative:'FAD Recovery Initiative',
+    bp_fins_naturally_attached:'Fins Naturally Attached',
+    bp_circle_hooks:'Circle Hooks',
+    bp_finfish_bait:'Finfish Bait',
+    bp_monofilament_lines:'Monofilament Lines',
+    bp_shark_lines_not_used:'Shark Lines NOT Used',
+  };
+  function bpBadge(val){
+    if(!val||val==='-'||val==='') return '<span style="color:var(--soft);font-size:12px">—</span>';
+    const v=val.toUpperCase();
+    if(v==='Y') return '<span class="pvr-status pvr-Y">✓ Y</span>';
+    if(v==='N') return '<span class="pvr-status pvr-N">✕ N</span>';
+    if(v==='N/A') return '<span class="pvr-status pvr-NA">N/A</span>';
+    return `<span class="pvr-status pvr-NA">${esc(val)}</span>`;
+  }
+  const initRows=(vosiInits&&vosiInits.length)?vosiInits.map(i=>`<tr>
+    <td style="padding:10px 14px;border-bottom:1px solid var(--line);font-weight:600;font-size:13px">${esc(i.initiative_type||'—')}</td>
+    <td style="padding:10px 14px;border-bottom:1px solid var(--line);font-size:13px">${i.url?`<a href="${esc(i.url)}" target="_blank" rel="noopener" style="color:var(--primary)">${esc(i.description||i.url)}</a>`:esc(i.description||'—')}</td>
+    <td style="padding:10px 14px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted);white-space:nowrap">${fmtDate(i.start_date)}</td>
+    <td style="padding:10px 14px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted);white-space:nowrap">${fmtDate(i.end_date)}</td>
+  </tr>`).join(''):`<tr><td colspan="4" style="padding:20px;text-align:center;color:var(--soft)">No initiatives recorded.</td></tr>`;
+
+  return `<div class="card">
+    <div class="card-head">
+      <div class="card-title">PVR — ProActive Vessel Register</div>
+      
+    </div>
+    <div class="dl" style="margin-bottom:16px">
+      <div><div class="dt">UVI Number</div>${val(v.uvi_number)}</div>
+      <div><div class="dt">UVI Type</div>${val(v.uvi_type)}</div>
+      <div><div class="dt">Authorized RFMO(s)</div>${val((v.pvr_authorized_rfmos||[]).length?(v.pvr_authorized_rfmos.join(", ")):null)}</div>
+      <div><div class="dt">UVI ISSF Compliant?</div>${bool(v.uvi_issf_compliant)}</div>
+      ${v.pvr_last_synced?`<div class="full"><div class="dt">Last Synced</div><div class="dd">${fmtDate(v.pvr_last_synced)}</div></div>`:''}
+    </div>
+    <div class="pvr-wrap"><table class="pvr-table">
+      <thead><tr><th>Best Practice</th><th>Status</th><th>Notes</th></tr></thead>
+      <tbody>${pvrRows}</tbody>
+    </table></div>
+  </div>
+  <div class="card" style="margin-top:18px">
+    <div class="card-head">
+      <div class="card-title">VOSI — Vessels in Other Sustainability Initiatives</div>
+      ${vosiData?`<span style="font-size:11.5px;color:var(--soft)">Last synced: ${fmtDate(vosiData.last_synced)}</span>`:''}
+    </div>
+
+    ${vosiData?`
+    <!-- Vessel-level VOSI info -->
+    <div class="sub-card" style="margin-bottom:16px">
+      <div class="sub-card-title">Registration</div>
+      <div class="dl">
+        <div><div class="dt">UVI Number</div>${val(vosiData.uvi_number)}</div>
+        <div><div class="dt">UVI Type</div>${val(vosiData.uvi_type)}</div>
+        <div><div class="dt">Radio Call Sign</div>${val(vosiData.radio_call_sign)}</div>
+        <div><div class="dt">On PVR?</div>${bool(vosiData.on_pvr)}</div>
+        <div><div class="dt">In MSC-Certified Fishery</div>${bool(vosiData.in_msc_certified)}</div>
+        <div><div class="dt">In FIP</div>${bool(vosiData.in_fip)}</div>
+        <div><div class="dt">In MSCIP</div>${bool(vosiData.in_mscip)}</div>
+      </div>
+    </div>
+
+    <!-- Improvement Projects & Certifications -->
+    <div class="sub-card" style="margin-bottom:16px">
+      <div class="sub-card-title">Improvement Projects & Certification Initiatives</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr>
+            <th style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--soft);padding:8px 14px;text-align:left;border-bottom:1.5px solid var(--line-strong)">Type</th>
+            <th style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--soft);padding:8px 14px;text-align:left;border-bottom:1.5px solid var(--line-strong)">Description / Fishery</th>
+            <th style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--soft);padding:8px 14px;text-align:left;border-bottom:1.5px solid var(--line-strong)">Start Date</th>
+            <th style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--soft);padding:8px 14px;text-align:left;border-bottom:1.5px solid var(--line-strong)">End Date</th>
+          </tr></thead>
+          <tbody>${initRows}</tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Best Practice Initiative Flags -->
+    <div class="sub-card">
+      <div class="sub-card-title">Best Practice Initiatives</div>
+      <div style="border:1px solid var(--line);border-radius:10px;overflow:hidden">
+        ${Object.entries(BP_LABELS).map(([key,label])=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid var(--line)">
+          <span style="font-size:13px;font-weight:500">${label}</span>
+          ${bpBadge(vosiData[key]||'')}
+        </div>`).join('')}
+      </div>
+    </div>
+    `:`<div style="padding:24px;text-align:center;color:var(--soft);font-size:13px">No VOSI data. Use the <strong>Upload VOSI</strong> option from the vessel list to import ISSF data.</div>`}
+  </div>`;
+}
+
+// ── SUSTAINABILITY ──
+function renderSustain(v){
+  return `<div class="card">
+    <div class="card-head"><div class="card-title">Sustainability & Certifications</div></div>
+
+    <div class="sub-card">
+      <div class="sub-card-title">MSC Certification</div>
+      <div class="dl">
+        <div><div class="dt">MSC Participation</div>${bool(v.msc_fishery_participation)}</div>
+        <div><div class="dt">Fishery Name</div>${val(v.msc_fishery_name)}</div>
+        <div><div class="dt">Certification Status</div>${val(v.msc_cert_status)}</div>
+        <div><div class="dt">Fisheries & Programs</div>${val(v.fisheries_programs)}</div>
+      </div>
+    </div>
+
+    <div class="sub-card" style="margin-top:16px">
+      <div class="sub-card-title">PNA / Vessel Day Scheme (VDS)</div>
+      <div class="dl">
+        <div><div class="dt">PNA VDS Active</div>${bool(v.pna_vds_active)}</div>
+        <div><div class="dt">VDS Registration No.</div>${val(v.vds_reg_no)}</div>
+        <div><div class="dt">VDS Valid From</div>${val(fmtDate(v.vds_valid_from))}</div>
+        <div><div class="dt">VDS Valid Until</div>${val(fmtDate(v.vds_valid_until))}</div>
+        <div><div class="dt">PNA Allocation</div>${val(v.pna_allocation)}</div>
+        <div><div class="dt">PNA Status</div>${val(v.pna_status)}</div>
+        <div><div class="dt">Regional Schemes</div>${val(v.regional_schemes)}</div>
+      </div>
+    </div>
+
+    <div class="sub-card" style="margin-top:16px">
+      <div class="sub-card-title">PNA-FSMA Agreement</div>
+      <div class="dl">
+        <div><div class="dt">FSMA Vessel</div>${bool(v.fsma_vessel)}</div>
+        ${v.fsma_vessel?`
+        <div><div class="dt">RAL No.</div>${val(v.fsma_ral_no)}</div>
+        <div><div class="dt">From Date</div>${val(fmtDate(v.fsma_from))}</div>
+        <div><div class="dt">To Date</div>${val(fmtDate(v.fsma_to))}</div>
+        <div><div class="dt">Home Country</div>${val(v.fsma_home_country)}</div>
+        `:''}
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:18px">
+    <div class="card-head">
+      <div class="card-title">Other Licenses</div>
+      ${isAdmin?`<button class="btn-edit" onclick="openModal('other_license')">+ Add License</button>`:''}
+    </div>
+    <div id="otherLicensesList"><div class="empty-state" style="padding:20px;text-align:center;color:var(--soft);font-size:13px">Loading…</div></div>
+  </div>`;
+}
+
+// ── NOTES ──
+// renderNotesShell replaced by renderNotesTab (DOM-based)
+let quillEditor=null;
+function initQuillEditor(){
+  if(quillEditor||!isAdmin) return;
+  const el=$('noteEditor'); if(!el) return;
+  if(typeof Quill==='undefined'){ setTimeout(initQuillEditor,150); return; }
+  try{
+    quillEditor=new Quill('#noteEditor',{
+      theme:'snow',
+      placeholder:'Write a note here — supports bold, lists, links and more…',
+      modules:{toolbar:[
+        [{'header':[2,3,false]}],
+        ['bold','italic','underline'],
+        [{'list':'ordered'},{'list':'bullet'}],
+        ['link','blockquote','code-block'],
+        ['clean']
+      ]}
+    });
+    // tab key should not leave editor
+    quillEditor.keyboard.addBinding({key:'Tab'},()=>true);
+  }catch(e){console.warn('Quill init failed:',e);}
+}
+async function loadNotes(retry=0){
+  let el=$('notesList');
+  // #notesList may not exist yet if DOM is still being built — retry up to 5 times
+  if(!el){
+    if(retry<5){ setTimeout(()=>loadNotes(retry+1), 100); return; }
+    console.warn('loadNotes: #notesList not found after retries'); return;
+  }
+  // Init Quill if not already running
+  if(isAdmin && !quillEditor) setTimeout(initQuillEditor, 60);
+  // Fetch notes without join (avoids FK schema dependency)
+  const {data,error}=await sb.from('vessel_notes').select('*').eq('vessel_id',vid).order('created_at',{ascending:false});
+  if(error){
+    console.error('loadNotes error:',error.message||error);
+    el.innerHTML='<div style="padding:20px;text-align:center;color:var(--soft);font-size:13px">Could not load notes — check console for details.</div>';
+    return;
+  }
+  if(!data||!data.length){
+    el.innerHTML='<div style="padding:30px;text-align:center;color:var(--soft);font-size:13px">No notes yet — use the editor above to add the first one.</div>';
+    return;
+  }
+  // Enrich with profile names if available (optional join — won't break if FK not exposed)
+  let profileMap={};
+  try{
+    const createdByIds=[...new Set(data.map(n=>n.created_by).filter(Boolean))];
+    if(createdByIds.length){
+      const {data:profs}=await sb.from('profiles').select('id,first_name,last_name').in('id',createdByIds);
+      (profs||[]).forEach(p=>{profileMap[p.id]=((p.first_name||'')+' '+(p.last_name||'')).trim();});
+    }
+  }catch(e){ /* profile names are optional — continue without them */ }
+  el.innerHTML=data.map(n=>`<div class="note-card" id="note_${n.id}">
+    <div class="note-card-meta">
+      <div style="display:flex;flex-direction:column;gap:1px">
+        <span class="note-card-author">${esc(profileMap[n.created_by]||'Admin')}</span>
+        <span class="note-card-date">${fmtDateTime(n.created_at)}</span>
+      </div>
+      ${isAdmin?`<div style="display:flex;gap:6px;flex-shrink:0">
+        <button onclick="editNote('${n.id}')" style="height:30px;padding:0 11px;border-radius:7px;border:1.5px solid var(--border);background:#fff;font:inherit;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:.14s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Edit</button>
+        <button onclick="deleteNote('${n.id}')" style="height:30px;padding:0 11px;border-radius:7px;border:1.5px solid var(--border);background:#fff;font:inherit;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:.14s" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Delete</button>
+      </div>`:''}
+    </div>
+    <div class="note-card-body" id="notebody_${n.id}">${n.content||''}</div>
+  </div>`).join('');
+}
+// ── PREMIUM CONFIRM MODAL ──
+let _confirmResolve=null;
+function showConfirm(title,msg,btnLabel='Delete',iconHtml=null){
+  return new Promise(resolve=>{
+    _confirmResolve=resolve;
+    document.getElementById('confirmTitle').textContent=title;
+    document.getElementById('confirmMsg').textContent=msg;
+    document.getElementById('confirmOkBtn').textContent=btnLabel;
+    if(iconHtml) document.getElementById('confirmIcon').innerHTML=iconHtml;
+    document.getElementById('confirmOverlay').classList.add('open');
+    document.getElementById('confirmOkBtn').onclick=()=>{closeConfirm(true);};
+  });
+}
+function closeConfirm(result=false){
+  document.getElementById('confirmOverlay').classList.remove('open');
+  if(_confirmResolve){_confirmResolve(result);_confirmResolve=null;}
+}
+// Close on overlay click
+document.getElementById('confirmOverlay')?.addEventListener('click',e=>{
+  if(e.target===document.getElementById('confirmOverlay')) closeConfirm(false);
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape') closeConfirm(false);});
+
+async function deleteNote(noteId){
+  const ok=await showConfirm(
+    'Delete this note?',
+    'This note will be permanently removed and cannot be recovered.',
+    'Delete note'
+  );
+  if(!ok) return;
+  const {error}=await sb.from('vessel_notes').delete().eq('id',noteId);
+  if(error){toast('Failed to delete note',true);return;}
+  const card=document.getElementById('note_'+noteId);
+  if(card){card.style.opacity='0';card.style.transform='scale(.97)';card.style.transition='.2s';setTimeout(()=>card.remove(),200);}
+  toast('Note deleted');
+}
+
+let editingNoteId=null;
+function editNote(noteId){
+  if(editingNoteId&&editingNoteId!==noteId) cancelEditNote(editingNoteId);
+  editingNoteId=noteId;
+  const body=document.getElementById('notebody_'+noteId); if(!body) return;
+  const currentHtml=body.innerHTML;
+  const card=document.getElementById('note_'+noteId);
+  // Replace body with inline Quill editor
+  body.innerHTML='';
+  body.style.minHeight='120px';
+  const editWrap=document.createElement('div');
+  editWrap.className='notes-editor-wrap';
+  editWrap.style.marginTop='10px';
+  const edDiv=document.createElement('div');
+  edDiv.id='noteEditEditor_'+noteId;
+  editWrap.appendChild(edDiv);
+  body.appendChild(editWrap);
+  // Action buttons
+  const actions=document.createElement('div');
+  actions.id='noteEditActions_'+noteId;
+  actions.style.cssText='display:flex;justify-content:flex-end;gap:8px;margin-top:10px';
+  actions.innerHTML=`
+    <button onclick="cancelEditNote('${noteId}')" style="height:34px;padding:0 14px;border-radius:8px;border:1.5px solid var(--border);background:#fff;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--muted)">Cancel</button>
+    <button onclick="saveEditNote('${noteId}')" style="height:34px;padding:0 14px;border-radius:8px;border:none;background:var(--primary);color:#fff;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer">Save changes</button>`;
+  body.appendChild(actions);
+  // Init Quill for this edit
+  if(typeof Quill!=='undefined'){
+    const q=new Quill('#noteEditEditor_'+noteId,{
+      theme:'snow',
+      modules:{toolbar:[
+        [{'header':[2,3,false]}],['bold','italic','underline'],
+        [{'list':'ordered'},{'list':'bullet'}],['link'],['clean']
+      ]}
+    });
+    q.root.innerHTML=currentHtml;
+    body._editQuill=q;
+    body._origHtml=currentHtml;
+    // Auto-focus
+    setTimeout(()=>q.focus(),50);
+  }
+  // Hide edit/delete buttons while editing
+  card.querySelectorAll('button[onclick^="editNote"],button[onclick^="deleteNote"]').forEach(b=>b.style.display='none');
+}
+
+async function saveEditNote(noteId){
+  const body=document.getElementById('notebody_'+noteId); if(!body) return;
+  const q=body._editQuill; if(!q) return;
+  const html=q.root.innerHTML;
+  const text=q.getText().trim();
+  if(!text||html==='<p><br></p>'){toast('Note cannot be empty',true);return;}
+  const {error}=await sb.from('vessel_notes').update({content:html}).eq('id',noteId);
+  if(error){toast('Failed to save',true);return;}
+  body.innerHTML=html;
+  body._editQuill=null; body._origHtml=null;
+  editingNoteId=null;
+  // Restore edit/delete buttons
+  const card=document.getElementById('note_'+noteId);
+  card?.querySelectorAll('button').forEach(b=>b.style.display='');
+  toast('Note updated');
+}
+
+function cancelEditNote(noteId){
+  const body=document.getElementById('notebody_'+noteId); if(!body) return;
+  body.innerHTML=body._origHtml||'';
+  body._editQuill=null; body._origHtml=null;
+  editingNoteId=null;
+  const card=document.getElementById('note_'+noteId);
+  card?.querySelectorAll('button').forEach(b=>b.style.display='');
+}
+
+async function loadOtherLicenses(){
+  const el=$('otherLicensesList'); if(!el) return;
+  const {data}=await sb.from('vessel_other_licenses').select('*').eq('vessel_id',vid).order('start_date',{ascending:false});
+  if(!data||!data.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--soft);font-size:13px">No other licenses recorded.</div>';return;}
+  el.innerHTML=`<table style="width:100%;border-collapse:collapse">
+    <thead><tr>${['Licensing Authority','License No.','Start','End','Note'].map(c=>`<th style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--soft);padding:8px 12px;text-align:left;border-bottom:1.5px solid var(--line-strong)">${c}</th>`).join('')}</tr></thead>
+    <tbody>${data.map(r=>`<tr>
+      <td style="padding:10px 12px;border-bottom:1px solid var(--line);font-weight:500">${esc(r.licensing_authority||'')}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid var(--line)">${esc(r.license_number||'—')}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid var(--line)">${fmtDate(r.start_date)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid var(--line)">${fmtDate(r.end_date)}</td>
+      <td style="padding:10px 12px;border-bottom:1px solid var(--line);font-size:12.5px;color:var(--muted)">${esc(r.agreement_note||'')}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+async function saveNote(){
+  if(!quillEditor){
+    initQuillEditor();
+    setTimeout(()=>toast('Editor initialising — please try again in a moment',true),0);
+    return;
+  }
+  const html=quillEditor.root.innerHTML;
+  const text=quillEditor.getText().trim();
+  if(!text||html==='<p><br></p>'){ toast('Please write something first',true); return; }
+  const btn=$('addNoteBtn'); if(btn){ btn.disabled=true; btn.textContent='Saving…'; }
+  const {error}=await sb.from('vessel_notes').insert({vessel_id:vid,content:html});
+  if(btn){ btn.disabled=false; btn.textContent='Add Note'; }
+  if(error){toast('Failed to save note',true);return;}
+  quillEditor.setContents([]);
+  // Small tick to ensure any pending DOM updates complete before refreshing list
+  await new Promise(r=>setTimeout(r,50));
+  await loadNotes();
+  toast('Note added');
+}
+
+// ── TIMELINE ──
+const TL_SECTIONS=['All sections','Overview','Ownership','Compliance','RFMO','ISSF','Sustainability','History','Tags'];
+let tlActiveFilter='';
+function renderTimelineShell(){
+  return `<div class="card">
+    <div class="card-head">
+      <div class="card-title">Timeline</div>
+      <div class="tl-filter-csel" id="tlFilterCsel">
+        <button type="button" class="tl-filter-trigger" id="tlFilterBtn" onclick="toggleTLFilter(event)">
+          <span id="tlFilterLbl">All sections</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="tl-filter-panel" id="tlFilterPanel">
+          ${TL_SECTIONS.map(s=>`<div class="tl-filter-opt${s===''||s==='All sections'?' active':''}" onclick="setTLFilter('${s==='All sections'?'':s}','${s}')">${s}</div>`).join('')}
+        </div>
+      </div>
+    </div>
+    <div id="tlList"><div style="padding:20px;text-align:center;color:var(--soft);font-size:13px">Loading…</div></div>
+  </div>`;
+}
+function toggleTLFilter(e){
+  e.stopPropagation();
+  const panel=$('tlFilterPanel');
+  const csel=$('tlFilterCsel');
+  const wasOpen=csel.classList.contains('open');
+  document.querySelectorAll('.tl-filter-csel.open').forEach(x=>x.classList.remove('open'));
+  if(!wasOpen) csel.classList.add('open');
+}
+function setTLFilter(val,label){
+  tlActiveFilter=val;
+  const lbl=$('tlFilterLbl'); if(lbl) lbl.textContent=label||'All sections';
+  // update active state
+  document.querySelectorAll('.tl-filter-opt').forEach(o=>o.classList.toggle('active',o.textContent===label));
+  $('tlFilterCsel')?.classList.remove('open');
+  renderTimeline();
+}
+let tlData=[];
+async function loadTimeline(){
+  const {data}=await sb.from('vessel_timeline').select('*,profiles(first_name,last_name)').eq('vessel_id',vid).order('changed_at',{ascending:false});
+  tlData=data||[];
+  renderTimeline();
+}
+function renderTimeline(){
+  const el=$('tlList'); if(!el) return;
+  const f=(tlActiveFilter||'').toLowerCase();
+  const rows=f?tlData.filter(r=>r.tab_section.toLowerCase()===f):tlData;
+  if(!rows.length){el.innerHTML='<div class="tl-empty">No timeline entries yet. Changes to this vessel will appear here.</div>';return;}
+  // group by date
+  const groups={};
+  rows.forEach(r=>{
+    const d=new Date(r.changed_at).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+    if(!groups[d]) groups[d]=[];
+    groups[d].push(r);
+  });
+  el.innerHTML=Object.entries(groups).map(([date,entries])=>`
+    <div class="tl-date-group">
+      <div class="tl-date-label"><div class="tl-dot"></div><div class="tl-date">${date}</div><div class="tl-line"></div></div>
+      <div class="tl-entries">
+        ${entries.map(e=>`<div class="tl-entry">
+          <div class="tl-entry-field" style="display:flex;align-items:center;gap:8px">
+            ${esc(e.field_name)}
+            <span class="tl-tab-badge">${esc(e.tab_section)}</span>
+          </div>
+          <div class="tl-entry-change">
+            <span class="tl-from">${esc(e.old_value||'—')}</span>
+            <span class="tl-arrow">→</span>
+            <span class="tl-to">${esc(e.new_value||'—')}</span>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+// ── HISTORY ──
+function renderHistoryShell(){
+  return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+    <div style="font-size:13px;color:var(--muted)">Manually recorded historical records for this vessel. Click the edit icon on any table to add a new entry.</div>
+  </div>
+  <div class="hist-grid" id="histGrid"><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>`;
+}
+async function loadHistory(){
+  const [nh,oh,ch,chr,rfmo,pna,fsma,ffa]=await Promise.all([
+    sb.from('vessel_name_history').select('*').eq('vessel_id',vid).order('valid_from',{ascending:false}),
+    sb.from('vessel_owner_history').select('*').eq('vessel_id',vid).order('valid_from',{ascending:false}),
+    sb.from('vessel_captain_history').select('*').eq('vessel_id',vid).order('valid_from',{ascending:false}),
+    sb.from('vessel_charterer_history').select('*').eq('vessel_id',vid).order('valid_from',{ascending:false}),
+    sb.from('vessel_rfmo_history').select('*').eq('vessel_id',vid).order('auth_start',{ascending:false}),
+    sb.from('vessel_pna_vds_history').select('*').eq('vessel_id',vid).order('valid_from',{ascending:false}),
+    sb.from('vessel_pna_fsma_history').select('*').eq('vessel_id',vid).order('valid_from',{ascending:false}),
+    sb.from('vessel_ffa_history').select('*').eq('vessel_id',vid).order('valid_from',{ascending:false}),
+  ]);
+  const g=$('histGrid'); if(!g) return;
+  // Visibility rules
+  const cat=vessel.vessel_category||'';
+  const sub=vessel.vessel_subtype||'';
+  const isFish=cat==='Fishing Vessel';
+  const isReefer=cat==='Carrier/Reefer';
+  const isFishOrReefer=isFish||isReefer;
+  // PNA FSMA is only for Purse Seiners
+  const isPurseSeine=isFish&&(sub.includes('Purse Seine')||sub==='Purse Seine Large'||sub==='Purse Seine Small');
+
+  const cards=[];
+  // Always shown
+  cards.push(histCard('Name History','name_history',['Name','Flag','IRCS','From','To'],
+    (nh.data||[]).map(r=>[r.name,r.flag,r.ircs,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
+    (nh.data||[]).map(r=>r.id)));
+  cards.push(histCard('Owner History','owner_history',['Name','Address','From','To'],
+    (oh.data||[]).map(r=>[r.owner_name,r.address,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
+    (oh.data||[]).map(r=>r.id)));
+  cards.push(histCard('Captain History','captain_history',['Name','Nationality','From','To'],
+    (ch.data||[]).map(r=>[r.captain_name,r.nationality,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
+    (ch.data||[]).map(r=>r.id)));
+  cards.push(histCard('Charterer / Operator History','charterer_history',['Name','Address','From','To'],
+    (chr.data||[]).map(r=>[r.charterer_name,r.address,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
+    (chr.data||[]).map(r=>r.id)));
+  // Fishing + Carrier/Reefer only
+  if(isFishOrReefer){
+    cards.push(histCard('RFMO History','rfmo_history',['RFMO','Reg. No.','Auth No.','Start','End','Reason','Deleted'],
+      (rfmo.data||[]).map(r=>[r.rfmo_name,r.registration_no,r.auth_no,fmtDate(r.auth_start),fmtDate(r.auth_end),r.reason_for_deletion,fmtDate(r.date_of_deletion)]),
+      (rfmo.data||[]).map(r=>r.id)));
+    cards.push(histCard('FFA GS History','ffa_history',['FFA ID','From','To','Reason'],
+      (ffa.data||[]).map(r=>[r.ffa_id,fmtDate(r.valid_from),fmtDate(r.valid_to),r.reason_for_deletion]),
+      (ffa.data||[]).map(r=>r.id)));
+    cards.push(histCard('PNA VDS','pna_vds',['VDS No.','From','To'],
+      (pna.data||[]).map(r=>[r.vds_no,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
+      (pna.data||[]).map(r=>r.id)));
+  }
+  // Purse Seine only
+  if(isPurseSeine){
+    cards.push(histCard('PNA FSMA History','pna_fsma',['RAL No.','From','To'],
+      (fsma.data||[]).map(r=>[r.ral_no,fmtDate(r.valid_from),fmtDate(r.valid_to)]),
+      (fsma.data||[]).map(r=>r.id)));
+  }
+
+  g.innerHTML=cards.join('');
+}
+function histCard(title,type,cols,rows,ids){
+  // ids = array of DB row IDs matching rows[], for delete
+  const editBtn=isAdmin?`<button class="btn-edit" onclick="openHistModal('${type}')">+ Add</button>`:'';
+  const body=rows.length
+    ?`<table class="hist-table"><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}${isAdmin?'<th style="width:36px"></th>':''}</tr></thead><tbody>
+      ${rows.map((r,i)=>`<tr>
+        ${r.map(c=>`<td>${esc(c||'—')}</td>`).join('')}
+        ${isAdmin&&ids?.[i]?`<td><button onclick="deleteHistRow('${type}','${ids[i]}')" style="width:26px;height:26px;border:none;background:none;cursor:pointer;color:var(--soft);border-radius:6px;display:flex;align-items:center;justify-content:center;transition:.14s" title="Delete" onmouseover="this.style.color='var(--danger)';this.style.background='var(--danger-soft)'" onmouseout="this.style.color='var(--soft)';this.style.background='none'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button></td>`:''}
+      </tr>`).join('')}
+    </tbody></table>`
+    :`<div class="hist-empty">No records yet.</div>`;
+  return `<div class="hist-card">
+    <div class="hist-head"><span class="hist-title">${title}</span>${editBtn}</div>
+    ${body}
+  </div>`;
+}
+
+// ── DB table map for each history type ──
+const HIST_TABLE_MAP={
+  name_history:'vessel_name_history',
+  owner_history:'vessel_owner_history',
+  captain_history:'vessel_captain_history',
+  charterer_history:'vessel_charterer_history',
+  rfmo_history:'vessel_rfmo_history',
+  pna_vds:'vessel_pna_vds_history',
+  pna_fsma:'vessel_pna_fsma_history',
+  ffa_history:'vessel_ffa_history',
+  other_license:'vessel_other_licenses',
+  vosi:'vessel_vosi_initiatives',
+};
+
+async function deleteHistRow(type,id){
+  const ok=await showConfirm('Delete this record?','This history entry will be permanently removed and cannot be recovered.','Delete');
+  if(!ok) return;
+  const table=HIST_TABLE_MAP[type]; if(!table) return;
+  const {error}=await sb.from(table).delete().eq('id',id);
+  if(error){toast(error.message||'Delete failed',true);return;}
+  toast('Record deleted');
+  await loadHistory();
+}
+
+// ── MODAL ──
+const MODAL_CONFIGS={
+  name_history:{
+    title:'Add Name History',sub:'Record a historical name. Non-name fields are pre-filled from the current vessel — edit only what changed.',
+    fields:[
+      {id:'mf_name',label:'Vessel Name',type:'text',required:true},
+      {id:'mf_flag',label:'Flag',type:'country'},
+      {id:'mf_port',label:'Port of Registry',type:'text'},
+      {id:'mf_ircs',label:'IRCS',type:'text'},
+      {id:'mf_length',label:'Length (m)',type:'number'},
+      {id:'mf_beam',label:'Beam (m)',type:'number'},
+      {id:'mf_depth',label:'Moulded Depth (m)',type:'number'},
+      {id:'mf_tonnage',label:'Tonnage (GT)',type:'number'},
+      {id:'mf_fishhold',label:'Fish Hold Capacity (m³)',type:'number'},
+      {id:'mf_from',label:'Valid From',type:'date'},
+      {id:'mf_to',label:'Valid To',type:'date'},
+      {id:'mf_notes',label:'Notes',type:'textarea',full:true},
+    ],
+    autofill:(v)=>({
+      mf_flag:v.vessel_flag||'',
+      mf_port:v.port_of_registry||'',
+      mf_ircs:v.ircs||'',
+      mf_length:v.vessel_length||'',
+      mf_beam:v.beam_m||'',
+      mf_depth:v.depth_m||'',
+      mf_tonnage:v.vessel_tonnage||'',
+      mf_fishhold:v.fish_hold_capacity||'',
+    }),
+    save:async(d)=>sb.from('vessel_name_history').insert({vessel_id:vid,name:d.mf_name,flag:d.mf_flag,ircs:d.mf_ircs,valid_from:d.mf_from||null,valid_to:d.mf_to||null,notes:d.mf_notes,port_of_registry:d.mf_port,vessel_length:d.mf_length||null,beam_m:d.mf_beam||null,depth_m:d.mf_depth||null,vessel_tonnage:d.mf_tonnage||null,fish_hold_capacity:d.mf_fishhold||null})
+  },
+  owner_history:{
+    title:'Add Owner History',sub:'Record a registered owner and the period they held ownership.',
+    fields:[
+      {id:'mf_name',label:'Owner Name',type:'text',required:true},
+      {id:'mf_addr',label:'Address',type:'text',full:true},
+      {id:'mf_from',label:'Valid From',type:'date'},
+      {id:'mf_to',label:'Valid To',type:'date'},
+      {id:'mf_notes',label:'Notes',type:'textarea',full:true},
+    ],
+    save:async(d)=>sb.from('vessel_owner_history').insert({vessel_id:vid,owner_name:d.mf_name,address:d.mf_addr,valid_from:d.mf_from||null,valid_to:d.mf_to||null,notes:d.mf_notes})
+  },
+  captain_history:{
+    title:'Add Captain History',sub:'Record a captain and their period of command.',
+    fields:[
+      {id:'mf_name',label:'Captain Name',type:'text',required:true},
+      {id:'mf_nat',label:'Nationality',type:'country'},
+      {id:'mf_from',label:'Valid From',type:'date'},
+      {id:'mf_to',label:'Valid To',type:'date'},
+      {id:'mf_notes',label:'Notes',type:'textarea',full:true},
+    ],
+    save:async(d)=>sb.from('vessel_captain_history').insert({vessel_id:vid,captain_name:d.mf_name,nationality:d.mf_nat,valid_from:d.mf_from||null,valid_to:d.mf_to||null,notes:d.mf_notes})
+  },
+  charterer_history:{
+    title:'Add Charterer / Operator History',sub:'Record a charterer or operator and their period.',
+    fields:[
+      {id:'mf_name',label:'Charterer / Operator Name',type:'text',required:true},
+      {id:'mf_addr',label:'Address',type:'text',full:true},
+      {id:'mf_from',label:'Valid From',type:'date'},
+      {id:'mf_to',label:'Valid To',type:'date'},
+      {id:'mf_notes',label:'Notes',type:'textarea',full:true},
+    ],
+    save:async(d)=>sb.from('vessel_charterer_history').insert({vessel_id:vid,charterer_name:d.mf_name,address:d.mf_addr,valid_from:d.mf_from||null,valid_to:d.mf_to||null,notes:d.mf_notes})
+  },
+  rfmo_history:{
+    title:'Add RFMO History',sub:'Select the RFMO first — fields will update based on your selection.',
+    fields:[],
+    // custom render — handled by openRFMOHistoryModal()
+    custom:true
+  },
+  pna_vds:{
+    title:'Add PNA VDS Entry',sub:'Record a Vessel Day Scheme allocation period. Vessel flag is recorded separately as it may differ from the current flag.',
+    fields:[
+      {id:'mf_vds',label:'VDS No.',type:'text',required:true,full:true},
+      {id:'mf_flag',label:'Vessel Flag at Time of VDS',type:'country'},
+      {id:'mf_from',label:'Valid From',type:'date'},
+      {id:'mf_to',label:'Valid To',type:'date'},
+      {id:'mf_notes',label:'Notes',type:'textarea',full:true},
+    ],
+    autofill:(v)=>({mf_flag:v.vessel_flag||''}),
+    save:async(d)=>sb.from('vessel_pna_vds_history').insert({vessel_id:vid,vds_no:d.mf_vds,valid_from:d.mf_from||null,valid_to:d.mf_to||null,notes:d.mf_notes,vessel_flag:d.mf_flag||null})
+  },
+  pna_fsma:{
+    title:'Add PNA FSMA History',sub:'Record an FSMA/RAL registration period.',
+    fields:[
+      {id:'mf_ral',label:'RAL No.',type:'text',required:true,full:true},
+      {id:'mf_from',label:'Valid From',type:'date'},
+      {id:'mf_to',label:'Valid To',type:'date'},
+      {id:'mf_notes',label:'Notes',type:'textarea',full:true},
+    ],
+    save:async(d)=>sb.from('vessel_pna_fsma_history').insert({vessel_id:vid,ral_no:d.mf_ral,valid_from:d.mf_from||null,valid_to:d.mf_to||null,notes:d.mf_notes})
+  },
+  ffa_history:{
+    title:'Add FFA GS History',sub:'Record an FFA Good Standing period.',
+    fields:[
+      {id:'mf_ffa',label:'FFA ID',type:'text',required:true,full:true},
+      {id:'mf_from',label:'Valid From',type:'date'},
+      {id:'mf_to',label:'Valid To',type:'date'},
+      {id:'mf_reason',label:'Reason for Deletion',type:'text',full:true},
+      {id:'mf_notes',label:'Notes',type:'textarea',full:true},
+    ],
+    save:async(d)=>sb.from('vessel_ffa_history').insert({vessel_id:vid,ffa_id:d.mf_ffa,valid_from:d.mf_from||null,valid_to:d.mf_to||null,reason_for_deletion:d.mf_reason,notes:d.mf_notes})
+  },
+  other_license:{
+    title:'Add Other License',sub:'Record a license or authorisation for this vessel.',
+    fields:[
+      {id:'mf_authority',label:'Licensing Authority',type:'text',required:true,full:true},
+      {id:'mf_licno',label:'License Number',type:'text'},
+      {id:'mf_start',label:'License Start Date',type:'date'},
+      {id:'mf_end',label:'License End Date',type:'date'},
+      {id:'mf_note',label:'Agreement Note',type:'textarea',full:true},
+    ],
+    save:async(d)=>sb.from('vessel_other_licenses').insert({vessel_id:vid,licensing_authority:d.mf_authority,license_number:d.mf_licno,start_date:d.mf_start||null,end_date:d.mf_end||null,agreement_note:d.mf_note})
+  },
+  vosi:{
+    title:'Add VOSI Initiative',sub:'Record a sustainability initiative this vessel participates in.',
+    fields:[
+      {id:'mf_name',label:'Initiative Name',type:'text',required:true,full:true},
+      {id:'mf_regno',label:'Registration No.',type:'text'},
+      {id:'mf_status',label:'Status',type:'text'},
+      {id:'mf_from',label:'Valid From',type:'date'},
+      {id:'mf_to',label:'Valid To',type:'date'},
+      {id:'mf_notes',label:'Notes',type:'textarea',full:true},
+    ],
+    save:async(d)=>sb.from('vessel_vosi').insert({vessel_id:vid,initiative_name:d.mf_name,registration_no:d.mf_regno,status:d.mf_status,valid_from:d.mf_from||null,valid_to:d.mf_to||null,notes:d.mf_notes})
+  },
+};
+
+// ── MODAL INLINE PREMIUM DROPDOWN HELPERS ──────────────────────────
+// Used for dropdowns injected via innerHTML (RFMO modal, yesno fields)
+// Since these panels live inside modal innerHTML they can't use the page-level csel engine
+function toggleModalCsel(panelId, lblId, arrowId, e){
+  if(e) e.stopPropagation();
+  const panel=document.getElementById(panelId); if(!panel) return;
+  const isOpen=panel.style.display!=='none';
+  // Close all modal inline panels first
+  document.querySelectorAll('[id$="_panel"]').forEach(p=>{
+    if(p.id!==panelId){ p.style.display='none'; }
+  });
+  if(isOpen){
+    panel.style.display='none';
+    const arr=document.getElementById(arrowId);
+    if(arr) arr.style.transform='';
+  } else {
+    panel.style.display='block';
+    const arr=document.getElementById(arrowId);
+    if(arr) arr.style.transform='rotate(180deg)';
+    // Drop-up detection
+    const trigger=panel.previousElementSibling;
+    if(trigger){
+      const rect=trigger.getBoundingClientRect();
+      const spaceBelow=window.innerHeight-rect.bottom;
+      if(spaceBelow<200 && rect.top>200){
+        panel.style.top='auto';
+        panel.style.bottom='calc(100% + 4px)';
+      } else {
+        panel.style.top='calc(100% + 4px)';
+        panel.style.bottom='auto';
+      }
+    }
+  }
+}
+function pickModalCsel(panelId, lblId, arrowId, hiddenId, value, callback){
+  // Update hidden input
+  const inp=document.getElementById(hiddenId); if(inp) inp.value=value;
+  // Update label
+  const lbl=document.getElementById(lblId);
+  if(lbl){ lbl.textContent=value; lbl.style.color='var(--text)'; }
+  // Close panel
+  const panel=document.getElementById(panelId);
+  if(panel) panel.style.display='none';
+  const arr=document.getElementById(arrowId);
+  if(arr) arr.style.transform='';
+  // Highlight trigger border
+  const trigger=panel?.previousElementSibling;
+  if(trigger) trigger.style.borderColor='var(--border)';
+  // Fire callback if provided
+  if(callback) callback();
+}
+// Close modal inline panels on outside click
+document.addEventListener('click', ()=>{
+  document.querySelectorAll('[id$="_panel"]').forEach(p=>{
+    if(p.style.display!=='none'){
+      p.style.display='none';
+      // Reset arrow
+      const arrowId=p.id.replace('_panel','_arr');
+      const arr=document.getElementById(arrowId);
+      if(arr) arr.style.transform='';
+    }
+  });
+});
+
+function openHistModal(type){
+  if(type==='rfmo_history'){ openRFMOHistoryModal(); return; }
+  // Safety: force close any stuck state before opening
+  const overlay=$('modalOverlay');
+  if(overlay) overlay.classList.remove('open');
+  setTimeout(()=>openModal(type), 20);
+}
+
+/* ── MODAL COUNTRY SELECT (mcsel) ── */
+function toggleMCsel(fid,e){
+  e.stopPropagation();
+  const wrap=document.getElementById('mcsel_'+fid); if(!wrap) return;
+  const wasOpen=wrap.classList.contains('open');
+  document.querySelectorAll('.mcsel.open').forEach(x=>x.classList.remove('open','drop-up'));
+  if(!wasOpen){
+    // Detect if near bottom and flip up
+    const trigger=wrap.querySelector('.mcsel-trigger');
+    if(trigger){
+      const rect=trigger.getBoundingClientRect();
+      const spaceBelow=window.innerHeight-rect.bottom;
+      if(spaceBelow<300 && rect.top>300) wrap.classList.add('drop-up');
+    }
+    wrap.classList.add('open');
+    populateMCsel(fid,'');
+    setTimeout(()=>wrap.querySelector('.mcsel-search input')?.focus(),30);
+  }
+}
+async function populateMCsel(fid,q){
+  await ensureCountries();
+  const list=document.getElementById('mcsel_list_'+fid); if(!list) return;
+  const curVal=document.getElementById(fid)?.value||'';
+  const f=(q||'').toLowerCase();
+  const filtered=f?countryList.filter(c=>c.toLowerCase().includes(f)):countryList;
+  if(!filtered.length){list.innerHTML='<div class="mcsel-empty">No matches</div>';return;}
+  // Use data-country attribute — never inject country names into onclick strings
+  // (apostrophes in names like "Cote d'Ivoire" break inline JS)
+  list.innerHTML=filtered.map(c=>`<div class="mcsel-opt${c===curVal?' active':''}" data-country="${c.replace(/"/g,'&quot;')}" data-fid="${fid}">${esc(c)}</div>`).join('');
+  // Delegate click via the list container (only bind once per open)
+  if(!list._ppBound){
+    list._ppBound=true;
+    list.addEventListener('click',e=>{
+      const opt=e.target.closest('.mcsel-opt'); if(!opt) return;
+      pickMCsel(opt.dataset.fid, opt.dataset.country);
+    });
+  }
+}
+function filterMCsel(fid,q){ populateMCsel(fid,q); }
+function pickMCsel(fid,country){
+  const inp=document.getElementById(fid); if(inp) inp.value=country;
+  const lbl=document.getElementById('mcsel_lbl_'+fid);
+  if(lbl){lbl.textContent=country;lbl.className='mcsel-lbl';}
+  // Close this mcsel and remove drop-up class
+  const wrap=document.getElementById('mcsel_'+fid);
+  if(wrap) wrap.classList.remove('open','drop-up');
+}
+
+function openModal(type){
+  const cfg=MODAL_CONFIGS[type]; if(!cfg) return;
+  curModalType=type;
+  $('modalTitle').textContent=cfg.title;
+  $('modalSub').textContent=cfg.sub;
+  const autofills=cfg.autofill?cfg.autofill(vessel):{};
+  $('modalBody').innerHTML=`<div class="modal-grid">${cfg.fields.map(f=>`
+    <div class="mfield${f.full?' full':''}">
+      <span>${f.label}${f.required?' <span style="color:var(--danger)">*</span>':''}</span>
+      ${f.type==='textarea'
+        ?`<textarea id="${f.id}" placeholder="${f.label}…">${esc(autofills[f.id]||'')}</textarea>`
+        :f.type==='country'
+        ?`<div class="mcsel" id="mcsel_${f.id}">
+            <button type="button" class="mcsel-trigger" onclick="toggleMCsel('${f.id}',event)">
+              <span class="mcsel-lbl ph" id="mcsel_lbl_${f.id}">Select country…</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <input type="hidden" id="${f.id}" value="${esc(String(autofills[f.id]||''))}"/>
+            <div class="mcsel-panel" id="mcsel_panel_${f.id}">
+              <div class="mcsel-search"><input type="text" placeholder="Search country…" oninput="filterMCsel('${f.id}',this.value)" onclick="event.stopPropagation()"/></div>
+              <div class="mcsel-list" id="mcsel_list_${f.id}"></div>
+            </div>
+          </div>`
+        :`<input type="${f.type==='number'?'number':f.type==='date'?'date':'text'}" step="${f.type==='number'?'any':''}" id="${f.id}" placeholder="${f.type==='date'?'':f.label+'…'}" value="${esc(String(autofills[f.id]||''))}"/>`}
+    </div>`).join('')}</div>`;
+  // Populate mcsel country panels
+  cfg.fields.filter(f=>f.type==='country').forEach(async f=>{
+    await ensureCountries();
+    // Set initial label if autofill provided
+    if(autofills[f.id]){
+      const lbl=document.getElementById('mcsel_lbl_'+f.id);
+      if(lbl){lbl.textContent=autofills[f.id];lbl.className='mcsel-lbl';}
+    }
+  });
+  $('modalOverlay').classList.add('open');
+}
+
+// ── RFMO HISTORY CUSTOM MODAL ──
+const RFMO_CONFIGS={
+  WCPFC:{
+    label:'WCPFC — Western & Central Pacific Fisheries Commission',
+    fields:[
+      {id:'mf_regno',label:'Registration No.'},
+      {id:'mf_authno',label:'Auth No. by Flag State'},
+      {id:'mf_authform',label:'Form of Authorisation'},
+      {id:'mf_start',label:'Auth Start',type:'date'},
+      {id:'mf_end',label:'Auth End',type:'date'},
+      {id:'mf_species',label:'Authorised Species'},
+      {id:'mf_areas',label:'Authorised Areas'},
+      {id:'mf_tranship_hs',label:'Authorised to Tranship on High Seas',type:'yesno'},
+      {id:'mf_ps_tranship',label:'Purse Seine Authorised to Tranship at Sea',type:'yesno'},
+      {id:'mf_reason',label:'Reason for Deletion'},
+      {id:'mf_deldate',label:'Date of Deletion',type:'date'},
+      {id:'mf_url',label:'Public Registry URL'},
+    ],
+    save:async(d)=>sb.from('vessel_rfmo_history').insert({
+      vessel_id:vid,rfmo_name:'WCPFC',
+      registration_no:d.mf_regno||null,auth_no:d.mf_authno||null,
+      auth_form:d.mf_authform||null,
+      auth_start:d.mf_start||null,auth_end:d.mf_end||null,
+      auth_species:d.mf_species||null,auth_areas:d.mf_areas||null,
+      tranship_hs:d.mf_tranship_hs==='Yes'?true:d.mf_tranship_hs==='No'?false:null,
+      ps_tranship_sea:d.mf_ps_tranship==='Yes'?true:d.mf_ps_tranship==='No'?false:null,
+      reason_for_deletion:d.mf_reason||null,
+      date_of_deletion:d.mf_deldate||null,
+      registry_url:d.mf_url||null,
+      notes:d.mf_rfmo_notes||null
+    })
+  },
+  IATTC:{
+    label:'IATTC — Inter-American Tropical Tuna Commission',
+    fields:[
+      {id:'mf_regno',label:'IATTC No.'},
+      {id:'mf_status',label:'Register Status'},
+      {id:'mf_start',label:'Auth Start',type:'date'},
+      {id:'mf_end',label:'Auth End',type:'date'},
+      {id:'mf_reason',label:'Reason for Deletion'},
+      {id:'mf_url',label:'Public Registry URL'},
+    ],
+    save:async(d)=>sb.from('vessel_rfmo_history').insert({
+      vessel_id:vid,rfmo_name:'IATTC',
+      registration_no:d.mf_regno||null,auth_no:d.mf_status||null,
+      auth_start:d.mf_start||null,auth_end:d.mf_end||null,
+      reason_for_deletion:d.mf_reason||null,
+      registry_url:d.mf_url||null,
+      notes:d.mf_rfmo_notes||null
+    })
+  },
+  Other:{
+    label:'Other RFMO',
+    fields:[
+      {id:'mf_rfmo',label:'RFMO Name',required:true},
+      {id:'mf_regno',label:'Registration No.'},
+      {id:'mf_authno',label:'Auth No.'},
+      {id:'mf_start',label:'Auth Start',type:'date'},
+      {id:'mf_end',label:'Auth End',type:'date'},
+      {id:'mf_reason',label:'Reason for Deletion'},
+      {id:'mf_deldate',label:'Date of Deletion',type:'date'},
+    ],
+    save:async(d)=>sb.from('vessel_rfmo_history').insert({
+      vessel_id:vid,rfmo_name:d.mf_rfmo||null,
+      registration_no:d.mf_regno||null,auth_no:d.mf_authno||null,
+      auth_start:d.mf_start||null,auth_end:d.mf_end||null,
+      reason_for_deletion:d.mf_reason||null,
+      date_of_deletion:d.mf_deldate||null,
+      notes:d.mf_rfmo_notes||null
+    })
+  }
+};
+
+function openRFMOHistoryModal(){
+  curModalType='rfmo_history_custom';
+  $('modalTitle').textContent='Add RFMO History';
+  $('modalSub').textContent='Select the RFMO — fields will update based on your selection.';
+  // Use a styled native select — reliable inside dynamically injected HTML
+  $('modalBody').innerHTML=`
+    <div class="mfield full" style="margin-bottom:16px">
+      <span style="font-size:12px;font-weight:600;color:var(--muted)">RFMO <span style="color:var(--danger)">*</span></span>
+      <div style="position:relative;z-index:200">
+        <button type="button" id="rfmoTrigger" onclick="toggleModalCsel('rfmoPanel','rfmoLbl',event)"
+          style="width:100%;height:46px;padding:0 40px 0 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13.5px;color:var(--text);background:#fff;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;transition:border-color .14s,box-shadow .14s">
+          <span id="rfmoLbl" style="color:#c0c4d0">Select RFMO…</span>
+          <svg style="color:var(--soft);flex-shrink:0;transition:transform .2s" id="rfmoArrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <input type="hidden" id="mf_rfmo_sel"/>
+        <div id="rfmoPanel" style="display:none;position:absolute;top:calc(100% + 6px);left:0;width:100%;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 4px 12px rgba(20,24,45,.08),0 20px 48px rgba(20,24,45,.12);z-index:9999;overflow:hidden">
+          ${['WCPFC','IATTC','IOTC','ICCAT','CCSBT','CCAMLR','NEAFC','NAFO','SPRFMO','Other'].map(r=>
+            `<div onclick="pickModalCsel('rfmoPanel','rfmoLbl','rfmoArrow','mf_rfmo_sel','${r}',switchRFMOFields)" style="padding:10px 14px;font-size:13.5px;cursor:pointer;transition:background .1s" onmouseover="this.style.background='var(--primary-soft)';this.style.color='var(--primary-dark)'" onmouseout="this.style.background='';this.style.color=''">${r}</div>`
+          ).join('')}
+        </div>
+      </div>
+    </div>
+    <div id="rfmoFieldsWrap" class="modal-grid"></div>
+    <div class="mfield full" style="margin-top:12px">
+      <span style="font-size:12px;font-weight:600;color:var(--muted)">Notes</span>
+      <textarea id="mf_rfmo_notes" placeholder="Notes…" style="height:80px;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font:inherit;font-size:13.5px;resize:none;width:100%;outline:none;transition:border-color .14s"></textarea>
+    </div>`;
+  // Apply focus style on select
+  const sel=document.getElementById('mf_rfmo_sel');
+  if(sel){
+    sel.addEventListener('focus',()=>{ sel.style.borderColor='var(--primary)'; sel.style.boxShadow='0 0 0 3.5px rgba(26,111,219,.12)'; });
+    sel.addEventListener('blur',()=>{ sel.style.borderColor='var(--border)'; sel.style.boxShadow='none'; });
+  }
+  $('modalOverlay').classList.add('open');
+}
+function switchRFMOFields(){
+  const rfmo=document.getElementById('mf_rfmo_sel')?.value;
+  const wrap=document.getElementById('rfmoFieldsWrap'); if(!wrap) return;
+  const key=['WCPFC','IATTC'].includes(rfmo)?rfmo:'Other';
+  if(!rfmo){wrap.innerHTML='';return;}
+  const cfg=RFMO_CONFIGS[key];
+  const inpStyle='height:44px;padding:0 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13.5px;width:100%;outline:none;box-sizing:border-box';
+  wrap.innerHTML=cfg.fields.map(f=>{
+    const req=f.required?` <span style="color:var(--danger)">*</span>`:'';
+    const lbl=`<span style="font-size:12px;font-weight:600;color:var(--muted)">${f.label}${req}</span>`;
+    if(f.type==='yesno') return `
+      <div class="mfield">
+        ${lbl}
+        <div style="position:relative;z-index:100">
+          <button type="button" onclick="toggleModalCsel('${f.id}_panel','${f.id}_lbl','${f.id}_arr',event)"
+            style="width:100%;height:44px;padding:0 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13.5px;background:#fff;cursor:pointer;text-align:left;display:flex;align-items:center;justify-content:space-between;box-sizing:border-box">
+            <span id="${f.id}_lbl" style="color:#c0c4d0">Select…</span>
+            <svg id="${f.id}_arr" style="color:var(--soft);transition:transform .2s;flex-shrink:0" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <input type="hidden" id="${f.id}"/>
+          <div id="${f.id}_panel" style="display:none;position:absolute;top:calc(100% + 4px);left:0;width:100%;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 4px 12px rgba(20,24,45,.08),0 16px 40px rgba(20,24,45,.12);z-index:9999;overflow:hidden">
+            ${['Yes','No','Unknown'].map(o=>`<div onclick="pickModalCsel('${f.id}_panel','${f.id}_lbl','${f.id}_arr','${f.id}','${o}')" style="padding:10px 14px;font-size:13.5px;cursor:pointer" onmouseover="this.style.background='var(--primary-soft)';this.style.color='var(--primary-dark)'" onmouseout="this.style.background='';this.style.color=''">${o}</div>`).join('')}
+          </div>
+        </div>
+      </div>`;
+    if(f.type==='date') return `
+      <div class="mfield">
+        ${lbl}
+        <input type="date" id="${f.id}" style="${inpStyle}"/>
+      </div>`;
+    return `
+      <div class="mfield">
+        ${lbl}
+        <input type="text" id="${f.id}" placeholder="${f.label}…" style="${inpStyle}"/>
+      </div>`;
+  }).join('');
+}
+
+
+// ── MODAL INLINE PREMIUM DROPDOWN HELPERS ──────────────────────────
+function toggleModalCsel(panelId, lblId, arrowId, e){
+  if(e) e.stopPropagation();
+  const panel=document.getElementById(panelId); if(!panel) return;
+  const isOpen=panel.style.display!=='none';
+  document.querySelectorAll('[id$="_panel"]').forEach(p=>{
+    if(p.style&&p.id!==panelId) p.style.display='none';
+  });
+  if(isOpen){
+    panel.style.display='none';
+    const arr=document.getElementById(arrowId);
+    if(arr) arr.style.transform='';
+  } else {
+    panel.style.display='block';
+    const arr=document.getElementById(arrowId);
+    if(arr) arr.style.transform='rotate(180deg)';
+    const trigger=panel.previousElementSibling;
+    if(trigger){
+      const rect=trigger.getBoundingClientRect();
+      if(window.innerHeight-rect.bottom<200 && rect.top>200){
+        panel.style.top='auto'; panel.style.bottom='calc(100% + 4px)';
+      } else {
+        panel.style.top='calc(100% + 4px)'; panel.style.bottom='auto';
+      }
+    }
+  }
+}
+function pickModalCsel(panelId, lblId, arrowId, hiddenId, value, callback){
+  const inp=document.getElementById(hiddenId); if(inp) inp.value=value;
+  const lbl=document.getElementById(lblId);
+  if(lbl){ lbl.textContent=value; lbl.style.color='var(--text)'; }
+  const panel=document.getElementById(panelId);
+  if(panel) panel.style.display='none';
+  const arr=document.getElementById(arrowId);
+  if(arr) arr.style.transform='';
+  if(callback) callback();
+}
+document.addEventListener('click',()=>{
+  document.querySelectorAll('[id$="_panel"]').forEach(p=>{
+    if(p.style&&p.style.display!=='none'&&p.id!=='photoLightbox'){
+      p.style.display='none';
+      const arr=document.getElementById(p.id.replace('_panel','_arr'));
+      if(arr) arr.style.transform='';
+    }
+  });
+});
+
+function openHistModal(type){
+  if(type==='rfmo_history'){ openRFMOHistoryModal(); return; }
+  // Safety: force close any stuck state before opening
+  const overlay=$('modalOverlay');
+  if(overlay) overlay.classList.remove('open');
+  setTimeout(()=>openModal(type), 20);
+}
+
+/* ── MODAL COUNTRY SELECT (mcsel) ── */
+function buildMCsel(fieldId){
+  return `<div class="mcsel" id="mcsel_${fieldId}">
+    <button type="button" class="mcsel-trigger" onclick="toggleMCsel('${fieldId}',event)">
+      <span class="mcsel-lbl ph" id="mcsel_lbl_${fieldId}">Select country…</span>
+      <svg class="mcsel-arr" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <input type="hidden" id="${fieldId}"/>
+    <div class="mcsel-panel">
+      <div class="mcsel-search"><input type="text" placeholder="Search country…" oninput="filterMCsel('${fieldId}',this.value)" onclick="event.stopPropagation()"/></div>
+      <div class="mcsel-list" id="mcsel_list_${fieldId}"></div>
+    </div>
+  </div>`;
+}
+function toggleMCsel(fid,e){
+  e.stopPropagation();
+  const wrap=document.getElementById('mcsel_'+fid); if(!wrap) return;
+  const wasOpen=wrap.classList.contains('open');
+  document.querySelectorAll('.mcsel.open').forEach(x=>x.classList.remove('open','drop-up'));
+  if(!wasOpen){
+    const trigger=wrap.querySelector('.mcsel-trigger');
+    if(trigger){
+      const rect=trigger.getBoundingClientRect();
+      const spaceBelow=window.innerHeight-rect.bottom;
+      if(spaceBelow<300 && rect.top>300) wrap.classList.add('drop-up');
+    }
+    wrap.classList.add('open');
+    populateMCsel(fid,'');
+    setTimeout(()=>wrap.querySelector('.mcsel-search input')?.focus(),30);
+  }
+}
+async function populateMCsel(fid,q){
+  await ensureCountries();
+  const list=document.getElementById('mcsel_list_'+fid); if(!list) return;
+  const curVal=document.getElementById(fid)?.value||'';
+  const f=(q||'').toLowerCase();
+  const filtered=f?countryList.filter(c=>c.toLowerCase().includes(f)):countryList;
+  if(!filtered.length){list.innerHTML='<div class="mcsel-empty">No matches</div>';return;}
+  list.innerHTML=filtered.map(c=>`<div class="mcsel-opt${c===curVal?' active':''}" data-country="${c.replace(/"/g,'&quot;')}" data-fid="${fid}">${esc(c)}</div>`).join('');
+  if(!list._ppBound){
+    list._ppBound=true;
+    list.addEventListener('click',e=>{
+      const opt=e.target.closest('.mcsel-opt'); if(!opt) return;
+      pickMCsel(opt.dataset.fid, opt.dataset.country);
+    });
+  }
+}
+function filterMCsel(fid,q){ populateMCsel(fid,q); }
+function pickMCsel(fid,country){
+  const inp=document.getElementById(fid); if(inp) inp.value=country;
+  const lbl=document.getElementById('mcsel_lbl_'+fid);
+  if(lbl){lbl.textContent=country;lbl.className='mcsel-lbl';}
+  const wrap=document.getElementById('mcsel_'+fid);
+  if(wrap) wrap.classList.remove('open','drop-up');
+}
+
+function openModal(type){
+  const cfg=MODAL_CONFIGS[type]; if(!cfg) return;
+  curModalType=type;
+  $('modalTitle').textContent=cfg.title;
+  $('modalSub').textContent=cfg.sub;
+  const autofills=cfg.autofill?cfg.autofill(vessel):{};
+  $('modalBody').innerHTML=`<div class="modal-grid">${cfg.fields.map(f=>`
+    <div class="mfield${f.full?' full':''}">
+      <span>${f.label}${f.required?' <span style="color:var(--danger)">*</span>':''}</span>
+      ${f.type==='textarea'
+        ?`<textarea id="${f.id}" placeholder="${f.label}…">${esc(String(autofills[f.id]||''))}</textarea>`
+        :f.type==='country'
+        ?`${buildMCsel(f.id)}<script>document.getElementById(${JSON.stringify(f.id)})&&(()=>{const v=${JSON.stringify(autofills[f.id]||'')};if(v){document.getElementById(${JSON.stringify(f.id)}).value=v;const l=document.getElementById('mcsel_lbl_'+${JSON.stringify(f.id)});if(l){l.textContent=v;l.className='mcsel-lbl';}}})();<\/script>`
+        :`<input type="${f.type==='number'?'number':f.type==='date'?'date':'text'}" step="${f.type==='number'?'any':''}" id="${f.id}" placeholder="${f.type==='date'?'':f.label+'…'}" value="${esc(String(autofills[f.id]||''))}"/>`}
+    </div>`).join('')}</div>`;
+  $('modalOverlay').classList.add('open');
+}
+
+function closeModal(){
+  $('modalOverlay').classList.remove('open');
+  curModalType=null;
+}
+
+async function saveModal(){
+  if(!curModalType) return;
+  if(curModalType==='rfmo_history_custom'){
+    const rfmo=$('mf_rfmo_sel')?.value;
+    if(!rfmo){toast('Please select an RFMO',true);return;}
+    const key=['WCPFC','IATTC'].includes(rfmo)?rfmo:'Other';
+    const cfg=RFMO_CONFIGS[key];
+    const d={mf_rfmo_notes:$('mf_rfmo_notes')?.value||''};
+    cfg.fields.forEach(f=>{const el=$(f.id);if(el) d[f.id]=el.value.trim();});
+    const missing=cfg.fields.filter(f=>f.required&&!d[f.id]);
+    if(missing.length){toast(`${missing[0].label} is required`,true);return;}
+    $('modalSave').disabled=true;
+    const {error}=await cfg.save(d);
+    $('modalSave').disabled=false;
+    if(error){toast(error.message||'Save failed',true);return;}
+    closeModal();
+    toast('RFMO history entry saved'); await loadHistory(); return;
+  }
+  const cfg=MODAL_CONFIGS[curModalType];
+  if(!cfg) return;
+  const d={};
+  cfg.fields.forEach(f=>{const el=$(f.id);if(el) d[f.id]=el.value.trim();});
+  const missing=cfg.fields.filter(f=>f.required&&!d[f.id]);
+  if(missing.length){toast(`${missing[0].label} is required`,true);return;}
+  $('modalSave').disabled=true;
+  const {error}=await cfg.save(d);
+  $('modalSave').disabled=false;
+  if(error){toast(error.message||'Save failed',true);return;}
+  closeModal();
+  toast('Entry saved');
+  await loadHistory();
+}
+
+async function confirmDelete(vesselId){
+  // Step 1: premium confirm
+  const ok=await showConfirm(
+    'Delete this vessel?',
+    'This will permanently remove all vessel data including history, VOSI, and compliance records. This cannot be undone.',
+    'Continue to delete'
+  );
+  if(!ok) return;
+  // Step 2: password gate
+  const pwd=prompt('Enter deletion password to confirm:');
+  if(pwd!=='369123'){
+    if(pwd!==null) alert('Incorrect password. Deletion cancelled.');
+    return;
+  }
+  // Delete
+  const {error}=await sb.from('vessels').delete().eq('id',vesselId);
+  if(error){ toast('Delete failed: '+error.message,true); return; }
+  toast('Vessel deleted');
+  setTimeout(()=>location.href='vessel-list.html',1000);
+}
+function toggleAvatarMenu(){$('avatarMenu').classList.toggle('open');}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.avatar-btn')) $('avatarMenu')?.classList.remove('open');
+  if(!e.target.closest('.mcsel'))
+    document.querySelectorAll('.mcsel.open').forEach(el=>el.classList.remove('open','drop-up'));
+  if(!e.target.closest('.csel'))
+    document.querySelectorAll('.csel.open').forEach(el=>el.classList.remove('open','drop-up'));
+});
+async function handleLogout(){await sb.auth.signOut();location.href='index.html';}
+
+function openTracking(){
+  const modal=$('aisModal');
+  const mmsi=vessel.mmsi; const imo=vessel.imo; const name=vessel.current_name;
+  modal.style.display='flex';
+  $('aisTitle').textContent=`Live Tracking · ${name}`;
+  if(!mmsi&&!imo){$('aisContent').style.display='none';$('aisNoMMSI').style.display='block';return;}
+  $('aisContent').style.display='block';$('aisNoMMSI').style.display='none';
+  $('aisLoading').style.display='flex';$('aisFrame').style.display='none';
+  let embedUrl,extUrl;
+  if(mmsi){
+    embedUrl=`https://www.marinetraffic.com/en/ais/embed/maptype:0/mmsi:${mmsi}/zoom:10/shownames:true/`;
+    extUrl=`https://www.marinetraffic.com/en/ais/details/ships/mmsi:${mmsi}`;
+    $('aisSub').textContent=`MMSI: ${mmsi} · Powered by MarineTraffic`;
+  } else {
+    embedUrl=`https://www.marinetraffic.com/en/ais/embed/maptype:0/imo:${imo}/zoom:5/shownames:true/`;
+    extUrl=`https://www.marinetraffic.com/en/ais/details/ships/imo:${imo}`;
+    $('aisSub').textContent=`IMO: ${imo} · Powered by MarineTraffic`;
+  }
+  $('aisExtLink').href=extUrl;
+  const frame=$('aisFrame');
+  frame.onload=()=>{$('aisLoading').style.display='none';frame.style.display='block';};
+  frame.src=embedUrl;
+}
+function closeTracking(){
+  const modal=$('aisModal'); modal.style.display='none';
+  const frame=$('aisFrame'); frame.src=''; frame.style.display='none';
+  $('aisLoading').style.display='flex';
+}
+$('aisModal')?.addEventListener('click',e=>{if(e.target===$('aisModal'))closeTracking();});
+
+function toast(msg,err=false){
+  const t=$('toast');t.textContent=msg;t.className='toast show'+(err?' err':'');
+  setTimeout(()=>t.className='toast',2800);
+}
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quill/1.3.7/quill.min.js"></script>
+</body>
+</html>

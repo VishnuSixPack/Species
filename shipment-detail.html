@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<link rel="icon" type="image/png" href="sc-blue-logo.png"/>
+<title>Shipment — SmarTuna</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="theme.css"/>
+<script src="theme.js"></script>
+<style>
+  :root{}
+  @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');
+             font-weight:normal;font-style:normal;font-display:swap;}
+  .sc-wm{display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1;gap:0;text-decoration:none;}
+  .sc-wm-top{font-family:'Bitsumis',sans-serif !important;font-weight:900 !important;font-size:16px;
+    letter-spacing:.04em;text-transform:uppercase;line-height:1;
+    background:linear-gradient(90deg,var(--wm-top),var(--wm-top)) !important;-webkit-background-clip:text !important;
+    -webkit-text-fill-color:transparent !important;background-clip:text !important;}
+  .sc-wm-sub{font-family:'Bitsumis',sans-serif !important;font-weight:700 !important;font-size:7px;
+    letter-spacing:.22em;text-transform:uppercase;color:var(--wm-sub);-webkit-text-fill-color:var(--wm-sub) !important;margin-top:2px;}
+  .topbar-brand{display:flex;align-items:center;gap:8px;text-decoration:none;}
+  .avatar-wrap{position:relative;}
+  .avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--surface);
+               border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-1);
+               min-width:186px;overflow:hidden;z-index:999;}
+  .avatar-menu.open{display:block;}
+  .avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;border-bottom:1px solid var(--border);}
+  .avatar-menu a,.avatar-menu button{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;
+    color:var(--menu-text);text-decoration:none;font-weight:500;width:100%;background:none;border:none;
+    font-family:inherit;cursor:pointer;text-align:left;}
+  .avatar-menu a:hover,.avatar-menu button:hover{background:var(--bg);color:var(--primary);}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Poppins','DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+
+  /* ---------- topbar (matches home-logged-in.html) ---------- */
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 22px;
+          background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:400;}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:var(--primary);text-decoration:none;}
+  .nav{display:flex;align-items:center;gap:2px;}
+  .nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;
+            color:var(--muted);text-decoration:none;white-space:nowrap;transition:background .15s,color .15s;}
+  .nav-item:hover{background:var(--bg);color:var(--text);}
+  .nav-item.active{background:var(--bg);color:var(--text);font-weight:600;}
+  .avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;
+              font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+
+  /* ---------- page shell ---------- */
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 22px 60px;}
+  .crumb{font-size:12px;color:var(--muted);margin-bottom:16px;}
+  .crumb a{color:var(--muted);text-decoration:none;}
+  .crumb a:hover{color:var(--primary);}
+
+  .page-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px;flex-wrap:wrap;}
+  .page-actions{display:flex;gap:8px;flex-wrap:wrap;}
+  .btn{padding:8px 15px;border-radius:9px;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;
+       border:1px solid var(--border);background:var(--surface);color:var(--text);transition:all .15s;}
+  .btn:hover{border-color:var(--primary);color:var(--primary);}
+  .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .btn-primary:hover{background:var(--primary-hover);color:#fff;}
+
+  /* ---------- summary pills ---------- */
+  .pills{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px;}
+  .pill{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;text-align:center;}
+  .pill-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;}
+  .pill-value{font-size:14px;font-weight:600;}
+  .pill.status .pill-value{display:inline-block;padding:3px 11px;border-radius:999px;font-size:11.5px;}
+  .st-transit{background:var(--primary-soft-2);color:var(--primary);}
+  .st-delivered{background:var(--good-bg);color:var(--good-fg);}
+  .st-draft{background:var(--surface-2);color:var(--muted);}
+  .st-cancelled{background:var(--bad-bg);color:var(--bad-fg);}
+
+  /* ---------- cards ---------- */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px 26px;margin-bottom:18px;}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:20px;}
+  .card-title{font-size:16px;font-weight:600;}
+  .card-sub{font-size:12px;color:var(--muted);margin-top:3px;}
+  .chip-btn{background:var(--primary);color:#fff;border:none;border-radius:999px;padding:6px 15px;
+            font-size:11.5px;font-weight:600;font-family:inherit;cursor:pointer;}
+  .chip-btn:hover{background:var(--primary-hover);}
+
+  .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:22px 20px;}
+  .fld-label{font-size:11px;color:var(--muted);margin-bottom:5px;}
+  .fld-value{font-size:13px;font-weight:500;word-break:break-word;}
+  .fld-value.empty{color:var(--dim);font-weight:400;}
+  .link-btn{background:none;border:none;padding:0;font-family:inherit;font-size:13px;font-weight:600;
+            color:var(--primary);cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
+
+  /* ---------- product line cards ---------- */
+  .section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
+                margin:26px 4px 14px;flex-wrap:wrap;}
+  /* Journey leg cards */
+  .leg{background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:14px;overflow:hidden;}
+  .leg-head{display:flex;align-items:center;gap:14px;padding:16px 20px;cursor:pointer;transition:background .1s;}
+  .leg-head:hover{background:var(--hover);}
+  .leg-mode{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+  .leg-mode.sea{background:var(--primary-soft,#e8f1fc);}.leg-mode.road{background:#fef3c7;}.leg-mode.air{background:#f0e6ff;}.leg-mode.rail{background:#e0e7ff;}
+  .leg-route{flex:1;min-width:0;}
+  .leg-route-name{font-size:14px;font-weight:700;}
+  .leg-route-meta{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .leg-date{font-size:12px;color:var(--muted);text-align:right;white-space:nowrap;}
+  .leg-body{padding:20px 22px;border-top:1px solid var(--rule);display:none;}
+  .leg.open .leg-body{display:block;}
+  .leg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:14px 22px;}
+  .leg-vessels{margin-top:18px;}
+  .leg-vessels table{width:100%;border-collapse:collapse;font-size:13px;}
+  .leg-vessels th{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;text-align:left;padding:8px 0;border-bottom:1px solid var(--border);}
+  .leg-vessels td{padding:10px 0;border-top:1px solid var(--rule);}
+  .leg-vessels tr:first-child td{border-top:none;}
+  .leg-ts{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:10px;
+          background:var(--primary-soft,#e8f1fc);font-size:12px;font-weight:600;color:var(--primary,#1a6fdb);margin-top:16px;}
+  .leg-ts svg{width:14px;height:14px;}
+  .sub-h{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 12px;}
+
+  /* Product totals bar */
+  .totals{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--surface);}
+  .tot-cell{padding:16px 18px;text-align:center;border-right:1px solid var(--border);}
+  .tot-cell:last-child{border-right:none;}
+  .tot-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;}
+  .tot-value{font-size:17px;font-weight:700;color:var(--primary,#1a6fdb);}
+  .tot-unit{font-size:11px;color:var(--muted);font-weight:400;}
+  .item-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:14px;overflow:hidden;}
+  .item-head{display:flex;align-items:center;gap:14px;padding:16px 22px;cursor:pointer;
+             border-bottom:1px solid transparent;transition:background .15s;}
+  .item-head:hover{background:var(--surface-2);}
+  .item-card.open .item-head{border-bottom-color:var(--border);}
+  .item-no{width:26px;height:26px;border-radius:8px;background:var(--bg);color:var(--muted);
+           font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .item-name{font-size:14px;font-weight:600;}
+  .item-meta{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .item-right{margin-left:auto;display:flex;align-items:center;gap:20px;}
+  .item-stat{text-align:right;}
+  .item-stat .s-l{font-size:10px;color:var(--muted);}
+  .item-stat .s-v{font-size:13px;font-weight:600;}
+  .caret{color:var(--muted);font-size:11px;transition:transform .2s;}
+  .item-card.open .caret{transform:rotate(180deg);}
+  .item-body{display:none;padding:20px 22px 22px;}
+  .item-card.open .item-body{display:block;}
+  .sub-label{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:20px 0 12px;}
+  .sub-label:first-child{margin-top:0;}
+  .flag{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warn-fg);margin-left:7px;vertical-align:middle;}
+
+  /* ---------- batch table ---------- */
+  table{width:100%;border-collapse:collapse;}
+  th{font-size:11px;color:var(--muted);font-weight:500;text-align:left;padding:0 12px 12px;}
+  td{font-size:13px;padding:11px 12px;border-top:1px solid var(--rule);}
+  tfoot td{font-weight:700;border-top:2px solid var(--border);}
+  .num{text-align:right;}
+  .variance-warn{margin-top:12px;padding:9px 13px;border-radius:9px;background:var(--warn-bg);color:var(--warn-fg);font-size:12px;}
+
+  /* ---------- vessels ---------- */
+  .vrow{display:flex;align-items:center;gap:16px;padding:13px 0;border-top:1px solid var(--rule);}
+  .vrow:first-child{border-top:none;}
+  .vrole{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;
+         padding:4px 10px;border-radius:999px;background:var(--bg);color:var(--muted);white-space:nowrap;}
+  .vrole.mother{background:var(--primary-soft-2);color:var(--primary);}
+  .vname{font-size:13.5px;font-weight:600;}
+  .vmeta{font-size:11.5px;color:var(--muted);margin-top:2px;}
+
+  /* ---------- rich text view ---------- */
+  .rt-view{font-size:13.5px;line-height:1.7;}
+  .rt-view ul,.rt-view ol{margin:8px 0 8px 22px;}
+  .rt-view h4{font-size:14px;margin:12px 0 6px;}
+  .rt-view a{color:var(--primary);}
+
+  /* ---------- tracking placeholder ---------- */
+  .track-ph{border:1.5px dashed var(--border);border-radius:14px;padding:44px 24px;text-align:center;color:var(--muted);}
+  .track-ph h4{font-size:13.5px;color:var(--text);margin-bottom:6px;}
+  .track-ph p{font-size:12px;max-width:460px;margin:0 auto;line-height:1.6;}
+
+  .empty-state{background:var(--surface);border:1.5px dashed var(--border);border-radius:16px;
+               padding:44px 24px;text-align:center;}
+  .empty-state h4{font-size:14px;margin-bottom:6px;}
+  .empty-state p{font-size:12.5px;color:var(--muted);max-width:420px;margin:0 auto 18px;line-height:1.6;}
+
+  /* ---------- modal ---------- */
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(16,20,35,.5);z-index:900;
+            align-items:center;justify-content:center;padding:22px;}
+  .modal-bg.open{display:flex;}
+  .modal{background:var(--surface);border-radius:18px;padding:26px 28px;width:100%;max-width:760px;
+         max-height:86vh;overflow-y:auto;}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+  .modal-title{font-size:16px;font-weight:600;}
+  .x-btn{background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer;line-height:1;}
+
+  @media(max-width:980px){
+    .grid{grid-template-columns:repeat(3,1fr);}
+    .pills{grid-template-columns:repeat(2,1fr);}
+    .nav{display:none;}
+  }
+  @media(max-width:560px){
+    .grid{grid-template-columns:repeat(2,1fr);}
+    .pills{grid-template-columns:1fr;}
+    .wrap{padding:16px 14px 50px;}
+    .card{padding:18px 16px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="home-logged-in.html" class="topbar-brand">
+    <img src="sc-blue-logo.png" data-dark-src="sc-white-logo.png" alt="SmarTuna" style="width:28px;height:28px;object-fit:contain;"/>
+    <span class="sc-wm"><span class="sc-wm-top">SmarTuna</span><span class="sc-wm-sub">concept</span></span>
+  </a>
+  <div class="nav">
+    <a href="home-logged-in.html" class="nav-item">Home</a>
+    <a href="shipment-list.html" class="nav-item active">My Studio</a>
+    <a href="Species.html" class="nav-item">Atlas</a>
+    <a href="#" class="nav-item">Features</a>
+    <a href="report.html" class="nav-item">Support</a>
+  </div>
+  <div class="avatar-wrap">
+    <div class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()"><span id="avatarInitials">··</span></div>
+    <div class="avatar-menu" id="avatarMenu">
+      <div class="avatar-menu-name" id="avatarGreeting">Hello!</div>
+      <a href="profile.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Profile</a>
+      <a href="organisation.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg>Your Company</a>
+      <button onclick="handleLogout()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Logout</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="crumb"><a href="home-logged-in.html">My Studio</a> / <a href="shipment-list.html">Shipments</a> / <span id="crumbRef">—</span></div>
+
+  <div class="page-head">
+    <div>
+      <div style="font-size:20px;font-weight:700;" id="headRef">—</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:3px;" id="headSub">—</div>
+    </div>
+    <div class="page-actions">
+      <button class="btn" onclick="goEdit()">Edit shipment</button>
+      <button class="btn" onclick="goCarbon()">Calculate carbon footprint</button>
+      <button class="btn btn-primary" onclick="goEuCatch()">Create EU Catch document</button>
+    </div>
+  </div>
+
+  <!-- ============ SUMMARY PILLS ============ -->
+  <div class="pills" id="pills"></div>
+
+  <!-- ============ SHIPMENT INFORMATION ============ -->
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Shipment Information</div>
+        <div class="card-sub" id="shipSub">Export and transportation details</div>
+      </div>
+      <button class="chip-btn" onclick="openModal('modalAdditional')">Additional</button>
+    </div>
+    <div class="grid" id="shipGrid"></div>
+  </div>
+
+  <!-- ============ VESSELS ============ -->
+  <div id="connCard"></div>
+  <div class="card"><div class="card-head"><div><div class="card-title">Parties</div></div></div><div class="grid" id="partyGrid"></div></div>
+  <div class="card"><div class="card-head"><div><div class="card-title">Journey</div></div></div><div id="journeyHost"></div></div>
+  <div class="card" id="vesselCard" style="display:none;">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Vessels</div>
+        <div class="card-sub">Feeder legs and the mother vessel</div>
+      </div>
+    </div>
+    <div id="vesselHost"></div>
+  </div>
+
+  <!-- ============ PRODUCTS (one card per line) ============ -->
+  <div class="section-head">
+    <div>
+      <div class="card-title">Products</div>
+      <div class="card-sub" id="prodSub">Each product carries its own batch/lot breakdown</div>
+    </div>
+    <div class="totals" id="prodTotals"></div>
+  </div>
+  <div id="itemsHost"></div>
+
+  <!-- ============ PROCESSING INFORMATION ============ -->
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Processing Information</div>
+        <div class="card-sub">Processing and transformation details</div>
+      </div>
+    </div>
+    <div class="grid" id="procGrid"></div>
+  </div>
+
+  <!-- ============ TRACKING INFORMATION ============ -->
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Tracking Information</div>
+        <div class="card-sub" id="trackSub">Document and milestone dates</div>
+      </div>
+    </div>
+    <div class="grid" id="trackGrid"></div>
+  </div>
+
+  <!-- ============ LIVE TRACKING ============ -->
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Live Tracking</div>
+        <div class="card-sub" id="liveSub">Real-time position and route</div>
+      </div>
+    </div>
+    <div class="track-ph" id="trackPh"></div>
+  </div>
+
+  <!-- ============ NOTES ============ -->
+  <div class="card" id="notesCard" style="display:none;">
+    <div class="card-head">
+      <div class="card-title">Notes</div>
+    </div>
+    <div class="rt-view" id="notesHost"></div>
+  </div>
+
+</div>
+
+<!-- ============ MODAL: ADDITIONAL ============ -->
+<div class="modal-bg" id="modalAdditional" onclick="if(event.target===this)closeModal('modalAdditional')">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title">Additional Details</div>
+        <div class="card-sub">Finance, payment and document courier</div>
+      </div>
+      <button class="x-btn" onclick="closeModal('modalAdditional')">&times;</button>
+    </div>
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;">Finance</div>
+    <div class="grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:26px;" id="addFinance"></div>
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px;">Document Courier</div>
+    <div class="grid" style="grid-template-columns:repeat(3,1fr);" id="addCourier"></div>
+    <div id="addNotesHost" style="margin-top:24px;"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* =====================================================================
+   SUPABASE
+   ===================================================================== */
+const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
+const SUPABASE_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const dbClient = window.supabase
+  ? window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY)
+  : null;
+if(!dbClient) console.warn('Supabase SDK did not load — rendering in sample mode.');
+
+/* =====================================================================
+   MODE CONFIG — this is what makes the layout switch.
+   Each mode declares which fields appear, and what they're called.
+   Adding a 4th mode (Rail, Multimodal) means adding one block here.
+   ===================================================================== */
+const MODES = {
+  Sea: {
+    icon:'🚢',
+    shipSub:'Export and sea transportation details',
+    route:[
+      ['Port of Loading','origin_name'],
+      ['Port of Transshipment (s)','transit_names'],
+      ['Port of Discharge','destination_name'],
+    ],
+    carriage:[
+      ['Container','container_no'],
+      ['Seal Number','seal_number'],
+      ['Container Type','container_type'],
+      ['Incoterms','incoterms'],
+    ],
+    tracking:[
+      ['BL No','bl_no'],
+      ['BL Issue Date','bl_issue_date','date'],
+      ['On-Board Date','on_board_date','date'],
+      ['Purchase Invoice Date','purchase_invoice_date','date'],
+      ['Invoice No','invoice_no'],
+      ['Purchase Order No','purchase_order_no'],
+      ['Arrival Date','arrival_date','date'],
+      ['Container Discharge','container_discharge_date','date'],
+    ],
+    liveSub:'Container position and voyage route',
+    liveNote:'Container tracking needs a carrier data feed (Vizion, Terminal49, SeaRates or similar). Once you pick a provider, this panel renders the live route and milestone timeline.',
+  },
+  Air: {
+    icon:'✈️',
+    shipSub:'Export and air transportation details',
+    route:[
+      ['Airport of Departure','origin_name'],
+      ['Transit Airport (s)','transit_names'],
+      ['Airport of Arrival','destination_name'],
+    ],
+    carriage:[
+      ['AWB No','awb_no'],
+      ['Airline','airline'],
+      ['Flight No','flight_no'],
+      ['ULD Type','container_type'],
+      ['Incoterms','incoterms'],
+    ],
+    tracking:[
+      ['AWB Issue Date','awb_issue_date','date'],
+      ['Departure Date','departure_date','date'],
+      ['Purchase Invoice Date','purchase_invoice_date','date'],
+      ['Invoice No','invoice_no'],
+      ['Purchase Order No','purchase_order_no'],
+      ['Arrival Date','arrival_date','date'],
+    ],
+    liveSub:'Flight status and route',
+    liveNote:'Flight tracking needs an air cargo feed (FlightAware, Cargo iQ or the airline\'s own AWB lookup). This panel renders the live leg once a provider is connected.',
+  },
+  Road: {
+    icon:'🚚',
+    shipSub:'Export and road transportation details',
+    route:[
+      ['Place of Loading','origin_name'],
+      ['Transit Point (s)','transit_names'],
+      ['Place of Delivery','destination_name'],
+    ],
+    carriage:[
+      ['CMR No','cmr_no'],
+      ['Vehicle Plate','vehicle_plate'],
+      ['Trailer Plate','trailer_plate'],
+      ['Driver','driver_name'],
+      ['Transport Company','transport_company'],
+      ['Trailer Type','container_type'],
+      ['Incoterms','incoterms'],
+    ],
+    tracking:[
+      ['Departure Date','departure_date','date'],
+      ['Purchase Invoice Date','purchase_invoice_date','date'],
+      ['Invoice No','invoice_no'],
+      ['Purchase Order No','purchase_order_no'],
+      ['Delivery Date','arrival_date','date'],
+    ],
+    liveSub:'Vehicle position and route',
+    liveNote:'Road tracking needs a telematics feed (the haulier\'s GPS provider, or a CMR e-doc platform). This panel renders the live route once a provider is connected.',
+  },
+};
+
+/* Fields shown for every mode, before the route block */
+const COMMON_HEAD = [
+  ['Shipment ID','shipment_ref'],
+  ['Shipment Date','shipment_date','date'],
+  ['Shipment Type','shipment_type'],
+  ['Exporter','exporter_name'],
+  ['Country of Export','country_of_export'],
+  ['Destination','destination_country'],
+];
+
+const ADD_FINANCE = [
+  ['L/C No','lc_no'],
+  ['L/C Issue Date','lc_issue_date','date'],
+  ['L/C Due Date','lc_due_date','date'],
+  ['Payment Terms','payment_terms'],
+  ['Payment Due Date','payment_due_date','date'],
+  ['Purchase Invoice No','purchase_invoice_no'],
+];
+const ADD_COURIER = [
+  ['Courier Company','courier_company'],
+  ['Courier AWB No','courier_awb_no'],
+  ['Documents Sent','courier_sent_date','date'],
+  ['Documents Received','docs_received_date','date'],
+];
+
+/* =====================================================================
+   DEMO RECORD — only loads with ?demo=1, reachable from the overview.
+   Nothing here leaks into a real or blank shipment.
+   ===================================================================== */
+const DEMO = {
+  shipment:{
+    id:'demo', shipment_ref:'EU-2026-00482', shipment_date:'2026-07-28', shipment_type:'Export',
+    transport_mode:'Sea', status:'In-Transit',
+    exporter_name:'Ocean Star Tuna Trading Inc', country_of_export:'Philippines',
+    destination_country:'Netherlands',importer_name:'Van der Berg Seafood BV',
+    origin_name:'General Santos', transit_names:['Dubai','Felixstowe'], destination_name:'Rotterdam',
+    container_no:'MSCU-4829173', seal_number:'OS-882194', incoterms:'CIF',exporter_is_processor:true,load_type:'FCL',
+    container_type:"40' Reefer (40RH)",
+    notes_html:'<p>Reefer set to <b>-18°C</b>, verified at stuffing.</p>'+
+               '<ul><li>Pre-cooling certificate filed with the BL</li>'+
+               '<li>Do not restack above three high</li></ul>',
+    processor_name:'Ocean Star Tuna Processing Inc', processing_country:'Philippines',
+    bl_no:'MSCUGS482913', bl_issue_date:'2026-07-28', on_board_date:'2026-07-28',
+    purchase_invoice_date:'2026-07-28', invoice_no:'2026-123ABC-BX001',
+    purchase_order_no:'PX-005', arrival_date:'2026-08-24', container_discharge_date:'2026-08-26',
+    lc_no:'LC-2026-8891', lc_issue_date:'2026-07-01', lc_due_date:'2026-09-15',
+    payment_terms:'90 days from BL date', payment_due_date:'2026-10-26',
+    purchase_invoice_no:'PI-2026-0448',
+    courier_company:'DHL Express', courier_awb_no:'7712 4409 881',
+    courier_sent_date:'2026-07-29', docs_received_date:'2026-08-03',
+    additional_notes:'Original documents couriered in one set. Telex release not used.',
+    reefer_setpoint_c:-18,
+  },
+  legs:[
+    {leg_no:1,transport_mode:'Road',origin_name:'Cold Store',destination_name:'General Santos Port',departure_date:'2026-07-29',arrival_date:'2026-07-29',carrier_name:'PhilTruck',document_type:'CMR',document_no:'CMR-4471',vehicle_plate:'ABC-1234',container_no:'MSCU-4829173',container_type:"40' RHC"},
+    {leg_no:2,transport_mode:'Sea',origin_name:'General Santos',destination_name:'Rotterdam',departure_date:'2026-07-30',arrival_date:'2026-08-18',carrier_name:'MSC',document_type:'B/L',document_no:'MSCUBOM482913',container_no:'MSCU-4829173',transshipment_port:'Singapore',vessels:[{role:'Feeder 1',vessel_name:'Feeder Star 7',imo:'9312244',voyage_no:'112N'},{role:'Mother',vessel_name:'MSC Ambition',imo:'9776418',voyage_no:'26W'}]}],
+  connected:[{id:'s-prev',shipment_ref:'EU-2026-00480',origin_name:'Ludhiana ICD',destination_name:'General Santos',transport_mode:'Rail',status:'Delivered'}],
+  items:[
+    { id:'d1', line_no:1, product_name:'Frozen Whole Round Tuna', species_name:'Yellowfin Tuna',
+      product_form:'Frozen Whole Round', gtin:'09300462344485',
+      number_of_packages:615, package_type:'cartons',
+      gross_weight_kg:19120, net_weight_kg:18450, processed_quantity_kg:18450,
+      packaging_material:'Corrugated carton', packaging_weight_kg:430,
+      batches:[
+        {line_no:1,packages:15, batch_lot:'OS-YFT-260714',processing_date:'2026-07-22',expiry_date:'2028-07-22',raw_material_ref:'RM-001-001-235'},
+        {line_no:2,packages:100,batch_lot:'OS-YFT-260715',processing_date:'2026-07-20',expiry_date:'2028-07-20',raw_material_ref:'RM-001-001-236'},
+        {line_no:3,packages:400,batch_lot:'OS-YFT-260716',processing_date:'2026-07-15',expiry_date:'2028-07-15',raw_material_ref:'RM-001-001-236'},
+        {line_no:4,packages:100,batch_lot:'OS-YFT-260717',processing_date:'2026-07-16',expiry_date:'2028-07-16',raw_material_ref:'RM-001-088-236'},
+      ]},
+    { id:'d2', line_no:2, product_name:'Tuna Loins Vacuum Packed', species_name:'Skipjack Tuna',
+      product_form:'Frozen Loin', gtin:'09300462344492',
+      number_of_packages:180, package_type:'cartons',
+      gross_weight_kg:4210, net_weight_kg:4000, processed_quantity_kg:4000,
+      packaging_material:'Vacuum pouch + carton', packaging_weight_kg:120,
+      batches:[
+        {line_no:1,packages:80, batch_lot:'OS-SKJ-260721',processing_date:'2026-07-21',expiry_date:'2028-07-21',raw_material_ref:'RM-002-014-101'},
+        {line_no:2,packages:100,batch_lot:'OS-SKJ-260722',processing_date:'2026-07-23',expiry_date:'2028-07-23',raw_material_ref:'RM-002-014-102'},
+      ]},
+  ],
+};
+
+/* =====================================================================
+   STATE + HELPERS
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const num = v => { const n=Number(v); return isNaN(n)?0:n; };
+
+/* ---------- profile menu ---------- */
+function toggleAvatarMenu(){ $('avatarMenu').classList.toggle('open'); }
+document.addEventListener('click', e=>{
+  const w=document.querySelector('.avatar-wrap');
+  if(w && !w.contains(e.target)) $('avatarMenu')?.classList.remove('open');
+});
+function greetingTime(){ const h=new Date().getHours(); return h<12?'Good Morning':(h<18?'Good Afternoon':'Good Evening'); }
+async function handleLogout(){ if(dbClient) await dbClient.auth.signOut(); location.href='index.html'; }
+
+let SHIPMENT = null, ITEMS = [], VESSELS = [];
+
+function fmtDate(v){
+  if(!v) return null;
+  const d = new Date(v);
+  if(isNaN(d)) return v;
+  return d.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+}
+function fmtNum(v){
+  if(v===null||v===undefined||v==='') return null;
+  const n = Number(v);
+  if(isNaN(n)) return null;
+  return n.toLocaleString('en-US');
+}
+const esc = s => String(s??'').replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/** One label/value cell. An unfilled field shows a dash, never a blank gap. */
+function cell(label, raw, kind, pkgType){
+  let val = raw;
+  if(Array.isArray(raw))      val = raw.length ? raw.join(', ') : null;
+  else if(kind==='date')      val = fmtDate(raw);
+  else if(kind==='kg')        val = fmtNum(raw) ? fmtNum(raw)+' kg' : null;
+  else if(kind==='c')         val = (raw===null||raw===undefined||raw==='') ? null : raw+' °C';
+  else if(kind==='packages')  val = fmtNum(raw) ? fmtNum(raw)+' '+(pkgType||'cartons') : null;
+
+  const empty = val===null||val===undefined||val==='';
+  return `<div>
+    <div class="fld-label">${esc(label)}</div>
+    <div class="fld-value${empty?' empty':''}">${empty?'—':esc(val)}</div>
+  </div>`;
+}
+
+function renderGrid(hostId, fields, src){
+  $(hostId).innerHTML = fields.map(f => cell(f[0], src[f[1]], f[2])).join('');
+}
+
+function openModal(id){ $(id).classList.add('open'); document.body.style.overflow='hidden'; }
+function closeModal(id){ $(id).classList.remove('open'); document.body.style.overflow=''; }
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape') document.querySelectorAll('.modal-bg.open').forEach(m=>closeModal(m.id));
+});
+
+const batchTotal = it => (it.batches||[]).reduce((a,b)=>a+(Number(b.packages)||0),0);
+const sumBy = (arr,k) => arr.reduce((a,x)=>a+(Number(x[k])||0),0);
+
+/* =====================================================================
+   RENDER
+   ===================================================================== */
+function render(){
+  renderItems();
+  var s=SHIPMENT;
+  var mode=MODES[s.transport_mode]||MODES.Sea;
+  $('crumbRef').textContent=s.shipment_ref||'—';
+  $('headRef').textContent=s.shipment_ref||'Untitled';
+  $('headSub').textContent=[s.origin_name,s.destination_name].filter(Boolean).join(' \u2192 ')||'—';
+  var cls={'In-Transit':'st-transit','Draft':'st-draft','Booked':'st-booked','Arrived':'st-arrived','Delivered':'st-delivered','Cancelled':'st-cancelled'}[s.status]||'st-draft';
+  var totalPkg=ITEMS.reduce(function(a,it){return a+num(it.number_of_packages);},0);
+  var vesselCount=LEGS.reduce(function(a,l){return a+(l.vessels||[]).length;},0);
+  $('pills').innerHTML='<div class="pill"><div class="pill-label">Route</div><div class="pill-value">'+esc(s.origin_name||'—')+' \u2192 '+esc(s.destination_name||'—')+'</div><div class="pill-sub">'+LEGS.length+' leg'+(LEGS.length===1?'':'s')+' \u00b7 '+(s.load_type||'FCL')+'</div></div><div class="pill"><div class="pill-label">Mode</div><div class="pill-value">'+mode.icon+' '+esc(s.transport_mode||'—')+'</div><div class="pill-sub">'+(vesselCount?vesselCount+' vessel(s)':'')+'</div></div><div class="pill"><div class="pill-label">Container</div><div class="pill-value">'+esc(s.container_no||'—')+'</div><div class="pill-sub">'+esc(s.container_type||'')+'</div></div><div class="pill"><div class="pill-label">Packages</div><div class="pill-value">'+(fmtNum(totalPkg)||'—')+'</div><div class="pill-sub">'+ITEMS.length+' product'+(ITEMS.length===1?'':'s')+'</div></div><div class="pill"><div class="pill-label">Status</div><div class="pill-value"><span class="badge '+cls+'">'+esc(s.status||'Draft')+'</span></div></div>';
+  var cc=$('connCard');if(cc)cc.innerHTML=CONNECTED.length?CONNECTED.map(function(c){return '<div class="tally ok" style="cursor:pointer;margin-bottom:12px;" onclick="location.href=\'shipment-detail.html?id='+encodeURIComponent(c.id)+'\'"><b>'+esc(c.shipment_ref||'')+'</b> ('+esc(c.transport_mode||'')+': '+esc(c.origin_name||'')+' \u2192 '+esc(c.destination_name||'')+') \u00b7 '+esc(c.status||'')+'</div>';}).join(''):'';
+  renderGrid('partyGrid',[['Exporter','exporter_name'],['Country of Export','country_of_export'],['Importer','importer_name'],['Destination Country','destination_country'],['Incoterms','incoterms']],s);
+  var jh=$('journeyHost');
+  var jh=$('journeyHost');
+  if(jh){
+    var MI={Sea:'\ud83d\udea2',Air:'\u2708\ufe0f',Road:'\ud83d\ude9a',Rail:'\ud83d\ude82'};
+    jh.innerHTML=LEGS.map(function(l,li){
+      var vs=l.vessels||[];
+      var mode=(l.transport_mode||'Sea').toLowerCase();
+      var meta=[l.carrier_name,l.document_no].filter(Boolean).join(' \u00b7 ');
+      var fields=[];
+      fields.push(['Departure',fmtDate(l.departure_date)],['Arrival',fmtDate(l.arrival_date)]);
+      fields.push(['Carrier',l.carrier_name],[l.document_type||'Document',l.document_no]);
+      if(l.container_type) fields.push(['Container Type',l.container_type]);
+      if(l.container_no) fields.push(['Container',l.container_no]);
+      if(l.seal_number) fields.push(['Seal',l.seal_number]);
+      if(l.vehicle_plate) fields.push(['Vehicle',l.vehicle_plate]);
+      if(l.flight_no) fields.push(['Flight',l.flight_no]);
+      if(l.train_no) fields.push(['Train',l.train_no]);
+
+      var gridHtml=fields.map(function(f){
+        var v=f[1]; var empty=!v||v==='';
+        return '<div><div class="fld-label">'+esc(f[0])+'</div><div class="fld-value'+(empty?' empty':'')+'">'+
+          (empty?'\u2014':esc(String(v)))+'</div></div>';
+      }).join('');
+
+      var vesselHtml='';
+      if(vs.length){
+        vesselHtml='<div class="leg-vessels"><table><thead><tr><th>Role</th><th>Vessel</th><th>IMO</th><th>Voyage</th></tr></thead><tbody>'+
+          vs.map(function(v){return '<tr><td style="color:var(--muted);font-size:12px;">'+esc(v.role||'\u2014')+'</td>'+
+            '<td style="font-weight:700;">'+esc(v.vessel_name||'\u2014')+'</td>'+
+            '<td style="font-family:monospace;font-size:12px;">'+esc(v.imo||'\u2014')+'</td>'+
+            '<td>'+esc(v.voyage_no||'\u2014')+'</td></tr>';}).join('')+
+          '</tbody></table></div>';
+      }
+
+      var tsHtml='';
+      if(l.transshipment_port) tsHtml='<div class="leg-ts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6M4.22 19.78l4.24-4.24M15.54 8.46l4.24-4.24"/></svg> Transshipment at <b>'+esc(l.transshipment_port)+'</b></div>';
+
+      return '<div class="leg'+(li===0?' open':'')+'">'+
+        '<div class="leg-head" onclick="this.parentElement.classList.toggle(\'open\')">'+
+        '<div class="leg-mode '+mode+'">'+MI[l.transport_mode||'Sea']+'</div>'+
+        '<div class="leg-route"><div class="leg-route-name">'+esc(l.origin_name||'\u2014')+' \u2192 '+esc(l.destination_name||'\u2014')+'</div>'+
+        '<div class="leg-route-meta">'+meta+'</div></div>'+
+        '<div class="leg-date">'+(fmtDate(l.departure_date)||'')+'</div></div>'+
+        '<div class="leg-body"><div class="leg-grid">'+gridHtml+'</div>'+vesselHtml+tsHtml+'</div></div>';
+    }).join('');
+  }
+  var pg2=$('procGrid');if(pg2)pg2.innerHTML=(s.exporter_is_processor?'<div class="tally ok" style="margin-bottom:14px;">Exporter is also the processor</div>':'')+[['Processor','processor_name'],['Processing Country','processing_country'],['Container Type','container_type']].map(function(f){return cell(f[0],s[f[1]]);}).join('');
+  renderGrid('trackGrid',[['Invoice No','invoice_no'],['Invoice Date','invoice_date','date'],['Purchase Order','purchase_order_no'],['On-Board Date','on_board_date','date'],['Container Discharge','container_discharge_date','date']],s);
+  renderGrid('finGrid',[['L/C No','lc_no'],['L/C Issue','lc_issue_date','date'],['L/C Due','lc_due_date','date'],['L/C Bank','lc_bank']],s);
+  var nh=s.notes_html?safeHTML(s.notes_html):'';var nc=$('notesCard');if(nc)nc.style.display=nh.trim()?'block':'none';var nH=$('notesHost');if(nh.trim()&&nH)nH.innerHTML=nh;
+  var vc=$('vesselCard');if(vc)vc.style.display='none';
+}
+
+function renderItems(){
+  const host = $('itemsHost');
+
+  if(!ITEMS.length){
+    $('prodTotals').innerHTML = '';
+    host.innerHTML = `
+      <div class="empty-state">
+        <h4>No products added yet</h4>
+        <p>A shipment can carry several products. Add each one with its own
+           package count, weights and batch/lot breakdown.</p>
+        <button class="btn btn-primary" onclick="goEdit()">Add a product</button>
+      </div>`;
+    return;
+  }
+
+  const totPkg   = sumBy(ITEMS,'number_of_packages');
+  const totGross = sumBy(ITEMS,'gross_weight_kg');
+  const totNet   = sumBy(ITEMS,'net_weight_kg');
+  const mismatches = ITEMS.filter(it =>
+    Number(it.number_of_packages||0) !== batchTotal(it)).length;
+
+  $('prodTotals').innerHTML = `
+    <div class="tot-cell"><div class="tot-label">Lines</div><div class="tot-value">${ITEMS.length}</div></div>
+    <div class="tot-cell"><div class="tot-label">Packages</div><div class="tot-value">${fmtNum(totPkg)||'—'}</div></div>
+    <div class="tot-cell"><div class="tot-label">Gross Weight</div><div class="tot-value">${totGross?fmtNum(totGross):'—'} <span class="tot-unit">${totGross?'kg':''}</span></div></div>
+    <div class="tot-cell"><div class="tot-label">Net Weight</div><div class="tot-value">${totNet?fmtNum(totNet):'—'} <span class="tot-unit">${totNet?'kg':''}</span></div></div>`;
+
+  $('prodSub').textContent = mismatches
+    ? `${mismatches} product line${mismatches===1?' does':'s do'} not reconcile against their lots`
+    : 'Each product carries its own batch/lot breakdown';
+
+  host.innerHTML = ITEMS.map((it,i)=>{
+    const lots = it.batches||[];
+    const declared = Number(it.number_of_packages||0);
+    const lotSum   = batchTotal(it);
+    const bad      = declared !== lotSum;
+
+    return `<div class="item-card${i===0?' open':''}" id="item-${i}">
+      <div class="item-head" onclick="toggleItem(${i})">
+        <div class="item-no">${it.line_no||i+1}</div>
+        <div>
+          <div class="item-name">${esc(it.product_name||'Unnamed product')}${bad?'<span class="flag" title="Packages do not reconcile"></span>':''}</div>
+          <div class="item-meta">${[it.species_name, it.product_form].filter(Boolean).map(esc).join(' · ')||'—'}</div>
+        </div>
+        <div class="item-right">
+          <div class="item-stat"><div class="s-l">Packages</div><div class="s-v">${fmtNum(it.number_of_packages)||'—'}</div></div>
+          <div class="item-stat"><div class="s-l">Net</div><div class="s-v">${it.net_weight_kg?fmtNum(it.net_weight_kg)+' kg':'—'}</div></div>
+          <div class="item-stat"><div class="s-l">Lots</div><div class="s-v">${lots.length}</div></div>
+          <div class="caret">▼</div>
+        </div>
+      </div>
+      <div class="item-body">
+        <div class="sub-label">Product &amp; packaging</div>
+        <div class="grid">
+          ${cell('Product', it.product_name)}
+          ${cell('Species', it.species_name)}
+          ${cell('Product Form', it.product_form)}
+          ${cell('GTIN', it.gtin)}
+          ${cell('Number of Packages', it.number_of_packages,'packages',it.package_type)}
+          ${cell('Gross Weight', it.gross_weight_kg,'kg')}
+          ${cell('Net Weight', it.net_weight_kg,'kg')}
+          ${cell('Packaging Material', it.packaging_material)}
+          ${cell('Packaging Weight', it.packaging_weight_kg,'kg')}
+        </div>
+        <div class="sub-label">Batch / Lot</div>
+        ${buildBatchTable(it)}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleItem(i){ $('item-'+i).classList.toggle('open'); }
+
+/** Batch table for ONE product line, with its own reconciliation. */
+function buildBatchTable(it){
+  const lots = it.batches||[];
+  if(!lots.length){
+    return `<div style="padding:22px;text-align:center;color:var(--muted);font-size:12.5px;
+            border:1px dashed var(--border);border-radius:11px;">
+            No lots recorded for this product yet.</div>`;
+  }
+
+  const total    = batchTotal(it);
+  const declared = Number(it.number_of_packages||0);
+  const variance = declared - total;
+
+  const rows = lots.map(b=>`
+    <tr>
+      <td class="num">${fmtNum(b.packages)||'—'}</td>
+      <td>${esc(b.batch_lot||'—')}</td>
+      <td>${fmtDate(b.processing_date)||'—'}</td>
+      <td>${fmtDate(b.expiry_date)||'—'}</td>
+      <td>${esc(b.raw_material_ref||b.raw_material_id||'—')}</td>
+    </tr>`).join('');
+
+  const warn = (declared && variance!==0)
+    ? `<div class="variance-warn"><strong>Package mismatch on this line.</strong>
+       It declares ${fmtNum(declared)} ${esc(it.package_type||'cartons')} but the lots total
+       ${fmtNum(total)} — a variance of ${variance>0?'+':''}${fmtNum(variance)}.
+       Fix this before issuing catch documents.</div>`
+    : '';
+
+  return `<table>
+    <thead><tr>
+      <th class="num" style="width:110px;">Packages</th>
+      <th>Batch / Lot</th><th>Processing Date</th><th>Expiry Date</th><th>Raw Material ID</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr><td class="num">${fmtNum(total)}</td><td colspan="4"></td></tr></tfoot>
+  </table>${warn}`;
+}
+
+/* =====================================================================
+   ACTIONS
+   ===================================================================== */
+const params = () => new URLSearchParams(location.search);
+function currentId(){ return params().get('id'); }
+function goEdit(){    location.href = 'shipment-form.html' + (currentId()?('?id='+currentId()):''); }
+function goEuCatch(){ location.href = 'eu-catch-support.html?shipment=' + (currentId()||''); }
+function goCarbon(){  location.href = 'carbon-calculator.html?shipment=' + (currentId()||''); }
+
+/* =====================================================================
+   LOAD
+   ===================================================================== */
+const BLANK = { shipment_ref:null, transport_mode:'Sea', status:'Draft', transit_names:[] };
+
+async function load(){
+  const id   = currentId();
+  const demo = params().get('demo')==='1';
+
+  if(demo){
+    SHIPMENT = DEMO.shipment; ITEMS = DEMO.items; LEGS = DEMO.legs||[]; CONNECTED = DEMO.connected||[];
+    render();
+    return;
+  }
+
+  if(!id || !dbClient){
+    SHIPMENT = {...BLANK};
+    ITEMS    = [];
+    LEGS=[]; CONNECTED=[];
+    render();
+    return;
+  }
+
+  try{
+    const {data:s, error:e1} = await dbClient
+      .from('shipments').select('*').eq('id', id).is('deleted_at', null).single();
+    if(e1) throw e1;
+
+    const {data:items, error:e2} = await dbClient
+      .from('shipment_items').select('*').eq('shipment_id', id).order('line_no');
+    if(e2) throw e2;
+
+    const {data:lots, error:e3} = await dbClient
+      .from('shipment_batches').select('*').eq('shipment_id', id).order('line_no');
+    if(e3) throw e3;
+
+    let legsD=[],vslD=[];
+    try{const{data:lg}=await dbClient.from('shipment_legs').select('*').eq('shipment_id',id).order('leg_no');legsD=lg||[];}catch(e){}
+    try{const{data:vs}=await dbClient.from('shipment_vessels').select('*').eq('shipment_id',id).order('line_no');vslD=vs||[];}catch(e){}
+    const vByL={};vslD.forEach(v=>{(vByL[v.leg_no]||=[]).push(v);});
+    LEGS=legsD.length?legsD.map(l=>({...l,vessels:vByL[l.leg_no]||[]})):[{leg_no:1,transport_mode:s.transport_mode,origin_name:s.origin_name,destination_name:s.destination_name,departure_date:s.departure_date,arrival_date:s.arrival_date,container_no:s.container_no,vessels:vslD}];
+    CONNECTED=[];
+    if(s.previous_shipment_id){try{const{data:prev}=await dbClient.from('shipments').select('id,shipment_ref,origin_name,destination_name,transport_mode,status').eq('id',s.previous_shipment_id).single();if(prev)CONNECTED.push(prev);}catch(e){}}
+
+    // nest each lot under the product line it belongs to
+    const byItem = {};
+    (lots||[]).forEach(l => { (byItem[l.shipment_item_id] ||= []).push(l); });
+
+    SHIPMENT = s;
+    ITEMS    = (items||[]).map(it => ({...it, batches: byItem[it.id] || []}));
+    render();
+  }catch(err){
+    console.error('Shipment load failed:', err);
+    document.querySelector('.wrap').innerHTML =
+      `<div class="card" style="text-align:center;padding:50px;">
+         <div style="font-size:15px;font-weight:600;margin-bottom:8px;">Shipment not found</div>
+         <div style="font-size:13px;color:var(--muted);margin-bottom:20px;">
+           This shipment may have been deleted, or it belongs to another organisation.</div>
+         <a href="shipment-list.html" class="btn btn-primary" style="text-decoration:none;">Back to shipments</a>
+       </div>`;
+  }
+}
+
+/* profile avatar — same pattern as home-logged-in.html */
+async function loadProfile(){
+  if(!dbClient) return;
+  try{
+    const {data:{session}} = await dbClient.auth.getSession();
+    if(!session) return;
+    const {data:p} = await dbClient.from('profiles')
+      .select('first_name,last_name,avatar_color,photo_url').eq('id',session.user.id).single();
+    const first = p?.first_name || session.user.email.split('@')[0];
+    const last  = p?.last_name || '';
+    if(p?.photo_url){
+      $('avatarBtn').innerHTML=`<img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;
+    }else{
+      $('avatarBtn').style.background = p?.avatar_color || 'var(--primary)';
+      $('avatarInitials').textContent = (first.charAt(0)+(last?last.charAt(0):'')).toUpperCase();
+    }
+    $('avatarGreeting').textContent = `${greetingTime()}, ${first}!`;
+    if(window.applyProfileTheme) applyProfileTheme(p);
+  }catch(e){ console.warn('Profile load failed:', e.message); }
+}
+
+load();
+loadProfile();
+</script>
+</body>
+</html>

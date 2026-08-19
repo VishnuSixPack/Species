@@ -1,0 +1,137 @@
+/* =====================================================================
+   PROJECT MANHATTAN — THEME TOKENS
+   Include on every page, before the page's own <style>:
+
+     <link rel="stylesheet" href="theme.css"/>
+     <script src="theme.js"></script>
+
+   theme.js must load in <head>, not at the end of <body> — it sets
+   data-theme before first paint so the page never flashes light and
+   then snap to dark. That flash was the "dark mode not applied on
+   load" problem.
+
+   Every colour a page needs is a token here. If you find yourself
+   writing a hex value in a page, add a token instead, or it will look
+   wrong in one of the two themes.
+   ===================================================================== */
+
+:root,
+[data-theme="light"]{
+  color-scheme: light;
+
+  /* surfaces */
+  --bg:            #f0f2f7;
+  --surface:       #ffffff;
+  --surface-2:     #fafbfd;   /* raised strips, table headers, card bars */
+  --hover:         #f4f7fc;
+  --rule:          #f4f6fa;   /* hairline between table rows */
+
+  /* lines */
+  --border:        #e8eaf0;
+  --border-strong: #e3e7ef;
+
+  /* type */
+  --text:          #1a1a2e;
+  --muted:         #6b7280;
+  --faint:         #9aa0b4;   /* chevrons, de-emphasised icons */
+  --placeholder:   #b9bfcc;
+  --dim:           #c2c7d0;   /* em-dash for empty values */
+  --menu-text:     #4a4e69;
+
+  /* brand */
+  --primary:       #1a6fdb;
+  --primary-hover: #1560c4;
+  --primary-soft:  #eaf2fd;   /* chip and selected-row fill */
+  --primary-soft-2:#e0edff;   /* status badge fill */
+  --primary-ring:  rgba(26,111,219,.10);
+  --mark-bg:       #dbeafe;   /* search-term highlight */
+
+  /* status */
+  --ok-bg:   #ecfdf5;  --ok-fg:   #047857;
+  --good-bg: #dcfce7;  --good-fg: #15803d;
+  --warn-bg: #fef3c7;  --warn-fg: #92400e;
+  --bad-bg:  #fee2e2;  --bad-fg:  #b91c1c;
+  --info-bg: #eff6ff;  --info-fg: #1e40af;
+
+  /* depth */
+  --shadow-1: 0 8px 24px rgba(0,0,0,.10);
+  --shadow-2: 0 12px 34px rgba(16,20,35,.15);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.08);
+
+  /* wordmark */
+  --wm-top: #1a6fdb;
+  --wm-sub: #1a1a2e;
+}
+
+[data-theme="dark"]{
+  color-scheme: dark;
+
+  --bg:            #0e0f13;
+  --surface:       #181a1f;
+  --surface-2:     #1e2026;
+  --hover:         #22252c;
+  --rule:          #24272e;
+
+  --border:        #282b33;
+  --border-strong: #32363f;
+
+  --text:          #e8eaef;
+  --muted:         #9098a8;
+  --faint:         #6f7686;
+  --placeholder:   #5c6270;
+  --dim:           #4d525e;
+  --menu-text:     #c3c8d4;
+
+  /* #1a6fdb is too dark to read on a near-black panel, so the dark
+     theme lifts the brand blue rather than reusing it unchanged. */
+  --primary:       #4d94f0;
+  --primary-hover: #69a6f5;
+  --primary-soft:  #16294a;
+  --primary-soft-2:#17304f;
+  --primary-ring:  rgba(77,148,240,.18);
+  --mark-bg:       #1e3a6b;
+
+  --ok-bg:   #0f2f24;  --ok-fg:   #4ade80;
+  --good-bg: #0f2f24;  --good-fg: #4ade80;
+  --warn-bg: #3a2c0d;  --warn-fg: #fbbf24;
+  --bad-bg:  #3a1618;  --bad-fg:  #f87171;
+  --info-bg: #14243f;  --info-fg: #93c5fd;
+
+  --shadow-1: 0 8px 24px rgba(0,0,0,.55);
+  --shadow-2: 0 14px 38px rgba(0,0,0,.65);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.4);
+
+  --wm-top: #6aa9f5;
+  --wm-sub: #e8eaef;
+}
+
+/* Colour transitions on theme change, but not on page load — the
+   no-transition class is removed a frame after boot by theme.js. */
+.theme-booting *,
+.theme-booting *::before,
+.theme-booting *::after{ transition: none !important; }
+
+body{ transition: background-color .18s ease, color .18s ease; }
+
+/* Native controls (date text, scrollbars) follow color-scheme above. */
+img.invert-on-dark{ transition: filter .18s ease; }
+[data-theme="dark"] img.invert-on-dark{ filter: brightness(0) invert(1) opacity(.9); }
+
+/* ---------------------------------------------------------------
+   Theme toggle — a two-state switch that lives in the avatar menu.
+   --------------------------------------------------------------- */
+.theme-toggle{
+  display:flex; align-items:center; gap:8px; padding:9px 15px; font-size:13px;
+  color:var(--menu-text); font-weight:500; width:100%; background:none; border:none;
+  font-family:inherit; cursor:pointer; text-align:left;
+  border-top:1px solid var(--border);
+}
+.theme-toggle:hover{ background:var(--bg); color:var(--primary); }
+.theme-toggle .tt-state{
+  margin-left:auto; font-size:10.5px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.4px; color:var(--faint);
+}
+.theme-toggle .tt-sun{ display:none; }
+.theme-toggle .tt-moon{ display:block; }
+[data-theme="dark"] .theme-toggle .tt-sun{ display:block; }
+[data-theme="dark"] .theme-toggle .tt-moon{ display:none; }

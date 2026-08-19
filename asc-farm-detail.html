@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Certificate Detail — SmarTuna concept</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="sc-blue-logo.png" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    /* ── SMARTUNA WORDMARK ── */
+    @font-face {
+      font-family: 'Bitsumis';
+      src: url('BITSUMIS.TTF') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+    .sc-wm { display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1;gap:0;text-decoration:none; }
+    .sc-wm-top { font-family:'Bitsumis',sans-serif !important;font-weight:900 !important;font-size:15px;letter-spacing:.04em;text-transform:uppercase;background:linear-gradient(90deg,#1a6fdb,#1a6fdb) !important;-webkit-background-clip:text !important;-webkit-text-fill-color:transparent !important;background-clip:text !important; }
+    .sc-wm-sub { font-family:'Bitsumis',sans-serif !important;font-weight:700 !important;font-size:7px;letter-spacing:.22em;text-transform:uppercase;color:#1a1a2e;-webkit-text-fill-color:#1a1a2e !important;margin-top:2px; }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{--primary:#1a6fdb;--bg:#f0f2f7;--white:#ffffff;--text:#1a1a2e;--muted:#6b7280;--border:#e8eaf0;
+      --gray-100:#f5f5f5;--gray-200:#e8e8e8;--gray-400:#a0a0a0;--gray-600:#5a5a5a;--black:#0f0f0f;
+      --danger:#c0392b;--success:#1e7a4e;--radius:12px;--radius-lg:22px;
+      --shadow:0 2px 12px rgba(0,0,0,0.08);--shadow-lg:0 8px 32px rgba(0,0,0,0.14);--transition:0.18s ease;}
+    html,body{background:#0d1b1f;}
+    body{
+      font-family:'Poppins','DM Sans',sans-serif;color:var(--text);font-weight:400;font-size:14px;line-height:1.6;min-height:100vh;
+      background-image:url('asc-bkg.jpg') !important;
+      background-size:cover !important;
+      background-position:center !important;
+      background-repeat:no-repeat !important;
+      background-attachment:fixed !important;
+    }
+    .asc-overlay{position:fixed;inset:0;z-index:0;pointer-events:none;
+      background:linear-gradient(180deg, rgba(5,10,16,0.55) 0%, rgba(5,10,16,0.25) 30%, rgba(5,10,16,0.35) 70%, rgba(5,10,16,0.6) 100%);}
+    .main{position:relative;z-index:1;}
+
+    /* ── TOP BAR — glass pills (matching asc-farms.html) ── */
+    .topbar{display:flex;align-items:center;padding:16px 28px;gap:20px;flex-shrink:0;
+      position:fixed;top:0;left:0;right:0;z-index:100;}
+    .topbar-brand{display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:0;line-height:1.1;
+      background:rgba(255,255,255,0.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+      padding:8px 18px 8px 10px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.6);}
+    .topbar-brand img{width:26px;height:26px;object-fit:contain;}
+    .topbar-brand-project{display:block;font-size:8px;font-weight:700;letter-spacing:2px;color:#9aa0b4;}
+    .topbar-brand-name{display:block;font-size:16px;font-weight:800;color:var(--text);}
+    .back-link{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+      padding:9px 18px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,0.18);color:var(--text);text-decoration:none;font-size:13px;font-weight:600;}
+    .back-link:hover{background:rgba(255,255,255,0.95);}
+
+    /* ── MAIN ── */
+    .main{padding:96px 28px 32px;max-width:1400px;margin:0 auto;}
+    .cert-header{margin-bottom:20px;}
+    .cert-header h1{font-size:26px;font-weight:800;color:#fff;letter-spacing:-0.02em;text-shadow:0 2px 16px rgba(0,0,0,0.4);}
+    .cert-header .cert-sub{font-size:13px;color:rgba(255,255,255,0.8);margin-top:6px;text-shadow:0 1px 8px rgba(0,0,0,0.35);}
+
+    .card{background:rgba(255,255,255,0.55);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);
+      border:1px solid rgba(255,255,255,0.5);border-radius:var(--radius-lg);overflow:hidden;
+      box-shadow:0 20px 50px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.5);
+      margin-bottom:20px;transition:background 0.25s ease;}
+    .card:hover{background:rgba(255,255,255,1);}
+
+    /* Certificate summary card */
+    .cert-summary{padding:24px 28px;}
+    .cert-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:20px;}
+    .cert-summary-item .label{font-size:10px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px;}
+    .cert-summary-item .value{font-size:15px;font-weight:700;color:var(--black);}
+    .cert-summary-item .value.accent{color:var(--primary);}
+
+    .site-stats{display:flex;gap:28px;padding:0 4px 16px;}
+    .site-stats span{font-size:13px;font-weight:600;color:#fff;text-shadow:0 1px 8px rgba(0,0,0,0.35);}
+    .site-stats span b{color:#8ecbff;font-size:16px;}
+
+    /* Site list table */
+    .site-list-header{background:#0e3a52;color:#fff;padding:14px 20px;font-size:13px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;
+      display:flex;align-items:center;justify-content:space-between;}
+    table{width:100%;border-collapse:collapse;}
+    thead{background:rgba(255,255,255,0.5);border-bottom:1px solid rgba(255,255,255,0.4);}
+    thead th{padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-600);text-transform:uppercase;letter-spacing:0.06em;}
+    tbody tr{border-bottom:1px solid rgba(255,255,255,0.35);}
+    tbody tr:last-child{border-bottom:none;}
+    tbody tr:nth-child(even){background:rgba(255,255,255,0.15);}
+    tbody td{padding:14px 16px;font-size:13px;color:var(--black);vertical-align:middle;}
+    .site-name-cell{font-weight:600;}
+    .map-link{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:rgba(26,111,219,0.12);color:var(--primary);text-decoration:none;font-size:13px;}
+    .map-link:hover{background:rgba(26,111,219,0.22);}
+    .map-link.disabled{opacity:0.3;pointer-events:none;}
+    .coord-input{width:90px;padding:6px 8px;border:1.5px solid rgba(0,0,0,0.12);border-radius:8px;font-size:12px;font-family:inherit;outline:none;background:rgba(255,255,255,0.7);}
+    .coord-input:focus{border-color:#1a6fdb;background:#fff;}
+    .coord-input.dirty{border-color:#d97706;background:#fffbeb;}
+
+    .status-badge{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;padding:3px 10px;border-radius:999px;white-space:nowrap;}
+    .status-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+    .status-certified{background:#f0fdf4;color:#16a34a;}.status-certified .status-dot{background:#16a34a;}
+    .status-audit{background:#eef4fd;color:#1a6fdb;}.status-audit .status-dot{background:#1a6fdb;}
+    .status-pending{background:#fffbeb;color:#d97706;}.status-pending .status-dot{background:#d97706;}
+    .status-risk{background:#fff5f5;color:#c0392b;}.status-risk .status-dot{background:#c0392b;}
+    .status-neutral{background:var(--gray-100);color:var(--gray-600);}.status-neutral .status-dot{background:var(--gray-400);}
+
+    .empty-state{text-align:center;padding:64px 24px;color:var(--gray-600);}
+    .empty-state .empty-icon{font-size:36px;margin-bottom:12px;opacity:0.5;}
+    .hidden{display:none !important;}
+
+    @media(max-width:900px){
+      table{display:block;overflow-x:auto;white-space:nowrap;}
+      .cert-summary-grid{grid-template-columns:repeat(2,1fr);}
+    }
+  </style>
+</head>
+<body>
+
+  <div class="asc-overlay"></div>
+
+  <div class="topbar">
+    <a href="asc-farms.html" class="back-link">← Back to ASC Farms</a>
+    <div style="flex:1;"></div>
+    <a href="home-logged-in.html" class="topbar-brand">
+      <img src="sc-blue-logo.png" alt="SmarTuna" style="width:28px;height:28px;object-fit:contain;flex-shrink:0;"/>
+      <span class="sc-wm">
+        <span class="sc-wm-top">SmarTuna</span>
+        <span class="sc-wm-sub">concept</span>
+      </span>
+    </a>
+  </div>
+
+  <div class="main">
+    <div class="cert-header">
+      <h1 id="certTitle">Loading…</h1>
+      <div class="cert-sub" id="certSub"></div>
+    </div>
+
+    <!-- CERTIFICATE SUMMARY -->
+    <div class="card">
+      <div class="cert-summary">
+        <div class="cert-summary-grid">
+          <div class="cert-summary-item"><div class="label">Certificate Holder</div><div class="value" id="sumCompany">—</div></div>
+          <div class="cert-summary-item"><div class="label">Certificate Status</div><div class="value" id="sumStatus">—</div></div>
+          <div class="cert-summary-item"><div class="label">Country / Territory</div><div class="value" id="sumCountry">—</div></div>
+          <div class="cert-summary-item"><div class="label">ASC Standard</div><div class="value" id="sumStandard">—</div></div>
+          <div class="cert-summary-item"><div class="label">Type of Certification</div><div class="value" id="sumType">—</div></div>
+          <div class="cert-summary-item"><div class="label">Certification Body</div><div class="value" id="sumCB">—</div></div>
+          <div class="cert-summary-item"><div class="label">Valid From</div><div class="value" id="sumValidFrom">—</div></div>
+          <div class="cert-summary-item"><div class="label">Valid Until</div><div class="value" id="sumValidUntil">—</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SITE LIST -->
+    <div class="site-stats">
+      <span>Number of sites: <b id="statTotalSites">0</b></span>
+      <span>Certified sites: <b id="statCertifiedSites">0</b></span>
+    </div>
+
+    <div class="card">
+      <div class="site-list-header" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>Site List</span>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span id="dirtyCount" style="font-size:11px;color:rgba(255,255,255,0.7);"></span>
+          <button id="saveCoordsBtn" onclick="saveAllCoordinates()" style="background:#1a6fdb;color:#fff;border:none;border-radius:999px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">💾 Save All Coordinates</button>
+        </div>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Site ID</th><th>Site Name</th><th>Latitude</th><th>Longitude</th>
+            <th>Status</th><th>Last Updated</th><th>Species</th><th>Map</th>
+          </tr>
+        </thead>
+        <tbody id="siteTableBody"></tbody>
+      </table>
+      <div class="empty-state hidden" id="emptyState">
+        <div class="empty-icon">🐟</div>
+        <p>No sites found for this certificate</p>
+      </div>
+    </div>
+
+    <!-- MAP -->
+    <div class="card">
+      <div class="site-list-header">Site Locations</div>
+      <div id="siteMap" style="height:420px;"></div>
+      <div class="empty-state hidden" id="mapEmptyState">
+        <div class="empty-icon">🗺️</div>
+        <p>No coordinates available for these sites</p>
+        <small>Add Latitude/Longitude on each site to see them plotted here.</small>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+  const SUPABASE_URL = 'https://enbdaajcromxmhgcverp.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+  const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const STATUS_CLASS = {
+    'Certified':'status-certified','Initial Audit':'status-audit',
+    'Incomplete Initial Certification Process':'status-audit',
+    'Certification not awarded':'status-pending','Suspended':'status-risk',
+    'Expired':'status-risk','Failed Audit':'status-risk',
+    'Withdrawn':'status-neutral','Cancelled':'status-neutral','Reassigned':'status-pending',
+  };
+  function statusBadge(status){
+    const cls = STATUS_CLASS[status] || 'status-neutral';
+    return `<span class="status-badge ${cls}"><span class="status-dot"></span>${status||'—'}</span>`;
+  }
+
+  function getCertFromUrl(){
+    const params = new URLSearchParams(window.location.search);
+    return params.get('cert');
+  }
+
+  let CURRENT_SITES = [];
+
+  async function loadCertificate(){
+    const certNo = getCertFromUrl();
+    if (!certNo){
+      document.getElementById('certTitle').textContent = 'No certificate specified';
+      document.getElementById('certSub').textContent = 'Use ?cert=ASC01234 in the URL, or open this page from the ASC Farms list.';
+      return;
+    }
+
+    const { data: sites, error } = await db.from('asc_farms').select('*, countries(country)').eq('cert_no', certNo).order('name');
+    if (error){
+      document.getElementById('certTitle').textContent = 'Error loading certificate';
+      document.getElementById('certSub').textContent = error.message;
+      return;
+    }
+    if (!sites || !sites.length){
+      document.getElementById('certTitle').textContent = certNo;
+      document.getElementById('certSub').textContent = 'No sites found under this certificate number.';
+      document.getElementById('emptyState').classList.remove('hidden');
+      return;
+    }
+    CURRENT_SITES = sites;
+
+    const first = sites[0];
+    document.getElementById('certTitle').textContent = `${first.company || first.name} — ${certNo}`;
+    document.getElementById('certSub').textContent = `ASC Certified Farm · ${first.standard || ''}`;
+
+    document.getElementById('sumCompany').textContent = first.company || '—';
+    document.getElementById('sumStatus').innerHTML = statusBadge(first.status);
+    document.getElementById('sumCountry').textContent = first.countries?.country || '—';
+    document.getElementById('sumStandard').textContent = first.standard || '—';
+    document.getElementById('sumType').textContent = first.cert_type || '—';
+    document.getElementById('sumCB').textContent = first.cb || '—';
+    document.getElementById('sumValidFrom').textContent = first.valid_from || '—';
+    document.getElementById('sumValidUntil').textContent = first.valid_until || '—';
+
+    document.getElementById('statTotalSites').textContent = sites.length;
+    document.getElementById('statCertifiedSites').textContent = sites.filter(s => s.status === 'Certified').length;
+
+    document.getElementById('siteTableBody').innerHTML = sites.map(s => {
+      const updated = s.updated_at ? new Date(s.updated_at).toLocaleDateString() : '—';
+      return `
+        <tr>
+          <td style="font-family:monospace;font-size:12px;">${s.site_id || '—'}</td>
+          <td class="site-name-cell">${s.name}</td>
+          <td><input type="text" class="coord-input" data-id="${s.id}" data-field="latitude" value="${s.latitude ?? ''}" placeholder="e.g. 65.75" oninput="markDirty(this)"/></td>
+          <td><input type="text" class="coord-input" data-id="${s.id}" data-field="longitude" value="${s.longitude ?? ''}" placeholder="e.g. -23.55" oninput="markDirty(this)"/></td>
+          <td>${statusBadge(s.status)}</td>
+          <td>${updated}</td>
+          <td>${s.species || '—'}</td>
+          <td><span class="map-link-cell" data-id="${s.id}">${mapLinkHtml(s)}</span></td>
+        </tr>
+      `;
+    }).join('');
+
+    renderSiteMap(sites);
+  }
+
+  function mapLinkHtml(s){
+    const hasCoords = s.latitude != null && s.longitude != null;
+    const mapUrl = hasCoords ? `https://www.google.com/maps?q=${s.latitude},${s.longitude}` : '#';
+    return `<a href="${mapUrl}" target="_blank" rel="noopener" class="map-link ${hasCoords ? '' : 'disabled'}" title="${hasCoords ? 'View on map' : 'No coordinates available'}">📍</a>`;
+  }
+
+  function markDirty(input){
+    input.classList.add('dirty');
+    const count = document.querySelectorAll('.coord-input.dirty').length;
+    document.getElementById('dirtyCount').textContent = count ? `${count} unsaved field(s)` : '';
+  }
+
+  async function saveAllCoordinates(){
+    const inputs = document.querySelectorAll('.coord-input.dirty');
+    if (!inputs.length){ alert('No coordinate changes to save.'); return; }
+
+    // Group dirty inputs by site id
+    const bySite = {};
+    inputs.forEach(inp => {
+      const id = inp.dataset.id;
+      bySite[id] = bySite[id] || {};
+      const val = inp.value.trim();
+      bySite[id][inp.dataset.field] = val === '' ? null : parseFloat(val);
+    });
+
+    const btn = document.getElementById('saveCoordsBtn');
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = `Saving ${Object.keys(bySite).length} site(s)…`;
+
+    const batchId = crypto.randomUUID();
+    const changelogRows = [];
+    const payload = Object.entries(bySite).map(([id, fields]) => {
+      const original = CURRENT_SITES.find(s => s.id === id);
+      Object.entries(fields).forEach(([field, newVal]) => {
+        const oldVal = original ? original[field] : null;
+        if (String(oldVal ?? '') !== String(newVal ?? '')){
+          changelogRows.push({
+            farm_id: id, farm_name: original?.name || '', field_name: field === 'latitude' ? 'Latitude' : 'Longitude',
+            old_value: oldVal ?? '—', new_value: newVal ?? '—', change_source: 'manual', batch_id: batchId
+          });
+        }
+      });
+      return { id, updated_at: new Date().toISOString(), ...fields };
+    });
+
+    const { error } = await db.from('asc_farms').upsert(payload);
+    if (error){
+      alert('Failed to save coordinates: ' + error.message);
+      btn.disabled = false;
+      btn.textContent = originalText;
+      return;
+    }
+
+    if (changelogRows.length){
+      await db.from('asc_farms_changelog').insert(changelogRows);
+    }
+
+    btn.disabled = false;
+    btn.textContent = originalText;
+    document.getElementById('dirtyCount').textContent = '';
+    alert(`Saved coordinates for ${payload.length} site(s).`);
+    await loadCertificate();
+  }
+
+  function renderSiteMap(sites){
+    const sitesWithCoords = sites.filter(s => s.latitude != null && s.longitude != null && !isNaN(s.latitude) && !isNaN(s.longitude));
+    const mapEl = document.getElementById('siteMap');
+    const emptyEl = document.getElementById('mapEmptyState');
+
+    if (!sitesWithCoords.length){
+      mapEl.classList.add('hidden');
+      emptyEl.classList.remove('hidden');
+      return;
+    }
+
+    const map = L.map('siteMap');
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    const statusColor = { 'Certified':'#16a34a', 'Suspended':'#c0392b', 'Expired':'#c0392b', 'Cancelled':'#6b7280' };
+    const markers = sitesWithCoords.map(s => {
+      const color = statusColor[s.status] || '#1a6fdb';
+      const marker = L.circleMarker([s.latitude, s.longitude], {
+        radius: 9, fillColor: color, color: '#fff', weight: 2, fillOpacity: 0.9
+      }).addTo(map);
+      marker.bindPopup(`<strong>${s.name}</strong><br/>Site ID: ${s.site_id || '—'}<br/>Status: ${s.status || '—'}<br/>${s.species || ''}`);
+      return marker;
+    });
+
+    if (markers.length === 1){
+      map.setView(markers[0].getLatLng(), 9);
+    } else {
+      const group = L.featureGroup(markers);
+      map.fitBounds(group.getBounds(), { padding: [30, 30] });
+    }
+  }
+
+  loadCertificate();
+  </script>
+</body>
+</html>

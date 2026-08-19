@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<link rel="icon" type="image/png" href="sc-blue-logo.png"/>
+<title>Raw Material — SmarTuna</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="theme.css"/>
+<script src="theme.js"></script>
+<style>
+  @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');font-display:swap;}
+  :root{--ctl-h:40px;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Poppins','DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+
+  .sc-wm{display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1;}
+  .sc-wm-top{font-family:'Bitsumis',sans-serif !important;font-weight:900 !important;font-size:16px;
+    letter-spacing:.04em;text-transform:uppercase;color:var(--wm-top);}
+  .sc-wm-sub{font-family:'Bitsumis',sans-serif !important;font-weight:700 !important;font-size:7px;
+    letter-spacing:.22em;text-transform:uppercase;color:var(--wm-sub);margin-top:2px;}
+  .topbar-brand{display:flex;align-items:center;gap:8px;text-decoration:none;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 30px;
+          background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:400;}
+  .nav{display:flex;gap:2px;}
+  .nav-item{padding:7px 14px;border-radius:999px;font-size:13px;color:var(--muted);text-decoration:none;}
+  .nav-item.active{background:var(--bg);color:var(--text);font-weight:600;}
+  .avatar-wrap{position:relative;}
+  .avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;
+    font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;}
+  .avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--surface);
+    border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-1);min-width:186px;
+    overflow:hidden;z-index:999;}
+  .avatar-menu.open{display:block;}
+  .avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;border-bottom:1px solid var(--border);}
+  .avatar-menu a,.avatar-menu button{display:block;padding:9px 15px;font-size:13px;color:var(--menu-text);
+    text-decoration:none;font-weight:500;width:100%;background:none;border:none;font-family:inherit;
+    cursor:pointer;text-align:left;}
+  .avatar-menu a:hover,.avatar-menu button:hover{background:var(--bg);color:var(--primary);}
+
+  .wrap{max-width:1400px;margin:0 auto;padding:20px 30px 70px;}
+  .crumb{font-size:12px;color:var(--muted);margin-bottom:16px;}
+  .crumb a{color:var(--muted);text-decoration:none;}
+  .crumb a:hover{color:var(--primary);}
+  .page-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap;}
+  .h1{font-size:22px;font-weight:700;}
+  .h1-sub{font-size:12.5px;color:var(--muted);margin-top:4px;}
+  .btn{padding:10px 18px;border-radius:10px;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;
+       border:1px solid var(--border);background:var(--surface);color:var(--text);text-decoration:none;display:inline-block;}
+  .btn:hover{border-color:var(--primary);color:var(--primary);}
+  .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .btn-primary:hover{background:var(--primary-hover);color:#fff;}
+  .btn-sm{padding:7px 13px;font-size:11.5px;}
+
+  .pills{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:20px;}
+  .pill{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:15px 17px;}
+  .pill-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+  .pill-value{font-size:15px;font-weight:700;}
+  .pill-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+  .badge{display:inline-block;padding:4px 12px;border-radius:999px;font-size:11.5px;font-weight:600;}
+  .st-active{background:var(--good-bg);color:var(--good-fg);}
+  .st-draft{background:var(--bg);color:var(--muted);}
+  .st-review{background:var(--info-bg);color:var(--info-fg);}
+  .st-discarded{background:var(--bad-bg);color:var(--bad-fg);}
+  .st-archived{background:var(--warn-bg);color:var(--warn-fg);}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px 28px;margin-bottom:18px;}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:20px;}
+  .card-title{font-size:15.5px;font-weight:600;}
+  .card-sub{font-size:12px;color:var(--muted);margin-top:3px;}
+  .grid{display:grid;grid-template-columns:repeat(5,1fr);gap:20px 22px;}
+  .fld-label{font-size:11px;color:var(--muted);margin-bottom:5px;}
+  .fld-value{font-size:13px;font-weight:500;word-break:break-word;}
+  .fld-value.empty{color:var(--dim);font-weight:400;}
+  .sub-h{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:22px 0 12px;}
+
+  table{width:100%;border-collapse:collapse;}
+  th{font-size:11px;color:var(--muted);font-weight:500;text-align:left;padding:0 12px 11px;}
+  td{font-size:13px;padding:12px;border-top:1px solid var(--rule);}
+  tfoot td{font-weight:700;border-top:2px solid var(--border);}
+  .num{text-align:right;}
+  .sci{font-size:10.5px;color:var(--muted);font-style:italic;}
+  .chip{display:inline-block;background:var(--primary-soft);color:var(--primary);font-size:11px;
+        font-weight:700;padding:4px 10px;border-radius:7px;margin:0 6px 6px 0;}
+  .chip.grey{background:var(--bg);color:var(--muted);}
+  .chip.bad{background:var(--bad-bg);color:var(--bad-fg);}
+
+  /* event chain */
+  .ev{border:1px solid var(--border);border-radius:14px;margin-bottom:12px;overflow:hidden;}
+  .ev-bar{display:flex;align-items:center;gap:14px;padding:14px 20px;background:var(--surface-2);
+          border-bottom:1px solid var(--border);}
+  .ev-tag{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:4px 9px;
+          border-radius:6px;white-space:nowrap;min-width:76px;text-align:center;}
+  .tag-catch{background:var(--primary-soft);color:var(--primary);}
+  .tag-tship{background:var(--warn-bg);color:var(--warn-fg);}
+  .tag-unload{background:var(--good-bg);color:var(--good-fg);}
+  .ev-name{font-size:13.5px;font-weight:600;}
+  .ev-meta{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .ev-qty{margin-left:auto;font-size:13.5px;font-weight:700;white-space:nowrap;}
+  .ev-in{padding:18px 20px;}
+
+  /* chain map, read-only */
+  .flow{position:relative;height:360px;border:1px solid var(--border);border-radius:12px;
+        background:var(--surface-2);overflow:hidden;
+        background-image:radial-gradient(var(--border) 1px, transparent 1px);background-size:18px 18px;}
+  .flow-svg{position:absolute;inset:0;width:100%;height:100%;}
+  .flow-svg path{fill:none;stroke:var(--primary);stroke-width:2;}
+  .fnode{position:absolute;width:184px;background:var(--surface);border:1px solid var(--border);
+         border-radius:11px;padding:11px 13px;box-shadow:var(--shadow-sm);}
+  .fnode.catch{border-left:3px solid var(--primary);}
+  .fnode.tship{border-left:3px solid var(--warn-fg);}
+  .fnode.unload{border-left:3px solid var(--good-fg);}
+  .fnode-k{font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--muted);}
+  .fnode-n{font-size:12.5px;font-weight:600;margin-top:3px;line-height:1.3;word-break:break-word;}
+  .fnode-m{font-size:10.5px;color:var(--muted);margin-top:2px;}
+
+  .doc{display:grid;grid-template-columns:34px 1.8fr 1.1fr 1fr 90px;gap:12px;align-items:center;
+       padding:12px 0;border-top:1px solid var(--rule);}
+  .doc:first-child{border-top:none;}
+  .doc-ic{width:34px;height:34px;border-radius:9px;background:var(--bad-bg);color:var(--bad-fg);
+          display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;}
+  .doc-ic.img{background:var(--primary-soft);color:var(--primary);}
+  .doc-n{font-size:13px;font-weight:600;word-break:break-all;}
+  .doc-m{font-size:11px;color:var(--muted);margin-top:2px;}
+
+  .tally{font-size:12px;padding:11px 15px;border-radius:10px;margin-top:12px;}
+  .tally.ok{background:var(--ok-bg);color:var(--ok-fg);}
+  .tally.bad{background:var(--warn-bg);color:var(--warn-fg);}
+  .rt-view{font-size:13.5px;line-height:1.7;}
+  .rt-view ul,.rt-view ol{margin:8px 0 8px 22px;}
+  .rt-view a{color:var(--primary);}
+  /* document viewer modal */
+  .viewer{position:fixed;inset:0;background:rgba(10,12,18,.6);z-index:900;display:none;
+          align-items:center;justify-content:center;padding:24px;}
+  .viewer.open{display:flex;}
+  .viewer-box{background:var(--surface);border:1px solid var(--border);border-radius:18px;
+              width:100%;max-width:900px;height:90vh;display:flex;flex-direction:column;
+              box-shadow:var(--shadow-2);overflow:hidden;}
+  .viewer-bar{display:flex;align-items:center;justify-content:space-between;gap:14px;
+              padding:14px 20px;border-bottom:1px solid var(--border);flex-shrink:0;}
+  .viewer-name{font-size:14px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;
+               white-space:nowrap;flex:1;}
+  .viewer-meta{font-size:11.5px;color:var(--muted);margin-left:8px;flex-shrink:0;}
+  .viewer-acts{display:flex;gap:8px;flex-shrink:0;}
+  .viewer-body{flex:1;min-height:0;background:var(--bg);}
+  .viewer-body iframe{width:100%;height:100%;border:none;}
+  .viewer-body img{max-width:100%;max-height:100%;object-fit:contain;display:block;margin:0 auto;}
+  .viewer-body .loading{display:flex;align-items:center;justify-content:center;height:100%;
+                        font-size:13px;color:var(--muted);}
+
+  .empty-note{padding:26px;text-align:center;color:var(--muted);font-size:12.5px;
+              border:1px dashed var(--border);border-radius:12px;}
+
+  @media(max-width:1100px){ .grid{grid-template-columns:repeat(3,1fr);} .pills{grid-template-columns:repeat(2,1fr);} }
+  @media(max-width:760px){ .grid{grid-template-columns:repeat(2,1fr);} .nav{display:none;} .pills{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="home-logged-in.html" class="topbar-brand">
+    <img src="sc-blue-logo.png" data-dark-src="sc-white-logo.png" alt="SmarTuna" style="width:28px;height:28px;object-fit:contain;"/>
+    <span class="sc-wm"><span class="sc-wm-top">SmarTuna</span><span class="sc-wm-sub">concept</span></span>
+  </a>
+  <div class="nav">
+    <a href="home-logged-in.html" class="nav-item">Home</a>
+    <a href="raw-material-list.html" class="nav-item active">My Studio</a>
+    <a href="Species.html" class="nav-item">Atlas</a>
+  </div>
+  <div class="avatar-wrap">
+    <div class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()"><span id="avatarInitials">··</span></div>
+    <div class="avatar-menu" id="avatarMenu">
+      <div class="avatar-menu-name" id="avatarGreeting">Hello!</div>
+      <a href="profile.html">Profile</a><a href="organisation.html">Your Company</a>
+      <button onclick="handleLogout()">Logout</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="crumb"><a href="home-logged-in.html">My Studio</a> / <a href="raw-material-list.html">Raw Materials</a> / <span id="crumbNow">—</span></div>
+  <div class="page-head">
+    <div>
+      <div class="h1" id="headRef">—</div>
+      <div class="h1-sub" id="headSub">—</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn" onclick="goEdit()">Edit</button>
+      <button class="btn btn-primary" onclick="goEuCatch()">Use in EU Catch document</button>
+    </div>
+  </div>
+
+  <div id="alerts"></div>
+  <div class="pills" id="pills"></div>
+
+  <div class="card">
+    <div class="card-head"><div><div class="card-title">Species</div>
+      <div class="card-sub" id="spSub">The product table of the catch certificate</div></div></div>
+    <div id="spHost"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div><div class="card-title">Identity &amp; Supply</div></div></div>
+    <div class="grid" id="idGrid"></div>
+    <div id="transformHost"></div>
+  </div>
+
+  <div class="card" id="eventsCard">
+    <div class="card-head"><div><div class="card-title">Vessel &amp; Trip Details</div>
+      <div class="card-sub" id="evSub">—</div></div></div>
+    <div id="evHost"></div>
+    <div id="evTally"></div>
+  </div>
+
+  <div class="card" id="matrixCard" style="display:none;">
+    <div class="card-head"><div><div class="card-title">Catch by Vessel and Species</div>
+      <div class="card-sub">What each vessel contributed — Section 2 of a catch certificate</div></div></div>
+    <div id="matrixHost"></div>
+  </div>
+
+  <div class="card" id="flowCard" style="display:none;">
+    <div class="card-head"><div><div class="card-title">Chain Map</div>
+      <div class="card-sub" id="flowSub">—</div></div></div>
+    <div class="flow" id="flowHost"><svg class="flow-svg" id="flowSvg"></svg><div id="flowNodes"></div></div>
+  </div>
+
+  <div class="card" id="farmCard" style="display:none;">
+    <div class="card-head"><div class="card-title">Farm &amp; Harvest</div></div>
+    <div class="grid" id="farmGrid"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div><div class="card-title">Certification &amp; Compliance</div></div></div>
+    <div id="certHost"></div>
+    <div class="grid" id="certGrid" style="margin-top:18px;"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div><div class="card-title">Certificates &amp; Documents</div>
+      <div class="card-sub" id="docSub">—</div></div></div>
+    <div id="docHost"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><div><div class="card-title">Used In</div>
+      <div class="card-sub">Shipment lots drawing on this raw material</div></div></div>
+    <div id="usedHost"></div>
+  </div>
+
+  <!-- document viewer modal -->
+  <div class="viewer" id="viewer" onclick="if(event.target===this)closeViewer()">
+    <div class="viewer-box">
+      <div class="viewer-bar">
+        <div class="viewer-name" id="viewerName">—</div>
+        <div class="viewer-meta" id="viewerMeta"></div>
+        <div class="viewer-acts">
+          <button class="btn btn-sm" id="viewerNewTab" onclick="viewerOpenTab()">Open in new tab</button>
+          <button class="btn btn-sm" id="viewerDownload" onclick="viewerDownload()">Download</button>
+          <button class="btn btn-sm" onclick="closeViewer()">Close</button>
+        </div>
+      </div>
+      <div class="viewer-body" id="viewerBody">
+        <div class="loading">Select a document to view</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="notesCard" style="display:none;">
+    <div class="card-head"><div class="card-title">Notes</div></div>
+    <div class="rt-view" id="notesHost"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
+const SUPABASE_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const dbClient=window.supabase?window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num=v=>{const n=Number(v);return isNaN(n)?0:n;};
+const fmtN=v=>(v==null||v===''||isNaN(Number(v)))?null:Number(v).toLocaleString('en-US');
+function fmtDate(v){ if(!v) return null; const d=new Date(v); return isNaN(d)?v:d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
+
+let RM=null, SPECIES=[], EVENTS=[], SPLITS=[], DOCS=[], USED=[], FLOW=null, TRANSFORMS=[];
+
+/* Weights are stored in kg; the lot's own unit decides how they read. */
+const unitLabel = () => RM?.unit || 'kg';
+const toDisplay = kg => (kg===''||kg==null)?null:(unitLabel()==='MT'?Number(kg)/1000:Number(kg));
+const fmtQty    = kg => { const v=toDisplay(kg); return v==null?null:`${fmtN(v)} ${unitLabel()}`; };
+
+function toggleAvatarMenu(){ $('avatarMenu').classList.toggle('open'); }
+document.addEventListener('click',e=>{const w=document.querySelector('.avatar-wrap');
+  if(w&&!w.contains(e.target)) $('avatarMenu')?.classList.remove('open');});
+function greetingTime(){const h=new Date().getHours();return h<12?'Good Morning':(h<18?'Good Afternoon':'Good Evening');}
+async function handleLogout(){ if(dbClient) await dbClient.auth.signOut(); location.href='index.html'; }
+
+function safeHTML(html){
+  const d=document.createElement('div'); d.innerHTML=html||'';
+  d.querySelectorAll('script,style,iframe,object,embed,link,meta').forEach(n=>n.remove());
+  d.querySelectorAll('*').forEach(n=>[...n.attributes].forEach(a=>{
+    if(/^on/i.test(a.name)||(a.name==='href'&&/^javascript:/i.test(a.value))) n.removeAttribute(a.name);}));
+  return d.innerHTML;
+}
+function cell(label,raw,kind){
+  let v=raw;
+  if(Array.isArray(raw)) v=raw.length?raw.join(', '):null;
+  else if(kind==='date') v=fmtDate(raw);
+  else if(kind==='kg')   v=fmtQty(raw);
+  else if(kind==='bool') v=(raw===true?'Yes':(raw===false?'No':null));
+  const empty=v==null||v==='';
+  return `<div><div class="fld-label">${esc(label)}</div>
+    <div class="fld-value${empty?' empty':''}">${empty?'—':esc(v)}</div></div>`;
+}
+
+const params=()=>new URLSearchParams(location.search);
+function goEdit(){ location.href='raw-material-form.html'+(params().get('id')?('?id='+params().get('id')):''); }
+function goEuCatch(){ location.href='eu-catch-support.html?raw_material='+(params().get('id')||''); }
+
+/* =====================================================================
+   DEMO — only with ?demo=1
+   ===================================================================== */
+const DEMO={
+ rm:{id:'demo',rm_ref:'RM-000005',name:'Mixed trip, July',source_type:'Wild Capture',
+   status:'Active',unit:'kg',supplier_name:'GenSan Fishing Coop',supplier_type:'Fishing company',
+   origin_country:'Philippines',preservation:'Frozen',received_date:'2026-07-24',
+   quantity_kg:18000,certifications:['MSC','Dolphin Safe'],fishery_scheme:'MSC',
+   fishery_name:'PNA Western & Central Pacific skipjack',fishery_ref:'MSC-F-31161',
+   certifying_authority:'Bureau of Fisheries and Aquatic Resources (BFAR)',
+   transformed:true,net_quantity_kg:16200,
+   notes_html:'<p>Graded on landing. <b>Two cartons rejected</b> for soft texture.</p>',
+   flow_json:{nodes:{1:{x:30,y:24},2:{x:30,y:108},3:{x:300,y:66},4:{x:570,y:66}},edges:[[1,3],[2,3],[3,4]]}},
+ species:[
+  {line_no:1,species_name:'Skipjack Tuna',scientific_name:'Katsuwonus pelamis',afsis_3a_code:'SKJ',
+   product_form:'Whole Round',quantity_kg:12000,certification_status:'Certified'},
+  {line_no:2,species_name:'Yellowfin Tuna',scientific_name:'Thunnus albacares',afsis_3a_code:'YFT',
+   product_form:'Loin',quantity_kg:6000,certification_status:'Disqualified'}],
+ events:[
+  {id:'e1',line_no:1,event_type:'Catch',vessel_name:'Maria Lourdes',imo:'8729461',flag_state:'Philippines',
+   captain:'R. Santos',trip_no:'OS-TRIP-2607-14',fao_area:'71',gear_type:'Purse Seiner',
+   catch_date_from:'2026-07-02',catch_date_to:'2026-07-11',quantity_kg:10000,
+   departure_port_name:'General Santos',departure_date:'2026-07-01',
+   landing_port_name:'General Santos',landing_date:'2026-07-13'},
+  {id:'e2',line_no:2,event_type:'Catch',vessel_name:'Santa Cruz II',imo:'9312244',flag_state:'Philippines',
+   captain:'M. Reyes',trip_no:'OS-TRIP-2607-15',fao_area:'71',gear_type:'Pole & Line',
+   catch_date_from:'2026-07-04',catch_date_to:'2026-07-12',quantity_kg:8000,
+   landing_port_name:'General Santos',landing_date:'2026-07-14'},
+  {id:'e3',line_no:3,event_type:'Transshipment',transfer_to:'Reefer vessel',
+   carrier_vessel_name:'Ocean Reefer 5',carrier_imo:'9776418',carrier_flag_state:'Panama',
+   captain:'A. Lim',transship_where:'At sea',latitude:4.2033,longitude:132.6667,
+   observer_present:true,observer_name:'J. Cruz',transfer_date:'2026-07-15',transfer_date_to:'2026-07-17',
+   bl_no:'MSCUGS482913'},
+  {id:'e4',line_no:4,event_type:'Unloading',landing_port_name:'General Santos',landing_date:'2026-07-22',
+   vessel_name:'Ocean Reefer 5',imo:'9776418'}],
+ transforms:[
+  {line_no:1,species_line_no:1,species_name:'Skipjack Tuna',transformation_type:'Frozen on board',
+   vessel_name:'Maria Lourdes',quantity_out_kg:11400},
+  {line_no:2,species_line_no:2,species_name:'Yellowfin Tuna',transformation_type:'Headed & gutted',
+   vessel_name:'Maria Lourdes',quantity_out_kg:4800}],
+ splits:[
+  {catch_event_id:'e1',line_no:1,species_name:'Skipjack Tuna',quantity_kg:7000},
+  {catch_event_id:'e1',line_no:2,species_name:'Yellowfin Tuna',quantity_kg:3000},
+  {catch_event_id:'e2',line_no:1,species_name:'Skipjack Tuna',quantity_kg:5000},
+  {catch_event_id:'e2',line_no:2,species_name:'Yellowfin Tuna',quantity_kg:3000}],
+ docs:[{id:'d1',file_name:'MSC-certificate-2026.pdf',doc_type:'Certificate',mime_type:'application/pdf',
+        size_bytes:412000,issued_date:'2026-07-20',storage_path:'demo/x.pdf'},
+       {id:'d2',file_name:'catch-cert-00184.pdf',doc_type:'Catch Certificate',mime_type:'application/pdf',
+        size_bytes:308000,issued_date:'2026-07-22',storage_path:'demo/y.pdf'}],
+ used:[{shipment_ref:'EU-2026-00482',batch_lot:'OS-YFT-260714',packages:215,product_name:'Frozen Whole Round Tuna'}]};
+
+/* =====================================================================
+   RENDER
+   ===================================================================== */
+function render(){
+  const r=RM, wild=r.source_type==='Wild Capture';
+  const catches=EVENTS.filter(e=>e.event_type==='Catch');
+
+  $('crumbNow').textContent=r.rm_ref||'—';
+  $('headRef').textContent=r.rm_ref||'Untitled';
+  const names=SPECIES.map(s=>s.species_name).filter(Boolean);
+  $('headSub').textContent=[names.join(' + ')||null,r.name,r.supplier_name].filter(Boolean).join(' · ')||'—';
+
+  /* a discarded lot should say so before anything else */
+  $('alerts').innerHTML = r.status==='Discarded'
+    ? `<div class="tally bad" style="margin:0 0 18px;"><b>This lot is discarded.</b>
+       It should not be used in a shipment or a catch document. The reason is in Notes.</div>` : '';
+
+  const cls={'Active':'st-active','Draft':'st-draft','In-Review':'st-review',
+             'Discarded':'st-discarded','Archived':'st-archived'}[r.status]||'st-draft';
+  const spTotal=SPECIES.reduce((a,s)=>a+num(s.quantity_kg),0);
+  const catchTotal=catches.reduce((a,e)=>a+num(e.quantity_kg),0);
+
+  $('pills').innerHTML=`
+    <div class="pill"><div class="pill-label">Reference</div><div class="pill-value">${esc(r.rm_ref||'—')}</div>
+      <div class="pill-sub">${esc(r.source_type||'')}</div></div>
+    <div class="pill"><div class="pill-label">Species</div>
+      <div class="pill-value">${names.length>1?names.length+' species':(esc(names[0]||'—'))}</div>
+      <div class="pill-sub">${names.length>1?esc(names.join(', ')):esc(SPECIES[0]?.scientific_name||'')}</div></div>
+    <div class="pill"><div class="pill-label">Quantity</div>
+      <div class="pill-value">${fmtQty(spTotal)||'—'}</div>
+      <div class="pill-sub">${r.transformed&&TRANSFORMS.length
+        ? `${fmtQty(TRANSFORMS.reduce((a,t)=>a+num(t.quantity_out_kg),0))} after transformation` : ''}</div></div>
+    <div class="pill"><div class="pill-label">Vessels</div>
+      <div class="pill-value">${catches.length||'—'}</div>
+      <div class="pill-sub">${EVENTS.filter(e=>e.event_type==='Transshipment').length} transshipment(s)</div></div>
+    <div class="pill"><div class="pill-label">Status</div>
+      <div class="pill-value"><span class="badge ${cls}">${esc(r.status||'Draft')}</span></div></div>`;
+
+  renderSpecies(spTotal,catchTotal);
+  renderIdentity();
+  wild?renderEvents():($('eventsCard').style.display='none');
+  renderMatrix();
+  renderFlow();
+
+  $('farmCard').style.display=wild?'none':'block';
+  if(!wild) $('farmGrid').innerHTML=cell('Farm Name',r.farm_name)+cell('Farm Location',r.farm_location)+
+    cell('Production Method',r.production_method)+cell('Harvest Date',r.harvest_date,'date')+cell('Feed Type',r.feed_type);
+
+  renderCert(); renderDocs(); renderUsed();
+  const nh=r.notes_html?safeHTML(r.notes_html):'';
+  $('notesCard').style.display=nh.trim()?'block':'none';
+  if(nh.trim()) $('notesHost').innerHTML=nh;
+}
+
+function renderSpecies(spTotal,catchTotal){
+  if(!SPECIES.length){ $('spHost').innerHTML=`<div class="empty-note">No species recorded.</div>`; return; }
+  $('spSub').textContent=`${SPECIES.length} species — the product table of the catch certificate`;
+  $('spHost').innerHTML=`<table>
+    <thead><tr><th style="width:38px;"></th><th>Species</th><th>FAO code</th><th>Product form</th>
+      <th>Certification</th><th class="num">Quantity</th></tr></thead>
+    <tbody>${SPECIES.map((s,i)=>`<tr>
+      <td style="color:var(--muted);font-weight:700;font-size:11px;">${s.line_no||i+1}</td>
+      <td><div style="font-weight:600;">${esc(s.species_name||'—')}</div>
+        ${s.scientific_name?`<div class="sci">${esc(s.scientific_name)}</div>`:''}</td>
+      <td>${esc(s.afsis_3a_code||'—')}</td>
+      <td>${esc(s.product_form||'—')}</td>
+      <td>${(()=>{const st=s.certification_status
+          || (s.certified_scheme==='Not certified'?'Not certified':(s.certified_scheme?'Certified':null));
+        if(!st) return '<span style="color:var(--dim);">—</span>';
+        const cls=st==='Certified'?'':(st==='Disqualified'?' bad':' grey');
+        return `<span class="chip${cls}">${esc(st)}</span>`;})()}</td>
+      <td class="num">${fmtQty(s.quantity_kg)||'—'}</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td colspan="5"></td><td class="num">${fmtQty(spTotal)||'—'}</td></tr></tfoot>
+  </table>` + (catchTotal && spTotal!==catchTotal
+    ? `<div class="tally bad">⚠ Species lines total ${fmtQty(spTotal)} but the catch events total
+       ${fmtQty(catchTotal)} — a gap of ${fmtQty(Math.abs(spTotal-catchTotal))}.</div>` : '');
+}
+
+function renderIdentity(){
+  const r=RM;
+  $('idGrid').innerHTML=cell('Name',r.name)+cell('Supplier',r.supplier_name)+
+    cell('Supplier Type',r.supplier_type)+cell('Country of Landing',r.origin_country)+
+    cell('Preservation',r.preservation)+cell('Received',r.received_date,'date');
+
+  if(!r.transformed || !TRANSFORMS.length){ $('transformHost').innerHTML=''; return; }
+
+  const gross=SPECIES.reduce((a,s)=>a+num(s.quantity_kg),0);
+  const out=TRANSFORMS.reduce((a,t)=>a+num(t.quantity_out_kg),0);
+  const untouched=SPECIES.filter(s=>!TRANSFORMS.some(t=>t.species_line_no===s.line_no))
+    .map(s=>s.species_name).filter(Boolean);
+
+  $('transformHost').innerHTML=`<div class="sub-h">Transformation</div>
+    <table>
+      <thead><tr><th>Species</th><th>Transformation</th><th>On vessel</th>
+        <th class="num">Input</th><th class="num">Yield</th><th class="num">%</th></tr></thead>
+      <tbody>${TRANSFORMS.map(t=>{
+        const sp=SPECIES.find(s=>s.line_no===t.species_line_no);
+        const inKg=num(t.quantity_in_kg)||num(sp?.quantity_kg);
+        const o=num(t.quantity_out_kg);
+        return `<tr>
+          <td style="font-weight:600;">${esc(t.species_name||'—')}</td>
+          <td>${esc(t.transformation_type||'—')}</td>
+          <td>${esc(t.vessel_name||'—')}</td>
+          <td class="num">${fmtQty(inKg)||'—'}</td>
+          <td class="num">${fmtQty(o)||'—'}</td>
+          <td class="num">${inKg&&o?((o/inKg)*100).toFixed(1)+'%':'—'}</td></tr>`;}).join('')}</tbody>
+      <tfoot><tr><td colspan="3">Total</td><td class="num">${fmtQty(gross)||'—'}</td>
+        <td class="num">${fmtQty(out)||'—'}</td>
+        <td class="num">${gross&&out?((out/gross)*100).toFixed(1)+'%':'—'}</td></tr></tfoot>
+    </table>
+    ${untouched.length?`<div class="tally" style="background:var(--bg);color:var(--muted);">
+      ${esc(untouched.join(', '))} passed through untransformed</div>`:''}`;
+}
+
+const evMeta=e=>({
+  Catch:{tag:'Catch',cls:'tag-catch'},
+  Transshipment:{tag:'Transship',cls:'tag-tship'},
+  Unloading:{tag:'Unload',cls:'tag-unload'}}[e.event_type]||{tag:'Event',cls:'tag-catch'});
+
+function renderEvents(){
+  $('eventsCard').style.display='block';
+  if(!EVENTS.length){ $('evHost').innerHTML=`<div class="empty-note">No events recorded.</div>`;
+    $('evSub').textContent='None yet'; return; }
+
+  const c=EVENTS.filter(e=>e.event_type==='Catch').length;
+  const t=EVENTS.filter(e=>e.event_type==='Transshipment').length;
+  const u=EVENTS.filter(e=>e.event_type==='Unloading').length;
+  $('evSub').textContent=[`${c} catch${c===1?'':'es'}`,t?`${t} transshipment${t===1?'':'s'}`:null,
+    u?`${u} unloading${u===1?'':'s'}`:null].filter(Boolean).join(' · ');
+
+  $('evHost').innerHTML=EVENTS.map((e,i)=>{
+    const m=evMeta(e);
+    let name,meta,body;
+
+    if(e.event_type==='Catch'){
+      name=e.vessel_name||'Unnamed vessel';
+      meta=[e.imo&&('IMO '+e.imo),e.flag_state,e.captain&&('Capt. '+e.captain)].filter(Boolean).join(' · ');
+      body=`<div class="grid">
+        ${cell('Trip No',e.trip_no)}${cell('FAO Area',e.fao_area)}${cell('Gear',e.gear_type)}
+        ${cell('Catch From',e.catch_date_from,'date')}${cell('Catch To',e.catch_date_to,'date')}
+        ${cell('Area Detail',e.catch_area_detail)}
+        ${cell('Departure Port',e.departure_port_name)}${cell('Departure Date',e.departure_date,'date')}
+        ${cell('Landing Port',e.landing_port_name)}${cell('Landing Date',e.landing_date,'date')}
+      </div>`;
+    }else if(e.event_type==='Transshipment'){
+      const toC=e.transfer_to==='Reefer container';
+      name=toC?(e.container_no||e.carrier_vessel_name||'Container'):(e.carrier_vessel_name||'Carrier');
+      meta=[e.transfer_to,e.carrier_imo&&('IMO '+e.carrier_imo),e.carrier_flag_state,
+            e.captain&&('Capt. '+e.captain)].filter(Boolean).join(' · ');
+      const pos=(e.latitude!=null&&e.longitude!=null)?`${e.latitude}, ${e.longitude}`:null;
+      body=`<div class="grid">
+        ${cell('Transshipped onto',e.transfer_to)}${cell('Where',e.transship_where)}
+        ${cell('Transfer From',e.transfer_date,'date')}${cell('Transfer To',e.transfer_date_to,'date')}
+        ${e.transship_where==='At sea'?cell('Position',pos):cell('Port',e.transfer_location)}
+        ${cell('Observer aboard',e.observer_present,'bool')}${cell('Observer',e.observer_name)}
+        ${cell('B/L No',e.bl_no)}${cell('Trip No',e.trip_no)}
+      </div>` + (e.containers?.length
+        ? `<div class="sub-h">Containers</div><table>
+             <thead><tr><th>Container No</th><th>Seal No</th><th>Type</th><th class="num">Temp °C</th></tr></thead>
+             <tbody>${e.containers.map(k=>`<tr><td>${esc(k.container_no||'—')}</td>
+               <td>${esc(k.seal_no||'—')}</td><td>${esc(k.container_type||'—')}</td>
+               <td class="num">${k.temperature_c??'—'}</td></tr>`).join('')}</tbody></table>` : '')
+        + (e.transship_where==='At sea' && e.observer_present===false
+           ? `<div class="tally bad">⚠ At-sea transshipment with no observer — this is normally
+              challenged on the catch certificate.</div>` : '');
+    }else{
+      name=e.landing_port_name||'Port';
+      meta=[e.vessel_name,e.imo&&('IMO '+e.imo)].filter(Boolean).join(' · ');
+      body=`<div class="grid">
+        ${cell('Port',e.landing_port_name)}${cell('Unloading Date',e.landing_date,'date')}
+        ${cell('Vessel',e.vessel_name)}${cell('B/L No',e.bl_no)}${cell('Trip No',e.trip_no)}
+      </div>`;
+    }
+
+    return `<div class="ev">
+      <div class="ev-bar"><span class="ev-tag ${m.cls}">${m.tag}</span>
+        <div><div class="ev-name">${esc(name)}</div><div class="ev-meta">${esc(meta)||'—'}</div></div>
+        <div class="ev-qty">${fmtQty(e.quantity_kg)||''}</div></div>
+      <div class="ev-in">${body}</div></div>`;
+  }).join('');
+}
+
+/* The vessel × species matrix — only meaningful with several vessels. */
+function renderMatrix(){
+  const catches=EVENTS.filter(e=>e.event_type==='Catch');
+  if(catches.length<2 || !SPLITS.length || SPECIES.length<2){
+    $('matrixCard').style.display='none'; return;
+  }
+  $('matrixCard').style.display='block';
+  const get=(evId,line)=>SPLITS.find(s=>s.catch_event_id===evId&&s.line_no===line)?.quantity_kg;
+
+  const colTotals=SPECIES.map(s=>catches.reduce((a,e)=>a+num(get(e.id,s.line_no)),0));
+  const grand=colTotals.reduce((a,b)=>a+b,0);
+
+  $('matrixHost').innerHTML=`<table>
+    <thead><tr><th>Vessel</th>${SPECIES.map(s=>`<th class="num">${esc(s.species_name)}</th>`).join('')}
+      <th class="num">Vessel total</th></tr></thead>
+    <tbody>${catches.map(e=>{
+      const rowTotal=SPECIES.reduce((a,s)=>a+num(get(e.id,s.line_no)),0);
+      const declared=num(e.quantity_kg);
+      const off=declared&&rowTotal!==declared;
+      return `<tr><td><div style="font-weight:600;">${esc(e.vessel_name||'—')}</div>
+        <div class="sci">${esc([e.gear_type,e.fao_area&&('FAO '+e.fao_area)].filter(Boolean).join(' · '))}</div></td>
+        ${SPECIES.map(s=>`<td class="num">${fmtQty(get(e.id,s.line_no))||'—'}</td>`).join('')}
+        <td class="num" style="${off?'color:var(--warn-fg);font-weight:700;':''}">${fmtQty(rowTotal)||'—'}
+          ${off?`<div class="sci">declared ${fmtQty(declared)}</div>`:''}</td></tr>`;
+    }).join('')}</tbody>
+    <tfoot><tr><td>Total</td>${colTotals.map(t=>`<td class="num">${fmtQty(t)||'—'}</td>`).join('')}
+      <td class="num">${fmtQty(grand)||'—'}</td></tr></tfoot>
+  </table>` + (SPECIES.some((s,i)=>num(s.quantity_kg)!==colTotals[i])
+    ? `<div class="tally bad">⚠ A species column does not match its line on the certificate.</div>`
+    : `<div class="tally ok">✓ Every species column matches its certificate line</div>`);
+}
+
+/* Read-only chain map — same node layout the form saved. */
+function renderFlow(){
+  if(!FLOW||!FLOW.nodes||!Object.keys(FLOW.nodes).length){ $('flowCard').style.display='none'; return; }
+  $('flowCard').style.display='block';
+  const nodes=EVENTS.map((e,i)=>{
+    const k=e.line_no||i+1, p=FLOW.nodes[k]; if(!p) return null;
+    if(e.event_type==='Catch') return {k,p,cls:'catch',kind:'Fishing vessel',
+      name:e.vessel_name||`Vessel ${k}`,meta:[e.gear_type,fmtQty(e.quantity_kg)].filter(Boolean).join(' · ')};
+    if(e.event_type==='Transshipment') return {k,p,cls:'tship',kind:e.transfer_to||'Transshipment',
+      name:e.transfer_to==='Reefer container'?(e.container_no||e.carrier_vessel_name||`Container ${k}`)
+                                             :(e.carrier_vessel_name||`Carrier ${k}`),
+      meta:e.transship_where||''};
+    return {k,p,cls:'unload',kind:'Unloading',name:e.landing_port_name||`Port ${k}`,meta:fmtDate(e.landing_date)||''};
+  }).filter(Boolean);
+
+  $('flowSub').textContent=`${nodes.length} nodes · ${(FLOW.edges||[]).length} links`;
+  $('flowNodes').innerHTML=nodes.map(n=>`
+    <div class="fnode ${n.cls}" data-k="${n.k}" style="left:${n.p.x}px;top:${n.p.y}px;">
+      <div class="fnode-k">${esc(n.kind)}</div>
+      <div class="fnode-n">${esc(n.name)}</div>
+      ${n.meta?`<div class="fnode-m">${esc(n.meta)}</div>`:''}</div>`).join('');
+
+  requestAnimationFrame(()=>{
+    const box=k=>{const el=document.querySelector(`.fnode[data-k="${k}"]`);
+      return el?{x:el.offsetLeft,y:el.offsetTop,w:el.offsetWidth,h:el.offsetHeight}:null;};
+    $('flowSvg').innerHTML=(FLOW.edges||[]).map(e=>{
+      const a=box(e[0]),b=box(e[1]); if(!a||!b) return '';
+      const x1=a.x+a.w,y1=a.y+a.h/2,x2=b.x,y2=b.y+b.h/2;
+      const dx=Math.max(40,Math.abs(x2-x1)*0.5);
+      return `<path d="M ${x1} ${y1} C ${x1+dx} ${y1}, ${x2-dx} ${y2}, ${x2} ${y2}"/>`;
+    }).join('');
+  });
+}
+
+function renderCert(){
+  const r=RM, certs=r.certifications||[];
+  $('certHost').innerHTML=certs.length
+    ? certs.map(c=>`<span class="chip">${esc(c)}</span>`).join('')
+    : `<div style="font-size:13px;color:var(--dim);">No certifications recorded</div>`;
+  $('certGrid').innerHTML=
+    cell('Certifying Authority',r.certifying_authority)+
+    cell(r.fishery_scheme==='ASC'?'Certified Farm':'Certified Fishery',r.fishery_name)+
+    cell('Certificate / UoC Code',r.fishery_ref)+
+    cell('Scheme',r.fishery_scheme);
+}
+
+function humanSize(b){ if(b==null) return '';
+  if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(0)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
+
+function renderDocs(){
+  $('docSub').textContent=DOCS.length?`${DOCS.length} document${DOCS.length===1?'':'s'}`:'None uploaded';
+  $('docHost').innerHTML=DOCS.length
+    ? DOCS.map((d,i)=>{
+        const isPdf=/pdf/i.test(d.mime_type||d.file_name||'');
+        return `<div class="doc">
+          <div class="doc-ic${isPdf?'':' img'}">${isPdf?'PDF':'IMG'}</div>
+          <div><div class="doc-n">${esc(d.file_name)}</div>
+            <div class="doc-m">${[humanSize(d.size_bytes),d.issued_date?('issued '+fmtDate(d.issued_date)):null]
+              .filter(Boolean).join(' · ')}</div></div>
+          <div><span class="chip grey">${esc(d.doc_type||'Document')}</span></div>
+          <div class="fld-value">${fmtDate(d.expiry_date)?('expires '+fmtDate(d.expiry_date)):''}</div>
+          <div style="text-align:right;"><button class="btn btn-sm" onclick="openDoc(${i})">View</button></div>
+        </div>`;}).join('')
+    : `<div class="empty-note">No certificates uploaded.</div>`;
+}
+let VIEWER_URL=null;
+
+async function openDoc(i){
+  const d=DOCS[i];
+  const isPdf=/pdf/i.test(d.mime_type||d.file_name||'');
+  const isImg=/image/i.test(d.mime_type||'');
+
+  $('viewerName').textContent=d.file_name||'Document';
+  $('viewerMeta').textContent=[d.doc_type, humanSize(d.size_bytes),
+    d.issued_date?('issued '+fmtDate(d.issued_date)):null].filter(Boolean).join(' · ');
+  $('viewerBody').innerHTML=`<div class="loading">Loading…</div>`;
+  $('viewer').classList.add('open');
+  document.body.style.overflow='hidden';
+
+  // demo docs have no real storage path
+  if(!dbClient || d.storage_path?.startsWith('demo/')){
+    $('viewerBody').innerHTML=`<div class="loading" style="flex-direction:column;gap:12px;">
+      <div style="font-size:14px;font-weight:600;">Demo document</div>
+      <div>This is sample data — no file is stored behind it.</div></div>`;
+    VIEWER_URL=null; return;
+  }
+
+  try{
+    const {data,error}=await dbClient.storage.from('rm-certificates')
+      .createSignedUrl(d.storage_path, 300);   // 5 minutes
+    if(error) throw error;
+    VIEWER_URL=data.signedUrl;
+
+    if(isPdf){
+      // PDF in an iframe with the browser's built-in viewer
+      $('viewerBody').innerHTML=`<iframe src="${esc(data.signedUrl)}#toolbar=1&navpanes=0"
+        title="${esc(d.file_name)}"></iframe>`;
+    }else if(isImg){
+      $('viewerBody').innerHTML=`<div style="display:flex;align-items:center;justify-content:center;
+        height:100%;padding:20px;"><img src="${esc(data.signedUrl)}" alt="${esc(d.file_name)}"
+        onerror="this.parentElement.innerHTML='<div class=loading>Could not load the image</div>'"/></div>`;
+    }else{
+      $('viewerBody').innerHTML=`<div class="loading">This file type cannot be previewed.
+        Use Download or Open in new tab.</div>`;
+    }
+  }catch(e){
+    $('viewerBody').innerHTML=`<div class="loading" style="color:var(--bad-fg);">
+      Could not load: ${esc(e.message)}</div>`;
+    VIEWER_URL=null;
+  }
+}
+
+function closeViewer(){
+  $('viewer').classList.remove('open');
+  document.body.style.overflow='';
+  $('viewerBody').innerHTML='';
+  VIEWER_URL=null;
+}
+function viewerOpenTab(){
+  if(VIEWER_URL) window.open(VIEWER_URL,'_blank','noopener');
+}
+function viewerDownload(){
+  if(!VIEWER_URL) return;
+  const a=document.createElement('a');
+  a.href=VIEWER_URL; a.download=$('viewerName').textContent||'document';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+// Escape closes the viewer
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape' && $('viewer').classList.contains('open')){ e.stopPropagation(); closeViewer(); }
+});
+
+function toast(m){ console.log(m); alert(m); }
+
+function renderUsed(){
+  $('usedHost').innerHTML=USED.length
+    ? `<table><thead><tr><th>Shipment</th><th>Product</th><th>Batch / Lot</th><th class="num">Packages</th></tr></thead>
+       <tbody>${USED.map(u=>`<tr${u.shipment_id?` style="cursor:pointer;" onclick="location.href='shipment-detail.html?id=${encodeURIComponent(u.shipment_id)}'"`:''}>
+         <td style="font-weight:600;">${esc(u.shipment_ref||'—')}</td><td>${esc(u.product_name||'—')}</td>
+         <td>${esc(u.batch_lot||'—')}</td><td class="num">${fmtN(u.packages)||'—'}</td></tr>`).join('')}</tbody></table>`
+    : `<div class="empty-note">Not yet used in any shipment.</div>`;
+}
+
+/* =====================================================================
+   LOAD
+   ===================================================================== */
+async function load(){
+  const id=params().get('id'), demo=params().get('demo')==='1';
+  if(demo || !id){
+    RM=DEMO.rm; SPECIES=DEMO.species; EVENTS=DEMO.events; SPLITS=DEMO.splits;
+    DOCS=DEMO.docs; USED=DEMO.used; FLOW=DEMO.rm.flow_json; TRANSFORMS=DEMO.transforms;
+    render(); return;
+  }
+  try{
+    const {data:r,error}=await dbClient.from('raw_materials').select('*')
+      .eq('id',id).is('deleted_at',null).single();
+    if(error) throw error;
+    RM=r; FLOW=r.flow_json||null;
+
+    const grab=async(t,extra)=>{ try{
+        let q=dbClient.from(t).select('*').eq('raw_material_id',id);
+        if(extra) q=q.order(extra);
+        const {data}=await q; return data||[];
+      }catch(e){ console.warn(`${t} unavailable:`,e.message); return []; } };
+
+    const [sp,ev,splits,conts,docs,trs]=await Promise.all([
+      grab('raw_material_species','line_no'), grab('raw_material_catches','line_no'),
+      grab('raw_material_catch_species'), grab('raw_material_containers'),
+      grab('raw_material_documents'), grab('raw_material_transformations','line_no')]);
+
+    SPECIES=sp.length?sp:(r.species_name?[{line_no:1,species_name:r.species_name,
+      scientific_name:r.scientific_name,afsis_3a_code:r.afsis_3a_code,
+      product_form:r.product_form,quantity_kg:r.quantity_kg}]:[]);
+    const byEv={}; conts.forEach(k=>{ (byEv[k.catch_event_id] ||= []).push(k); });
+    EVENTS=ev.map(e=>({...e,containers:byEv[e.id]||[]}));
+    SPLITS=splits; DOCS=docs;
+    TRANSFORMS=trs.length?trs:(r.transformed&&r.transformation_type
+      ? [{line_no:1,species_line_no:1,species_name:r.species_name,
+          transformation_type:r.transformation_type,vessel_name:r.transformation_vessel,
+          quantity_out_kg:r.net_quantity_kg}] : []);
+
+    try{
+      const {data:u}=await dbClient.from('shipment_batches')
+        .select('shipment_id,batch_lot,packages,shipment_items(product_name),shipments(shipment_ref)')
+        .eq('raw_material_id',id);
+      USED=(u||[]).map(x=>({shipment_id:x.shipment_id,batch_lot:x.batch_lot,packages:x.packages,
+        product_name:x.shipment_items?.product_name,shipment_ref:x.shipments?.shipment_ref}));
+    }catch(e){ USED=[]; }
+
+    render();
+  }catch(err){
+    console.error('Load failed:',err);
+    document.querySelector('.wrap').innerHTML=`<div class="card" style="text-align:center;padding:50px;">
+      <div style="font-size:15px;font-weight:600;margin-bottom:8px;">Raw material not found</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:20px;">It may have been deleted,
+        or it belongs to another organisation.</div>
+      <a href="raw-material-list.html" class="btn btn-primary">Back to raw materials</a></div>`;
+  }
+}
+
+async function loadProfile(){
+  if(!dbClient) return;
+  try{
+    const {data:{session}}=await dbClient.auth.getSession();
+    if(!session) return;
+    const {data:p}=await dbClient.from('profiles')
+      .select('first_name,last_name,avatar_color,photo_url,theme').eq('id',session.user.id).single();
+    const f=p?.first_name||session.user.email.split('@')[0], l=p?.last_name||'';
+    if(p?.photo_url) $('avatarBtn').innerHTML=`<img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;
+    else{ $('avatarBtn').style.background=p?.avatar_color||'#1a6fdb';
+          $('avatarInitials').textContent=(f.charAt(0)+(l?l.charAt(0):'')).toUpperCase(); }
+    $('avatarGreeting').textContent=`${greetingTime()}, ${f}!`;
+    if(window.applyProfileTheme) applyProfileTheme(p);
+  }catch(e){ console.warn('Profile load failed:',e.message); }
+}
+
+load(); loadProfile();
+</script>
+</body>
+</html>

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login — SmarTuna concept</title>
+  <link rel="icon" type="image/png" href="sc-blue-logo.png"/>
+  <link rel="stylesheet" href="login.css" />
+  <style>
+    @font-face {
+      font-family: 'Bitsumis';
+      src: url('BITSUMIS.TTF') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+    }
+    .sc-wm {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      line-height: 1;
+      gap: 0px;
+      text-decoration: none;
+    }
+    .sc-wm-top {
+      font-family: 'Bitsumis', 'Poppins', sans-serif;
+      font-weight: 900;
+      font-size: 22px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      background: linear-gradient(90deg, #1a6fdb 0%, #1a6fdb 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .sc-wm-sub {
+      font-family: 'Bitsumis', 'Poppins', sans-serif;
+      font-weight: 700;
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #1a1a2e;
+      -webkit-text-fill-color: #1a1a2e;
+      margin-top: 2px;
+    }
+    /* video slide styles handled in login.css */
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <div class="login-layout">
+
+    <!-- LEFT PANEL -->
+    <div class="login-left">
+      <div class="login-box">
+
+        <!-- Logo -->
+        <a href="index.html" style="text-decoration:none;">
+          <div class="login-logo">
+            <img src="sc-blue-logo.png" alt="SmarTuna Logo"/>
+            <span class="sc-wm">
+              <span class="sc-wm-top">SmarTuna</span>
+              <span class="sc-wm-sub">concept</span>
+            </span>
+          </div>
+        </a>
+
+        <h1 class="login-title">Welcome Back</h1>
+        <p class="login-subtitle">Enter your email and password to continue.</p>
+
+        <!-- Error message -->
+        <div class="login-error" id="login-error" style="display:none;"></div>
+
+        <!-- Email -->
+        <div class="login-field">
+          <label>Email</label>
+          <input type="email" id="login-email" placeholder="Enter your email address"/>
+        </div>
+
+        <!-- Password -->
+        <div class="login-field">
+          <label>Password</label>
+          <div class="login-password-wrap">
+            <input type="password" id="login-password" placeholder="Enter your password"/>
+            <button type="button" class="login-eye" onclick="togglePassword()">👁</button>
+          </div>
+        </div>
+
+        <!-- Remember me + Forgot password -->
+        <div class="login-row">
+          <label class="login-remember">
+            <input type="checkbox" id="remember-me"/>
+            <span>Remember me</span>
+          </label>
+          <button type="button" class="login-forgot" onclick="showForgotModal()">Forgot password</button>
+        </div>
+
+        <!-- Sign In button -->
+        <button class="login-btn" id="login-btn" onclick="handleLogin()">Sign In</button>
+
+        <!-- Or login with -->
+        <div class="login-divider">
+          <span>Or login with</span>
+        </div>
+
+        <!-- Social buttons -->
+        <div class="login-social">
+          <button class="login-social-btn" onclick="#">
+            <img src="https://www.google.com/favicon.ico" style="width:18px;height:18px;"/> Google
+          </button>
+          <button class="login-social-btn" onclick="#">
+            <img src="apple-icon.png" style="width:18px;height:18px;"/> Apple
+          </button>
+        </div>
+
+        <!-- Register -->
+        <p class="login-register">Don't have an account? <a href="register.html">Register</a></p>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="login-footer">
+        © 2026 SmarTuna concept
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="login-right">
+      <div class="login-slides">
+        <video class="login-slide active" autoplay muted loop playsinline preload="auto" src="login-slide-1.mp4"></video>
+      </div>
+      <div class="login-slide-overlay">
+        <div class="login-slide-text active" id="slide-text-0">
+          <h2>Transform Data into Powerful Insights</h2>
+          <p>Make informed decisions with SmarTuna's powerful tools. Harness the power of data to drive your seafood business forward.</p>
+        </div>
+        <div class="login-slide-text" id="slide-text-1">
+          <h2>Track Every Species. Know Every Product.</h2>
+          <p>From ocean to market, SmarTuna concept gives you complete visibility over your seafood supply chain in one place.</p>
+        </div>
+        <div class="login-slide-text" id="slide-text-2">
+          <h2>Built for the Industry. Designed for You.</h2>
+          <p>A modern platform tailored for seafood professionals who demand accuracy, speed and simplicity in their daily operations.</p>
+        </div>
+        <div class="login-dots">
+          <div class="login-dot active" onclick="goToSlide(0)"></div>
+          <div class="login-dot" onclick="goToSlide(1)"></div>
+          <div class="login-dot" onclick="goToSlide(2)"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Forgot Password Modal -->
+  <div class="forgot-overlay" id="forgot-overlay">
+    <div class="forgot-box">
+      <h3>Password Recovery</h3>
+      <p>Please contact <strong>Vishnu</strong> for password recovery assistance.</p>
+      <button class="btn-close-forgot" onclick="hideForgotModal()">Close</button>
+    </div>
+  </div>
+
+  <script src="utils.js"></script>
+  <script src="login.js"></script>
+  <script>
+  (function(){
+    // The background video now just plays continuously (autoplay/loop on
+    // the <video> tag handles that natively — no JS needed for it). This
+    // only cycles the text captions and dots, independent of the video.
+    const texts    = Array.from(document.querySelectorAll('.login-slide-text'));
+    const dots     = Array.from(document.querySelectorAll('.login-dot'));
+    const DURATION = 7000; // ms each caption shows
+    let current    = 0;
+    let slideTimer = null;
+
+    function goToSlide(n, resetTimer = true) {
+      const prev = current;
+      current = ((n % texts.length) + texts.length) % texts.length;
+      if (prev === current && resetTimer) return;
+
+      texts[prev] && texts[prev].classList.remove('active');
+      dots[prev]  && dots[prev].classList.remove('active');
+      texts[current] && texts[current].classList.add('active');
+      dots[current]  && dots[current].classList.add('active');
+
+      if (resetTimer) schedule();
+    }
+
+    function schedule() {
+      clearTimeout(slideTimer);
+      slideTimer = setTimeout(() => goToSlide((current + 1) % texts.length), DURATION);
+    }
+
+    dots.forEach((dot, i) => {
+      dot.onclick = () => goToSlide(i);
+    });
+
+    window.goToSlide = n => goToSlide(n);
+
+    schedule();
+  })();
+  </script>
+</body>
+</html>

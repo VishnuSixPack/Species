@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SmarTuna concept</title>
+  <link rel="icon" type="image/png" href="sc-logo.png"/>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="home.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* ── BITSUMIS FONT ── */
+    @font-face {
+      font-family: 'Bitsumis';
+      src: url('BITSUMIS.TTF') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+    
+    
+
+    /* On dark backgrounds — concept in white instead of dark */
+    .smartuna-wordmark.wm-dark .wm-concept { color: rgba(255,255,255,0.85); }
+
+    /* ── SUBTLE SCROLLBAR ── */
+    ::-webkit-scrollbar{width:3px;height:3px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+    ::-webkit-scrollbar-thumb{background:rgba(163,137,95,0.28);border-radius:999px;}
+    ::-webkit-scrollbar-thumb:hover{background:rgba(163,137,95,0.45);}
+    ::-webkit-scrollbar-corner{background:transparent;}
+    *{scrollbar-width:thin;scrollbar-color:rgba(163,137,95,0.28) transparent;}
+
+    /* ── QUICK TEST MODAL ── */
+    .qt-modal{display:none;position:fixed;inset:0;background:rgba(6,10,28,0.65);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:9999;padding:20px;}
+    .qt-modal.open{display:grid;place-items:center;}
+    .qt-box{background:#fff;border-radius:9px;width:90vw;max-width:680px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,0.2);position:relative;overflow:hidden;isolation:isolate;}
+    #qtWelcome{overflow-y:scroll;flex:1;scrollbar-width:none;background:#fff;border-radius:9px;}
+    #qtWelcomeWrap{background:#fff;border-radius:9px;overflow:hidden;}
+    #qtQuestions{padding:32px 36px 28px;overflow-y:auto;flex:1;background:#fff;border-radius:9px;}
+    #qtWelcome::-webkit-scrollbar{display:none;}
+    #qtResult{flex:1;height:100%;overflow-y:auto;padding:36px 40px 32px;scroll-behavior:smooth;scrollbar-width:none;min-height:0;}
+    #qtResult::-webkit-scrollbar{display:none;}
+    .qt-scroll-arrow{position:absolute;left:50%;transform:translateX(-50%);width:36px;height:36px;border-radius:50%;background:#fff;border:1.5px solid #e0e3ed;box-shadow:0 4px 12px rgba(0,0,0,0.1);display:none;align-items:center;justify-content:center;cursor:pointer;z-index:10;font-size:14px;color:#6b7280;transition:all 0.2s;}
+    .qt-scroll-arrow:hover{background:#a3895f;color:#fff;border-color:#a3895f;}
+    .qt-scroll-arrow.show{display:flex;}
+    .qt-scroll-up{top:8px;}
+    .qt-scroll-down{bottom:8px;}
+    #qtResult.can-scroll-up::before{content:'';position:absolute;left:0;right:0;top:0;height:40px;background:linear-gradient(to bottom,rgba(255,255,255,1),transparent);pointer-events:none;z-index:5;}
+    #qtResult.can-scroll-down::after{content:'';position:absolute;left:0;right:0;bottom:0;height:40px;background:linear-gradient(to top,rgba(255,255,255,1),transparent);pointer-events:none;z-index:5;}
+    .qt-close{position:absolute;top:16px;right:16px;width:28px;height:28px;border-radius:50%;border:none;background:#f4f6fb;cursor:pointer;font-size:15px;color:#6b7280;display:flex;align-items:center;justify-content:center;z-index:999;}
+    .qt-close:hover{background:#e8eaf0;}
+    .qt-header{margin-bottom:24px;}
+    .qt-badge{display:inline-flex;align-items:center;gap:6px;background:#f2ebdc;border-radius:999px;padding:4px 12px;font-size:11px;font-weight:700;color:#8a7355;margin-bottom:10px;}
+    .qt-title{font-size:20px;font-weight:800;color:#1a1a2e;margin-bottom:4px;}
+    .qt-sub{font-size:13px;color:#9aa0b4;line-height:1.5;}
+    .qt-progress{height:4px;background:#f0f2f7;border-radius:999px;margin-bottom:24px;overflow:hidden;}
+    .qt-progress-fill{height:100%;background:linear-gradient(90deg,#a3895f,#1a6fdb);border-radius:999px;transition:width 0.3s;}
+    .qt-step-lbl{font-size:11px;font-weight:600;color:#9aa0b4;margin-bottom:8px;}
+    .qt-q{font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:20px;line-height:1.5;}
+    .qt-opts{display:flex;flex-direction:column;gap:10px;margin-bottom:24px;}
+    .qt-opt{display:flex;align-items:center;gap:12px;padding:13px 16px;border-radius:12px;border:1.5px solid #e0e3ed;cursor:pointer;transition:all 0.15s;font-size:13px;font-weight:600;color:#4a4e69;background:#fff;}
+    .qt-opt:hover{border-color:#a3895f;background:#faf5ff;color:#8a7355;}
+    .qt-opt.selected{border-color:#a3895f;background:#f2ebdc;color:#8a7355;}
+    .qt-opt-icon{font-size:16px;flex-shrink:0;}
+    .qt-nav{display:flex;justify-content:space-between;align-items:center;}
+    .qt-btn-back{background:none;border:1.5px solid #e0e3ed;border-radius:999px;padding:9px 20px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:#6b7280;cursor:pointer;}
+    .qt-btn-back:hover{border-color:#1a1a2e;color:#1a1a2e;}
+    .qt-btn-next{background:#a3895f;color:#fff;border:none;border-radius:999px;padding:9px 24px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+    .qt-btn-next:hover{background:#8a7355;}
+    .qt-btn-next:disabled{opacity:0.4;cursor:default;}
+    .qt-result{display:none;text-align:left;}
+    .qt-result-icon{font-size:56px;margin-bottom:12px;}
+    .qt-result-title{font-size:22px;font-weight:800;color:#1a1a2e;margin-bottom:6px;}
+    .qt-result-desc{font-size:13px;color:#6b7280;line-height:1.6;margin-bottom:20px;max-width:380px;margin-left:auto;margin-right:auto;}
+    .qt-result-bars{display:flex;flex-direction:column;gap:8px;margin-bottom:24px;text-align:left;}
+    .qt-bar-row{display:flex;align-items:center;gap:10px;}
+    .qt-bar-lbl{font-size:11px;font-weight:600;color:#6b7280;width:100px;flex-shrink:0;}
+    .qt-bar-track{flex:1;height:6px;background:#f0f2f7;border-radius:999px;overflow:hidden;}
+    .qt-bar-fill{height:100%;border-radius:999px;transition:width 0.6s ease;}
+    .qt-bar-pct{font-size:11px;font-weight:700;color:#1a1a2e;width:32px;text-align:right;flex-shrink:0;}
+    .qt-result-cta{display:flex;align-items:center;justify-content:center;gap:8px;background:#1a1a2e;color:#fff;border:none;border-radius:12px;padding:14px 28px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;text-decoration:none;margin-top:4px;}
+    .qt-result-cta:hover{background:#2d2d50;}
+
+    body.home-page{margin:0;font-family:'Poppins',sans-serif;background-image:url('index-bkg.jpg') !important;background-size:cover !important;background-position:center !important;background-repeat:no-repeat !important;background-attachment:fixed !important;}
+    .home-page h1,.home-page h2,.home-page h3,.home-page h4,.home-page p,.home-page a,.home-page span,.home-page div,.home-page button{font-family:'Poppins',sans-serif;}
+
+    .pm-hero{position:relative;padding:76px 48px 0;text-align:center;color:#fff;}
+    .pm-hero h1{font-family:'Poppins',sans-serif;font-weight:700;font-size:clamp(30px,4.4vw,50px);line-height:1.18;color:#ffffff;max-width:920px;margin:0 auto;letter-spacing:-0.01em;text-shadow:0 2px 20px rgba(0,0,0,0.3), 0 1px 4px rgba(0,0,0,0.25);}
+    .pm-eyebrow{display:inline-flex;align-items:center;gap:8px;font-family:'Poppins',sans-serif;font-size:14px;font-weight:500;color:rgba(255,255,255,0.9);margin:16px 0 0;text-shadow:0 1px 8px rgba(0,0,0,0.3);}
+    .pm-eyebrow .spark{color:#c9b48f;}
+    .pm-glass-panel{position:relative;max-width:1680px;margin:52px auto 0;border-radius:40px;background:rgba(22,13,38,0.38);border:1px solid rgba(255,255,255,0.14);box-shadow:0 30px 90px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.1);backdrop-filter:blur(30px) saturate(150%);-webkit-backdrop-filter:blur(30px) saturate(150%);padding:52px 64px 76px;overflow:hidden;}
+    .pm-tabs{position:relative;display:inline-flex;gap:2px;padding:6px;border-radius:999px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.13);margin-bottom:48px;box-shadow:inset 0 1px 0 rgba(255,255,255,0.06);}
+    .pm-tabs-indicator{position:absolute;top:6px;bottom:6px;left:6px;border-radius:999px;background:rgba(255,255,255,0.16);border:1px solid rgba(255,255,255,0.28);box-shadow:inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 18px rgba(0,0,0,0.3);transition:left .42s cubic-bezier(.34,1.56,.64,1), width .42s cubic-bezier(.34,1.56,.64,1);pointer-events:none;}
+    .pm-tab{position:relative;z-index:2;border:none;background:none;padding:11px 22px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:rgba(255,255,255,0.5);cursor:pointer;white-space:nowrap;transition:color .2s;border-radius:999px;}
+    .pm-tab.active,.pm-tab:hover{color:#fff;}
+    .pm-tab-panels{position:relative;text-align:left;}
+    .pm-tab-content{display:none;max-width:720px;}
+    .pm-tab-content.active{display:block;animation:pmFadeUp .5s ease;}
+    @keyframes pmFadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+    .pm-tab-content h2{font-family:'Poppins',sans-serif;font-weight:700;font-size:clamp(24px,2.8vw,36px);color:#ffffff;margin:0 0 18px;line-height:1.28;letter-spacing:-0.01em;}
+    .pm-tab-content p{font-family:'Poppins',sans-serif;font-size:15px;line-height:1.85;color:rgba(255,255,255,0.65);margin:0 0 24px;max-width:660px;}
+    .pm-tab-link{display:inline-flex;align-items:center;gap:6px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;color:#c9b48f;text-decoration:none;}
+    .pm-tab-link:hover{gap:10px;}
+    @media(max-width:900px){.pm-hero{padding:56px 20px 0;}.pm-glass-panel{padding:36px 24px 48px;border-radius:28px;margin-top:36px;}.pm-tabs{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;background:none;border:none;padding:0;}.pm-tabs-indicator{display:none;}.pm-tab{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.13);}.pm-tab.active{background:rgba(255,255,255,0.16);}}
+
+    .home-wwd{padding:56px 24px 8px;background:transparent;}
+    .home-wwd-header{text-align:center;padding:0 40px;margin-bottom:36px;}
+    .home-wwd-header h2{font-family:'Poppins',sans-serif;font-size:38px;font-weight:700;color:#ffffff;margin-bottom:10px;letter-spacing:-0.01em;text-shadow:0 2px 16px rgba(0,0,0,0.3), 0 1px 3px rgba(0,0,0,0.25);}
+    .home-wwd-header p{font-family:'Poppins',sans-serif;font-size:15px;color:rgba(255,255,255,0.85);text-shadow:0 1px 8px rgba(0,0,0,0.25);}
+    .wwd-card{max-width:1680px;margin:0 auto 28px;border-radius:40px;background:#fff;box-shadow:0 40px 90px rgba(0,0,0,0.35);overflow:hidden;opacity:0;transform:translateY(56px) scale(0.965);transition:opacity .35s ease-out, transform .35s cubic-bezier(.16,1,.3,1);will-change:opacity,transform;}
+    .wwd-section{display:flex;align-items:center;gap:56px;min-height:560px;padding:56px 64px;}
+    .wwd-section.reverse{flex-direction:row-reverse;}
+    .wwd-img{flex:1;height:460px;border-radius:26px;overflow:hidden;}
+    .wwd-img img{width:100%;height:100%;object-fit:cover;display:block;}
+    .wwd-text{flex:1;}
+    .wwd-text h3{font-family:'Poppins',sans-serif;font-size:34px;font-weight:700;color:#1a1a2e;line-height:1.28;margin-bottom:16px;letter-spacing:-0.01em;}
+    .wwd-text p{font-family:'Poppins',sans-serif;font-size:14px;color:#6b7280;line-height:1.85;margin-bottom:24px;}
+    .wwd-link{display:inline-flex;align-items:center;gap:6px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:700;color:#1a1a2e;text-decoration:none;}
+    .wwd-link:hover{gap:10px;color:#8a7355;}
+
+    @keyframes qt-pulse{0%{box-shadow:0 0 0 0 rgba(163,137,95,0.7),0 0 0 0 rgba(163,137,95,0.4);}50%{box-shadow:0 0 0 8px rgba(163,137,95,0.15),0 0 20px 4px rgba(163,137,95,0.3);}100%{box-shadow:0 0 0 0 rgba(163,137,95,0),0 0 0 0 rgba(163,137,95,0);}}
+    .home-test-glow{background:#a3895f !important;color:#fff !important;animation:qt-pulse 2s ease-in-out infinite;position:relative;}
+    .home-test-glow:hover{background:#8a7355 !important;transform:translateY(-1px);}
+    @media(prefers-reduced-motion:reduce){.wwd-card{opacity:1 !important;transform:none !important;transition:none !important;}}
+    @media(max-width:768px){.wwd-section,.wwd-section.reverse{flex-direction:column;padding:36px 28px;gap:28px;}.wwd-img{height:240px;width:100%;}.wwd-card{border-radius:28px;margin:0 4px 20px;}}
+
+    .pf-footer{background:#f3ecdf;color:#2a2318;padding:64px 48px 0;position:relative;z-index:1;margin-top:24px;}
+    .pf-grid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1.2fr;gap:48px;margin-bottom:48px;}
+    .pf-brand{display:flex;align-items:center;gap:10px;margin-bottom:16px;}
+    .pf-brand img{width:28px;height:28px;object-fit:contain;}
+    .pf-tagline{font-size:13px;color:rgba(42,35,24,0.6);line-height:1.7;margin-bottom:20px;max-width:240px;}
+    .pf-email{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:rgba(42,35,24,0.5);text-decoration:none;}
+    .pf-email:hover{color:rgba(42,35,24,0.8);}
+    .pf-col-title{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(42,35,24,0.4);margin-bottom:16px;}
+    .pf-links{display:flex;flex-direction:column;gap:10px;}
+    .pf-links a{font-size:13px;color:rgba(42,35,24,0.65);text-decoration:none;transition:color 0.15s;}
+    .pf-links a:hover{color:#2a2318;}
+    .pf-bottom{border-top:1px solid rgba(42,35,24,0.12);padding:20px 0;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+    .pf-copy{font-size:11px;color:rgba(42,35,24,0.4);}
+    .pf-bottom-links{display:flex;gap:20px;}
+    .pf-bottom-links a{font-size:11px;color:rgba(42,35,24,0.4);text-decoration:none;transition:color 0.15s;}
+    .pf-bottom-links a:hover{color:rgba(42,35,24,0.75);}
+    @media(max-width:900px){.pf-grid{grid-template-columns:1fr 1fr;gap:32px;}.pf-footer{padding:48px 28px 0;}}
+    @media(max-width:560px){.pf-grid{grid-template-columns:1fr;}}
+
+    /* ── SMARTUNA WORDMARK ── */
+    .sc-wm {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      line-height: 1;
+      gap: 0px;
+      text-decoration: none;
+    }
+    .sc-wm-top {
+      font-family: 'Bitsumis', 'Poppins', sans-serif !important;
+      font-weight: 900 !important;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      line-height: 1;
+      /* SMART=dark charcoal, UNA=dark→gold gradient */
+      background: linear-gradient(90deg,
+        #1c1c1c 0%,
+        #1c1c1c 50%,
+        #7a5c10 58%,
+        #c9a030 68%,
+        #e8c55a 78%,
+        #c9a030 88%,
+        #9a7520 100%
+      ) !important;
+      -webkit-background-clip: text !important;
+      -webkit-text-fill-color: transparent !important;
+      background-clip: text !important;
+    }
+    .sc-wm-sub {
+      font-family: 'Bitsumis', 'Poppins', sans-serif !important;
+      font-weight: 700 !important;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      line-height: 1;
+      /* all gold */
+      background: linear-gradient(90deg, #9a7520 0%, #c9a030 30%, #e8c55a 55%, #c9a030 75%, #9a7520 100%) !important;
+      -webkit-background-clip: text !important;
+      -webkit-text-fill-color: transparent !important;
+      background-clip: text !important;
+    }
+    /* Size variants */
+    .sc-wm.sc-nav  .sc-wm-top { font-size: 18px; }
+    .sc-wm.sc-nav  .sc-wm-sub { font-size: 8px; margin-top: 2px; letter-spacing: 0.22em; }
+    .sc-wm.sc-foot .sc-wm-top { font-size: 18px; }
+    .sc-wm.sc-foot .sc-wm-sub { font-size: 8.5px; margin-top: 2px; }
+  </style>
+</head>
+<body class="home-page">
+
+  <!-- HOME NAVBAR -->
+  <nav class="home-nav" style="position:sticky;top:0;z-index:100;background:transparent;padding:20px 48px;display:flex;align-items:center;border:none;border-bottom:none;box-shadow:none;outline:none;">
+    <!-- Logo pill -->
+    <a class="home-nav-logo" href="index.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:0;min-width:190px;background:rgba(255,255,255,0.97);padding:9px 20px 9px 12px;border-radius:999px;box-shadow:0 8px 24px rgba(0,0,0,0.22),inset 0 1px 0 rgba(255,255,255,0.9);">
+      <img src="sc-logo.png" style="width:28px;height:28px;object-fit:contain;"/>
+      <span class="sc-wm sc-nav">
+          <span class="sc-wm-top">SmarTuna</span>
+          <span class="sc-wm-sub">concept</span>
+        </span>
+    </a>
+
+    <!-- Liquid glass pill nav -->
+    <div style="flex:1;display:flex;justify-content:center;align-items:center;">
+      <div id="glassNav" style="display:inline-flex;align-items:center;gap:2px;padding:5px 7px;border-radius:999px;position:relative;background:rgba(255,255,255,0.97);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.9),0 8px 24px rgba(0,0,0,0.22);">
+        <div id="glassIndicator" style="position:absolute;top:5px;height:calc(100% - 10px);border-radius:999px;background:rgba(26,26,46,0.08);border-top:1px solid rgba(255,255,255,0.9);border-bottom:1px solid rgba(26,26,46,0.06);box-shadow:inset 0 1px 0 rgba(255,255,255,0.7),0 2px 6px rgba(0,0,0,0.08);transition:left 0.38s cubic-bezier(0.34,1.56,0.64,1),width 0.38s cubic-bezier(0.34,1.56,0.64,1),opacity 0.18s ease;pointer-events:none;opacity:0;z-index:1;"></div>
+        <a href="index.html" class="gnav-item active" style="padding:7px 14px;border-radius:999px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:#1a1a2e;text-decoration:none;position:relative;z-index:2;white-space:nowrap;">Home</a>
+        <a href="teaser.html" class="gnav-item" style="padding:7px 14px;border-radius:999px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:400;color:#6b7280;text-decoration:none;position:relative;z-index:2;white-space:nowrap;">Platform</a>
+        <a href="#what-we-do" class="gnav-item" style="padding:7px 14px;border-radius:999px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:400;color:#6b7280;text-decoration:none;position:relative;z-index:2;white-space:nowrap;">What do we do?</a>
+        <a href="contact.html" class="gnav-item" style="padding:7px 14px;border-radius:999px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:400;color:#6b7280;text-decoration:none;position:relative;z-index:2;white-space:nowrap;">Contact</a>
+        <a href="about.html" class="gnav-item" style="padding:7px 14px;border-radius:999px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:400;color:#6b7280;text-decoration:none;position:relative;z-index:2;white-space:nowrap;">About</a>
+      </div>
+    </div>
+
+    <!-- CTA pill -->
+    <div style="flex-shrink:0;min-width:200px;display:flex;justify-content:flex-end;">
+      <div id="ctaPill" style="display:inline-flex;align-items:center;gap:2px;padding:5px 7px;border-radius:999px;position:relative;background:rgba(255,255,255,0.97);border:1px solid rgba(255,255,255,0.6);box-shadow:inset 0 1px 0 rgba(255,255,255,0.9),0 8px 24px rgba(0,0,0,0.22);">
+        <div id="ctaIndicator" style="position:absolute;top:5px;height:calc(100% - 10px);border-radius:999px;background:rgba(163,137,95,0.9);border-top:1px solid rgba(255,255,255,0.4);border-bottom:1px solid rgba(100,60,200,0.3);box-shadow:inset 0 1px 0 rgba(255,255,255,0.35),0 2px 12px rgba(163,137,95,0.35);transition:left 0.42s cubic-bezier(0.34,1.56,0.64,1),width 0.42s cubic-bezier(0.34,1.56,0.64,1),background 0.35s ease,box-shadow 0.35s ease;pointer-events:none;z-index:1;"></div>
+        <a href="javascript:void(0)" id="ctaTest" onclick="openQT()" style="padding:8px 18px;border-radius:999px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:#fff;text-decoration:none;position:relative;z-index:2;white-space:nowrap;">Take the Test</a>
+        <a href="login.html" id="ctaLogin" style="padding:8px 18px;border-radius:999px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:500;color:#6b7280;text-decoration:none;position:relative;z-index:2;white-space:nowrap;">Login</a>
+      </div>
+    </div>
+  </nav>
+
+  <script>
+  (function(){
+    const nav=document.getElementById('glassNav'),indicator=document.getElementById('glassIndicator'),items=document.querySelectorAll('.gnav-item');
+    let activeItem=document.querySelector('.gnav-item.active'),leaveTimer=null;
+    function moveIndicator(el){const navRect=nav.getBoundingClientRect(),elRect=el.getBoundingClientRect();indicator.style.opacity='1';indicator.style.left=(elRect.left-navRect.left)+'px';indicator.style.width=elRect.width+'px';items.forEach(i=>{i.style.color=i===el?'#1a1a2e':'#6b7280';i.style.fontWeight=i===el?'600':'400';});}
+    function resetToActive(){if(activeItem)moveIndicator(activeItem);else{indicator.style.opacity='0';items.forEach(i=>{i.style.color='#6b7280';i.style.fontWeight='400';});}}
+    items.forEach(item=>{item.addEventListener('mouseenter',()=>{clearTimeout(leaveTimer);moveIndicator(item);});item.addEventListener('click',()=>{activeItem=item;items.forEach(i=>i.classList.remove('active'));item.classList.add('active');});});
+    nav.addEventListener('mouseleave',()=>{leaveTimer=setTimeout(resetToActive,80);});
+    window.addEventListener('load',()=>{if(activeItem){indicator.style.transition='none';moveIndicator(activeItem);setTimeout(()=>{indicator.style.transition='left 0.38s cubic-bezier(0.34,1.56,0.64,1),width 0.38s cubic-bezier(0.34,1.56,0.64,1),opacity 0.18s ease';},50);}});
+  })();
+  (function(){
+    const pill=document.getElementById('ctaPill'),ind=document.getElementById('ctaIndicator'),test=document.getElementById('ctaTest'),login=document.getElementById('ctaLogin');
+    if(!pill)return;
+    const PURPLE={bg:'rgba(163,137,95,0.9)',shadow:'inset 0 1px 0 rgba(255,255,255,0.35),0 2px 12px rgba(163,137,95,0.35)',textActive:'#fff',textInactive:'#6b7280'};
+    const DARK={bg:'rgba(26,26,46,0.85)',shadow:'inset 0 1px 0 rgba(255,255,255,0.15),0 2px 8px rgba(0,0,0,0.2)',textActive:'#fff',textInactive:'#9aa0b4'};
+    let current='test';
+    function moveTo(el,scheme){const pr=pill.getBoundingClientRect(),er=el.getBoundingClientRect();ind.style.left=(er.left-pr.left)+'px';ind.style.width=er.width+'px';ind.style.background=scheme.bg;ind.style.boxShadow=scheme.shadow;}
+    window.addEventListener('load',()=>{ind.style.transition='none';moveTo(test,PURPLE);test.style.color=PURPLE.textActive;login.style.color=PURPLE.textInactive;setTimeout(()=>{ind.style.transition='left 0.42s cubic-bezier(0.34,1.56,0.64,1),width 0.42s cubic-bezier(0.34,1.56,0.64,1),background 0.35s ease,box-shadow 0.35s ease';},50);});
+    test.addEventListener('mouseenter',()=>{moveTo(test,PURPLE);test.style.color=PURPLE.textActive;login.style.color=PURPLE.textInactive;});
+    login.addEventListener('mouseenter',()=>{moveTo(login,DARK);login.style.color=DARK.textActive;test.style.color=DARK.textInactive;});
+    pill.addEventListener('mouseleave',()=>{if(current==='test'){moveTo(test,PURPLE);test.style.color=PURPLE.textActive;login.style.color=PURPLE.textInactive;}else{moveTo(login,DARK);login.style.color=DARK.textActive;test.style.color=DARK.textInactive;}});
+    test.addEventListener('click',()=>{current='test';});
+    login.addEventListener('click',()=>{current='login';});
+  })();
+  </script>
+
+  <!-- HERO SECTION -->
+  <section class="pm-hero">
+    <h1>The help you need, when you need it.</h1>
+    <p class="pm-eyebrow"><span class="spark">✦</span> The World's First AI-Native Seafood Traceability Platform</p>
+
+    <div class="pm-glass-panel">
+      <div class="pm-tabs" id="pmTabs">
+        <div class="pm-tabs-indicator" id="pmTabsIndicator"></div>
+        <button class="pm-tab active" data-tab="industry">Industry first</button>
+        <button class="pm-tab" data-tab="ai">A.I Intelligence</button>
+        <button class="pm-tab" data-tab="compliance">Compliance &amp; Regulations</button>
+        <button class="pm-tab" data-tab="ocean">Ocean to plate</button>
+      </div>
+
+      <div class="pm-tab-panels">
+        <div class="pm-tab-content active" data-content="industry">
+          <h2>Efficiently transform your complex supply chain</h2>
+          <p>SmarTuna concept is the first traceability platform built for seafood from the ground up — not a logistics tool with a compliance module bolted on. Every workflow, from vessel intake to buyer-facing certificates, is modeled on how the industry actually moves fish.</p>
+          <a href="teaser.html" class="pm-tab-link">Explore the Platform →</a>
+        </div>
+        <div class="pm-tab-content" data-content="ai">
+          <h2>Verification, not guesswork.</h2>
+          <p>Instead of trusting supplier declarations, SmarTuna checks every vessel and facility against RFMO registries, the ISSF PVR, IUU watchlists, MSC Chain of Custody records and PSMA port lists automatically — turning days of manual cross-referencing into an instant result.</p>
+          <a href="teaser.html" class="pm-tab-link">See how verification works →</a>
+        </div>
+        <div class="pm-tab-content" data-content="compliance">
+          <h2>Know Your Risk. SmarTuna Risk Index.</h2>
+          <p>Get a data-driven traceability risk score built on GDST, SIMP, FSMA 204 and EU catch certificate standards. Instantly understand where your supply chain stands — and what a regulator or buyer would find if they looked closely.</p>
+          <a href="teaser.html" class="pm-tab-link">Learn about SRI →</a>
+        </div>
+        <div class="pm-tab-content" data-content="ocean">
+          <h2>Trace Every Step. From Ocean to Shelf.</h2>
+          <p>Map your entire supply chain — from the fishing vessel and transshipment through landing, processing and final delivery. Every batch, every link, fully documented.</p>
+          <a href="teaser.html" class="pm-tab-link">Explore the Platform →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+  (function(){
+    const tabsWrap=document.getElementById('pmTabs'),indicator=document.getElementById('pmTabsIndicator'),tabs=document.querySelectorAll('.pm-tab'),panels=document.querySelectorAll('.pm-tab-content');
+    function moveIndicator(el){if(!el||window.innerWidth<=900)return;const wrapRect=tabsWrap.getBoundingClientRect(),elRect=el.getBoundingClientRect();indicator.style.left=(elRect.left-wrapRect.left)+'px';indicator.style.width=elRect.width+'px';}
+    function activate(tab){tabs.forEach(t=>t.classList.toggle('active',t===tab));panels.forEach(p=>p.classList.toggle('active',p.dataset.content===tab.dataset.tab));moveIndicator(tab);}
+    tabs.forEach(tab=>tab.addEventListener('click',()=>activate(tab)));
+    window.addEventListener('load',()=>{indicator.style.transition='none';moveIndicator(document.querySelector('.pm-tab.active'));setTimeout(()=>{indicator.style.transition='left .42s cubic-bezier(.34,1.56,.64,1), width .42s cubic-bezier(.34,1.56,.64,1)';},50);});
+    window.addEventListener('resize',()=>moveIndicator(document.querySelector('.pm-tab.active')));
+  })();
+  </script>
+
+  <!-- WHAT WE DO SECTION -->
+  <section class="home-wwd" id="what-we-do">
+    <div class="home-wwd-header">
+      <h2>What do we do?</h2>
+      <p>SmarTuna concept helps seafood companies understand, map and improve their traceability posture.</p>
+    </div>
+
+    <div class="wwd-card">
+      <div class="wwd-section">
+        <div class="wwd-img"><img src="wwd-1.jpg" alt="Supply Chain Traceability"/></div>
+        <div class="wwd-text">
+          <h3>Trace Every Step.<br/>From Ocean to Shelf.</h3>
+          <p>Map your entire supply chain — from the fishing vessel and transshipment through landing, processing and final delivery. Every batch, every link, fully documented.</p>
+          <a href="teaser.html" class="wwd-link">Explore the Platform →</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="wwd-card">
+      <div class="wwd-section reverse">
+        <div class="wwd-img"><img src="wwd-2.jpg" alt="SmarTuna Risk Index"/></div>
+        <div class="wwd-text">
+          <h3>Know Your Risk.<br/>SmarTuna Risk Index.</h3>
+          <p>Get a data-driven traceability risk score built on GDST, SIMP, FSMA 204 and EU catch certificate standards. Instantly understand where your supply chain stands.</p>
+          <a href="teaser.html" class="wwd-link">Learn about SRI →</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="wwd-card">
+      <div class="wwd-section">
+        <div class="wwd-img"><img src="wwd-3.jpg" alt="Verify and Certify"/></div>
+        <div class="wwd-text">
+          <h3>Submit Evidence.<br/>Get Verified.</h3>
+          <p>Upload certificates, documents and references against each KDE. Our expert team reviews your submission and publishes a verified score your buyers and regulators can trust.</p>
+          <a href="contact.html" class="wwd-link">Request an Assessment →</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="wwd-card">
+      <div class="wwd-section reverse">
+        <div class="wwd-img"><img src="wwd-4.jpg" alt="Species and Country Atlas"/></div>
+        <div class="wwd-text">
+          <h3>Species &amp; Country.<br/>A Living Atlas.</h3>
+          <p>Access a comprehensive database of 3,000+ species and 249 countries with taxonomy, regulatory and trade data — including ISSF stock status for tuna species.</p>
+          <a href="teaser.html" class="wwd-link">Explore the Atlas →</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+  (function(){
+    const cards=document.querySelectorAll('.wwd-card');
+    if(!cards.length)return;
+    const reduceMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(reduceMotion){cards.forEach(c=>{c.style.opacity='1';c.style.transform='none';});return;}
+    const thresholds=[];for(let i=0;i<=1;i+=0.02)thresholds.push(i);
+    const io=new IntersectionObserver((entries)=>{entries.forEach(entry=>{const ratio=entry.intersectionRatio,eased=Math.min(1,ratio/0.6);entry.target.style.opacity=eased;entry.target.style.transform=`translateY(${(1-eased)*56}px) scale(${0.965+eased*0.035})`;});},{threshold:thresholds});
+    cards.forEach(card=>io.observe(card));
+  })();
+  </script>
+
+  <!-- QUICK TRACE TEST MODAL -->
+  <div class="qt-modal" id="qtModal" onclick="qtOutside(event)">
+    <div class="qt-box">
+      <button class="qt-close" onclick="closeQT()">×</button>
+      <!-- WELCOME SCREEN -->
+      <div style="position:relative;display:flex;flex-direction:column;flex:1;min-height:0;width:100%;" id="qtWelcomeWrap">
+        <div class="qt-scroll-arrow qt-scroll-up" id="qtWelScrollUp" onclick="qtScrollEl('qtWelcome','up')">▲</div>
+        <div id="qtWelcome" style="padding:36px 36px 32px;text-align:center;">
+          <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:28px;">
+            <img src="sc-logo.png" style="width:32px;height:32px;object-fit:contain;"/>
+            <span class="sc-wm sc-foot">
+            <span class="sc-wm-top">SmarTuna</span>
+            <span class="sc-wm-sub">concept</span>
+          </span>
+          </div>
+          <div style="display:inline-flex;align-items:center;gap:7px;background:#f2ebdc;border-radius:999px;padding:5px 16px;font-size:11px;font-weight:700;color:#8a7355;margin-bottom:20px;">
+            <div style="width:6px;height:6px;border-radius:50%;background:#a3895f;"></div>
+            Traceability Readiness Check
+          </div>
+          <h2 style="font-size:24px;font-weight:800;color:#1a1a2e;line-height:1.2;margin-bottom:12px;">
+            How traceable is your<br/>seafood from catch to end?
+          </h2>
+          <p style="font-size:13px;color:#6b7280;line-height:1.8;margin-bottom:28px;max-width:380px;margin-left:auto;margin-right:auto;">
+            This short assessment takes about <strong style="color:#1a1a2e;">3 minutes</strong> and covers up to 20 key traceability dimensions — from vessel identity to supply chain transparency.
+          </p>
+          <div style="background:#f9fafc;border:1px solid #e8eaf0;border-radius:14px;padding:18px 20px;margin-bottom:28px;text-align:left;">
+            <div style="display:flex;align-items:flex-start;gap:12px;">
+              <div style="width:32px;height:32px;border-radius:50%;background:#f0fdf4;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
+              </div>
+              <div>
+                <div style="font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:4px;">Your privacy is protected</div>
+                <div style="font-size:12px;color:#6b7280;line-height:1.6;">We do not store your answers, collect personal data, or track your responses. Everything stays in your browser session only. This is purely for your own insight.</div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:32px;text-align:left;">
+            <div style="font-size:11px;font-weight:700;color:#9aa0b4;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">What you will get</div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#4a4e69;"><div style="width:20px;height:20px;border-radius:50%;background:#eef4fd;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>A traceability readiness score out of 57</div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#4a4e69;"><div style="width:20px;height:20px;border-radius:50%;background:#eef4fd;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>A personalised gap summary across 8 supply chain dimensions</div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#4a4e69;"><div style="width:20px;height:20px;border-radius:50%;background:#eef4fd;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>Honest, no-fluff insights — no sales pitch</div>
+          </div>
+          <button onclick="startAssessment()" style="width:100%;padding:15px 24px;background:#1a1a2e;color:#fff;border:none;border-radius:12px;font-family:'Poppins',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:background 0.2s,transform 0.15s;" onmouseover="this.style.background='#2d2d50'" onmouseout="this.style.background='#1a1a2e'">Begin Assessment →</button>
+          <p style="font-size:11px;color:#c0c4d0;margin-top:12px;">Takes about 3 minutes · No account required · 100% private</p>
+        </div>
+        <div class="qt-scroll-arrow qt-scroll-down" id="qtWelScrollDown" onclick="qtScrollEl('qtWelcome','down')">▼</div>
+      </div>
+
+      <!-- QUESTIONS -->
+      <div id="qtQuestions" style="display:none;">
+        <div class="qt-header">
+          <div class="qt-badge">Readiness Check</div>
+          <div class="qt-title">How transparent is your supply chain?</div>
+          <div class="qt-sub">Up to 20 questions across 8 traceability dimensions — see exactly where your gaps are.</div>
+        </div>
+        <div class="qt-progress"><div class="qt-progress-fill" id="qtFill" style="width:10%"></div></div>
+        <div class="qt-step-lbl" id="qtStepLbl">Question 1 of 15</div>
+        <div class="qt-q" id="qtQ"></div>
+        <div class="qt-opts" id="qtOpts"></div>
+        <div class="qt-nav">
+          <button class="qt-btn-back" id="qtBack" onclick="qtPrev()" style="visibility:hidden">← Back</button>
+          <button class="qt-btn-next" id="qtNext" onclick="qtNext()" disabled>Next →</button>
+        </div>
+      </div>
+
+      <!-- RESULT -->
+      <div style="position:relative;flex:1;min-height:0;display:none;flex-direction:column;overflow:hidden;" id="qtResultWrap">
+        <div class="qt-scroll-arrow qt-scroll-up" id="qtScrollUp" onclick="qtScroll('up')">▲</div>
+        <div class="qt-result" id="qtResult">
+          <div class="qt-result-icon" id="qtResultIcon"></div>
+          <div class="qt-result-title" id="qtResultTitle"></div>
+          <div class="qt-result-desc" id="qtResultDesc"></div>
+          <div class="qt-result-bars" id="qtResultBars"></div>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
+            <button onclick="shareWithSmarTuna()" style="display:flex;align-items:center;justify-content:center;gap:8px;background:#1a1a2e;color:#fff;border:none;border-radius:12px;padding:14px 28px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s;width:100%;" onmouseover="this.style.background='#2d2d50'" onmouseout="this.style.background='#1a1a2e'">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              Share My Result with SmarTuna →
+            </button>
+            <button onclick="downloadResult()" style="display:flex;align-items:center;justify-content:center;gap:8px;background:#f4f6fb;border:1.5px solid #e0e3ed;border-radius:12px;padding:11px 28px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:#4a4e69;cursor:pointer;transition:all 0.2s;width:100%;" onmouseover="this.style.borderColor='#1a1a2e';this.style.color='#1a1a2e'" onmouseout="this.style.borderColor='#e0e3ed';this.style.color='#4a4e69'">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download Only
+            </button>
+            <p style="font-size:11px;color:#c0c4d0;text-align:center;margin-top:2px;">We don't store your data — download and share when you're ready.</p>
+          </div>
+        </div>
+        <div class="qt-scroll-arrow qt-scroll-down" id="qtScrollDown" onclick="qtScroll('down')">▼</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PREMIUM FOOTER -->
+  <footer class="pf-footer">
+    <div class="pf-grid">
+      <div>
+        <div class="pf-brand">
+          <img src="sc-logo.png" alt="SmarTuna"/>
+          <span class="sc-wm sc-foot">
+            <span class="sc-wm-top">SmarTuna</span>
+            <span class="sc-wm-sub">concept</span>
+          </span>
+        </div>
+        <p class="pf-tagline">Built for the global seafood industry. Traceability, compliance and supply chain intelligence — in one platform.</p>
+        <a href="mailto:info@definitelynotvishnu.com" class="pf-email">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          info@definitelynotvishnu.com
+        </a>
+      </div>
+      <div>
+        <div class="pf-col-title">Platform</div>
+        <div class="pf-links">
+          <a href="teaser.html">Platform Overview</a>
+          <a href="Species.html">Species Atlas</a>
+          <a href="country.html">Country Atlas</a>
+          <a href="login.html">SRI Assessment</a>
+          <a href="login.html">Product Studio</a>
+        </div>
+      </div>
+      <div>
+        <div class="pf-col-title">Company</div>
+        <div class="pf-links">
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="teaser.html">Request Access</a>
+          <a href="login.html">Login</a>
+        </div>
+      </div>
+      <div>
+        <div class="pf-col-title">Aligned With</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;">
+          <span style="background:rgba(42,35,24,0.06);border:1px solid rgba(42,35,24,0.15);border-radius:5px;padding:3px 9px;font-size:10px;font-weight:700;color:rgba(42,35,24,0.55);letter-spacing:0.5px;">GDST</span>
+          <span style="background:rgba(42,35,24,0.06);border:1px solid rgba(42,35,24,0.15);border-radius:5px;padding:3px 9px;font-size:10px;font-weight:700;color:rgba(42,35,24,0.55);letter-spacing:0.5px;">MSC</span>
+          <span style="background:rgba(42,35,24,0.06);border:1px solid rgba(42,35,24,0.15);border-radius:5px;padding:3px 9px;font-size:10px;font-weight:700;color:rgba(42,35,24,0.55);letter-spacing:0.5px;">ASC</span>
+          <span style="background:rgba(42,35,24,0.06);border:1px solid rgba(42,35,24,0.15);border-radius:5px;padding:3px 9px;font-size:10px;font-weight:700;color:rgba(42,35,24,0.55);letter-spacing:0.5px;">ISSF</span>
+          <span style="background:rgba(42,35,24,0.06);border:1px solid rgba(42,35,24,0.15);border-radius:5px;padding:3px 9px;font-size:10px;font-weight:700;color:rgba(42,35,24,0.55);letter-spacing:0.5px;">FAO</span>
+          <span style="background:rgba(42,35,24,0.06);border:1px solid rgba(42,35,24,0.15);border-radius:5px;padding:3px 9px;font-size:10px;font-weight:700;color:rgba(42,35,24,0.55);letter-spacing:0.5px;">GS1</span>
+          <span style="background:rgba(42,35,24,0.06);border:1px solid rgba(42,35,24,0.15);border-radius:5px;padding:3px 9px;font-size:10px;font-weight:700;color:rgba(42,35,24,0.55);letter-spacing:0.5px;">SIMP</span>
+          <span style="background:rgba(42,35,24,0.06);border:1px solid rgba(42,35,24,0.15);border-radius:5px;padding:3px 9px;font-size:10px;font-weight:700;color:rgba(42,35,24,0.55);letter-spacing:0.5px;">FSMA 204</span>
+          <span style="background:rgba(42,35,24,0.06);border:1px solid rgba(42,35,24,0.15);border-radius:5px;padding:3px 9px;font-size:10px;font-weight:700;color:rgba(42,35,24,0.55);letter-spacing:0.5px;">EU CCR</span>
+        </div>
+      </div>
+    </div>
+    <div class="pf-bottom">
+      <div class="pf-copy">© 2026 SmarTuna concept. All rights reserved. Built for seafood professionals.</div>
+      <div class="pf-bottom-links">
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+        <a href="#">Privacy</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+  const SUPABASE_URL = 'https://enbdaajcromxmhgcverp.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+  const dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  document.addEventListener('DOMContentLoaded', async function() {
+    const { data: { session } } = await dbClient.auth.getSession();
+    if (session) { window.location.href = 'home-logged-in.html'; return; }
+    if (sessionStorage.getItem('openQT') === '1') {
+      sessionStorage.removeItem('openQT');
+      setTimeout(() => openQT(), 300);
+    }
+  });
+
+  const QT_QUESTIONS = [
+    {section:'Section 1 — First-Mile Visibility',q:'Do you capture and verify VMS (Vessel Monitoring System) data the government-mandated, tamper-proof satellite tracking for vessels in your supply chain?',opts:[{t:'Yes, for all vessels',score:3},{t:'For some vessels only',score:1},{t:'No / Not sure',score:0}],category:'First-Mile Visibility',gap:'VMS is the gold standard for at-sea vessel activity. Without it, you cannot independently verify vessel position, fishing area or compliance — relying on supplier declarations alone.'},
+    {section:'Section 1 — First-Mile Visibility',q:'Which vessel types does your VMS coverage apply to?',opts:[{t:'Fishing Vessels (FV) only',score:1},{t:'Refrigerated Carrier Vessels (RF/Reefer) only',score:1},{t:'Both FV and RF/Reefer',score:2}],category:'First-Mile Visibility',gap:'VMS on fishing vessels alone is a start, but carrier vessels are a major IUU risk point. Coverage on both vessel types significantly strengthens your traceability posture.',conditional:(answers)=>answers[0]!==null&&answers[0]!==2},
+    {section:'Section 1 — First-Mile Visibility',q:'Is AIS (Automatic Identification System) tracking active and publicly verifiable for vessels in your supply chain?',opts:[{t:'Yes, for all vessels',score:2},{t:'For some vessels',score:1},{t:'No / Not sure',score:0}],category:'First-Mile Visibility',gap:'AIS provides a secondary layer of vessel visibility. While less authoritative than VMS, it enables public verification of vessel movements — its absence is a flag for buyers and auditors.'},
+    {section:'Section 1 — First-Mile Visibility',q:'Which vessel types does your AIS coverage apply to?',opts:[{t:'Fishing Vessels (FV) only',score:1},{t:'Refrigerated Carrier Vessels (RF/Reefer) only',score:1},{t:'Both FV and RF/Reefer',score:2}],category:'First-Mile Visibility',gap:'AIS on carrier vessels is critical — at-sea transshipment without AIS on the reefer is a known IUU blind spot.',conditional:(answers)=>answers[2]!==null&&answers[2]!==2},
+    {section:'Section 1 — First-Mile Visibility',q:'Do you know the name, registration and flag state of every fishing vessel that supplies your product?',opts:[{t:'Yes, for all vessels',score:3},{t:'For some vessels only',score:1},{t:'No, we do not track this',score:0}],category:'First-Mile Visibility',gap:'Without verified vessel identity, you cannot validate the origin or legality of your catch.'},
+    {section:'Section 2 — Raw Material Provenance',q:'Can you link each batch or raw material lot to a verified trip including vessel identity, fishing method, area and discharge composition?',opts:[{t:'Yes, consistently',score:3},{t:'Partially',score:1},{t:'No',score:0}],category:'Raw Material Provenance',gap:'You cannot fully prove origin, validate sustainability claims, or demonstrate compliance in case of audit.'},
+    {section:'Section 2 — Raw Material Provenance',q:'Can you identify which FAO fishing zone your seafood was caught in for every lot?',opts:[{t:'Yes, always documented',score:3},{t:'Sometimes',score:1},{t:'No',score:0}],category:'Raw Material Provenance',gap:'Without FAO area documentation, you cannot meet basic catch certificate or import requirements.'},
+    {section:'Section 3 — Verification Against Authoritative Databases',q:'Does your system automatically check supplier vessels and facilities against RFMO registries, ISSF PVR, IUU lists, MSC CoC, PSMA port lists and EU approvals?',opts:[{t:'Yes, automated',score:3},{t:'We manually check',score:1},{t:'No',score:0}],category:'Database Verification',gap:'Manual verification is slow, prone to error, and risky — especially during audits or recalls.'},
+    {section:'Section 4 — Documentation & Traceability',q:'How do you store and connect documents (catch certificates, port docs, processing records, CoCs) across lots and finished products?',opts:[{t:'Full digital linkage',score:3},{t:'Mix of systems',score:1},{t:'Scattered PDFs, emails or paper-based',score:0}],category:'Documentation',gap:'If documents are not unified per lot and product, you cannot produce audit-ready traceability.'},
+    {section:'Section 4 — Documentation & Traceability',q:'Does every batch of seafood you handle have a unique lot or batch number assigned from catch through to delivery?',opts:[{t:'Yes, from catch to delivery',score:3},{t:'Only at processing stage',score:1},{t:'No lot tracking',score:0}],category:'Documentation',gap:'Without batch-level linking, a recall or audit will be slow and incomplete.'},
+    {section:'Section 4 — Documentation & Traceability',q:'Can you trace a product back to its source within 4 hours if a recall is triggered?',opts:[{t:'Yes, tested and ready',score:3},{t:'Probably, but untested',score:1},{t:'No, it would take much longer',score:0}],category:'Documentation',gap:'A recall that takes more than 4 hours puts consumers at risk and exposes you to regulatory action.'},
+    {section:'Section 5 — Real-Time Proof of Sustainability Claims',q:'Can you substantiate claims (MSC, FAD-Free, Free School, Social Accountability) instantly, based on data not just supplier declarations?',opts:[{t:'Yes, data-backed',score:3},{t:'Only partially',score:1},{t:'No',score:0}],category:'Sustainability Claims',gap:'If claims rely on trust, not verification, you are exposed to legal and reputational risk.'},
+    {section:'Section 5 — Real-Time Proof of Sustainability Claims',q:'Do you hold a current Chain of Custody certification (MSC, ASC or equivalent) covering your operations?',opts:[{t:'Yes, currently certified',score:3},{t:'In progress or pending',score:1},{t:'No certification',score:0}],category:'Sustainability Claims',gap:'Without a CoC certification, sustainability claims cannot be independently verified by buyers or regulators.'},
+    {section:'Section 6 — Digital & System Readiness',q:'Do you retain traceability records for a minimum of 3 years and can produce them within 24 hours upon regulatory request?',opts:[{t:'Yes, fully compliant',score:3},{t:'We retain records but retrieval takes time',score:1},{t:'No formal retention policy',score:0}],category:'Digital Readiness',gap:'Regulators expect records to be available within 24 hours. Without a formal retention and retrieval policy, you are exposed during audits.'},
+    {section:'Section 6 — Digital & System Readiness',q:'Do the facilities in your supply chain hold recognised food safety certifications such as BRC, IFS, or a certified HACCP plan?',opts:[{t:'Yes, certified across all facilities',score:3},{t:'Some facilities are certified',score:1},{t:'No certifications in place',score:0}],category:'Digital Readiness',gap:'BRC, IFS and HACCP are baseline requirements for most export markets and major retail buyers. Without them, you face regulatory exposure and limited market access.'},
+    {section:'Section 6 — Digital & System Readiness',q:'Does any part of your supply chain operate under an ISO 22000 or equivalent food safety management system certification?',opts:[{t:'Yes, all certified',score:3},{t:'Some facilities do',score:1},{t:'No',score:0}],category:'Digital Readiness',gap:'ISO 22000 demonstrates a systematic approach to food safety management. Its absence signals to auditors and buyers that your food safety system may lack formal structure and independent verification.'},
+    {section:'Section 7 — Human Welfare & Labour Standards',q:'Do you have a documented Human Welfare and Labour Standards policy covering your entire supply chain?',opts:[{t:'Yes, audited and documented',score:3},{t:'Policy exists but not audited',score:1},{t:'No policy',score:0}],category:'Human Welfare',gap:'Without a welfare policy, you cannot respond to buyer ESG requirements or social compliance audits.'},
+    {section:'Section 8 — Downstream & Consumer Transparency',q:'Can you provide a URL or link that your customers can use to independently verify the traceability of your product?',opts:[{t:'Yes, full traceability visible',score:3},{t:'Yes, but limited information',score:2},{t:'Somewhat — basic details only',score:1},{t:'No public link',score:0}],category:'Supply Chain Transparency',gap:'Customers and retailers increasingly expect a direct, verifiable link — not a document or a claim.'},
+    {section:'Section 8 — Downstream & Consumer Transparency',q:'Can traceability data be shared digitally with any party who requests it within the same business day?',opts:[{t:'Yes, through a system or portal',score:3},{t:'We can, but it takes time',score:1},{t:'No, we cannot share digitally',score:0}],category:'Supply Chain Transparency',gap:'If data cannot be shared on demand, you will lose ground to competitors who can demonstrate transparency instantly.'},
+  ];
+
+  let qtIdx=0,qtAnswers=new Array(QT_QUESTIONS.length).fill(null);
+  function shouldShow(idx){const q=QT_QUESTIONS[idx];if(!q.conditional)return true;return q.conditional(qtAnswers);}
+  function openQT(){qtIdx=0;qtAnswers=new Array(QT_QUESTIONS.length).fill(null);document.getElementById('qtWelcomeWrap').style.display='flex';document.getElementById('qtQuestions').style.display='none';document.getElementById('qtResultWrap').style.display='none';document.getElementById('qtResult').style.display='none';document.getElementById('qtModal').classList.add('open');document.body.style.overflow='hidden';setTimeout(()=>{const el=document.getElementById('qtWelcome');el.onscroll=()=>updateScrollArrows('qtWelcome','qtWelScrollUp','qtWelScrollDown');updateScrollArrows('qtWelcome','qtWelScrollUp','qtWelScrollDown');},100);}
+  function startAssessment(){document.getElementById('qtWelcomeWrap').style.display='none';document.getElementById('qtQuestions').style.display='block';renderQT();}
+  function closeQT(){document.getElementById('qtModal').classList.remove('open');document.body.style.overflow='';document.getElementById('qtWelcomeWrap').style.display='flex';document.getElementById('qtQuestions').style.display='none';document.getElementById('qtResultWrap').style.display='none';document.getElementById('qtResult').style.display='none';}
+  function updateScrollArrows(elId='qtResult',upId='qtScrollUp',dnId='qtScrollDown'){const el=document.getElementById(elId),up=document.getElementById(upId),dn=document.getElementById(dnId);if(!el||!up||!dn)return;const atTop=el.scrollTop<=4,atBottom=el.scrollTop+el.clientHeight>=el.scrollHeight-4;up.classList.toggle('show',!atTop);dn.classList.toggle('show',!atBottom);el.classList.toggle('can-scroll-up',!atTop);el.classList.toggle('can-scroll-down',!atBottom);}
+  function qtScroll(dir){const el=document.getElementById('qtResult');el.scrollBy({top:dir==='down'?120:-120,behavior:'smooth'});}
+  function qtScrollEl(elId,dir){const el=document.getElementById(elId);if(el)el.scrollBy({top:dir==='down'?120:-120,behavior:'smooth'});}
+  function qtOutside(e){if(e.target===document.getElementById('qtModal'))closeQT();}
+  function renderQT(){const q=QT_QUESTIONS[qtIdx],total=QT_QUESTIONS.length,pct=Math.round(((qtIdx+1)/total)*100);document.getElementById('qtFill').style.width=pct+'%';document.getElementById('qtStepLbl').textContent=q.section||`Question ${qtIdx+1} of ${total}`;document.getElementById('qtQ').textContent=q.q;document.getElementById('qtBack').style.visibility=qtIdx===0?'hidden':'visible';document.getElementById('qtNext').textContent=qtIdx===total-1?'See Results →':'Next →';document.getElementById('qtNext').disabled=qtAnswers[qtIdx]===null;document.getElementById('qtOpts').innerHTML=q.opts.map((o,i)=>`<div class="qt-opt ${qtAnswers[qtIdx]===i?'selected':''}" onclick="selectOpt(${i})">${o.t}</div>`).join('');}
+  function selectOpt(i){qtAnswers[qtIdx]=i;document.querySelectorAll('.qt-opt').forEach((el,idx)=>el.classList.toggle('selected',idx===i));document.getElementById('qtNext').disabled=false;}
+  function qtNext(){if(qtAnswers[qtIdx]===null)return;let next=qtIdx+1;while(next<QT_QUESTIONS.length&&!shouldShow(next)){qtAnswers[next]=null;next++;}if(next<QT_QUESTIONS.length){qtIdx=next;renderQT();}else{showQTResult();}}
+  function qtPrev(){let prev=qtIdx-1;while(prev>0&&!shouldShow(prev))prev--;if(prev>=0){qtIdx=prev;renderQT();}}
+
+  function showQTResult(){
+    const totalScore=qtAnswers.reduce((sum,ans,i)=>sum+(ans!==null?QT_QUESTIONS[i].opts[ans].score:0),0);
+    const maxScore=QT_QUESTIONS.reduce((sum,q)=>sum+Math.max(...q.opts.map(o=>o.score)),0);
+    const seenCats=new Set(),gaps=[];
+    QT_QUESTIONS.forEach((q,i)=>{const ans=qtAnswers[i],maxOpt=Math.max(...q.opts.map(o=>o.score));if((ans===null||q.opts[ans].score<maxOpt)&&!seenCats.has(q.category)){seenCats.add(q.category);gaps.push({category:q.category,gap:q.gap});}});
+    let title,desc,color,tierLabel;
+    if(totalScore<=19){title='Critical Risk';color='#e63946';tierLabel='High exposure to IUU / mislabeling';desc='Your supply chain may not be as transparent as you think. There are significant verification gaps that expose you to mislabeling, recalls and compliance failures.';}
+    else if(totalScore<=38){title='Moderate Risk';color='#f59e0b';tierLabel='Significant verification gaps';desc='You have some traceability systems in place, but key verification gaps remain. Without first-mile proof and automated checks, you remain exposed during audits.';}
+    else{title='Low Risk';color='#16a34a';tierLabel='Strong traceability posture';desc='Your traceability posture is strong. A full SRI Assessment will verify your claims and produce a score you can share with buyers and regulators with confidence.';}
+    document.getElementById('qtQuestions').style.display='none';
+    const resultWrap=document.getElementById('qtResultWrap');
+    resultWrap.style.display='flex';resultWrap.style.flexDirection='column';resultWrap.style.flex='1';resultWrap.style.minHeight='0';
+    const result=document.getElementById('qtResult');
+    result.style.display='flex';result.style.flexDirection='column';result.style.gap='24px';result.scrollTop=0;
+    setTimeout(()=>updateScrollArrows(),100);
+    result.onscroll=()=>updateScrollArrows();
+    document.getElementById('qtResultIcon').innerHTML=`<div style="background:linear-gradient(135deg,#1a1a2e,#2d2d50);border-radius:16px;padding:24px 28px;display:flex;align-items:center;justify-content:space-between;gap:20px;"><div><div style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.45);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Your Readiness Score</div><div style="font-size:52px;font-weight:800;color:${color};line-height:1;">${totalScore}<span style="font-size:20px;color:rgba(255,255,255,0.3);">/${maxScore}</span></div><div style="margin-top:8px;display:inline-flex;align-items:center;gap:6px;background:${color}22;border-radius:999px;padding:4px 14px;"><div style="width:7px;height:7px;border-radius:50%;background:${color};"></div><span style="font-size:11px;font-weight:700;color:${color};">${tierLabel}</span></div></div><div style="text-align:right;"><div style="font-size:22px;font-weight:800;color:#fff;margin-bottom:4px;">${title}</div><div style="font-size:12px;color:rgba(255,255,255,0.5);max-width:200px;line-height:1.5;">${desc}</div></div></div>`;
+    document.getElementById('qtResultTitle').textContent='';
+    document.getElementById('qtResultDesc').innerHTML='';
+    document.getElementById('qtResultBars').innerHTML=gaps.length===0?`<div style="background:#f0fdf4;border-radius:12px;padding:16px 20px;color:#16a34a;font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;"><div style="width:20px;height:20px;border-radius:50%;background:#dcfce7;display:flex;align-items:center;justify-content:center;font-size:11px;">✓</div>No critical gaps identified across your supply chain.</div>`:`<div><div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:12px;display:flex;align-items:center;gap:8px;"><div style="width:3px;height:16px;background:#e63946;border-radius:999px;"></div>Your Supply Chain Risk Summary</div>${gaps.map(g=>`<div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#fafafa;border:1px solid #f0f2f8;border-radius:10px;margin-bottom:8px;"><div style="width:20px;height:20px;border-radius:50%;background:#fff5f5;color:#e63946;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">✕</div><div><div style="font-size:12px;font-weight:700;color:#1a1a2e;margin-bottom:2px;">${g.category}</div><div style="font-size:11px;color:#6b7280;line-height:1.6;">${g.gap}</div></div></div>`).join('')}</div>`;
+  }
+
+  function generateResultText(){
+    const scoreEl=document.getElementById('qtResultIcon').querySelector('div');
+    const scoreText=scoreEl?scoreEl.textContent.trim().replace(/\s+/g,' '):'';
+    const date=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+    const lines=['SMARTUNA CONCEPT — TRACEABILITY READINESS RESULT','='.repeat(50),`Date: ${date}`,`Score: ${scoreText}`,'',' SUPPLY CHAIN GAP SUMMARY','-'.repeat(50)];
+    document.querySelectorAll('#qtResultBars [style*="margin-bottom"]').forEach(el=>{const cat=el.querySelector('[style*="font-weight:700"]')?.textContent?.trim();const gap=el.querySelector('[style*="color:#6b7280"]')?.textContent?.trim();if(cat)lines.push(`• ${cat}: ${gap||''}`);});
+    lines.push('','='.repeat(50),'Want a full verified SRI Assessment?','Contact SmarTuna concept — contact.html','','Note: This result was generated privately in your browser.','SmarTuna concept does not store or retain your responses.');
+    return{text:lines.join('\n'),date};
+  }
+
+  function shareWithSmarTuna(){
+    const{text,date}=generateResultText();
+    sessionStorage.setItem('mri_result_text',text);
+    sessionStorage.setItem('mri_result_date',date);
+    window.location.href='contact.html?from=assessment';
+  }
+
+  function downloadResult(){
+    const{text,date}=generateResultText();
+    const blob=new Blob([text],{type:'text/plain'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download=`SmarTuna_Readiness_Result_${date.replace(/ /g,'_')}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+  </script>
+</body>
+</html>

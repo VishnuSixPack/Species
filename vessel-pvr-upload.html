@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>PVR Upload · SmarTuna concept</title>
+<link rel="icon" type="image/png" href="sc-blue-logo.png"/>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<style>
+    /* ── SMARTUNA WORDMARK ── */
+    @font-face {
+      font-family: 'Bitsumis';
+      src: url('BITSUMIS.TTF') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+    .sc-wm { display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1;gap:0;text-decoration:none; }
+    .sc-wm-top { font-family:'Bitsumis',sans-serif !important;font-weight:900 !important;font-size:15px;letter-spacing:.04em;text-transform:uppercase;background:linear-gradient(90deg,#1a6fdb,#1a6fdb) !important;-webkit-background-clip:text !important;-webkit-text-fill-color:transparent !important;background-clip:text !important; }
+    .sc-wm-sub { font-family:'Bitsumis',sans-serif !important;font-weight:700 !important;font-size:7px;letter-spacing:.22em;text-transform:uppercase;color:#1a1a2e;-webkit-text-fill-color:#1a1a2e !important;margin-top:2px; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#1a6fdb;--primary-dark:#1558b0;--primary-soft:#e8f1fc;--primary-mid:#d0e4f8;
+  --bg:#f0f2f7;--surface:#fff;--text:#1a1a2e;--muted:#6b7280;--soft:#9aa0b4;
+  --border:#e8eaf0;--line:#eef0f5;--line-strong:#dfe3ec;
+  --ok:#1f9d6b;--ok-soft:#e6f6ef;--danger:#e63946;--danger-soft:#fff0f1;
+  --warn:#f59e0b;--warn-soft:#fff7ed;--warn-dark:#92400e;
+  --radius:14px;--radius-sm:10px;--font:'Poppins','DM Sans',system-ui,sans-serif;
+  --shadow:0 1px 3px rgba(20,24,45,.05),0 8px 24px rgba(20,24,45,.06);
+  --shadow-lg:0 6px 14px rgba(20,24,45,.08),0 24px 48px rgba(20,24,45,.11);
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased}
+/* NAV */
+.topbar{display:flex;align-items:center;padding:14px 28px;gap:20px}
+.topbar-brand{text-decoration:none;flex-shrink:0;line-height:1.1}
+.topbar-brand-project{display:block;font-size:8px;font-weight:700;letter-spacing:2px;color:#9aa0b4}
+.topbar-brand-name{display:block;font-size:16px;font-weight:800;color:var(--text)}
+.topbar-nav{flex:1;display:flex;justify-content:center}
+.nav-pill{display:inline-flex;align-items:center;gap:2px;background:#fff;border-radius:999px;padding:5px 7px;box-shadow:0 1px 6px rgba(0,0,0,.07)}
+.nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:400;color:var(--muted);text-decoration:none;transition:.15s}
+.nav-item:hover,.nav-item.active{background:var(--bg);color:var(--text);font-weight:600}
+.topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;overflow:hidden}
+.avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:176px;overflow:hidden;z-index:999}
+.avatar-menu.open{display:block}
+.avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;color:var(--text);border-bottom:1px solid var(--border)}
+.avatar-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;color:#4a4e69;text-decoration:none;font-weight:500}
+.avatar-menu a:hover{background:var(--bg);color:var(--primary)}
+.avatar-menu button{width:100%;padding:9px 15px;background:none;border:none;border-top:1px solid var(--border);text-align:left;font-family:var(--font);font-size:13px;color:#e63946;cursor:pointer}
+/* LAYOUT */
+.wrap{max-width:1060px;margin:0 auto;padding:8px 28px 80px}
+.crumb{font-size:12px;color:var(--muted);font-weight:500;margin-bottom:6px}
+.crumb a{color:var(--primary);text-decoration:none}
+.page-head{margin-bottom:24px}
+.page-head h1{font-size:24px;font-weight:700;letter-spacing:-.3px}
+.page-head p{color:var(--muted);font-size:13px;margin-top:6px;max-width:680px;line-height:1.6}
+/* CARDS */
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px 26px;margin-bottom:18px}
+.card-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--soft);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card-title::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+/* DROP ZONE */
+.drop-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:44px 24px;text-align:center;cursor:pointer;transition:.2s;position:relative;background:#fafbfe}
+.drop-zone:hover,.drop-zone.dragover{border-color:var(--primary);background:var(--primary-soft)}
+.drop-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop-icon{width:52px;height:52px;background:var(--primary-soft);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+.drop-icon svg{color:var(--primary)}
+.drop-title{font-size:16px;font-weight:600;margin-bottom:4px}
+.drop-sub{font-size:13px;color:var(--muted)}
+.drop-sub span{color:var(--primary);font-weight:600}
+.file-chip{margin-top:14px;display:inline-flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:8px 14px;font-size:13px;font-weight:500}
+.file-chip svg{color:var(--ok)}
+/* STATS PILLS */
+.stats-row{display:flex;gap:12px;margin-bottom:18px;flex-wrap:wrap}
+.stat-pill{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 16px;min-width:110px}
+.stat-pill .n{font-size:22px;font-weight:700;letter-spacing:-.3px}
+.stat-pill .l{font-size:11.5px;color:var(--muted);font-weight:500;margin-top:1px}
+/* TABLE */
+.tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--line);margin-bottom:18px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{background:#fafbfe;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--soft);padding:10px 13px;text-align:left;border-bottom:1.5px solid var(--line-strong);white-space:nowrap}
+td{padding:9px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:none}
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+.badge-ok{background:var(--ok-soft);color:var(--ok)}
+.badge-warn{background:var(--warn-soft);color:var(--warn-dark)}
+.badge-err{background:var(--danger-soft);color:var(--danger)}
+.badge-new{background:var(--primary-soft);color:var(--primary-dark)}
+.badge-grey{background:var(--line);color:var(--soft)}
+/* CHANGE CELL */
+.change-row{display:flex;flex-direction:column;gap:3px}
+.change-item{display:flex;align-items:center;gap:6px;font-size:11.5px}
+.change-label{color:var(--muted);min-width:160px;font-weight:500}
+.change-arrow{color:var(--soft);font-size:10px}
+.change-old{text-decoration:line-through;color:var(--soft)}
+.change-new.Y{color:var(--ok);font-weight:700}
+.change-new.N{color:var(--danger);font-weight:700}
+.change-new.IP{color:var(--warn-dark);font-weight:700}
+.change-new.NA{color:var(--soft)}
+/* PROGRESS */
+.progress-wrap{margin:16px 0}
+.progress-bg{height:8px;background:var(--line);border-radius:999px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--primary),#5b9be8);border-radius:999px;transition:width .3s}
+.progress-lbl{font-size:12.5px;color:var(--muted);margin-top:6px}
+/* LOG */
+.log{background:#0f1117;color:#e2e8f0;border-radius:12px;padding:16px 18px;font-family:'Fira Code',monospace,monospace;font-size:12px;line-height:1.75;max-height:300px;overflow-y:auto;margin-top:12px}
+.log::-webkit-scrollbar{width:8px}
+.log::-webkit-scrollbar-thumb{background:#2d3150;border-radius:6px}
+.log-ok{color:#4ade80}.log-warn{color:#fbbf24}.log-err{color:#f87171}.log-info{color:#93c5fd}.log-change{color:#e879f9}
+/* BUTTONS */
+.btn{height:44px;padding:0 22px;border-radius:11px;font-weight:600;font-size:13.5px;cursor:pointer;border:1.5px solid transparent;font-family:inherit;transition:.15s;display:inline-flex;align-items:center;gap:8px;text-decoration:none}
+.btn-primary{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:0 4px 12px rgba(26,111,219,.25)}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;box-shadow:none}
+.btn-ghost{background:#fff;border-color:var(--border);color:var(--text)}
+.btn-ghost:hover{border-color:var(--line-strong)}
+.btn-dl{background:var(--ok);color:#fff;border-color:var(--ok);box-shadow:0 4px 12px rgba(31,157,107,.25)}
+.btn-dl:hover{background:#187a54}
+.info-box{background:var(--primary-soft);border:1px solid var(--primary-mid);border-radius:11px;padding:13px 16px;font-size:13px;color:var(--primary-dark);margin-bottom:16px;line-height:1.6}
+/* TOAST */
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(12px);background:var(--text);color:#fff;padding:13px 20px;border-radius:11px;font-weight:600;opacity:0;visibility:hidden;transition:opacity .25s,transform .28s cubic-bezier(.2,.8,.2,1),visibility .25s;z-index:1000;font-size:13.5px}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1;visibility:visible;box-shadow:var(--shadow-lg)}
+.toast.err{background:var(--danger)}.toast.ok{background:var(--ok)}
+
+/* ── PREMIUM THIN SCROLLBAR ── */
+*::-webkit-scrollbar{width:6px;height:6px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:#d1d5e0;border-radius:99px}
+*::-webkit-scrollbar-thumb:hover{background:#a0a8bc}
+html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="index.html" class="topbar-brand" style="display:flex;align-items:center;gap:9px;">
+    <img src="sc-blue-logo.png" alt="SmarTuna" style="width:26px;height:26px;object-fit:contain;flex-shrink:0;"/>
+      <span class="sc-wm">
+        <span class="sc-wm-top">SmarTuna</span>
+        <span class="sc-wm-sub">concept</span>
+      </span>
+  </a>
+  <div class="topbar-nav">
+    <div class="nav-pill">
+      <a href="home-logged-in.html" class="nav-item">Home</a>
+      <a href="vessel-list.html" class="nav-item active">Atlas</a>
+      <a href="#" class="nav-item">Features</a>
+      <a href="#" class="nav-item">Reports</a>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div style="position:relative">
+      <div class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()"><span id="avatarInitials">··</span></div>
+      <div class="avatar-menu" id="avatarMenu">
+        <div class="avatar-menu-name" id="avatarGreeting">Hello!</div>
+        <a href="profile.html">Profile</a>
+        <button onclick="handleLogout()">Logout</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="crumb"><a href="vessel-list.html">Vessels</a> · PVR Upload</div>
+  <div class="page-head">
+    <h1>PVR Bulk Upload</h1>
+    <p>Upload the ISSF Proactive Vessel Register CSV to update best practice measure statuses. The system compares each vessel's previous values, generates a full change log, records changes in the vessel timeline, and gives you a downloadable audit trail.</p>
+  </div>
+
+  <div id="gateMsg" style="display:none;background:var(--danger-soft);border:1px solid #f3cdd5;color:#8a2436;padding:14px 16px;border-radius:12px;margin-bottom:18px;font-weight:500">
+    Only SmarTuna concept admins can upload PVR data.
+  </div>
+
+  <!-- STEP 1: UPLOAD -->
+  <div id="step1">
+    <div class="card">
+      <div class="card-title">Step 1 — Select PVR CSV</div>
+      <div class="info-box">
+        <strong>Match key: UVI Number (IMO/TUVI)</strong> — rows are matched to vessels using the UVI Number column. The system loads each vessel's current PVR measures from the database and compares them field-by-field. Only changed values appear in the change log.
+      </div>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="csvFile" accept=".csv,.CSV,.xlsx,.xls,.xlsm,.xlsb,.ods,.XLSX,.XLS" onchange="handleFile(this.files[0])"/>
+        <div class="drop-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <div class="drop-title">Drop PVR CSV here or click to browse</div>
+        <div class="drop-sub">Download from <span>vessels.iss-foundation.org → PVR tab</span> · Accepts CSV, Excel (.xlsx, .xls, .xlsm, .ods)</div>
+        <div class="file-chip" id="fileChip" style="display:none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          <span id="fileName"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: PREVIEW CHANGES -->
+  <div id="step2" style="display:none">
+    <div class="card">
+      <div class="card-title">Step 2 — Review changes before importing</div>
+      <div class="stats-row" id="statsRow"></div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Vessel</th>
+              <th>UVI</th>
+              <th>Match</th>
+              <th>Changes detected</th>
+              <th style="min-width:320px">Field-by-field diff</th>
+            </tr>
+          </thead>
+          <tbody id="previewBody"></tbody>
+        </table>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding-top:16px;border-top:1px solid var(--line)">
+        <button class="btn btn-ghost" onclick="reset()">← Start over</button>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-ghost" id="dlPreviewBtn" onclick="downloadLog('preview')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Download preview log (.txt)
+          </button>
+          <button class="btn btn-primary" id="importBtn" onclick="runImport()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            Import changes to database
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: IMPORT -->
+  <div id="step3" style="display:none">
+    <div class="card">
+      <div class="card-title">Step 3 — Importing</div>
+      <div class="progress-wrap">
+        <div class="progress-bg"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        <div class="progress-lbl" id="progressLbl">Starting…</div>
+      </div>
+      <div class="log" id="importLog"></div>
+      <div id="doneBar" style="display:none;margin-top:18px;display:none;gap:10px;justify-content:flex-end;align-items:center">
+        <button class="btn btn-dl" onclick="downloadLog('final')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Download audit log (.txt)
+        </button>
+        <a href="vessel-list.html" class="btn btn-ghost">Back to vessels</a>
+        <button class="btn btn-primary" onclick="reset()">Upload another file</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
+const SUPABASE_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// ── PVR COLUMN → measure_key mapping (from ISSF CSV headers) ──
+const PVR_COL_MAP = {
+  'Active Region Authorized?':'active_region_authorized',
+  'Flag/RFMO?':'flag_rfmo',
+  'Not IUU Listed':'not_iuu_listed',
+  'Shark Finning Policy?':'shark_finning_policy',
+  'Observer?':'observer',
+  'Full Tuna Retention?':'full_tuna_retention',
+  'Skipper WS/GB':'skipper_ws_gb',
+  'Sharks, Turtles & Seabirds Best Practice':'sharks_turtles_seabirds',
+  'FAD Management':'fad_management',
+  'NE FADS':'ne_fads',
+  'No LS Driftnet':'no_ls_driftnet',
+};
+
+// Column display labels for the log
+const PVR_LABELS = {
+  active_region_authorized:'Active Region Authorized?',
+  flag_rfmo:'Flag/RFMO?',
+  not_iuu_listed:'Not IUU Listed',
+  shark_finning_policy:'Shark Finning Policy?',
+  observer:'Observer?',
+  full_tuna_retention:'Full Tuna Retention?',
+  skipper_ws_gb:'Skipper WS/GB',
+  sharks_turtles_seabirds:'Sharks, Turtles & Seabirds',
+  fad_management:'FAD Management',
+  ne_fads:'NE FADS',
+  no_ls_driftnet:'No LS Driftnet',
+};
+
+let csvRows=[], vesselGroups=[], vesselMap={}, diffResults=[];
+let logLines=[]; // audit log accumulator
+let uploadTimestamp='';
+
+function ts(){ return new Date().toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+
+// ── FILE HANDLING ──
+const EXCEL_EXTS=['.xlsx','.xls','.xlsm','.xlsb','.ods'];
+function isExcel(name){ return EXCEL_EXTS.some(e=>name.toLowerCase().endsWith(e)); }
+
+function handleFile(file){
+  if(!file) return;
+  $('fileName').textContent=file.name;
+  $('fileChip').style.display='inline-flex';
+  if(isExcel(file.name)){
+    parseExcel(file);
+  } else {
+    Papa.parse(file,{
+      header:true, skipEmptyLines:true,
+      complete:res=>{ csvRows=res.data; groupAndMatch(); },
+      error:e=>toast('CSV parse error: '+e.message,true)
+    });
+  }
+}
+
+function parseExcel(file){
+  if(typeof XLSX==='undefined'){
+    toast('Excel parser loading — please try again in a moment',true);
+    return;
+  }
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=new Uint8Array(e.target.result);
+      const wb=XLSX.read(data,{type:'array'});
+      // Use first sheet
+      const sheetName=wb.SheetNames[0];
+      const ws=wb.Sheets[sheetName];
+      // Convert to array of objects with headers from row 1
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!rows.length){ toast('No data found in the first sheet',true); return; }
+      csvRows=rows;
+      groupAndMatch();
+    }catch(err){
+      toast('Failed to parse Excel file: '+err.message,true);
+      console.error(err);
+    }
+  };
+  reader.onerror=()=>toast('Could not read file',true);
+  reader.readAsArrayBuffer(file);
+}
+const dz=$('dropZone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('dragover');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('dragover'));
+dz.addEventListener('drop',e=>{
+  e.preventDefault();dz.classList.remove('dragover');
+  const f=e.dataTransfer.files[0]; if(f) handleFile(f);
+});
+
+// ── GROUP ROWS BY UVI ──
+function groupAndMatch(){
+  const groups={};
+  csvRows.forEach(r=>{
+    const uvi=(r['UVI Number']||'').trim(); if(!uvi) return;
+    if(!groups[uvi]) groups[uvi]={vessel:r, measures:{}};
+    // Pull PVR measure columns
+    Object.entries(PVR_COL_MAP).forEach(([col,key])=>{
+      const v=(r[col]||'').trim(); if(v) groups[uvi].measures[key]=v;
+    });
+  });
+  vesselGroups=Object.values(groups);
+  fetchAndDiff();
+}
+
+// ── FETCH EXISTING MEASURES AND DIFF ──
+async function fetchAndDiff(){
+  toast('Loading vessel registry…');
+  const {data:vessels}=await sb.from('vessels').select('id,current_name,imo,uvi_number');
+  vesselMap={};
+  (vessels||[]).forEach(v=>{
+    if(v.imo) vesselMap[v.imo.trim()]=v;
+    if(v.uvi_number) vesselMap[v.uvi_number.trim()]=v;
+  });
+
+  // Fetch current PVR measures for all matched vessels
+  const matchedIds=vesselGroups
+    .map(g=>vesselMap[(g.vessel['UVI Number']||'').trim()])
+    .filter(Boolean).map(v=>v.id);
+
+  const {data:measures}=matchedIds.length
+    ?await sb.from('vessel_pvr_measures').select('*').in('vessel_id',matchedIds)
+    :{data:[]};
+
+  // Build map: vessel_id → {measure_key → {status,notes,measure_label}}
+  const dbMap={};
+  (measures||[]).forEach(m=>{
+    if(!dbMap[m.vessel_id]) dbMap[m.vessel_id]={};
+    dbMap[m.vessel_id][m.measure_key]={status:m.status,notes:m.notes,label:m.measure_label||m.measure_key};
+  });
+
+  // Compute diffs
+  uploadTimestamp=ts();
+  diffResults=vesselGroups.map(g=>{
+    const uvi=(g.vessel['UVI Number']||'').trim();
+    const dbVessel=vesselMap[uvi];
+    if(!dbVessel) return{g,uvi,dbVessel:null,changes:[],status:'not_found'};
+    const existing=dbMap[dbVessel.id]||{};
+    const changes=[];
+    Object.entries(g.measures).forEach(([key,newVal])=>{
+      const old=existing[key];
+      const oldVal=old?old.status:'—';
+      if(oldVal!==newVal){
+        changes.push({key,label:PVR_LABELS[key]||key,oldVal,newVal});
+      }
+    });
+    return{g,uvi,dbVessel,changes,status:changes.length?'changed':'unchanged'};
+  });
+
+  buildPreview();
+}
+
+// ── BUILD PREVIEW TABLE ──
+function buildPreview(){
+  const total=diffResults.length;
+  const matched=diffResults.filter(r=>r.dbVessel).length;
+  const changed=diffResults.filter(r=>r.status==='changed').length;
+  const unchanged=diffResults.filter(r=>r.status==='unchanged').length;
+  const notFound=diffResults.filter(r=>r.status==='not_found').length;
+  const totalChanges=diffResults.reduce((a,r)=>a+r.changes.length,0);
+
+  $('statsRow').innerHTML=`
+    <div class="stat-pill"><div class="n">${total}</div><div class="l">CSV Vessels</div></div>
+    <div class="stat-pill"><div class="n" style="color:var(--ok)">${matched}</div><div class="l">Matched</div></div>
+    <div class="stat-pill"><div class="n" style="color:var(--primary)">${changed}</div><div class="l">With changes</div></div>
+    <div class="stat-pill"><div class="n" style="color:var(--soft)">${unchanged}</div><div class="l">No changes</div></div>
+    <div class="stat-pill"><div class="n" style="color:var(--warn-dark)">${notFound}</div><div class="l">Not in registry</div></div>
+    <div class="stat-pill"><div class="n" style="color:var(--primary)">${totalChanges}</div><div class="l">Total field changes</div></div>`;
+
+  $('previewBody').innerHTML=diffResults.map(r=>{
+    const name=r.dbVessel?r.dbVessel.current_name:(r.g.vessel['Vessel Name']||r.uvi);
+    const matchBadge=r.status==='not_found'
+      ?'<span class="badge badge-warn">⚠ Not found</span>'
+      :r.status==='changed'
+      ?'<span class="badge badge-ok">✓ Matched</span>'
+      :'<span class="badge badge-grey">✓ Matched</span>';
+    const changeBadge=r.status==='not_found'
+      ?'<span class="badge badge-grey">Skipped</span>'
+      :r.changes.length
+      ?`<span class="badge badge-new">${r.changes.length} field${r.changes.length>1?'s':''} changed</span>`
+      :'<span class="badge badge-grey">No changes</span>';
+    const diffHtml=r.changes.length
+      ?`<div class="change-row">${r.changes.map(c=>`
+          <div class="change-item">
+            <span class="change-label">${esc(c.label)}</span>
+            <span class="change-old">${esc(c.oldVal)}</span>
+            <span class="change-arrow">→</span>
+            <span class="change-new ${c.newVal}">${esc(c.newVal)}</span>
+          </div>`).join('')}</div>`
+      :'<span style="color:var(--soft);font-size:12px">—</span>';
+
+    return `<tr>
+      <td style="font-weight:600">${esc(name)}</td>
+      <td style="font-family:monospace;font-size:12px">${esc(r.uvi)}</td>
+      <td>${matchBadge}</td>
+      <td>${changeBadge}</td>
+      <td>${diffHtml}</td>
+    </tr>`;
+  }).join('');
+
+  $('step1').style.display='none';
+  $('step2').style.display='block';
+  toast('Preview ready — review changes before importing');
+}
+
+// ── DOWNLOAD LOG ──
+function buildLogText(phase){
+  const header=[
+    '═══════════════════════════════════════════════════════════',
+    '  PROJECT MANHATTAN — ISSF PVR Upload Audit Log',
+    `  ${phase==='final'?'IMPORT COMPLETED':'PREVIEW — Not yet imported'}`,
+    `  Generated: ${uploadTimestamp}`,
+    '═══════════════════════════════════════════════════════════',
+    '',
+  ];
+  const changed=diffResults.filter(r=>r.status==='changed');
+  const notFound=diffResults.filter(r=>r.status==='not_found');
+  const unchanged=diffResults.filter(r=>r.status==='unchanged');
+  const body=[];
+  body.push(`SUMMARY`);
+  body.push(`  Total vessels in CSV:  ${diffResults.length}`);
+  body.push(`  Matched in registry:   ${diffResults.filter(r=>r.dbVessel).length}`);
+  body.push(`  With changes:          ${changed.length}`);
+  body.push(`  No changes:            ${unchanged.length}`);
+  body.push(`  Not found:             ${notFound.length}`);
+  body.push(`  Total field changes:   ${diffResults.reduce((a,r)=>a+r.changes.length,0)}`);
+  body.push('');
+  body.push('───────────────────────────────────────────────────────────');
+  body.push('CHANGED VESSELS');
+  body.push('───────────────────────────────────────────────────────────');
+  if(!changed.length) body.push('  (no changes)');
+  changed.forEach(r=>{
+    body.push('');
+    body.push(`  ${r.dbVessel.current_name} (UVI: ${r.uvi})`);
+    r.changes.forEach(c=>{
+      const pad=40; const lbl=c.label.padEnd(pad,' ');
+      body.push(`    ${lbl} ${c.oldVal.padEnd(6,' ')} → ${c.newVal}`);
+    });
+  });
+  body.push('');
+  body.push('───────────────────────────────────────────────────────────');
+  body.push('UNCHANGED VESSELS');
+  body.push('───────────────────────────────────────────────────────────');
+  unchanged.forEach(r=>body.push(`  ${r.dbVessel?.current_name||r.uvi} — no changes`));
+  if(!unchanged.length) body.push('  (none)');
+  body.push('');
+  body.push('───────────────────────────────────────────────────────────');
+  body.push('NOT FOUND IN REGISTRY');
+  body.push('───────────────────────────────────────────────────────────');
+  notFound.forEach(r=>body.push(`  ${r.g.vessel['Vessel Name']||''} (UVI: ${r.uvi})`));
+  if(!notFound.length) body.push('  (none)');
+  if(phase==='final'&&logLines.length){
+    body.push('');
+    body.push('───────────────────────────────────────────────────────────');
+    body.push('IMPORT LOG');
+    body.push('───────────────────────────────────────────────────────────');
+    logLines.forEach(l=>body.push('  '+l));
+  }
+  return [...header,...body].join('\n');
+}
+
+function downloadLog(phase){
+  const txt=buildLogText(phase);
+  const blob=new Blob([txt],{type:'text/plain'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`pvr-upload-${uploadTimestamp.replace(/[^a-z0-9]/gi,'-').toLowerCase()}-${phase}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── IMPORT ──
+async function runImport(){
+  $('importBtn').disabled=true;
+  $('step2').style.display='none';
+  $('step3').style.display='block';
+  $('doneBar').style.display='none';
+  $('importLog').innerHTML='';
+  logLines=[];
+
+  const toImport=diffResults.filter(r=>r.status==='changed');
+  const total=toImport.length;
+  let done=0,errors=0;
+
+  addLog(`PVR Import started at ${uploadTimestamp}`, 'info');
+  addLog(`${total} vessel(s) with changes to process`, 'info');
+  addLog('','info');
+
+  for(const r of toImport){
+    const vesselId=r.dbVessel.id;
+    const vesselName=r.dbVessel.current_name;
+    try{
+      // Upsert each changed measure
+      for(const c of r.changes){
+        const {error}=await sb.from('vessel_pvr_measures').upsert({
+          vessel_id:vesselId,
+          measure_key:c.key,
+          measure_label:PVR_LABELS[c.key]||c.key,
+          status:c.newVal,
+          updated_at:new Date().toISOString(),
+        },{onConflict:'vessel_id,measure_key'});
+        if(error) throw error;
+
+        // Write to vessel_timeline
+        await sb.from('vessel_timeline').insert({
+          vessel_id:vesselId,
+          tab_section:'ISSF',
+          field_name:PVR_LABELS[c.key]||c.key,
+          old_value:c.oldVal,
+          new_value:c.newVal,
+          changed_at:new Date().toISOString(),
+        });
+
+        const logEntry=`${vesselName} — ${c.label}: ${c.oldVal} → ${c.newVal}`;
+        addLog('✓ '+logEntry, 'change');
+        logLines.push(logEntry);
+      }
+      addLog(`  ${vesselName}: ${r.changes.length} measure(s) updated`, 'ok');
+    }catch(e){
+      addLog(`✕ ${vesselName}: ${e.message}`, 'err');
+      logLines.push(`ERROR ${vesselName}: ${e.message}`);
+      errors++;
+    }
+    done++;
+    $('progressFill').style.width=Math.round((done/total)*100)+'%';
+    $('progressLbl').textContent=`${done} of ${total} vessels processed…`;
+  }
+
+  addLog('','info');
+  addLog('─────────────────────────────────','info');
+  addLog(`Import complete at ${ts()}`, 'info');
+  addLog(`✓ ${done-errors} vessels updated`, 'ok');
+  if(errors) addLog(`✕ ${errors} error(s)`, 'err');
+  const skipped=diffResults.filter(r=>r.status==='not_found').length;
+  if(skipped) addLog(`⚠ ${skipped} vessel(s) skipped (not in registry)`, 'warn');
+  $('progressLbl').textContent=`Done — ${done-errors} updated, ${errors} errors`;
+  $('doneBar').style.display='flex';
+  toast(`Import complete: ${done-errors} vessels updated`, errors===0);
+}
+
+function addLog(msg,type){
+  const el=$('importLog');
+  const cls={ok:'log-ok',err:'log-err',warn:'log-warn',info:'log-info',change:'log-change'}[type]||'';
+  el.innerHTML+=`<div class="${cls}">${esc(msg)}</div>`;
+  el.scrollTop=el.scrollHeight;
+}
+
+function reset(){
+  csvRows=[];vesselGroups=[];vesselMap=[];diffResults=[];logLines=[];
+  $('step1').style.display='block';
+  $('step2').style.display='none';
+  $('step3').style.display='none';
+  $('fileChip').style.display='none';
+  $('importLog').innerHTML='';
+  $('progressFill').style.width='0%';
+  $('progressLbl').textContent='';
+}
+
+// ── AUTH ──
+(async function init(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){location.href='login.html';return;}
+  const {data:p}=await sb.from('profiles').select('role,first_name,last_name,avatar_color').eq('id',user.id).single();
+  const isAdmin=p&&['admin','operator'].includes(p.role);
+  if(!isAdmin){
+    $('gateMsg').style.display='block';
+    document.querySelectorAll('input,button').forEach(e=>e.disabled=true);
+    return;
+  }
+  const first=p?.first_name||user.email.split('@')[0];
+  $('avatarInitials').textContent=((first[0]||'')+(p?.last_name?.[0]||'')).toUpperCase()||'··';
+  $('avatarBtn').style.background=p?.avatar_color||'#1a6fdb';
+  $('avatarGreeting').textContent=`Hello, ${first}!`;
+})();
+
+function toggleAvatarMenu(){$('avatarMenu').classList.toggle('open');}
+document.addEventListener('click',e=>{if(!e.target.closest('.avatar-btn'))$('avatarMenu')?.classList.remove('open');});
+async function handleLogout(){await sb.auth.signOut();location.href='index.html';}
+function toast(msg,ok=null){
+  const t=$('toast');t.textContent=msg;
+  t.className='toast show'+(ok===true?' ok':ok===false?' err':'');
+  setTimeout(()=>t.className='toast',3200);
+}
+</script>
+</body>
+</html>

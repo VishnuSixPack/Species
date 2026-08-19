@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<link rel="icon" type="image/png" href="sc-blue-logo.png"/>
+<title>Shipments — SmarTuna</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="theme.css"/>
+<script src="theme.js"></script>
+<style>
+  :root{}
+  @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');
+             font-weight:normal;font-style:normal;font-display:swap;}
+  .sc-wm{display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1;gap:0;text-decoration:none;}
+  .sc-wm-top{font-family:'Bitsumis',sans-serif !important;font-weight:900 !important;font-size:16px;
+    letter-spacing:.04em;text-transform:uppercase;line-height:1;
+    background:linear-gradient(90deg,var(--wm-top),var(--wm-top)) !important;-webkit-background-clip:text !important;
+    -webkit-text-fill-color:transparent !important;background-clip:text !important;}
+  .sc-wm-sub{font-family:'Bitsumis',sans-serif !important;font-weight:700 !important;font-size:7px;
+    letter-spacing:.22em;text-transform:uppercase;color:var(--wm-sub);-webkit-text-fill-color:var(--wm-sub) !important;margin-top:2px;}
+  .topbar-brand{display:flex;align-items:center;gap:8px;text-decoration:none;}
+  .avatar-wrap{position:relative;}
+  .avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--surface);
+               border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-1);
+               min-width:186px;overflow:hidden;z-index:999;}
+  .avatar-menu.open{display:block;}
+  .avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;border-bottom:1px solid var(--border);}
+  .avatar-menu a,.avatar-menu button{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;
+    color:var(--menu-text);text-decoration:none;font-weight:500;width:100%;background:none;border:none;
+    font-family:inherit;cursor:pointer;text-align:left;}
+  .avatar-menu a:hover,.avatar-menu button:hover{background:var(--bg);color:var(--primary);}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Poppins','DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 22px;
+          background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:400;}
+  .brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:var(--primary);text-decoration:none;}
+  .nav{display:flex;align-items:center;gap:2px;}
+  .nav-item{padding:7px 14px;border-radius:999px;font-size:13px;color:var(--muted);text-decoration:none;white-space:nowrap;}
+  .nav-item:hover{background:var(--bg);color:var(--text);}
+  .nav-item.active{background:var(--bg);color:var(--text);font-weight:600;}
+  .avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;
+              font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;}
+
+  .wrap{max-width:1180px;margin:0 auto;padding:20px 22px 60px;}
+  .crumb{font-size:12px;color:var(--muted);margin-bottom:16px;}
+  .crumb a{color:var(--muted);text-decoration:none;}
+  .crumb a:hover{color:var(--primary);}
+
+  .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap;}
+  .h1{font-size:20px;font-weight:700;}
+  .h1-sub{font-size:12.5px;color:var(--muted);margin-top:3px;}
+  .btn{padding:9px 16px;border-radius:9px;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;
+       border:1px solid var(--border);background:var(--surface);color:var(--text);text-decoration:none;display:inline-block;}
+  .btn:hover{border-color:var(--primary);color:var(--primary);}
+  .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .btn-primary:hover{background:var(--primary-hover);color:#fff;}
+
+  .toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+  .search{flex:1;min-width:220px;padding:9px 14px;border:1px solid var(--border);border-radius:10px;
+          font-family:inherit;font-size:13px;background:var(--surface);}
+  .search:focus{outline:none;border-color:var(--primary);}
+  select.filter{padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);
+                font-family:inherit;font-size:13px;color:var(--text);cursor:pointer;}
+  select.filter:focus{outline:none;border-color:var(--primary);}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+  table{width:100%;border-collapse:collapse;}
+  th{font-size:11px;color:var(--muted);font-weight:500;text-align:left;padding:14px 16px;
+     border-bottom:1px solid var(--border);white-space:nowrap;}
+  td{font-size:13px;padding:14px 16px;border-bottom:1px solid var(--rule);}
+  tbody tr{cursor:pointer;transition:background .12s;}
+  tbody tr:hover{background:var(--surface-2);}
+  tbody tr:last-child td{border-bottom:none;}
+  .ref{font-weight:600;}
+  .sub{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .num{text-align:right;}
+
+  .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap;}
+  .st-transit{background:var(--primary-soft-2);color:var(--primary);}
+  .st-delivered{background:var(--good-bg);color:var(--good-fg);}
+  .st-draft{background:var(--surface-2);color:var(--muted);}
+  .st-cancelled{background:var(--bad-bg);color:var(--bad-fg);}
+  .tag-demo{background:var(--warn-bg);color:var(--warn-fg);border:1px solid var(--warn-fg);padding:2px 8px;border-radius:6px;
+            font-size:10px;font-weight:600;margin-left:8px;vertical-align:middle;}
+  .flag{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--warn-fg);margin-left:7px;}
+
+  .empty{padding:56px 24px;text-align:center;}
+  .empty h4{font-size:15px;margin-bottom:7px;}
+  .empty p{font-size:12.5px;color:var(--muted);max-width:400px;margin:0 auto 20px;line-height:1.6;}
+
+  @media(max-width:860px){
+    .nav{display:none;}
+    .hide-sm{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="home-logged-in.html" class="topbar-brand">
+    <img src="sc-blue-logo.png" data-dark-src="sc-white-logo.png" alt="SmarTuna" style="width:28px;height:28px;object-fit:contain;"/>
+    <span class="sc-wm"><span class="sc-wm-top">SmarTuna</span><span class="sc-wm-sub">concept</span></span>
+  </a>
+  <div class="nav">
+    <a href="home-logged-in.html" class="nav-item">Home</a>
+    <a href="shipment-list.html" class="nav-item active">My Studio</a>
+    <a href="Species.html" class="nav-item">Atlas</a>
+    <a href="#" class="nav-item">Features</a>
+    <a href="report.html" class="nav-item">Support</a>
+  </div>
+  <div class="avatar-wrap">
+    <div class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()"><span id="avatarInitials">··</span></div>
+    <div class="avatar-menu" id="avatarMenu">
+      <div class="avatar-menu-name" id="avatarGreeting">Hello!</div>
+      <a href="profile.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Profile</a>
+      <a href="organisation.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg>Your Company</a>
+      <button onclick="handleLogout()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Logout</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="crumb"><a href="home-logged-in.html">My Studio</a> / Shipments</div>
+
+  <div class="page-head">
+    <div>
+      <div class="h1">Shipments</div>
+      <div class="h1-sub" id="countSub">Loading…</div>
+    </div>
+    <a href="shipment-form.html" class="btn btn-primary">New shipment</a>
+  </div>
+
+  <div class="toolbar">
+    <input class="search" id="q" placeholder="Search by shipment ID, exporter, product or destination…"/>
+    <select class="filter" id="fMode">
+      <option value="">All modes</option>
+      <option>Sea</option><option>Air</option><option>Road</option>
+    </select>
+    <select class="filter" id="fStatus">
+      <option value="">All statuses</option>
+      <option>Draft</option><option>Booked</option><option>In-Transit</option>
+      <option>Arrived</option><option>Delivered</option><option>Cancelled</option>
+    </select>
+  </div>
+
+  <div class="card" id="host"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
+const SUPABASE_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const dbClient = window.supabase
+  ? window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY)
+  : null;
+
+const $ = id => document.getElementById(id);
+
+/* ---------- profile menu ---------- */
+function toggleAvatarMenu(){ $('avatarMenu').classList.toggle('open'); }
+document.addEventListener('click', e=>{
+  const w=document.querySelector('.avatar-wrap');
+  if(w && !w.contains(e.target)) $('avatarMenu')?.classList.remove('open');
+});
+function greetingTime(){ const h=new Date().getHours(); return h<12?'Good Morning':(h<18?'Good Afternoon':'Good Evening'); }
+async function handleLogout(){ if(dbClient) await dbClient.auth.signOut(); location.href='index.html'; }
+
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtNum = v => (v===null||v===undefined||v===''||isNaN(Number(v)))?null:Number(v).toLocaleString('en-US');
+function fmtDate(v){ if(!v) return null; const d=new Date(v); return isNaN(d)?v:d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
+
+const MODE_ICON = {Sea:'🚢', Air:'✈️', Road:'🚚'};
+const STATUS_CLASS = {'In-Transit':'st-transit','Delivered':'st-delivered','Arrived':'st-delivered',
+                      'Cancelled':'st-cancelled','Draft':'st-draft','Booked':'st-draft'};
+
+/* ---------------------------------------------------------------
+   The demo record. It stays pinned here as a worked example so the
+   module is never an empty page, and it's tagged so nobody mistakes
+   it for a real consignment. Delete this block once you have your
+   own records in.
+   --------------------------------------------------------------- */
+const DEMO_ROW = {
+  id:'demo', demo:true,
+  shipment_ref:'EU-2026-00482', shipment_date:'2026-07-28',
+  transport_mode:'Sea', status:'In-Transit',
+  exporter_name:'Ocean Star Tuna Trading Inc',
+  origin_name:'General Santos', destination_name:'Rotterdam',
+  destination_country:'Netherlands',
+  product_lines:2, total_packages:795, total_net_kg:22450,
+  products:'Frozen Whole Round Tuna, Tuna Loins Vacuum Packed',
+  reconciled:true,
+};
+
+let ROWS = [];
+
+function rowHTML(r){
+  const href = r.demo ? 'shipment-detail.html?demo=1' : 'shipment-detail.html?id='+encodeURIComponent(r.id);
+  const cls  = STATUS_CLASS[r.status] || 'st-draft';
+  return `<tr onclick="location.href='${href}'">
+    <td>
+      <div class="ref">${esc(r.shipment_ref||'—')}${r.demo?'<span class="tag-demo">SAMPLE</span>':''}${r.reconciled===false?'<span class="flag" title="Packages do not reconcile"></span>':''}</div>
+      <div class="sub">${esc(r.exporter_name||'—')}</div>
+    </td>
+    <td class="hide-sm">
+      <div>${esc(r.origin_name||'—')} → ${esc(r.destination_name||'—')}</div>
+      <div class="sub">${esc(r.destination_country||'')}</div>
+    </td>
+    <td class="hide-sm">
+      <div>${esc(r.products||'—')}</div>
+      <div class="sub">${r.product_lines||0} product line${r.product_lines===1?'':'s'}</div>
+    </td>
+    <td class="num">${fmtNum(r.total_packages)||'—'}</td>
+    <td class="num hide-sm">${r.total_net_kg?fmtNum(r.total_net_kg)+' kg':'—'}</td>
+    <td>${MODE_ICON[r.transport_mode]||''} ${esc(r.transport_mode||'—')}</td>
+    <td class="hide-sm">${fmtDate(r.shipment_date)||'—'}</td>
+    <td><span class="badge ${cls}">${esc(r.status||'Draft')}</span></td>
+  </tr>`;
+}
+
+function applyFilters(){
+  const q  = $('q').value.trim().toLowerCase();
+  const fm = $('fMode').value, fs = $('fStatus').value;
+
+  const shown = ROWS.filter(r=>{
+    if(fm && r.transport_mode!==fm) return false;
+    if(fs && r.status!==fs) return false;
+    if(!q) return true;
+    return [r.shipment_ref,r.exporter_name,r.origin_name,r.destination_name,
+            r.destination_country,r.products]
+           .filter(Boolean).join(' ').toLowerCase().includes(q);
+  });
+
+  $('countSub').textContent = ROWS.length
+    ? `${shown.length} of ${ROWS.length} shipment${ROWS.length===1?'':'s'}`
+    : 'No shipments yet';
+
+  if(!shown.length){
+    $('host').innerHTML = ROWS.length
+      ? `<div class="empty"><h4>Nothing matches those filters</h4>
+           <p>Try a different search term, or clear the mode and status filters.</p></div>`
+      : `<div class="empty"><h4>No shipments yet</h4>
+           <p>A shipment records what left, where it went and which lots were in it.
+              EU Catch documents and carbon footprints both read from it.</p>
+           <a href="shipment-form.html" class="btn btn-primary">Create your first shipment</a></div>`;
+    return;
+  }
+
+  $('host').innerHTML = `<table>
+    <thead><tr>
+      <th>Shipment</th>
+      <th class="hide-sm">Route</th>
+      <th class="hide-sm">Products</th>
+      <th class="num">Packages</th>
+      <th class="num hide-sm">Net Weight</th>
+      <th>Mode</th>
+      <th class="hide-sm">Date</th>
+      <th>Status</th>
+    </tr></thead>
+    <tbody>${shown.map(rowHTML).join('')}</tbody>
+  </table>`;
+}
+
+async function load(){
+  ROWS = [DEMO_ROW];
+
+  if(dbClient){
+    try{
+      const {data:s, error} = await dbClient
+        .from('shipments')
+        .select('id,shipment_ref,shipment_date,transport_mode,status,exporter_name,origin_name,destination_name,destination_country')
+        .is('deleted_at', null)
+        .order('shipment_date',{ascending:false});
+      if(error) throw error;
+
+      if(s && s.length){
+        // roll up product lines + packages from the items
+        const ids = s.map(x=>x.id);
+        const {data:items} = await dbClient
+          .from('shipment_items')
+          .select('shipment_id,product_name,number_of_packages,net_weight_kg')
+          .in('shipment_id', ids);
+
+        const agg = {};
+        (items||[]).forEach(it=>{
+          const a = agg[it.shipment_id] ||= {lines:0,pkg:0,net:0,names:[]};
+          a.lines++; a.pkg += Number(it.number_of_packages)||0;
+          a.net += Number(it.net_weight_kg)||0;
+          if(it.product_name) a.names.push(it.product_name);
+        });
+
+        const real = s.map(x=>{
+          const a = agg[x.id] || {lines:0,pkg:0,net:0,names:[]};
+          return {...x, product_lines:a.lines, total_packages:a.pkg,
+                  total_net_kg:a.net, products:a.names.join(', ')};
+        });
+        ROWS = [...real, DEMO_ROW];
+      }
+    }catch(err){
+      console.error('Shipment list load failed:', err);
+    }
+  }
+
+  applyFilters();
+}
+
+['q','fMode','fStatus'].forEach(id=>{
+  $(id).addEventListener('input', applyFilters);
+  $(id).addEventListener('change', applyFilters);
+});
+
+async function loadProfile(){
+  if(!dbClient) return;
+  try{
+    const {data:{session}} = await dbClient.auth.getSession();
+    if(!session){ location.href='login.html'; return; }
+    const {data:p} = await dbClient.from('profiles')
+      .select('first_name,last_name,avatar_color,photo_url').eq('id',session.user.id).single();
+    const first = p?.first_name || session.user.email.split('@')[0];
+    const last  = p?.last_name || '';
+    if(p?.photo_url){
+      $('avatarBtn').innerHTML=`<img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;
+    }else{
+      $('avatarBtn').style.background = p?.avatar_color || 'var(--primary)';
+      $('avatarInitials').textContent = (first.charAt(0)+(last?last.charAt(0):'')).toUpperCase();
+    }
+    $('avatarGreeting').textContent = `${greetingTime()}, ${first}!`;
+    if(window.applyProfileTheme) applyProfileTheme(p);
+  }catch(e){ console.warn('Profile load failed:', e.message); }
+}
+
+load();
+loadProfile();
+</script>
+</body>
+</html>

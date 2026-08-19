@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Assessment Review — Project Manhattan</title>
+  <link rel="icon" type="image/png" href="brand-logo.png"/>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="style.css"/>
+  <style>
+    #deleteWarn.open{display:flex!important;}
+    a.logo:hover #logoSub{color:#1a6fdb;}
+    a.logo:hover #logoMain{color:#1a6fdb;}
+    .ar-wrap{max-width:1100px;margin:0 auto;padding:80px 24px 32px;}
+    .ar-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;}
+    .ar-title{font-size:22px;font-weight:800;color:#1a1a2e;}
+    .ar-sub{font-size:13px;color:#9aa0b4;margin-top:3px;}
+    .ar-filters{display:flex;gap:8px;}
+    .ar-filter{padding:6px 14px;border-radius:999px;border:1.5px solid #e0e3ed;font-family:'Poppins',sans-serif;font-size:11px;font-weight:400;color:#6b7280;cursor:pointer;background:#fff;transition:all 0.15s;}
+    .ar-filter.active{background:#1a1a2e;color:#fff;border-color:#1a1a2e;}
+    .ar-list{display:flex;flex-direction:column;gap:12px;}
+    .ar-card{background:#fff;border-radius:16px;padding:18px 22px;border:1px solid #e8eaf0;display:flex;align-items:center;gap:16px;cursor:pointer;transition:box-shadow 0.2s,border-color 0.2s;}
+    .ar-card:hover{box-shadow:0 4px 20px rgba(0,0,0,0.08);border-color:#c7dcf8;}
+    .ar-logo{width:44px;height:44px;border-radius:50%;background:#eef4fd;border:2px solid #e0e8f8;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#1a6fdb;flex-shrink:0;overflow:hidden;}
+    .ar-logo img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+    .ar-info{flex:1;min-width:0;}
+    .ar-cname{font-size:14px;font-weight:700;color:#1a1a2e;margin-bottom:2px;}
+    .ar-meta{font-size:12px;color:#9aa0b4;display:flex;gap:14px;flex-wrap:wrap;}
+    .ar-meta span{display:flex;align-items:center;gap:4px;}
+    .ar-progress{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+    .ar-pct{font-size:13px;font-weight:700;color:#1a1a2e;}
+    .ar-prog-track{width:80px;height:5px;background:#f0f2f7;border-radius:999px;overflow:hidden;}
+    .ar-prog-fill{height:100%;border-radius:999px;transition:width 0.4s;}
+    .ar-status{flex-shrink:0;}
+    .badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700;}
+    .badge-pending{background:#fff7ed;color:#c2410c;}
+    .badge-verified{background:#f0fdf4;color:#16a34a;}
+    .badge-rejected{background:#fff5f5;color:#e63946;}
+    .badge-review{background:#eef4fd;color:#1a6fdb;}
+    .ar-btn{background:#8b5cf6;color:#fff;border:none;border-radius:999px;padding:8px 18px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;}
+    .ar-empty{text-align:center;padding:60px 20px;color:#9aa0b4;}
+    .ar-empty-icon{font-size:40px;margin-bottom:12px;}
+    .ar-empty-t{font-size:15px;font-weight:600;color:#4a4e69;margin-bottom:5px;}
+    .ar-detail{display:none;position:fixed;inset:0;background:rgba(6,10,28,0.5);backdrop-filter:blur(6px);z-index:200;align-items:flex-start;justify-content:flex-end;}
+    .ar-detail.open{display:flex;}
+    .ar-panel{width:100%;max-width:720px;height:100vh;background:#fff;overflow-y:auto;display:flex;flex-direction:column;box-shadow:-8px 0 40px rgba(0,0,0,0.12);}
+    .ar-panel::-webkit-scrollbar{width:4px;}
+    .ar-panel::-webkit-scrollbar-thumb{background:#e0e3ed;border-radius:999px;}
+    .ar-phd{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid #f0f2f8;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;}
+    .ar-phd-l{display:flex;align-items:center;gap:12px;}
+    .ar-phd-logo{width:38px;height:38px;border-radius:50%;background:#eef4fd;border:2px solid #e0e8f8;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#1a6fdb;overflow:hidden;flex-shrink:0;}
+    .ar-phd-logo img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+    .ar-phd-name{font-size:15px;font-weight:800;color:#1a1a2e;}
+    .ar-phd-sub{font-size:11px;color:#9aa0b4;margin-top:1px;}
+    .ar-close{width:30px;height:30px;border-radius:50%;background:#f4f6fb;border:none;cursor:pointer;font-size:16px;color:#6b7280;display:flex;align-items:center;justify-content:center;}
+    .ar-close:hover{background:#e8eaf0;}
+    .ar-pbody{padding:24px;}
+    .score-card{background:linear-gradient(135deg,#1a1a2e,#2d2d50);border-radius:16px;padding:20px 24px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
+    .score-num{font-size:48px;font-weight:800;color:#fff;line-height:1;}
+    .score-label{font-size:11px;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
+    .score-desc{font-size:13px;color:rgba(255,255,255,0.8);}
+    .score-breakdown{display:flex;flex-direction:column;gap:5px;align-items:flex-end;}
+    .score-bd-row{display:flex;align-items:center;gap:8px;font-size:11px;color:rgba(255,255,255,0.65);}
+    .score-bd-dot{width:8px;height:8px;border-radius:50%;}
+    .ar-section{margin-bottom:22px;}
+    .ar-sec-title{font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:10px;display:flex;align-items:center;gap:7px;}
+    .ar-prod-chip{display:inline-flex;align-items:center;gap:6px;background:#f4f6fb;border:1px solid #e0e3ed;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:600;color:#1a1a2e;margin:0 6px 6px 0;}
+    .kde-stage{background:#f9fafc;border:1px solid #e8eaf0;border-radius:12px;margin-bottom:10px;overflow:hidden;}
+    .kde-stage-hd{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;cursor:pointer;transition:background 0.15s;}
+    .kde-stage-hd:hover{background:#f0f2f7;}
+    .kde-stage-hd-l{display:flex;align-items:center;gap:9px;}
+    .kde-stage-icon{font-size:16px;}
+    .kde-stage-name{font-size:13px;font-weight:700;color:#1a1a2e;}
+    .kde-stage-stats{display:flex;align-items:center;gap:8px;}
+    .kde-stat{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:600;}
+    .kde-stat-av{color:#16a34a;}
+    .kde-stat-pa{color:#f59e0b;}
+    .kde-stat-un{color:#e63946;}
+    .kde-stage-chevron{font-size:11px;color:#9aa0b4;transition:transform 0.2s;}
+    .kde-stage.open .kde-stage-chevron{transform:rotate(180deg);}
+    .kde-stage-body{display:none;border-top:1px solid #e8eaf0;}
+    .kde-stage.open .kde-stage-body{display:block;}
+    .kde-row{padding:10px 16px;border-bottom:1px solid #f0f2f8;display:flex;align-items:flex-start;gap:10px;}
+    .kde-row:last-child{border-bottom:none;}
+    .kde-row-icon{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;margin-top:1px;}
+    .kde-row-av{background:#f0fdf4;color:#16a34a;}
+    .kde-row-pa{background:#fffbeb;color:#f59e0b;}
+    .kde-row-un{background:#fff5f5;color:#e63946;}
+    .kde-row-na{background:#f4f6fb;color:#9aa0b4;}
+    .kde-row-q{font-size:12px;color:#4a4e69;line-height:1.5;flex:1;}
+    .kde-row-note{font-size:11px;color:#9aa0b4;margin-top:3px;font-style:italic;}
+    /* Evidence chips */
+    .kde-ev-list{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+    .kde-ev-chip{display:inline-flex;align-items:center;gap:5px;background:#f4f0ff;border:1px solid #ddd6fe;border-radius:6px;padding:3px 9px;font-size:11px;font-weight:600;color:#7c3aed;}
+    .kde-ev-chip-icon{font-size:12px;}
+    .kde-ev-chip-tag{font-size:9px;font-weight:700;color:#a78bfa;background:#ede9fe;border-radius:4px;padding:1px 5px;text-transform:uppercase;letter-spacing:0.3px;}
+    .kde-ev-chip a:hover{text-decoration:underline!important;}
+    .kde-ev-chip:has(a){cursor:pointer;}
+    .kde-ev-chip:has(a):hover{background:#ede9fe;border-color:#c4b5fd;}
+    /* Document viewer modal */
+    .doc-viewer{display:none;position:fixed;inset:0;background:rgba(4,8,24,0.75);backdrop-filter:blur(8px);z-index:500;align-items:center;justify-content:center;padding:24px;}
+    .doc-viewer.open{display:flex;}
+    .doc-box{background:#fff;border-radius:18px;width:100%;max-width:860px;height:88vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.25);}
+    .doc-hd{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #f0f2f8;flex-shrink:0;}
+    .doc-title{font-size:13px;font-weight:700;color:#1a1a2e;max-width:560px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .doc-hd-r{display:flex;align-items:center;gap:8px;}
+    .doc-open-btn{display:inline-flex;align-items:center;gap:5px;background:#8b5cf6;color:#fff;border:none;border-radius:999px;padding:6px 14px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none;}
+    .doc-close{width:28px;height:28px;border-radius:50%;background:#f4f6fb;border:none;cursor:pointer;font-size:15px;color:#6b7280;display:flex;align-items:center;justify-content:center;}
+    .doc-close:hover{background:#e8eaf0;}
+    .doc-body{flex:1;overflow:hidden;background:#f4f6fb;}
+    .doc-body iframe{width:100%;height:100%;border:none;}
+    .doc-body img{width:100%;height:100%;object-fit:contain;}
+    .doc-unsupported{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:12px;color:#9aa0b4;}
+    .doc-unsupported-icon{font-size:40px;}
+    .doc-unsupported-t{font-size:14px;font-weight:600;color:#4a4e69;}
+    .doc-unsupported-s{font-size:12px;}
+    .comment-box{background:#f9fafc;border:1px solid #e8eaf0;border-radius:12px;padding:14px 16px;margin-bottom:16px;}
+    .comment-lbl{font-size:11px;font-weight:700;color:#6b7280;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;}
+    .comment-ta{width:100%;border:1px solid #e0e3ed;border-radius:8px;padding:9px 12px;font-family:'Poppins',sans-serif;font-size:12px;color:#1a1a2e;outline:none;resize:none;background:#fff;transition:border-color 0.2s;}
+    .comment-ta:focus{border-color:#8b5cf6;}
+    .ar-actions{display:flex;gap:10px;flex-wrap:wrap;}
+    .btn-verify{background:#16a34a;color:#fff;border:none;border-radius:999px;padding:10px 24px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background 0.2s;}
+    .btn-verify:hover{background:#15803d;}
+    .btn-more-info{background:#f4f6fb;color:#1a6fdb;border:1.5px solid #c7dcf8;border-radius:999px;padding:10px 20px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+    .btn-reject{background:#fff5f5;color:#e63946;border:1.5px solid #fecaca;border-radius:999px;padding:10px 20px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;}
+    .btn-saving{opacity:0.6;pointer-events:none;}
+  </style>
+</head>
+<body>
+
+<!-- LOGO — home button, hover shows ← Back to MRI -->
+<div style="position:fixed;top:20px;left:24px;z-index:100;">
+  <a class="logo" href="mri.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;">
+    <div style="width:36px;height:36px;background:transparent;border-radius:10px;display:flex;align-items:center;justify-content:center;">
+      <img src="brand-logo.png" style="width:28px;height:28px;object-fit:contain;"/>
+    </div>
+    <div style="display:flex;flex-direction:column;line-height:1.1;">
+      <span id="logoSub" style="font-size:9px;font-weight:700;letter-spacing:2.5px;color:#9aa0b4;text-transform:uppercase;transition:color 0.2s;">Project</span>
+      <span id="logoMain" style="font-size:16px;font-weight:800;color:#1a1a2e;transition:color 0.2s;">Manhattan.</span>
+    </div>
+  </a>
+</div>
+
+<div class="ar-wrap">
+  <div class="ar-header">
+    <div>
+      <div class="ar-title">Company Assessments</div>
+      <div class="ar-sub">Review and verify submitted assessments before publishing scores.</div>
+    </div>
+    <div class="ar-filters">
+      <div class="ar-filter active" onclick="setFilter('all')">All</div>
+      <div class="ar-filter" onclick="setFilter('pending')">⏳ Pending</div>
+      <div class="ar-filter" onclick="setFilter('verified')">✅ Verified</div>
+      <div class="ar-filter" onclick="setFilter('rejected')">❌ Rejected</div>
+    </div>
+  </div>
+  <div class="ar-list" id="arList">
+    <div class="ar-empty"><div class="ar-empty-icon">📋</div><div class="ar-empty-t">Loading assessments...</div></div>
+  </div>
+</div>
+
+<!-- DETAIL PANEL -->
+<div class="ar-detail" id="arDetail" onclick="closePanel(event)">
+  <div class="ar-panel" id="arPanel">
+    <div class="ar-phd">
+      <div class="ar-phd-l">
+        <div class="ar-phd-logo" id="pLogo">?</div>
+        <div>
+          <div class="ar-phd-name" id="pName">—</div>
+          <div class="ar-phd-sub" id="pSub">Submitted —</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span id="pStatusBadge" class="badge badge-pending">⏳ Pending</span>
+        <button class="ar-close" onclick="document.getElementById('arDetail').classList.remove('open')">×</button>
+      </div>
+    </div>
+    <div class="ar-pbody">
+      <div class="score-card">
+        <div>
+          <div class="score-label">Manhattan Risk Index</div>
+          <div class="score-num" id="pScore">—</div>
+          <div class="score-desc" id="pScoreDesc">Pending verification</div>
+        </div>
+        <div class="score-breakdown" id="pScoreBreakdown"></div>
+      </div>
+      <div class="ar-section">
+        <div class="ar-sec-title">📦 Products Submitted</div>
+        <div id="pProducts"><span style="font-size:12px;color:#9aa0b4;">No products</span></div>
+      </div>
+      <div class="ar-section">
+        <div class="ar-sec-title">📊 Compliance Snapshot</div>
+        <div id="pCompliance"></div>
+      </div>
+      <div class="ar-section">
+        <div class="ar-sec-title">🔍 KDE Responses</div>
+        <div id="pKDE"></div>
+      </div>
+      <div class="ar-section">
+        <div class="ar-sec-title">📬 Delivery Preference</div>
+        <div id="pDelivery" style="font-size:13px;color:#4a4e69;"></div>
+      </div>
+      <div class="comment-box">
+        <div class="comment-lbl">Expert Comments</div>
+        <textarea class="comment-ta" id="pComment" rows="4" placeholder="Add your review comments, feedback, or requests for more information..."></textarea>
+      </div>
+      <div class="ar-actions">
+        <button class="btn-verify" onclick="updateStatus('verified')">✅ Verify & Publish</button>
+        <button class="btn-more-info" onclick="updateStatus('more_info')">📋 Request More Info</button>
+        <button class="btn-reject" onclick="updateStatus('rejected')">❌ Reject</button>
+        <button class="btn-reject" onclick="confirmDelete()" style="margin-left:auto;">🗑️ Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DOCUMENT VIEWER MODAL -->
+<div class="doc-viewer" id="docViewer" onclick="closeDocViewer(event)">
+  <div class="doc-box">
+    <div class="doc-hd">
+      <div class="doc-title" id="docTitle">Document</div>
+      <div class="doc-hd-r">
+        <a class="doc-open-btn" id="docOpenBtn" href="#" target="_blank">↗ Open in new tab</a>
+        <button class="doc-close" onclick="document.getElementById('docViewer').classList.remove('open')">×</button>
+      </div>
+    </div>
+    <div class="doc-body" id="docBody"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="utils.js"></script>
+<script>
+const SU='https://enbdaajcromxmhgcverp.supabase.co',SK='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const db=window._sharedSupabase||(window._sharedSupabase=supabase.createClient(SU,SK));
+let allAssessments=[],currentFilter='all',currentId=null;
+
+const STAGES=[
+  {k:'harvesting',t:'Harvesting & Catch',i:'🎣'},
+  {k:'transshipment',t:'Transshipment',i:'🔄'},
+  {k:'landing',t:'Landing & First Receiver',i:'⚓'},
+  {k:'processing',t:'Processing',i:'🏭'},
+  {k:'shipping',t:'Shipping & Logistics',i:'🚛'},
+  {k:'certifications',t:'Certifications & Compliance',i:'🏅'},
+];
+
+const KDE_KEYS={
+  harvesting:['fv_name','fv_imo','fv_uid','fv_flag','fv_registry','fv_tracking','fv_species','fv_gtin','fv_linking','fv_weight','fv_area','fv_coords','fv_rfmo','fv_permit','fv_harvest_cert','fv_coc','fv_welfare_policy','fv_welfare_standards'],
+  transshipment:['cr_name','cr_imo','cr_uid','cr_reg','cr_flag','cr_rfmo','cr_gtin','cr_linking','cr_weight','cr_location','cr_approval','cr_auth_doc','cr_observer','cr_coc','cr_welfare_policy','cr_welfare_standards'],
+  landing:['fcl_species','fcl_gtin','fcl_linking','fcl_weight','fcl_port','fcl_geo','fcl_bol','fcl_consignee','fcl_container','fcl_ownership','fcl_auth','fcl_eu','fcl_coc','fcl_welfare'],
+  processing:['pp_name','pp_ownership','pp_origin','pp_geo','pp_gtin','pp_lot','pp_linking','pp_weight','pp_data','pp_cold','pp_eu','pp_coc','pp_harvest_cert','pp_welfare_policy','pp_welfare_standards'],
+  shipping:['lfp_shipper','lfp_receiver','lfp_ownership','lfp_gtin','lfp_linking','lfp_weight','lfp_source','lfp_dest','lfp_geo','lfp_po','lfp_seal','lfp_invoice','lfp_packing','lfp_coc'],
+  certifications:['c_msc','c_asc','c_brc','c_iso','c_eu','c_haccp','c_audit','c_internal','c_recall','c_digital','c_interop','c_welfare_org','c_welfare_audit'],
+  // Aquaculture harvesting keys
+  harvesting_aqua:['aq_farm_name','aq_farm_license','aq_species','aq_gtin','aq_linking','aq_weight','aq_lot','aq_stocking','aq_feed_supplier','aq_feed_origin','aq_water','aq_disease','aq_coc','aq_audit','aq_welfare'],
+};
+
+const KDE_LABELS={
+  fv_name:'Fishing vessel name recorded',fv_imo:'IMO number for each vessel',fv_uid:'Unique vessel identification number',fv_flag:'Flag state of each vessel',fv_registry:'Vessel on public registry with hyperlink',fv_vms:'VMS (Vessel Monitoring System) active for each fishing vessel',
+  fv_ais:'AIS tracking active and publicly verifiable',fv_species:'Species recorded by scientific name',fv_gtin:'Item/SKU/UPC/GTIN assigned at harvest',fv_linking:'Linking KDE (batch/lot/serial) at harvest',fv_weight:'Weight or quantity with unit of measure',fv_area:'FAO catch area documented',fv_coords:'Catch geo-coordinates recorded',fv_rfmo:'Vessel on RFMO register',fv_eu_approval:'EU approved vessel listing for each fishing vessel',fv_iuu_check:'Fishing vessel checked against IUU blacklists (RFMO, EU, PSMA)',fv_psma:'Fishing vessel complies with PSMA requirements',fv_permit:'Valid fishing authorization or permit',fv_harvest_cert:'Harvest certification (e.g. MSC)',fv_coc:'Chain of Custody certification — harvest',fv_welfare_policy:'Human Welfare Policy documented',fv_welfare_standards:'Human welfare standards compliance',
+  cr_name:'Carrier vessel name',cr_imo:'Carrier vessel IMO number',cr_uid:'Unique carrier vessel ID',cr_reg:'Carrier vessel registration number',cr_flag:'Carrier vessel flag state',cr_rfmo:'Carrier on RFMO register',cr_eu_approval:'EU approved vessel listing for carrier vessel',cr_iuu_check:'Carrier vessel checked against IUU blacklists (RFMO, EU, PSMA)',cr_psma:'Carrier vessel complies with PSMA requirements',cr_gtin:'GTIN carried through to transshipment',cr_linking:'Linking KDE maintained at transshipment',cr_weight:'Weight/quantity at transshipment',cr_location:'Geo-location of transshipment event',cr_approval:'Flag state transshipment authorization',cr_auth_doc:'Transshipment authorization document',cr_ts_port_auth:'Transshipment notified to and approved by port authority',cr_ts_port_obs:'Independent observer present at port transshipment',cr_ts_atsea_notify:'Advance RFMO notification given before at-sea transshipment',cr_coc:'CoC certification — transshipment',cr_welfare_policy:'Human Welfare Policy — carrier vessels',cr_welfare_standards:'Human welfare standards — carrier',
+  fcl_species:'Species carried through to landing',fcl_gtin:'GTIN recorded at landing',fcl_linking:'Linking KDE at landing',fcl_weight:'Weight/quantity at landing',fcl_port:'Port of landing documented',fcl_geo:'Geo-coordinates of landing location',fcl_bol:'Bill of Lading',fcl_consignee:'Consignee on shipping documents',fcl_container:'Container number documented',fcl_ownership:'Product ownership documented at landing',fcl_auth:'Landing authorization held',fcl_eu:'EU competent authority approval',fcl_coc:'CoC certification — landing',fcl_welfare:'Human Welfare Policy — landing entity',
+  fcl_landing_date:'Date of first landing or off-load documented',fcl_product_form:'Product form at landing recorded (whole, H&G, fillet etc.)',fcl_master_decl:'Signed vessel master declaration for the catch',fcl_ca_validation:'Catch certificate validated by flag state competent authority',fcl_net_weight:'Net weight (not gross) specifically recorded at landing',
+  fcl_land_decl:'Landing declaration submitted to port authority',fcl_port_receipt:'Port authority receipt or weigh ticket at landing',fcl_catch_log:"Vessel's catch log available at point of landing",fcl_cold_chain:'Cold chain continuity documented — vessel hold to landing facility',fcl_carrier_name:'Carrier vessel name recorded at landing',fcl_carrier_imo:'Carrier vessel IMO recorded at landing',
+  cr_atsea_rfmo:'RFMO authorization for at-sea transshipment',cr_atsea_obs:'Independent observer or electronic monitoring at at-sea transshipment',cr_atsea_hs:"RFMO High Seas transshipment authorization document",
+  s_simp:'SIMP entry filing available (US-bound)',s_fsma_lot:'FSMA 204 traceability lot code assigned at each CTE (US-bound)',
+  s_iftp:'Importer holds valid NOAA International Fisheries Trade Permit (IFTP)',c_fsma_kde:'FSMA 204 KDE record maintained per lot (US-bound)',c_fsvp:'Foreign Supplier Verification Program (FSVP) on file (US-bound)',
+  fm_name:'Feedmill name and location documented',fm_license:'Feedmill registration or operating license',fm_formulation:'Feed formulation or ingredient list available',fm_fishmeal:'Fishmeal/fish oil ingredients traceable to source fishery',fm_cert:'Source fishery certified (IFFO RS, MarinTrust)',fm_lot:'Lot/batch number per feed production run',fm_weight:'Weight/quantity per feed batch',fm_allergen:'Allergen declarations for feed produced',fm_audit:'Third-party feedmill quality audit (GMP+, FAMI-QS)',fm_welfare:'Human Welfare Policy — feedmill',
+  ht_name:'Hatchery name and location documented',ht_license:'Hatchery registration or license',ht_broodstock:'Broodstock origin and health status documented',ht_lot:'Batch/lot number at juvenile or fingerling production',ht_species:'Species documented by scientific name at hatchery',ht_stocking:'Stocking records (date, quantity, weight) per batch',ht_disease:'Disease treatment and medication records at hatchery',ht_water:'Water quality monitoring records at hatchery',ht_coc:'Hatchery covered by CoC or aquaculture certification',ht_audit:'Third-party hatchery audit (12 months)',ht_welfare:'Human Welfare Policy — hatchery',
+  aq_farm_name:'Farm name and location documented',aq_farm_license:'Farm registration or aquaculture license',aq_species:'Species documented by scientific name',aq_gtin:'GTIN assigned at farm stage',aq_linking:'Linking KDE at farm stage',aq_weight:'Harvest weight and unit of measure per batch',aq_lot:'Lot code or production batch number at harvest',aq_stocking:'Stocking density and stocking date records',aq_feed_supplier:'Feed supplier name and traceability',aq_feed_origin:'Feed ingredient origin documented',aq_water:'Water quality monitoring records',aq_disease:'Disease treatment and medication records',aq_coc:'Farm CoC certification (ASC, BAP)',aq_audit:'Third-party aquaculture audit (12 months)',aq_welfare:'Animal and worker welfare policy at farm',
+  pp_name:'Processing facility name and location',pp_ownership:'Product ownership at processing',pp_origin:'Product origin recorded',pp_geo:'Processing facility geo-coordinates',pp_gtin:'GTIN at processing',pp_lot:'Lot/batch number assigned',pp_linking:'Linking KDE maintained at processing',pp_weight:'Weight/quantity at processing',pp_data:'Full catch data received from first receiver',pp_cold:'Cold chain covered by CoC',pp_eu:'EU Facility Approval number',pp_coc:'CoC certification — processing',pp_harvest_cert:'Harvest certification at processing',pp_welfare_policy:'Human Welfare Policy — processing',pp_welfare_standards:'Human welfare standards — processing',
+  lfp_shipper:"Shipper's GLN",lfp_receiver:"Receiver's GLN",lfp_ownership:'Product ownership — shipping',lfp_gtin:'GTIN on shipping documents',lfp_linking:'Linking KDE on shipping documents',lfp_weight:'Weight/quantity on shipping documents',lfp_source:'Source location on shipping documents',lfp_dest:'Destination location documented',lfp_geo:'Geo-location event read points',lfp_po:"Buyer's purchase order",lfp_seal:'Container seal number',lfp_invoice:'Commercial invoice with certification status',lfp_packing:'Packing list matches invoice and BoL',lfp_coc:'Logistics partner CoC certification',
+  c_msc:'MSC Chain of Custody certificate',c_asc:'ASC Chain of Custody certificate',c_issf_pvr:'ISSF Participating Vessel Register (PVR) listing — tuna vessels',c_brc:'BRC Global Standard or IFS certification',c_iso:'ISO 22000 or equivalent',c_eu:'EU Facility Approval number',c_haccp:'Certified HACCP food safety plan',c_audit:'Independent third-party traceability audit (12 months)',c_internal:'Internal traceability system (source to sale)',c_recall:'Product recall within 4 hours capability',c_digital:'Traceability data captured digitally',c_interop:'Traceability data shareable digitally',c_welfare_org:'Company-wide Human Welfare Policy',c_welfare_audit:'Human welfare/social responsibility audit (2 years)',
+};
+
+const WEIGHTS={
+  fv_name:50,fv_imo:50,fv_uid:30,fv_flag:50,fv_registry:30,fv_vms:50,fv_ais:30,fv_species:50,fv_gtin:30,fv_linking:30,fv_weight:10,fv_area:50,fv_coords:30,fv_rfmo:50,fv_eu_approval:30,fv_iuu_check:50,fv_psma:50,fv_permit:50,fv_harvest_cert:30,fv_coc:30,fv_welfare_policy:10,fv_welfare_standards:10,
+  cr_name:50,cr_imo:50,cr_uid:30,cr_reg:30,cr_flag:50,cr_rfmo:50,cr_eu_approval:30,cr_iuu_check:50,cr_psma:50,cr_gtin:30,cr_linking:30,cr_weight:10,cr_location:30,cr_approval:50,cr_auth_doc:50,cr_ts_port_auth:30,cr_ts_port_obs:30,cr_ts_atsea_notify:50,cr_coc:30,cr_welfare_policy:10,cr_welfare_standards:10,
+  fcl_species:30,fcl_gtin:30,fcl_linking:30,fcl_weight:10,fcl_port:50,fcl_geo:30,fcl_bol:50,fcl_consignee:30,fcl_container:10,fcl_ownership:30,fcl_auth:50,fcl_eu:30,fcl_coc:30,fcl_welfare:10,
+  pp_name:50,pp_ownership:30,pp_origin:50,pp_geo:10,pp_gtin:30,pp_lot:50,pp_linking:30,pp_weight:10,pp_data:30,pp_cold:30,pp_eu:30,pp_coc:30,pp_harvest_cert:30,pp_welfare_policy:10,pp_welfare_standards:10,
+  lfp_shipper:30,lfp_receiver:30,lfp_ownership:30,lfp_gtin:30,lfp_linking:30,lfp_weight:10,lfp_source:30,lfp_dest:30,lfp_geo:10,lfp_po:30,lfp_seal:10,lfp_invoice:30,lfp_packing:30,lfp_coc:10,
+  c_msc:30,c_asc:30,c_issf_pvr:30,c_brc:30,c_haccp:30,c_iso:30,c_eu:30,c_haccp:30,c_audit:50,c_internal:50,c_recall:30,c_digital:30,c_interop:30,c_welfare_org:10,c_welfare_audit:10,
+};
+
+function calcScore(kde){
+  if(!kde)return{score:null,total:0,av:0,pa:0,un:0};
+  let maxPossible=0,lost=0,av=0,pa=0,un=0;
+  Object.entries(WEIGHTS).forEach(([id,w])=>{
+    maxPossible+=w;
+    const r=kde[id];
+    if(!r||r.ans==='un'){lost+=w;un++;}
+    else if(r.ans==='pa'){lost+=Math.round(w*0.5);pa++;}
+    else if(r.ans==='av'){av++;}
+    else{lost+=w;un++;}
+  });
+  return{score:lost,maxPossible,av,pa,un,total:av+pa+un};
+}
+
+function scoreColor(score){
+  if(score===null)return'#9aa0b4';
+  if(score===0)return'#16a34a';
+  if(score<200)return'#22c55e';
+  if(score<400)return'#f59e0b';
+  if(score<600)return'#f97316';
+  return'#e63946';
+}
+function scoreLabel(score){
+  if(score===null)return'Not calculated';
+  if(score===0)return'Fully Transparent';
+  if(score<200)return'Low Risk';
+  if(score<400)return'Medium Risk';
+  if(score<600)return'High Risk';
+  return'Critical Risk';
+}
+function pctColor(pct){
+  if(pct>=80)return'#16a34a';
+  if(pct>=50)return'#f59e0b';
+  return'#e63946';
+}
+
+async function loadAssessments(){
+  const{data,error}=await db.from('company_assessments').select('*').order('created_at',{ascending:false});
+  if(error){console.error(error);return;}
+  allAssessments=data||[];
+  renderList();
+}
+
+function setFilter(f){
+  currentFilter=f;
+  document.querySelectorAll('.ar-filter').forEach(el=>el.classList.remove('active'));
+  event.target.classList.add('active');
+  renderList();
+}
+
+function renderList(){
+  const list=document.getElementById('arList');
+  let filtered=allAssessments;
+  if(currentFilter!=='all')filtered=allAssessments.filter(a=>a.status===currentFilter);
+  if(!filtered.length){
+    list.innerHTML=`<div class="ar-empty"><div class="ar-empty-icon">📋</div><div class="ar-empty-t">${currentFilter==='all'?'No assessments submitted yet':'No '+currentFilter+' assessments'}</div></div>`;
+    return;
+  }
+  list.innerHTML=filtered.map(a=>{
+    const kde=typeof a.kde_responses==='string'?JSON.parse(a.kde_responses||'{}'):a.kde_responses||{};
+    const{score,av,pa,un,total}=calcScore(kde);
+    const answered=av+pa;
+    const totalQ=Object.keys(WEIGHTS).length;
+    const pct=Math.round((answered/totalQ)*100);
+    const date=new Date(a.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+    const prods=typeof a.products==='string'?JSON.parse(a.products||'[]'):a.products||[];
+    const statusMap={pending:'badge-pending',verified:'badge-verified',rejected:'badge-rejected',more_info:'badge-review'};
+    const statusLabel={pending:'⏳ Pending',verified:'✅ Verified',rejected:'❌ Rejected',more_info:'📋 More Info'};
+    const initials=(a.company_name||'?').charAt(0).toUpperCase();
+    return `<div class="ar-card" onclick="openPanel('${a.id}')">
+      <div class="ar-logo">${initials}</div>
+      <div class="ar-info">
+        <div class="ar-cname">${a.company_name||'Unknown Company'}</div>
+        <div class="ar-meta">
+          <span>📅 ${date}</span>
+          <span>📦 ${prods.length} product${prods.length!==1?'s':''}</span>
+          <span>🗝️ ${answered}/${totalQ} KDEs answered</span>
+          ${a.delivery_preference==='meeting'?'<span>📅 Wants meeting</span>':'<span>📧 Email</span>'}
+        </div>
+      </div>
+      <div class="ar-progress">
+        <div class="ar-pct" style="color:${pctColor(pct)}">${pct}%</div>
+        <div class="ar-prog-track"><div class="ar-prog-fill" style="width:${pct}%;background:${pctColor(pct)}"></div></div>
+      </div>
+      <div class="ar-status"><span class="badge ${statusMap[a.status]||'badge-pending'}">${statusLabel[a.status]||'⏳ Pending'}</span></div>
+      <button class="ar-btn" onclick="event.stopPropagation();openPanel('${a.id}')">Review</button>
+    </div>`;
+  }).join('');
+}
+
+function openPanel(id){
+  currentId=id;
+  const a=allAssessments.find(x=>x.id===id);
+  if(!a)return;
+  const kde=typeof a.kde_responses==='string'?JSON.parse(a.kde_responses||'{}'):a.kde_responses||{};
+  const prods=typeof a.products==='string'?JSON.parse(a.products||'[]'):a.products||[];
+  const{score,av,pa,un}=calcScore(kde);
+  const date=new Date(a.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const initials=(a.company_name||'?').charAt(0).toUpperCase();
+
+  document.getElementById('pLogo').textContent=initials;
+  document.getElementById('pName').textContent=a.company_name||'Unknown';
+  document.getElementById('pSub').textContent=`Submitted ${date}`;
+  document.getElementById('pComment').value=a.reviewer_comments||'';
+
+  const statusMap={pending:'badge-pending',verified:'badge-verified',rejected:'badge-rejected',more_info:'badge-review'};
+  const statusLabel={pending:'⏳ Pending',verified:'✅ Verified',rejected:'❌ Rejected',more_info:'📋 More Info'};
+  const sb=document.getElementById('pStatusBadge');
+  sb.className=`badge ${statusMap[a.status]||'badge-pending'}`;
+  sb.textContent=statusLabel[a.status]||'⏳ Pending';
+
+  const sc=document.getElementById('pScore');
+  sc.textContent=score??'—';
+  sc.style.color=scoreColor(score);
+  document.getElementById('pScoreDesc').textContent=scoreLabel(score);
+  document.getElementById('pScoreBreakdown').innerHTML=`
+    <div class="score-bd-row"><div class="score-bd-dot" style="background:#16a34a"></div>${av} Available</div>
+    <div class="score-bd-row"><div class="score-bd-dot" style="background:#f59e0b"></div>${pa} Partial</div>
+    <div class="score-bd-row"><div class="score-bd-dot" style="background:#e63946"></div>${un} Not Available</div>
+  `;
+
+  document.getElementById('pProducts').innerHTML=prods.length
+    ?prods.map(p=>`<span class="ar-prod-chip">${p.cert==='MSC'?'🎣':p.cert==='ASC'?'🐟':'📦'} ${p.desc}${p.species?' · '+p.species:''}${p.harvest?' · '+p.harvest:''}</span>`).join('')
+    :'<span style="font-size:12px;color:#9aa0b4;">No products submitted</span>';
+
+  // KDE — renders evidence array (new) + legacy r.ev (old) both
+  const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};
+  // Determine which stages to show based on what was asked
+  // Check if aquaculture questions exist in responses (farm questions)
+  const hasAquaResponses=Object.keys(kde).some(k=>k.startsWith('aq_'));
+  const hasWildResponses=Object.keys(kde).some(k=>k.startsWith('fv_'));
+  // Determine harvesting keys to show
+  const getHarvestKeys=()=>{
+    if(hasAquaResponses&&hasWildResponses)return [...KDE_KEYS.harvesting,...KDE_KEYS.harvesting_aqua];
+    if(hasAquaResponses)return KDE_KEYS.harvesting_aqua;
+    return KDE_KEYS.harvesting;
+  };
+  document.getElementById('pKDE').innerHTML=STAGES.map(st=>{
+    const isHarvest=st.k==='harvesting';
+    const keys=isHarvest?getHarvestKeys():(KDE_KEYS[st.k]||[]);
+    // Check if this stage was disabled (no answers at all)
+    const hasAnyAnswer=keys.some(k=>kde[k]?.ans);
+    const stAv=keys.filter(k=>kde[k]?.ans==='av').length;
+    const stPa=keys.filter(k=>kde[k]?.ans==='pa').length;
+    const stUn=keys.filter(k=>kde[k]?.ans==='un').length;
+    // If stage disabled (no answers), show N/A block
+    const stageBody=!hasAnyAnswer&&st.k!=='harvesting'
+      ?`<div style="padding:16px;text-align:center;color:#9aa0b4;font-size:12px;font-style:italic;">⛔ Not in supply chain — this stage was not assessed.</div>`
+      :keys.map(k=>{
+      const r=kde[k];
+      const ans=r?.ans;
+      const iconMap={av:'✓',pa:'◑',un:'✗'};
+      const clsMap={av:'kde-row-av',pa:'kde-row-pa',un:'kde-row-un'};
+      // Build evidence chips — new array format + legacy single string
+      const evs=r?.evidence||[];
+      const legacy=(!evs.length&&r?.ev)?[{type:'doc',value:r.ev,name:r.ev}]:[];
+      const allEv=[...evs,...legacy];
+      const evHtml=allEv.length
+        ?`<div class="kde-ev-list">${allEv.map(e=>{
+          const isUrl=e.value&&e.value.startsWith('http');
+          const display=e.name&&e.name!==e.value?e.name:e.value;
+          const disp=display&&display.length>28?display.slice(0,28)+'…':display;
+          const clickAction=isUrl?`openDocViewer('${e.value}','${(display||'').replace(/'/g,"\\'")}')`:null;
+          const isPhoto=e.type==='photo';
+          if(isPhoto&&isUrl){
+            return `<div style="margin-top:6px;">
+              <img src="${e.value}" onclick="openDocViewer('${e.value}','${(display||'').replace(/'/g,"\\'")}')"
+                style="max-width:120px;max-height:90px;border-radius:8px;object-fit:cover;border:1px solid #e0e3ed;cursor:pointer;"
+                onerror="this.style.display='none'"
+                title="${display||'Photo evidence'}"/>
+              <div style="font-size:10px;color:#9aa0b4;margin-top:3px;">${disp}</div>
+            </div>`;
+          }
+          return `<span class="kde-ev-chip" ${clickAction?`onclick="${clickAction}" style="cursor:pointer;"`:''}>${evIcons[e.type]||'📎'} ${disp}<span class="kde-ev-chip-tag">${e.type||'file'}</span></span>`;
+        }).join('')}</div>`
+        :'';
+      return `<div class="kde-row">
+        <div class="kde-row-icon ${ans?clsMap[ans]:'kde-row-na'}">${ans?iconMap[ans]:'—'}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="kde-row-q">${KDE_LABELS[k]||k}</div>
+          ${r?.note?`<div class="kde-row-note">📝 ${r.note}</div>`:''}
+          ${evHtml}
+        </div>
+      </div>`;
+    }).join('');
+    const stageContent=typeof stageBody==='string'?stageBody:rows;
+    return `<div class="kde-stage" id="stage_${st.k}">
+      <div class="kde-stage-hd" onclick="toggleStage('${st.k}')">
+        <div class="kde-stage-hd-l">
+          <span class="kde-stage-icon">${st.i}</span>
+          <span class="kde-stage-name">${st.t}</span>
+        </div>
+        <div class="kde-stage-stats">
+          <span class="kde-stat kde-stat-av">✓${stAv}</span>
+          <span class="kde-stat kde-stat-pa">◑${stPa}</span>
+          <span class="kde-stat kde-stat-un">✗${stUn}</span>
+          <span class="kde-stage-chevron">▼</span>
+        </div>
+      </div>
+      <div class="kde-stage-body">${stageContent}</div>
+    </div>`;
+  }).join('');
+
+  renderCompliance(kde);
+  document.getElementById('pDelivery').textContent=
+    a.delivery_preference==='meeting'?'📅 Wants a meeting with the Manhattan team':'📧 Prefers to receive results via email';
+
+  document.getElementById('arDetail').classList.add('open');
+}
+
+function toggleStage(k){document.getElementById('stage_'+k).classList.toggle('open');}
+
+function closePanel(e){
+  if(e.target===document.getElementById('arDetail'))
+    document.getElementById('arDetail').classList.remove('open');
+}
+
+async function updateStatus(status){
+  if(!currentId)return;
+  const comment=document.getElementById('pComment').value.trim();
+  const a=allAssessments.find(x=>x.id===currentId);
+  const kde=typeof a.kde_responses==='string'?JSON.parse(a.kde_responses||'{}'):a.kde_responses||{};
+  const{score}=calcScore(kde);
+  const btns=document.querySelectorAll('.ar-actions button');
+  btns.forEach(b=>b.classList.add('btn-saving'));
+  const{error}=await db.from('company_assessments').update({
+    status,
+    reviewer_comments:comment||null,
+    mri_score:score,
+    reviewer_id:(await db.auth.getUser()).data?.user?.id||null,
+    reviewed_at:new Date().toISOString(),
+  }).eq('id',currentId);
+  btns.forEach(b=>b.classList.remove('btn-saving'));
+  if(error){alert('Error: '+error.message);return;}
+  const idx=allAssessments.findIndex(x=>x.id===currentId);
+  if(idx>-1){allAssessments[idx].status=status;allAssessments[idx].reviewer_comments=comment;allAssessments[idx].mri_score=score;}
+  document.getElementById('arDetail').classList.remove('open');
+  renderList();
+  const msgs={verified:'✅ Assessment verified and score published!',rejected:'Assessment rejected.',more_info:'📋 More info requested from company.'};
+  showToast(msgs[status]||'Updated.',status==='verified'?'success':'info');
+}
+
+function showToast(msg,type='success'){
+  document.querySelectorAll('.ca-toast').forEach(t=>t.remove());
+  const t=document.createElement('div');t.className='ca-toast';
+  t.style.cssText=`position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(12px);background:${type==='success'?'#16a34a':'#1a6fdb'};color:#fff;padding:11px 22px;border-radius:999px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,0.15);z-index:9999;opacity:0;transition:opacity 0.25s ease,transform 0.25s ease;white-space:nowrap;`;
+  t.textContent=msg;document.body.appendChild(t);
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{t.style.opacity='1';t.style.transform='translateX(-50%) translateY(0)';}));
+  setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(-50%) translateY(8px)';setTimeout(()=>t.remove(),300);},3500);
+}
+
+// Logo hover
+document.querySelector('a.logo').addEventListener('mouseenter',()=>{
+  document.getElementById('logoSub').textContent='← Back to';
+  document.getElementById('logoMain').textContent='MRI';
+});
+document.querySelector('a.logo').addEventListener('mouseleave',()=>{
+  document.getElementById('logoSub').textContent='Project';
+  document.getElementById('logoMain').textContent='Manhattan.';
+});
+
+function openDocViewer(url, name){
+  document.getElementById('docTitle').textContent=name||'Document';
+  document.getElementById('docOpenBtn').href=url;
+  const body=document.getElementById('docBody');
+  const ext=url.split('?')[0].split('.').pop().toLowerCase();
+  const imgExts=['jpg','jpeg','png','gif','webp','svg'];
+  if(imgExts.includes(ext)){
+    body.innerHTML=`<img src="${url}" alt="${name}" style="width:100%;height:100%;object-fit:contain;"/>`;
+  } else if(ext==='pdf'){
+    body.innerHTML=`<iframe src="${url}" title="${name}"></iframe>`;
+  } else {
+    // For doc/docx/xls use Google Docs viewer
+    const gview=`https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`;
+    body.innerHTML=`<iframe src="${gview}" title="${name}"></iframe>`;
+  }
+  document.getElementById('docViewer').classList.add('open');
+}
+function closeDocViewer(e){
+  if(e.target===document.getElementById('docViewer'))
+    document.getElementById('docViewer').classList.remove('open');
+}
+function renderCompliance(kde){
+  const STANDARDS=[
+    {
+      id:'gdst',label:'GDST Traceability',img:'gdst-ca.png',color:'#16a34a',sub:'Data Coverage',
+      keys:[
+        {id:'fv_name',label:'Fishing vessel name'},
+        {id:'fv_imo',label:'IMO number'},
+        {id:'fv_flag',label:'Flag state'},
+        {id:'fv_species',label:'Species (scientific name)'},
+        {id:'fv_gtin',label:'GTIN at harvest'},
+        {id:'fv_linking',label:'Linking KDE at harvest'},
+        {id:'fv_weight',label:'Weight at harvest'},
+        {id:'fv_area',label:'FAO catch area'},
+        {id:'fv_permit',label:'Fishing permit'},
+        {id:'fv_coc',label:'Chain of Custody cert — harvest'},
+        {id:'fcl_bol',label:'Bill of Lading'},
+        {id:'fcl_linking',label:'Linking KDE at landing'},
+        {id:'fcl_weight',label:'Weight at landing'},
+        {id:'fcl_port',label:'Port of landing'},
+        {id:'fcl_ownership',label:'Product ownership at landing'},
+        {id:'pp_gtin',label:'GTIN at processing'},
+        {id:'pp_lot',label:'Lot code at processing'},
+        {id:'pp_linking',label:'Linking KDE at processing'},
+        {id:'pp_weight',label:'Weight at processing'},
+        {id:'lfp_gtin',label:'GTIN on shipping docs'},
+        {id:'lfp_linking',label:'Linking KDE on shipping docs'},
+        {id:'lfp_weight',label:'Weight on shipping docs'},
+        {id:'lfp_source',label:'Source location on shipping docs'},
+        {id:'lfp_dest',label:'Destination on shipping docs'},
+      ]
+    },
+    {
+      id:'fsma',label:'FSMA 204 Readiness',img:'fsma-ca.png',color:'#f59e0b',sub:'Readiness Score',
+      keys:[
+        {id:'s_fsma_lot',label:'FSMA 204 traceability lot code at each CTE'},
+        {id:'c_fsma_kde',label:'FSMA 204 KDE record maintained per lot'},
+        {id:'c_fsvp',label:'Foreign Supplier Verification Program (FSVP)'},
+        {id:'fcl_linking',label:'Linking KDE at landing'},
+        {id:'pp_lot',label:'Lot code at processing'},
+        {id:'lfp_linking',label:'Linking KDE on shipping docs'},
+        {id:'c_recall',label:'Product recall within 4 hours'},
+        {id:'c_digital',label:'Traceability data captured digitally'},
+        {id:'c_internal',label:'Internal traceability system (source to sale)'},
+      ]
+    },
+    {
+      id:'simp',label:'NOAA SIMP',img:'simp-ca.png',color:'#e63946',sub:'Entry Readiness',
+      keys:[
+        {id:'s_simp',label:'SIMP entry filing'},
+        {id:'s_iftp',label:'NOAA International Fisheries Trade Permit (IFTP)'},
+        {id:'fv_name',label:'Fishing vessel name'},
+        {id:'fv_imo',label:'IMO number'},
+        {id:'fv_flag',label:'Flag state'},
+        {id:'fv_area',label:'FAO catch area'},
+        {id:'fv_permit',label:'Fishing permit'},
+        {id:'fcl_landing_date',label:'Date of first landing documented'},
+        {id:'fcl_product_form',label:'Product form at landing recorded'},
+        {id:'fcl_port',label:'Port of landing'},
+        {id:'fcl_weight',label:'Weight at landing'},
+        {id:'c_internal',label:'Internal chain of custody system'},
+      ]
+    },
+    {
+      id:'eu',label:'EU Catch Certificate',img:'eu-ca.png',color:'#1a6fdb',sub:'Compatibility',
+      keys:[
+        {id:'fcl_master_decl',label:'Vessel master signed declaration'},
+        {id:'fcl_ca_validation',label:'Competent authority catch cert validation'},
+        {id:'fcl_net_weight',label:'Net weight specifically recorded'},
+        {id:'fcl_eu',label:'EU competent authority port approval'},
+        {id:'pp_eu',label:'EU facility approval number'},
+        {id:'c_eu',label:'EU facility approval — certifications'},
+        {id:'fv_name',label:'Fishing vessel name'},
+        {id:'fv_imo',label:'IMO number'},
+        {id:'fv_flag',label:'Flag state'},
+        {id:'fv_rfmo',label:'Vessel on RFMO register'},
+        {id:'fv_permit',label:'Fishing permit'},
+        {id:'fcl_port',label:'Port of landing'},
+        {id:'fcl_species',label:'Species at landing record'},
+      ]
+    },
+  ];
+
+  function calcPct(keys){
+    const av=keys.filter(k=>kde[k.id]?.ans==='av').length;
+    const pa=keys.filter(k=>kde[k.id]?.ans==='pa').length;
+    return Math.round(((av+(pa*0.5))/keys.length)*100);
+  }
+
+  document.getElementById('pCompliance').innerHTML=STANDARDS.map(s=>{
+    const pct=calcPct(s.keys);
+    const rows=s.keys.map(k=>{
+      const ans=kde[k.id]?.ans;
+      const icon=ans==='av'?'✓':ans==='pa'?'◑':ans==='un'?'✗':'—';
+      const col=ans==='av'?'#16a34a':ans==='pa'?'#f59e0b':ans==='un'?'#e63946':'#c0c4d0';
+      const bg=ans==='av'?'#f0fdf4':ans==='pa'?'#fffbeb':ans==='un'?'#fff5f5':'#f4f6fb';
+      return `<div style="display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid #f0f2f8;">
+        <span style="width:18px;height:18px;border-radius:50%;background:${bg};color:${col};font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${icon}</span>
+        <span style="font-size:11px;color:#4a4e69;">${k.label}</span>
+      </div>`;
+    }).join('');
+    return `<div style="background:#fff;border:1px solid #e8eaf0;border-radius:12px;overflow:hidden;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;cursor:pointer;background:#f9fafc;" onclick="toggleCompliance('comp_${s.id}')">
+        <div style="display:flex;align-items:center;gap:9px;">
+          <img src="${s.img}" style="height:24px;object-fit:contain;" onerror="this.style.display='none'"/>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#1a1a2e;">${s.label}</div>
+            <div style="font-size:10px;color:#9aa0b4;">${s.sub}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:70px;height:4px;background:#e8eaf0;border-radius:999px;overflow:hidden;">
+            <div style="width:${pct}%;height:100%;background:${s.color};border-radius:999px;"></div>
+          </div>
+          <span style="font-size:13px;font-weight:800;color:${s.color};min-width:34px;text-align:right;">${pct}%</span>
+          <span style="font-size:10px;color:#c0c4d0;">▼</span>
+        </div>
+      </div>
+      <div id="comp_${s.id}" style="display:none;padding:8px 14px 4px;">
+        ${rows}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleCompliance(id){
+  const el=document.getElementById(id);
+  if(!el)return;
+  el.style.display=el.style.display==='none'?'block':'none';
+}
+
+function confirmDelete(){
+  if(!currentId)return;
+  const a=allAssessments.find(x=>x.id===currentId);
+  const name=a?.company_name||'this assessment';
+  document.getElementById('deleteWarnName').textContent=name;
+  document.getElementById('deleteWarn').style.display='flex';
+}
+
+async function deleteAssessment(){
+  if(!currentId)return;
+  const{error}=await db.from('company_assessments').delete().eq('id',currentId);
+  if(error){alert('Delete failed: '+error.message);return;}
+  allAssessments=allAssessments.filter(x=>x.id!==currentId);
+  document.getElementById('arDetail').classList.remove('open');
+  currentId=null;
+  renderList();
+  showToast('🗑️ Assessment deleted.','info');
+}
+loadAssessments();
+</script>
+
+<div id="deleteWarn" style="display:none;position:fixed;inset:0;background:rgba(8,12,32,0.55);backdrop-filter:blur(6px);z-index:600;align-items:center;justify-content:center;padding:24px;">
+  <div style="background:#fff;border-radius:20px;padding:28px 30px 24px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.18);">
+    <div style="width:44px;height:44px;border-radius:12px;background:#fff5f5;border:1px solid #fecaca;display:flex;align-items:center;justify-content:center;font-size:20px;margin-bottom:16px;">🗑️</div>
+    <div style="font-size:17px;font-weight:800;color:#1a1a2e;margin-bottom:8px;">Delete Assessment?</div>
+    <div style="font-size:13px;color:#6b7280;line-height:1.7;margin-bottom:22px;">You're about to permanently delete the assessment for <strong id="deleteWarnName" style="color:#1a1a2e;"></strong>. This cannot be undone — all responses, evidence and scores will be lost.</div>
+    <div style="display:flex;gap:10px;">
+      <button onclick="document.getElementById('deleteWarn').style.display='none'" style="flex:1;padding:11px;border-radius:999px;border:1.5px solid #e0e3ed;background:#fff;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:#6b7280;cursor:pointer;">Keep it</button>
+      <button onclick="document.getElementById('deleteWarn').style.display='none';deleteAssessment();" style="flex:1;padding:11px;border-radius:999px;border:none;background:#e63946;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:#fff;cursor:pointer;">Yes, Delete</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

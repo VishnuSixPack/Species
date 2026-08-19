@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Ports · SmarTuna concept</title>
+<link rel="icon" type="image/png" href="sc-blue-logo.png"/>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+    /* ── SMARTUNA WORDMARK ── */
+    @font-face {
+      font-family: 'Bitsumis';
+      src: url('BITSUMIS.TTF') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+    .sc-wm { display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1;gap:0;text-decoration:none; }
+    .sc-wm-top { font-family:'Bitsumis',sans-serif !important;font-weight:900 !important;font-size:15px;letter-spacing:.04em;text-transform:uppercase;background:linear-gradient(90deg,#1a6fdb,#1a6fdb) !important;-webkit-background-clip:text !important;-webkit-text-fill-color:transparent !important;background-clip:text !important; }
+    .sc-wm-sub { font-family:'Bitsumis',sans-serif !important;font-weight:700 !important;font-size:7px;letter-spacing:.22em;text-transform:uppercase;color:#1a1a2e;-webkit-text-fill-color:#1a1a2e !important;margin-top:2px; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#1a6fdb;--primary-dark:#1558b0;--primary-soft:#e8f1fc;--primary-mid:#d0e4f8;
+  --bg:#f0f2f7;--text:#1a1a2e;--muted:#6b7280;--soft:#9aa0b4;
+  --border:#e8eaf0;--line:#eef0f5;--line-strong:#dfe3ec;
+  --ok:#1f9d6b;--ok-soft:#e6f6ef;--danger:#e63946;
+  --radius:14px;--font:'Poppins','DM Sans',system-ui,sans-serif;
+  --shadow:0 1px 3px rgba(20,24,45,.05),0 8px 24px rgba(20,24,45,.06);
+  --shadow-lg:0 6px 14px rgba(20,24,45,.08),0 24px 48px rgba(20,24,45,.11);
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased}
+*::-webkit-scrollbar{width:6px;height:6px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:#d1d5e0;border-radius:99px}
+*::-webkit-scrollbar-thumb:hover{background:#a0a8bc}
+html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
+/* NAV */
+.topbar{display:flex;align-items:center;padding:14px 28px;gap:20px;background:rgba(255,255,255,.7);backdrop-filter:blur(12px);position:sticky;top:0;z-index:100;border-bottom:1px solid var(--line)}
+.topbar-brand{text-decoration:none;flex-shrink:0;line-height:1.1}
+.topbar-brand-project{display:block;font-size:8px;font-weight:700;letter-spacing:2px;color:var(--soft)}
+.topbar-brand-name{display:block;font-size:16px;font-weight:800;color:var(--text)}
+.topbar-nav{flex:1;display:flex;justify-content:center}
+.nav-pill{display:inline-flex;align-items:center;gap:2px;background:#fff;border-radius:999px;padding:5px 7px;box-shadow:0 1px 6px rgba(0,0,0,.07)}
+.nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:400;color:var(--muted);text-decoration:none;transition:.15s}
+.nav-item:hover,.nav-item.active{background:var(--bg);color:var(--text);font-weight:600}
+.nav-item-wrap{position:relative}
+.nav-item-wrap:hover .nav-dropdown{display:block}
+.nav-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:170px;padding:6px;z-index:500}
+.nav-dropdown-item{display:flex;align-items:center;padding:8px 12px;font-size:13px;color:#4a4e69;text-decoration:none;border-radius:8px;font-weight:500;transition:.15s}
+.nav-dropdown-item:hover{background:var(--bg);color:var(--primary)}
+.nav-dropdown-item.active{background:var(--primary-soft);color:var(--primary-dark);font-weight:600}
+.topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;overflow:hidden;border:none}
+.avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:176px;overflow:hidden;z-index:999}
+.avatar-menu.open{display:block}
+.avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;color:var(--text);border-bottom:1px solid var(--border)}
+.avatar-menu a{display:flex;align-items:center;padding:9px 15px;font-size:13px;color:#4a4e69;text-decoration:none}
+.avatar-menu a:hover{background:var(--bg)}
+.avatar-menu button{width:100%;padding:9px 15px;background:none;border:none;border-top:1px solid var(--border);text-align:left;font-family:var(--font);font-size:13px;color:var(--danger);cursor:pointer}
+/* PAGE */
+.wrap{max-width:1200px;margin:0 auto;padding:28px 28px 60px}
+.page-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:16px;flex-wrap:wrap}
+.page-head-left h1{font-size:24px;font-weight:800;letter-spacing:-.3px}
+.page-head-left p{color:var(--muted);font-size:13px;margin-top:4px}
+/* ADD BUTTON */
+.add-dropdown{position:relative}
+.add-split{display:flex;align-items:stretch;border-radius:12px;overflow:hidden;box-shadow:0 4px 12px rgba(26,111,219,.22)}
+.add-main{display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 18px;background:var(--primary);color:#fff;text-decoration:none;font:inherit;font-size:13px;font-weight:600;transition:.15s;border-right:1px solid rgba(255,255,255,.2)}
+.add-main:hover{background:var(--primary-dark);color:#fff}
+.add-chevron{height:44px;width:36px;background:var(--primary);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:.15s}
+.add-chevron:hover{background:var(--primary-dark)}
+.add-menu{position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-lg);min-width:260px;padding:8px;z-index:100;opacity:0;visibility:hidden;transform:translateY(-8px) scale(.97);transform-origin:top right;transition:opacity .18s,transform .18s,visibility .18s}
+.add-dropdown.open .add-menu{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
+.add-menu-header{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--soft);padding:6px 12px 10px}
+.add-menu-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;text-decoration:none;color:var(--text);transition:.14s}
+.add-menu-item:hover{background:var(--bg)}
+.add-menu-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.add-menu-label{font-size:13px;font-weight:600}
+.add-menu-sub{font-size:11.5px;color:var(--muted);margin-top:1px}
+/* STATS BAR */
+.stats-bar{display:flex;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+.stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 18px;flex:1;min-width:110px;display:flex;flex-direction:column;gap:2px}
+.stat-val{font-size:22px;font-weight:700;letter-spacing:-.3px}
+.stat-lbl{font-size:11.5px;color:var(--muted);font-weight:500}
+/* FILTERS */
+.toolbar-outer{position:sticky;top:56px;z-index:50;background:var(--bg);padding:10px 0 12px;margin:0 0 6px;transition:box-shadow .2s}
+.toolbar-outer.scrolled{box-shadow:0 4px 16px rgba(20,24,45,.07);background:rgba(240,242,247,.95);backdrop-filter:blur(10px)}
+.toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.search-box{display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--border);border-radius:11px;padding:0 14px;height:42px;flex:1;max-width:340px;transition:max-width .3s cubic-bezier(.2,.8,.2,1),box-shadow .14s,border-color .14s}
+.scrolled .search-box{max-width:520px}
+.search-box:focus-within{border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,111,219,.10)}
+.search-box svg{color:var(--soft);flex-shrink:0}
+.search-box input{border:none;outline:none;font:inherit;font-size:13.5px;background:none;flex:1;color:var(--text)}
+.search-box input::placeholder{color:#c0c4d0}
+.filters{display:flex;gap:8px;flex-wrap:wrap}
+.fchip{height:34px;padding:0 14px;border-radius:999px;border:1.5px solid var(--border);background:#fff;font:inherit;font-size:12.5px;font-weight:500;color:var(--muted);cursor:pointer;transition:.14s;white-space:nowrap}
+.fchip:hover{border-color:var(--primary-mid);color:var(--primary-dark)}
+.fchip.on{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:600}
+/* GRID */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+/* PORT CARD */
+.pcard{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;cursor:pointer;transition:transform .16s cubic-bezier(.2,.8,.2,1),box-shadow .16s,border-color .16s;position:relative;text-decoration:none;display:block;color:inherit}
+.pcard:hover{transform:translateY(-3px);border-color:var(--primary-mid);box-shadow:var(--shadow-lg)}
+.pcard-stripe{height:4px;background:linear-gradient(90deg,#1a6fdb,#3b8be8)}
+.pcard-photo{height:120px;background:linear-gradient(135deg,#1a3a6b,#1a6fdb);position:relative;overflow:hidden}
+.pcard-photo img{width:100%;height:100%;object-fit:cover}
+.pcard-photo-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+.pcard-photo-placeholder svg{color:rgba(255,255,255,.3)}
+.pcard-locode{position:absolute;bottom:8px;right:10px;background:rgba(0,0,0,.5);color:#fff;font-family:monospace;font-size:11px;font-weight:700;padding:3px 8px;border-radius:6px;letter-spacing:.06em;backdrop-filter:blur(4px)}
+.pcard-body{padding:14px 16px 12px}
+.pcard-name{font-size:15px;font-weight:700;letter-spacing:-.1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pcard-country{font-size:12.5px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:4px}
+.pcard-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}
+.ptag{font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;background:var(--primary-soft);color:var(--primary-dark)}
+.ptag.fishing{background:#e6f6ef;color:#1f9d6b}
+.ptag.cargo{background:#fff7ed;color:#92400e}
+.ptag.private{background:#f3e8ff;color:#6d28d9}
+.pcard-meta{display:grid;grid-template-columns:1fr 1fr;gap:6px 14px;margin-top:12px;font-size:12px}
+.pmeta-item{min-width:0}
+.pmeta-item .lbl{color:var(--soft);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;font-weight:600;margin-bottom:1px}
+.pmeta-item .val{color:var(--text);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;max-width:100%}
+/* EMPTY STATE */
+.empty{grid-column:1/-1;text-align:center;padding:60px 20px;background:#fff;border:1px dashed var(--line-strong);border-radius:var(--radius);color:var(--soft)}
+.empty svg{color:var(--line-strong);margin-bottom:12px}
+.empty h3{font-size:16px;font-weight:600;color:var(--muted);margin-bottom:6px}
+.empty p{font-size:13px}
+/* LIST VIEW */
+.grid.list-view{grid-template-columns:1fr;gap:8px}
+.grid.list-view .pcard{display:flex;flex-direction:row}
+.grid.list-view .pcard-photo{height:72px;width:96px;flex-shrink:0;border-radius:var(--radius) 0 0 var(--radius)}
+.grid.list-view .pcard-stripe{display:none}
+.grid.list-view .pcard-body{flex:1;padding:10px 14px;display:flex;align-items:center;gap:20px}
+.grid.list-view .pcard-name{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:160px}
+.grid.list-view .pcard-country{margin-top:0;font-size:12px}
+.grid.list-view .pcard-tags{margin-top:0;flex-shrink:0}
+.grid.list-view .pcard-meta{margin-top:0;flex:1;gap:4px 20px}
+/* SKEL */
+.skel{background:#fff;border:1px solid var(--line);border-radius:var(--radius);height:260px;overflow:hidden;position:relative}
+.skel::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,.6) 50%,transparent 100%);animation:shimmer 1.5s infinite}
+@keyframes shimmer{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
+/* TOAST */
+.view-btn.active{background:var(--primary-soft);border-color:var(--primary-mid);color:var(--primary)}
+.view-btn:hover:not(.active){background:var(--bg);color:var(--text)}
+/* PREMIUM TOOLTIP */
+[data-tip]{position:relative}
+[data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%) translateY(4px);background:rgba(20,24,45,.92);color:#fff;font-size:11.5px;font-weight:500;white-space:nowrap;padding:5px 10px;border-radius:8px;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .18s,transform .18s,visibility .18s;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.2)}
+[data-tip]::before{content:'';position:absolute;bottom:calc(100% + 2px);left:50%;transform:translateX(-50%) translateY(4px);border:5px solid transparent;border-top-color:rgba(20,24,45,.92);pointer-events:none;opacity:0;visibility:hidden;transition:opacity .18s,visibility .18s;z-index:9999}
+[data-tip]:hover::after,[data-tip]:hover::before{opacity:1;visibility:visible;transform:translateX(-50%) translateY(0)}
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(12px);background:var(--text);color:#fff;padding:13px 22px;border-radius:11px;font-weight:600;font-size:13.5px;opacity:0;visibility:hidden;transition:opacity .25s,transform .28s cubic-bezier(.2,.8,.2,1),visibility .25s;z-index:1000}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1;visibility:visible;box-shadow:var(--shadow-lg)}
+.toast.err{background:var(--danger)}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="index.html" class="topbar-brand" style="display:flex;align-items:center;gap:9px;">
+    <img src="sc-blue-logo.png" alt="SmarTuna" style="width:26px;height:26px;object-fit:contain;flex-shrink:0;"/>
+      <span class="sc-wm">
+        <span class="sc-wm-top">SmarTuna</span>
+        <span class="sc-wm-sub">concept</span>
+      </span>
+  </a>
+  <div class="topbar-nav">
+    <div class="nav-pill">
+      <a href="home-logged-in.html" class="nav-item">Home</a>
+      <div class="nav-item-wrap">
+        <a href="#" class="nav-item active">Atlas</a>
+        <div class="nav-dropdown">
+          <a href="Species.html" class="nav-dropdown-item">Species</a>
+          <a href="cold-storage-list.html" class="nav-dropdown-item">Cold Storage</a>
+          <a href="port-list.html" class="nav-dropdown-item active">Ports</a>
+          <a href="vessel-list.html" class="nav-dropdown-item">Vessels</a>
+          <a href="country.html" class="nav-dropdown-item">Country</a>
+        </div>
+      </div>
+      <a href="#" class="nav-item">Features</a>
+      <a href="#" class="nav-item">Messages</a>
+      <a href="#" class="nav-item">Reports</a>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div style="position:relative">
+      <button class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()"><span id="avatarInitials">··</span></button>
+      <div class="avatar-menu" id="avatarMenu">
+        <div class="avatar-menu-name" id="avatarGreeting">Hello!</div>
+        <a href="profile.html">Profile</a>
+        <button onclick="handleLogout()">Logout</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="page-head">
+    <div class="page-head-left">
+      <h1>Ports</h1>
+      <p>Global port registry — search by name, country or UN/LOCODE</p>
+    </div>
+    <div class="add-dropdown" id="addDropdown" style="visibility:hidden">
+      <div class="add-split">
+        <a href="port.html" class="add-main">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Port
+        </a>
+        <button class="add-chevron" onclick="toggleAddMenu(event)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+      </div>
+      <div class="add-menu" id="addMenu">
+        <div class="add-menu-header">Port Actions</div>
+        <a href="port.html" class="add-menu-item">
+          <div class="add-menu-icon" style="background:var(--primary-soft);color:var(--primary)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </div>
+          <div><div class="add-menu-label">Add Port</div><div class="add-menu-sub">Register a single new port</div></div>
+        </a>
+        <a href="https://unece.org/trade/cefact/unlocode-code-list-country-and-territory" target="_blank" rel="noopener" class="add-menu-item">
+          <div class="add-menu-icon" style="background:#e6f6ef;color:#1f9d6b">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </div>
+          <div><div class="add-menu-label">UN/LOCODE Lookup</div><div class="add-menu-sub">Find official port codes on UNECE</div></div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-bar" id="statsBar" style="display:none">
+    <div class="stat"><div class="stat-val" id="statTotal">–</div><div class="stat-lbl">Total Ports</div></div>
+    <div class="stat"><div class="stat-val" id="statCountries">–</div><div class="stat-lbl">Countries</div></div>
+    <div class="stat"><div class="stat-val" id="statFishing">–</div><div class="stat-lbl">Fishing Ports</div></div>
+    <div class="stat"><div class="stat-val" id="statTerminals">–</div><div class="stat-lbl">Terminals Logged</div></div>
+  </div>
+
+  <!-- TOOLBAR -->
+  <div class="toolbar-outer" id="toolbarOuter">
+    <div class="toolbar">
+      <div class="search-box">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input id="q" placeholder="Search by name, country, UN/LOCODE…" oninput="render()"/>
+      </div>
+      <div class="filters" id="filters">
+      <button class="fchip on" data-filter="all">All</button>
+      <button class="fchip" data-filter="Container Port">Container</button>
+      <button class="fchip" data-filter="Fishing Port">Fishing</button>
+      <button class="fchip" data-filter="Bulk Cargo Port">Bulk</button>
+      <button class="fchip" data-filter="RoRo Port">RoRo</button>
+      <button class="fchip" data-filter="Multi-Purpose Port">Multi-Purpose</button>
+      <button class="fchip" data-filter="Cruise / Passenger Port">Cruise</button>
+      <button class="fchip" data-filter="Marina / Recreational Port">Marina</button>
+      </div>
+      <!-- View toggle -->
+      <div style="display:flex;gap:6px;flex-shrink:0;margin-left:auto">
+        <button id="gridViewBtn" onclick="setView('grid')" class="view-btn active" data-tip="Grid view" style="width:36px;height:36px;border-radius:9px;border:1.5px solid var(--border);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--primary);transition:.14s">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        </button>
+        <button id="listViewBtn" onclick="setView('list')" class="view-btn" data-tip="List view" style="width:36px;height:36px;border-radius:9px;border:1.5px solid var(--border);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--soft);transition:.14s">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRID -->
+  <div class="grid" id="grid">
+    <div class="skel"></div><div class="skel"></div><div class="skel"></div>
+    <div class="skel"></div><div class="skel"></div><div class="skel"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
+const SUPABASE_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+let all=[], activeFilter='all';
+
+function typeTagClass(t){
+  if(!t) return '';
+  if(t.includes('Fishing')) return 'fishing';
+  if(t.includes('Cargo')||t.includes('Container')||t.includes('Bulk')||t.includes('RoRo')) return 'cargo';
+  if(t.includes('Private')) return 'private';
+  return '';
+}
+
+function portCard(p){
+  const tags=[p.port_type, p.ownership].filter(Boolean);
+  const tagHtml=tags.map(t=>`<span class="ptag ${typeTagClass(t)}">${esc(t)}</span>`).join('');
+  const locode=p.un_locode?`<div class="pcard-locode">${esc(p.un_locode)}</div>`:'';
+  const photo=p.photo_url
+    ?`<img src="${esc(p.photo_url)}" alt="${esc(p.main_port_name)}" loading="lazy"/>`
+    :`<div class="pcard-photo-placeholder"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg></div>`;
+  return `<a class="pcard" href="port-detail.html?id=${p.id}">
+    <div class="pcard-photo">${photo}${locode}</div>
+    <div class="pcard-body">
+      <div class="pcard-name">${esc(p.main_port_name)}</div>
+      <div class="pcard-country">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/></svg>
+        ${esc(p.country||'—')}${p.region_name?` · ${esc(p.region_name)}`:''}
+      </div>
+      ${tagHtml?`<div class="pcard-tags">${tagHtml}</div>`:''}
+      <div class="pcard-meta">
+        <div class="pmeta-item"><div class="lbl">Port Authority</div><div class="val">${esc(p.port_authority||'—')}</div></div>
+        <div class="pmeta-item"><div class="lbl">Size</div><div class="val">${esc(p.harbor_size||'—')}</div></div>
+        <div class="pmeta-item"><div class="lbl">Water Body</div><div class="val">${esc(p.world_water_body||'—')}</div></div>
+        <div class="pmeta-item"><div class="lbl">VTS</div><div class="val">${esc(p.vessel_traffic_service||'—')}</div></div>
+      </div>
+    </div>
+  </a>`;
+}
+
+function render(){
+  const q=($('q').value||'').toLowerCase();
+  let rows=all.filter(p=>{
+    if(activeFilter!=='all' && p.port_type!==activeFilter) return false;
+    if(!q) return true;
+    return (p.main_port_name||'').toLowerCase().includes(q)
+      ||(p.country||'').toLowerCase().includes(q)
+      ||(p.un_locode||'').toLowerCase().includes(q)
+      ||(p.port_authority||'').toLowerCase().includes(q)
+      ||(p.region_name||'').toLowerCase().includes(q);
+  });
+  const grid=$('grid');
+  if(!rows.length){
+    grid.innerHTML=`<div class="empty">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+      <h3>${q||activeFilter!=='all'?'No ports match your search':'No ports registered yet'}</h3>
+      <p>${q||activeFilter!=='all'?'Try a different search or filter':'Use "+ Add Port" to register the first port.'}</p>
+    </div>`;
+    return;
+  }
+  grid.innerHTML=rows.map(portCard).join('');
+}
+
+function updateStats(){
+  const countries=new Set(all.map(p=>p.country).filter(Boolean)).size;
+  const fishing=all.filter(p=>p.port_type==='Fishing Port').length;
+  $('statTotal').textContent=all.length;
+  $('statCountries').textContent=countries;
+  $('statFishing').textContent=fishing;
+}
+
+// Filter chips
+document.getElementById('filters').addEventListener('click',e=>{
+  const chip=e.target.closest('.fchip'); if(!chip) return;
+  document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('on'));
+  chip.classList.add('on');
+  activeFilter=chip.dataset.filter;
+  render();
+});
+
+// Add menu
+function toggleAddMenu(e){ e.stopPropagation(); $('addDropdown')?.classList.toggle('open'); }
+document.addEventListener('click',e=>{ if(!e.target.closest('.add-dropdown')) $('addDropdown')?.classList.remove('open'); });
+
+// Auth & load
+let _view = localStorage.getItem('pm_port_view')||'grid';
+function setView(v){
+  _view=v;
+  localStorage.setItem('pm_port_view',v);
+  const grid=document.getElementById('grid');
+  if(v==='list') grid.classList.add('list-view');
+  else grid.classList.remove('list-view');
+  document.getElementById('gridViewBtn').classList.toggle('active',v==='grid');
+  document.getElementById('listViewBtn').classList.toggle('active',v==='list');
+}
+// Sticky toolbar scroll detection
+window.addEventListener('scroll',()=>{
+  const outer=document.getElementById('toolbarOuter');
+  if(outer) outer.classList.toggle('scrolled', window.scrollY > 80);
+},{passive:true});
+
+(async function init(){
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){location.href='login.html';return;}
+  const {data:p}=await sb.from('profiles').select('role,first_name,last_name,avatar_color,photo_url').eq('id',user.id).single();
+  const isAdmin=p&&['admin','operator'].includes(p.role);
+  const cachedRole=sessionStorage.getItem('pm_role');
+  if(isAdmin||(cachedRole&&['admin','operator'].includes(cachedRole))){ $('addDropdown').style.visibility='visible'; }
+  if(p?.role) sessionStorage.setItem('pm_role',p.role);
+  if(!isAdmin) $('addDropdown').style.display='none';
+  const first=p?.first_name||user.email.split('@')[0];
+  if(p?.photo_url) $('avatarBtn').innerHTML=`<img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover">`;
+  else{ $('avatarBtn').style.background=p?.avatar_color||'#1a6fdb'; $('avatarInitials').textContent=((first[0]||'')+(p?.last_name?.[0]||'')).toUpperCase()||'··'; }
+  $('avatarGreeting').textContent=`Hello, ${first}!`;
+  // Load ports
+  const {data:ports}=await sb.from('ports').select('id,main_port_name,un_locode,country,region_name,port_type,ownership,port_authority,harbor_size,world_water_body,vessel_traffic_service,photo_url').order('main_port_name');
+  all=ports||[];
+  // Load terminal count
+  const {count}=await sb.from('port_terminals').select('*',{count:'exact',head:true});
+  $('statTerminals').textContent=count||0;
+  $('statsBar').style.display='flex';
+  updateStats(); render(); setView(_view);
+})();
+
+function toggleAvatarMenu(){ $('avatarMenu').classList.toggle('open'); }
+document.addEventListener('click',e=>{ if(!e.target.closest('.avatar-btn')) $('avatarMenu')?.classList.remove('open'); });
+async function handleLogout(){ await sb.auth.signOut(); location.href='index.html'; }
+function toast(msg,err=false){ const t=$('toast');t.textContent=msg;t.className='toast show'+(err?' err':'');setTimeout(()=>t.className='toast',2800); }
+</script>
+</body>
+</html>

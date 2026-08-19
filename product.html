@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Add Product — SmarTuna concept</title>
+  <link rel="icon" type="image/png" href="sc-blue-logo.png" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="product.css" />
+  <style>
+    /* ── SMARTUNA WORDMARK ── */
+    @font-face {
+      font-family: 'Bitsumis';
+      src: url('BITSUMIS.TTF') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+    .sc-wm {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      line-height: 1;
+      gap: 0;
+      text-decoration: none;
+    }
+    .sc-wm-top {
+      font-family: 'Bitsumis', sans-serif !important;
+      font-weight: 900 !important;
+      font-size: 16px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      line-height: 1;
+      background: linear-gradient(90deg, #1a6fdb, #1a6fdb) !important;
+      -webkit-background-clip: text !important;
+      -webkit-text-fill-color: transparent !important;
+      background-clip: text !important;
+    }
+    .sc-wm-sub {
+      font-family: 'Bitsumis', sans-serif !important;
+      font-weight: 700 !important;
+      font-size: 7px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #1a1a2e;
+      -webkit-text-fill-color: #1a1a2e !important;
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Auth check overlay -->
+  <div id="authOverlay" class="auth-overlay hidden"></div>
+
+  <div class="page-wrapper">
+
+    <!-- LEFT PANEL -->
+    <aside class="left-panel">
+      <div class="product-photo-block">
+        <div class="photo-placeholder" id="photoPreview">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+          <span>No image available</span>
+        </div>
+        <button class="btn-upload-photo" onclick="document.getElementById('photoInput').click()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload the photo
+        </button>
+        <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhotoUpload(event)" />
+      </div>
+
+      <div class="summary-fields">
+        <div class="summary-field">
+          <span class="summary-label">Product :</span>
+          <div class="summary-value-row">
+            <span class="summary-value" id="sumProduct">Enter value</span>
+            <button class="pencil-btn" onclick="focusField('productName')">&#9998;</button>
+          </div>
+        </div>
+        <div class="summary-field">
+          <span class="summary-label">Brand :</span>
+          <div class="summary-value-row">
+            <span class="summary-value" id="sumBrand">Enter value</span>
+            <button class="pencil-btn" onclick="focusField('brand')">&#9998;</button>
+          </div>
+        </div>
+        <div class="summary-field">
+          <span class="summary-label">Species :</span>
+          <div class="summary-value-row">
+            <span class="summary-value" id="sumSpecies">Enter value</span>
+            <button class="pencil-btn" onclick="switchTab(1); setTimeout(()=>focusField('commercialName'),200)">&#9998;</button>
+          </div>
+        </div>
+        <div class="summary-field">
+          <span class="summary-label">EAN/GTIN/UID :</span>
+          <div class="summary-value-row">
+            <span class="summary-value" id="sumEan">Enter value</span>
+            <button class="pencil-btn" onclick="focusField('eanGtin')">&#9998;</button>
+          </div>
+        </div>
+        <div class="summary-field">
+          <span class="summary-label">Allergen :</span>
+          <div class="summary-value-row">
+            <span class="summary-value" id="sumAllergen">Enter value</span>
+            <button class="pencil-btn" onclick="switchTab(2)">&#9998;</button>
+          </div>
+        </div>
+        <div class="summary-field">
+          <span class="summary-label">Product's form :</span>
+          <div class="summary-value-row">
+            <span class="summary-value" id="sumForm">Enter value</span>
+            <button class="pencil-btn" onclick="focusField('productForm')">&#9998;</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="bulk-upload-block">
+        <button class="btn-bulk-upload" onclick="document.getElementById('bulkUploadModal').classList.remove('hidden')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload
+        </button>
+        <p class="bulk-hint">Instead of filling all fields manually, you can upload an .xlsx or .csv file containing your product data.</p>
+      </div>
+
+      <div class="left-panel-footer">
+        <div class="user-avatar" id="userAvatar">VV</div>
+        <div class="user-info">
+          <span class="user-name" id="userName"></span>
+          <span class="user-email" id="userEmail"></span>
+        </div>
+        <div class="profile-menu-wrapper">
+          <button class="profile-menu-btn" onclick="toggleProfileMenu()">&#8942;</button>
+          <div class="profile-dropdown hidden" id="profileDropdown">
+          <div class="nav-profile-name" id="profileFirstName">Hello!</div>
+          <a href="profile.html" class="nav-dropdown-link">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            Profile
+          </a>
+          <button onclick="handleLogout()">Logout</button>
+        </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- RIGHT PANEL -->
+    <main class="right-panel">
+
+      <!-- Top action buttons -->
+      <div class="top-actions">
+        <button class="btn-save" id="btnSave" onclick="saveProduct()">Save</button>
+        <button class="btn-cancel" id="btnCancel" onclick="cancelProduct()">Cancel</button>
+      </div>
+
+      <!-- Tab Pills -->
+      <nav class="tab-nav">
+<button class="tab-pill active" data-tab="0" onclick="switchTab(0)">
+  <span class="tab-check"><svg width="9" height="9" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+  1. Product Information
+</button>
+<button class="tab-pill" data-tab="1" onclick="switchTab(1)">
+  <span class="tab-check"><svg width="9" height="9" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+  2. Raw Material Information
+</button>
+<button class="tab-pill" data-tab="2" onclick="switchTab(2)">
+  <span class="tab-check"><svg width="9" height="9" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+  3. Allergen Specification
+</button>
+<button class="tab-pill" data-tab="3" onclick="switchTab(3)">
+  <span class="tab-check"><svg width="9" height="9" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+  4. Nutrition
+</button>
+<button class="tab-pill" data-tab="4" onclick="switchTab(4)">
+  <span class="tab-check"><svg width="9" height="9" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+  5. Sustainability
+</button>
+<button class="tab-pill" data-tab="5" onclick="switchTab(5)">
+  <span class="tab-check"><svg width="9" height="9" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+  6. Art Work
+</button>
+      </nav>
+
+      <!-- TAB PANELS -->
+      <div class="tab-panels">
+
+        <!-- ===== TAB 0: PRODUCT INFORMATION ===== -->
+        <div class="tab-panel active" id="tab-0">
+
+          <!-- Section 1: General Information -->
+          <div class="form-section">
+            <div class="section-header">
+              <h2>General Information</h2>
+              <p>Complete the general product information fields to ensure your submission is correctly documented</p>
+            </div>
+            <div class="form-grid grid-4">
+              <div class="form-field">
+                <label>• Product Name</label>
+                <span class="field-hint">Full name of the product as it should appear on listings or packaging</span>
+                <input type="text" id="productName" placeholder="Enter value" oninput="updateSummary('sumProduct', this.value)" />
+              </div>
+              <div class="form-field">
+                <label>• Brand</label>
+                <span class="field-hint">Specify the official brand name</span>
+                <input type="text" id="brand" placeholder="Enter value" oninput="updateSummary('sumBrand', this.value)" />
+              </div>
+              <div class="form-field">
+                <label>• Functional Product Name</label>
+                <span class="field-hint">Describe what the product actually is or does</span>
+                <input type="text" id="functionalName" placeholder="Enter value" />
+              </div>
+              <div class="form-field">
+                <label>• GS1 Product Name</label>
+                <span class="field-hint">If available. Leave blank if not applicable.</span>
+                <input type="text" id="gs1Name" placeholder="Enter value" />
+              </div>
+            </div>
+            <div class="form-grid grid-3">
+              <div class="form-field">
+                <label>• Short Description</label>
+                <span class="field-hint">A short or abbreviated form of the product name</span>
+                <input type="text" id="shortDesc" placeholder="Enter value" />
+              </div>
+              <div class="form-field">
+                <label>• EAN/GTIN</label>
+                <span class="field-hint">Unique identifier code, such as EAN, GTIN</span>
+                <input type="text" id="eanGtin" placeholder="Enter value" oninput="updateSummary('sumEan', this.value)" />
+              </div>
+              <div class="form-field span-1">
+                <label>• Description</label>
+                <span class="field-hint">A detailed description of the product</span>
+                <textarea id="description" placeholder="Enter value" rows="4"></textarea>
+              </div>
+            </div>
+            <div class="form-grid grid-2">
+              <div class="form-field">
+                <label>• Brand Item ID</label>
+                <span class="field-hint">Unique item identifier assigned by the brand</span>
+                <input type="text" id="brandItemId" placeholder="Enter value" />
+              </div>
+              <div class="form-field">
+                <label>• Product Code</label>
+                <span class="field-hint">Company's internal reference or SKU</span>
+                <input type="text" id="productCode" placeholder="Enter value" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2: Physical Measurement -->
+          <div class="form-section">
+            <div class="section-header">
+              <h2>Physical Measurement</h2>
+              <p>Complete the product's measurement information fields to ensure your submission is correctly documented</p>
+            </div>
+            <div class="form-grid grid-3">
+              <div class="form-field">
+                <label>• Depth (mm)</label>
+                <span class="field-hint">Enter the product's depth</span>
+                <input type="number" id="depth" placeholder="Enter value" />
+              </div>
+              <div class="form-field">
+                <label>• Height (mm)</label>
+                <span class="field-hint">Enter the product's height</span>
+                <input type="number" id="height" placeholder="Enter value" />
+              </div>
+              <div class="form-field">
+                <label>• Width (mm)</label>
+                <span class="field-hint">Enter the product's width</span>
+                <input type="number" id="width" placeholder="Enter value" />
+              </div>
+              <div class="form-field">
+                <label>• Gross Weight (g)</label>
+                <span class="field-hint">The total product weight</span>
+                <input type="number" id="grossWeight" placeholder="Enter value" />
+              </div>
+              <div class="form-field">
+                <label>• Net Weight (g)</label>
+                <span class="field-hint">Product weight excluding packaging</span>
+                <input type="number" id="netWeight" placeholder="Enter value" />
+              </div>
+              <div class="form-field">
+                <label>• Drained Weight (g)</label>
+                <span class="field-hint">Enter the actual weight of the raw product</span>
+                <input type="number" id="drainedWeight" placeholder="Enter value" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 3: Packaging Information -->
+          <div class="form-section">
+            <div class="section-header">
+              <h2>Packaging Information</h2>
+              <p>Complete the product's packaging fields to ensure your submission is correctly documented</p>
+            </div>
+            <div class="form-grid grid-3">
+              <!-- Product Form — dual mode -->
+              <div class="form-field">
+                <label>• Product Form <span class="required">*</span></label>
+                <span class="field-hint">Select the product form, e.g., Canned, Frozen, Fresh, or Pouched</span>
+                <div class="dual-mode-toggle" data-field="productForm">
+                  <button class="mode-btn active" data-mode="select">Select from the list</button>
+                  <button class="mode-btn" data-mode="custom">Enter custom</button>
+                </div>
+                <div class="dual-mode-content">
+                  <select class="mode-select" id="productForm" onchange="updateSummary('sumForm', this.options[this.selectedIndex].text)">
+                    <option value="">Select an option</option>
+                    <option>Canned</option>
+                    <option>Frozen</option>
+                    <option>Fresh</option>
+                    <option>Pouched</option>
+                    <option>Dried</option>
+                    <option>Smoked</option>
+                    <option>Marinated</option>
+                  </select>
+                  <input type="text" class="mode-custom hidden" id="productFormCustom" placeholder="Enter custom value" oninput="updateSummary('sumForm', this.value)" />
+                </div>
+              </div>
+
+              <!-- Pack Style — dual mode -->
+              <div class="form-field">
+                <label>• Pack Style <span class="required">*</span></label>
+                <span class="field-hint">Choose the product style, e.g., Chunks, Flakes, Steaks, or Loins</span>
+                <div class="dual-mode-toggle" data-field="packStyle">
+                  <button class="mode-btn" data-mode="select">Select from the list</button>
+                  <button class="mode-btn active" data-mode="custom">Enter custom</button>
+                </div>
+                <div class="dual-mode-content">
+                  <select class="mode-select hidden" id="packStyle">
+                    <option value="">Select an option</option>
+                    <option>Chunks</option>
+                    <option>Flakes</option>
+                    <option>Steaks</option>
+                    <option>Loins</option>
+                    <option>Fillets</option>
+                    <option>Whole</option>
+                  </select>
+                  <input type="text" class="mode-custom" id="packStyleCustom" placeholder="Enter custom value" />
+                </div>
+              </div>
+
+              <!-- Pack Medium — dual mode -->
+              <div class="form-field">
+                <label>• Pack Medium <span class="required">*</span></label>
+                <span class="field-hint">Enter the packing medium (e.g., Olive Oil, Brine, Vacuum Packed)</span>
+                <div class="dual-mode-toggle" data-field="packMedium">
+                  <button class="mode-btn active" data-mode="select">Select from the list</button>
+                  <button class="mode-btn" data-mode="custom">Enter custom</button>
+                </div>
+                <div class="dual-mode-content">
+                  <select class="mode-select" id="packMedium">
+                    <option value="">Select an option</option>
+                    <option>Olive Oil</option>
+                    <option>Sunflower Oil</option>
+                    <option>Brine</option>
+                    <option>Spring Water</option>
+                    <option>Vacuum Packed</option>
+                    <option>Tomato Sauce</option>
+                    <option>Natural Juices</option>
+                  </select>
+                  <input type="text" class="mode-custom hidden" id="packMediumCustom" placeholder="Enter custom value" />
+                </div>
+              </div>
+
+              <!-- Primary Packaging -->
+              <div class="form-field">
+                <label>• Primary Packaging <span class="required">*</span></label>
+                <span class="field-hint">Direct contact with product</span>
+                <select id="primaryPackaging">
+                  <option value="">Select an option</option>
+                  <option>Can</option>
+                  <option>Pouch</option>
+                  <option>Tray</option>
+                  <option>Bag</option>
+                  <option>Jar</option>
+                  <option>Bottle</option>
+                  <option>Vacuum Bag</option>
+                </select>
+              </div>
+
+              <!-- Inner Packaging -->
+              <div class="form-field">
+                <label>• Inner Packaging <span class="required">*</span></label>
+                <span class="field-hint">Product's Inner Packaging (Secondary Packaging)</span>
+                <select id="innerPackaging">
+                  <option value="">Select an option</option>
+                  <option>Box</option>
+                  <option>Carton</option>
+                  <option>Sleeve</option>
+                  <option>Wrap</option>
+                  <option>Tray</option>
+                </select>
+                <label class="checkbox-label">
+                  <input type="checkbox" id="noInnerPackaging" onchange="toggleInnerPackaging(this)" />
+                  No Secondary / Inner Packaging
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 4: Storage & Temperature -->
+          <div class="form-section">
+            <div class="section-header">
+              <h2>Storage &amp; Temperature Information</h2>
+              <p>Complete the product's temperature and storage fields to ensure your submission is correctly documented</p>
+            </div>
+            <div class="form-grid grid-3">
+              <div class="form-field">
+                <label>• Min Temperature (°C)</label>
+                <span class="field-hint">Minimum recommended temperature</span>
+                <input type="number" id="minTemp" placeholder="Enter value" />
+              </div>
+              <div class="form-field">
+                <label>• Max Temperature (°C)</label>
+                <span class="field-hint">Maximum recommended temperature</span>
+                <input type="number" id="maxTemp" placeholder="Enter value" />
+              </div>
+              <div class="form-field">
+                <label>• Shelf Life</label>
+                <span class="field-hint">Specify the product's shelf life and select the unit</span>
+                <div class="shelf-life-combo">
+                  <input type="number" id="shelfLifeValue" placeholder="Enter value" />
+                  <select id="shelfLifeUnit">
+                    <option value="days">Days</option>
+                    <option value="weeks">Weeks</option>
+                    <option value="months">Months</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 5: Ingredients -->
+          <div class="form-section">
+            <div class="section-header">
+              <h2>Ingredients</h2>
+              <p>List all ingredients used in the product, in descending order by quantity (as shown on the packaging).</p>
+            </div>
+            <div class="form-field full-width">
+              <textarea id="ingredients" placeholder="Enter value" rows="5"></textarea>
+            </div>
+          </div>
+
+        </div><!-- /tab-0 -->
+
+        <!-- ===== TAB 1: RAW MATERIAL INFORMATION ===== -->
+        <div class="tab-panel" id="tab-1">
+          <div class="two-col-cards">
+
+            <!-- Raw Material Card -->
+            <div class="card">
+              <div class="card-header">
+                <h2>Raw Material</h2>
+                <p>Enter raw materials and capture/harvest methods</p>
+              </div>
+              <div class="form-field">
+                <label>• Commercial Name <span class="required">*</span></label>
+                <span class="field-hint">Select the species from the list</span>
+                <select id="commercialName" onchange="onSpeciesSelect(this.value)">
+                  <option value="">Select an option</option>
+                </select>
+                <span class="field-error hidden" id="errCommercialName">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="#e63946"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12" stroke="white" stroke-width="2"/><circle cx="12" cy="16" r="1" fill="white"/></svg>
+                  This field is required.
+                </span>
+              </div>
+              <div class="form-field">
+                <label>• Scientific Name</label>
+                <span class="field-hint">Species' scientific (Latin) name</span>
+                <select id="scientificName" disabled>
+                  <option value="">Select an option</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>• AFSIS Code</label>
+                <span class="field-hint">Standardized AFSIS species code</span>
+                <select id="afisisCode" disabled>
+                  <option value="">Select an option</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>• Taxon Code</label>
+                <span class="field-hint">Taxonomic code that uniquely identifies the species</span>
+                <input type="text" id="taxonCode" placeholder="Auto-populated" readonly />
+              </div>
+            </div>
+
+            <!-- Fishing Methods Card -->
+            <div class="card">
+              <div class="card-header">
+                <h2>Fishing Methods</h2>
+                <p>Enter raw materials and capture/harvest methods</p>
+              </div>
+              <div class="form-field">
+                <label>• Type of Catch <span class="required">*</span></label>
+                <span class="field-hint">Select the type of catch</span>
+                <select id="typeOfCatch" disabled>
+                  <option value="">Select an option</option>
+                </select>
+                <span class="field-error hidden" id="errTypeOfCatch">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="#e63946"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12" stroke="white" stroke-width="2"/><circle cx="12" cy="16" r="1" fill="white"/></svg>
+                  This field is required.
+                </span>
+              </div>
+              <div class="form-field">
+                <label>• Harvest Method <span class="required">*</span></label>
+                <span class="field-hint">Select the harvest methods from the list</span>
+                <select id="harvestMethod" disabled>
+                  <option value="">Select an option</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Specify the Harvest method</label>
+                <span class="field-hint">If applicable, note whether this was a Free School catch or FAD (Fish Aggregating Device) catch</span>
+                <input type="text" id="harvestMethodCustom" placeholder="Specify the harvest method" />
+              </div>
+            </div>
+
+          </div>
+        </div><!-- /tab-1 -->
+
+        <!-- ===== TAB 2: ALLERGEN SPECIFICATION ===== -->
+        <div class="tab-panel" id="tab-2">
+          <div class="form-section">
+            <div class="section-header">
+              <h2>Allergens</h2>
+              <p>List any allergens contained in the product (e.g., Fish, Soy, Wheat). Include all substances required by labeling regulations.</p>
+            </div>
+            <div id="allergenRows"></div>
+            <button class="btn-add-row" onclick="addAllergenRow()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add Allergen
+            </button>
+          </div>
+        </div><!-- /tab-2 -->
+
+        <!-- ===== TAB 3: NUTRITION ===== -->
+        <div class="tab-panel" id="tab-3">
+          <div class="two-col-cards nutrition-cards">
+
+            <!-- By Serving -->
+            <div class="card">
+              <div class="card-header">
+                <h2>Nutrition</h2>
+                <p>by serving</p>
+              </div>
+              <div class="nutrition-rows" id="nutritionServing"></div>
+              <button class="btn-add-row" onclick="addNutritionRow('serving')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add Nutrient
+              </button>
+            </div>
+
+            <!-- By 100g -->
+            <div class="card">
+              <div class="card-header">
+                <h2>Nutrition</h2>
+                <p>by measure 100g</p>
+              </div>
+              <div class="nutrition-rows" id="nutrition100g"></div>
+              <button class="btn-add-row" onclick="addNutritionRow('100g')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add Nutrient
+              </button>
+            </div>
+          </div>
+
+          <!-- Nutrition file upload -->
+          <div class="form-section" style="margin-top:24px;">
+            <p class="upload-hint-center">Instead of filling all fields manually, you can upload pdf, jpg file containing your nutrition data.</p>
+            <div class="dropzone" id="nutritionDropzone" onclick="document.getElementById('nutritionFileInput').click()" ondragover="event.preventDefault()" ondrop="handleDropzoneDrop(event,'nutritionFileInput','nutritionFileList')">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              <span>Select or drag and drop</span>
+            </div>
+            <input type="file" id="nutritionFileInput" accept=".pdf,.jpg,.jpeg,.png" multiple style="display:none" onchange="handleFileInput(event,'nutritionFileList')" />
+            <div class="dropzone-actions">
+              <button class="btn-browse" onclick="document.getElementById('nutritionFileInput').click()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Browse
+              </button>
+              <button class="btn-upload-file">Upload</button>
+            </div>
+            <div class="file-list" id="nutritionFileList"></div>
+          </div>
+        </div><!-- /tab-3 -->
+
+        <!-- ===== TAB 4: SUSTAINABILITY ===== -->
+        <div class="tab-panel" id="tab-4">
+          <div class="form-section">
+            <div class="section-header">
+              <h2>Certifications</h2>
+              <p>Select the sustainability or compliance certification applicable to this product.</p>
+            </div>
+            <div class="form-grid grid-2">
+<div class="form-field">
+                <label>• Raw Material Origin <span class="required">*</span></label>
+                <span class="field-hint">Where the seafood was actually caught or farmed</span>
+                <div class="custom-multiselect" id="rawMaterialOriginMulti">
+                  <div class="multiselect-trigger" onclick="toggleMultiselect('rawMaterialOriginMulti')">
+                    <span class="multiselect-placeholder">Select an option</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                  <div class="multiselect-dropdown hidden">
+                    <label class="multi-option"><input type="checkbox" value="FAO01" /> Africa – Inland waters (FAO 01)</label>
+                    <label class="multi-option"><input type="checkbox" value="FAO02" /> America, North – Inland waters (FAO 02)</label>
+                    <label class="multi-option"><input type="checkbox" value="FAO03" /> America, South – Inland waters (FAO 03)</label>
+                    <label class="multi-option"><input type="checkbox" value="FAO21" /> Atlantic, Northwest (FAO 21)</label>
+                    <label class="multi-option"><input type="checkbox" value="FAO27" /> Atlantic, Northeast (FAO 27)</label>
+                    <label class="multi-option"><input type="checkbox" value="FAO31" /> Atlantic, Western Central (FAO 31)</label>
+                    <label class="multi-option"><input type="checkbox" value="FAO34" /> Atlantic, Eastern Central (FAO 34)</label>
+                    <label class="multi-option"><input type="checkbox" value="FAO37" /> Mediterranean and Black Sea (FAO 37)</label>
+                    <label class="multi-option"><input type="checkbox" value="FAO41" /> Atlantic, Southwest (FAO 41)</label>
+                    <label class="multi-option"><input type="checkbox" value="FAO47" /> Atlantic, Southeast (FAO 47)</label>
+                    <label class="multi-option"><input type="checkbox" value="FAO48" /> Atlantic, Antarctic (FAO 48)</label>
+                    <label class="multi-option"><input type="checkbox" value="FAO51" /> Indian Ocean, Western (FAO 51)</label>
+                    <label class="multi-option"><input type="checkbox" value="FAO57" /> Indian Ocean, Eastern (FAO 57)</label>
+                    <label class="multi-option"><input type="checkbox" value="FAO58" /> Indian Ocean, Antarctic (FAO 58)</label>
+                    <label class="multi-option"><input type="checkbox" value="FAO61" /> Pacific, Northwest (FAO 61)</label>
+                    <label class="multi-option"><input type="checkbox" value="FAO67" /> Pacific, Northeast (FAO 67)</label>
+                    <label class="multi-option"><input type="checkbox" value="FAO71" /> Pacific, Western Central (FAO 71)</label>
+                    <label class="multi-option"><input type="checkbox" value="FAO77" /> Pacific, Eastern Central (FAO 77)</label>
+                    <label class="multi-option"><input type="checkbox" value="FAO81" /> Pacific, Southwest (FAO 81)</label>
+                    <label class="multi-option"><input type="checkbox" value="FAO87" /> Pacific, Southeast (FAO 87)</label>
+                    <label class="multi-option"><input type="checkbox" value="FAO88" /> Pacific, Antarctic (FAO 88)</label>
+                    <label class="multi-option"><input type="checkbox" value="NS" /> Not Specified / Unavailable</label>
+                  </div>
+                </div>
+                <div class="multiselect-tags" id="rawMaterialOriginTags"></div>
+              </div>
+              <div class="form-field">
+                <label>• Certification</label>
+                <span class="field-hint">Select the sustainability or compliance certification applicable</span>
+                <div class="custom-multiselect" id="certificationMulti">
+                  <div class="multiselect-trigger" onclick="toggleMultiselect('certificationMulti')">
+                    <span class="multiselect-placeholder">Select an option</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                  <div class="multiselect-dropdown hidden">
+                    <label class="multi-option"><input type="checkbox" value="MSC" /> MSC (Marine Stewardship Council)</label>
+                    <label class="multi-option"><input type="checkbox" value="ASC" /> ASC (Aquaculture Stewardship Council)</label>
+                    <label class="multi-option"><input type="checkbox" value="BAP" /> BAP (Best Aquaculture Practices)</label>
+                    <label class="multi-option"><input type="checkbox" value="GLOBALG.A.P" /> GLOBALG.A.P</label>
+                    <label class="multi-option"><input type="checkbox" value="Friend of the Sea" /> Friend of the Sea</label>
+                    <label class="multi-option"><input type="checkbox" value="Dolphin Safe" /> Dolphin Safe</label>
+                    <label class="multi-option"><input type="checkbox" value="Organic EU" /> Organic EU</label>
+                    <label class="multi-option"><input type="checkbox" value="Fairtrade" /> Fairtrade</label>
+                    <label class="multi-option"><input type="checkbox" value="RSPO" /> RSPO</label>
+                    <label class="multi-option"><input type="checkbox" value="Rainforest Alliance" /> Rainforest Alliance</label>
+                  </div>
+                </div>
+                <div class="multiselect-tags" id="certificationTags"></div>
+              </div>
+            </div>
+          </div>
+        </div><!-- /tab-4 -->
+
+        <!-- ===== TAB 5: ART WORK ===== -->
+<div class="tab-panel" id="tab-5">
+          <div class="form-section">
+            <div class="section-header">
+              <h2>Art Work &amp; Documents</h2>
+              <p>Upload product visuals and supporting documents. Accepted formats are listed under each field.</p>
+            </div>
+            <div class="artwork-grid">
+
+              <div class="artwork-card">
+                <div class="artwork-card-info">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  <div>
+                    <span class="artwork-card-title">Product Label</span>
+                    <span class="artwork-card-hint">jpg, png, pdf, ai, eps</span>
+                  </div>
+                </div>
+                <button class="btn-artwork-browse" onclick="document.getElementById('artLabel').click()">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Browse
+                </button>
+                <input type="file" id="artLabel" accept=".jpg,.jpeg,.png,.pdf,.ai,.eps" multiple style="display:none" onchange="handleFileInput(event,'artLabelList')" />
+                <div class="file-list" id="artLabelList"></div>
+              </div>
+
+              <div class="artwork-card">
+                <div class="artwork-card-info">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="1.8"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
+                  <div>
+                    <span class="artwork-card-title">Product Carton Markings</span>
+                    <span class="artwork-card-hint">jpg, png, pdf, ai, eps</span>
+                  </div>
+                </div>
+                <button class="btn-artwork-browse" onclick="document.getElementById('artCarton').click()">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Browse
+                </button>
+                <input type="file" id="artCarton" accept=".jpg,.jpeg,.png,.pdf,.ai,.eps" multiple style="display:none" onchange="handleFileInput(event,'artCartonList')" />
+                <div class="file-list" id="artCartonList"></div>
+              </div>
+
+              <div class="artwork-card">
+                <div class="artwork-card-info">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                  <div>
+                    <span class="artwork-card-title">Product Specifications</span>
+                    <span class="artwork-card-hint">jpg, png, pdf</span>
+                  </div>
+                </div>
+                <button class="btn-artwork-browse" onclick="document.getElementById('artSpecs').click()">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Browse
+                </button>
+                <input type="file" id="artSpecs" accept=".jpg,.jpeg,.png,.pdf" multiple style="display:none" onchange="handleFileInput(event,'artSpecsList')" />
+                <div class="file-list" id="artSpecsList"></div>
+              </div>
+
+              <div class="artwork-card">
+                <div class="artwork-card-info">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  <div>
+                    <span class="artwork-card-title">Product Photos</span>
+                    <span class="artwork-card-hint">jpg, png</span>
+                  </div>
+                </div>
+                <button class="btn-artwork-browse" onclick="document.getElementById('artPhotos').click()">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Browse
+                </button>
+                <input type="file" id="artPhotos" accept=".jpg,.jpeg,.png" multiple style="display:none" onchange="handleFileInput(event,'artPhotosList')" />
+                <div class="file-list" id="artPhotosList"></div>
+              </div>
+
+              <div class="artwork-card">
+                <div class="artwork-card-info">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="1.8"><rect x="1" y="4" width="4" height="16"/><rect x="7" y="4" width="2" height="16"/><rect x="11" y="4" width="4" height="16"/><rect x="17" y="4" width="2" height="16"/><rect x="21" y="4" width="2" height="16"/></svg>
+                  <div>
+                    <span class="artwork-card-title">Barcode / QR Code</span>
+                    <span class="artwork-card-hint">jpg, png, pdf</span>
+                  </div>
+                </div>
+                <button class="btn-artwork-browse" onclick="document.getElementById('artBarcode').click()">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Browse
+                </button>
+                <input type="file" id="artBarcode" accept=".jpg,.jpeg,.png,.pdf" multiple style="display:none" onchange="handleFileInput(event,'artBarcodeList')" />
+                <div class="file-list" id="artBarcodeList"></div>
+              </div>
+
+              <div class="artwork-card">
+                <div class="artwork-card-info">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="1.8"><circle cx="12" cy="8" r="6"/><path d="M12 14v8M8 18h8"/></svg>
+                  <div>
+                    <span class="artwork-card-title">Certificate Documents</span>
+                    <span class="artwork-card-hint">pdf only</span>
+                  </div>
+                </div>
+                <button class="btn-artwork-browse" onclick="document.getElementById('artCerts').click()">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Browse
+                </button>
+                <input type="file" id="artCerts" accept=".pdf" multiple style="display:none" onchange="handleFileInput(event,'artCertsList')" />
+                <div class="file-list" id="artCertsList"></div>
+              </div>
+
+              <div class="artwork-card">
+                <div class="artwork-card-info">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="1.8"><path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
+                  <div>
+                    <span class="artwork-card-title">Additional Documents</span>
+                    <span class="artwork-card-hint">any format</span>
+                  </div>
+                </div>
+                <button class="btn-artwork-browse" onclick="document.getElementById('artOther').click()">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Browse
+                </button>
+                <input type="file" id="artOther" multiple style="display:none" onchange="handleFileInput(event,'artOtherList')" />
+                <div class="file-list" id="artOtherList"></div>
+              </div>
+
+            </div>
+          </div>
+        </div><!-- /tab-5 -->
+
+      </div><!-- /tab-panels -->
+    </main>
+  </div><!-- /page-wrapper -->
+
+<!-- Bulk Upload Coming Soon Modal -->
+  <div class="modal-overlay hidden" id="bulkUploadModal" onclick="closeBulkModal(event)">
+    <div class="modal-box">
+      <div class="modal-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <h3 class="modal-title">Bulk Upload — Coming Soon</h3>
+      <p class="modal-body">You'll soon be able to upload an <strong>.xlsx</strong> or <strong>.csv</strong> file to add multiple products at once. For now, please add products one at a time.</p>
+      <button class="modal-ok-btn" onclick="document.getElementById('bulkUploadModal').classList.add('hidden')">Okay, got it</button>
+    </div>
+  </div>
+
+   <!-- Cancel Confirm Modal -->
+  <div class="modal-overlay hidden" id="cancelModal">
+    <div class="modal-box">
+      <div class="modal-icon" style="background:#fff8f0;">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.8"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <h3 class="modal-title">Discard Changes?</h3>
+      <p class="modal-body">You have unsaved changes. Are you sure you want to leave? All progress will be lost.</p>
+      <div class="modal-actions">
+        <button class="modal-cancel-btn" onclick="document.getElementById('cancelModal').classList.add('hidden')">Keep Editing</button>
+        <button class="modal-discard-btn" onclick="window.history.back()">Discard</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="utils.js"></script>
+  <script src="product.js"></script>
+</body>
+</body>
+</html>

@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cold Storage · SmarTuna concept</title>
+<link rel="icon" type="image/png" href="sc-blue-logo.png" />
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+    /* ── SMARTUNA WORDMARK ── */
+    @font-face {
+      font-family: 'Bitsumis';
+      src: url('BITSUMIS.TTF') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+    .sc-wm { display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1;gap:0;text-decoration:none; }
+    .sc-wm-top { font-family:'Bitsumis',sans-serif !important;font-weight:900 !important;font-size:15px;letter-spacing:.04em;text-transform:uppercase;background:linear-gradient(90deg,#1a6fdb,#1a6fdb) !important;-webkit-background-clip:text !important;-webkit-text-fill-color:transparent !important;background-clip:text !important; }
+    .sc-wm-sub { font-family:'Bitsumis',sans-serif !important;font-weight:700 !important;font-size:7px;letter-spacing:.22em;text-transform:uppercase;color:#1a1a2e;-webkit-text-fill-color:#1a1a2e !important;margin-top:2px; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#1a6fdb; --primary-ink:#1558b0; --primary-soft:#e8f1fc;
+  --bg:#f0f2f7; --white:#ffffff; --surface:#ffffff;
+  --text:#1a1a2e; --muted:#6b7280; --soft:#8a90a2;
+  --border:#e8eaf0; --line:#eef0f5; --line-strong:#dfe3ec;
+  --ok:#1f9d6b; --ok-soft:#e6f6ef; --off:#9aa0b4; --off-soft:#eef0f4;
+  --danger:#e63946; --danger-soft:#fff0f1;
+  --radius:16px; --radius-sm:11px; --field-h:44px;
+  --shadow-sm:0 1px 3px rgba(20,24,45,.05);
+  --shadow:0 1px 2px rgba(20,24,45,.04),0 10px 30px rgba(20,24,45,.06);
+  --shadow-lg:0 6px 14px rgba(20,24,45,.07),0 24px 48px rgba(20,24,45,.10);
+  --font:'Poppins','DM Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+
+/* ===== TOP NAV (matched to home-logged-in.html) ===== */
+.topbar{display:flex;align-items:center;padding:14px 28px;gap:20px;flex-shrink:0}
+.topbar-brand{text-decoration:none;flex-shrink:0;line-height:1.1}
+.topbar-brand-project{display:block;font-size:8px;font-weight:700;letter-spacing:2px;color:#9aa0b4}
+.topbar-brand-name{display:block;font-size:16px;font-weight:800;color:var(--text)}
+.topbar-nav{flex:1;display:flex;justify-content:center}
+.nav-pill{display:inline-flex;align-items:center;gap:2px;background:var(--white);border-radius:999px;padding:5px 7px;box-shadow:0 1px 6px rgba(0,0,0,.07)}
+.nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:400;color:var(--muted);text-decoration:none;transition:background .15s,color .15s;white-space:nowrap}
+.nav-item img{width:15px;height:15px;object-fit:contain;opacity:.5;flex-shrink:0}
+.nav-item:hover{background:var(--bg);color:var(--text)}
+.nav-item.active{background:var(--bg);color:var(--text);font-weight:600}
+.nav-item:hover img,.nav-item.active img{opacity:1}
+.nav-item-wrap{position:relative}
+.nav-item-wrap::after{content:'';position:absolute;top:100%;left:0;width:100%;height:12px;background:transparent}
+.nav-item-wrap:hover .nav-dropdown{display:block}
+.topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.search-pill{display:flex;align-items:center;gap:8px;background:var(--white);border-radius:999px;padding:8px 16px;font-size:12px;color:#c0c4d0;box-shadow:0 1px 4px rgba(0,0,0,.06);min-width:150px;cursor:text}
+.notif-btn{width:36px;height:36px;border-radius:50%;background:var(--white);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.07);position:relative;flex-shrink:0}
+.notif-btn img{width:17px;height:17px;object-fit:contain;opacity:.65}
+.notif-dot{position:absolute;top:5px;right:5px;width:8px;height:8px;background:#e63946;border-radius:50%;border:2px solid var(--bg)}
+.avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:var(--white);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;box-shadow:0 1px 4px rgba(0,0,0,.12);flex-shrink:0;overflow:hidden}
+.avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:176px;overflow:hidden;z-index:999}
+.avatar-menu.open{display:block}
+.avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;color:var(--text);border-bottom:1px solid var(--border)}
+.avatar-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;color:#4a4e69;text-decoration:none;font-weight:500}
+.avatar-menu a:hover{background:var(--bg);color:var(--primary)}
+.avatar-menu button{width:100%;padding:9px 15px;background:none;border:none;border-top:1px solid var(--border);text-align:left;font-family:var(--font);font-size:13px;color:#e63946;cursor:pointer}
+.avatar-menu button:hover{background:#fff0f1}
+.nav-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:170px;overflow:visible;z-index:500;padding:6px}
+.nav-dropdown-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;font-size:13px;color:#4a4e69;text-decoration:none;border-radius:8px;font-weight:500;transition:background .15s;white-space:nowrap;cursor:pointer}
+.nav-dropdown-item:hover{background:var(--bg);color:var(--primary)}
+.nav-dropdown-item.active{background:var(--primary-soft);color:var(--primary-ink);font-weight:600}
+.nav-dropdown-sub{display:none;position:absolute;left:calc(100% + 4px);top:0;background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:160px;padding:6px;z-index:501}
+.nav-dropdown-item:hover .nav-dropdown-sub{display:block}
+
+.wrap{max-width:1000px;margin:0 auto;padding:8px 28px 90px}
+a{color:var(--primary)}
+.back{display:inline-flex;align-items:center;gap:7px;color:var(--soft);text-decoration:none;font-size:13px;font-weight:500;margin-bottom:16px}
+.back:hover{color:var(--text)}
+.head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px 26px}
+.head h1{font-size:24px;font-weight:700;letter-spacing:-.3px;margin:0}
+.head .type{color:var(--muted);margin-top:5px;font-size:13px}
+.head .right{display:flex;align-items:center;gap:11px}
+.pill{font-size:10.5px;font-weight:700;padding:5px 12px;border-radius:999px;letter-spacing:.02em}
+.pill.on{background:var(--ok-soft);color:var(--ok)} .pill.off{background:var(--off-soft);color:var(--off)}
+.btn{height:42px;padding:0 20px;border-radius:11px;font-weight:600;border:1.5px solid var(--border);background:#fff;color:var(--text);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:7px;font:inherit;transition:.15s}
+.btn:hover{background:#fafbfd}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(26,111,219,.28)}
+.btn.primary:hover{background:var(--primary-ink)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px 26px;margin-top:18px}
+.card h2{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--soft);margin:0 0 18px;display:flex;align-items:center;gap:9px}
+.card h2::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 4px var(--primary-soft)}
+
+.dl{display:grid;grid-template-columns:1fr 1fr;gap:18px 28px}
+@media(max-width:640px){.dl{grid-template-columns:1fr}}
+.dl .full{grid-column:1/-1}
+.term{font-size:11px;color:var(--soft);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.val{font-size:14px;margin-top:4px;word-break:break-word;color:var(--text)}
+
+.contact{display:grid;grid-template-columns:1.2fr 1fr 1fr 1.3fr;gap:16px;padding:14px 0;border-top:1px solid var(--line)}
+.contact:first-child{border-top:none}
+@media(max-width:640px){.contact{grid-template-columns:1fr 1fr}}
+
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--primary-soft);color:var(--primary-ink);border-radius:8px;padding:5px 10px;font-size:12.5px;font-weight:600}
+
+.cert{border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:14px;background:linear-gradient(180deg,#fbfcfe,#fff)}
+.cert:first-of-type{margin-top:0}
+.cert h3{font-size:13.5px;margin:0 0 14px;font-weight:600}
+.org-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line)}
+.org-row:first-child{border-top:none}
+.org-row span:first-child{font-weight:500}
+.org-row .when{font-size:12px;color:var(--soft);font-weight:400}
+
+.inv-teaser{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.inv-flow{display:flex;align-items:center;gap:9px;font-weight:600;color:var(--muted)}
+.inv-flow span{background:#fff;border:1.5px solid var(--border);border-radius:9px;padding:7px 13px;color:var(--text)}
+.soon{font-size:11px;font-weight:700;color:var(--primary-ink);background:var(--primary-soft);padding:4px 11px;border-radius:999px}
+
+.muted{color:var(--soft)}
+.skel{height:130px;border-radius:var(--radius);background:linear-gradient(90deg,#eef1f6,#f7f9fc,#eef1f6);background-size:200% 100%;animation:sh 1.3s infinite;margin-top:18px}
+@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.err{background:var(--danger-soft);border:1px solid #f3cdd5;color:#8a2436;padding:16px 18px;border-radius:14px;margin-top:18px;font-weight:500}
+
+</style>
+</head>
+<body>
+  <!-- TOP BAR (shared) -->
+  <div class="topbar">
+    <a href="index.html" class="topbar-brand" style="display:flex;align-items:center;gap:9px;">
+      <img src="sc-blue-logo.png" alt="SmarTuna" style="width:26px;height:26px;object-fit:contain;flex-shrink:0;"/>
+      <span class="sc-wm">
+        <span class="sc-wm-top">SmarTuna</span>
+        <span class="sc-wm-sub">concept</span>
+      </span>
+    </a>
+    <div class="topbar-nav">
+      <div class="nav-pill">
+        <a href="home-logged-in.html" class="nav-item">
+          <img src="home.png" alt="" /> Home
+        </a>
+        <div class="nav-item-wrap">
+          <a href="organisation.html" class="nav-item">
+            <img src="my-studio.png" alt="" /> My Studio
+          </a>
+          <div class="nav-dropdown">
+            <a href="product-list.html" class="nav-dropdown-item">Product</a>
+            <a href="organisation.html" class="nav-dropdown-item">Your Company</a>
+          </div>
+        </div>
+        <div class="nav-item-wrap">
+          <a href="Species.html" class="nav-item active">
+            <img src="atlas.png" alt="" /> Atlas
+          </a>
+          <div class="nav-dropdown">
+            <a href="Species.html" class="nav-dropdown-item">Species</a>
+            <a href="cold-storage-list.html" class="nav-dropdown-item active">Cold Storage</a>
+            <a href="#" class="nav-dropdown-item">Ports</a>
+            <a href="#" class="nav-dropdown-item">Vessels</a>
+            <a href="country.html" class="nav-dropdown-item">Country</a>
+            <div class="nav-dropdown-item" style="position:relative;">
+              Others
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+              <div class="nav-dropdown-sub">
+                <a href="#" class="nav-dropdown-item">MSC Fisheries</a>
+                <a href="#" class="nav-dropdown-item">ASC Farms</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <a href="#" class="nav-item"><img src="features.png" alt="" /> Features</a>
+        <a href="#" class="nav-item"><img src="messages.png" alt="" /> Messages</a>
+        <a href="#" class="nav-item"><img src="report.png" alt="" /> Reports</a>
+        <a href="report.html" class="nav-item"><img src="support.png" alt="" /> Support</a>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="search-pill">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search here...
+      </div>
+      <div class="notif-btn">
+        <img src="notification.png" alt="" />
+        <div class="notif-dot"></div>
+      </div>
+      <div style="position:relative;flex-shrink:0;">
+        <div class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()"><span id="avatarInitials">··</span></div>
+        <div class="avatar-menu" id="avatarMenu">
+          <div class="avatar-menu-name" id="avatarGreeting">Hello!</div>
+          <a href="profile.html">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            Profile
+          </a>
+          <button onclick="handleLogout()">Logout</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+<div class="wrap">
+  <a class="back" href="cold-storage-list.html">← Cold Storage</a>
+  <div id="content">
+    <div class="skel"></div><div class="skel"></div>
+  </div>
+</div>
+<script>
+const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
+const SUPABASE_ANON='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON);
+
+const $=id=>document.getElementById(id);
+const id=new URLSearchParams(location.search).get('id');
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const val=v=>v==null||v===''?'<span class="muted">—</span>':esc(v);
+
+(async function(){
+  const { data:{ user } } = await sb.auth.getUser();
+  if(!user){ location.href='login.html'; return; }
+  if(!id){ $('content').innerHTML='<div class="err">No facility specified.</div>'; return; }
+
+  const { data:prof } = await sb.from('profiles').select('role, first_name, last_name, avatar_color, photo_url').eq('id',user.id).single();
+  const isAdmin = prof && ['admin','operator'].includes(prof.role);
+  applyAvatar(prof, user.email);
+
+  // RLS lets this through only for admins or orgs granted access
+  const { data:f, error } = await sb.from('cold_storage_facilities').select('*').eq('id',id).single();
+  if(error || !f){
+    $('content').innerHTML='<div class="err">This facility doesn’t exist, or your organisation doesn’t have access to it.</div>';
+    return;
+  }
+
+  const [{ data:contacts }, { data:certs }] = await Promise.all([
+    sb.from('cold_storage_contacts').select('*').eq('facility_id',id),
+    sb.from('cold_storage_certifications').select('*').eq('facility_id',id)
+  ]);
+
+  let grants=[];
+  if(isAdmin){
+    const r = await sb.from('cold_storage_access')
+      .select('company_id, granted_at, companies(company_name)').eq('facility_id',id);
+    grants = r.data||[];
+  }
+
+  render(f, contacts||[], certs||[], grants, isAdmin);
+})();
+
+function render(f, contacts, certs, grants, isAdmin){
+  const on = f.status==='Active';
+  const coords = (f.latitude!=null&&f.longitude!=null) ? `${f.latitude}, ${f.longitude}` : null;
+  const temp = (f.min_temp_c!=null||f.max_temp_c!=null) ? `${f.min_temp_c??'–'}°C to ${f.max_temp_c??'–'}°C` : null;
+
+  const msc = certs.find(c=>c.cert_type==='MSC');
+  const uk  = certs.find(c=>c.cert_type==='UK Approval');
+  const eu  = certs.find(c=>c.cert_type==='EU Approval');
+  const customs = certs.filter(c=>c.cert_type==='Custom');
+
+  $('content').innerHTML = `
+    <div class="head">
+      <div>
+        <h1>${esc(f.name)}</h1>
+        <div class="type">${esc(f.storage_type||'Cold storage facility')}</div>
+      </div>
+      <div class="right">
+        <span class="pill ${on?'on':'off'}">${on?'Active':'Inactive'}</span>
+        ${isAdmin?`<a class="btn primary" href="cold-storage.html?id=${f.id}">Edit</a>`:''}
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Location</h2>
+      <div class="dl">
+        <div class="full"><div class="term">Address</div><div class="val">${val(f.address)}</div></div>
+        <div><div class="term">City</div><div class="val">${val(f.city)}</div></div>
+        <div><div class="term">State / Province</div><div class="val">${val(f.state_province)}</div></div>
+        <div><div class="term">Country</div><div class="val">${val(f.country)}</div></div>
+        <div><div class="term">Postal Code</div><div class="val">${val(f.postal_code)}</div></div>
+        <div><div class="term">GLN</div><div class="val">${val(f.gln)}</div></div>
+        <div><div class="term">Coordinates</div><div class="val">${coords?esc(coords):'<span class="muted">—</span>'}</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Operational &amp; Capacity</h2>
+      <div class="dl">
+        <div><div class="term">Temperature range</div><div class="val">${temp?esc(temp):'<span class="muted">—</span>'}</div></div>
+        <div><div class="term">Storage capacity</div><div class="val">${val(f.storage_capacity)}</div></div>
+        <div class="full"><div class="term">Remarks</div><div class="val">${val(f.remarks)}</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Contacts</h2>
+      ${contacts.length ? contacts.map(c=>`
+        <div class="contact">
+          <div><div class="term">Person</div><div class="val">${val(c.contact_name)}</div></div>
+          <div><div class="term">Designation</div><div class="val">${val(c.designation)}</div></div>
+          <div><div class="term">Phone</div><div class="val">${val(c.phone)}</div></div>
+          <div><div class="term">Email</div><div class="val">${c.email?`<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>`:'<span class="muted">—</span>'}</div></div>
+        </div>`).join('') : '<div class="muted">No contacts listed.</div>'}
+    </div>
+
+    <div class="card">
+      <h2>Certification</h2>
+      ${msc?`<div class="cert"><h3>MSC Certification</h3>
+        <div class="dl">
+          <div><div class="term">CoC Cert</div><div class="val">${val(msc.data.coc_cert)}</div></div>
+          <div><div class="term">CoC Number</div><div class="val">${val(msc.data.coc_number)}</div></div>
+          <div><div class="term">Certifier</div><div class="val">${val(msc.data.certifier)}</div></div>
+          <div><div class="term">Website</div><div class="val">${msc.data.website?`<a href="${esc(msc.data.website)}" target="_blank" rel="noopener">${esc(msc.data.website)}</a>`:'<span class="muted">—</span>'}</div></div>
+          <div><div class="term">Main Activity</div><div class="val">${val(msc.data.main_activity)}</div></div>
+          <div><div class="term">URL</div><div class="val">${msc.data.url?`<a href="${esc(msc.data.url)}" target="_blank" rel="noopener">${esc(msc.data.url)}</a>`:'<span class="muted">—</span>'}</div></div>
+          <div class="full"><div class="term">Species</div><div class="val">${(msc.data.species&&msc.data.species.length)?`<div class="chips">${msc.data.species.map(s=>`<span class="chip">${esc(s.name)}</span>`).join('')}</div>`:'<span class="muted">—</span>'}</div></div>
+        </div></div>`:''}
+      ${uk?`<div class="cert"><h3>UK Approval</h3><div class="val">${val(uk.data.number)}</div></div>`:''}
+      ${eu?`<div class="cert"><h3>EU Approval</h3><div class="val">${val(eu.data.number)}</div></div>`:''}
+      ${customs.map(c=>`<div class="cert"><h3>${val(c.title||'Certification')}</h3>
+        <div class="dl">${Object.entries(c.data||{}).map(([k,v])=>`<div><div class="term">${esc(k)}</div><div class="val">${val(v)}</div></div>`).join('')||'<span class="muted">—</span>'}</div></div>`).join('')}
+      ${(!msc&&!uk&&!eu&&!customs.length)?'<div class="muted">No certifications recorded.</div>':''}
+    </div>
+
+    ${isAdmin?`<div class="card">
+      <h2>Organisations using this facility</h2>
+      ${grants.length ? grants.map(g=>`
+        <div class="org-row">
+          <span>${esc(g.companies?.company_name||'Company')}</span>
+          <span class="when">granted ${g.granted_at?new Date(g.granted_at).toLocaleDateString():''}</span>
+        </div>`).join('') : '<div class="muted">No organisations attached yet. Use Edit → “On behalf of” to grant access.</div>'}
+    </div>`:''}
+
+    <div class="card">
+      <h2>Inventory</h2>
+      <div class="inv-teaser">
+        <div class="inv-flow"><span>Stock In</span> → <span>Store</span> → <span>Stock Out</span></div>
+        <span class="soon">Coming soon</span>
+      </div>
+    </div>
+  `;
+}
+
+/* ---- shared nav behaviour ---- */
+function toggleAvatarMenu(){ document.getElementById('avatarMenu').classList.toggle('open'); }
+document.addEventListener('click', e=>{ if(!e.target.closest('.avatar-btn')) document.getElementById('avatarMenu')?.classList.remove('open'); });
+async function handleLogout(){ await sb.auth.signOut(); location.href='index.html'; }
+function applyAvatar(p, email){
+  const first=(p&&p.first_name)||(email?email.split('@')[0]:'')||'User';
+  const last=(p&&p.last_name)||'';
+  const initials=((first.charAt(0)||'')+(last.charAt(0)||'')).toUpperCase()||'··';
+  const btn=document.getElementById('avatarBtn');
+  if(p&&p.photo_url){ btn.innerHTML=`<img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover" />`; }
+  else { btn.style.background=(p&&p.avatar_color)||'#1a6fdb'; document.getElementById('avatarInitials').textContent=initials; }
+  const g=document.getElementById('avatarGreeting'); if(g) g.textContent=`Hello, ${first}!`;
+}
+
+</script>
+</body>
+</html>

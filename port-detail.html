@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Port · SmarTuna concept</title>
+<link rel="icon" type="image/png" href="sc-blue-logo.png"/>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+    /* ── SMARTUNA WORDMARK ── */
+    @font-face {
+      font-family: 'Bitsumis';
+      src: url('BITSUMIS.TTF') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+    .sc-wm { display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1;gap:0;text-decoration:none; }
+    .sc-wm-top { font-family:'Bitsumis',sans-serif !important;font-weight:900 !important;font-size:15px;letter-spacing:.04em;text-transform:uppercase;background:linear-gradient(90deg,#1a6fdb,#1a6fdb) !important;-webkit-background-clip:text !important;-webkit-text-fill-color:transparent !important;background-clip:text !important; }
+    .sc-wm-sub { font-family:'Bitsumis',sans-serif !important;font-weight:700 !important;font-size:7px;letter-spacing:.22em;text-transform:uppercase;color:#1a1a2e;-webkit-text-fill-color:#1a1a2e !important;margin-top:2px; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --primary:#1a6fdb;--primary-dark:#1558b0;--primary-soft:#e8f1fc;--primary-mid:#d0e4f8;
+  --bg:#f0f2f7;--text:#1a1a2e;--muted:#6b7280;--soft:#9aa0b4;
+  --border:#e8eaf0;--line:#eef0f5;--line-strong:#dfe3ec;
+  --ok:#1f9d6b;--ok-soft:#e6f6ef;--danger:#e63946;
+  --radius:14px;--radius-sm:10px;--font:'Poppins','DM Sans',system-ui,sans-serif;
+  --shadow:0 1px 3px rgba(20,24,45,.05),0 8px 24px rgba(20,24,45,.06);
+  --shadow-lg:0 6px 14px rgba(20,24,45,.08),0 24px 48px rgba(20,24,45,.11);
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased}
+.fac-item.fac-active{
+  background:var(--primary-soft) !important;
+  border-color:var(--primary) !important;
+  box-shadow:0 0 0 3px rgba(26,111,219,.12) !important;
+}
+.fac-item.fac-active .terminal-name{color:var(--primary-dark)}
+*::-webkit-scrollbar{width:6px;height:6px}
+*::-webkit-scrollbar-track{background:transparent}
+*::-webkit-scrollbar-thumb{background:#d1d5e0;border-radius:99px}
+*::-webkit-scrollbar-thumb:hover{background:#a0a8bc}
+html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
+/* NAV */
+.topbar{display:flex;align-items:center;padding:14px 28px;gap:20px;background:rgba(255,255,255,.7);backdrop-filter:blur(12px);position:sticky;top:0;z-index:100;border-bottom:1px solid var(--line)}
+.topbar-brand{text-decoration:none;flex-shrink:0;line-height:1.1}
+.topbar-brand-project{display:block;font-size:8px;font-weight:700;letter-spacing:2px;color:var(--soft)}
+.topbar-brand-name{display:block;font-size:16px;font-weight:800;color:var(--text)}
+.topbar-nav{flex:1;display:flex;justify-content:center}
+.nav-pill{display:inline-flex;align-items:center;gap:2px;background:#fff;border-radius:999px;padding:5px 7px;box-shadow:0 1px 6px rgba(0,0,0,.07)}
+.nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:400;color:var(--muted);text-decoration:none;transition:.15s}
+.nav-item:hover,.nav-item.active{background:var(--bg);color:var(--text);font-weight:600}
+.nav-item-wrap{position:relative}
+.nav-item-wrap:hover .nav-dropdown{display:block}
+.nav-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:170px;padding:6px;z-index:500}
+.nav-dropdown-item{display:flex;align-items:center;padding:8px 12px;font-size:13px;color:#4a4e69;text-decoration:none;border-radius:8px;font-weight:500;transition:.15s}
+.nav-dropdown-item:hover{background:var(--bg);color:var(--primary)}
+.nav-dropdown-item.active{background:var(--primary-soft);color:var(--primary-dark);font-weight:600}
+.topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;overflow:hidden;border:none}
+.avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:176px;overflow:hidden;z-index:999}
+.avatar-menu.open{display:block}
+.avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;color:var(--text);border-bottom:1px solid var(--border)}
+.avatar-menu a{display:flex;align-items:center;padding:9px 15px;font-size:13px;color:#4a4e69;text-decoration:none}
+.avatar-menu a:hover{background:var(--bg)}
+.avatar-menu button{width:100%;padding:9px 15px;background:none;border:none;border-top:1px solid var(--border);text-align:left;font-family:var(--font);font-size:13px;color:var(--danger);cursor:pointer}
+/* LAYOUT */
+.wrap{max-width:1200px;margin:0 auto;padding:0 28px 60px}
+/* HERO */
+.hero{height:240px;background:linear-gradient(135deg,#1a3a6b 0%,#1a6fdb 60%,#3b8be8 100%);position:relative;overflow:hidden;margin:0 -28px;flex-shrink:0}
+.hero-img{width:100%;height:100%;object-fit:cover;display:block}
+.hero-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.08) 0%,transparent 35%,rgba(10,20,50,.55) 70%,rgba(5,15,40,.75) 100%)}
+/* IDENTITY */
+.hero-identity{position:absolute;bottom:0;left:0;right:0;z-index:3;display:flex;justify-content:center}
+.hero-identity-inner{width:100%;max-width:1200px;padding:0 28px 22px;display:flex;align-items:flex-end;gap:18px}
+.port-avatar{width:84px;height:84px;border-radius:16px;background:#fff;border:3px solid rgba(255,255,255,.95);box-shadow:0 4px 20px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;margin-bottom:-22px}
+.port-avatar img{width:100%;height:100%;object-fit:cover}
+.port-avatar svg{color:var(--soft)}
+.identity-info{flex:1;padding-bottom:4px}
+.port-name{font-size:28px;font-weight:800;letter-spacing:-.4px;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.6),0 1px 3px rgba(0,0,0,.8),0 0 40px rgba(0,0,0,.3)}
+.port-meta-row{display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap}
+.port-country-lbl{font-size:13px;color:rgba(255,255,255,.9);display:flex;align-items:center;gap:4px;text-shadow:0 1px 4px rgba(0,0,0,.5)}
+.locode-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;background:rgba(255,255,255,.18);backdrop-filter:blur(6px);color:#fff;border-radius:7px;font-size:12px;font-weight:700;font-family:monospace;letter-spacing:.05em;border:1px solid rgba(255,255,255,.3)}
+.port-type-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:7px;font-size:12px;font-weight:600;background:rgba(255,255,255,.15);backdrop-filter:blur(6px);color:rgba(255,255,255,.95);border:1px solid rgba(255,255,255,.25)}
+.identity-actions{padding-bottom:6px;display:flex;gap:10px;flex-shrink:0}
+.identity-spacer{height:32px}
+.btn{height:40px;padding:0 18px;border-radius:10px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid transparent;transition:.15s;display:inline-flex;align-items:center;gap:7px;text-decoration:none}
+.btn-primary{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:0 4px 12px rgba(26,111,219,.22)}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-ghost{background:#fff;border-color:var(--border);color:var(--text)}
+.btn-ghost:hover{border-color:var(--line-strong)}
+/* TWO-COL */
+.main-grid{display:grid;grid-template-columns:1fr 340px;gap:22px;align-items:start}
+/* CARDS */
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px 22px;margin-bottom:18px}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--soft);display:flex;align-items:center;gap:8px}
+.card-title::before{content:'';width:7px;height:7px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+/* DL GRID */
+.dl{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.dl3{grid-template-columns:1fr 1fr 1fr}
+.dl4{grid-template-columns:1fr 1fr 1fr 1fr}
+.dt{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--soft);margin-bottom:4px}
+.dd{font-size:13.5px;font-weight:500;color:var(--text)}
+/* SUB-CARD */
+.sub-card{background:#fafbfe;border:1px solid var(--line);border-radius:11px;padding:14px 16px;margin-bottom:12px}
+.sub-card:last-child{margin-bottom:0}
+.sub-card-title{font-size:12px;font-weight:700;color:var(--primary-dark);margin-bottom:12px;display:flex;align-items:center;gap:7px}
+.sub-card-title::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--primary)}
+/* TERMINAL LIST */
+.terminal-item{display:flex;align-items:flex-start;gap:12px;padding:12px 14px;border-radius:10px;background:#fff;border:1px solid var(--line);margin-bottom:8px;transition:.14s}
+.terminal-item:hover{border-color:var(--primary-mid)}
+.terminal-icon{width:34px;height:34px;border-radius:9px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--primary)}
+.terminal-info{flex:1}
+.terminal-name{font-size:13.5px;font-weight:600;color:var(--text)}
+.terminal-meta{font-size:12px;color:var(--muted);margin-top:3px;display:flex;gap:10px;flex-wrap:wrap}
+/* MAP */
+.map-box{height:260px;border-radius:11px;overflow:hidden;border:1.5px solid var(--line);background:#0f1a2e;position:relative}
+.map-placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:rgba(255,255,255,.3)}
+.map-placeholder p{font-size:12px;font-weight:500}
+/* EMPTY */
+.empty-state{padding:24px;text-align:center;color:var(--soft);font-size:13px}
+/* SKEL */
+.skel-line{height:16px;background:var(--line);border-radius:6px;margin-bottom:10px;animation:shimmer 1.5s infinite}
+.skel-line.short{width:60%}.skel-line.med{width:80%}
+@keyframes shimmer{0%{background-position:-200px 0}100%{background-position:200px 0}}
+/* TOAST */
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(12px);background:var(--text);color:#fff;padding:13px 22px;border-radius:11px;font-weight:600;font-size:13.5px;opacity:0;visibility:hidden;transition:opacity .25s,transform .28s cubic-bezier(.2,.8,.2,1),visibility .25s;z-index:1000}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1;visibility:visible;box-shadow:var(--shadow-lg)}
+.toast.err{background:var(--danger)}
+@media(max-width:900px){.main-grid{grid-template-columns:1fr}.dl4{grid-template-columns:1fr 1fr}.identity-row{flex-wrap:wrap}}
+@media(max-width:600px){.wrap{padding:0 16px 60px}.dl,.dl3{grid-template-columns:1fr}.hero{margin:0 -16px}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="index.html" class="topbar-brand" style="display:flex;align-items:center;gap:9px;">
+    <img src="sc-blue-logo.png" alt="SmarTuna" style="width:26px;height:26px;object-fit:contain;flex-shrink:0;"/>
+      <span class="sc-wm">
+        <span class="sc-wm-top">SmarTuna</span>
+        <span class="sc-wm-sub">concept</span>
+      </span>
+  </a>
+  <div class="topbar-nav">
+    <div class="nav-pill">
+      <a href="home-logged-in.html" class="nav-item">Home</a>
+      <div class="nav-item-wrap">
+        <a href="#" class="nav-item active">Atlas</a>
+        <div class="nav-dropdown">
+          <a href="Species.html" class="nav-dropdown-item">Species</a>
+          <a href="cold-storage-list.html" class="nav-dropdown-item">Cold Storage</a>
+          <a href="port-list.html" class="nav-dropdown-item active">Ports</a>
+          <a href="vessel-list.html" class="nav-dropdown-item">Vessels</a>
+          <a href="country.html" class="nav-dropdown-item">Country</a>
+        </div>
+      </div>
+      <a href="#" class="nav-item">Features</a>
+      <a href="#" class="nav-item">Messages</a>
+      <a href="#" class="nav-item">Reports</a>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div style="position:relative">
+      <button class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()"><span id="avatarInitials">··</span></button>
+      <div class="avatar-menu" id="avatarMenu">
+        <div class="avatar-menu-name" id="avatarGreeting">Hello!</div>
+        <a href="profile.html">Profile</a>
+        <button onclick="handleLogout()">Logout</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- HERO — identity lives inside so name always overlays the photo -->
+<div class="hero" id="heroBox">
+  <div class="hero-overlay"></div>
+  <!-- View photo button — top right, only shown when photo exists -->
+  
+  <div class="hero-identity">
+    <div class="hero-identity-inner">
+    <div class="port-avatar" id="portAvatar">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+    </div>
+    <div class="identity-info">
+      <div class="port-name" id="portName">Loading…</div>
+      <div class="port-meta-row">
+        <div class="port-country-lbl" id="portCountry">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/></svg>
+          —
+        </div>
+        <div class="locode-badge" id="portLocode" style="display:none"></div>
+        <div class="port-type-badge" id="portTypeBadge" style="display:none"></div>
+      </div>
+    </div>
+    <div class="identity-actions">
+      <a href="port-list.html" class="btn btn-ghost" style="border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.15);color:#fff;backdrop-filter:blur(6px)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        Ports
+      </a>
+      <a href="#" class="btn btn-primary" id="editBtn" style="display:none;box-shadow:0 4px 16px rgba(0,0,0,.3)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Edit Port
+      </a>
+      <button class="btn btn-ghost" id="viewPhotoBtn" onclick="openLightbox()" style="display:none;border-color:rgba(255,255,255,.4);background:rgba(255,255,255,.15);color:#fff;backdrop-filter:blur(6px)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        View Photo
+      </button>
+    </div>
+    </div><!-- end hero-identity-inner -->
+  </div>
+</div>
+<!-- Spacer for avatar overlap -->
+<div class="identity-spacer"></div>
+
+<div class="wrap">
+
+  <div class="main-grid">
+    <!-- LEFT -->
+    <div>
+      <!-- PORT DETAILS -->
+      <div class="card">
+        <div class="card-head"><div class="card-title">Port Details</div></div>
+        <div id="detailsBody">
+          <div class="skel-line med"></div><div class="skel-line short"></div><div class="skel-line med"></div>
+        </div>
+      </div>
+
+      <!-- TERMINALS -->
+      <div class="card">
+        <div class="card-head">
+          <div class="card-title">Port Facilities</div>
+          <span id="terminalCount" style="font-size:12px;font-weight:600;color:var(--soft)"></span>
+        </div>
+        <div id="terminalsBody"><div class="empty-state">Loading…</div></div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div style="position:sticky;top:76px;align-self:start">
+      <!-- MAP -->
+      <div class="card" style="padding:0;overflow:hidden;margin-bottom:18px">
+        <div class="card-head" style="padding:16px 18px 12px">
+          <div class="card-title">Location</div>
+          <span id="coordsLbl" style="font-size:12px;color:var(--soft);font-family:monospace"></span>
+        </div>
+        <!-- Selected facility breadcrumb -->
+        <div id="mapBreadcrumb" style="display:none;padding:0 18px 10px;font-size:12px;color:var(--primary-dark);display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/></svg>
+          <span id="mapBreadcrumbText" style="font-weight:600"></span>
+          <button onclick="resetMapToPort()" style="margin-left:auto;font-size:11px;color:var(--muted);background:none;border:none;cursor:pointer;font-family:inherit;text-decoration:underline">Reset to port</button>
+        </div>
+        <div class="map-box" id="mapBox">
+          <div class="map-placeholder" id="mapPlaceholder">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <p>No coordinates recorded</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- QUICK FACTS -->
+      <div class="card" style="margin-bottom:18px">
+        <div class="card-head"><div class="card-title">Quick Facts</div></div>
+        <div id="quickFacts">
+          <div class="skel-line short"></div><div class="skel-line med"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- FACILITY DETAIL MODAL -->
+<div id="facModal" onclick="if(event.target===this)closeFacModal()" style="display:none;position:fixed;inset:0;background:rgba(20,24,45,.55);backdrop-filter:blur(5px);z-index:400;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:20px;box-shadow:0 8px 32px rgba(20,24,45,.16),0 32px 64px rgba(20,24,45,.10);width:560px;max-width:95vw;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;transform:scale(.95);transition:transform .22s cubic-bezier(.2,.8,.2,1)" id="facModalBox">
+    <!-- Photo hero -->
+    <div id="facModalPhoto" style="height:180px;background:linear-gradient(135deg,#1a3a6b,#1a6fdb);position:relative;flex-shrink:0;overflow:hidden">
+      <div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(10,20,50,.6))"></div>
+      <button onclick="closeFacModal()" style="position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.35);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);z-index:2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div style="position:absolute;bottom:14px;left:18px;z-index:2">
+        <div id="facModalIcon" style="font-size:28px;margin-bottom:4px"></div>
+        <div id="facModalName" style="font-size:20px;font-weight:800;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.5)"></div>
+        <div id="facModalType" style="font-size:12px;color:rgba(255,255,255,.8);margin-top:3px;font-weight:600"></div>
+      </div>
+    </div>
+    <!-- Content -->
+    <div style="overflow-y:auto;flex:1;padding:22px 24px">
+      <!-- Details grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px" id="facModalDetails"></div>
+      <!-- Map -->
+      <div id="facModalMapWrap" style="display:none;margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:8px">Location</div>
+        <div id="facModalMap" style="height:200px;border-radius:11px;overflow:hidden;border:1.5px solid var(--line)"></div>
+      </div>
+      <!-- Notes -->
+      <div id="facModalNotesWrap" style="display:none">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:6px">Notes</div>
+        <div id="facModalNotes" style="font-size:13.5px;color:var(--text);line-height:1.65;background:var(--bg);border-radius:9px;padding:12px 14px"></div>
+      </div>
+      <!-- Sub-facilities -->
+      <div id="facModalChildrenWrap" style="display:none;margin-top:16px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:8px">Sub-facilities</div>
+        <div id="facModalChildren"></div>
+      </div>
+    </div>
+    <!-- Footer -->
+    <div style="padding:14px 24px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;flex-shrink:0">
+      <button onclick="closeFacModal()" style="height:40px;padding:0 20px;border-radius:10px;border:1.5px solid var(--border);background:#fff;font:inherit;font-size:13.5px;font-weight:600;color:var(--text);cursor:pointer">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- PHOTO LIGHTBOX -->
+<div id="photoLightbox" onclick="closeLightbox()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:2000;align-items:center;justify-content:center;cursor:zoom-out;backdrop-filter:blur(8px)">
+  <img id="lightboxImg" style="max-width:90vw;max-height:88vh;border-radius:14px;box-shadow:0 8px 60px rgba(0,0,0,.8);object-fit:contain" alt="Port photo"/>
+  <button onclick="closeLightbox()" style="position:fixed;top:20px;right:24px;width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.3);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);font-family:inherit">✕</button>
+</div>
+
+<script>
+const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
+const SUPABASE_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const val=v=>`<div class="dd">${esc(v||'—')}</div>`;
+const vid=new URLSearchParams(location.search).get('id');
+
+function renderDetails(p){
+  $('detailsBody').innerHTML=`
+    <div class="dl dl3" style="margin-bottom:18px">
+      <div><div class="dt">Main Port Name</div>${val(p.main_port_name)}</div>
+      <div><div class="dt">Alternate Name</div>${val(p.alternate_port_name)}</div>
+      <div><div class="dt">UN/LOCODE</div><div class="dd" style="font-family:monospace;font-weight:700;color:var(--primary-dark)">${esc(p.un_locode||'—')}</div></div>
+    </div>
+    <div class="dl dl4" style="margin-bottom:18px">
+      <div><div class="dt">Country</div>${val(p.country)}</div>
+      <div><div class="dt">Region</div>${val(p.region_name)}</div>
+      <div><div class="dt">Water Body</div>${val(p.world_water_body)}</div>
+      <div><div class="dt">Nautical Chart</div>${val(p.standard_nautical_chart)}</div>
+    </div>
+    <div class="dl dl4" style="margin-bottom:18px">
+      <div><div class="dt">Port Type</div>${val(p.port_type)}</div>
+      <div><div class="dt">Type</div>${val(p.harbor_type)}</div>
+      <div><div class="dt">Size</div>${val(p.harbor_size)}</div>
+      <div><div class="dt">Vessel Traffic Service</div>${val(p.vessel_traffic_service)}</div>
+    </div>
+    <div class="dl">
+      <div><div class="dt">Port Authority</div>${val(p.port_authority)}</div>
+      <div><div class="dt">Ownership</div>${val(p.ownership)}</div>
+    </div>
+    ${p.berth?`<div style="margin-top:14px"><div class="dt">Berth</div>${val(p.berth)}</div>`:''}`;
+}
+
+// Facility lookup by ID — avoids JSON serialisation in onclick attrs
+function getFacById(id){ return _allFacilities.find(f=>f.id===id); }
+function selectFacilityById(id){ const f=getFacById(id); if(f) selectFacility(f); }
+function openFacilityDetailById(id){ const f=getFacById(id); if(f) openFacilityDetail(f); }
+
+function renderTerminals(facilities){
+  const el=$('terminalsBody'); if(!el) return;
+  const top=facilities.filter(f=>!f.parent_facility_id);
+  $('terminalCount').textContent=facilities.length?`${facilities.length} facilit${facilities.length>1?'ies':'y'}`:'' ;
+  if(!facilities.length){ el.innerHTML='<div class="empty-state">No facilities recorded for this port.</div>'; return; }
+  const FAC_ICON={'Port Area':'🏭','Terminal':'🚢','Berth':'⚓','Jetty':'🪝','Wharf':'🏗','Pier':'🛳','Dock':'🔧','Marina':'⛵','Other':'📍'};
+  function renderNode(fac, depth){
+    const children=facilities.filter(f=>f.parent_facility_id===fac.id);
+    const icon=FAC_ICON[fac.facility_type]||'📍';
+    const hasCoords=fac.latitude&&fac.longitude;
+    // Use data-id — never put JSON in onclick attributes
+    return `<div style="margin-left:${depth*16}px;margin-bottom:8px">
+      <div class="terminal-item fac-item" id="facItem_${fac.id}"
+        data-facid="${fac.id}"
+        style="${depth>0?'border-left:2px solid var(--primary-mid);border-radius:0 10px 10px 0;':''}cursor:pointer;transition:border-color .15s,box-shadow .15s,background .15s"
+        onclick="selectFacilityById('${fac.id}')"
+        onmouseover="if(!this.classList.contains('fac-active'))this.style.borderColor='var(--primary-mid)'"
+        onmouseout="if(!this.classList.contains('fac-active'))this.style.borderColor=''">
+        <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:0">
+          ${fac.photo_url
+            ?`<img src="${esc(fac.photo_url)}" style="width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0" alt=""/>`
+            :`<div class="terminal-icon" style="${hasCoords?'background:var(--primary-soft);color:var(--primary)':''}"><span style="font-size:16px">${icon}</span></div>`}
+          <div class="terminal-info">
+            <div class="terminal-name">${esc(fac.name)}${fac.facility_type?` <span style="font-size:11px;font-weight:500;color:var(--muted)">${esc(fac.facility_type)}</span>`:''}</div>
+            <div class="terminal-meta">
+              ${hasCoords?`<span style="font-family:monospace;color:var(--primary)">${parseFloat(fac.latitude).toFixed(4)}, ${parseFloat(fac.longitude).toFixed(4)}</span>`:'<span style="color:var(--soft);font-size:11px">No coordinates</span>'}
+              ${fac.notes?`<span>${esc(fac.notes.slice(0,40))}${fac.notes.length>40?'…':''}</span>`:''}
+            </div>
+          </div>
+        </div>
+        <button onclick="event.stopPropagation();openFacilityDetailById('${fac.id}')"
+          style="height:28px;padding:0 10px;border-radius:7px;border:1.5px solid var(--border);background:#fff;font:inherit;font-size:11.5px;font-weight:600;color:var(--primary);cursor:pointer;flex-shrink:0;transition:.14s;white-space:nowrap"
+          onmouseover="this.style.background='var(--primary-soft)'" onmouseout="this.style.background='#fff'">Details</button>
+      </div>
+      ${children.length?`<div style="padding-left:12px;margin-top:4px">${children.map(c=>renderNode(c,depth+1)).join('')}</div>`:''}
+    </div>`;
+  }
+  el.innerHTML=top.map(f=>renderNode(f,0)).join('');
+}
+
+function renderQuickFacts(p){
+  $('quickFacts').innerHTML=`<div style="display:flex;flex-direction:column;gap:10px">
+    ${[
+      ['Port Type', p.port_type],
+      ['Ownership', p.ownership],
+      ['Size', p.harbor_size],
+      ['VTS', p.vessel_traffic_service],
+      ['UN/LOCODE', p.un_locode],
+    ].filter(([,v])=>v).map(([l,v])=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)">
+      <span style="font-size:12px;color:var(--soft);font-weight:600">${esc(l)}</span>
+      <span style="font-size:13px;font-weight:600;color:var(--text);text-align:right;max-width:60%">${esc(v)}</span>
+    </div>`).join('')}
+  </div>`;
+}
+
+let _portData=null; // store port for map reset
+
+function renderMap(p){
+  _portData=p;
+  if(!p.latitude||!p.longitude){ return; }
+  const lat=parseFloat(p.latitude), lon=parseFloat(p.longitude);
+  const cl=$('coordsLbl'); if(cl) cl.textContent=`${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+  zoomMapTo(lat, lon, 0.15, 0.12);
+}
+
+function zoomMapTo(lat, lon, bboxW, bboxH){
+  const box=$('mapBox'); if(!box) return;
+  box.innerHTML=`<iframe width="100%" height="100%" frameborder="0" style="border:0" loading="lazy"
+    src="https://www.openstreetmap.org/export/embed.html?bbox=${lon-bboxW}%2C${lat-bboxH}%2C${lon+bboxW}%2C${lat+bboxH}&layer=mapnik&marker=${lat}%2C${lon}" allowfullscreen></iframe>`;
+  const ph=$('mapPlaceholder'); if(ph) ph.style.display='none';
+}
+
+function selectFacility(fac){
+  // Clear previous highlight
+  document.querySelectorAll('.fac-item.fac-active').forEach(el=>{
+    el.classList.remove('fac-active');
+    el.style.borderColor='';
+  });
+  // Highlight selected
+  const item=document.getElementById('facItem_'+fac.id);
+  if(item){
+    item.classList.add('fac-active');
+    // Smooth scroll to item
+    item.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
+  // Update map
+  const crumb=$('mapBreadcrumb');
+  const crumbText=$('mapBreadcrumbText');
+  if(fac.latitude&&fac.longitude){
+    const lat=parseFloat(fac.latitude), lon=parseFloat(fac.longitude);
+    // Tighter zoom for facilities than port-level
+    zoomMapTo(lat, lon, 0.03, 0.025);
+    $('coordsLbl').textContent=`${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+    if(crumb) crumb.style.display='flex';
+    if(crumbText) crumbText.textContent=fac.name+(fac.facility_type?' · '+fac.facility_type:'');
+  } else {
+    // No facility coords — show port map but update breadcrumb
+    if(_portData&&_portData.latitude){
+      zoomMapTo(parseFloat(_portData.latitude), parseFloat(_portData.longitude), 0.15, 0.12);
+    }
+    if(crumb) crumb.style.display='flex';
+    if(crumbText) crumbText.textContent=fac.name+' (no coordinates recorded)';
+  }
+}
+
+function resetMapToPort(){
+  // Clear highlight
+  document.querySelectorAll('.fac-item.fac-active').forEach(el=>{
+    el.classList.remove('fac-active');
+    el.style.borderColor='';
+  });
+  // Reset map to port
+  if(_portData) renderMap(_portData);
+  const crumb=$('mapBreadcrumb');
+  if(crumb) crumb.style.display='none';
+  const lbl=$('coordsLbl');
+  if(lbl&&_portData) lbl.textContent=`${parseFloat(_portData.latitude).toFixed(4)}, ${parseFloat(_portData.longitude).toFixed(4)}`;
+}
+
+let _currentPhotoUrl=null;
+function openLightbox(){
+  if(!_currentPhotoUrl) return;
+  const lb=$('photoLightbox'), img=$('lightboxImg');
+  if(img) img.src=_currentPhotoUrl;
+  if(lb){lb.style.display='flex';document.body.style.overflow='hidden';}
+}
+function closeLightbox(){
+  const lb=$('photoLightbox');
+  if(lb) lb.style.display='none';
+  document.body.style.overflow='';
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLightbox();});
+
+function renderHeader(p){
+  $('portName').textContent=p.main_port_name;
+  document.title=`${p.main_port_name} · SmarTuna concept`;
+  $('portCountry').innerHTML=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/></svg> ${esc(p.country||'—')}${p.region_name?' · '+esc(p.region_name):''}`;
+  if(p.un_locode){ const lb=$('portLocode'); lb.textContent=p.un_locode; lb.style.display='inline-flex'; }
+  if(p.port_type){ const tb=$('portTypeBadge'); tb.textContent=p.port_type; tb.style.display='inline-flex'; }
+  // Always render hero — with photo if available, gradient otherwise
+  const hero=$('heroBox');
+  if(p.photo_url){
+    _currentPhotoUrl=p.photo_url;
+    hero.style.backgroundImage=p.photo_url.startsWith('data:')
+      ? `url("${p.photo_url}")`
+      : `url('${p.photo_url.replace(/'/g,'%27')}')`;
+    hero.style.backgroundSize='cover';
+    hero.style.backgroundPosition='center';
+    hero.style.backgroundRepeat='no-repeat';
+    // Show view photo button
+    const vpb=$('viewPhotoBtn'); if(vpb) vpb.style.display='inline-flex';
+  }
+}
+
+(async function init(){
+  if(!vid){location.href='port-list.html';return;}
+  const {data:{user}}=await sb.auth.getUser();
+  if(!user){location.href='login.html';return;}
+  const {data:profile}=await sb.from('profiles').select('role,first_name,last_name,avatar_color,photo_url').eq('id',user.id).single();
+  const isAdmin=profile&&['admin','operator'].includes(profile.role);
+  const first=profile?.first_name||user.email.split('@')[0];
+  if(profile?.photo_url) $('avatarBtn').innerHTML=`<img src="${profile.photo_url}" style="width:100%;height:100%;object-fit:cover">`;
+  else{ $('avatarBtn').style.background=profile?.avatar_color||'#1a6fdb'; $('avatarInitials').textContent=((first[0]||'')+(profile?.last_name?.[0]||'')).toUpperCase()||'··'; }
+  $('avatarGreeting').textContent=`Hello, ${first}!`;
+  if(isAdmin){ $('editBtn').style.display='inline-flex'; $('editBtn').href=`port.html?id=${vid}`; }
+  // Load port
+  const {data:p,error}=await sb.from('ports').select('*').eq('id',vid).single();
+  if(error||!p){toast('Port not found','err');return;}
+  renderHeader(p);
+  try{ renderDetails(p); } catch(e){ console.warn('renderDetails error:',e); }
+  try{ renderMap(p); } catch(e){ console.warn('renderMap error:',e); }
+  try{ renderQuickFacts(p); } catch(e){ console.warn('renderQuickFacts error:',e); }
+  // Load terminals — always runs even if above steps error
+  try{
+    const {data:terms,error:tErr}=await sb.from('port_facilities').select('*').eq('port_id',vid).order('sort_order').order('created_at');
+    if(tErr) throw tErr;
+    _allFacilities=terms||[];
+    renderTerminals(terms||[]);
+  } catch(e){
+    console.error('Facilities load error:',e);
+    const tb=document.getElementById('terminalsBody');
+    if(tb) tb.innerHTML='<div class="empty-state">Error loading facilities: '+e.message+'</div>';
+  }
+})();
+
+
+function closeLightbox(){
+  const lb=document.getElementById('photoLightbox');
+  if(lb) lb.style.display='none';
+  document.body.style.overflow='';
+}
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){ closeLightbox(); closeFacModal(); }
+});
+
+// ── FACILITY DETAIL MODAL ──
+let _allFacilities=[];
+const FAC_ICON_MAP={'Port Area':'🏭','Terminal':'🚢','Berth':'⚓','Jetty':'🪝','Wharf':'🏗','Pier':'🛳','Dock':'🔧','Marina':'⛵','Other':'📍'};
+
+function openFacilityDetail(fac){
+  const modal=$('facModal'); if(!modal) return;
+  const icon=FAC_ICON_MAP[fac.facility_type]||'📍';
+  const photo=$('facModalPhoto');
+  if(fac.photo_url){
+    photo.style.backgroundImage=`url('${fac.photo_url.replace(/'/g,'%27')}')`;
+    photo.style.backgroundSize='cover'; photo.style.backgroundPosition='center';
+  } else {
+    photo.style.backgroundImage='linear-gradient(135deg,#1a3a6b,#1a6fdb)';
+  }
+  $('facModalIcon').textContent=icon;
+  $('facModalName').textContent=fac.name;
+  $('facModalType').textContent=fac.facility_type||'';
+  const details=[];
+  if(fac.facility_type) details.push(['Type', fac.facility_type]);
+  if(fac.latitude&&fac.longitude) details.push(['Coordinates', `${parseFloat(fac.latitude).toFixed(5)}, ${parseFloat(fac.longitude).toFixed(5)}`]);
+  $('facModalDetails').innerHTML=details.map(([l,v])=>`
+    <div>
+      <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--soft);margin-bottom:3px">${esc(l)}</div>
+      <div style="font-size:13.5px;font-weight:500;color:var(--text);font-family:${l==='Coordinates'?'monospace':'inherit'}">${esc(v)}</div>
+    </div>`).join('');
+  const mapWrap=$('facModalMapWrap'), mapEl=$('facModalMap');
+  if(fac.latitude&&fac.longitude){
+    const lat=parseFloat(fac.latitude), lon=parseFloat(fac.longitude);
+    mapEl.innerHTML=`<iframe width="100%" height="100%" frameborder="0" style="border:0" loading="lazy"
+      src="https://www.openstreetmap.org/export/embed.html?bbox=${lon-.05}%2C${lat-.04}%2C${lon+.05}%2C${lat+.04}&layer=mapnik&marker=${lat}%2C${lon}" allowfullscreen></iframe>`;
+    mapWrap.style.display='block';
+  } else { mapWrap.style.display='none'; }
+  const notesWrap=$('facModalNotesWrap');
+  if(fac.notes){ $('facModalNotes').textContent=fac.notes; notesWrap.style.display='block'; }
+  else notesWrap.style.display='none';
+  const children=_allFacilities.filter(f=>f.parent_facility_id===fac.id);
+  const childWrap=$('facModalChildrenWrap'), childEl=$('facModalChildren');
+  if(children.length){
+    childEl.innerHTML=children.map(c=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--bg);border-radius:9px;margin-bottom:6px;cursor:pointer" onclick="openFacilityDetailById('${c.id}')" onmouseover="this.style.background='var(--primary-soft)'" onmouseout="this.style.background='var(--bg)'">
+        <span style="font-size:18px">${FAC_ICON_MAP[c.facility_type]||'📍'}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(c.name)}</div>
+          <div style="font-size:11.5px;color:var(--muted)">${esc(c.facility_type||'')}${c.latitude&&c.longitude?' · '+parseFloat(c.latitude).toFixed(4)+', '+parseFloat(c.longitude).toFixed(4):''}</div>
+        </div>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--soft)" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>`).join('');
+    childWrap.style.display='block';
+  } else { childWrap.style.display='none'; }
+  modal.style.display='flex';
+  document.body.style.overflow='hidden';
+  requestAnimationFrame(()=>{ $('facModalBox').style.transform='scale(1)'; });
+}
+
+function closeFacModal(){
+  const modal=$('facModal'); if(!modal||modal.style.display==='none') return;
+  $('facModalBox').style.transform='scale(.95)';
+  setTimeout(()=>{ modal.style.display='none'; document.body.style.overflow=''; $('facModalBox').style.transform='scale(.95)'; },180);
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeLightbox(); });
+
+function toggleAvatarMenu(){ $('avatarMenu').classList.toggle('open'); }
+document.addEventListener('click',e=>{ if(!e.target.closest('.avatar-btn')) $('avatarMenu')?.classList.remove('open'); });
+async function handleLogout(){ await sb.auth.signOut(); location.href='index.html'; }
+function toast(msg,type=''){
+  const t=$('toast'); t.textContent=msg;
+  t.className='toast show'+(type==='err'?' err':'');
+  setTimeout(()=>t.className='toast',3200);
+}
+</script>
+<!-- FACILITY DETAIL MODAL -->
+<div id="facModal" onclick="if(event.target===this)closeFacModal()" style="display:none;position:fixed;inset:0;background:rgba(20,24,45,.55);backdrop-filter:blur(5px);z-index:400;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:20px;box-shadow:0 8px 32px rgba(20,24,45,.16),0 32px 64px rgba(20,24,45,.10);width:560px;max-width:95vw;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;transform:scale(.95);transition:transform .22s cubic-bezier(.2,.8,.2,1)" id="facModalBox">
+    <!-- Photo hero -->
+    <div id="facModalPhoto" style="height:180px;background:linear-gradient(135deg,#1a3a6b,#1a6fdb);position:relative;flex-shrink:0;overflow:hidden">
+      <div style="position:absolute;inset:0;background:linear-gradient(to bottom,transparent 40%,rgba(10,20,50,.6))"></div>
+      <button onclick="closeFacModal()" style="position:absolute;top:12px;right:12px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.35);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);z-index:2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+      <div style="position:absolute;bottom:14px;left:18px;z-index:2">
+        <div id="facModalIcon" style="font-size:28px;margin-bottom:4px"></div>
+        <div id="facModalName" style="font-size:20px;font-weight:800;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.5)"></div>
+        <div id="facModalType" style="font-size:12px;color:rgba(255,255,255,.8);margin-top:3px;font-weight:600"></div>
+      </div>
+    </div>
+    <!-- Content -->
+    <div style="overflow-y:auto;flex:1;padding:22px 24px">
+      <!-- Details grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px" id="facModalDetails"></div>
+      <!-- Map -->
+      <div id="facModalMapWrap" style="display:none;margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:8px">Location</div>
+        <div id="facModalMap" style="height:200px;border-radius:11px;overflow:hidden;border:1.5px solid var(--line)"></div>
+      </div>
+      <!-- Notes -->
+      <div id="facModalNotesWrap" style="display:none">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:6px">Notes</div>
+        <div id="facModalNotes" style="font-size:13.5px;color:var(--text);line-height:1.65;background:var(--bg);border-radius:9px;padding:12px 14px"></div>
+      </div>
+      <!-- Sub-facilities -->
+      <div id="facModalChildrenWrap" style="display:none;margin-top:16px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:8px">Sub-facilities</div>
+        <div id="facModalChildren"></div>
+      </div>
+    </div>
+    <!-- Footer -->
+    <div style="padding:14px 24px;border-top:1px solid var(--line);display:flex;justify-content:flex-end;flex-shrink:0">
+      <button onclick="closeFacModal()" style="height:40px;padding:0 20px;border-radius:10px;border:1.5px solid var(--border);background:#fff;font:inherit;font-size:13.5px;font-weight:600;color:var(--text);cursor:pointer">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- PHOTO LIGHTBOX -->
+<div id="photoLightbox" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:2000;align-items:center;justify-content:center;cursor:zoom-out" onclick="closeLightbox()">
+  <img id="lightboxImg" style="max-width:95vw;max-height:92vh;border-radius:12px;box-shadow:0 8px 48px rgba(0,0,0,.6);object-fit:contain;pointer-events:none" alt="Port photo"/>
+  <button onclick="closeLightbox()" style="position:fixed;top:20px;right:24px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.3);color:#fff;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);transition:.14s" onmouseover="this.style.background='rgba(255,255,255,.28)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">✕</button>
+</div>
+</body>
+</html>

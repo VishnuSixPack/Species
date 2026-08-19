@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<link rel="icon" type="image/png" href="sc-blue-logo.png"/>
+<title>Trash — SmarTuna</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="theme.css"/>
+<script src="theme.js"></script>
+<style>
+  @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');font-display:swap;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Poppins','DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+  .sc-wm{display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1;}
+  .sc-wm-top{font-family:'Bitsumis',sans-serif!important;font-weight:900!important;font-size:16px;
+    letter-spacing:.04em;text-transform:uppercase;color:var(--wm-top);}
+  .sc-wm-sub{font-family:'Bitsumis',sans-serif!important;font-weight:700!important;font-size:7px;
+    letter-spacing:.22em;text-transform:uppercase;color:var(--wm-sub);margin-top:2px;}
+  .topbar-brand{display:flex;align-items:center;gap:8px;text-decoration:none;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 30px;
+          background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:400;}
+  .nav{display:flex;gap:2px;}
+  .nav-item{padding:7px 14px;border-radius:999px;font-size:13px;color:var(--muted);text-decoration:none;}
+  .nav-item.active{background:var(--bg);color:var(--text);font-weight:600;}
+  .avatar-wrap{position:relative;}
+  .avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;
+    font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;}
+  .avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--surface);
+    border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-1);min-width:186px;overflow:hidden;z-index:999;}
+  .avatar-menu.open{display:block;}
+  .avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;border-bottom:1px solid var(--border);}
+  .avatar-menu a,.avatar-menu button{display:block;padding:9px 15px;font-size:13px;color:var(--menu-text);
+    text-decoration:none;font-weight:500;width:100%;background:none;border:none;font-family:inherit;
+    cursor:pointer;text-align:left;}
+  .avatar-menu a:hover,.avatar-menu button:hover{background:var(--bg);color:var(--primary);}
+
+  .wrap{max-width:1400px;margin:0 auto;padding:20px 30px 70px;}
+  .page-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:24px;flex-wrap:wrap;}
+  .h1{font-size:22px;font-weight:700;display:flex;align-items:center;gap:12px;}
+  .h1-icon{width:40px;height:40px;border-radius:12px;background:var(--bad-bg);display:flex;align-items:center;
+           justify-content:center;flex-shrink:0;}
+  .h1-icon svg{width:20px;height:20px;color:var(--bad-fg);}
+  .h1-sub{font-size:13px;color:var(--muted);margin-top:4px;}
+  .btn{padding:10px 18px;border-radius:10px;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;
+       border:1px solid var(--border);background:var(--surface);color:var(--text);text-decoration:none;display:inline-block;}
+  .btn:hover{border-color:var(--primary);color:var(--primary);}
+  .btn-sm{padding:7px 13px;font-size:11.5px;}
+  .btn-restore{border-color:var(--good-fg);color:var(--good-fg);}
+  .btn-restore:hover{background:var(--good-bg);}
+  .btn-danger{border-color:var(--bad-fg);color:var(--bad-fg);}
+  .btn-danger:hover{background:var(--bad-bg);}
+
+  .empty{padding:60px 30px;text-align:center;color:var(--muted);}
+  .empty svg{width:48px;height:48px;color:var(--dim);margin-bottom:16px;}
+  .empty-t{font-size:16px;font-weight:600;margin-bottom:6px;color:var(--text);}
+  .empty-d{font-size:13px;line-height:1.6;}
+
+  table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;}
+  th{font-size:11px;color:var(--muted);font-weight:500;text-align:left;padding:12px 16px;
+     background:var(--surface-2);border-bottom:1px solid var(--border);}
+  td{font-size:13px;padding:14px 16px;border-top:1px solid var(--rule);}
+  tr:first-child td{border-top:none;}
+  tr:hover td{background:var(--hover);}
+  .ref{font-weight:700;color:var(--primary);}
+  .route{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .date{font-size:12px;color:var(--muted);}
+  .badge{display:inline-block;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:600;
+         background:var(--bad-bg);color:var(--bad-fg);}
+  .actions{display:flex;gap:8px;justify-content:flex-end;}
+
+  .modal-bg{position:fixed;inset:0;background:rgba(10,12,18,.55);z-index:900;display:none;
+            align-items:center;justify-content:center;}
+  .modal{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:32px;
+         max-width:440px;width:90%;box-shadow:var(--shadow-2);text-align:center;}
+  .modal-icon{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;}
+  .modal h3{font-size:16px;margin-bottom:8px;}
+  .modal p{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:24px;}
+  .modal .btns{display:flex;gap:10px;justify-content:center;}
+  .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);
+         padding:11px 22px;border-radius:10px;font-size:13px;font-weight:500;z-index:999;opacity:0;
+         transition:opacity .25s;pointer-events:none;}
+  .toast.vis{opacity:1;pointer-events:auto;}
+
+  @media(max-width:760px){ .nav{display:none;} td,th{padding:10px 12px;} }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="home-logged-in.html" class="topbar-brand">
+    <img src="sc-blue-logo.png" data-dark-src="sc-white-logo.png" alt="SmarTuna" style="width:28px;height:28px;object-fit:contain;"/>
+    <span class="sc-wm"><span class="sc-wm-top">SmarTuna</span><span class="sc-wm-sub">concept</span></span>
+  </a>
+  <div class="nav">
+    <a href="home-logged-in.html" class="nav-item">Home</a>
+    <a href="shipment-list.html" class="nav-item active">My Studio</a>
+    <a href="Species.html" class="nav-item">Atlas</a>
+  </div>
+  <div class="avatar-wrap">
+    <div class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()"><span id="avatarInitials">··</span></div>
+    <div class="avatar-menu" id="avatarMenu">
+      <div class="avatar-menu-name" id="avatarGreeting">Hello!</div>
+      <a href="profile.html">Profile</a><a href="organisation.html">Your Company</a>
+      <button onclick="handleLogout()">Logout</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="page-head">
+    <div>
+      <div class="h1">
+        <div class="h1-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg></div>
+        Trash
+      </div>
+      <div class="h1-sub" id="subline">Deleted shipments — restore or permanently remove</div>
+    </div>
+    <a href="shipment-list.html" class="btn">← Back to Shipments</a>
+  </div>
+
+  <div id="host"></div>
+</div>
+
+<!-- Confirm permanent delete -->
+<div class="modal-bg" id="deleteModal">
+  <div class="modal">
+    <div class="modal-icon" style="background:var(--bad-bg);">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--bad-fg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+    </div>
+    <h3>Permanently delete?</h3>
+    <p>This shipment and all its products, lots and documents will be <b>permanently deleted</b>.
+       This cannot be undone.</p>
+    <div class="btns">
+      <button class="btn" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-danger" id="confirmDeleteBtn" style="background:var(--bad-fg);color:#fff;border-color:var(--bad-fg);">Delete forever</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
+const SUPABASE_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const dbClient=window.supabase?window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function toggleAvatarMenu(){ $('avatarMenu').classList.toggle('open'); }
+document.addEventListener('click',e=>{const w=document.querySelector('.avatar-wrap');
+  if(w&&!w.contains(e.target)) $('avatarMenu')?.classList.remove('open');});
+function greetingTime(){const h=new Date().getHours();return h<12?'Good Morning':(h<18?'Good Afternoon':'Good Evening');}
+async function handleLogout(){ if(dbClient) await dbClient.auth.signOut(); location.href='index.html'; }
+
+function toast(m){
+  const t=$('toast'); t.textContent=m; t.classList.add('vis');
+  setTimeout(()=>t.classList.remove('vis'),2800);
+}
+
+function fmtDate(v){ if(!v) return ''; const d=new Date(v); return isNaN(d)?v:d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
+function timeAgo(v){ if(!v) return '';
+  const ms=Date.now()-new Date(v).getTime();
+  const mins=Math.floor(ms/60000), hrs=Math.floor(ms/3600000), days=Math.floor(ms/86400000);
+  if(mins<1) return 'just now'; if(mins<60) return mins+'m ago';
+  if(hrs<24) return hrs+'h ago'; if(days<30) return days+'d ago';
+  return fmtDate(v);
+}
+
+let ITEMS=[];
+let DELETE_ID=null;
+
+function closeModal(){ $('deleteModal').style.display='none'; DELETE_ID=null; }
+
+function renderList(){
+  if(!ITEMS.length){
+    $('host').innerHTML=`<div class="empty">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+      <div class="empty-t">Trash is empty</div>
+      <div class="empty-d">Deleted shipments will appear here. You can restore them or permanently remove them.</div>
+    </div>`;
+    $('subline').textContent='Nothing in the trash';
+    return;
+  }
+  $('subline').textContent=ITEMS.length+' shipment'+(ITEMS.length===1?'':'s')+' in the trash';
+  $('host').innerHTML=`<table>
+    <thead><tr><th>Shipment</th><th>Route</th><th>Mode</th><th>Deleted</th><th style="text-align:right;">Actions</th></tr></thead>
+    <tbody>${ITEMS.map((s,i)=>`<tr>
+      <td><div class="ref">${esc(s.shipment_ref||'—')}</div>
+        <div class="route">${esc(s.shipment_type||'')} · ${esc(s.exporter_name||'')}</div></td>
+      <td>${esc(s.origin_name||'—')} → ${esc(s.destination_name||'—')}</td>
+      <td>${esc(s.transport_mode||'—')}</td>
+      <td><div class="date">${timeAgo(s.deleted_at)}</div>
+        <div class="route">${fmtDate(s.deleted_at)}</div></td>
+      <td><div class="actions">
+        <button class="btn btn-sm btn-restore" onclick="restore('${s.id}')">Restore</button>
+        <button class="btn btn-sm btn-danger" onclick="confirmDelete('${s.id}')">Delete forever</button>
+      </div></td>
+    </tr>`).join('')}</tbody></table>`;
+}
+
+async function restore(id){
+  try{
+    const {error}=await dbClient.from('shipments').update({deleted_at:null}).eq('id',id);
+    if(error) throw error;
+    ITEMS=ITEMS.filter(s=>s.id!==id);
+    renderList();
+    toast('Shipment restored');
+  }catch(e){ toast('Restore failed: '+e.message); }
+}
+
+function confirmDelete(id){
+  DELETE_ID=id;
+  $('deleteModal').style.display='flex';
+  $('confirmDeleteBtn').onclick=async()=>{
+    closeModal();
+    try{
+      // Delete children first, then the shipment
+      await dbClient.from('shipment_legs').delete().eq('shipment_id',id);
+      await dbClient.from('shipment_vessels').delete().eq('shipment_id',id);
+      const {data:items}=await dbClient.from('shipment_items').select('id').eq('shipment_id',id);
+      for(const it of (items||[])){
+        await dbClient.from('shipment_batches').delete().eq('shipment_item_id',it.id);
+      }
+      await dbClient.from('shipment_items').delete().eq('shipment_id',id);
+      await dbClient.from('shipments').delete().eq('id',id);
+      ITEMS=ITEMS.filter(s=>s.id!==id);
+      renderList();
+      toast('Permanently deleted');
+    }catch(e){ toast('Delete failed: '+e.message); }
+  };
+}
+
+async function load(){
+  if(!dbClient){ $('host').innerHTML='<div class="empty"><div class="empty-t">Not connected</div></div>'; return; }
+  try{
+    const {data:{session}}=await dbClient.auth.getSession();
+    if(!session) return;
+
+    const {data:profile}=await dbClient.from('profiles')
+      .select('first_name,last_name,avatar_color,company_id').eq('id',session.user.id).single();
+    if(profile){
+      const f=profile.first_name||session.user.email.split('@')[0], l=profile.last_name||'';
+      $('avatarBtn').style.background=profile.avatar_color||'var(--primary)';
+      $('avatarInitials').textContent=(f.charAt(0)+(l?l.charAt(0):'')).toUpperCase();
+      $('avatarGreeting').textContent=greetingTime()+', '+f+'!';
+    }
+
+    const {data,error}=await dbClient.from('shipments')
+      .select('id,shipment_ref,shipment_type,transport_mode,origin_name,destination_name,exporter_name,deleted_at')
+      .not('deleted_at','is',null)
+      .order('deleted_at',{ascending:false});
+    if(error) throw error;
+    ITEMS=data||[];
+    renderList();
+  }catch(e){
+    console.error('Load failed:',e);
+    $('host').innerHTML='<div class="empty"><div class="empty-t">Could not load the trash</div><div class="empty-d">'+esc(e.message)+'</div></div>';
+  }
+}
+
+load();
+</script>
+</body>
+</html>

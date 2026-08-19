@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Home — SmarTuna concept</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="sc-blue-logo.png" />
+  <link rel="stylesheet" href="voice-assistant.css" />
+  <style>
+    /* ── SMARTUNA WORDMARK ── */
+    @font-face {
+      font-family: 'Bitsumis';
+      src: url('BITSUMIS.TTF') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+    .sc-wm {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      line-height: 1;
+      gap: 0;
+      text-decoration: none;
+    }
+    .sc-wm-top {
+      font-family: 'Bitsumis', sans-serif !important;
+      font-weight: 900 !important;
+      font-size: 16px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      line-height: 1;
+      background: linear-gradient(90deg, #1a6fdb, #1a6fdb) !important;
+      -webkit-background-clip: text !important;
+      -webkit-text-fill-color: transparent !important;
+      background-clip: text !important;
+    }
+    .sc-wm-sub {
+      font-family: 'Bitsumis', sans-serif !important;
+      font-weight: 700 !important;
+      font-size: 7px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: #1a1a2e;
+      -webkit-text-fill-color: #1a1a2e !important;
+      margin-top: 2px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{--primary:#1a6fdb;--bg:#f0f2f7;--white:#ffffff;--text:#1a1a2e;--muted:#6b7280;--border:#e8eaf0;}
+    html,body{overflow:hidden;height:100%;}
+    body{font-family:'Poppins','DM Sans',sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;font-weight:400;}
+
+    /* ── TOP BAR ── */
+    .topbar{display:flex;align-items:center;padding:10px 28px;gap:20px;flex-shrink:0;}
+    .topbar-brand{text-decoration:none;flex-shrink:0;line-height:1.1;display:flex;align-items:center;}
+    .topbar-brand-project{display:block;font-size:8px;font-weight:700;letter-spacing:2px;color:#9aa0b4;}
+    .topbar-brand-name{display:block;font-size:16px;font-weight:800;color:var(--text);}
+    .topbar-nav{flex:1;display:flex;justify-content:center;}
+    .nav-pill{display:inline-flex;align-items:center;gap:2px;background:var(--white);border-radius:999px;padding:5px 7px;box-shadow:0 1px 6px rgba(0,0,0,0.07);}
+    .nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:400;color:var(--muted);text-decoration:none;transition:background 0.15s,color 0.15s;white-space:nowrap;}
+    .nav-item img{width:15px;height:15px;object-fit:contain;opacity:0.5;flex-shrink:0;}
+    .nav-item:hover{background:var(--bg);color:var(--text);}
+    .nav-item.active{background:var(--bg);color:var(--text);font-weight:600;}
+    .nav-item:hover img,.nav-item.active img{opacity:1;}
+    .nav-item-wrap{position:relative;}
+    .nav-item-wrap::after{content:'';position:absolute;top:100%;left:0;width:100%;height:12px;background:transparent;}
+    .nav-item-wrap:hover .nav-dropdown{display:block;}
+    .nav-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.10);min-width:160px;z-index:500;padding:6px;}
+    .nav-dropdown-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;font-size:13px;color:#4a4e69;text-decoration:none;border-radius:8px;font-weight:500;transition:background 0.15s;white-space:nowrap;cursor:pointer;position:relative;}
+    .nav-dropdown-item:hover{background:var(--bg);color:var(--primary);}
+    .nav-dropdown-sub{display:none;position:absolute;left:calc(100% + 4px);top:0;background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.10);min-width:160px;padding:6px;z-index:501;}
+    .nav-dropdown-item:hover .nav-dropdown-sub{display:block;}
+    .topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+    .search-pill{display:flex;align-items:center;gap:8px;background:var(--white);border-radius:999px;padding:8px 16px;font-size:12px;color:#c0c4d0;box-shadow:0 1px 4px rgba(0,0,0,0.06);min-width:150px;cursor:text;}
+    .notif-btn{width:36px;height:36px;border-radius:50%;background:var(--white);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.07);position:relative;flex-shrink:0;}
+    .notif-btn img{width:17px;height:17px;object-fit:contain;opacity:0.65;}
+    .notif-dot{position:absolute;top:5px;right:5px;width:8px;height:8px;background:#e63946;border-radius:50%;border:2px solid var(--bg);}
+    .avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:var(--white);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;box-shadow:0 1px 4px rgba(0,0,0,0.12);flex-shrink:0;}
+    .avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.10);min-width:176px;overflow:hidden;z-index:999;}
+    .avatar-menu.open{display:block;}
+    .avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;color:var(--text);border-bottom:1px solid var(--border);}
+    .avatar-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;color:#4a4e69;text-decoration:none;font-weight:500;}
+    .avatar-menu a:hover{background:var(--bg);color:var(--primary);}
+    .avatar-menu button{width:100%;padding:9px 15px;background:none;border:none;border-top:1px solid var(--border);text-align:left;font-family:'Poppins',sans-serif;font-size:13px;color:#e63946;cursor:pointer;}
+    .avatar-menu button:hover{background:#fff0f1;}
+
+    /* ── BODY ── */
+    .body-layout{display:flex;flex:1;padding:0 20px 14px;gap:14px;align-items:flex-start;min-height:0;}
+
+    /* ── SIDEBAR ── */
+    .sidebar-col{display:flex;flex-direction:column;align-items:center;flex-shrink:0;gap:0;align-self:stretch;min-height:calc(100vh - 80px);}
+    .sidebar-icons{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;}
+    .si{width:42px;height:42px;border-radius:999px;background:var(--white);box-shadow:0 1px 4px rgba(0,0,0,0.08);display:flex;align-items:center;overflow:hidden;white-space:nowrap;cursor:pointer;text-decoration:none;transition:width 0.22s ease,box-shadow 0.2s;flex-shrink:0;}
+    .si:hover:not(.si-disabled){width:148px;box-shadow:0 3px 10px rgba(0,0,0,0.10);}
+    .si.si-active{background:#1a1a2e;}
+    .si.si-active svg{stroke:#fff;}
+    .si.si-active .si-label{color:#fff;}
+    .si.si-disabled{opacity:0.3;cursor:not-allowed;pointer-events:none;}
+    .si-icon{width:42px;height:42px;min-width:42px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+    .si svg{stroke:#6b7280;}
+    .si-label{font-size:12px;font-weight:600;color:#4a4e69;padding-right:14px;opacity:0;transition:opacity 0.15s 0.1s;}
+    .si:hover:not(.si-disabled) .si-label{opacity:1;}
+    .sidebar-hamburger{width:42px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#d4d8e2;margin-top:12px;border-radius:8px;transition:color 0.2s;position:relative;flex-shrink:0;}
+    .sidebar-hamburger:hover{color:#9aa0b4;}
+
+    /* ── MAIN ── */
+    .main{flex:1;min-width:0;overflow:hidden;display:flex;flex-direction:column;}
+    .greeting{margin-bottom:12px;}
+    .greeting-sub{font-size:13px;color:var(--muted);font-weight:400;margin-bottom:2px;}
+    .greeting-name{font-size:24px;font-weight:800;color:var(--text);letter-spacing:-0.5px;line-height:1.15;}
+    .greeting-fact{font-size:12px;color:#9aa0b4;margin-top:7px;font-weight:400;max-width:640px;line-height:1.6;transition:opacity 0.4s;}
+
+    /* ── TILES ── */
+    .tiles{
+      display:grid;
+      grid-template-columns:1.6fr 1fr 1.2fr 1fr;
+      grid-template-rows:calc(28vh - 8px) calc(30vh - 8px) calc(24vh - 8px);
+      gap:12px;
+    }
+    .t-overview{grid-row:1/3;grid-column:1;}
+    .t-notif   {grid-row:3;  grid-column:1;}
+    .t-weather {grid-row:1;  grid-column:2;
+      background-size:cover !important;
+      background-position:center !important;
+      background-repeat:no-repeat !important;
+      transition:background-image 0.6s ease;
+      position:relative;
+      overflow:hidden;
+    }
+    /* overlay so text stays readable */
+    .t-weather::before {
+      content:'';
+      position:absolute;
+      inset:0;
+      background:rgba(255,255,255,0.18);
+      backdrop-filter:blur(0px);
+      pointer-events:none;
+      z-index:0;
+    }
+    .t-weather .tile-pad { position:relative; z-index:1; }
+    .t-news    {grid-row:1/4;grid-column:3;}
+    .t-risk    {grid-row:1;  grid-column:4;}
+    .t-calendar{grid-row:2/4;grid-column:2;}
+    .t-tasks   {grid-row:2/4;grid-column:4;}
+
+    .tile{background:var(--white);border-radius:14px;position:relative;overflow:hidden;}
+    .tile-pad{padding:14px 16px;height:100%;display:flex;flex-direction:column;}
+    .tile-title{font-size:13px;font-weight:600;color:#374151;margin-bottom:4px;}
+    .tile-label{font-size:10px;font-weight:700;color:#9aa0b4;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:12px;}
+    .tile-arrow{position:absolute;top:12px;right:12px;width:26px;height:26px;border-radius:50%;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);background:var(--white);z-index:1;}
+
+    /* ── ACTIVITY TILE ── */
+    .act-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid #f4f6fb;}
+    .act-item:last-child{border-bottom:none;}
+    .act-dot{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+    .act-title{font-size:12px;color:#4a4e69;line-height:1.3;}
+    .act-meta{font-size:10px;color:#9aa0b4;margin-top:1px;}
+    .act-time{font-size:10px;color:#c0c4d0;flex-shrink:0;}
+    .act-live{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;color:#16a34a;}
+    .act-live-dot{width:6px;height:6px;border-radius:50%;background:#16a34a;animation:pulse 2s ease-in-out infinite;}
+    @keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+    /* ── STAT ── */
+    .stat-big{font-size:24px;font-weight:700;color:#374151;letter-spacing:-0.5px;margin-top:4px;}
+    .stat-change{font-size:11px;margin-top:4px;}
+    .stat-change.up{color:#16a34a;}
+    .stat-change.down{color:#e63946;}
+    .stat-bar{height:4px;border-radius:999px;background:#f0f2f7;margin-top:12px;overflow:hidden;}
+    .stat-bar-fill{height:100%;border-radius:999px;}
+    .mini-chart{flex:1;display:flex;align-items:flex-end;gap:4px;padding-top:10px;}
+    .mini-bar{flex:1;border-radius:4px 4px 0 0;min-height:4px;}
+
+    /* ── RISK ── */
+    .risk-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f4f6fb;}
+    .risk-row:last-child{border-bottom:none;}
+    .risk-label{font-size:11px;color:#4a4e69;}
+    .risk-badge{font-size:10px;font-weight:700;padding:2px 9px;border-radius:999px;}
+    .risk-badge.low{background:#f0fdf4;color:#16a34a;}
+    .risk-badge.med{background:#fffbeb;color:#d97706;}
+    .risk-badge.high{background:#fff5f5;color:#e63946;}
+    .risk-score{font-size:12px;font-weight:700;color:#374151;}
+
+    /* ── TASKS ── */
+    .task-item{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid #f4f6fb;}
+    .task-item:last-child{border-bottom:none;}
+    .task-check{width:16px;height:16px;border-radius:4px;border:1.5px solid #e0e3ed;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;}
+    .task-check.done{background:#8b5cf6;border-color:#8b5cf6;}
+    .task-name{font-size:11px;color:#4a4e69;line-height:1.3;}
+    .task-name.done-text{color:#9aa0b4;text-decoration:line-through;}
+    .task-due{font-size:10px;color:#9aa0b4;margin-top:1px;}
+    .task-pri{font-size:9px;font-weight:700;padding:1px 7px;border-radius:999px;flex-shrink:0;}
+    .task-pri.high{background:#fff5f5;color:#e63946;}
+    .task-pri.med{background:#fffbeb;color:#d97706;}
+    .task-pri.low{background:#f0fdf4;color:#16a34a;}
+
+    /* ── WEATHER ── */
+    .wt-hour{text-align:center;flex-shrink:0;min-width:40px;}
+    .wt-hour-time{font-size:9px;color:#9aa0b4;}
+    .wt-hour-icon{font-size:16px;margin:3px 0;}
+    .wt-hour-temp{font-size:11px;color:#374151;}
+
+    /* ── CALENDAR ── */
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+    .cal-day-name{text-align:center;font-size:9px;font-weight:700;color:#9aa0b4;padding:2px 0 4px;}
+    .cal-day{text-align:center;font-size:11px;color:#4a4e69;padding:3px 2px;border-radius:6px;cursor:pointer;position:relative;min-height:22px;display:flex;flex-direction:column;align-items:center;}
+    .cal-day:hover{background:#f4f0ff;}
+    .cal-day.today{background:#8b5cf6;color:#fff;font-weight:700;border-radius:50%;width:22px;height:22px;margin:0 auto;}
+    .cal-day.other-month{color:#d4d8e2;}
+    .cal-event-dot{width:4px;height:4px;border-radius:50%;margin-top:1px;}
+    .sch-time{font-size:9px;color:#9aa0b4;}
+
+    /* ── NOTIFICATIONS ── */
+    .notif-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f4f6fb;}
+    .notif-item:last-child{border-bottom:none;}
+    .notif-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
+    .notif-title{font-size:11px;color:#4a4e69;line-height:1.3;}
+    .notif-desc{font-size:10px;color:#9aa0b4;margin-top:1px;}
+    .notif-time{font-size:10px;color:#c0c4d0;flex-shrink:0;}
+
+    .view-all{font-size:11px;color:var(--primary);text-decoration:none;margin-top:auto;padding-top:8px;display:inline-block;}
+    .view-all:hover{text-decoration:underline;}
+  </style>
+</head>
+<body>
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <a href="index.html" class="topbar-brand" style="display:flex;align-items:center;gap:8px;">
+      <img src="sc-blue-logo.png" alt="SmarTuna" style="width:28px;height:28px;object-fit:contain;"/>
+      <span class="sc-wm">
+        <span class="sc-wm-top">SmarTuna</span>
+        <span class="sc-wm-sub">concept</span>
+      </span>
+    </a>
+    <div class="topbar-nav">
+      <div class="nav-pill">
+        <a href="home-logged-in.html" class="nav-item active"><img src="home.png" alt=""/>Home</a>
+        <div class="nav-item-wrap">
+          <a href="organisation.html" class="nav-item"><img src="my-studio.png" alt=""/>My Studio</a>
+          <div class="nav-dropdown">
+            <a href="product-list.html" class="nav-dropdown-item">Product</a>
+            <a href="evidence-list.html" class="nav-item">Evidence</a>
+    <a href="raw-material-list.html" class="nav-dropdown-item">Raw Materials</a>
+            <a href="shipment-list.html" class="nav-dropdown-item">Shipments</a>
+            <a href="organisation.html" class="nav-dropdown-item">Your Company</a>
+            <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('carbon-calculator.html','Carbon Footprint Calculator','carbon-icon.png','Carbon','green');">Carbon Calculator</a>
+          </div>
+        </div>
+        <div class="nav-item-wrap">
+          <a href="Species.html" class="nav-item"><img src="atlas.png" alt=""/>Atlas</a>
+          <div class="nav-dropdown">
+            <a href="Species.html" class="nav-dropdown-item">Species</a>
+            <a href="cold-storage-list.html" class="nav-dropdown-item">Cold Storage</a>
+            <a href="port-list.html" class="nav-dropdown-item">Ports</a>
+            <a href="vessel-list.html" class="nav-dropdown-item">Vessels</a>
+            <a href="country.html" class="nav-dropdown-item">Country</a>
+            <div class="nav-dropdown-item" style="position:relative;">
+              Others <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+              <div class="nav-dropdown-sub">
+                <a href="#" class="nav-dropdown-item" onclick="launchModule('fishery.html','MSC Fishery Module')">MSC Fisheries</a>
+                <a href="#" class="nav-dropdown-item" onclick="launchModule('asc-farms.html','ASC Farm Standard Module','ASC_ecolabel.png','ASC')">ASC Farms</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="nav-item-wrap">
+          <a href="#" class="nav-item"><img src="features.png" alt=""/>Features</a>
+          <div class="nav-dropdown">
+            <a href="smartuna-ai.html" class="nav-dropdown-item">
+              <span style="display:flex;align-items:center;gap:8px;">
+                <span style="width:22px;height:22px;border-radius:6px;background:#1a1a2e;display:inline-flex;align-items:center;justify-content:center;font-size:11px;color:#fff;flex-shrink:0;">✦</span>
+                SmarTuna A.I
+              </span>
+              <span style="font-size:9px;font-weight:700;color:#8b5cf6;background:#f4f0ff;padding:1px 7px;border-radius:999px;">New</span>
+            </a>
+            <a href="smartuna-assistant.html" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('smartuna-assistant.html','SmarTuna Assistant');">
+              <span style="display:flex;align-items:center;gap:8px;">
+                <span style="width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#f6c453,#c9962f);display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+                </span>
+                SmarTuna Assistant
+              </span>
+              <span style="font-size:9px;font-weight:700;color:#a9721f;background:#fdf3df;padding:1px 7px;border-radius:999px;">Beta</span>
+            </a>
+            <div class="nav-dropdown-item" style="position:relative;">
+              <span style="display:flex;align-items:center;gap:8px;">
+                <span style="width:22px;height:22px;border-radius:6px;background:#eef4fd;display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0;">🛡️</span>
+                Compliance
+              </span>
+              <span style="font-size:11px;color:#6b7280;">›</span>
+              <div class="nav-dropdown-sub">
+                <a href="eu-catch-support.html" class="nav-dropdown-item">
+                  <span style="display:flex;align-items:center;gap:8px;">
+                    <span style="width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">🔷</span>
+                    EU CATCH Form
+                  </span>
+                </a>
+                <a href="#" class="nav-dropdown-item" style="cursor:default;color:#a0a0a0;">
+                  <span style="display:flex;align-items:center;gap:8px;">
+                    <span style="width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">🇺🇸</span>
+                    NOAA SIMP
+                  </span>
+                  <span style="font-size:9px;font-weight:700;color:#d97706;background:#fef3c7;padding:1px 7px;border-radius:999px;">Soon</span>
+                </a>
+                <a href="#" class="nav-dropdown-item" style="cursor:default;color:#a0a0a0;">
+                  <span style="display:flex;align-items:center;gap:8px;">
+                    <span style="width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;">🇺🇸</span>
+                    FSMA Act 204
+                  </span>
+                  <span style="font-size:9px;font-weight:700;color:#d97706;background:#fef3c7;padding:1px 7px;border-radius:999px;">Soon</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <a href="#" class="nav-item"><img src="messages.png" alt=""/>Messages</a>
+        <a href="#" class="nav-item"><img src="report.png" alt=""/>Reports</a>
+        <a href="report.html" class="nav-item"><img src="support.png" alt=""/>Support</a>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="search-pill">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search here...
+      </div>
+      <div class="notif-btn"><img src="notification.png" alt=""/><div class="notif-dot"></div></div>
+      <div style="position:relative;flex-shrink:0;">
+        <div class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()"><span id="avatarInitials">VI</span></div>
+        <div class="avatar-menu" id="avatarMenu">
+          <div class="avatar-menu-name" id="avatarGreeting">Hello!</div>
+          <a href="profile.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Profile</a>
+          <button onclick="handleLogout()">Logout</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BODY -->
+  <div class="body-layout">
+    <!-- SIDEBAR -->
+    <div class="sidebar-col">
+      <div class="sidebar-icons" id="sidebarIcons">
+        <a href="home-logged-in.html" class="si si-active">
+          <div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+          <span class="si-label">Dashboard</span>
+        </a>
+        <div class="si si-disabled"><div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg></div><span class="si-label">Home</span></div>
+        <div class="si si-disabled"><div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg></div><span class="si-label">Products</span></div>
+        <div class="si si-disabled"><div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20"/></svg></div><span class="si-label">Atlas</span></div>
+        <div class="si si-disabled"><div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><span class="si-label">Favourites</span></div>
+        <div class="si si-disabled"><div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><span class="si-label">Messages</span></div>
+        <div class="si si-disabled"><div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><span class="si-label">Analytics</span></div>
+        <div class="si si-disabled"><div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><span class="si-label">Risk</span></div>
+        <div class="si si-disabled"><div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div><span class="si-label">Profile</span></div>
+        <a href="mri.html" class="si">
+          <div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg></div>
+          <span class="si-label">SRI Beta</span>
+        </a>
+        <div class="si si-disabled"><div class="si-icon"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div><span class="si-label">Settings</span></div>
+      </div>
+      <div class="sidebar-hamburger" id="sidebarToggle" onclick="toggleSidebar()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+      <div class="greeting">
+        <p class="greeting-sub" id="greetingTime">Good Morning</p>
+        <h1 class="greeting-name" id="greetingName">Loading...</h1>
+        <p class="greeting-fact" id="greetingFact"></p>
+      </div>
+
+      <div class="tiles">
+
+        <!-- ① OVERVIEW (tall, col 1, rows 1-2) -->
+        <div class="tile t-overview" id="shipmentsTile">
+          <div class="tile-pad">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+              <a href="shipment-list.html" class="tile-title" style="text-decoration:none;color:inherit;">Shipments Overview →</a>
+              <select style="font-size:11px;color:#6b7280;border:1px solid #e8eaf0;border-radius:999px;padding:3px 10px;background:#fff;font-family:Poppins,sans-serif;cursor:pointer;outline:none;">
+                <option>This Month</option><option>Last Month</option><option>This Year</option>
+              </select>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:8px;margin-top:4px;"><div><div style="font-size:9px;color:#9aa0b4;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Shipments</div><div id="shTotal" style="font-size:18px;font-weight:700;color:#374151;margin:2px 0;">—</div><div id="shTotalDelta" style="font-size:10px;color:#9aa0b4;"></div></div><div><div style="font-size:9px;color:#9aa0b4;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Active</div><div id="shActive" style="font-size:18px;font-weight:700;color:#374151;margin:2px 0;">—</div><div id="shActiveDelta" style="font-size:10px;color:#9aa0b4;"></div></div><div><div style="font-size:9px;color:#9aa0b4;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Delivered</div><div id="shDone" style="font-size:18px;font-weight:700;color:#374151;margin:2px 0;">—</div><div id="shDoneDelta" style="font-size:10px;color:#9aa0b4;"></div></div><div><div style="font-size:9px;color:#9aa0b4;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Flagged</div><div id="shFlag" style="font-size:18px;font-weight:700;color:#374151;margin:2px 0;">—</div><div id="shFlagDelta" style="font-size:10px;color:#9aa0b4;"></div></div></div>
+            <div style="position:relative;flex:1;min-height:0;"><canvas id="shipmentsChart" style="width:100%;height:100%;"></canvas></div>
+          </div>
+        </div>
+
+        <!-- ② NOTIFICATIONS (col 1, row 3) -->
+        <div class="tile t-notif">
+          <div class="tile-pad">
+            <div style="margin-bottom:10px;"><span class="tile-title">Notifications</span></div>
+            <div class="notif-item"><div class="notif-icon" style="background:#f0f9ff;">📄</div><div style="flex:1;"><div class="notif-title">New report ready to download</div><div class="notif-desc">Compliance Report — May 2025</div></div><div class="notif-time">5m ago</div></div>
+            <div class="notif-item"><div class="notif-icon" style="background:#f0fdf4;">✅</div><div style="flex:1;"><div class="notif-title">Data sync completed</div><div class="notif-desc">All systems are up to date</div></div><div class="notif-time">1h ago</div></div>
+            <div class="notif-item"><div class="notif-icon" style="background:#fffbeb;">⚠️</div><div style="flex:1;"><div class="notif-title">Storage usage at 85%</div><div class="notif-desc">Consider upgrading your plan</div></div><div class="notif-time">3h ago</div></div>
+            <div class="notif-item"><div class="notif-icon" style="background:#fdf4ff;">🎯</div><div style="flex:1;"><div class="notif-title">Beta Assessment submitted</div><div class="notif-desc">Reviewed by Jasmine Tan</div></div><div class="notif-time">5h ago</div></div>
+            <a href="#" style="font-size:11px;color:#9aa0b4;text-decoration:none;margin-top:auto;padding-top:8px;display:block;">View all notifications →</a>
+          </div>
+        </div>
+
+        <!-- ③ WEATHER (col 2, row 1) -->
+        <div class="tile t-weather" id="weatherTile">
+          <div class="tile-pad" style="justify-content:space-between;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <span class="tile-title">Weather</span>
+              <span style="font-size:10px;color:#9aa0b4;" id="wtLocation">Detecting...</span>
+            </div>
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;">
+              <div>
+                <div style="font-size:34px;font-weight:700;color:#374151;line-height:1;" id="wtTemp">--°</div>
+                <div style="font-size:12px;color:#9aa0b4;margin-top:4px;" id="wtCondition">Loading...</div>
+              </div>
+              <div style="font-size:40px;line-height:1;" id="wtIcon">🌤️</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;background:#f9fafc;border-radius:10px;padding:7px;">
+              <div style="text-align:center;"><div style="font-size:9px;color:#9aa0b4;font-weight:600;">Humidity</div><div style="font-size:12px;font-weight:600;color:#374151;" id="wtHumidity">--%</div></div>
+              <div style="text-align:center;border-left:1px solid #e8eaf0;border-right:1px solid #e8eaf0;"><div style="font-size:9px;color:#9aa0b4;font-weight:600;">Wind</div><div style="font-size:12px;font-weight:600;color:#374151;" id="wtWind">-- km/h</div></div>
+              <div style="text-align:center;"><div style="font-size:9px;color:#9aa0b4;font-weight:600;">Feels Like</div><div style="font-size:12px;font-weight:600;color:#374151;" id="wtFeels">--°</div></div>
+            </div>
+            <div style="display:flex;gap:0;border-top:1px solid #f0f2f8;padding-top:10px;overflow:hidden;width:100%;flex:1;align-items:flex-end;" id="wtHourly">
+              <div style="font-size:10px;color:#9aa0b4;">Loading hourly...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ④ INDUSTRY NEWS (col 3, rows 1-3) -->
+        <div class="tile t-news">
+          <div class="tile-pad">
+            <div style="margin-bottom:10px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;">
+                <span class="tile-title">Industry News</span>
+              </div>
+              <div style="font-size:11px;color:#9aa0b4;margin-top:3px;">Latest updates from the global seafood and fisheries sector.</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0;overflow:hidden;flex:1;">
+              <div style="padding:8px 0;border-bottom:1px solid #f4f6fb;"><div style="font-size:12px;color:#4a4e69;line-height:1.4;margin-bottom:2px;">MSC expands tuna certification to 14 new Pacific fisheries</div><div style="font-size:11px;color:#9aa0b4;margin-bottom:2px;">The Marine Stewardship Council has certified 14 additional tuna fisheries across the Pacific, covering skipjack and yellowfin species.</div><div style="font-size:10px;color:#c0c4d0;">IntraFish · 2h ago</div></div>
+              <div style="padding:8px 0;border-bottom:1px solid #f4f6fb;"><div style="font-size:12px;color:#4a4e69;line-height:1.4;margin-bottom:2px;">EU flags 3 vessels for IUU activity in Indian Ocean</div><div style="font-size:11px;color:#9aa0b4;margin-bottom:2px;">The European Commission has identified three vessels operating without valid authorisation in the Indian Ocean EEZ.</div><div style="font-size:10px;color:#c0c4d0;">Undercurrent News · 5h ago</div></div>
+              <div style="padding:8px 0;border-bottom:1px solid #f4f6fb;"><div style="font-size:12px;color:#4a4e69;line-height:1.4;margin-bottom:2px;">Norway salmon exports hit record $14.2B in first half of 2026</div><div style="font-size:11px;color:#9aa0b4;margin-bottom:2px;">Strong demand from Asia and the EU drove record export volumes, with Atlantic salmon prices at a five-year high.</div><div style="font-size:10px;color:#c0c4d0;">Seafood Source · 8h ago</div></div>
+              <div style="padding:8px 0;border-bottom:1px solid #f4f6fb;"><div style="font-size:12px;color:#4a4e69;line-height:1.4;margin-bottom:2px;">SIMP rule update: FDA extends FSMA 204 compliance deadline</div><div style="font-size:11px;color:#9aa0b4;margin-bottom:2px;">The FDA has granted a 12-month extension for FSMA Section 204 traceability lot code requirements for seafood importers.</div><div style="font-size:10px;color:#c0c4d0;">SeafoodNews · 1d ago</div></div>
+              <div style="padding:8px 0;border-bottom:1px solid #f4f6fb;"><div style="font-size:12px;color:#4a4e69;line-height:1.4;margin-bottom:2px;">GDST v1.2 released — new KDE requirements for aquaculture</div><div style="font-size:11px;color:#9aa0b4;margin-bottom:2px;">The Global Dialogue on Seafood Traceability has published version 1.2, adding hatchery and feed traceability as mandatory KDEs.</div><div style="font-size:10px;color:#c0c4d0;">GDST.net · 3d ago</div></div>
+              <div style="padding-top:10px;flex-shrink:0;margin-top:auto;"><a href="#" style="font-size:11px;color:#9aa0b4;text-decoration:none;">View more →</a></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ⑤ AVG RISK SCORE (col 4, row 1) -->
+        <div class="tile t-risk">
+          <div class="tile-pad" style="justify-content:space-between;">
+            <div class="tile-label">This Month</div>
+            <div class="tile-title">Avg Risk Score</div>
+            <div style="font-size:26px;font-weight:700;color:#d97706;letter-spacing:-0.5px;margin-top:2px;">4.35%</div>
+            <div style="font-size:11px;color:#e63946;margin-top:4px;">↓ 2.1% vs last month</div>
+            <div class="stat-bar" style="margin-top:10px;"><div class="stat-bar-fill" style="width:35%;background:#fbbf24;"></div></div>
+            <div class="mini-chart" style="margin-top:8px;">
+              <div class="mini-bar" style="height:60%;background:#fef3c7;"></div>
+              <div class="mini-bar" style="height:55%;background:#fef3c7;"></div>
+              <div class="mini-bar" style="height:70%;background:#fde68a;"></div>
+              <div class="mini-bar" style="height:65%;background:#fde68a;"></div>
+              <div class="mini-bar" style="height:50%;background:#fde68a;"></div>
+              <div class="mini-bar" style="height:40%;background:#fbbf24;"></div>
+              <div class="mini-bar" style="height:35%;background:#f59e0b;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ⑥ CALENDAR (col 2, rows 2-3) -->
+        <div class="tile t-calendar" id="calendarTile">
+          <div style="display:flex;flex-direction:column;height:100%;">
+            <div style="padding:10px 12px;flex:1;display:flex;flex-direction:column;overflow:hidden;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <span class="tile-title" id="calMonthLabel">July 2026</span>
+                <div style="display:flex;gap:4px;">
+                  <button onclick="calPrev()" style="width:22px;height:22px;border:1px solid #e8eaf0;border-radius:50%;background:#fff;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;">‹</button>
+                  <button onclick="calNext()" style="width:22px;height:22px;border:1px solid #e8eaf0;border-radius:50%;background:#fff;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;">›</button>
+                </div>
+              </div>
+              <div id="calGrid" style="flex:1;"></div>
+            </div>
+            <div style="flex-shrink:0;border-top:1px solid #f0f2f8;padding:8px 12px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+                <div style="font-size:10px;color:#9aa0b4;" id="calScheduleLabel">Today</div>
+              </div>
+              <div style="display:flex;gap:6px;overflow:hidden;" id="calSchedule"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ⑦ MY TASKS (col 4, rows 2-3) -->
+        <div class="tile t-tasks">
+          <div class="tile-pad">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+              <span class="tile-title">My Tasks</span>
+              <a href="#" style="font-size:11px;color:var(--primary);text-decoration:none;">View All</a>
+            </div>
+            <div class="task-item">
+              <div class="task-check"></div>
+              <div style="flex:1;"><div class="task-name">Review fishing compliance report</div><div class="task-due">Due today, 3:00 PM</div></div>
+              <span class="task-pri high">High</span>
+            </div>
+            <div class="task-item">
+              <div class="task-check"></div>
+              <div style="flex:1;"><div class="task-name">Update dataset for Q2 analysis</div><div class="task-due">Due tomorrow, 11:00 AM</div></div>
+              <span class="task-pri med">Med</span>
+            </div>
+            <div class="task-item">
+              <div class="task-check done"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div style="flex:1;"><div class="task-name done-text">Stakeholder presentation</div><div class="task-due">Completed May 23</div></div>
+              <span class="task-pri low">Low</span>
+            </div>
+            <div class="task-item">
+              <div class="task-check"></div>
+              <div style="flex:1;"><div class="task-name">Audit trail verification</div><div class="task-due">May 24, 2:00 PM</div></div>
+              <span class="task-pri low">Low</span>
+            </div>
+            <div class="task-item">
+              <div class="task-check"></div>
+              <div style="flex:1;"><div class="task-name">Team sync & progress update</div><div class="task-due">May 25, 9:30 AM</div></div>
+              <span class="task-pri med">Med</span>
+            </div>
+            <a href="#" style="font-size:11px;font-weight:600;color:#8b5cf6;text-decoration:none;margin-top:auto;padding-top:6px;display:block;">+ Add New Task</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="voice-assistant.js"></script>
+
+  <!-- ── PREMIUM MODULE LOADING SCREEN ── -->
+    <div id="moduleLoader" style="
+    position:fixed;inset:0;z-index:9999;
+    background:#ffffff;
+    display:none;align-items:center;justify-content:center;
+    flex-direction:column;
+    opacity:0;transition:opacity 0.4s ease;
+  ">
+    <style>
+      @keyframes mlFadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+      @keyframes mlFadeIn{from{opacity:0;}to{opacity:1;}}
+      @keyframes mlScale{from{opacity:0;transform:scale(0.88);}to{opacity:1;transform:scale(1);}}
+      @keyframes mlXSpin{0%{transform:rotate(0deg) scale(1);}50%{transform:rotate(180deg) scale(1.15);}100%{transform:rotate(360deg) scale(1);}}
+      @keyframes mlShimmer{0%{background-position:-400px 0;}100%{background-position:400px 0;}}
+      @keyframes mlFloat1{0%,100%{transform:translateY(0px) scale(1);}50%{transform:translateY(-12px) scale(1.05);}}
+      @keyframes mlFloat2{0%,100%{transform:translateY(0px) scale(1);}50%{transform:translateY(-8px) scale(0.95);}}
+      @keyframes mlFloat3{0%,100%{transform:translateY(0px);}50%{transform:translateY(-16px);}}
+      @keyframes mlWave{0%,100%{transform:scaleY(0.35);opacity:0.35;}50%{transform:scaleY(1);opacity:1;}}
+      @keyframes mlTypeIn{from{opacity:0;letter-spacing:6px;}to{opacity:0.4;letter-spacing:2px;}}
+      @keyframes mlPulseRing{0%{transform:scale(0.92);opacity:0.5;}70%{transform:scale(1.1);opacity:0;}100%{transform:scale(0.92);opacity:0;}}
+      @keyframes mlBreath{0%,100%{filter:drop-shadow(0 4px 24px rgba(0,119,184,0.12));}50%{filter:drop-shadow(0 8px 40px rgba(0,119,184,0.32));}}
+    </style>
+
+    <!-- bg orbs -->
+    <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
+      <div style="position:absolute;width:360px;height:360px;border-radius:50%;background:radial-gradient(circle,rgba(0,119,184,0.05) 0%,transparent 70%);top:-80px;left:-100px;animation:mlFloat3 7s ease-in-out infinite;"></div>
+      <div style="position:absolute;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle,rgba(139,92,246,0.04) 0%,transparent 70%);bottom:-60px;right:-60px;animation:mlFloat1 8s ease-in-out 1s infinite;"></div>
+    </div>
+
+    <!-- Card -->
+    <div style="position:relative;display:flex;flex-direction:column;align-items:center;padding:48px 56px;background:#fff;border-radius:28px;box-shadow:0 2px 4px rgba(0,0,0,0.04),0 12px 40px rgba(0,0,0,0.08),0 40px 80px rgba(0,0,0,0.05);animation:mlScale 0.55s cubic-bezier(0.16,1,0.3,1) 0.05s both;min-width:340px;text-align:center;">
+
+      <!-- Logos -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:22px;margin-bottom:28px;animation:mlFadeUp 0.6s cubic-bezier(0.16,1,0.3,1) 0.15s both;">
+        <div style="position:relative;display:flex;align-items:center;justify-content:center;">
+          <div id="loaderPulseRing" style="position:absolute;inset:-8px;border-radius:50%;border:2px solid rgba(0,119,184,0.18);animation:mlPulseRing 2.6s ease-out 0.9s infinite;"></div>
+          <img id="loaderLogo" src="MSC_ecolabel.png" alt="MSC" style="width:70px;height:70px;object-fit:contain;border-radius:50%;animation:mlBreath 3s ease-in-out infinite;" onerror="this.outerHTML='<div style=&quot;width:70px;height:70px;border-radius:50%;background:#0077b8;display:flex;align-items:center;justify-content:center;font-size:28px;&quot;>🐟</div>'"/>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;width:30px;height:30px;font-size:14px;font-weight:700;color:rgba(0,0,0,0.18);font-family:'Poppins',sans-serif;animation:mlXSpin 10s linear infinite;">×</div>
+        <div style="width:70px;height:70px;border-radius:50%;border:2.5px solid #7c3aed;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(124,58,237,0.15);animation:mlFloat2 3.5s ease-in-out infinite;flex-shrink:0;background:#fff;">
+          <img src="sc-blue-logo.png" alt="Manhattan" style="width:48px;height:48px;object-fit:contain;" onerror="this.outerHTML='<span style=&quot;font-size:28px;&quot;>🦉</span>'"/>
+        </div>
+      </div>
+
+      <!-- Brand -->
+      <div style="animation:mlFadeUp 0.6s cubic-bezier(0.16,1,0.3,1) 0.25s both;margin-bottom:4px;">
+        <div style="font-family:'Poppins',sans-serif;font-size:8px;font-weight:700;letter-spacing:3px;color:rgba(0,0,0,0.28);text-transform:uppercase;margin-bottom:2px;">Project</div>
+        <div style="font-family:'Poppins',sans-serif;font-size:21px;font-weight:800;color:#1a1a2e;letter-spacing:-0.5px;">concept</div>
+      </div>
+
+      <!-- Module name -->
+      <div id="loaderModuleName" style="font-family:'Poppins',sans-serif;font-size:12px;font-weight:500;color:rgba(0,0,0,0.38);margin-bottom:28px;animation:mlFadeUp 0.5s cubic-bezier(0.16,1,0.3,1) 0.3s both;">Loading module...</div>
+
+      <!-- Wave bars (generated by JS so the theme colors can change per module) -->
+      <div id="loaderWave" style="display:flex;gap:4px;align-items:center;height:30px;margin-bottom:18px;animation:mlFadeIn 0.4s ease 0.4s both;"></div>
+
+      <!-- Progress bar with shimmer -->
+      <div style="width:220px;height:2.5px;background:rgba(0,0,0,0.06);border-radius:999px;overflow:hidden;animation:mlFadeIn 0.4s ease 0.45s both;position:relative;">
+        <div id="loaderBar" style="height:100%;border-radius:999px;width:0%;background:linear-gradient(90deg,#0077b8,#7c3aed);transition:width 0.18s ease;position:relative;overflow:hidden;">
+          <div style="position:absolute;inset:0;background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.7) 50%,transparent 100%);background-size:400px 100%;animation:mlShimmer 1.2s linear infinite;"></div>
+        </div>
+      </div>
+
+      <!-- Status -->
+      <div id="loaderStatusText" style="font-family:'Poppins',sans-serif;font-size:10px;font-weight:600;color:rgba(0,0,0,0.22);letter-spacing:2px;text-transform:uppercase;margin-top:14px;animation:mlTypeIn 0.9s cubic-bezier(0.16,1,0.3,1) 0.55s both;">fetching Data from MSC............</div>
+    </div>
+  </div>
+
+  <script>
+  const LOADER_THEMES = {
+    default: { wave:['#0077b8','#1a8dcc','#3a9ad4','#6b72d4','#7c3aed'], ring:'rgba(0,119,184,0.18)', gradient:['#0077b8','#7c3aed'] },
+    green:   { wave:['#15803d','#16a34a','#22c55e','#34d399','#2dd4bf'], ring:'rgba(22,163,74,0.20)',  gradient:['#16a34a','#2dd4bf'] },
+  };
+
+  function buildLoaderWave(colors){
+    // 15 bars, same symmetric profile as the original hand-authored MSC
+    // wave (calm edges, animated center) but built from a theme's colors.
+    const seq    = [0,0,0,1,2,3,4,4,3,2,1,0,0,0,0];
+    const delays = [0,.08,.16,.24,.32,.40,.48,.56,.48,.40,.32,.24,.16,.08,0];
+    return seq.map((ci,i)=>
+      `<div style="width:3px;height:30px;border-radius:2px;background:${colors[ci]};animation:mlWave 1.1s ease-in-out ${delays[i]}s infinite;transform-origin:bottom;"></div>`
+    ).join('');
+  }
+
+  function launchModule(url, moduleName, logoFile, labelText, themeName){
+    const loader = document.getElementById('moduleLoader');
+    const bar = document.getElementById('loaderBar');
+    const nameEl = document.getElementById('loaderModuleName');
+    const logoEl = document.getElementById('loaderLogo');
+    const statusEl = document.getElementById('loaderStatusText');
+    const waveEl = document.getElementById('loaderWave');
+    const ringEl = document.getElementById('loaderPulseRing');
+    if(!loader) { window.location.href = url; return; }
+
+    const theme = LOADER_THEMES[themeName] || LOADER_THEMES.default;
+    if (waveEl) waveEl.innerHTML = buildLoaderWave(theme.wave);
+    if (ringEl) ringEl.style.borderColor = theme.ring;
+    if (bar) bar.style.background = `linear-gradient(90deg,${theme.gradient[0]},${theme.gradient[1]})`;
+
+    nameEl.textContent = moduleName || 'Loading module...';
+    if (logoEl) {
+      logoEl.src = logoFile || 'MSC_ecolabel.png';
+      logoEl.onerror = function(){
+        this.onerror = null;
+        this.outerHTML = `<div style="width:70px;height:70px;border-radius:50%;background:${theme.gradient[0]};display:flex;align-items:center;justify-content:center;font-size:28px;">${themeName==='green' ? '🌱' : '🐟'}</div>`;
+      };
+    }
+    if (statusEl) statusEl.textContent = `fetching Data from ${labelText || 'MSC'}............`;
+    loader.style.display = 'flex';
+    // Trigger fade in
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(()=>{ loader.style.opacity = '1'; });
+    });
+
+    // Animate progress bar
+    let pct = 0;
+    const interval = setInterval(()=>{
+      pct += Math.random() * 18 + 4;
+      if(pct > 88) pct = 88; // hold at 88% until navigate
+      bar.style.width = pct + '%';
+    }, 120);
+
+    // Navigate after short delay
+    setTimeout(()=>{
+      clearInterval(interval);
+      bar.style.width = '100%';
+      bar.style.transition = 'width 0.2s ease';
+      setTimeout(()=>{ window.location.href = url; }, 220);
+    }, 900);
+  }
+  </script>
+  <script>
+    const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
+    const SUPABASE_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+    // Guarded: if the Supabase CDN fails to load, dbClient becomes null instead
+    // of the const staying uninitialised, which used to kill every feature below.
+    const dbClient = window.supabase
+      ? window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY)
+      : null;
+
+    const FACTS=["Over 3.3 billion people rely on seafood as their primary source of protein.","IUU fishing accounts for up to 26 million tonnes of fish caught illegally each year.","The global seafood trade is worth over 150 billion dollars annually.","Only 35 percent of the world's fish stocks are at sustainable levels.","Aquaculture now produces more than half of the world's seafood supply.","The EU is the world's largest importer of seafood products.","MSC certified fisheries cover over 20 percent of the global wild marine harvest.","Seafood is the most internationally traded food commodity in the world.","Asia accounts for nearly 70 percent of global fish production.","Tuna is the most traded fish species globally, worth over 40 billion dollars a year.","Around 600 million people depend on fisheries and aquaculture for their livelihoods.","The average person eats about 20kg of fish per year — double the rate of 50 years ago.","SIMP regulations require documentation for 13 species prone to IUU fishing.","The EU Catch Certificate system covers imports from over 90 countries.","Cold chain integrity reduces up to 30 percent of seafood waste globally."];
+    function shuffle(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+    let facts=shuffle(FACTS),fi=0;
+    function nextFact(){const el=document.getElementById('greetingFact');el.style.opacity='0';setTimeout(()=>{el.textContent=facts[fi%facts.length];el.style.opacity='1';fi++;if(fi>=facts.length){facts=shuffle(FACTS);fi=0;}},400);}
+    function toggleAvatarMenu(){document.getElementById('avatarMenu').classList.toggle('open');}
+    document.addEventListener('click',e=>{if(!e.target.closest('.avatar-btn'))document.getElementById('avatarMenu')?.classList.remove('open');});
+    async function handleLogout(){if(dbClient)await dbClient.auth.signOut();window.location.href='index.html';}
+    function greetingTime(){const h=new Date().getHours();if(h<12)return'Good Morning';if(h<17)return'Good Afternoon';if(h<21)return'Good Evening';return'Good Night';}
+    let sidebarVisible=true;
+    function toggleSidebar(){const icons=document.getElementById('sidebarIcons');const col=icons.closest('.sidebar-col');sidebarVisible=!sidebarVisible;icons.style.visibility=sidebarVisible?'visible':'hidden';icons.style.pointerEvents=sidebarVisible?'auto':'none';if(!sidebarVisible)col.style.width='42px';else col.style.width='';}
+
+    // ── CHART ──
+    function initShipmentsChart(){
+      const canvas=document.getElementById('shipmentsChart');
+      if(!canvas||!window.Chart)return;
+      new Chart(canvas,{type:'line',data:{labels:['May 1','May 6','May 11','May 16','May 21','May 26','May 31'],datasets:[{data:[18400,21000,19500,24780,22000,26000,29500],fill:true,borderColor:'#8b5cf6',borderWidth:2.5,backgroundColor:(ctx)=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,ctx.chart.height);g.addColorStop(0,'rgba(139,92,246,0.2)');g.addColorStop(1,'rgba(139,92,246,0.01)');return g;},tension:0.45,pointRadius:3,pointBackgroundColor:'#8b5cf6',pointBorderColor:'#fff',pointBorderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{backgroundColor:'#1a1a2e',padding:10,cornerRadius:8,callbacks:{label:ctx=>' $'+ctx.parsed.y.toLocaleString()}}},scales:{x:{grid:{display:false},ticks:{font:{size:9,family:'Poppins'},color:'#9aa0b4'}},y:{grid:{color:'#f4f6fb'},ticks:{font:{size:9,family:'Poppins'},color:'#9aa0b4',callback:v=>'$'+(v/1000)+'k'}}}}});
+    }
+
+    // ── WEATHER ──
+    const WMO_ICONS={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',71:'🌨️',73:'🌨️',75:'❄️',80:'🌦️',81:'🌧️',82:'⛈️',95:'⛈️',99:'⛈️'};
+    function setWeatherBackground(temp) {
+  const tile = document.getElementById('weatherTile');
+  if (!tile) return;
+  let img;
+  if      (temp <= 15) img = 'weather-cold.jpg';
+  else if (temp <= 25) img = 'weather-mild.jpg';
+  else if (temp <= 32) img = 'weather-warm.jpg';
+  else                 img = 'weather-hot.jpg';
+  tile.style.backgroundImage = `url('${img}')`;
+}
+
+const WMO_DESC={0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Foggy',51:'Light drizzle',61:'Light rain',63:'Rain',80:'Rain showers',95:'Thunderstorm'};
+    async function initWeather(){
+      const setWeather=async(lat,lon,city)=>{
+        document.getElementById('wtLocation').textContent=city;
+        const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&wind_speed_unit=kmh&timezone=auto&forecast_days=1`;
+        const w=await fetch(url).then(r=>r.json());
+        const cur=w.current;
+        document.getElementById('wtTemp').textContent=Math.round(cur.temperature_2m)+'°C';
+        // Set background based on temperature
+        setWeatherBackground(Math.round(cur.temperature_2m));
+        document.getElementById('wtCondition').textContent=WMO_DESC[cur.weather_code]||'—';
+        document.getElementById('wtIcon').textContent=WMO_ICONS[cur.weather_code]||'🌡️';
+        document.getElementById('wtHumidity').textContent=cur.relative_humidity_2m+'%';
+        document.getElementById('wtWind').textContent=Math.round(cur.wind_speed_10m)+' km/h';
+        document.getElementById('wtFeels').textContent=Math.round(cur.apparent_temperature)+'°C';
+        const now=new Date();
+        const html=w.hourly.time.slice(0,24).map((t,i)=>{const d=new Date(t);if(d<=now)return'';const h=d.getHours();const label=h===0?'12am':h<12?h+'am':h===12?'12pm':(h-12)+'pm';return`<div class="wt-hour"><div class="wt-hour-time">${label}</div><div class="wt-hour-icon">${WMO_ICONS[w.hourly.weather_code[i]]||'🌡️'}</div><div class="wt-hour-temp">${Math.round(w.hourly.temperature_2m[i])}°</div></div>`;}).filter(Boolean).slice(0,6).join('');
+        document.getElementById('wtHourly').innerHTML=html||'<span style="font-size:10px;color:#9aa0b4;">No hourly data</span>';
+      };
+      try{
+        const pos=await new Promise((res,rej)=>navigator.geolocation.getCurrentPosition(res,rej,{timeout:5000}));
+        const geo=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`).then(r=>r.json());
+        const city=geo.address?.city||geo.address?.town||geo.address?.county||'Your Location';
+        await setWeather(pos.coords.latitude,pos.coords.longitude,city);
+      }catch(e){await setWeather(9.93,76.26,'Kerala, India');}
+    }
+
+    // ── CALENDAR ──
+    const EVENTS={'2026-07-22':[{time:'10:00 AM',name:'Stakeholder Meeting',loc:'Conference Room A',color:'#8b5cf6'},{time:'1:30 PM',name:'Data Review Session',loc:'Virtual Meeting',color:'#1a6fdb'}],'2026-07-23':[{time:'11:00 AM',name:'Team Standup',loc:'Online',color:'#16a34a'}],'2026-07-25':[{time:'2:00 PM',name:'Supplier Audit Call',loc:'Zoom',color:'#f59e0b'}],'2026-07-28':[{time:'9:00 AM',name:'Compliance Review',loc:'Board Room',color:'#e63946'}],'2026-07-30':[{time:'3:00 PM',name:'SRI Report Presentation',loc:'Virtual',color:'#8b5cf6'}]};
+    let calYear=2026,calMonth=6;
+    function renderCalendar(){
+      const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
+      const DAYS=['SUN','MON','TUE','WED','THU','FRI','SAT'];
+      document.getElementById('calMonthLabel').textContent=MONTHS[calMonth]+' '+calYear;
+      const today=new Date();const firstDay=new Date(calYear,calMonth,1).getDay();const daysInMonth=new Date(calYear,calMonth+1,0).getDate();const daysInPrev=new Date(calYear,calMonth,0).getDate();
+      let html='<div class="cal-grid">';
+      DAYS.forEach(d=>{html+=`<div class="cal-day-name">${d}</div>`;});
+      for(let i=firstDay-1;i>=0;i--)html+=`<div class="cal-day other-month">${daysInPrev-i}</div>`;
+      for(let d=1;d<=daysInMonth;d++){const key=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;const isToday=today.getFullYear()===calYear&&today.getMonth()===calMonth&&today.getDate()===d;const hasEv=!!EVENTS[key];const dots=hasEv?EVENTS[key].map(e=>`<div class="cal-event-dot" style="background:${e.color};"></div>`).join(''):'';html+=`<div class="cal-day${isToday?' today':''}${hasEv?' has-event':''}" onclick="showSchedule('${key}')" style="gap:1px;"><span>${d}</span>${!isToday&&dots?`<div style="display:flex;gap:2px;">${dots}</div>`:''}</div>`;}
+      const total=firstDay+daysInMonth;const rem=(7-total%7)%7;for(let d=1;d<=rem;d++)html+=`<div class="cal-day other-month">${d}</div>`;
+      html+='</div>';
+      document.getElementById('calGrid').innerHTML=html;
+      const todayKey=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+      showSchedule(todayKey);
+    }
+    function showSchedule(key){
+      const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const[y,m,d]=key.split('-');
+      document.getElementById('calScheduleLabel').textContent=`${d} ${MONTHS[parseInt(m)-1]}`;
+      const evs=EVENTS[key]||[];
+      const schEl=document.getElementById('calSchedule');
+      if(!evs.length){schEl.innerHTML=`<div style="font-size:10px;color:#c0c4d0;">No events</div>`;return;}
+      schEl.innerHTML=evs.map(e=>`<div style="flex:1;min-width:0;padding:5px 8px;border-radius:8px;background:#f9fafc;border-left:2px solid ${e.color};overflow:hidden;"><div style="font-size:9px;color:#9aa0b4;">${e.time}</div><div style="font-size:10px;color:#4a4e69;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px;">${e.name}</div></div>`).join('');
+    }
+    function calPrev(){if(calMonth===0){calMonth=11;calYear--;}else calMonth--;renderCalendar();}
+    function calNext(){if(calMonth===11){calMonth=0;calYear++;}else calMonth++;renderCalendar();}
+
+    window.addEventListener('DOMContentLoaded',async()=>{
+      const{data:{session}}=await dbClient.auth.getSession();
+      if(!session){window.location.href='login.html';return;}
+      const{data:p}=await dbClient.from('profiles').select('first_name,last_name,avatar_color,role,photo_url').eq('id',session.user.id).single();
+      const firstName=p?.first_name||session.user.email.split('@')[0];
+      const lastName=p?.last_name||'';
+      const initials=(firstName.charAt(0)+(lastName?lastName.charAt(0):'')).toUpperCase();
+      const color=p?.avatar_color||'#1a6fdb';
+      document.getElementById('greetingTime').textContent=greetingTime();
+      document.getElementById('greetingName').innerHTML=`<span style="color:#1a6fdb">${firstName}</span>${lastName?' '+lastName:''}`;
+      if(p?.photo_url){document.getElementById('avatarBtn').innerHTML=`<img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;}
+      else{document.getElementById('avatarBtn').style.background=color;document.getElementById('avatarInitials').textContent=initials;}
+      document.getElementById('avatarGreeting').textContent=`${greetingTime()}, ${firstName}!`;
+      nextFact();setInterval(nextFact,3600000);
+      setTimeout(initShipmentsChart,100);
+      initWeather();
+      renderCalendar();
+      initManhattanAssistant(firstName);
+    });
+
+    // ── MANHATTAN ASSISTANT (voice widget) ──
+    // TODO: replace this with your real Groq call — see INTEGRATION-GUIDE.md.
+    // This dashboard has no single "product" in view, so the assistant runs
+    // in general mode: no getProductData, a broader system-style greeting.
+    async function dashboardAskAI(question, productData){
+      // Swap for your existing Groq function, e.g.:
+      // return await callGroqAPI(question, productData);
+      const systemPrompt = ManhattanVoiceAssistant.buildSystemPrompt(productData);
+      console.log('[SmarTuna Assistant] system prompt:\n', systemPrompt, '\nQuestion:', question);
+      await new Promise(r=>setTimeout(r,700));
+      return "I'm running in demo mode on this page — wire dashboardAskAI() to your real Groq function to get live answers about risk scores, flagged vessels, and shipments.";
+    }
+
+    function initManhattanAssistant(firstName){
+      window.mhAssistant = new ManhattanVoiceAssistant({
+        askAI: dashboardAskAI,
+        panelTitle: 'SmarTuna Assistant',
+        panelSubtitle: 'Voice-powered dashboard Q&A',
+        greeting: `Hi ${firstName||''}! Ask about your risk score, flagged vessels, shipments, or anything on this dashboard.`,
+      });
+      window.mhAssistant.init();
+    }
+
+    // ── SHIPMENTS OVERVIEW ──
+    // Reads the shipments module. Falls back to a dash rather than a fake
+    // number, so an empty or failed load never looks like real data.
+    async function loadShipmentStats(){
+      const set=(id,v)=>{const e=document.getElementById(id); if(e) e.textContent=v;};
+      const note=(id,txt,colour)=>{const e=document.getElementById(id);
+        if(e){ e.textContent=txt; e.style.color=colour||'#9aa0b4'; }};
+
+      if(typeof dbClient==='undefined'||!dbClient) return;
+
+      try{
+        const {data,error}=await dbClient
+          .from('shipments').select('id,status').is('deleted_at',null);
+        if(error) throw error;
+
+        const rows=data||[];
+        if(!rows.length){
+          set('shTotal','0'); set('shActive','0'); set('shDone','0'); set('shFlag','—');
+          note('shTotalDelta','No shipments yet');
+          return;
+        }
+
+        const active=rows.filter(r=>['Booked','In-Transit'].includes(r.status)).length;
+        const done  =rows.filter(r=>['Delivered','Arrived'].includes(r.status)).length;
+
+        set('shTotal',rows.length.toLocaleString());
+        set('shActive',active.toLocaleString());
+        set('shDone',done.toLocaleString());
+
+        // Flagged = product lines whose packages don't reconcile against their lots
+        try{
+          const {data:chk}=await dbClient
+            .from('shipment_package_check').select('shipment_id,variance');
+          if(chk){
+            const bad=new Set(chk.filter(c=>Number(c.variance)!==0).map(c=>c.shipment_id));
+            const pct=rows.length?(bad.size/rows.length*100):0;
+            set('shFlag',pct.toFixed(2)+'%');
+            note('shFlagDelta', bad.size?(bad.size+' to fix'):'All reconciled',
+                 bad.size?'#e63946':'#16a34a');
+          }
+        }catch(e){ set('shFlag','—'); }
+      }catch(err){
+        console.warn('Shipment stats unavailable:',err.message);
+      }
+    }
+    loadShipmentStats();
+
+    /** Called from the Features dropdown and the dashboard tile's chips/CTA. */
+    function openManhattanAssistant(prefillQuestion){
+      if(!window.mhAssistant) return;
+      if(prefillQuestion) window.mhAssistant.ask(prefillQuestion);
+      else window.mhAssistant.open();
+    }
+  </script>
+</body>
+</html>

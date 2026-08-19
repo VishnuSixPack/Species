@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SmarTuna Assistant — SmarTuna concept</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="sc-blue-logo.png" />
+  <link rel="stylesheet" href="voice-assistant.css" />
+  <style>
+    /* ── SMARTUNA WORDMARK ── */
+    @font-face {
+      font-family: 'Bitsumis';
+      src: url('BITSUMIS.TTF') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+    .sc-wm {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: flex-start;
+      line-height: 1;
+      gap: 0;
+      text-decoration: none;
+    }
+    .sc-wm-top {
+      font-family: 'Bitsumis', 'Poppins', sans-serif !important;
+      font-weight: 900 !important;
+      font-size: 16px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      line-height: 1;
+      background: linear-gradient(90deg, #1a6fdb 0%, #1a6fdb 100%) !important;
+      -webkit-background-clip: text !important;
+      -webkit-text-fill-color: transparent !important;
+      background-clip: text !important;
+    }
+    .sc-wm-sub {
+      font-family: 'Bitsumis', 'Poppins', sans-serif !important;
+      font-weight: 700 !important;
+      font-size: 7px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      line-height: 1;
+      color: #1a1a2e;
+      -webkit-text-fill-color: #1a1a2e !important;
+      margin-top: 2px;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --ma-bg:#f7f5f0;
+      --ma-white:#ffffff;
+      --ma-text:#1a1a2e;
+      --ma-muted:#6b7280;
+      --ma-faint:#9aa0b4;
+      --ma-border:#ece7db;
+      --ma-gold-a:#f6c453;
+      --ma-gold-b:#c9962f;
+      --ma-gold-grad:linear-gradient(135deg,var(--ma-gold-a),var(--ma-gold-b));
+    }
+    html,body{height:100%;}
+    body{
+      font-family:'Poppins',sans-serif;
+      background:var(--ma-bg);
+      color:var(--ma-text);
+      display:flex;
+      min-height:100vh;
+    }
+
+    /* ── SIDEBAR ── */
+    .ma-sidebar{
+      width:264px;
+      flex-shrink:0;
+      background:var(--ma-white);
+      border-right:1px solid var(--ma-border);
+      display:flex;
+      flex-direction:column;
+      padding:22px 18px;
+      height:100vh;
+      position:sticky;
+      top:0;
+      overflow-y:auto;
+    }
+
+    .ma-brand{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding:0 6px 22px;
+      text-decoration:none;
+      color:inherit;
+    }
+    .ma-brand-mark{
+      width:34px;height:34px;border-radius:10px;
+      background:var(--ma-gold-grad);
+      display:flex;align-items:center;justify-content:center;
+      color:#fff;font-weight:800;font-size:15px;flex-shrink:0;
+      box-shadow:0 4px 12px rgba(201,150,47,0.3);
+    }
+    .ma-brand-mark-img{
+      height:34px;width:auto;max-width:44px;object-fit:contain;flex-shrink:0;
+    }
+    .ma-brand-text{display:flex;flex-direction:column;line-height:1.15;}
+    .ma-brand-project{font-size:8px;font-weight:700;letter-spacing:2px;color:var(--ma-faint);}
+    .ma-brand-name{font-size:15px;font-weight:800;color:var(--ma-text);}
+    .ma-brand-text-img{height:28px;width:auto;max-width:170px;object-fit:contain;}
+
+    .ma-nav{display:flex;flex-direction:column;gap:3px;margin-bottom:20px;}
+    .ma-nav-item{
+      display:flex;align-items:center;gap:10px;
+      padding:10px 12px;border-radius:12px;
+      font-size:13.5px;font-weight:500;color:var(--ma-muted);
+      text-decoration:none;transition:background 0.15s,color 0.15s;
+    }
+    .ma-nav-item:hover{background:var(--ma-bg);color:var(--ma-text);}
+    .ma-nav-item svg{width:17px;height:17px;flex-shrink:0;opacity:0.75;}
+    .ma-nav-item.active{
+      background:var(--ma-gold-grad);
+      color:#fff;
+      font-weight:600;
+      box-shadow:0 4px 14px rgba(201,150,47,0.28);
+    }
+    .ma-nav-item.active svg{opacity:1;}
+
+    .ma-section-label{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:0 12px;margin-bottom:8px;
+      font-size:11px;font-weight:700;letter-spacing:0.04em;
+      text-transform:uppercase;color:var(--ma-faint);
+    }
+    .ma-section-label button{
+      width:20px;height:20px;border-radius:50%;
+      border:1px solid var(--ma-border);background:var(--ma-white);
+      color:var(--ma-muted);cursor:pointer;
+      display:flex;align-items:center;justify-content:center;
+      font-size:13px;line-height:1;
+    }
+
+    .ma-prompts{display:flex;flex-direction:column;gap:7px;margin-bottom:auto;}
+    .ma-prompt-chip{
+      display:flex;align-items:center;gap:10px;
+      padding:9px 10px;border-radius:12px;border:1px solid var(--ma-border);
+      background:var(--ma-white);cursor:pointer;text-align:left;
+      font-family:'Poppins',sans-serif;transition:border-color 0.15s,background 0.15s;
+    }
+    .ma-prompt-chip:hover{background:var(--ma-bg);border-color:#e3d3a8;}
+    .ma-prompt-icon{
+      width:26px;height:26px;border-radius:8px;flex-shrink:0;
+      background:#fdf3df;color:#b8860b;
+      display:flex;align-items:center;justify-content:center;
+    }
+    .ma-prompt-icon svg{width:13px;height:13px;}
+    .ma-prompt-text{font-size:12px;color:var(--ma-text);line-height:1.35;}
+
+    .ma-sidebar-footer{
+      padding-top:16px;margin-top:16px;border-top:1px solid var(--ma-border);
+    }
+    .ma-back-link{
+      display:flex;align-items:center;gap:8px;
+      font-size:12.5px;color:var(--ma-muted);text-decoration:none;
+      padding:8px 6px;border-radius:10px;transition:color 0.15s,background 0.15s;
+    }
+    .ma-back-link:hover{color:var(--ma-text);background:var(--ma-bg);}
+    .ma-back-link svg{width:14px;height:14px;}
+
+    /* ── MAIN COLUMN ── */
+    .ma-main-col{flex:1;min-width:0;display:flex;flex-direction:column;}
+
+    .ma-topbar{
+      display:flex;align-items:center;gap:16px;
+      padding:16px 32px;border-bottom:1px solid var(--ma-border);
+      flex-shrink:0;
+    }
+    .ma-search{
+      flex:1;max-width:480px;
+      display:flex;align-items:center;gap:10px;
+      background:var(--ma-bg);border:1px solid var(--ma-border);
+      border-radius:999px;padding:10px 16px;color:var(--ma-faint);font-size:13px;
+    }
+    .ma-search svg{width:15px;height:15px;flex-shrink:0;}
+    .ma-search kbd{
+      margin-left:auto;font-size:10.5px;color:var(--ma-faint);
+      border:1px solid var(--ma-border);border-radius:5px;padding:1px 6px;
+      font-family:'Poppins',sans-serif;
+    }
+    .ma-topbar-right{display:flex;align-items:center;gap:12px;margin-left:auto;flex-shrink:0;}
+    .ma-icon-btn{
+      width:38px;height:38px;border-radius:50%;
+      border:1px solid var(--ma-border);background:var(--ma-white);
+      display:flex;align-items:center;justify-content:center;
+      cursor:pointer;color:var(--ma-muted);position:relative;flex-shrink:0;
+    }
+    .ma-icon-btn svg{width:16px;height:16px;}
+    .ma-notif-dot{position:absolute;top:8px;right:8px;width:7px;height:7px;background:var(--mh-va-error,#e63946);border-radius:50%;border:2px solid var(--ma-white);}
+    .ma-user{display:flex;align-items:center;gap:9px;cursor:pointer;padding:4px 8px 4px 4px;border-radius:999px;transition:background 0.15s;}
+    .ma-user:hover{background:var(--ma-bg);}
+    .ma-user-avatar{width:32px;height:32px;border-radius:50%;background:var(--ma-gold-grad);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;}
+    .ma-user-avatar img{width:100%;height:100%;object-fit:cover;}
+    .ma-user-name{font-size:13px;font-weight:600;color:var(--ma-text);}
+    .ma-user svg{width:13px;height:13px;color:var(--ma-faint);}
+
+    .ma-user-menu{
+      display:none;position:absolute;top:calc(100% + 8px);right:0;
+      background:var(--ma-white);border:1px solid var(--ma-border);border-radius:12px;
+      box-shadow:0 8px 24px rgba(20,20,30,0.12);min-width:176px;overflow:hidden;z-index:50;
+    }
+    .ma-user-menu.open{display:block;}
+    .ma-user-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;color:var(--ma-text);border-bottom:1px solid var(--ma-border);}
+    .ma-user-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;color:#4a4e69;text-decoration:none;font-weight:500;}
+    .ma-user-menu a:hover{background:var(--ma-bg);color:var(--ma-gold-b);}
+    .ma-user-menu button{width:100%;padding:9px 15px;background:none;border:none;border-top:1px solid var(--ma-border);text-align:left;font-family:'Poppins',sans-serif;font-size:13px;color:#e63946;cursor:pointer;}
+    .ma-user-menu button:hover{background:#fff0f1;}
+
+    .ma-content{
+      flex:1;display:flex;flex-direction:column;
+      padding:32px 40px;overflow-y:auto;overflow-x:hidden;
+      position:relative;min-height:0;
+    }
+
+    /* Widget override: fill the dedicated page instead of the 720px capped
+       card used when the widget is embedded on a smaller surface. #id
+       selector guarantees this wins over the shared voice-assistant.css rule. */
+    #assistantMount{
+      flex:1;display:flex;flex-direction:column;min-height:0;
+      position:relative;z-index:1;
+    }
+    #assistantMount .mh-va-panel{
+      width:100%;max-width:none;height:100%;flex:1;min-height:0;
+    }
+
+    /* ── AMBIENT IDLE ANIMATION — "future assistant" background presence ── */
+    .ma-ambient{
+      position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0;
+    }
+    .ma-orb{
+      position:absolute;border-radius:50%;
+      background:radial-gradient(circle,rgba(246,196,83,0.30) 0%,rgba(201,150,47,0.08) 55%,transparent 75%);
+      filter:blur(6px);
+      animation:maOrbFloat 16s ease-in-out infinite;
+    }
+    .ma-orb-1{width:380px;height:380px;top:-80px;left:8%;animation-delay:0s;}
+    .ma-orb-2{width:300px;height:300px;bottom:-60px;right:6%;animation-delay:-5s;animation-duration:19s;}
+    .ma-orb-3{width:220px;height:220px;top:38%;right:22%;animation-delay:-11s;animation-duration:14s;opacity:0.7;}
+
+    @keyframes maOrbFloat{
+      0%,100%{transform:translate(0,0) scale(1);}
+      33%{transform:translate(3%,-4%) scale(1.06);}
+      66%{transform:translate(-3%,3%) scale(0.96);}
+    }
+
+    .ma-dot-field{position:absolute;inset:0;}
+    .ma-drift-dot{
+      position:absolute;border-radius:50%;
+      background:var(--ma-gold-b);
+      animation:maDotDrift linear infinite, maDotPulse ease-in-out infinite;
+    }
+
+    @keyframes maDotDrift{
+      from{transform:translateY(0);}
+      to{transform:translateY(-40px);}
+    }
+    @keyframes maDotPulse{
+      0%,100%{opacity:0.15;}
+      50%{opacity:0.55;}
+    }
+
+    @media (prefers-reduced-motion: reduce){
+      .ma-orb,.ma-drift-dot{animation:none;}
+    }
+
+    .ma-voice-toggle{
+      display:inline-flex;align-items:center;gap:6px;
+      border:1px solid var(--ma-border);background:var(--ma-white);
+      border-radius:999px;padding:7px 13px;font-size:12px;font-weight:600;
+      color:var(--ma-text);cursor:pointer;font-family:'Poppins',sans-serif;
+    }
+    .ma-voice-toggle svg{width:13px;height:13px;color:var(--ma-gold-b);}
+
+    @media (max-width: 900px) {
+      .ma-sidebar{display:none;}
+      .ma-topbar{padding:14px 18px;}
+      .ma-content{padding:24px 16px;}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <aside class="ma-sidebar">
+    <a href="index.html" class="ma-brand">
+      <img src="sc-logo.png" alt="Logo" class="ma-brand-mark-img" onerror="this.outerHTML='<div class=&quot;ma-brand-mark&quot;>M</div>'" />
+      <img src="sc-text.png" alt="SmarTuna concept" class="ma-brand-text-img" onerror="this.outerHTML='<div class=&quot;ma-brand-text&quot;><span class=&quot;ma-brand-project&quot;>SmarTuna</span><span class=&quot;ma-brand-name&quot;>concept</span></div>'" />
+    </a>
+
+    <nav class="ma-nav">
+      <a href="smartuna-assistant.html" class="ma-nav-item active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
+        AI Voice Assistant
+      </a>
+      <a href="#" class="ma-nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        History
+      </a>
+    </nav>
+
+    <div>
+      <div class="ma-section-label">
+        Quick prompts
+        <button type="button" aria-label="Add prompt">+</button>
+      </div>
+      <div class="ma-prompts" id="quickPrompts">
+        <button type="button" class="ma-prompt-chip" data-prompt="What's our average risk score this month?">
+          <span class="ma-prompt-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></span>
+          <span class="ma-prompt-text">What's our risk score this month?</span>
+        </button>
+        <button type="button" class="ma-prompt-chip" data-prompt="Which vessels were flagged this week?">
+          <span class="ma-prompt-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg></span>
+          <span class="ma-prompt-text">Any vessels flagged this week?</span>
+        </button>
+        <button type="button" class="ma-prompt-chip" data-prompt="Summarise this month's shipments.">
+          <span class="ma-prompt-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h6"/><path d="M16 19h6M19 16v6"/></svg></span>
+          <span class="ma-prompt-text">Summarise this month's shipments</span>
+        </button>
+        <button type="button" class="ma-prompt-chip" data-prompt="Is this product MSC certified?">
+          <span class="ma-prompt-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 12 2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg></span>
+          <span class="ma-prompt-text">Is this product MSC certified?</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="ma-sidebar-footer">
+      <a href="home-logged-in.html" class="ma-back-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        Back to Dashboard
+      </a>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="ma-main-col">
+    <header class="ma-topbar">
+      <div class="ma-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search or ask anything…
+        <kbd>⌘K</kbd>
+      </div>
+      <div class="ma-topbar-right">
+        <div class="ma-icon-btn" aria-label="Notifications">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <div class="ma-notif-dot"></div>
+        </div>
+        <div class="ma-user-wrap" style="position:relative;flex-shrink:0;">
+          <div class="ma-user" id="maUser" onclick="toggleUserMenu()">
+            <div class="ma-user-avatar" id="maUserAvatar"><span id="maUserInitials">··</span></div>
+            <span class="ma-user-name" id="maUserName">Loading…</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="ma-user-menu" id="maUserMenu">
+            <div class="ma-user-menu-name" id="maUserMenuGreeting">Hello!</div>
+            <a href="profile.html">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+              Profile
+            </a>
+            <button type="button" onclick="handleLogout()">Logout</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="ma-content">
+      <div class="ma-ambient" aria-hidden="true">
+        <div class="ma-orb ma-orb-1"></div>
+        <div class="ma-orb ma-orb-2"></div>
+        <div class="ma-orb ma-orb-3"></div>
+        <div class="ma-dot-field" id="maDotField"></div>
+      </div>
+      <div id="assistantMount"></div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="voice-assistant.js"></script>
+  <script>
+    // ── Auth (same pattern as home-logged-in.html) ──
+    const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
+    const SUPABASE_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+    const dbClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
+    // ── Stand-in for your existing Groq function — replace with the real one. ──
+    // See INTEGRATION-GUIDE.md, "Step 2".
+    async function manhattanAskAI(question, productData){
+      const systemPrompt = SmarTunaVoiceAssistant.buildSystemPrompt(productData);
+      console.log('[SmarTuna Assistant] system prompt:\n', systemPrompt, '\nQuestion:', question);
+      await new Promise(r=>setTimeout(r,700));
+      return "I'm running in demo mode on this page — wire manhattanAskAI() to your real Groq function for live answers.";
+    }
+
+    let assistant;
+    function initAssistant(firstName){
+      assistant = new SmarTunaVoiceAssistant({
+        embedded: true,
+        mountTo: document.getElementById('assistantMount'),
+        askAI: manhattanAskAI,
+        panelTitle: 'SmarTuna Assistant',
+        panelSubtitle: 'Voice-powered Q&A',
+        modalHeading: 'How can I help you today?',
+        greeting: `Hi ${firstName||''}! Ask about your risk score, flagged vessels, shipments, or anything on your dashboard.`,
+      });
+      assistant.init();
+
+      document.querySelectorAll('.ma-prompt-chip').forEach(chip=>{
+        chip.addEventListener('click', ()=> assistant.ask(chip.dataset.prompt));
+      });
+    }
+
+    // ── Profile menu ──
+    function toggleUserMenu(){ document.getElementById('maUserMenu').classList.toggle('open'); }
+    document.addEventListener('click', e=>{
+      if(!e.target.closest('.ma-user-wrap')) document.getElementById('maUserMenu')?.classList.remove('open');
+    });
+    async function handleLogout(){ await dbClient.auth.signOut(); window.location.href='index.html'; }
+
+    // ── Ambient idle background — scattered drifting dots for a "living"
+    // assistant presence even when nothing is happening. Pure decoration,
+    // pointer-events disabled, respects prefers-reduced-motion via CSS. ──
+    function initAmbientDots(){
+      const field = document.getElementById('maDotField');
+      if(!field) return;
+      const count = 22;
+      for(let i=0;i<count;i++){
+        const dot = document.createElement('div');
+        dot.className = 'ma-drift-dot';
+        const size = 2 + Math.random()*3;
+        dot.style.width = size+'px';
+        dot.style.height = size+'px';
+        dot.style.left = Math.random()*100+'%';
+        dot.style.top = 20 + Math.random()*80+'%';
+        dot.style.animationDuration = (10+Math.random()*14)+'s, '+(2.5+Math.random()*2.5)+'s';
+        dot.style.animationDelay = (-Math.random()*14)+'s, '+(-Math.random()*4)+'s';
+        field.appendChild(dot);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', async ()=>{
+      initAmbientDots();
+
+      const {data:{session}} = await dbClient.auth.getSession();
+      if(!session){ window.location.href='login.html'; return; }
+
+      const {data:p} = await dbClient.from('profiles').select('first_name,last_name,avatar_color,photo_url').eq('id',session.user.id).single();
+      const firstName = p?.first_name || session.user.email.split('@')[0];
+      const lastName = p?.last_name || '';
+      const initials = (firstName.charAt(0)+(lastName?lastName.charAt(0):'')).toUpperCase();
+
+      document.getElementById('maUserName').textContent = `${firstName}${lastName?' '+lastName:''}`;
+      document.getElementById('maUserMenuGreeting').textContent = `Hi, ${firstName}!`;
+      if(p?.photo_url){
+        document.getElementById('maUserAvatar').innerHTML = `<img src="${p.photo_url}" alt=""/>`;
+      } else {
+        document.getElementById('maUserInitials').textContent = initials;
+      }
+
+      initAssistant(firstName);
+    });
+  </script>
+</body>
+</html>

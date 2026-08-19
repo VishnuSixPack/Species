@@ -1,0 +1,2015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<link rel="icon" type="image/png" href="sc-blue-logo.png"/>
+<title>New Shipment — SmarTuna</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="theme.css"/>
+<script src="theme.js"></script>
+<style>
+  @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');
+             font-weight:normal;font-style:normal;font-display:swap;}
+  :root{--ctl-h:40px;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Poppins','DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+
+  .sc-wm{display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1;gap:0;text-decoration:none;}
+  .sc-wm-top{font-family:'Bitsumis',sans-serif !important;font-weight:900 !important;font-size:16px;
+    letter-spacing:.04em;text-transform:uppercase;line-height:1;
+    background:linear-gradient(90deg,var(--wm-top),var(--wm-top)) !important;-webkit-background-clip:text !important;
+    -webkit-text-fill-color:transparent !important;background-clip:text !important;}
+  .sc-wm-sub{font-family:'Bitsumis',sans-serif !important;font-weight:700 !important;font-size:7px;
+    letter-spacing:.22em;text-transform:uppercase;color:var(--wm-sub);-webkit-text-fill-color:var(--wm-sub) !important;margin-top:2px;}
+  .topbar-brand{display:flex;align-items:center;gap:8px;text-decoration:none;}
+
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 30px;
+          background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:500;}
+  .nav{display:flex;gap:2px;}
+  .nav-item{padding:7px 14px;border-radius:999px;font-size:13px;color:var(--muted);text-decoration:none;}
+  .nav-item:hover{background:var(--bg);color:var(--text);}
+  .nav-item.active{background:var(--bg);color:var(--text);font-weight:600;}
+
+  .avatar-wrap{position:relative;}
+  .avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;
+              font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;
+              overflow:hidden;flex-shrink:0;box-shadow:0 1px 4px rgba(0,0,0,.12);}
+  .avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--surface);
+               border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-1);
+               min-width:186px;overflow:hidden;z-index:999;}
+  .avatar-menu.open{display:block;}
+  .avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;border-bottom:1px solid var(--border);}
+  .avatar-menu a,.avatar-menu button{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;
+    color:var(--menu-text);text-decoration:none;font-weight:500;width:100%;background:none;border:none;
+    font-family:inherit;cursor:pointer;text-align:left;}
+  .avatar-menu a:hover,.avatar-menu button:hover{background:var(--bg);color:var(--primary);}
+
+  /* wider working area */
+  .wrap{max-width:1400px;margin:0 auto;padding:20px 30px 130px;}
+  .crumb{font-size:12px;color:var(--muted);margin-bottom:14px;}
+  .crumb a{color:var(--muted);text-decoration:none;}
+  .crumb a:hover{color:var(--primary);}
+
+  .actionbar{position:sticky;top:57px;z-index:450;background:var(--bg);padding:10px 0 16px;
+             display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  .h1{font-size:21px;font-weight:700;}
+  .h1-sub{font-size:12px;color:var(--muted);margin-top:2px;}
+
+  .btn{padding:10px 18px;border-radius:10px;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;
+       border:1px solid var(--border);background:var(--surface);color:var(--text);text-decoration:none;display:inline-block;}
+  .btn:hover{border-color:var(--primary);color:var(--primary);}
+  /* OCR Scanner */
+  .scan-bg{position:fixed;inset:0;background:rgba(10,12,18,.6);z-index:950;display:none;align-items:center;justify-content:center;padding:20px;}
+  .scan-bg.open{display:flex;}
+  .scan-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;width:100%;max-width:720px;
+            max-height:90vh;display:flex;flex-direction:column;box-shadow:var(--shadow-2);overflow:hidden;}
+  .scan-head{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+  .scan-head h3{font-size:16px;font-weight:700;display:flex;align-items:center;gap:10px;}
+  .scan-body{padding:24px;overflow-y:auto;flex:1;}
+  .scan-drop{border:2px dashed var(--border);border-radius:14px;padding:32px;text-align:center;cursor:pointer;
+             transition:border-color .15s,background .15s;}
+  .scan-drop:hover,.scan-drop.drag{border-color:var(--primary);background:var(--primary-soft);}
+  .scan-drop svg{width:36px;height:36px;color:var(--dim);margin-bottom:12px;}
+  .scan-drop-t{font-size:14px;font-weight:600;margin-bottom:4px;}
+  .scan-drop-d{font-size:12px;color:var(--muted);}
+  .scan-file{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);
+             border-radius:12px;margin-top:12px;background:var(--surface-2);}
+  .scan-file-ic{width:36px;height:36px;border-radius:9px;background:var(--bad-bg);color:var(--bad-fg);
+                display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;flex-shrink:0;}
+  .scan-file-name{font-size:13px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .scan-file-size{font-size:11px;color:var(--muted);}
+  .scan-file-rm{width:28px;height:28px;border:none;background:none;cursor:pointer;color:var(--dim);
+                display:flex;align-items:center;justify-content:center;border-radius:7px;}
+  .scan-file-rm:hover{background:var(--bad-bg);color:var(--bad-fg);}
+  .scan-tag{display:inline-block;padding:3px 9px;border-radius:6px;font-size:10px;font-weight:700;
+            text-transform:uppercase;letter-spacing:.3px;margin-left:8px;}
+  .scan-tag.inv{background:#dbeafe;color:#1e40af;}
+  .scan-tag.bl{background:#fef3c7;color:#92400e;}
+  .scan-tag.pl{background:#d1fae5;color:#065f46;}
+  .scan-prog{margin-top:20px;}
+  .scan-prog-bar{height:6px;border-radius:3px;background:var(--border);overflow:hidden;margin-top:8px;}
+  .scan-prog-fill{height:100%;background:var(--primary);border-radius:3px;transition:width .3s;}
+  .scan-prog-status{font-size:12px;color:var(--muted);margin-top:6px;}
+  .scan-results{margin-top:20px;padding:16px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2);}
+  .scan-results pre{font-size:11px;max-height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;color:var(--text);}
+  .scan-foot{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;}
+
+  .btn-danger{border-color:var(--bad-fg);color:var(--bad-fg);background:none;}
+  .btn-danger:hover{background:var(--bad-bg);color:var(--bad-fg);}
+  .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+  .btn-primary:hover{background:var(--primary-hover);color:#fff;}
+  .btn-primary:disabled{opacity:.55;cursor:not-allowed;}
+  .btn-sm{padding:7px 13px;font-size:11.5px;}
+  .btn-ghost{border-style:dashed;color:var(--muted);width:100%;text-align:center;padding:14px;}
+  .btn-ghost:hover{border-color:var(--primary);color:var(--primary);}
+  .btn-danger:hover{border-color:var(--bad-fg);color:var(--bad-fg);}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px 30px;margin-bottom:18px;}
+  .card-head{margin-bottom:22px;}
+  .card-title{font-size:15.5px;font-weight:600;}
+  .card-sub{font-size:12px;color:var(--muted);margin-top:3px;}
+
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px 22px;}
+  .grid-3{grid-template-columns:repeat(3,1fr);}
+  .span2{grid-column:span 2;}
+  label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:6px;font-weight:500;}
+  label .req{color:var(--bad-fg);}
+  .hint{font-size:10.5px;color:var(--muted);margin-top:5px;}
+
+  /* ============================================================
+     ONE CONTROL SYSTEM — text, picker and date share the same
+     height, border, radius, focus ring and chevron. Nothing here
+     uses a native <select> or <input type=date>, because those
+     render differently in every browser and can't be matched.
+     ============================================================ */
+  .ctl{position:relative;}
+  .ctl-in{width:100%;height:var(--ctl-h);padding:0 12px;border:1px solid var(--border);border-radius:10px;
+          font-family:inherit;font-size:13px;color:var(--text);background:var(--surface);}
+  .ctl-in:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-ring);}
+  .ctl-in.err{border-color:var(--bad-fg);background:var(--bad-bg);}
+  .ctl-in::placeholder{color:var(--placeholder);}
+  .ctl.has-chev .ctl-in{padding-right:34px;cursor:pointer;}
+  .ctl.searchable .ctl-in{cursor:text;}
+  .chev{position:absolute;right:12px;top:calc(var(--ctl-h)/2);transform:translateY(-50%);
+        pointer-events:none;color:var(--faint);transition:transform .18s;}
+  .ctl.open .chev{transform:translateY(-50%) rotate(180deg);color:var(--primary);}
+  textarea.ctl-in{height:auto;min-height:78px;padding:10px 12px;resize:vertical;line-height:1.55;}
+
+  /* shared popup */
+  .pop{display:none;position:absolute;top:calc(100% + 6px);left:0;min-width:100%;background:var(--surface);
+       border:1px solid var(--border-strong);border-radius:12px;box-shadow:var(--shadow-2);
+       z-index:700;padding:6px;}
+  .ctl.open .pop{display:block;}
+  .pop-list{max-height:264px;overflow-y:auto;}
+  .opt{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;cursor:pointer;
+       font-size:13px;line-height:1.35;}
+  .opt:hover,.opt.hi{background:var(--hover);}
+  .opt.sel{background:var(--primary-soft);}
+  .opt .o-main{flex:1;min-width:0;}
+  .opt .o-sub{font-size:11px;color:var(--muted);margin-top:1px;}
+  .opt .o-tick{color:var(--primary);opacity:0;flex-shrink:0;}
+  .opt.sel .o-tick{opacity:1;}
+  .opt mark{background:var(--mark-bg);color:inherit;border-radius:2px;padding:0 1px;}
+  .pop-empty{padding:14px;font-size:12px;color:var(--muted);text-align:center;}
+  .pop-new{padding:10px 11px;font-size:12px;color:var(--primary);cursor:pointer;
+           border-top:1px solid var(--border);margin-top:5px;}
+  .pop-new:hover{background:var(--hover);}
+
+  /* date picker */
+  .dp{width:250px;padding:4px;}
+  .dp-bar{display:flex;align-items:center;justify-content:space-between;padding:5px 4px 10px;}
+  .dp-mo{font-size:13px;font-weight:600;}
+  .dp-nav{display:flex;gap:3px;}
+  .dp-nav button{width:26px;height:26px;border:none;background:none;border-radius:7px;cursor:pointer;
+                 color:var(--muted);font-size:13px;line-height:1;font-family:inherit;}
+  .dp-nav button:hover{background:var(--bg);color:var(--primary);}
+  .dp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+  .dp-dow{font-size:9.5px;color:var(--muted);text-align:center;padding:4px 0;font-weight:600;}
+  .dp-d{height:31px;border:none;background:none;border-radius:8px;cursor:pointer;font-size:12px;
+        font-family:inherit;color:var(--text);}
+  .dp-d:hover{background:var(--bg);}
+  .dp-d.out{color:var(--dim);}
+  .dp-d.today{box-shadow:inset 0 0 0 1px var(--border);font-weight:600;}
+  .dp-d.on{background:var(--primary);color:#fff;font-weight:600;}
+  .dp-mo{cursor:pointer;padding:3px 7px;border-radius:7px;}
+  .dp-mo:hover{background:var(--bg);color:var(--primary);}
+  .dp-mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px 0;}
+  .dp-m{height:34px;border:none;background:none;border-radius:8px;cursor:pointer;font-size:12px;
+        font-family:inherit;color:var(--text);}
+  .dp-m:hover{background:var(--bg);}
+  .dp-m.on{background:var(--primary);color:#fff;font-weight:600;}
+  .dp-foot{display:flex;justify-content:space-between;padding:9px 4px 3px;margin-top:5px;
+           border-top:1px solid var(--border);}
+  .dp-foot button{border:none;background:none;font-family:inherit;font-size:11.5px;font-weight:600;
+                  color:var(--primary);cursor:pointer;padding:4px 7px;border-radius:6px;}
+  .dp-foot button:hover{background:var(--bg);}
+  .dp-foot .clr{color:var(--muted);}
+
+  /* mode segment */
+  .seg{display:inline-flex;background:var(--bg);border-radius:12px;padding:4px;gap:3px;}
+  .seg button{display:flex;align-items:center;gap:7px;border:none;background:none;font-family:inherit;
+              font-size:12.5px;font-weight:600;padding:9px 20px;border-radius:9px;cursor:pointer;color:var(--muted);}
+  .seg button svg{width:15px;height:15px;}
+  .seg button.on{background:var(--surface);color:var(--primary);box-shadow:var(--shadow-sm);}
+
+  /* journey legs */
+  .leg{border:1px solid var(--border);border-radius:14px;margin-bottom:14px;}
+  .leg-bar{display:flex;align-items:center;gap:13px;padding:13px 18px;background:var(--surface-2);
+           border-bottom:1px solid var(--border);border-radius:14px 14px 0 0;}
+  .leg-no{width:25px;height:25px;border-radius:7px;background:var(--surface);border:1px solid var(--border);
+          font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .leg-mode{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;}
+  .leg-mode svg{width:15px;height:15px;color:var(--primary);}
+  .leg-route{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .leg-bar .right{margin-left:auto;display:flex;align-items:center;gap:9px;}
+  .leg-in{padding:20px 18px;}
+  /* Liquid-glass mode pills — frosted surface, lift on hover, active
+     one jumps up and shows its label underneath. */
+  .vsl{display:grid;grid-template-columns:130px repeat(auto-fill,minmax(120px,1fr)) 100px 36px;gap:11px;align-items:start;margin-bottom:11px;}
+  .vsl-head{display:grid;grid-template-columns:130px repeat(auto-fill,minmax(120px,1fr)) 100px 36px;gap:11px;margin-bottom:7px;}
+  .vsl-head span{font-size:10.5px;color:var(--muted);}
+  .span2{grid-column:span 2;}
+  .sub-h{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:24px 0 12px;}
+  .empty-note{padding:26px;text-align:center;color:var(--muted);font-size:12.5px;
+              border:1px dashed var(--border);border-radius:12px;}
+
+  .leg-seg{display:inline-flex;gap:6px;align-items:flex-end;padding:0 4px 22px;}
+  .leg-seg button{position:relative;display:flex;flex-direction:column;align-items:center;gap:0;
+    border:none;background:rgba(255,255,255,.45);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+    font-family:inherit;font-size:0;font-weight:600;padding:12px;border-radius:14px;cursor:pointer;
+    color:var(--muted);box-shadow:0 1px 4px rgba(0,0,0,.06), inset 0 1px 0 rgba(255,255,255,.55);
+    transition:transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .2s, color .15s, background .15s;}
+  .leg-seg button svg{width:18px;height:18px;flex-shrink:0;}
+  .leg-seg button::after{content:attr(data-label);position:absolute;bottom:-20px;left:50%;
+    transform:translateX(-50%);font-size:9.5px;font-weight:700;letter-spacing:.3px;
+    text-transform:uppercase;white-space:nowrap;color:var(--muted);
+    opacity:0;transition:opacity .18s;}
+  .leg-seg button:hover{transform:translateY(-3px);
+    box-shadow:0 6px 18px rgba(0,0,0,.10), inset 0 1px 0 rgba(255,255,255,.6);
+    background:rgba(255,255,255,.65);color:var(--text);}
+  .leg-seg button:hover::after{opacity:.7;}
+  .leg-seg button.on{transform:translateY(-6px);color:var(--primary);
+    background:rgba(255,255,255,.75);
+    box-shadow:0 8px 24px rgba(26,111,219,.15), inset 0 1px 0 rgba(255,255,255,.7),
+              0 0 0 1.5px var(--primary);}
+  .leg-seg button.on::after{opacity:1;color:var(--primary);}
+  .leg-seg button:active{transform:translateY(-1px);transition-duration:.08s;}
+
+  /* dark theme: the glass is darker with less blur behind */
+  [data-theme="dark"] .leg-seg button{background:rgba(255,255,255,.07);
+    box-shadow:0 1px 4px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.08);}
+  [data-theme="dark"] .leg-seg button:hover{background:rgba(255,255,255,.12);
+    box-shadow:0 6px 18px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.1);}
+  [data-theme="dark"] .leg-seg button.on{background:rgba(77,148,240,.15);
+    box-shadow:0 8px 24px rgba(77,148,240,.2), inset 0 1px 0 rgba(255,255,255,.1),
+              0 0 0 1.5px var(--primary);}
+  .journey{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted);
+           padding:12px 15px;background:var(--surface-2);border:1px solid var(--border);
+           border-radius:11px;margin-bottom:16px;}
+  .journey b{color:var(--text);}
+  .journey svg{width:13px;height:13px;color:var(--primary);flex-shrink:0;}
+  .journey .arrow{color:var(--dim);}
+
+  .item{border:1px solid var(--border);border-radius:14px;margin-bottom:16px;}
+  .item-bar{display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--surface-2);
+            border-bottom:1px solid var(--border);border-radius:14px 14px 0 0;}
+  .item-no{width:25px;height:25px;border-radius:7px;background:var(--surface);border:1px solid var(--border);
+           font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+  .item-t{font-size:13px;font-weight:600;}
+  .item-bar .right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+  .item-in{padding:22px 20px;}
+  .span2{grid-column:span 2;}
+  .sub-h{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;
+         margin:24px 0 12px;display:flex;align-items:center;justify-content:space-between;}
+
+  .lot{display:grid;grid-template-columns:110px 1.3fr 1fr 1fr 1.3fr 40px;gap:11px;align-items:start;margin-bottom:11px;}
+  .lot-head{display:grid;grid-template-columns:110px 1.3fr 1fr 1fr 1.3fr 40px;gap:11px;margin-bottom:7px;}
+  .lot-head span{font-size:10.5px;color:var(--muted);}
+  .vsl{display:grid;grid-template-columns:150px 1.5fr 1fr 1fr 40px;gap:11px;align-items:start;margin-bottom:11px;}
+  .vsl-head{display:grid;grid-template-columns:150px 1.5fr 1fr 1fr 40px;gap:11px;margin-bottom:7px;}
+  .vsl-head span{font-size:10.5px;color:var(--muted);}
+  /* Ghost button: quiet until hovered, so it doesn't compete with the
+     fields beside it. Explicit svg sizing — without it the icon fills
+     the button. */
+  .icon-btn{width:36px;height:var(--ctl-h);border:1px solid transparent;background:none;
+            border-radius:10px;cursor:pointer;color:var(--dim);display:flex;align-items:center;
+            justify-content:center;padding:0;transition:all .15s;}
+  .icon-btn svg{width:15px;height:15px;display:block;}
+  .icon-btn:hover{color:var(--bad-fg);background:var(--bad-bg);border-color:var(--bad-bg);}
+
+  .tally{display:flex;align-items:center;gap:9px;font-size:12px;padding:10px 14px;border-radius:10px;margin-top:6px;}
+  .tally.ok{background:var(--ok-bg);color:var(--ok-fg);}
+  .tally.bad{background:var(--warn-bg);color:var(--warn-fg);}
+  .tally.none{background:var(--bg);color:var(--muted);}
+
+  .rt-tools{display:flex;gap:3px;flex-wrap:wrap;padding:8px;border:1px solid var(--border);
+            border-bottom:none;border-radius:11px 11px 0 0;background:var(--surface-2);}
+  .rt-tools button{border:none;background:none;width:31px;height:29px;border-radius:7px;cursor:pointer;
+                   font-size:12.5px;color:var(--menu-text);font-family:inherit;}
+  .rt-tools button:hover{background:var(--surface);color:var(--primary);}
+  .rt-tools .sep{width:1px;background:var(--border);margin:4px 3px;}
+  .rt-box{border:1px solid var(--border);border-radius:0 0 11px 11px;min-height:160px;padding:14px 16px;
+          font-size:13px;line-height:1.65;overflow-y:auto;max-height:420px;background:var(--surface);}
+  .rt-box:focus{outline:none;border-color:var(--primary);}
+  .rt-box:empty:before{content:attr(data-ph);color:var(--placeholder);}
+  .rt-box ul,.rt-box ol{margin:6px 0 6px 22px;}
+
+  .savebar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--border);
+           padding:13px 30px;z-index:600;}
+  .savebar .inner{max-width:1400px;margin:0 auto;display:flex;align-items:center;
+                  justify-content:space-between;gap:14px;flex-wrap:wrap;}
+  .sum{font-size:12px;color:var(--muted);}
+  .sum b{color:var(--text);}
+
+  .toast{position:fixed;bottom:82px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;
+         padding:11px 20px;border-radius:10px;font-size:13px;z-index:900;opacity:0;pointer-events:none;
+         transition:opacity .2s;}
+  .toast.show{opacity:1;}
+  .toast.bad{background:var(--bad-fg);}
+  .banner{padding:12px 16px;border-radius:11px;font-size:12.5px;margin-bottom:18px;
+          background:var(--warn-bg);color:var(--warn-fg);}
+
+  @media(max-width:1180px){ .grid{grid-template-columns:repeat(3,1fr);} }
+  @media(max-width:900px){
+    .grid{grid-template-columns:repeat(2,1fr);}
+    .nav{display:none;}
+    .lot,.lot-head,.vsl,.vsl-head{grid-template-columns:1fr 1fr;}
+    .lot-head,.vsl-head{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="home-logged-in.html" class="topbar-brand">
+    <img src="sc-blue-logo.png" data-dark-src="sc-white-logo.png" alt="SmarTuna" style="width:28px;height:28px;object-fit:contain;"/>
+    <span class="sc-wm"><span class="sc-wm-top">SmarTuna</span><span class="sc-wm-sub">concept</span></span>
+  </a>
+  <div class="nav">
+    <a href="home-logged-in.html" class="nav-item">Home</a>
+    <a href="shipment-list.html" class="nav-item active">My Studio</a>
+    <a href="Species.html" class="nav-item">Atlas</a>
+    <a href="report.html" class="nav-item">Support</a>
+  </div>
+  <div class="avatar-wrap">
+    <div class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()"><span id="avatarInitials">··</span></div>
+    <div class="avatar-menu" id="avatarMenu">
+      <div class="avatar-menu-name" id="avatarGreeting">Hello!</div>
+      <a href="profile.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Profile</a>
+      <a href="organisation.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-6h6v6"/></svg>Your Company</a>
+      <button onclick="handleLogout()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Logout</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="crumb"><a href="home-logged-in.html">My Studio</a> / <a href="shipment-list.html">Shipments</a> / <span id="crumbNow">New</span></div>
+
+  <div class="actionbar">
+    <div>
+      <div class="h1" id="pageTitle">New shipment</div>
+      <div class="h1-sub" id="pageSub">Records what left, where it went, and which lots were in it</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn" id="scanBtn" onclick="openScanner()" style="display:flex;align-items:center;gap:6px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Scan Documents</button>
+      <button class="btn btn-danger" id="trashBtn" onclick="confirmTrash()" style="display:none;">Move to Trash</button>
+      <a href="shipment-list.html" class="btn">Cancel</a>
+      <button class="btn btn-primary" id="saveTop" onclick="save()">Save shipment</button>
+    </div>
+  </div>
+
+  <div id="banners"></div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Shipment Information</div>
+      <div class="card-sub">Parties, reference and load type</div>
+    </div>
+    <div class="grid" id="headGrid"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;">
+      <div>
+        <div class="card-title">Journey</div>
+        <div class="card-sub" id="journeySub">One leg per mode — rail to the port, sea to the destination,
+          truck to the warehouse</div>
+      </div>
+      <button class="btn btn-sm" onclick="addLeg()">+ Add leg</button>
+    </div>
+    <div class="journey" id="journeyBar" style="display:none;"></div>
+    <div id="legsHost"></div>
+    <button class="btn btn-ghost" id="addLegFirst" onclick="addLeg()">+ Add the first leg</button>
+  </div>
+
+  <div class="card">
+    <div class="card-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;">
+      <div>
+        <div class="card-title">Products</div>
+        <div class="card-sub">A shipment can carry several products. Each keeps its own lots.</div>
+      </div>
+      <button class="btn btn-sm" onclick="addItem()">+ Add product</button>
+    </div>
+    <div id="itemsHost"></div>
+    <button class="btn btn-ghost" onclick="addItem()" id="addFirst">+ Add a product to this shipment</button>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Processing &amp; Cold Chain</div>
+      <div class="card-sub" id="procSub">Who processed it, and at what temperature it travelled</div>
+    </div>
+    <div class="grid" id="procGrid"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Tracking</div>
+      <div class="card-sub">Document and milestone dates</div>
+    </div>
+    <div class="grid" id="trackGrid"></div>
+  </div>
+
+  <div class="card" id="addCard">
+    <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="toggleAdd()">
+      <div>
+        <div class="card-title">Additional</div>
+        <div class="card-sub">Letter of credit, payment terms and document courier</div>
+      </div>
+      <svg class="cr" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2.5"
+           style="transition:transform .2s;"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div id="addBody" style="display:none;margin-top:22px;">
+      <div class="sub-h" style="margin-top:0;">Finance</div>
+      <div class="grid grid-3" id="finGrid"></div>
+      <div class="sub-h">Document courier</div>
+      <div class="grid grid-3" id="courGrid"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Notes</div>
+      <div class="card-sub">Handling instructions, disputes, inspection remarks</div>
+    </div>
+    <div class="rt-tools">
+      <button type="button" onclick="rt('bold')" title="Bold"><b>B</b></button>
+      <button type="button" onclick="rt('italic')" title="Italic"><i>I</i></button>
+      <button type="button" onclick="rt('underline')" title="Underline"><u>U</u></button>
+      <div class="sep"></div>
+      <button type="button" onclick="rt('insertUnorderedList')" title="Bullet list">•</button>
+      <button type="button" onclick="rt('insertOrderedList')" title="Numbered list">1.</button>
+      <div class="sep"></div>
+      <button type="button" onclick="rtBlock('h4')" title="Heading">H</button>
+      <button type="button" onclick="rtBlock('p')" title="Normal text">¶</button>
+      <div class="sep"></div>
+      <button type="button" onclick="rtLink()" title="Insert link">🔗</button>
+      <button type="button" onclick="rt('removeFormat')" title="Clear formatting">✕</button>
+    </div>
+    <div class="rt-box" id="rtBox" contenteditable="true"
+         data-ph="Start typing. Use the toolbar for bold, lists and headings."></div>
+  </div>
+</div>
+
+<div class="savebar">
+  <div class="inner">
+    <div class="sum" id="sumLine">No products added</div>
+    <div style="display:flex;gap:8px;">
+      <a href="shipment-list.html" class="btn">Cancel</a>
+      <button class="btn btn-primary" id="saveBtn" onclick="save()">Save shipment</button>
+    </div>
+  </div>
+</div>
+
+<!-- OCR Scanner -->
+<div class="scan-bg" id="scanBg" onclick="if(event.target===this)closeScanner()">
+  <div class="scan-box">
+    <div class="scan-head">
+      <h3><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        Scan &amp; Auto-fill</h3>
+      <button class="btn btn-sm" onclick="closeScanner()">Close</button>
+    </div>
+    <div class="scan-body">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6;">
+        Upload your <b>Invoice</b>, <b>Bill of Lading</b> and/or <b>Packing List</b>.
+        The AI will read them and fill in the shipment form — exporter, importer,
+        ports, dates, products and batch codes.</div>
+      <div class="scan-drop" id="scanDrop" onclick="$('scanInput').click()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div class="scan-drop-t">Drop PDFs here or click to browse</div>
+        <div class="scan-drop-d">Invoice, Bill of Lading, Packing List — PDF or image</div>
+      </div>
+      <input type="file" id="scanInput" multiple accept=".pdf,.png,.jpg,.jpeg,.webp" style="display:none;" onchange="handleScanFiles(this.files)"/>
+      <div id="scanFiles"></div>
+      <div class="scan-prog" id="scanProg" style="display:none;">
+        <div style="font-size:13px;font-weight:600;" id="scanProgLabel">Processing…</div>
+        <div class="scan-prog-bar"><div class="scan-prog-fill" id="scanProgFill" style="width:0%"></div></div>
+        <div class="scan-prog-status" id="scanProgStatus">Preparing documents…</div>
+      </div>
+      <div id="scanResults"></div>
+    </div>
+    <div class="scan-foot">
+      <button class="btn" onclick="closeScanner()">Cancel</button>
+      <button class="btn btn-primary" id="scanGo" onclick="runScan()" disabled>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:6px;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Scan &amp; Extract</button>
+    </div>
+  </div>
+</div>
+
+<!-- Trash confirmation -->
+<div class="modal-bg" id="trashModal" style="display:none;position:fixed;inset:0;background:rgba(10,12,18,.55);z-index:900;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:32px;max-width:440px;width:90%;box-shadow:var(--shadow-2);text-align:center;">
+    <div style="width:52px;height:52px;border-radius:50%;background:var(--bad-bg);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--bad-fg)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+    </div>
+    <div style="font-size:16px;font-weight:700;margin-bottom:8px;">Move to Trash?</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:24px;">
+      This shipment will be moved to the Trash. It won't appear in lists or reports,
+      but you can restore it from the Trash page at any time.<br>
+      <b>Nothing is permanently deleted.</b>
+    </div>
+    <div style="display:flex;gap:10px;justify-content:center;">
+      <button class="btn" onclick="closeTrashModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="doTrash()" style="background:var(--bad-fg);color:#fff;border-color:var(--bad-fg);">
+        Yes, move to Trash</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="port-picker.js"></script>
+<script>
+const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
+const SUPABASE_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const dbClient = window.supabase ? window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY) : null;
+
+const $   = id => document.getElementById(id);
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = v => { const n=Number(v); return isNaN(n)?0:n; };
+const fmt = v => num(v).toLocaleString('en-US');
+const pick= (o,n)=>{ for(const k of n) if(o&&o[k]!==undefined&&o[k]!==null&&o[k]!=='') return o[k]; return ''; };
+
+const IC_TRASH = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+  stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/>
+  <path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>`;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function safeUuid(v){ return (v && UUID_RE.test(String(v))) ? v : null; }
+
+const CHEV = `<svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none"
+  stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
+const ICONS = {
+  Sea:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20a3 3 0 003-1 3 3 0 015 0 3 3 0 005 0 3 3 0 015 0 3 3 0 003 1"/><path d="M4 18l-2-7h20l-2 7"/><path d="M12 11V4"/><path d="M8 6h8"/></svg>`,
+  Air:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5a2.1 2.1 0 00-3-3L13 8 4.8 6.2a1 1 0 00-.9 1.7l5.6 3.4-2.3 2.3-2.6-.6a1 1 0 00-.9 1.7l3 2.3 2.3 3a1 1 0 001.7-.9l-.6-2.6 2.3-2.3 3.4 5.6a1 1 0 001.7-.9z"/></svg>`,
+  Road:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="13" height="10" rx="1"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>`,
+};
+
+/* ---------- profile ---------- */
+function toggleAvatarMenu(){ $('avatarMenu').classList.toggle('open'); }
+document.addEventListener('click', e=>{
+  const w=document.querySelector('.avatar-wrap');
+  if(w && !w.contains(e.target)) $('avatarMenu')?.classList.remove('open');
+});
+function greetingTime(){ const h=new Date().getHours(); return h<12?'Good Morning':(h<18?'Good Afternoon':'Good Evening'); }
+async function handleLogout(){ if(dbClient) await dbClient.auth.signOut(); location.href='index.html'; }
+function toggleAdd(){
+  const c=$('addCard'), b=$('addBody'), open=b.style.display==='none';
+  b.style.display=open?'block':'none';
+  c.querySelector('.cr').style.transform=open?'rotate(180deg)':'';
+}
+
+/* =====================================================================
+   PICKER — one component for every dropdown, searchable or not.
+   ===================================================================== */
+const P = {};
+let pSeq = 0;
+
+function picker(value, opts, handler, cfg){
+  cfg = cfg||{};
+  const id = 'p'+(++pSeq);
+  P[id] = { opts, handler, searchable:!!cfg.searchable, allowNew:!!cfg.allowNew, source:cfg.source||null };
+  return `<div class="ctl has-chev${cfg.searchable?' searchable':''}" id="${id}">
+    <input class="ctl-in" ${cfg.searchable?'':'readonly'} autocomplete="off"
+           value="${esc(value||'')}" placeholder="${esc(cfg.placeholder||'Select…')}"
+           onclick="${cfg.searchable?`pOpen('${id}')`:`pToggle('${id}')`}"
+           ${cfg.searchable?`oninput="pFilter('${id}')" onfocus="pOpen('${id}')"`:''}
+           onkeydown="pKey(event,'${id}')"/>
+    ${CHEV}
+    <div class="pop"><div class="pop-list"></div></div>
+  </div>`;
+}
+const pOpts = id => P[id].source ? (LOOK[P[id].source]||[]) : P[id].opts;
+
+function pToggle(id){ $(id).classList.contains('open') ? pClose(id) : pOpen(id); }
+function pOpen(id){
+  closeAllPops(id);
+  $(id).classList.add('open');
+  pFilter(id, true);
+}
+function pClose(id){ $(id)?.classList.remove('open'); }
+function closeAllPops(except){
+  document.querySelectorAll('.ctl.open').forEach(c=>{ if(c.id!==except) c.classList.remove('open'); });
+}
+document.addEventListener('mousedown', e=>{
+  document.querySelectorAll('.ctl.open').forEach(c=>{ if(!c.contains(e.target)) c.classList.remove('open'); });
+});
+/* Escape closes any open popup, including the calendar, which has no
+   keydown handler of its own. */
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeAllPops(); });
+
+function pFilter(id, keep){
+  const box=$(id); if(!box) return;
+  const inp=box.querySelector('.ctl-in');
+  const cur=inp.value;
+  const q = (P[id].searchable && !keep) ? cur.trim().toLowerCase()
+          : (P[id].searchable ? '' : '');
+  const all=pOpts(id);
+  const hits=(q?all.filter(r=>(r._label||'').toLowerCase().includes(q)||(r._sub||'').toLowerCase().includes(q)):all).slice(0,80);
+
+  const hl=t=>{ if(!q) return esc(t);
+    const i=(t||'').toLowerCase().indexOf(q);
+    return i<0?esc(t):esc(t.slice(0,i))+'<mark>'+esc(t.slice(i,i+q.length))+'</mark>'+esc(t.slice(i+q.length)); };
+
+  let html = hits.length ? hits.map((r,n)=>
+    `<div class="opt${r._label===cur?' sel':''}" data-n="${n}" onmousedown="pPick('${id}',${n})">
+       <div class="o-main"><div>${hl(r._label)}</div>${r._sub?`<div class="o-sub">${esc(r._sub)}</div>`:''}</div>
+       <svg class="o-tick" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+     </div>`).join('')
+    : `<div class="pop-empty">${all.length?'No match':'List unavailable — type freely'}</div>`;
+
+  if(P[id].searchable && P[id].allowNew && q && !hits.some(r=>(r._label||'').toLowerCase()===q))
+    html += `<div class="pop-new" onmousedown="pUse('${id}')">Use “${esc(cur)}” as typed</div>`;
+
+  box.querySelector('.pop-list').innerHTML = html;
+  box._hits=hits; box._hi=-1;
+  if(P[id].searchable && !keep) P[id].handler(cur, null);
+}
+
+function pPick(id,n){
+  const box=$(id), r=box._hits[n]; if(!r) return;
+  box.querySelector('.ctl-in').value = r._label;
+  P[id].handler(r._label, r);
+  pClose(id);
+}
+function pUse(id){
+  const box=$(id);
+  P[id].handler(box.querySelector('.ctl-in').value, null);
+  pClose(id);
+}
+function pKey(e,id){
+  const box=$(id); if(!box) return;
+  const hits=box._hits||[];
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+    e.preventDefault();
+    if(!box.classList.contains('open')) return pOpen(id);
+    box._hi=Math.max(0,Math.min(hits.length-1,(box._hi??-1)+(e.key==='ArrowDown'?1:-1)));
+    box.querySelectorAll('.opt').forEach((el,i)=>el.classList.toggle('hi',i===box._hi));
+    box.querySelectorAll('.opt')[box._hi]?.scrollIntoView({block:'nearest'});
+  }else if(e.key==='Enter'){
+    if(box.classList.contains('open')&&box._hi>=0){ e.preventDefault(); pPick(id,box._hi); } else pClose(id);
+  }else if(e.key==='Escape'){ pClose(id); }
+  else if(!P[id].searchable && /^[a-z0-9]$/i.test(e.key)){
+    // type-ahead on a non-searchable picker
+    const i=pOpts(id).findIndex(o=>(o._label||'').toLowerCase().startsWith(e.key.toLowerCase()));
+    if(i>=0){ if(!box.classList.contains('open')) pOpen(id); box._hi=i;
+      box.querySelectorAll('.opt').forEach((el,n)=>el.classList.toggle('hi',n===i));
+      box.querySelectorAll('.opt')[i]?.scrollIntoView({block:'nearest'}); }
+  }
+}
+
+/* =====================================================================
+   DATE PICKER — matches the picker exactly.
+   ===================================================================== */
+const D = {};
+let dSeq = 0;
+const MON=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DOW=['Mo','Tu','We','Th','Fr','Sa','Su'];
+
+function dateFmt(iso){
+  if(!iso) return '';
+  const d=new Date(iso+'T00:00:00'); if(isNaN(d)) return iso;
+  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+}
+function datePicker(value, handler, placeholder){
+  const id='d'+(++dSeq);
+  const base = value?new Date(value+'T00:00:00'):new Date();
+  D[id]={value:value||'', handler, y:base.getFullYear(), m:base.getMonth()};
+  return `<div class="ctl has-chev" id="${id}">
+    <input class="ctl-in" readonly autocomplete="off" value="${esc(dateFmt(value))}"
+           placeholder="${esc(placeholder||'Pick a date')}" onclick="dToggle('${id}')"/>
+    <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/>
+         <path d="M16 2v4M8 2v4M3 10h18"/></svg>
+    <div class="pop"><div class="dp" id="${id}_dp"></div></div>
+  </div>`;
+}
+function dToggle(id){
+  if($(id).classList.contains('open')) return pClose(id);
+  closeAllPops(id); D[id].yearView=false;
+  $(id).classList.add('open'); dRender(id);
+}
+
+function dRender(id){
+  const st=D[id];
+  if(st.yearView) return dRenderMonths(id);
+  const first=new Date(st.y,st.m,1);
+  const startDow=(first.getDay()+6)%7;              // Monday-first
+  const days=new Date(st.y,st.m+1,0).getDate();
+  const prevDays=new Date(st.y,st.m,0).getDate();
+  const today=new Date().toISOString().slice(0,10);
+
+  let cells='';
+  for(let i=startDow;i>0;i--) cells+=`<button class="dp-d out" disabled>${prevDays-i+1}</button>`;
+  for(let d=1;d<=days;d++){
+    const iso=`${st.y}-${String(st.m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    cells+=`<button class="dp-d${iso===st.value?' on':''}${iso===today?' today':''}"
+             onclick="dPick('${id}','${iso}')">${d}</button>`;
+  }
+  $(id+'_dp').innerHTML = `
+    <div class="dp-bar">
+      <div class="dp-mo" onclick="dYearView('${id}')" title="Jump to another month or year">${MON[st.m]} ${st.y}</div>
+      <div class="dp-nav">
+        <button onclick="dNav('${id}',-1)" title="Previous month">‹</button>
+        <button onclick="dNav('${id}',1)" title="Next month">›</button>
+      </div>
+    </div>
+    <div class="dp-grid">${DOW.map(d=>`<div class="dp-dow">${d}</div>`).join('')}${cells}</div>
+    <div class="dp-foot">
+      <button class="clr" onclick="dPick('${id}','')">Clear</button>
+      <button onclick="dPick('${id}','${today}')">Today</button>
+    </div>`;
+}
+/* Month/year grid — an expiry date two years out shouldn't take 24 clicks. */
+function dYearView(id){ D[id].yearView=true; dRender(id); }
+function dRenderMonths(id){
+  const st=D[id];
+  $(id+'_dp').innerHTML=`
+    <div class="dp-bar">
+      <div class="dp-mo" onclick="dBackToDays('${id}')" title="Back to days">${st.y}</div>
+      <div class="dp-nav">
+        <button onclick="dYear('${id}',-1)" title="Previous year">‹</button>
+        <button onclick="dYear('${id}',1)" title="Next year">›</button>
+      </div>
+    </div>
+    <div class="dp-mgrid">${MON.map((m,i)=>
+      `<button class="dp-m${i===st.m?' on':''}" onclick="dSetMonth('${id}',${i})">${m.slice(0,3)}</button>`).join('')}</div>`;
+}
+function dBackToDays(id){ D[id].yearView=false; dRender(id); }
+function dYear(id,d){ D[id].y+=d; dRenderMonths(id); }
+function dSetMonth(id,m){ D[id].m=m; D[id].yearView=false; dRender(id); }
+
+function dNav(id,delta){
+  const st=D[id]; st.m+=delta;
+  if(st.m<0){st.m=11;st.y--;} if(st.m>11){st.m=0;st.y++;}
+  dRender(id);
+}
+function dPick(id,iso){
+  const st=D[id]; st.value=iso;
+  $(id).querySelector('.ctl-in').value = dateFmt(iso);
+  st.handler(iso||null);
+  pClose(id);
+}
+
+/* =====================================================================
+   CONFIG
+   ===================================================================== */
+const opt = arr => arr.map(x=>({_label:x}));
+const EQUIP = {
+  Sea:{ label:'Container Type',
+        opts:["20' Dry (20GP)","40' Dry (40GP)","40' High Cube (40HC)","20' Reefer (20RF)",
+              "40' Reefer (40RH)","40' Reefer High Cube (40RHC)","Open Top","Flat Rack","Tank","Other"] },
+  Rail:{label:'Container Type',
+        opts:["20' Dry (20GP)","40' Dry (40GP)","40' High Cube (40HC)","20' Reefer (20RF)",
+              "40' Reefer (40RH)","Rail tank wagon","Covered wagon","Other"] },
+  Air:{ label:'ULD Type',
+        opts:["Standard ULD","Cool ULD (Envirotainer)","Dry Ice / Cool Box","Loose / Bulk","Other"] },
+  Road:{label:'Trailer Type',
+        opts:["Dry Van","Reefer Trailer","Curtainside","Tanker","Other"] },
+};
+const isReefer = v => /reefer|cool|envirotainer|dry ice|RF\)|RH\)|RHC\)/i.test(v||'');
+
+const MODE_ICON={
+  Sea:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20a3 3 0 003-1 3 3 0 015 0 3 3 0 015 0 3 3 0 015 0 3 3 0 003 1"/><path d="M4 18l-2-7h20l-2 7"/><path d="M12 11V4"/><path d="M8 6h8"/></svg>`,
+  Air:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5a2.1 2.1 0 00-3-3L13 8 4.8 6.2a1 1 0 00-.9 1.7l5.6 3.4-2.3 2.3-2.6-.6a1 1 0 00-.9 1.7l3 2.3 2.3 3a1 1 0 001.7-.9l-.6-2.6 2.3-2.3 3.4 5.6a1 1 0 001.7-.9z"/></svg>`,
+  Road:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="6" width="13" height="10" rx="1"/><path d="M14 9h4l3 3v4h-7z"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/></svg>`,
+  Rail:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="13" rx="2"/><path d="M5 9h14"/><path d="M8 20l-2 2M16 20l2 2"/><circle cx="9" cy="13" r="1"/><circle cx="15" cy="13" r="1"/><path d="M4 20h16"/></svg>`,
+};
+
+/* Each mode names its places and its document differently. Everything
+   else about a leg is the same, so this is the only place they differ. */
+/* Major container shipping lines — covers >90% of global TEU. */
+const SHIPPING_LINES=[
+  'MSC','Maersk','CMA CGM','COSCO','Hapag-Lloyd','ONE (Ocean Network Express)',
+  'Evergreen','HMM (Hyundai)','Yang Ming','ZIM','PIL (Pacific Int\'l Lines)',
+  'Wan Hai Lines','IRISL','SM Line','X-Press Feeders','Matson',
+  'Regional Container Lines','Swire Shipping','Crowley','OOCL'];
+
+const LEG_MODES = {
+  Sea:  {origin:'Port of Loading',      dest:'Port of Discharge',   doc:'B/L No',
+         carrier:'Shipping Line', carrierSource:'shipping_lines',
+         extra:[],    /* vessels handled separately for sea legs */
+         hasVessels:true, hasTransshipment:true,
+         vLabel:'Vessels', vRoles:['Mother','Feeder 1','Feeder 2','Feeder 3'],
+         vFields:[['Vessel Name','vessel_name'],['Voyage No','voyage_no']]},
+  Air:  {origin:'Airport of Departure', dest:'Airport of Arrival',  doc:'AWB No',
+         carrier:'Airline',       extra:[],
+         hasVessels:true, hasTransshipment:true,
+         vLabel:'Flights', vRoles:['Main flight','Connecting 1','Connecting 2'],
+         vFields:[['Flight No','flight_no']]},
+  Road: {origin:'Place of Loading',     dest:'Place of Delivery',   doc:'CMR No',
+         carrier:'Haulier',       extra:[],
+         hasVessels:true, hasTransshipment:true,
+         vLabel:'Vehicles', vRoles:['Primary','Relay 1','Relay 2'],
+         vFields:[['Vehicle Plate','vehicle_plate'],['Driver Name','driver_name']]},
+  Rail: {origin:'Origin Terminal / ICD',dest:'Destination Terminal',doc:'Rail Waybill (RWB / CIM)',
+         carrier:'Rail Operator', extra:[],
+         hasVessels:true, hasTransshipment:true,
+         vLabel:'Trains', vRoles:['Main train','Connecting 1','Connecting 2'],
+         vFields:[['Train No','train_no'],['Wagon No','wagon_no']]},
+};
+
+const HEAD=[['Shipment ID','shipment_ref','ref',true],['Shipment Date','shipment_date','date'],
+  ['Shipment Type','shipment_type','enum:Export,Import,Domestic'],
+  ['Status','status','enum:Draft,Booked,In-Transit,Arrived,Delivered,Cancelled'],
+  ['Load Type','load_type','enum:FCL,LCL,Breakbulk,Bulk'],
+  ['Exporter','exporter_name','company'],['Country of Export','country_of_export','country'],
+  ['Importer','importer_name','company'],['Destination Country','destination_country','country'],
+  ['Incoterms','incoterms','incoterms'],
+  ['Connected to (previous shipment)','previous_shipment_ref','shipment_link']];
+const TRACK=[['Invoice No','invoice_no'],['Invoice Date','invoice_date','date'],
+  ['Purchase Order No','purchase_order_no'],['On-Board Date','on_board_date','date_with_same'],
+  ['Container Discharge','container_discharge_date','date_deliver']];
+const FIN=[['L/C No','lc_no'],['L/C Issue Date','lc_issue_date','date'],['L/C Due Date','lc_due_date','date'],
+  ['Payment Terms','payment_terms'],['Payment Due Date','payment_due_date','date'],
+];
+const COUR=[['Courier Company','courier_company'],['Courier AWB No','courier_awb_no'],
+  ['Documents Sent','courier_sent_date','date'],['Documents Received','docs_received_date','date']];
+const INCOTERMS=['EXW','FCA','FAS','FOB','CFR','CIF','CPT','CIP','DAP','DPU','DDP'];
+
+let S={transport_mode:'Sea',status:'Draft',shipment_type:'Export',load_type:'FCL',transit_names:[]};
+let ITEMS=[],LEGS=[];
+let LOOK={products:[],species:[],ports:[],companies:[],countries:[],vessels:[]};
+let ORG_ID=null, SAVING=false, REF_AUTO=true;
+const EDIT_ID=new URLSearchParams(location.search).get('id');
+
+/* =====================================================================
+   FIELDS
+   ===================================================================== */
+function wrap(label,required,inner,hint){
+  return `<div><label>${esc(label)}${required?' <span class="req">*</span>':''}</label>${inner}${
+    hint?`<div class="hint">${esc(hint)}</div>`:''}</div>`;
+}
+function setter(key,isPort){
+  const n='set_'+key;
+  window[n]=(v,row)=>{ S[key]=v; if(isPort) S[key+'_port_id']=row?row._id:null; };
+  return window[n];
+}
+function onBoardSameCheckbox(v){
+  const same=v && S.shipment_date && v===S.shipment_date;
+  return '<label style="display:flex;align-items:center;gap:7px;margin-top:6px;cursor:pointer;font-size:12px;color:var(--muted);">'
+    +'<input type="checkbox" '+(same?'checked ':'')+' style="accent-color:var(--primary);" '
+    +'onchange="S.on_board_date=this.checked?S.shipment_date:\'\';renderFields(\'trackGrid\',TRACK);bindPlain();'
+    +'if(this.checked)toast(\'On-board date set to shipment date\');"/> Same as shipment date</label>';
+}
+
+function field(label,key,kind,required){
+  kind=kind||'text';
+  const v=S[key];
+
+  if(kind==='ref'){
+    return wrap(label,required,
+      `<div class="ctl"><input class="ctl-in" data-h="${key}" value="${esc(v||'')}"
+        placeholder="Generating…"/></div>`,
+      REF_AUTO?'Generated automatically — edit if you use a different reference':'Custom reference');
+  }
+  if(kind==='date')  return wrap(label,required, datePicker(v,setter(key)));
+  if(kind==='date_with_same') return wrap(label,required, datePicker(v,setter(key))
+    + onBoardSameCheckbox(v));
+  if(kind==='date_deliver') return wrap(label,required, datePicker(v, function(v2){
+    S[key]=v2;
+    if(v2 && S.status!=='Delivered'){
+      S.status='Delivered';
+      var statusSel=document.querySelector('[data-f="status"]');
+      if(statusSel) statusSel.value='Delivered';
+      toast('Status set to Delivered');
+    }
+  }));
+  if(kind.startsWith('enum:'))
+    return wrap(label,required, picker(v,opt(kind.slice(5).split(',')),setter(key)));
+  if(kind==='incoterms') return wrap(label,required, picker(v,opt(INCOTERMS),setter(key),{placeholder:'—'}));
+  if(kind==='shipment_link')
+    return wrap(label,required, picker(v,[],
+      (val,row)=>{ S.previous_shipment_ref=val;
+        if(row) S.previous_shipment_id=row._id; },
+      {searchable:true,allowNew:false,source:'shipment_refs',
+       placeholder:'Search by shipment ID…'}),
+      'Link this to a previous leg of the same consignment — e.g. the rail leg that brought it to port');
+  if(kind==='equip')
+    return wrap(label,required, picker(v,opt((EQUIP[S.transport_mode]||EQUIP.Sea).opts),
+      (val)=>{ S.container_type=val; renderProc(); },{placeholder:'—'}),
+      'Refrigerated types reveal the setpoint field below');
+  if(kind==='port')
+    return wrap(label,required, picker(v,[],setter(key,true),
+      {searchable:true,allowNew:true,source:'ports',placeholder:'Search the Ports module…'}),
+      LOOK.ports.length?`${LOOK.ports.length} ports from the Ports module`:'Ports module unreachable — type freely');
+  if(kind==='company')
+    return wrap(label,required, picker(v,[],
+      (val,row)=>{ S[key]=val;
+        // Exporter fills Country of Export
+        if(key==='exporter_name' && row && row._country && !S.country_of_export){
+          S.country_of_export=row._country; renderFields('headGrid',HEAD);
+          bindPlain(); toast('Country of export set to '+row._country);
+        }
+        // Importer fills Destination Country
+        if(key==='importer_name' && row && row._country && !S.destination_country){
+          S.destination_country=row._country; renderFields('headGrid',HEAD);
+          bindPlain(); toast('Destination country set to '+row._country);
+        }
+        // Processor fills Processing Country
+        if(key==='processor_name' && row && row._country && !S.processing_country){
+          S.processing_country=row._country; renderProc();
+          bindPlain(); toast('Processing country set to '+row._country);
+        }
+      },{searchable:true,allowNew:true,source:'companies',placeholder:'Search companies…'}));
+  if(kind==='country')
+    return wrap(label,required, picker(v,[],setter(key),
+      {searchable:true,allowNew:true,source:'countries',placeholder:'Search countries…'}));
+  if(kind==='list')
+    return wrap(label,required,
+      `<div class="ctl"><input class="ctl-in" data-h="${key}" data-list="1"
+        value="${esc((v||[]).join(', '))}" placeholder="Comma separated"/></div>`,
+      'Multiple stops, separated by commas');
+
+  const t=kind==='number'?'number':'text';
+  return wrap(label,required,
+    `<div class="ctl"><input class="ctl-in" type="${t}"${kind==='number'?' step="any"':''}
+      data-h="${key}" value="${esc(v??'')}"/></div>`);
+}
+function renderFields(host,defs){ $(host).innerHTML=defs.map(d=>field(d[0],d[1],d[2],d[3])).join(''); }
+
+/* =====================================================================
+   RENDER
+   ===================================================================== */
+function renderAll(){
+  renderFields('headGrid',HEAD);
+  renderLegs();
+  renderProc();
+  renderFields('trackGrid',TRACK);
+  renderFields('finGrid',FIN);
+  renderFields('courGrid',COUR);
+  renderItems(); bindPlain(); updateSummary();
+}
+
+/* ---------------- journey legs ---------------- */
+function addLeg(){
+  // A new leg starts where the last one ended — a journey is continuous.
+  const prev=LEGS[LEGS.length-1];
+  LEGS.push({leg_no:LEGS.length+1, transport_mode:prev?nextMode(prev.transport_mode):'Sea', vessels:[],
+    origin_name:prev?prev.destination_name:'', origin_port_id:prev?prev.destination_port_id:null,
+    destination_name:'', container_no:prev?prev.container_no:'', seal_number:prev?prev.seal_number:''});
+  renderLegs(); updateSummary();
+}
+/* Rail and road feed the sea leg; after sea it is usually road again. */
+function nextMode(m){ return m==='Sea'?'Road':'Sea'; }
+function removeLeg(i){ LEGS.splice(i,1); LEGS.forEach((l,n)=>l.leg_no=n+1); renderLegs(); updateSummary(); }
+function setLegMode(i,m){ LEGS[i].transport_mode=m; renderLegs(); }
+
+/* The shipment's primary mode is the longest-haul leg, which is what a
+   list view should show. Sea beats air beats rail beats road. */
+function primaryMode(){
+  const order=['Sea','Air','Rail','Road'];
+  for(const m of order) if(LEGS.some(l=>l.transport_mode===m)) return m;
+  return LEGS[0]?.transport_mode || 'Sea';
+}
+
+function renderLegs(){
+  const any=LEGS.length>0;
+  $('addLegFirst').style.display=any?'none':'block';
+  $('journeyBar').style.display=LEGS.length>1?'flex':'none';
+
+  S.transport_mode=primaryMode();
+  S.origin_name=LEGS[0]?.origin_name||null;
+  S.destination_name=LEGS[LEGS.length-1]?.destination_name||null;
+
+  if(LEGS.length>1){
+    $('journeyBar').innerHTML=LEGS.map((l,i)=>
+      `${i?'<span class="arrow">→</span>':''}
+       ${MODE_ICON[l.transport_mode]||''}
+       <span><b>${esc(l.origin_name||'?')}</b> to <b>${esc(l.destination_name||'?')}</b></span>`).join('');
+  }
+  $('journeySub').textContent = LEGS.length
+    ? `${LEGS.length} leg${LEGS.length===1?'':'s'} · primary mode ${primaryMode()}`
+    : 'One leg per mode — rail to the port, sea to the destination, truck to the warehouse';
+
+  $('legsHost').innerHTML=LEGS.map((l,i)=>{
+    const cfg=LEG_MODES[l.transport_mode]||LEG_MODES.Sea;
+    const t=(lab,f,ph)=>`<div><label>${lab}</label><div class="ctl"><input class="ctl-in"
+      data-l="${i}" data-f="${f}" value="${esc(l[f]??'')}" placeholder="${esc(ph||'')}"/></div></div>`;
+
+    return `<div class="leg">
+      <div class="leg-bar">
+        <div class="leg-no">${i+1}</div>
+        <div>
+          <div class="leg-mode">${MODE_ICON[l.transport_mode]||''}${esc(l.transport_mode)}</div>
+          <div class="leg-route">${esc(l.origin_name||'—')} → ${esc(l.destination_name||'—')}</div>
+        </div>
+        <div class="right">
+          <div class="leg-seg">${Object.keys(LEG_MODES).map(m=>
+            `<button class="${m===l.transport_mode?'on':''}" onclick="setLegMode(${i},'${m}')"
+              title="${m}" data-label="${m}">${MODE_ICON[m]}</button>`).join('')}</div>
+          <button class="icon-btn" onclick="removeLeg(${i})" title="Remove leg">${IC_TRASH}</button>
+        </div>
+      </div>
+      <div class="leg-in">
+        <div class="grid">
+          <div class="span2" data-pp-origin="${i}"></div>
+          <div class="span2" data-pp-dest="${i}"></div>
+          <div><label>Est. Departure Date</label>${datePicker(l.departure_date,v=>{LEGS[i].departure_date=v;})}</div>
+          <div><label>Est. Arrival Date</label>${datePicker(l.arrival_date,v=>{LEGS[i].arrival_date=v;})}</div>
+          <div><label>${esc(cfg.carrier)}</label>${cfg.carrierSource
+            ? picker(l.carrier_name,[],
+                (v,row)=>{LEGS[i].carrier_name=v;},
+                {searchable:true,allowNew:true,source:cfg.carrierSource,placeholder:'Search or type…'})
+            : `<div class="ctl"><input class="ctl-in" data-l="${i}" data-f="carrier_name"
+                value="${esc(l.carrier_name||'')}" placeholder=""/></div>`}</div>
+          ${t(cfg.doc,'document_no')}
+          ${cfg.extra.map(e=>t(e[0],e[1])).join('')}
+          <div><label>Container Type</label>${picker(l.container_type||S.container_type,
+            opt((EQUIP[l.transport_mode]||EQUIP.Sea).opts),
+            val=>{LEGS[i].container_type=val; S.container_type=val;},
+            {placeholder:'Select type…'})}</div>
+          ${t('Container No','container_no')}
+          ${t('Seal Number','seal_number')}
+        </div>
+        ${cfg.hasVessels?vesselSection(l,i):''}
+        <div class="grid" style="margin-top:0;">
+        </div>
+      </div></div>`;
+  }).join('');
+
+  /* PortPicker instances for origin/destination on each leg */
+  document.querySelectorAll('[data-pp-origin]').forEach(el=>{
+    const i=+el.dataset.ppOrigin;
+    const cfg=LEG_MODES[LEGS[i].transport_mode]||LEG_MODES.Sea;
+    const pp=new PortPicker(el,{
+      supabase:dbClient, label:cfg.origin,
+      filterCountry:function(){return S.country_of_export||null;},
+      onChange:val=>{ LEGS[i].origin_name=val.port_name; LEGS[i].origin_port_id=val.port_id;
+        LEGS[i].origin_terminal=val.terminal_name; renderLegBar(i); }
+    });
+    if(LEGS[i].origin_name) pp.setValue({port_id:LEGS[i].origin_port_id,port_name:LEGS[i].origin_name,
+      terminal_name:LEGS[i].origin_terminal||''});
+  });
+  document.querySelectorAll('[data-pp-dest]').forEach(el=>{
+    const i=+el.dataset.ppDest;
+    const cfg=LEG_MODES[LEGS[i].transport_mode]||LEG_MODES.Sea;
+    const pp=new PortPicker(el,{
+      supabase:dbClient, label:cfg.dest,
+      filterCountry:function(){return S.destination_country||null;},
+      onChange:val=>{ LEGS[i].destination_name=val.port_name; LEGS[i].destination_port_id=val.port_id;
+        LEGS[i].destination_terminal=val.terminal_name; renderLegBar(i); }
+    });
+    if(LEGS[i].destination_name) pp.setValue({port_id:LEGS[i].destination_port_id,port_name:LEGS[i].destination_name,
+      terminal_name:LEGS[i].destination_terminal||''});
+  });
+
+  document.querySelectorAll('[data-l]').forEach(el=>{
+    el.oninput=()=>{ LEGS[+el.dataset.l][el.dataset.f]=el.value;
+      if(el.dataset.f==='container_no') syncContainer(); };
+  });
+  /* Transshipment port pickers between vessel pairs */
+  document.querySelectorAll('[data-pp-ts]').forEach(el=>{
+    const [li,vi]=el.dataset.ppTs.split('-').map(Number);
+    const l=LEGS[li]; if(!l) return;
+    const vs=l.vessels||[];
+    const from=vs[vi]?.vessel_name||vs[vi]?.role||'#'+(vi+1);
+    const to=vs[vi+1]?.vessel_name||vs[vi+1]?.role||'#'+(vi+2);
+    const tp=(l.transshipment_ports||[])[vi]||{};
+    const pp=new PortPicker(el,{
+      supabase:dbClient, label:`${from} → ${to}`,
+      onChange:val=>{
+        (LEGS[li].transshipment_ports ||= [])[vi]={port_name:val.port_name,port_id:val.port_id,
+          terminal_name:val.terminal_name,terminal_id:val.terminal_id};
+        // keep the legacy single field in sync for the first pair
+        if(vi===0){ LEGS[li].transshipment_port=val.port_name; LEGS[li].transshipment_port_id=val.port_id; }
+      }
+    });
+    if(tp.port_name) pp.setValue(tp);
+  });
+
+  /* Thousand-separator formatting on number fields */
+  document.querySelectorAll('input[type="number"], input[data-f$="_kg"], input[data-f="packages"], input[data-f="number_of_packages"]').forEach(inp=>{
+    inp.addEventListener('blur',function(){
+      const v=this.value.replace(/,/g,'');
+      if(v && !isNaN(Number(v))){
+        this.value=Number(v).toLocaleString('en-US');
+      }
+    });
+    inp.addEventListener('focus',function(){
+      this.value=this.value.replace(/,/g,'');
+    });
+  });
+
+  document.querySelectorAll('[data-li]').forEach(el=>{
+    el.oninput=()=>{ const li=+el.dataset.li, vi=+el.dataset.vi;
+      if(LEGS[li]?.vessels?.[vi]) LEGS[li].vessels[vi][el.dataset.f]=el.value; };
+  });
+}
+/* Update just the leg's header line, so typing a port doesn't rebuild
+   the field being typed in. */
+/* Roles and field names come from the mode config, so a sea leg shows
+   Mother/Feeder with Vessel Name/Voyage, while air shows Main flight/
+   Connecting with Flight No. */
+
+function vesselSection(l,i){
+  const vs=l.vessels||[];
+  const cfg=LEG_MODES[l.transport_mode]||LEG_MODES.Sea;
+  const label=cfg.vLabel||'Vessels';
+  const roles=cfg.vRoles||['Primary'];
+  const fields=cfg.vFields||[];
+  let html=`<div class="sub-h" style="margin-top:20px;display:flex;justify-content:space-between;">
+    <span>${esc(label)}</span>
+    <button class="btn btn-sm" onclick="addLegVessel(${i})">+ Add ${esc(label.toLowerCase().replace(/s$/,''))}</button>
+  </div>`;
+  if(vs.length){
+    html+=`<div class="vsl-head"><span>Role</span>${fields.map(f=>`<span>${esc(f[0])}</span>`).join('')}<span>IMO</span><span></span></div>`;
+    vs.forEach((v,j)=>{
+      html+=`<div class="vsl">
+        <div>${picker(v.role,opt(roles),val=>{LEGS[i].vessels[j].role=val;})}</div>
+        ${fields.map(f=>`<div>${
+          f[0].includes('Vessel') || f[0].includes('Name')
+            ? picker(v[f[1]]||'',[],(val,row)=>{
+                LEGS[i].vessels[j][f[1]]=val;
+                if(row){ LEGS[i].vessels[j].vessel_id=row._id;
+                  if(row._imo){ LEGS[i].vessels[j].imo=row._imo;
+                    const el=document.querySelector('[data-li="${i}"][data-vi="${j}"][data-f="imo"]');
+                    if(el) el.value=row._imo; } }
+              },{searchable:true,allowNew:true,source:'vessels',placeholder:'Search…'})
+            : `<div class="ctl"><input class="ctl-in" data-li="${i}" data-vi="${j}" data-f="${f[1]}"
+                value="${esc(v[f[1]]||'')}" placeholder=""/></div>`
+        }</div>`).join('')}
+        <div class="ctl"><input class="ctl-in" data-li="${i}" data-vi="${j}" data-f="imo"
+          value="${esc(v.imo||'')}" placeholder="IMO"/></div>
+        <button class="icon-btn" onclick="removeLegVessel(${i},${j})" title="Remove">${IC_TRASH}</button>
+      </div>`;
+    });
+  }else{
+    html+=`<div class="empty-note" style="padding:16px;">No vessels yet — add the mother vessel, then the feeder if applicable.</div>`;
+  }
+  /* N vessels → N-1 transshipment ports. Each port sits between
+     vessel[j] and vessel[j+1], answering "where did the cargo
+     move from one to the other?" */
+  if(vs.length>=2){
+    l.transshipment_ports = l.transshipment_ports || [];
+    html+=`<div class="sub-h" style="margin-top:16px;">Transshipment / Transfer Points</div>`;
+    for(let j=0; j<vs.length-1; j++){
+      const tp=l.transshipment_ports[j]||{};
+      const from=vs[j].vessel_name||vs[j].role||'#'+(j+1);
+      const to=vs[j+1].vessel_name||vs[j+1].role||'#'+(j+2);
+      html+=`<div class="pp-host" data-pp-ts="${i}-${j}" style="margin-bottom:10px;"></div>`;
+    }
+  }
+  return html;
+}
+
+function addLegVessel(i){
+  const vs=(LEGS[i].vessels ||= []);
+  vs.push({vessel_name:'',imo:'',voyage_no:'',flight_no:'',vehicle_plate:'',
+           driver_name:'',train_no:'',wagon_no:''});
+  reorderVesselRoles(i);
+  renderLegs();
+}
+
+/* Mother is always last. Adding a vessel pushes mother down.
+   1 vessel:  Mother
+   2 vessels: Feeder, Mother
+   3 vessels: Feeder 1, Feeder 2, Mother
+   4 vessels: Feeder 1, Feeder 2, Feeder 3, Mother */
+function reorderVesselRoles(i){
+  const vs=LEGS[i].vessels||[];
+  const cfg=LEG_MODES[LEGS[i].transport_mode]||LEG_MODES.Sea;
+  const mainRole=cfg.vRoles?cfg.vRoles[0]:'Mother';
+  const feederBase=cfg.vRoles?cfg.vRoles[1]?.replace(/ 1$/,''):'Feeder';
+  if(vs.length===1){
+    vs[0].role=mainRole;
+  }else{
+    for(let j=0;j<vs.length-1;j++){
+      vs[j].role=vs.length===2?feederBase:(feederBase+' '+(j+1));
+    }
+    vs[vs.length-1].role=mainRole;
+  }
+}
+function removeLegVessel(i,j){
+  LEGS[i].vessels.splice(j,1);
+  reorderVesselRoles(i);
+  renderLegs();
+}
+
+function toggleExporterIsProcessor(e){
+  e.preventDefault();
+  S.exporter_is_processor=!S.exporter_is_processor;
+  if(S.exporter_is_processor){
+    S.processor_name=S.exporter_name; S.processing_country=S.country_of_export;
+  }
+  renderProc(); bindPlain();
+}
+
+function renderLegBar(i){
+  const l=LEGS[i], bar=document.querySelectorAll('.leg')[i]?.querySelector('.leg-route');
+  if(bar) bar.textContent=`${l.origin_name||'—'} → ${l.destination_name||'—'}`;
+  S.origin_name=LEGS[0]?.origin_name||null;
+  S.destination_name=LEGS[LEGS.length-1]?.destination_name||null;
+  if(LEGS.length>1) renderLegs();
+}
+/* An FCL box keeps its number across legs unless it is transhipped. */
+function syncContainer(){
+  if(S.load_type!=='FCL') return;
+  const first=LEGS.find(l=>l.container_no)?.container_no;
+  if(!first) return;
+  S.container_no=first;
+}
+
+function renderProc(){
+  const sameAsExporter = !!S.exporter_is_processor;
+  const defs=[['Processor','processor_name','company'],['Processing Country','processing_country','country']];
+  if(isReefer(S.container_type)) defs.push(['Reefer Setpoint (°C)','reefer_setpoint_c','number']);
+  /* Container type moved to the Journey legs */
+  /* "Exporter is the processor" checkbox */
+  let procHtml = `<label class="check" style="margin-bottom:16px;cursor:pointer;" onclick="toggleExporterIsProcessor(event)">
+    <span class="check-box${sameAsExporter?' on':''}" style="width:18px;height:18px;border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--border);background:${sameAsExporter?'var(--primary)':'var(--surface)'};color:#fff;">
+      ${sameAsExporter?'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>':''}</span>
+    <span style="font-size:13px;font-weight:500;">Exporter is also the Processor</span>
+  </label>`;
+  if(!sameAsExporter){
+    $('procGrid').innerHTML = procHtml + defs.map(d=>field(d[0],d[1],d[2],d[3])).join('');
+  }else{
+    $('procGrid').innerHTML = procHtml;
+  }
+
+  bindPlain();
+  $('procSub').textContent='Who processed the product, and in which country';
+}
+function setMode(m){
+  S.transport_mode=m;
+  if(!EQUIP[m]?.opts.includes(S.container_type)) S.container_type='';
+  renderAll();
+}
+function bindPlain(){
+  document.querySelectorAll('[data-h]').forEach(el=>{
+    el.oninput=()=>{
+      const k=el.dataset.h;
+      S[k]=el.dataset.list?el.value.split(',').map(x=>x.trim()).filter(Boolean):el.value;
+      if(k==='shipment_ref'){ REF_AUTO=false; el.classList.toggle('err',!el.value.trim()); }
+    };
+  });
+}
+
+/* ---------------- products ---------------- */
+function addItem(){
+  ITEMS.push({line_no:ITEMS.length+1,package_type:'cartons',
+    batches:[{packages:'',batch_lot:'',processing_date:'',expiry_date:'',raw_material_ref:''}]});
+  renderItems(); updateSummary();
+}
+function removeItem(i){ ITEMS.splice(i,1); ITEMS.forEach((it,n)=>it.line_no=n+1); renderItems(); updateSummary(); }
+function addLot(i){ ITEMS[i].batches.push({packages:'',batch_lot:'',processing_date:'',expiry_date:'',raw_material_ref:''}); renderItems(); }
+function removeLot(i,j){ ITEMS[i].batches.splice(j,1); renderItems(); updateSummary(); }
+const lotSum=it=>(it.batches||[]).reduce((a,b)=>a+num(b.packages),0);
+
+function renderItems(){
+  $('addFirst').style.display=ITEMS.length?'none':'block';
+  $('itemsHost').innerHTML=ITEMS.map((it,i)=>{
+    const prodP=picker(it.product_name,[],(val,row)=>{
+      ITEMS[i].product_name=val;
+      const bar=document.querySelectorAll('.item')[i]?.querySelector('.item-t');
+      if(bar) bar.textContent=val||'New product line';
+      if(row){
+        ITEMS[i].product_id=row._id;
+        const set=(f,v)=>{ if(!v) return; ITEMS[i][f]=v;
+          const el=document.querySelector(`[data-i="${i}"][data-f="${f}"]`); if(el) el.value=v;
+          const sp=document.querySelector(`[data-slot="${i}-species"] .ctl-in`); if(f==='species_name'&&sp) sp.value=v; };
+        set('species_name',row._species); set('product_form',row._form); set('gtin',row._gtin);
+        if(row._species_id) ITEMS[i].species_id=row._species_id;
+        renderItems();
+        toast('Filled species, form and GTIN from the product record');
+      }
+    },{searchable:true,allowNew:true,source:'products',placeholder:'Search your Products module…'});
+
+    const specP=picker(it.species_name,[],(val,row)=>{
+      ITEMS[i].species_name=val; if(row) ITEMS[i].species_id=row._id;
+    },{searchable:true,allowNew:true,source:'species',placeholder:'Search species…'});
+
+    const d=num(it.number_of_packages), l=lotSum(it), diff=d-l;
+    const tally=(!d&&!l)?`<div class="tally none">Enter a package count and the lots that make it up</div>`
+      :diff===0?`<div class="tally ok">✓ ${fmt(l)} packages across ${it.batches.length} lot${it.batches.length===1?'':'s'} — matches the declared count</div>`
+      :`<div class="tally bad">⚠ Declared ${fmt(d)}, lots total ${fmt(l)} — ${diff>0?'short by '+fmt(diff):'over by '+fmt(-diff)}</div>`;
+
+    const txt=(lbl,f,ph,n)=>`<div><label>${lbl}</label><div class="ctl"><input class="ctl-in"
+      ${n?'type="number" step="any"':''} data-i="${i}" data-f="${f}" value="${esc(it[f]??'')}"
+      placeholder="${esc(ph||'')}"/></div></div>`;
+
+    return `<div class="item">
+      <div class="item-bar"><div class="item-no">${i+1}</div>
+        <div class="item-t">${esc(it.product_name||'New product line')}</div>
+        <div class="right"><span style="font-size:11.5px;color:var(--muted);">${it.batches.length} lot${it.batches.length===1?'':'s'}</span>
+        <button class="btn btn-sm btn-danger" onclick="removeItem(${i})">Remove</button></div></div>
+      <div class="item-in">
+        <div class="grid">
+          <div class="span2"><label>Product</label>${prodP}
+            <div class="hint">Picking a saved product fills species, form and GTIN</div></div>
+          <div data-slot="${i}-species"><label>Species</label>${specP}</div>
+          ${txt('Product Form','product_form','e.g. Frozen Whole Round')}
+          ${txt('GTIN','gtin')}
+          ${txt('Number of Packages','number_of_packages','',1)}
+          ${txt('Package Type','package_type')}
+          ${txt('Gross Weight (kg)','gross_weight_kg','',1)}
+          ${txt('Net Weight (kg)','net_weight_kg','',1)}
+          ${txt('Packaging Material','packaging_material','e.g. Corrugated carton')}
+          ${txt('Packaging Weight (kg)','packaging_weight_kg','',1)}
+        </div>
+        <div class="sub-h"><span>Batch / Lot</span>
+          <button class="btn btn-sm" onclick="addLot(${i})">+ Add lot</button></div>
+        <div class="lot-head"><span>Packages</span><span>Batch / Lot</span><span>Processing Date</span>
+          <span>Expiry Date</span><span>Raw Material ID</span><span></span></div>
+        ${it.batches.map((b,j)=>`<div class="lot">
+          <div class="ctl"><input class="ctl-in" type="number" data-i="${i}" data-b="${j}" data-f="packages" value="${esc(b.packages??'')}"/></div>
+          <div class="ctl"><input class="ctl-in" data-i="${i}" data-b="${j}" data-f="batch_lot"
+            value="${esc(b.batch_lot||'')}" placeholder="e.g. LOT-2026-001"/></div>
+          ${datePicker(b.processing_date,v=>{ITEMS[i].batches[j].processing_date=v;})}
+          ${datePicker(b.expiry_date,v=>{ITEMS[i].batches[j].expiry_date=v;})}
+          <div>${picker(b.raw_material_ref,[],(val,row)=>{
+            ITEMS[i].batches[j].raw_material_ref=val;
+            if(row) ITEMS[i].batches[j].raw_material_id=row._id;
+          },{searchable:true,allowNew:true,source:'raw_materials',
+             placeholder:'Search RM lots…'})}</div>
+          <button class="icon-btn" onclick="removeLot(${i},${j})" title="Remove lot">${IC_TRASH}</button></div>`).join('')}
+        ${tally}
+      </div></div>`;
+  }).join('');
+
+  document.querySelectorAll('[data-i]').forEach(el=>{
+    el.oninput=()=>{
+      const i=+el.dataset.i,f=el.dataset.f;
+      if(el.dataset.b!==undefined) ITEMS[i].batches[+el.dataset.b][f]=el.value;
+      else ITEMS[i][f]=el.value;
+      updateTally(i); updateSummary();
+    };
+  });
+}
+function updateTally(i){
+  const it=ITEMS[i]; if(!it) return;
+  const el=document.querySelectorAll('.item')[i]?.querySelector('.tally'); if(!el) return;
+  const d=num(it.number_of_packages),l=lotSum(it),diff=d-l;
+  el.className='tally '+(!d&&!l?'none':(diff===0?'ok':'bad'));
+  el.textContent=!d&&!l?'Enter a package count and the lots that make it up'
+    :diff===0?`✓ ${fmt(l)} packages across ${it.batches.length} lot${it.batches.length===1?'':'s'} — matches the declared count`
+    :`⚠ Declared ${fmt(d)}, lots total ${fmt(l)} — ${diff>0?'short by '+fmt(diff):'over by '+fmt(-diff)}`;
+}
+function updateSummary(){
+  const pkg=ITEMS.reduce((a,it)=>a+num(it.number_of_packages),0);
+  const net=ITEMS.reduce((a,it)=>a+num(it.net_weight_kg),0);
+  const bad=ITEMS.filter(it=>num(it.number_of_packages)!==lotSum(it)).length;
+  $('sumLine').innerHTML=ITEMS.length
+    ?`<b>${ITEMS.length}</b> product line${ITEMS.length===1?'':'s'} · <b>${fmt(pkg)}</b> packages · <b>${fmt(net)}</b> kg net`
+     +(bad?` · <span style="color:var(--warn-fg);">${bad} not reconciled</span>`:'')
+    :'No products added';
+}
+
+/* ---------------- rich text ---------------- */
+function rt(c){ $('rtBox').focus(); document.execCommand(c,false,null); }
+function rtBlock(t){ $('rtBox').focus(); document.execCommand('formatBlock',false,t); }
+function rtLink(){ const u=prompt('Link URL'); if(!u) return; $('rtBox').focus();
+  document.execCommand('createLink',false,/^https?:\/\//i.test(u)?u:'https://'+u); }
+function cleanHTML(html){
+  const d=document.createElement('div'); d.innerHTML=html||'';
+  d.querySelectorAll('script,style,iframe,object,embed,link,meta').forEach(n=>n.remove());
+  d.querySelectorAll('*').forEach(n=>[...n.attributes].forEach(a=>{
+    if(/^on/i.test(a.name)||(a.name==='href'&&/^javascript:/i.test(a.value))) n.removeAttribute(a.name);
+  }));
+  return d.innerHTML.trim();
+}
+function toast(m,bad){ const t=$('toast'); t.textContent=m; t.className='toast show'+(bad?' bad':'');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.className='toast',2600); }
+function banner(h){ $('banners').innerHTML=h?`<div class="banner">${h}</div>`:''; }
+
+/* =====================================================================
+   AUTO REFERENCE
+   ===================================================================== */
+async function generateRef(){
+  const y=new Date().getFullYear(), prefix=`EU-${y}-`;
+  let n=1;
+  if(dbClient){
+    try{
+      const {data}=await dbClient.from('shipments').select('shipment_ref')
+        .like('shipment_ref',prefix+'%').order('shipment_ref',{ascending:false}).limit(1);
+      if(data&&data[0]){ const m=String(data[0].shipment_ref).match(/(\d+)\s*$/); if(m) n=parseInt(m[1],10)+1; }
+    }catch(e){ console.warn('Could not read last reference:',e.message); }
+  }
+  return prefix+String(n).padStart(5,'0');
+}
+
+/* =====================================================================
+   LOOKUPS
+   ===================================================================== */
+async function loadLookups(){
+  if(!dbClient) return;
+  const grab=async(t,l=1000)=>{ try{ const {data,error}=await dbClient.from(t).select('*').limit(l);
+    if(error) throw error; return data||[]; }catch(e){ console.warn(`Lookup ${t}:`,e.message); return []; } };
+  const [pr,sp,po,co,ct,ve]=await Promise.all([grab('products'),grab('species'),grab('ports'),
+    grab('companies'),grab('countries',300),grab('vessels')]);
+
+  LOOK.products=pr.map(p=>({_id:p.id,
+    _label:pick(p,['product_name','name','functional_product_name','gs1_product_name','title'])||('Product '+p.id),
+    _sub:[pick(p,['brand']),pick(p,['product_form','form'])].filter(Boolean).join(' · '),
+    _species:pick(p,['species_name','commercial_name','species']),_species_id:p.species_id??null,
+    _form:pick(p,['product_form','form','pack_style']),_gtin:pick(p,['gtin','ean_gtin','ean','uid'])})).filter(x=>x._label);
+  LOOK.species=sp.map(s=>({_id:s.id,_label:pick(s,['species_name','common_trade_family_name','name']),
+    _sub:pick(s,['scientific_name','afsis_3a_code'])})).filter(x=>x._label);
+  LOOK.ports=po.map(p=>{
+    const name=pick(p,['main_port_name','port_name','name','port']);
+    const parent=pick(p,['parent_port','parent','group_name','terminal_of']);
+    const terminal=pick(p,['terminal_name','terminal','sub_port']);
+    const label = parent ? `${parent} — ${name}` : (terminal ? `${name} — ${terminal}` : name);
+    return {_id:p.id, _label:label,
+      _sub:[pick(p,['country','country_name']),pick(p,['un_locode','unlocode','locode','port_code']),
+            terminal||''].filter(Boolean).join(' · ')};
+  }).filter(x=>x._label);
+  LOOK.companies=co.map(c=>({_id:c.id,_label:pick(c,['company_name','name']),
+    _country:pick(c,['country','country_name']),
+    _sub:pick(c,['country','industry'])})).filter(x=>x._label);
+  LOOK.countries=ct.map(c=>({_id:c.id,_label:pick(c,['country','country_name','name']),
+    _sub:pick(c,['alpha3','alpha2'])})).filter(x=>x._label);
+  LOOK.vessels=ve.map(v=>({_id:v.id,_label:pick(v,['vessel_name','name']),_imo:pick(v,['imo','imo_number']),
+    _sub:[pick(v,['imo','imo_number'])&&('IMO '+pick(v,['imo','imo_number'])),pick(v,['flag','flag_state'])]
+      .filter(Boolean).join(' · ')})).filter(x=>x._label);
+
+  LOOK.shipping_lines=SHIPPING_LINES.map(n=>({_label:n}));
+
+  const rmLots=await grab('raw_materials',500);
+  LOOK.raw_materials=rmLots.filter(r=>!r.deleted_at)
+    .map(r=>({_id:r.id,_label:pick(r,['rm_ref','reference']),
+      _sub:[pick(r,['species_name']),r.quantity_kg?r.quantity_kg+' kg':null].filter(Boolean).join(' · ')}))
+    .filter(x=>x._label);
+
+  // other shipments this org has, for the connected-shipments picker
+  const allShipments=await grab('shipments',500);
+  LOOK.shipment_refs=allShipments
+    .filter(s=>s.id!==EDIT_ID && !s.deleted_at)
+    .map(s=>({_id:s.id,
+      _label:pick(s,['shipment_ref','reference']),
+      _sub:[pick(s,['origin_name']),pick(s,['destination_name'])].filter(Boolean).join(' → ')
+    })).filter(x=>x._label);
+
+  const miss=[!LOOK.products.length&&'products',!LOOK.ports.length&&'ports',
+              !LOOK.companies.length&&'companies',!LOOK.vessels.length&&'vessels'].filter(Boolean);
+  if(miss.length) banner(`No list came back for: <b>${miss.join(', ')}</b>. Those fields still accept typed
+    values, so nothing is blocked — but check the column names if you expected a dropdown.`);
+}
+
+async function resolveOrg(){
+  if(!dbClient) return;
+  try{
+    const {data:{session}}=await dbClient.auth.getSession();
+    if(!session){ location.href='login.html'; return; }
+    const {data:p}=await dbClient.from('profiles').select('*').eq('id',session.user.id).single();
+    if(p){
+      ORG_ID=p.company_id||p.organisation_id||null;
+      const first=p.first_name||session.user.email.split('@')[0], last=p.last_name||'';
+      if(p.photo_url) $('avatarBtn').innerHTML=`<img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;
+      else{ $('avatarBtn').style.background=p.avatar_color||'var(--primary)';
+            $('avatarInitials').textContent=(first.charAt(0)+(last?last.charAt(0):'')).toUpperCase(); }
+      $('avatarGreeting').textContent=`${greetingTime()}, ${first}!`;
+    if(window.applyProfileTheme) applyProfileTheme(p);
+    }
+    if(!ORG_ID){
+      const {data:m}=await dbClient.from('company_members').select('company_id')
+        .eq('user_id',session.user.id).eq('status','active').limit(1);
+      if(m&&m[0]) ORG_ID=m[0].company_id;
+    }
+    if(!ORG_ID) banner('No company is linked to your profile, so this shipment cannot be saved yet.');
+  }catch(e){ console.warn('Org lookup failed:',e.message); }
+}
+
+/* =====================================================================
+   SAVE
+   ===================================================================== */
+function collectHeader(){
+  const keys=[...HEAD,...TRACK,...FIN,...COUR].map(d=>d[1]);
+  keys.push('processor_name','processing_country');
+  const out={};
+  keys.forEach(k=>{ const v=S[k]; out[k]=(v===''||v===undefined)?null:v; });
+  out.transport_mode=primaryMode();
+  out.previous_shipment_id=safeUuid(S.previous_shipment_id)||null;
+  out.load_type=S.load_type||'FCL';
+  out.origin_name=LEGS[0]?.origin_name||null;
+  out.destination_name=LEGS[LEGS.length-1]?.destination_name||null;
+  out.origin_port_id=safeUuid(LEGS[0]?.origin_port_id);
+  out.destination_port_id=safeUuid(LEGS[LEGS.length-1]?.destination_port_id);
+  out.departure_date=LEGS[0]?.departure_date||null;
+  out.arrival_date=LEGS[LEGS.length-1]?.arrival_date||null;
+  out.container_no=LEGS.find(l=>l.container_no)?.container_no||null;
+  out.seal_number=LEGS.find(l=>l.seal_number)?.seal_number||null;
+  out.transit_names=LEGS.slice(1,-1).map(l=>l.origin_name).filter(Boolean);
+  out.reefer_setpoint_c=isReefer(S.container_type)&&S.reefer_setpoint_c!=null&&S.reefer_setpoint_c!==''
+    ?Number(S.reefer_setpoint_c):null;
+  out.notes_html=cleanHTML($('rtBox').innerHTML)||null;
+  delete out.origin_name_port_id; delete out.destination_name_port_id;
+  return out;
+}
+function confirmTrash(){
+  $('trashModal').style.display='flex';
+}
+function closeTrashModal(){
+  $('trashModal').style.display='none';
+}
+async function doTrash(){
+  closeTrashModal();
+  if(!EDIT_ID || !dbClient){ toast('Cannot trash a new shipment',true); return; }
+  try{
+    const {error}=await dbClient.from('shipments')
+      .update({deleted_at:new Date().toISOString()}).eq('id',EDIT_ID);
+    if(error) throw error;
+    toast('Moved to Trash');
+    setTimeout(()=>{ location.href='shipment-list.html'; },800);
+  }catch(e){
+    toast('Could not trash: '+(e.message||e),true);
+  }
+}
+
+
+/* =====================================================================
+   OCR SCANNER — reads Invoice, B/L and Packing List via Groq Vision
+   ===================================================================== */
+
+// ⚠️ Move this to a Supabase Edge Function in production
+const GROQ_KEY = ''; // Set your Groq API key here or load from config.js
+const GROQ_MODEL = 'llama-3.2-90b-vision-preview';
+const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+let SCAN_FILES = [];
+
+function openScanner(){ $('scanBg').classList.add('open'); document.body.style.overflow='hidden'; }
+function closeScanner(){ $('scanBg').classList.remove('open'); document.body.style.overflow=''; }
+
+/* Drag-and-drop */
+const drop=$('scanDrop');
+if(drop){
+  drop.ondragover=e=>{e.preventDefault();drop.classList.add('drag');};
+  drop.ondragleave=()=>drop.classList.remove('drag');
+  drop.ondrop=e=>{e.preventDefault();drop.classList.remove('drag');handleScanFiles(e.dataTransfer.files);};
+}
+
+function humanSize(b){ if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(0)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
+
+/* Auto-detect doc type from filename */
+function guessDocType(name){
+  const n=(name||'').toLowerCase();
+  if(/invoice|inv[-_]|proforma/i.test(n)) return 'Invoice';
+  if(/b[/_-]?l|bill.?of.?lading|bol|lading/i.test(n)) return 'Bill of Lading';
+  if(/pack|packing|p[/_-]?l/i.test(n)) return 'Packing List';
+  return null;
+}
+
+function handleScanFiles(fileList){
+  for(const f of fileList){
+    if(SCAN_FILES.some(s=>s.file.name===f.name&&s.file.size===f.size)) continue;
+    SCAN_FILES.push({file:f, type:guessDocType(f.name)});
+  }
+  renderScanFiles();
+  $('scanGo').disabled=!SCAN_FILES.length;
+}
+
+function removeScanFile(i){
+  SCAN_FILES.splice(i,1); renderScanFiles();
+  $('scanGo').disabled=!SCAN_FILES.length;
+}
+
+function setScanType(i,type){ SCAN_FILES[i].type=type; renderScanFiles(); }
+
+function renderScanFiles(){
+  const types=[['Invoice','inv'],['Bill of Lading','bl'],['Packing List','pl']];
+  $('scanFiles').innerHTML=SCAN_FILES.map((s,i)=>{
+    const isPdf=/\.pdf$/i.test(s.file.name);
+    const tagHtml=types.map(([label,cls])=>
+      `<button class="scan-tag ${cls}${s.type===label?' on':''}"
+         style="${s.type===label?'':'opacity:.4;'}" onclick="setScanType(${i},'${label}')">${label}</button>`).join('');
+    return `<div class="scan-file">
+      <div class="scan-file-ic">${isPdf?'PDF':'IMG'}</div>
+      <div style="flex:1;min-width:0;">
+        <div class="scan-file-name">${esc(s.file.name)}</div>
+        <div class="scan-file-size">${humanSize(s.file.size)}${tagHtml}</div>
+      </div>
+      <button class="scan-file-rm" onclick="removeScanFile(${i})" title="Remove">✕</button>
+    </div>`;
+  }).join('');
+}
+
+/* Convert a file to base64 images (PDF: one image per page, max 3 pages) */
+async function fileToImages(f){
+  if(/image\//i.test(f.type)){
+    return [await fileToBase64(f)];
+  }
+  if(!window.pdfjsLib) throw new Error('PDF.js not loaded');
+  const buf=await f.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  const pages=Math.min(pdf.numPages, 4);
+  const imgs=[];
+  for(let p=1;p<=pages;p++){
+    const page=await pdf.getPage(p);
+    const vp=page.getViewport({scale:1.5});
+    const canvas=document.createElement('canvas');
+    canvas.width=vp.width; canvas.height=vp.height;
+    await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+    imgs.push(canvas.toDataURL('image/jpeg',0.85));
+  }
+  return imgs;
+}
+
+function fileToBase64(f){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result);
+    r.onerror=()=>rej(new Error('Read failed'));
+    r.readAsDataURL(f);
+  });
+}
+
+/* The extraction prompt — asks Groq to return structured JSON */
+const EXTRACT_PROMPT = `You are a shipping document OCR assistant. Extract ALL data you can find from these document images.
+
+Return ONLY valid JSON (no markdown, no backticks, no explanation) with this structure:
+{
+  "invoice": {
+    "invoice_no": "", "invoice_date": "", "purchase_order_no": "",
+    "exporter_name": "", "exporter_country": "",
+    "importer_name": "", "importer_country": "",
+    "incoterms": "", "currency": "", "total_value": ""
+  },
+  "bill_of_lading": {
+    "bl_no": "", "shipping_line": "", "vessel_name": "", "voyage_no": "",
+    "port_of_loading": "", "port_of_discharge": "",
+    "departure_date": "", "arrival_date": "",
+    "container_no": "", "seal_no": "",
+    "number_of_packages": "", "gross_weight_kg": "", "net_weight_kg": ""
+  },
+  "products": [
+    {
+      "product_name": "", "species_name": "", "hs_code": "",
+      "number_of_packages": "", "gross_weight_kg": "", "net_weight_kg": "",
+      "batch_codes": [""]
+    }
+  ],
+  "processing": {
+    "processor_name": "", "processing_country": "",
+    "processing_date": "", "expiry_date": ""
+  }
+}
+
+Rules:
+- Dates in YYYY-MM-DD format
+- Weights in kg (convert if needed)
+- Leave empty string "" for fields you cannot find
+- Extract ALL product lines, not just the first
+- batch_codes come from the packing list — look for lot numbers, batch numbers, RM references`;
+
+async function runScan(){
+  if(!SCAN_FILES.length) return;
+  const prog=$('scanProg'), fill=$('scanProgFill'), status=$('scanProgStatus');
+  prog.style.display='block';
+  $('scanGo').disabled=true;
+  $('scanResults').innerHTML='';
+
+  try{
+    // 1. Convert all files to images
+    status.textContent='Rendering documents…';
+    fill.style.width='10%';
+    const allImages=[];
+    for(let i=0;i<SCAN_FILES.length;i++){
+      status.textContent=`Rendering ${SCAN_FILES[i].file.name}…`;
+      fill.style.width=(10+((i/SCAN_FILES.length)*30))+'%';
+      const imgs=await fileToImages(SCAN_FILES[i].file);
+      imgs.forEach(img=>allImages.push({url:img, type:SCAN_FILES[i].type}));
+    }
+
+    // 2. Build the Groq request
+    status.textContent='Sending to AI for extraction…';
+    fill.style.width='50%';
+
+    const content=allImages.map(img=>({
+      type:'image_url',
+      image_url:{url:img.url}
+    }));
+    content.push({type:'text',text:EXTRACT_PROMPT});
+
+    const resp=await fetch(GROQ_URL,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+GROQ_KEY},
+      body:JSON.stringify({
+        model:GROQ_MODEL, max_tokens:4000, temperature:0.1,
+        messages:[{role:'user',content:content}]
+      })
+    });
+
+    fill.style.width='80%';
+    status.textContent='Parsing response…';
+
+    if(!resp.ok){
+      const err=await resp.text();
+      throw new Error('Groq API error '+resp.status+': '+err.slice(0,200));
+    }
+
+    const data=await resp.json();
+    const text=data.choices?.[0]?.message?.content||'';
+
+    // 3. Parse the JSON
+    const clean=text.replace(/```json|```/g,'').trim();
+    let parsed;
+    try{ parsed=JSON.parse(clean); }catch(pe){
+      throw new Error('AI returned invalid JSON. Raw response: '+text.slice(0,300));
+    }
+
+    fill.style.width='90%';
+    status.textContent='Filling the form…';
+
+    // 4. Apply to the form
+    applyExtracted(parsed);
+
+    fill.style.width='100%';
+    status.textContent='Done — review the filled fields below';
+
+    $('scanResults').innerHTML=`<div class="scan-results">
+      <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--good-fg);">
+        ✓ Extraction complete — review and correct any fields</div>
+      <details><summary style="font-size:12px;color:var(--muted);cursor:pointer;">Show raw extraction</summary>
+        <pre>${esc(JSON.stringify(parsed,null,2))}</pre></details></div>`;
+
+  }catch(err){
+    console.error('Scan failed:',err);
+    status.textContent='Scan failed: '+err.message;
+    fill.style.width='100%';
+    fill.style.background='var(--bad-fg)';
+    $('scanResults').innerHTML=`<div class="tally bad" style="margin-top:16px;">${esc(err.message)}</div>`;
+  }
+  $('scanGo').disabled=false;
+}
+
+/* Map the AI extraction onto the form state */
+function applyExtracted(d){
+  const inv=d.invoice||{};
+  const bl=d.bill_of_lading||{};
+  const proc=d.processing||{};
+  const products=d.products||[];
+
+  // Header
+  if(inv.exporter_name)    S.exporter_name=inv.exporter_name;
+  if(inv.exporter_country) S.country_of_export=inv.exporter_country;
+  if(inv.importer_name)    S.importer_name=inv.importer_name;
+  if(inv.importer_country) S.destination_country=inv.importer_country;
+  if(inv.incoterms)        S.incoterms=inv.incoterms;
+  if(inv.invoice_no)       S.invoice_no=inv.invoice_no;
+  if(inv.invoice_date)     S.invoice_date=inv.invoice_date;
+  if(inv.purchase_order_no) S.purchase_order_no=inv.purchase_order_no;
+
+  // Journey / B/L
+  if(bl.shipping_line && LEGS[0]) LEGS[0].carrier_name=bl.shipping_line;
+  if(bl.bl_no && LEGS[0])         LEGS[0].document_no=bl.bl_no;
+  if(bl.port_of_loading && LEGS[0])   LEGS[0].origin_name=bl.port_of_loading;
+  if(bl.port_of_discharge && LEGS[0]) LEGS[0].destination_name=bl.port_of_discharge;
+  if(bl.departure_date && LEGS[0])    LEGS[0].departure_date=bl.departure_date;
+  if(bl.arrival_date && LEGS[0])      LEGS[0].arrival_date=bl.arrival_date;
+  if(bl.container_no){
+    S.container_no=bl.container_no;
+    if(LEGS[0]) LEGS[0].container_no=bl.container_no;
+  }
+  if(bl.seal_no && LEGS[0]) LEGS[0].seal_number=bl.seal_no;
+  if(bl.vessel_name){
+    if(LEGS[0]){
+      LEGS[0].vessels=LEGS[0].vessels||[];
+      if(!LEGS[0].vessels.length) LEGS[0].vessels.push({role:'Mother'});
+      LEGS[0].vessels[LEGS[0].vessels.length-1].vessel_name=bl.vessel_name;
+      if(bl.voyage_no) LEGS[0].vessels[LEGS[0].vessels.length-1].voyage_no=bl.voyage_no;
+    }
+  }
+  if(bl.departure_date) S.shipment_date=bl.departure_date;
+  if(bl.departure_date) S.on_board_date=bl.departure_date;
+
+  // Processing
+  if(proc.processor_name)     S.processor_name=proc.processor_name;
+  if(proc.processing_country) S.processing_country=proc.processing_country;
+
+  // Products
+  if(products.length){
+    ITEMS=products.map((p,i)=>{
+      const batches=(p.batch_codes||[]).filter(Boolean).map(code=>({
+        batch_lot:code, packages:'',
+        processing_date:proc.processing_date||'',
+        expiry_date:proc.expiry_date||''
+      }));
+      if(!batches.length) batches.push({batch_lot:'',packages:p.number_of_packages||''});
+      return {
+        line_no:i+1,
+        product_name:p.product_name||'',
+        species_name:p.species_name||'',
+        hs_code:p.hs_code||'',
+        number_of_packages:Number(p.number_of_packages)||'',
+        gross_weight_kg:Number(p.gross_weight_kg)||'',
+        net_weight_kg:Number(p.net_weight_kg)||'',
+        batches:batches
+      };
+    });
+  }
+
+  S.origin_name=LEGS[0]?.origin_name||S.origin_name;
+  S.destination_name=LEGS[LEGS.length-1]?.destination_name||S.destination_name;
+
+  renderAll();
+  toast('Form filled from scanned documents — please review');
+}
+
+/* Tolerant save: drops unknown columns and retries */
+async function saveTolerant(table, payload, id){
+  const clean={...payload};
+  // Remove undefined/function values
+  Object.keys(clean).forEach(k=>{ if(clean[k]===undefined) delete clean[k]; });
+
+  if(id){
+    const {error}=await dbClient.from(table).update(clean).eq('id',id);
+    if(error){
+      if(error.message && error.message.includes('column')){
+        // Extract the bad column name and retry without it
+        const col=error.message.match(/"(\w+)"/)?.[1];
+        if(col && clean[col]!==undefined){
+          console.warn('Dropping unknown column:',col);
+          delete clean[col];
+          return saveTolerant(table,clean,id);
+        }
+      }
+      throw error;
+    }
+    return {data:{id},error:null};
+  }else{
+    const {data,error}=await dbClient.from(table).insert(clean).select('id').single();
+    if(error){
+      if(error.message && error.message.includes('column')){
+        const col=error.message.match(/"(\w+)"/)?.[1];
+        if(col && clean[col]!==undefined){
+          console.warn('Dropping unknown column:',col);
+          delete clean[col];
+          return saveTolerant(table,clean,id);
+        }
+      }
+      throw error;
+    }
+    return {data,error:null};
+  }
+}
+
+async function save(){
+  if(SAVING) return;
+  if(!(S.shipment_ref||'').trim()){
+    toast('Shipment ID is required',true);
+    const el=document.querySelector('[data-h="shipment_ref"]'); el?.classList.add('err'); el?.focus(); return;
+  }
+  if(!ITEMS.length && !confirm('This shipment has no products. Save it as a draft anyway?')) return;
+  const bad=ITEMS.filter(it=>num(it.number_of_packages)!==lotSum(it));
+  if(bad.length&&!confirm(`${bad.length} product line${bad.length===1?' does':'s do'} not reconcile against `+
+     `${bad.length===1?'its':'their'} lots.\n\nSave anyway? EU Catch documents will flag this.`)) return;
+  if(!dbClient){ toast('Not connected to the database',true); return; }
+  if(!ORG_ID){ toast('No company linked to your profile — cannot save',true); return; }
+
+  SAVING=true; $('saveBtn').disabled=$('saveTop').disabled=true; $('saveBtn').textContent='Saving…';
+  try{
+    const header={...collectHeader(),organisation_id:ORG_ID};
+    let sid=EDIT_ID;
+    if(EDIT_ID){
+      const {error}=await dbClient.from('shipments').update(header).eq('id',EDIT_ID);
+      if(error) throw error;
+      await dbClient.from('shipment_batches').delete().eq('shipment_id',EDIT_ID);
+      await dbClient.from('shipment_items').delete().eq('shipment_id',EDIT_ID);
+      await dbClient.from('shipment_vessels').delete().eq('shipment_id',EDIT_ID);
+      await dbClient.from('shipment_legs').delete().eq('shipment_id',EDIT_ID);
+    }else{
+      const {data,error}=await dbClient.from('shipments').insert(header).select('id').single();
+      if(error) throw error; sid=data.id;
+    }
+    const legRows=LEGS.filter(l=>l.origin_name||l.destination_name).map((l,n)=>({
+      shipment_id:sid, organisation_id:ORG_ID, leg_no:n+1,
+      transport_mode:l.transport_mode||'Sea',
+      origin_name:l.origin_name||null, origin_port_id:safeUuid(l.origin_port_id),
+      destination_name:l.destination_name||null, destination_port_id:safeUuid(l.destination_port_id),
+      departure_date:l.departure_date||null, arrival_date:l.arrival_date||null,
+      carrier_name:l.carrier_name||null,
+      document_type:(LEG_MODES[l.transport_mode]||LEG_MODES.Sea).doc,
+      document_no:l.document_no||null,
+      container_no:l.container_no||null, seal_number:l.seal_number||null,
+      transshipment_port:l.transshipment_port||null,
+      transshipment_port_id:safeUuid(l.transshipment_port_id),
+      vessel_name:l.vessel_name||null, voyage_no:l.voyage_no||null,
+      flight_no:l.flight_no||null, vehicle_plate:l.vehicle_plate||null,
+      driver_name:l.driver_name||null, train_no:l.train_no||null, wagon_no:l.wagon_no||null,
+    }));
+    if(legRows.length){
+      const {error}=await dbClient.from('shipment_legs').insert(legRows);
+      if(error) throw error;
+    }
+
+    // vessels per leg
+    const vslRows=[];
+    LEGS.forEach((l,n)=>{
+      (l.vessels||[]).filter(v=>v.vessel_name).forEach((v,j)=>{
+        vslRows.push({shipment_id:sid, organisation_id:ORG_ID, leg_no:n+1,
+          line_no:j+1, role:v.role||'Mother',
+          vessel_id:safeUuid(v.vessel_id), vessel_name:v.vessel_name||null,
+          imo:v.imo||null, voyage_no:v.voyage_no||null});
+      });
+    });
+    if(vslRows.length){
+      const {error}=await dbClient.from('shipment_vessels').insert(vslRows);
+      if(error) throw error;
+    }
+
+    for(const [n,it] of ITEMS.entries()){
+      const row={shipment_id:sid,organisation_id:ORG_ID,line_no:n+1,
+        product_id:safeUuid(it.product_id),product_name:it.product_name||null,
+        species_id:safeUuid(it.species_id),species_name:it.species_name||null,
+        product_form:it.product_form||null,gtin:it.gtin||null,
+        number_of_packages:it.number_of_packages?Number(it.number_of_packages):null,
+        package_type:it.package_type||'cartons',
+        gross_weight_kg:it.gross_weight_kg?Number(it.gross_weight_kg):null,
+        net_weight_kg:it.net_weight_kg?Number(it.net_weight_kg):null,
+        packaging_material:it.packaging_material||null,
+        packaging_weight_kg:it.packaging_weight_kg?Number(it.packaging_weight_kg):null};
+      const {data:ins,error:e2}=await dbClient.from('shipment_items').insert(row).select('id').single();
+      if(e2) throw e2;
+      const lots=(it.batches||[]).filter(b=>b.packages||b.batch_lot).map((b,j)=>({
+        shipment_item_id:ins.id,shipment_id:sid,organisation_id:ORG_ID,line_no:j+1,
+        packages:num(b.packages),batch_lot:b.batch_lot||null,processing_date:b.processing_date||null,
+        expiry_date:b.expiry_date||null,raw_material_ref:b.raw_material_ref||null}));
+      if(lots.length){ const {error:e3}=await dbClient.from('shipment_batches').insert(lots); if(e3) throw e3; }
+    }
+    toast('Shipment saved');
+    setTimeout(()=>location.href='shipment-detail.html?id='+sid,700);
+  }catch(err){
+    console.error('Save failed:',err);
+    const msg=err.message||'';
+    toast(/duplicate|unique/.test(msg)?'That Shipment ID already exists — pick another':'Save failed: '+msg,true);
+    SAVING=false; $('saveBtn').disabled=$('saveTop').disabled=false; $('saveBtn').textContent='Save shipment';
+  }
+}
+
+/* =====================================================================
+   LOAD
+   ===================================================================== */
+async function loadExisting(){
+  if(!EDIT_ID||!dbClient) return;
+  try{
+    const {data:s,error}=await dbClient.from('shipments').select('*').eq('id',EDIT_ID).single();
+    if(error) throw error;
+    S={...s,transit_names:s.transit_names||[]}; REF_AUTO=false;
+    if(s.previous_shipment_id){
+      S.previous_shipment_id=s.previous_shipment_id;
+      // resolve the ref for display
+      try{
+        const {data:prev}=await dbClient.from('shipments').select('shipment_ref')
+          .eq('id',s.previous_shipment_id).single();
+        if(prev) S.previous_shipment_ref=prev.shipment_ref;
+      }catch(e){}
+    }
+    if(s.origin_port_id) S.origin_name_port_id=s.origin_port_id;
+    if(s.destination_port_id) S.destination_name_port_id=s.destination_port_id;
+    const [{data:items},{data:lots},{data:lg}]=await Promise.all([
+      dbClient.from('shipment_items').select('*').eq('shipment_id',EDIT_ID).order('line_no'),
+      dbClient.from('shipment_batches').select('*').eq('shipment_id',EDIT_ID).order('line_no'),
+      dbClient.from('shipment_legs').select('*').eq('shipment_id',EDIT_ID).order('leg_no')]);
+    const by={}; (lots||[]).forEach(l=>{ (by[l.shipment_item_id] ||= []).push(l); });
+    ITEMS=(items||[]).map(it=>({...it,batches:by[it.id]||[
+      {packages:'',batch_lot:'',processing_date:'',expiry_date:'',raw_material_ref:''}]}));
+    // attach vessels to their legs
+    let vsList=[];
+    try{
+      const {data:vd}=await dbClient.from('shipment_vessels').select('*')
+        .eq('shipment_id',EDIT_ID).order('line_no');
+      vsList=vd||[];
+    }catch(e){}
+    const vsByLeg={};
+    vsList.forEach(v=>{ (vsByLeg[v.leg_no] ||= []).push(v); });
+
+    LEGS=(lg&&lg.length)?lg.map(l=>({...l,vessels:vsByLeg[l.leg_no]||[]})):[{leg_no:1,transport_mode:s.transport_mode||'Sea',
+      origin_name:s.origin_name,origin_port_id:s.origin_port_id,
+      destination_name:s.destination_name,destination_port_id:s.destination_port_id,
+      departure_date:s.departure_date,arrival_date:s.arrival_date,
+      container_no:s.container_no,seal_number:s.seal_number}];
+    if(s.notes_html) $('rtBox').innerHTML=cleanHTML(s.notes_html);
+    $('pageTitle').textContent='Edit shipment';
+    $('pageSub').textContent=s.shipment_ref||'';
+    $('crumbNow').textContent=s.shipment_ref||'Edit';
+  }catch(e){ console.error('Load failed:',e); banner('Could not load that shipment.'); }
+}
+
+(async function init(){
+  if(!EDIT_ID && !LEGS.length) LEGS=[{leg_no:1,transport_mode:'Sea'}];
+  if(EDIT_ID) $('trashBtn').style.display='';
+  renderAll();
+
+  await resolveOrg();
+
+  const [,, ref] = await Promise.all([
+    loadExisting(),
+    loadLookups(),
+    (!EDIT_ID && REF_AUTO) ? generateRef() : Promise.resolve(null),
+  ]);
+
+  if(ref && !S.shipment_ref) S.shipment_ref = ref;
+  renderAll();
+})();
+</script>
+</body>
+</html>

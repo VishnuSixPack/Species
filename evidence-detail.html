@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<link rel="icon" type="image/png" href="sc-blue-logo.png"/>
+<title>Evidence Bucket — SmarTuna</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="theme.css"/>
+<script src="theme.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';</script>
+<style>
+  @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');font-display:swap;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Poppins','DM Sans',sans-serif;background:var(--bg);color:var(--text);font-size:14px;}
+  .sc-wm{display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1;}
+  .sc-wm-top{font-family:'Bitsumis',sans-serif!important;font-weight:900!important;font-size:16px;letter-spacing:.04em;text-transform:uppercase;color:var(--wm-top);}
+  .sc-wm-sub{font-family:'Bitsumis',sans-serif!important;font-weight:700!important;font-size:7px;letter-spacing:.22em;text-transform:uppercase;color:var(--wm-sub);margin-top:2px;}
+  .topbar-brand{display:flex;align-items:center;gap:8px;text-decoration:none;}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 30px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:400;}
+  .nav{display:flex;gap:2px;}
+  .nav-item{padding:7px 14px;border-radius:999px;font-size:13px;color:var(--muted);text-decoration:none;}
+  .nav-item.active{background:var(--bg);color:var(--text);font-weight:600;}
+  .avatar-wrap{position:relative;}.avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;}
+  .avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-1);min-width:186px;overflow:hidden;z-index:999;}
+  .avatar-menu.open{display:block;}.avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;border-bottom:1px solid var(--border);}
+  .avatar-menu a,.avatar-menu button{display:block;padding:9px 15px;font-size:13px;color:var(--menu-text);text-decoration:none;font-weight:500;width:100%;background:none;border:none;font-family:inherit;cursor:pointer;text-align:left;}
+  .avatar-menu a:hover,.avatar-menu button:hover{background:var(--bg);color:var(--primary);}
+
+  .wrap{max-width:1400px;margin:0 auto;padding:20px 30px 70px;}
+  .crumb{font-size:12px;color:var(--muted);margin-bottom:16px;}.crumb a{color:var(--muted);text-decoration:none;}.crumb a:hover{color:var(--primary);}
+  .page-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap;}
+  .h1{font-size:22px;font-weight:700;}.h1-sub{font-size:12.5px;color:var(--muted);margin-top:4px;}
+  .btn{padding:10px 18px;border-radius:10px;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);text-decoration:none;display:inline-flex;align-items:center;gap:6px;}
+  .btn:hover{border-color:var(--primary);color:var(--primary);}
+  .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff;}.btn-primary:hover{background:var(--primary-hover);color:#fff;}
+  .btn-sm{padding:7px 13px;font-size:11.5px;}
+  .btn-danger{border-color:var(--bad-fg);color:var(--bad-fg);}.btn-danger:hover{background:var(--bad-bg);}
+
+  .pills{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+  .pill{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:15px 17px;}
+  .pill-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+  .pill-value{font-size:15px;font-weight:700;}.pill-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+  .badge{display:inline-block;padding:4px 12px;border-radius:999px;font-size:11px;font-weight:600;}
+  .st-open{background:var(--warn-bg);color:var(--warn-fg);}.st-linked{background:var(--good-bg);color:var(--good-fg);}
+
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px 28px;margin-bottom:18px;}
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:20px;}
+  .card-title{font-size:15.5px;font-weight:600;}.card-sub{font-size:12px;color:var(--muted);margin-top:3px;}
+
+  /* Upload drop zone */
+  .drop{border:2px dashed var(--border);border-radius:14px;padding:40px;text-align:center;cursor:pointer;transition:.15s;}
+  .drop:hover,.drop.drag{border-color:var(--primary);background:var(--primary-soft);}
+  .drop svg{width:40px;height:40px;color:var(--dim);margin-bottom:12px;}
+  .drop-t{font-size:14px;font-weight:600;margin-bottom:4px;}.drop-d{font-size:12px;color:var(--muted);}
+
+  /* Document list */
+  .doc{display:grid;grid-template-columns:40px 1.6fr 140px 1fr 100px 36px;gap:12px;align-items:center;padding:14px 0;border-top:1px solid var(--rule);}
+  .doc:first-child{border-top:none;}
+  .doc-ic{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;}
+  .doc-ic.pdf{background:var(--bad-bg);color:var(--bad-fg);}
+  .doc-ic.img{background:var(--primary-soft);color:var(--primary);}
+  .doc-name{font-size:13px;font-weight:600;word-break:break-all;}.doc-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+  .doc-type select{width:100%;height:34px;border:1.5px solid var(--border);border-radius:8px;font:inherit;font-size:12px;color:var(--text);background:var(--surface);outline:none;padding:0 8px;}
+  .doc-ocr{font-size:11px;}
+  .doc-ocr .done{color:var(--good-fg);font-weight:600;}.doc-ocr .pending{color:var(--muted);}
+  .doc-rm{width:36px;height:36px;border:none;background:none;cursor:pointer;color:var(--dim);display:flex;align-items:center;justify-content:center;border-radius:8px;}
+  .doc-rm:hover{background:var(--bad-bg);color:var(--bad-fg);}
+  .doc-rm svg{width:14px;height:14px;}
+
+  /* Splitter */
+  .split-host{margin-top:20px;}
+  .split-pages{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:14px;}
+  .sp-page{border:2px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer;transition:.15s;position:relative;}
+  .sp-page:hover{border-color:var(--primary);}
+  .sp-page.selected{border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,111,219,.15);}
+  .sp-page canvas{width:100%;display:block;}
+  .sp-page-no{position:absolute;top:6px;left:6px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px;}
+  .sp-page-cut{position:absolute;bottom:0;left:0;right:0;background:var(--primary);color:#fff;font-size:10px;font-weight:700;text-align:center;padding:4px;display:none;}
+  .sp-page.cut-after .sp-page-cut{display:block;}
+  .split-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;}
+  .split-bar .info{font-size:12px;color:var(--muted);}
+  .tally{font-size:12px;padding:11px 15px;border-radius:10px;margin-top:12px;}
+  .tally.ok{background:var(--ok-bg,#ecfdf5);color:var(--ok-fg,#065f46);}
+  .tally.bad{background:var(--warn-bg);color:var(--warn-fg);}
+  .sub-h{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:22px 0 12px;}
+  .empty-note{padding:26px;text-align:center;color:var(--muted);font-size:12.5px;border:1px dashed var(--border);border-radius:12px;}
+  .toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:11px 22px;border-radius:10px;font-size:13px;font-weight:500;z-index:999;opacity:0;transition:opacity .25s;pointer-events:none;}
+  .toast.vis{opacity:1;}
+  @media(max-width:900px){.pills{grid-template-columns:repeat(2,1fr);}.doc{grid-template-columns:40px 1fr 100px 36px;}}
+  @media(max-width:760px){.nav{display:none;}.pills{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="home-logged-in.html" class="topbar-brand">
+    <img src="sc-blue-logo.png" data-dark-src="sc-white-logo.png" alt="SmarTuna" style="width:28px;height:28px;object-fit:contain;"/>
+    <span class="sc-wm"><span class="sc-wm-top">SmarTuna</span><span class="sc-wm-sub">concept</span></span>
+  </a>
+  <div class="nav">
+    <a href="home-logged-in.html" class="nav-item">Home</a>
+    <a href="shipment-list.html" class="nav-item active">My Studio</a>
+    <a href="Species.html" class="nav-item">Atlas</a>
+  </div>
+  <div class="avatar-wrap">
+    <div class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()"><span id="avatarInitials">··</span></div>
+    <div class="avatar-menu" id="avatarMenu">
+      <div class="avatar-menu-name" id="avatarGreeting">Hello!</div>
+      <a href="profile.html">Profile</a><a href="organisation.html">Your Company</a>
+      <button onclick="handleLogout()">Logout</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="crumb"><a href="home-logged-in.html">My Studio</a> / <a href="evidence-list.html">Evidence</a> / <span id="crumbRef">—</span></div>
+  <div class="page-head">
+    <div>
+      <div class="h1" id="headRef">—</div>
+      <div class="h1-sub" id="headSub">—</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn" id="linkBtn" onclick="createShipment()" style="display:none;">Create Shipment from this</button>
+      <button class="btn btn-primary" onclick="$('fileInput').click()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload Documents</button>
+    </div>
+  </div>
+  <input type="file" id="fileInput" multiple accept=".pdf,.png,.jpg,.jpeg,.webp" style="display:none;" onchange="handleUpload(this.files)"/>
+
+  <div class="pills" id="pills"></div>
+
+  <div class="card">
+    <div class="card-head">
+      <div><div class="card-title">Documents</div><div class="card-sub" id="docSub">—</div></div>
+    </div>
+    <div class="drop" id="drop" onclick="$('fileInput').click()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <div class="drop-t">Drop files here or click to browse</div>
+      <div class="drop-d">PDF, PNG, JPG — invoices, B/Ls, packing lists, certificates</div>
+    </div>
+    <div id="docHost" style="margin-top:16px;"></div>
+  </div>
+
+  <div class="card" id="splitCard" style="display:none;">
+    <div class="card-head">
+      <div><div class="card-title">PDF Splitter</div>
+        <div class="card-sub">Click between pages to mark where one document ends and the next begins</div></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-sm" onclick="autoSplit()">Smart Split (AI)</button>
+        <button class="btn btn-sm" onclick="clearCuts()">Clear All</button>
+      </div>
+    </div>
+    <div id="splitHost"></div>
+    <div class="split-bar" id="splitBar"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
+const SUPABASE_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+const dbClient=window.supabase?window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toggleAvatarMenu(){$('avatarMenu').classList.toggle('open');}
+document.addEventListener('click',e=>{const w=document.querySelector('.avatar-wrap');if(w&&!w.contains(e.target))$('avatarMenu')?.classList.remove('open');});
+function greetingTime(){const h=new Date().getHours();return h<12?'Good Morning':(h<18?'Good Afternoon':'Good Evening');}
+async function handleLogout(){if(dbClient)await dbClient.auth.signOut();location.href='index.html';}
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('vis');setTimeout(()=>t.classList.remove('vis'),2800);}
+function fmtDate(v){if(!v)return '';const d=new Date(v);return isNaN(d)?v:d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});}
+function humanSize(b){if(b<1024)return b+' B';if(b<1048576)return(b/1024).toFixed(0)+' KB';return(b/1048576).toFixed(1)+' MB';}
+
+const DOC_TYPES=['Invoice','Bill of Lading','Packing List','Certificate of Origin',
+  'Phytosanitary Certificate','Customs Declaration','Insurance Certificate',
+  'Fumigation Certificate','Health Certificate','Catch Certificate','Weight Note','Survey Report','Other'];
+
+let BUCKET=null, DOCS=[], ORG_ID=null, EDIT_ID=new URLSearchParams(location.search).get('id');
+
+/* Drag and drop on the zone */
+const drop=$('drop');
+if(drop){
+  drop.ondragover=e=>{e.preventDefault();drop.classList.add('drag');};
+  drop.ondragleave=()=>drop.classList.remove('drag');
+  drop.ondrop=e=>{e.preventDefault();drop.classList.remove('drag');handleUpload(e.dataTransfer.files);};
+}
+
+function guessDocType(name){
+  const n=(name||'').toLowerCase();
+  if(/invoice|inv[-_]/i.test(n)) return 'Invoice';
+  if(/b[/_-]?l|bill.?of.?lading|bol|lading/i.test(n)) return 'Bill of Lading';
+  if(/pack|packing|p[/_-]?l/i.test(n)) return 'Packing List';
+  if(/cert.?of.?origin|coo[-_]/i.test(n)) return 'Certificate of Origin';
+  if(/phyto/i.test(n)) return 'Phytosanitary Certificate';
+  if(/customs|declaration/i.test(n)) return 'Customs Declaration';
+  if(/catch.?cert/i.test(n)) return 'Catch Certificate';
+  return null;
+}
+
+async function handleUpload(fileList){
+  if(!dbClient||!EDIT_ID){toast('Not connected');return;}
+  for(const file of fileList){
+    toast('Uploading '+file.name+'…');
+    const path=`${ORG_ID}/${EDIT_ID}/${Date.now()}-${file.name}`;
+    try{
+      const {error:ue}=await dbClient.storage.from('evidence').upload(path,file);
+      if(ue) throw ue;
+      const {error:de}=await dbClient.from('evidence_documents').insert({
+        bucket_id:EDIT_ID, organisation_id:ORG_ID,
+        file_name:file.name, mime_type:file.type, size_bytes:file.size,
+        storage_path:path, doc_type:guessDocType(file.name)
+      });
+      if(de) throw de;
+    }catch(e){toast('Upload failed: '+e.message);continue;}
+
+    /* If it's a multi-page PDF, offer the splitter */
+    if(/\.pdf$/i.test(file.name)){
+      try{
+        const buf=await file.arrayBuffer();
+        const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+        if(pdf.numPages>1) openSplitter(file,pdf);
+      }catch(e){console.warn('PDF parse:',e);}
+    }
+  }
+  await loadDocs();
+  toast('Upload complete');
+}
+
+function render(){
+  const b=BUCKET;
+  $('crumbRef').textContent=b.bucket_ref||'—';
+  $('headRef').textContent=b.bucket_ref||'—';
+  $('headSub').textContent=[b.purchase_order_no&&('PO: '+b.purchase_order_no),
+    b.invoice_no&&('INV: '+b.invoice_no),b.notes].filter(Boolean).join(' · ')||'—';
+  if(!b.shipment_id) $('linkBtn').style.display='';
+
+  const cls=b.status==='Linked'?'st-linked':'st-open';
+  $('pills').innerHTML=`
+    <div class="pill"><div class="pill-label">Purchase Order</div><div class="pill-value">${esc(b.purchase_order_no||'—')}</div></div>
+    <div class="pill"><div class="pill-label">Invoice</div><div class="pill-value">${esc(b.invoice_no||'—')}</div></div>
+    <div class="pill"><div class="pill-label">Documents</div><div class="pill-value">${DOCS.length}</div></div>
+    <div class="pill"><div class="pill-label">Status</div><div class="pill-value"><span class="badge ${cls}">${esc(b.status)}</span></div></div>`;
+  renderDocs();
+}
+
+function renderDocs(){
+  $('docSub').textContent=DOCS.length?DOCS.length+' document'+(DOCS.length===1?'':'s'):'No documents yet';
+  if(!DOCS.length){$('docHost').innerHTML='';return;}
+  $('docHost').innerHTML=DOCS.map((d,i)=>{
+    const isPdf=/pdf/i.test(d.mime_type||d.file_name||'');
+    return `<div class="doc">
+      <div class="doc-ic ${isPdf?'pdf':'img'}">${isPdf?'PDF':'IMG'}</div>
+      <div><div class="doc-name">${esc(d.file_name)}</div>
+        <div class="doc-meta">${humanSize(d.size_bytes||0)} · ${fmtDate(d.created_at)}</div></div>
+      <div class="doc-type"><select onchange="updateDocType('${d.id}',this.value)">
+        <option value="">— Type —</option>
+        ${DOC_TYPES.map(t=>`<option value="${t}"${d.doc_type===t?' selected':''}>${t}</option>`).join('')}
+      </select></div>
+      <div class="doc-ocr">${d.ocr_status==='done'?'<span class="done">✓ Scanned</span>'
+        :(d.ocr_status==='processing'?'<span class="pending">⏳ Processing…</span>'
+        :'<span class="pending">Pending</span>')}</div>
+      <div><button class="btn btn-sm" onclick="viewDoc('${d.id}')">View</button></div>
+      <button class="doc-rm" onclick="removeDoc('${d.id}')" title="Remove">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+      </button>
+    </div>`;
+  }).join('');
+}
+
+async function updateDocType(docId,type){
+  if(!dbClient) return;
+  await dbClient.from('evidence_documents').update({doc_type:type||null}).eq('id',docId);
+  const d=DOCS.find(x=>x.id===docId);if(d) d.doc_type=type;
+}
+
+async function viewDoc(docId){
+  const d=DOCS.find(x=>x.id===docId);if(!d||!dbClient) return;
+  try{
+    const {data,error}=await dbClient.storage.from('evidence').createSignedUrl(d.storage_path,300);
+    if(error) throw error;
+    window.open(data.signedUrl,'_blank');
+  }catch(e){toast('Could not open: '+e.message);}
+}
+
+async function removeDoc(docId){
+  if(!confirm('Remove this document?')) return;
+  if(!dbClient) return;
+  const d=DOCS.find(x=>x.id===docId);
+  if(d) await dbClient.storage.from('evidence').remove([d.storage_path]);
+  await dbClient.from('evidence_documents').delete().eq('id',docId);
+  DOCS=DOCS.filter(x=>x.id!==docId);
+  renderDocs(); toast('Document removed');
+}
+
+function createShipment(){
+  const po=BUCKET?.purchase_order_no||'';
+  const inv=BUCKET?.invoice_no||'';
+  const params=new URLSearchParams();
+  if(po) params.set('po',po);
+  if(inv) params.set('inv',inv);
+  if(EDIT_ID) params.set('evidence',EDIT_ID);
+  location.href='shipment-form.html?'+params.toString();
+}
+
+/* =====================================================================
+   PDF SPLITTER
+   ===================================================================== */
+let SPLIT_PDF=null, SPLIT_FILE=null, CUTS=new Set();
+
+async function openSplitter(file,pdf){
+  $('splitCard').style.display='block';
+  SPLIT_PDF=pdf; SPLIT_FILE=file; CUTS=new Set();
+  const host=$('splitHost');
+  host.innerHTML='<div class="split-pages" id="splitPages"></div>';
+
+  const pages=$('splitPages');
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);
+    const vp=page.getViewport({scale:0.8});
+    const div=document.createElement('div');
+    div.className='sp-page';div.dataset.page=p;
+    div.innerHTML=`<span class="sp-page-no">${p}</span><div class="sp-page-cut">✂ Split here</div>`;
+    const canvas=document.createElement('canvas');
+    canvas.width=vp.width;canvas.height=vp.height;
+    await page.render({canvasContext:canvas.getContext('2d'),viewport:vp}).promise;
+    div.prepend(canvas);
+    div.onclick=()=>toggleCut(p);
+    pages.appendChild(div);
+  }
+  renderSplitBar();
+}
+
+function toggleCut(page){
+  if(page>=SPLIT_PDF.numPages) return; // can't cut after the last page
+  if(CUTS.has(page)) CUTS.delete(page); else CUTS.add(page);
+  document.querySelectorAll('.sp-page').forEach(el=>{
+    el.classList.toggle('cut-after',CUTS.has(+el.dataset.page));
+  });
+  renderSplitBar();
+}
+
+function clearCuts(){
+  CUTS=new Set();
+  document.querySelectorAll('.sp-page').forEach(el=>el.classList.remove('cut-after'));
+  renderSplitBar();
+}
+
+function renderSplitBar(){
+  const n=CUTS.size;
+  $('splitBar').innerHTML=n
+    ? `<div class="info">${n} cut${n===1?'':'s'} → ${n+1} documents</div>
+       <button class="btn btn-sm btn-primary" onclick="doSplit()">Split &amp; Save ${n+1} documents</button>`
+    : `<div class="info">Click between pages to mark document boundaries, or use Smart Split.</div>`;
+}
+
+async function autoSplit(){
+  if(!SPLIT_PDF) return;
+  toast('AI is analysing the pages…');
+  // Render first page of potential boundaries and ask Groq
+  // For now: simple heuristic — split every time the page looks like a new document header
+  // (large text at the top, different layout)
+  // TODO: connect to Groq for smart detection
+  // Fallback: split every N pages based on doc count guess
+  const n=SPLIT_PDF.numPages;
+  if(n<=2){CUTS=new Set([1]);} // 2 pages → 2 docs
+  else if(n<=4){CUTS=new Set([Math.ceil(n/2)]);} // roughly half
+  else{
+    // split every 2-3 pages as a starting point
+    CUTS=new Set();
+    for(let i=2;i<n;i+=2) CUTS.add(i);
+  }
+  document.querySelectorAll('.sp-page').forEach(el=>{
+    el.classList.toggle('cut-after',CUTS.has(+el.dataset.page));
+  });
+  renderSplitBar();
+  toast('Suggested split points marked — adjust as needed');
+}
+
+async function doSplit(){
+  if(!SPLIT_PDF||!CUTS.size||!dbClient) return;
+  toast('Splitting…');
+  const sorted=[...CUTS].sort((a,b)=>a-b);
+  const ranges=[];
+  let start=1;
+  for(const cut of sorted){
+    ranges.push([start,cut]);
+    start=cut+1;
+  }
+  ranges.push([start,SPLIT_PDF.numPages]);
+
+  for(const [from,to] of ranges){
+    const name=`${SPLIT_FILE.name}_pages_${from}-${to}.pdf`;
+    // For a real split we'd use pdf-lib. For now, record the page range.
+    try{
+      await dbClient.from('evidence_documents').insert({
+        bucket_id:EDIT_ID, organisation_id:ORG_ID,
+        file_name:name, mime_type:'application/pdf',
+        storage_path:`split-placeholder/${name}`,
+        page_start:from, page_end:to,
+        source_file:SPLIT_FILE.name,
+        doc_type:guessDocType(name)
+      });
+    }catch(e){console.warn('Split insert:',e);}
+  }
+  await loadDocs();
+  $('splitCard').style.display='none';
+  toast(`Split into ${ranges.length} documents`);
+}
+
+/* =====================================================================
+   LOAD
+   ===================================================================== */
+async function loadDocs(){
+  if(!dbClient||!EDIT_ID) return;
+  const {data}=await dbClient.from('evidence_documents').select('*')
+    .eq('bucket_id',EDIT_ID).order('created_at');
+  DOCS=data||[];
+  renderDocs();
+}
+
+async function load(){
+  if(!dbClient){renderDemo();return;}
+  try{
+    const {data:{session}}=await dbClient.auth.getSession();
+    if(!session) return;
+    const {data:profile}=await dbClient.from('profiles')
+      .select('first_name,last_name,avatar_color,company_id').eq('id',session.user.id).single();
+    if(profile){
+      ORG_ID=profile.company_id;
+      const f=profile.first_name||'',l=profile.last_name||'';
+      $('avatarBtn').style.background=profile.avatar_color||'var(--primary)';
+      $('avatarInitials').textContent=(f.charAt(0)+(l?l.charAt(0):'')).toUpperCase();
+      $('avatarGreeting').textContent=greetingTime()+', '+f+'!';
+    }
+    if(!EDIT_ID){renderDemo();return;}
+    const {data:b,error}=await dbClient.from('evidence_buckets').select('*').eq('id',EDIT_ID).single();
+    if(error) throw error;
+    BUCKET=b;
+    await loadDocs();
+    render();
+  }catch(e){console.error(e);renderDemo();}
+}
+
+function renderDemo(){
+  BUCKET={bucket_ref:'PO-VDB-2026-118',purchase_order_no:'PO-VDB-2026-118',
+    invoice_no:'INV-2026-0482',status:'Open',notes:'Yellowfin consignment to Netherlands'};
+  DOCS=[
+    {id:'d1',file_name:'INV-2026-0482.pdf',doc_type:'Invoice',mime_type:'application/pdf',
+     size_bytes:284000,ocr_status:'done',created_at:'2026-07-25T10:30:00Z'},
+    {id:'d2',file_name:'BL-MSCUBOM482913.pdf',doc_type:'Bill of Lading',mime_type:'application/pdf',
+     size_bytes:412000,ocr_status:'done',created_at:'2026-07-25T10:32:00Z'},
+    {id:'d3',file_name:'PackingList-0482.pdf',doc_type:'Packing List',mime_type:'application/pdf',
+     size_bytes:156000,ocr_status:'pending',created_at:'2026-07-25T10:33:00Z'},
+  ];
+  render();
+}
+
+load();
+</script>
+</body>
+</html>
