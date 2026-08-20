@@ -86,6 +86,18 @@ function stopQuoteRotation(){
 }
 const PORTS = ['Busan, South Korea','Kaohsiung, Taiwan','Bangkok, Thailand','General Santos, Philippines','Manta, Ecuador','Vigo, Spain','Bergen, Norway','Singapore','Jakarta, Indonesia','Cochin, India'];
 
+// TODO(supabase): replace with a live query against the Raw Material
+// module, e.g. `dbClient.from('raw_materials').select('id,label')`.
+// Placeholder entries below are illustrative only — species + lot code,
+// matching how Raw Material records were described (not real data).
+const RAW_MATERIALS = [
+  'Skipjack Tuna — Lot MIN56KCCDC3ZF1',
+  'Yellowfin Tuna — Lot RM-2026-0142',
+  'Skipjack Tuna — Lot RM-2026-0089',
+  'Albacore Tuna — Lot RM-2026-0201',
+  'Bigeye Tuna — Lot RM-2026-0117',
+];
+
 // Small "i" bubble used next to a label to explain a constant or formula.
 function tooltip(text, link){
   return `<span class="info-tip" tabindex="0">
@@ -196,6 +208,18 @@ const FIELD_INFO = {
     {label:'Emissions of 1 KG (Aircraft)', text:'((Yield Weight or Quantity ÷ 1000) × Distance travelled × 0.68) ÷ Yield Weight or Quantity.'},
   ],
 };
+
+// Pulls "Product Form" and "Species" from a CTE's own field list (or an
+// explicit override for CTEs like Aggr/Disaggr where Species lives outside
+// the main fieldGrid) and formats them as a subtitle next to the CTE title.
+// Returns '' when there's nothing to show, so CTEs without these fields
+// (Storage) or with them still blank (Ship/Receive by default) show nothing.
+function cteProductTag(fields, speciesOverride){
+  const pf = (fields.find(f=>f.label==='Product Form')||{}).value;
+  const sp = speciesOverride !== undefined ? speciesOverride : (fields.find(f=>f.label==='Species')||{}).value;
+  if(!pf && !sp) return '';
+  return `<span class="cte-product-tag">${pf||'–'} <i>(Product Form)</i> of ${sp||'–'} <i>(Species)</i></span>`;
+}
 
 function renderInfoButton(cteKey){
   if(!FIELD_INFO[cteKey] || !FIELD_INFO[cteKey].length) return '';
@@ -1817,9 +1841,10 @@ function renderAggrDisaggr(){
   return `
     <div class="card">
       <div class="card-top">
-        <div><h2>${data.title}</h2><p>${data.desc}</p></div>
+        <div><h2>${data.title}${cteProductTag(sec.main, sec.species)}</h2><p>${data.desc}</p></div>
         <div class="card-top-actions">${renderInfoButton('aggrDisaggr')}${headerToggle(data.headerToggle)}</div>
       </div>
+      ${bottomBar(data.metrics, data.checkbox, multiple, 'aggrDisaggr')}
       ${renderInstanceSubtabs('aggr', data.instanceBase)}
       <div style="height:16px"></div>
       ${fieldGrid(sec.main, 'aggr-main::'+st.active)}
@@ -1900,7 +1925,6 @@ function renderAggrDisaggr(){
         </div>
       </div>
     </div>
-    ${bottomBar(data.metrics, data.checkbox, multiple, 'aggrDisaggr')}
   `;
 }
 
@@ -1909,9 +1933,10 @@ function renderLandingCTE(){
   return `
     <div class="card">
       <div class="card-top">
-        <div><h2>${data.title}</h2><p>${data.desc}</p></div>
+        <div><h2>${data.title}${cteProductTag(data.fields)}</h2><p>${data.desc}</p></div>
         <div class="card-top-actions">${renderInfoButton('landing')}${headerToggle(data.headerToggle)}</div>
       </div>
+      ${bottomBar(data.metrics, null, false, 'landing')}
       <div style="height:16px"></div>
       ${fieldGrid(data.fields, 'landing-main')}
       <div class="field-grid" style="margin-top:2px;">
@@ -1937,7 +1962,6 @@ function renderLandingCTE(){
         </div>
       </div>
     </div>
-    ${bottomBar(data.metrics, null, false, 'landing')}
   `;
 }
 
@@ -1965,7 +1989,7 @@ function renderTransshipment(){
     return `
       <div class="card">
         <div class="card-top">
-          <div><h2>${data.title}</h2><p>${data.desc}</p></div>
+          <div><h2>${data.title}${cteProductTag(sec.main)}</h2><p>${data.desc}</p></div>
           <div class="card-top-actions">${renderInfoButton('transshipment')}${tsRCSToggleHTML(sec)}</div>
         </div>
         ${modePills}
@@ -2016,9 +2040,10 @@ function renderTransshipment(){
   return `
     <div class="card">
       <div class="card-top">
-        <div><h2>${data.title}</h2><p>${data.desc}</p></div>
+        <div><h2>${data.title}${cteProductTag(sec.main)}</h2><p>${data.desc}</p></div>
         <div class="card-top-actions">${renderInfoButton('transshipment')}${tsRCSToggleHTML(sec)}</div>
       </div>
+      ${bottomBar(data.metrics, data.checkbox, multiple, 'transshipment')}
       ${modePills}
       <div style="height:16px"></div>
       ${renderInstanceSubtabs('transshipment', data.instanceBase)}
@@ -2026,7 +2051,6 @@ function renderTransshipment(){
       ${fieldGrid(sec.main, 'transship-main::'+st.active)}
       ${rcsBlock}
     </div>
-    ${bottomBar(data.metrics, data.checkbox, multiple, 'transshipment')}
   `;
 }
 
@@ -2209,9 +2233,10 @@ function renderOVP(){
   return `
     <div class="card">
       <div class="card-top">
-        <div><h2>${data.title}</h2><p>${data.desc}</p></div>
+        <div><h2>${data.title}${cteProductTag(data.fields)}</h2><p>${data.desc}</p></div>
         <div class="card-top-actions">${renderInfoButton('onVesselProcessing')}${ovpToggleHTML()}</div>
       </div>
+      ${bottomBar(data.metrics, null, false, 'ovp')}
       <div style="height:16px"></div>
       ${fieldGrid(data.fields, 'ovp-main')}
 
@@ -2286,7 +2311,6 @@ function renderOVP(){
         </div>
       </div>
     </div>
-    ${bottomBar(data.metrics, null, false, 'ovp')}
   `;
 }
 
@@ -2299,9 +2323,10 @@ function renderGenericTab(data, ctx, subKey){
     return `
       <div class="card">
         <div class="card-top">
-          <div><h2>${data.title}</h2><p>${data.desc}</p></div>
+          <div><h2>${data.title}${cteProductTag(sec.main)}</h2><p>${data.desc}</p></div>
           <div class="card-top-actions">${renderInfoButton(ctx)}${headerToggle(data.headerToggle)}</div>
         </div>
+        ${bottomBar(data.metrics, data.checkbox, multiple, ctx)}
         ${renderInstanceSubtabs(ctx, data.instanceBase)}
         <div style="height:16px"></div>
         ${fieldGrid(sec.main, ctx+'-main::'+st.active)}
@@ -2311,16 +2336,16 @@ function renderGenericTab(data, ctx, subKey){
         ` : ''}
         ${data.constFactors ? renderConstFactors(data.constFactors) : ''}
       </div>
-      ${bottomBar(data.metrics, data.checkbox, multiple, ctx)}
     `;
   }
   const sub = data.subtabs ? subtabRow(data.subtabs, state[subKey], subKey) : '';
   return `
     <div class="card">
       <div class="card-top">
-        <div><h2>${data.title}</h2><p>${data.desc}</p></div>
+        <div><h2>${data.title}${cteProductTag(data.fields)}</h2><p>${data.desc}</p></div>
         ${headerToggle(data.headerToggle)}
       </div>
+      ${bottomBar(data.metrics, data.checkbox, false, ctx)}
       ${sub}
       <div style="height:16px"></div>
       ${fieldGrid(data.fields, ctx+'-main')}
@@ -2331,7 +2356,6 @@ function renderGenericTab(data, ctx, subKey){
       ${data.constFactors ? renderConstFactors(data.constFactors) : ''}
       ${data.meterRow ? renderMeterRow(data.meterRow, ctx+'-meter') : ''}
     </div>
-    ${bottomBar(data.metrics, data.checkbox, false, ctx)}
   `;
 }
 
@@ -2382,9 +2406,10 @@ function renderProcessing(){
     return `
       <div class="card">
         <div class="card-top">
-          <div><h2>Transformation</h2><p>${inner.desc}</p></div>
+          <div><h2>Transformation${cteProductTag(sec.main)}</h2><p>${inner.desc}</p></div>
           <div class="card-top-actions">${renderInfoButton('transformation')}</div>
         </div>
+        ${bottomBar(inner.metrics, inner.checkbox, multiple, 'transformation')}
         ${subtabRow(CTE_DATA.processing.subtabs, sub, 'processingSub')}
         ${renderInstanceSubtabs('transformation', inner.instanceBase)}
         <div style="height:16px"></div>
@@ -2432,7 +2457,6 @@ function renderProcessing(){
         ${fieldGrid(sec.factorFields, 'transform-factors::'+st.active)}
         ${fieldGrid(sec.tagFields, 'transform-tags::'+st.active)}
       </div>
-      ${bottomBar(inner.metrics, inner.checkbox, multiple, 'transformation')}
     `;
   }else{
     const inner = CTE_DATA.processing.storage;
@@ -2453,6 +2477,7 @@ function renderProcessing(){
           <div><h2>Storage</h2><p>${inner.desc}</p></div>
           <div class="card-top-actions">${renderInfoButton('storage')}</div>
         </div>
+        ${bottomBar(inner.metrics, inner.checkbox, multiple, 'storage')}
         ${subtabRow(CTE_DATA.processing.subtabs, sub, 'processingSub')}
         ${renderInstanceSubtabs('storage', inner.instanceBase)}
         <div style="height:16px"></div>
@@ -2480,7 +2505,6 @@ function renderProcessing(){
           </div>
         </div>
       </div>
-      ${bottomBar(inner.metrics, inner.checkbox, multiple, 'storage')}
     `;
   }
 }
@@ -2643,9 +2667,10 @@ function renderShipReceive(){
   return `
     <div class="card">
       <div class="card-top">
-        <div><h2>${d.title}</h2><p>${d.desc}</p></div>
+        <div><h2>${d.title}${cteProductTag(d.commonFields)}</h2><p>${d.desc}</p></div>
         ${renderInfoButton('shipReceive')}
       </div>
+      ${bottomBar(metrics, null, false, 'shipReceive')}
       <div class="subtab-row" style="margin:0;">
         <button class="subtab-btn ${mode==='Sea'?'active':''}" data-action="subtab" data-group="shipSub" data-value="Sea">Sea</button>
         <button class="subtab-btn ${mode==='Air'?'active':''}" data-action="subtab" data-group="shipSub" data-value="Air">Air</button>
@@ -2671,7 +2696,6 @@ function renderShipReceive(){
         </div>
       </div>
     </div>
-    ${bottomBar(metrics, null, false, 'shipReceive')}
   `;
 }
 
@@ -2821,14 +2845,18 @@ function renderModal(){
         <h3>Wild Capture Carbon Emission Calculator</h3>
         <p class="modal-desc">Select the below to continue.</p>
         <label class="field-label">Select DRI</label>
-        <div style="margin-bottom:16px;">${buildSelect('modal-dri', ['MSC-C-52839','FIP-2024-118','CoC-88213'], {value:''})}</div>
+        <!-- TODO(supabase): Raw Material module — see RAW_MATERIALS placeholder above. -->
+        <div style="margin-bottom:16px;">${buildSelect('modal-dri', RAW_MATERIALS, {value:''})}</div>
         <label class="field-label">Select the Product</label>
+        <!-- TODO(supabase): Product module — dbClient.from('products').select('id,name'). -->
         <div style="margin-bottom:16px;">${buildSelect('modal-product', ['Canned Tuna Chunks in Sunflower Oil','Canned Tuna','Frozen Loin','Whole Round'], {value:''})}</div>
         <label class="field-label">Select the Destination</label>
         <div class="seg-toggle seg-toggle-xs" data-pill-key="destmode">
           <button class="seg-opt ${state.destinationMode!=='port'?'active':''}" data-action="dest-mode" data-value="country">Country</button>
           <button class="seg-opt ${state.destinationMode==='port'?'active':''}" data-action="dest-mode" data-value="port">Port</button>
         </div>
+        <!-- TODO(supabase): Country module when toggle=country, Port module when toggle=port.
+             COUNTRIES/PORTS below are this file's own placeholder constants. -->
         <div style="margin-top:8px;">${buildSelect('modal-destination', state.destinationMode==='port'?PORTS:COUNTRIES, {value:''})}</div>
       </div>
       <div class="modal-thumb">
