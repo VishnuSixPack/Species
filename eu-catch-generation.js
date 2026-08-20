@@ -64,6 +64,21 @@ const EUCatchGen = (function () {
     return row;
   }
 
+  /* Resolve a species name to its FAO 3-alpha code via the species register. */
+  const afsisCache = new Map();
+
+  async function afsisFor(speciesName) {
+    if (!speciesName) return null;
+    const key = String(speciesName).trim().toLowerCase();
+    if (afsisCache.has(key)) return afsisCache.get(key);
+    const { data } = await sb.from('species')
+      .select('species_name, scientific_name, afsis_3a_code')
+      .ilike('species_name', speciesName).limit(1);
+    const row = (data && data[0]) || null;
+    afsisCache.set(key, row);
+    return row;
+  }
+
   /* =========================================================== CN MAPPING
      Species FAO 3-alpha + presentation → Combined Nomenclature heading. */
 
@@ -443,21 +458,37 @@ const EUCatchGen = (function () {
     const plantIso = s && s.processing_country ? await isoFor(s.processing_country) : null;
     const expIso   = s && s.country_of_export  ? await isoFor(s.country_of_export)  : null;
 
+    /* The processed product's own species drives the CN code — not the raw
+       material's. A PS describes what is being exported, which may differ in
+       species from an individual input batch. */
+    const productSpecies = await afsisFor(item.species_name);
+    const productCn = cnFor(productSpecies && productSpecies.afsis_3a_code,
+                            item.product_form, null);
+
+    /* Batches stay in the payload for traceability, but they are inputs —
+       they do not each become a commodity line on the statement. */
     const batchOut = [];
+    let inputTotal = 0;
+    const inputSpecies = new Set();
+
     for (const b of batches) {
       const rm = rmFor(b);
-      const cn = cnFor(rm && rm.afsis_3a_code, item.product_form, rm && rm.preservation);
+      if (rm && rm.species_name) inputSpecies.add(clean(rm.species_name));
+      inputTotal += Number(b.quantity_kg || 0);
       batchOut.push({
         batch_lot: b.batch_lot, packages: b.packages, quantity_kg: num(b.quantity_kg),
         processing_date: b.processing_date, expiry_date: b.expiry_date,
         raw_material_ref: b.raw_material_ref || (rm && rm.rm_ref),
         supplier_catch_certificate_no: (rm && rm.catch_certificate_no) || null,
-        afsis_3a_code: rm && rm.afsis_3a_code, species_name: clean(rm && rm.species_name),
-        cn_code: cn ? cn.hsCode : null, cn_label: cn ? cn.label : null,
-        cn_chapter: cn ? cn.chapter : null, cn_heading: cn ? cn.heading : null,
-        cn_sub: cn ? cn.sub : null
+        afsis_3a_code: rm && rm.afsis_3a_code, species_name: clean(rm && rm.species_name)
       });
     }
+
+    /* If the product's species isn't among the inputs, the chain doesn't add
+       up — surface it rather than quietly certifying a mismatch. */
+    const productName = clean(item.species_name);
+    const speciesMismatch = productName && inputSpecies.size &&
+      ![...inputSpecies].some(x => x && x.toLowerCase() === productName.toLowerCase());
 
     return {
       doc_type: 'PS',
@@ -473,10 +504,23 @@ const EUCatchGen = (function () {
       endorsing_authority: null,
       product: {
         product_id: item.product_id, name: clean(item.product_name),
-        species_name: clean(item.species_name), product_form: item.product_form,
+        species_name: productName,
+        afsis_3a_code: productSpecies ? productSpecies.afsis_3a_code : null,
+        scientific_name: productSpecies ? productSpecies.scientific_name : null,
+        product_form: item.product_form,
+        cn_code: productCn ? productCn.hsCode : null,
+        cn_label: productCn ? productCn.label : null,
+        cn_chapter: productCn ? productCn.chapter : null,
+        cn_heading: productCn ? productCn.heading : null,
+        cn_sub: productCn ? productCn.sub : null,
         gtin: item.gtin, packages: item.number_of_packages, package_type: item.package_type,
         gross_weight_kg: num(item.gross_weight_kg), net_weight_kg: num(item.net_weight_kg),
         processed_quantity_kg: num(item.processed_quantity_kg)
+      },
+      inputs: {
+        raw_material_total_kg: inputTotal || null,
+        species: [...inputSpecies],
+        species_mismatch: !!speciesMismatch
       },
       batches: batchOut,
       linked_catch_certificates: ccRefs,
@@ -1000,26 +1044,43 @@ const EUCatchGen = (function () {
       if (ea.address || ea.un_locode) show('psEndorsingAuthorityDetails');
     }
 
+    /* One commodity line: the processed product itself. Batches are inputs,
+       recorded in the payload but not listed as separate commodities. */
     const certs = p.linked_catch_certificates || [];
-    FORM().psCommodities = (p.batches || []).map((b, i) => {
-      const cert = certs[i] || certs[0];
-      return {
-        chapter: b.cn_chapter || 'Commodity code not yet assigned',
-        heading: b.cn_heading || `Species ${b.afsis_3a_code || ''}`,
-        sub: b.cn_sub || b.species_name || '',
-        cnCode: b.cn_code ? b.cn_code + '00' : '',
-        cnLabel: b.batch_lot ? `Lot ${b.batch_lot}` : (b.cn_label || ''),
-        species: { code: b.afsis_3a_code || '', name: b.species_name || '' },
-        vessel: { name: b.raw_material_ref || '', flag: '' },
-        totalLandedWeight: b.quantity_kg == null ? '' : b.quantity_kg,
-        linkedCert: b.supplier_catch_certificate_no || (cert && cert.serial_number) || '',
-        certDate: '',
-        catchProcessed: b.quantity_kg == null ? '' : b.quantity_kg,
-        processedProduct: (p.product && p.product.processed_quantity_kg) == null
-          ? '' : p.product.processed_quantity_kg
-      };
-    });
+    const prod = p.product || {};
+    const inputTotal = (p.inputs && p.inputs.raw_material_total_kg) || null;
+
+    FORM().psCommodities = prod.species_name ? [{
+      chapter: prod.cn_chapter || 'Commodity code not yet assigned',
+      heading: prod.cn_heading || `Species ${prod.afsis_3a_code || ''}`,
+      sub: prod.cn_sub || prod.species_name || '',
+      cnCode: prod.cn_code ? prod.cn_code + '00' : '',
+      cnLabel: prod.cn_label || '',
+      species: { code: prod.afsis_3a_code || '', name: prod.scientific_name || prod.species_name || '' },
+      vessel: null,
+      totalLandedWeight: inputTotal == null ? '' : inputTotal,
+      linkedCert: certs.length ? certs[0].serial_number : '',
+      certDate: '',
+      catchProcessed: inputTotal == null ? '' : inputTotal,
+      processedProduct: prod.processed_quantity_kg == null
+        ? (prod.net_weight_kg == null ? '' : prod.net_weight_kg)
+        : prod.processed_quantity_kg
+    }] : [];
     if (typeof renderPSCommodities === 'function') renderPSCommodities();
+
+    /* Flag a species chain that doesn't reconcile */
+    if (p.inputs && p.inputs.species_mismatch) {
+      const host = document.getElementById('psCommodityList');
+      if (host) {
+        const warn = document.createElement('div');
+        warn.className = 'hint-banner';
+        warn.style.marginTop = '10px';
+        warn.innerHTML = `⚠️ The processed product is <b>${esc(prod.species_name)}</b>, but the ` +
+          `raw material feeding this line is <b>${esc((p.inputs.species || []).join(', '))}</b>. ` +
+          `Check the batch is linked to the right raw material before submitting.`;
+        host.appendChild(warn);
+      }
+    }
 
     const links = document.getElementById('psLinksBox');
     if (links && certs.length) {
