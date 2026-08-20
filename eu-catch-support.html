@@ -3048,7 +3048,9 @@
   }
   function checkResponsibleAuthorityRule(){
     // Mirrors the real TRACES NT rule: non-EU + no direct use = no responsible authorities section
-    const EU_COUNTRIES = ['Iceland (IS)', 'Norway (NO)']; // sample — swap for your real EU country list
+    // Derived from the single EU-27 list above — previously this was a stub listing
+    // Iceland and Norway, neither of which is in the EU.
+    const EU_COUNTRIES = EU27_COUNTRIES.map(c => `${c} (${c.slice(0,2).toUpperCase()})`);
     const country = document.getElementById('coCountry').value;
     const isNonEU = !EU_COUNTRIES.includes(country);
     const noDirectUse = STATE.directUse !== 'Direct Use';
@@ -3135,6 +3137,29 @@
   renderContainerRows('ps');
   renderContainerRows('id');
   renderCCVesselTable();
+  </script>
+
+  <!-- ═══════════════════════════════════════════════════════════════════
+       GENERATION MODULE — real Shipment → CC/PS auto-population.
+       Only activates when the page is opened with ?shipment=<uuid>.
+       Without that parameter the form behaves exactly as before.
+
+       ⚠️ Set SUPABASE_ANON_KEY below before this will work.
+          Supabase dashboard → Project Settings → API → anon / public key.
+       ═══════════════════════════════════════════════════════════════════ -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="eu-catch-generation.js"></script>
+  <script>
+    const SUPABASE_URL      = 'https://enbdaajcromxmhgcverp.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVuYmRhYWpjcm9teG1oZ2N2ZXJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxMjc4MTUsImV4cCI6MjA5MzcwMzgxNX0.wlVbN57eAwRmTROEEY3D6BIX3H5pI6MwZ5hM2BqpnEs_KEY_HERE';
+
+    if (SUPABASE_ANON_KEY === 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVuYmRhYWpjcm9teG1oZ2N2ZXJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxMjc4MTUsImV4cCI6MjA5MzcwMzgxNX0.wlVbN57eAwRmTROEEY3D6BIX3H5pI6MwZ5hM2BqpnEs_KEY_HERE') {
+      if (new URLSearchParams(location.search).get('shipment')) {
+        console.error('[EUCatchGen] Set SUPABASE_ANON_KEY in eu-catch-support.html before using ?shipment=');
+      }
+    } else {
+      EUCatchGen.init({ url: SUPABASE_URL, key: SUPABASE_ANON_KEY });
+    }
   </script>
 </body>
 </html>
