@@ -458,37 +458,64 @@ const EUCatchGen = (function () {
     const plantIso = s && s.processing_country ? await isoFor(s.processing_country) : null;
     const expIso   = s && s.country_of_export  ? await isoFor(s.country_of_export)  : null;
 
-    /* The processed product's own species drives the CN code — not the raw
-       material's. A PS describes what is being exported, which may differ in
-       species from an individual input batch. */
+    /* The CN code on the statement describes the catch as certified — the raw
+       material's own presentation (Whole Round / Frozen → 0303 43), not the
+       finished retail pack. Take the form from the selected species line. */
     const productSpecies = await afsisFor(item.species_name);
-    const productCn = cnFor(productSpecies && productSpecies.afsis_3a_code,
-                            item.product_form, null);
+    const pickedOpt = (GEN.speciesOptions || []).find(o => productSpecies
+      ? o.afsis === productSpecies.afsis_3a_code
+      : (o.name || '').toLowerCase() === (item.species_name || '').toLowerCase());
+
+    const sourceRm = GEN.rms[0] || {};
+    const productCn = cnFor(
+      productSpecies && productSpecies.afsis_3a_code,
+      (pickedOpt && pickedOpt.form) || sourceRm.product_form || item.product_form,
+      sourceRm.preservation
+    );
+
+    /* Vessels that caught the certified species, for the commodity table */
+    const catchVessels = [...new Set(GEN.catches
+      .filter(c => c.event_type === 'Catch' && c.vessel_name)
+      .map(c => clean(c.vessel_name)))];
 
     /* Batches stay in the payload for traceability, but they are inputs —
        they do not each become a commodity line on the statement. */
     const batchOut = [];
-    let inputTotal = 0;
-    const inputSpecies = new Set();
-
+    let batchTotal = 0;
     for (const b of batches) {
       const rm = rmFor(b);
-      if (rm && rm.species_name) inputSpecies.add(clean(rm.species_name));
-      inputTotal += Number(b.quantity_kg || 0);
+      batchTotal += Number(b.quantity_kg || 0);
       batchOut.push({
         batch_lot: b.batch_lot, packages: b.packages, quantity_kg: num(b.quantity_kg),
         processing_date: b.processing_date, expiry_date: b.expiry_date,
         raw_material_ref: b.raw_material_ref || (rm && rm.rm_ref),
-        supplier_catch_certificate_no: (rm && rm.catch_certificate_no) || null,
-        afsis_3a_code: rm && rm.afsis_3a_code, species_name: clean(rm && rm.species_name)
+        supplier_catch_certificate_no: (rm && rm.catch_certificate_no) || null
       });
     }
 
-    /* If the product's species isn't among the inputs, the chain doesn't add
-       up — surface it rather than quietly certifying a mismatch. */
+    /* Quantity of catch processed: the selected species' own line on the raw
+       material. Batch quantities are often blank, and even when present they
+       don't say which species they drew from. */
+    const picked = GEN.speciesPick || [];
+    const opts = (GEN.speciesOptions || []).filter(o =>
+      picked.indexOf(o.afsis || o.name) !== -1);
+
+    const productAfsis = productSpecies && productSpecies.afsis_3a_code;
+    const forProduct = opts.filter(o => productAfsis
+      ? o.afsis === productAfsis
+      : (o.name || '').toLowerCase() === (item.species_name || '').toLowerCase());
+
+    const speciesTotal = (forProduct.length ? forProduct : opts)
+      .reduce((a, o) => a + Number(o.qty || 0), 0);
+
+    const inputTotal = speciesTotal || batchTotal || null;
+
+    /* Only a genuine problem: the product's species isn't on the raw material
+       at all. Two species on one raw material is normal. */
+    const known = (GEN.speciesOptions || []).map(o => (o.name || '').toLowerCase());
     const productName = clean(item.species_name);
-    const speciesMismatch = productName && inputSpecies.size &&
-      ![...inputSpecies].some(x => x && x.toLowerCase() === productName.toLowerCase());
+    const speciesMismatch = !!(productName && known.length &&
+      known.indexOf(productName.toLowerCase()) === -1);
 
     return {
       doc_type: 'PS',
@@ -518,9 +545,11 @@ const EUCatchGen = (function () {
         processed_quantity_kg: num(item.processed_quantity_kg)
       },
       inputs: {
-        raw_material_total_kg: inputTotal || null,
-        species: [...inputSpecies],
-        species_mismatch: !!speciesMismatch
+        raw_material_total_kg: inputTotal,
+        species_selected: opts.map(o => ({ afsis: o.afsis, name: o.name, quantity_kg: o.qty })),
+        species: opts.map(o => o.name),
+        vessels: catchVessels,
+        species_mismatch: speciesMismatch
       },
       batches: batchOut,
       linked_catch_certificates: ccRefs,
@@ -654,21 +683,40 @@ const EUCatchGen = (function () {
     });
   }
 
-  function askSpecies(totals) {
-    const keys = Object.keys(totals);
-    if (keys.length <= 1) return Promise.resolve(keys);
+  /* Species options come from raw_material_species — the authoritative
+     per-species lines with their own quantities — not the single header
+     field on raw_materials, which only names one. */
+  function speciesOptions(rmList) {
+    const ids = new Set(rmList.map(r => r.id));
+    const out = new Map();
+    GEN.species.filter(s => ids.has(s.raw_material_id)).forEach(s => {
+      const key = s.afsis_3a_code || s.species_name;
+      if (!key) return;
+      if (!out.has(key)) out.set(key, {
+        afsis: s.afsis_3a_code, name: clean(s.species_name),
+        scientific: s.scientific_name, form: s.product_form, qty: 0
+      });
+      out.get(key).qty += Number(s.quantity_kg || 0);
+    });
+    return [...out.values()];
+  }
+
+  function askSpecies(options) {
+    if (options.length <= 1) return Promise.resolve(options.map(o => o.afsis || o.name));
     return new Promise(resolve => {
-      const rows = keys.map(k => `
+      const rows = options.map((o, i) => `
         <label style="display:flex;gap:10px;padding:11px;border:1px solid #e2e5ec;
           border-radius:6px;margin-bottom:6px;cursor:pointer;">
-          <input type="checkbox" class="eucgSp" value="${esc(k)}" checked style="margin-top:3px;">
-          <span><b>${esc(totals[k].species || k)}</b> <span style="color:#6b7280;">(${esc(k)})</span><br>
+          <input type="checkbox" class="eucgSp" value="${esc(o.afsis || o.name)}" checked style="margin-top:3px;">
+          <span><b>${esc(o.name)}</b> <span style="color:#6b7280;">(${esc(o.afsis || '—')})</span><br>
           <span style="color:#6b7280;font-size:12px;">
-          ${Number(totals[k].landed).toLocaleString()} kg landed ·
-          ${Number(totals[k].live).toLocaleString()} kg live weight</span></span></label>`).join('');
+          ${o.scientific ? `<i>${esc(o.scientific)}</i> · ` : ''}${esc(o.form || '')} ·
+          ${Number(o.qty).toLocaleString()} kg</span></span></label>`).join('');
+      const total = options.reduce((a, o) => a + o.qty, 0);
       box(head('Which species belong on this certificate?') +
-          body(`<p style="margin-bottom:14px;">This raw material covers ${keys.length} species.
-            The quantity declared is the total of whichever you keep.</p>${rows}`) +
+          body(`<p style="margin-bottom:14px;">This raw material covers ${options.length} species,
+            ${Number(total).toLocaleString()} kg in total. The quantity declared is the
+            total of whichever you keep.</p>${rows}`) +
           foot(btn('Cancel', 'EUCatchGen.close()') + btn('Continue', 'EUCatchGen._pickSpecies()', true)));
       window.EUCatchGen._pickSpecies = () => {
         const picked = [...document.querySelectorAll('.eucgSp:checked')].map(c => c.value);
@@ -780,6 +828,13 @@ const EUCatchGen = (function () {
       if (!flags.length) {
         showBlocked("No catch events with a flag state were found. A catch certificate is validated by the vessel's flag state."); return; }
 
+      /* Ask once, before any certificate is built — the answer applies to
+         every flag state and to the processing statement. */
+      const options = speciesOptions(wild);
+      const keep = await askSpecies(options);
+      GEN.speciesPick = keep;
+      GEN.speciesOptions = options;
+
       const made = [];
       for (let i = 0; i < flags.length; i++) {
         const flag = flags[i];
@@ -790,10 +845,10 @@ const EUCatchGen = (function () {
 
         const payload = await buildCC(flag, wild, gate);
 
-        const keep = await askSpecies(payload.totals.by_species);
-        if (keep.length !== Object.keys(payload.totals.by_species).length) {
+        if (keep.length !== options.length) {
           payload.lines = payload.lines.filter(l =>
-            keep.indexOf(l.afsis_3a_code || (l.species && l.species[0]) || '—') !== -1);
+            keep.indexOf(l.afsis_3a_code) !== -1 ||
+            keep.indexOf(l.species && l.species[0]) !== -1);
           payload.totals.verified_weight_landed_kg =
             payload.lines.reduce((a, l) => a + (l.verified_weight_landed_kg || 0), 0);
           payload.totals.estimated_live_weight_kg =
@@ -1057,7 +1112,8 @@ const EUCatchGen = (function () {
       cnCode: prod.cn_code ? prod.cn_code + '00' : '',
       cnLabel: prod.cn_label || '',
       species: { code: prod.afsis_3a_code || '', name: prod.scientific_name || prod.species_name || '' },
-      vessel: null,
+      vessel: (p.inputs && p.inputs.vessels && p.inputs.vessels.length)
+        ? { name: p.inputs.vessels.join(', '), flag: '' } : null,
       totalLandedWeight: inputTotal == null ? '' : inputTotal,
       linkedCert: certs.length ? certs[0].serial_number : '',
       certDate: '',
