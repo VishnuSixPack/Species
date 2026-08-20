@@ -2835,6 +2835,9 @@ document.addEventListener('click',function(e){
   if(prBtn&&prBtn.dataset.prole){_evModuleState.portRole=prBtn.dataset.prole;renderEvModulePanel();return;}
   // Change role button
   if(e.target.id==='ev-port-role-change'){_evModuleState.portRole=null;showPortRolePicker();return;}
+  // Reference upload button — switch to Add New tab
+  if(e.target.closest('#ev-ref-upload-btn')){switchEvTab('add');showToast('Upload your own copy to confirm Available','info');return;}
+  if(e.target.closest('#ev-co-upload-btn')){switchEvTab('add');return;}
   // Port step search results
   const portResultEl=e.target.closest('[data-portid]');
   if(portResultEl&&portResultEl.dataset.portid){selectPortStep(portResultEl.dataset.portid);return;}
@@ -5107,7 +5110,10 @@ function renderMSCFisheryKDE(q){
       </div>
       ${kResp['_fisheryVerify_c_msc']?renderFisheryVerifyBanner():`<div style="font-size:10px;color:#9aa0b4;margin-top:5px;">Select a fishery to auto-verify MSC certification against your catch period(s)</div>`}
     </div>
-    ${r.gapNote?`<div style="display:flex;align-items:center;gap:5px;margin:4px 0 6px;padding:4px 8px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:10px;color:#92400e;line-height:1.4;"><span style="flex-shrink:0;">⚠</span><span>${r.gapNote}</span></div>`:''}
+    ${r.gapNote?`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 6px;padding:6px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:10px;color:#92400e;line-height:1.4;cursor:pointer;" onclick="openEvMod('${q.id}');setTimeout(()=>switchEvTab('add'),80)">
+      <span style="display:flex;align-items:center;gap:5px;"><span>⚠</span><span>${r.gapNote}</span></span>
+      <span style="color:#166534;font-weight:700;white-space:nowrap;background:#f0fdf4;padding:2px 7px;border-radius:5px;border:1px solid #bbf7d0;">📄 Upload to confirm →</span>
+    </div>`:''}
     ${r.moduleNote?`<div style="display:flex;align-items:center;gap:5px;margin:4px 0 6px;padding:4px 8px;background:#f4f0ff;border-radius:6px;font-size:10px;color:#7c3aed;line-height:1.4;"><span style="flex-shrink:0;">✦</span><span>${r.moduleNote}</span></div>`:''}
     <div class="kopts">
       <div class="kopt ${r.ans==='av'?'av':''}" onclick="setAns('${q.id}','av')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Available</div>
@@ -5159,7 +5165,10 @@ function renderQ(q){
       <div class="kqtxt" style="flex:1;">${q.q}</div>
       <button class="kde-ai-btn" onclick="openAIModal('${safeQ}')" title="What does this mean?">✦ Explain</button>
     </div>
-    ${r.gapNote?`<div style="display:flex;align-items:center;gap:5px;margin:4px 0 6px;padding:4px 8px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:10px;color:#92400e;line-height:1.4;"><span style="flex-shrink:0;">⚠</span><span>${r.gapNote}</span></div>`:''}
+    ${r.gapNote?`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 6px;padding:6px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:10px;color:#92400e;line-height:1.4;cursor:pointer;" onclick="openEvMod('${q.id}');setTimeout(()=>switchEvTab('add'),80)">
+      <span style="display:flex;align-items:center;gap:5px;"><span>⚠</span><span>${r.gapNote}</span></span>
+      <span style="color:#166534;font-weight:700;white-space:nowrap;background:#f0fdf4;padding:2px 7px;border-radius:5px;border:1px solid #bbf7d0;">📄 Upload to confirm →</span>
+    </div>`:''}
     ${r.moduleNote?`<div style="display:flex;align-items:center;gap:5px;margin:4px 0 6px;padding:4px 8px;background:#f4f0ff;border-radius:6px;font-size:10px;color:#7c3aed;line-height:1.4;"><span style="flex-shrink:0;">✦</span><span>${r.moduleNote}</span></div>`:''}
     <div class="kopts">
       <div class="kopt ${r.ans==='av'?'av':''}" onclick="setAns('${q.id}','av')"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Available${r.ans==='av'&&!(r.evidence&&r.evidence.length)?'<span style="font-size:10px;color:#f59e0b;margin-left:5px;">⚠ add evidence</span>':''}</div>
@@ -5959,15 +5968,35 @@ function renderEvModuleItemPanel(mKey,item){
         :evSrc2==='company'
         ?'<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:#fff7ed;color:#c2410c;font-weight:700;margin-right:5px;">REQUIRED</span>'
         :'<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:#fffbeb;color:#92400e;font-weight:700;margin-right:5px;">IN RECORDS</span>';
-      const addLabel=evSrc2==='company'?'📋 Gap':evSrc2==='reference'?'✦ Partial':'+ Add';
-      const addStyle=evSrc2==='company'?'background:#fff7ed;color:#c2410c;border-color:#fed7aa;'
-        :evSrc2==='reference'?'background:#fffbeb;color:#92400e;border-color:#fde68a;':'';
-      availableRows.push('<div class="ev-mod-ev-row">'
-        +'<span class="ev-mod-ev-icon">'+(evSrc2==='reference'?'📋':ev.icon||'📎')+'</span>'
-        +'<div style="flex:1;min-width:0;"><div class="ev-mod-ev-label">'+srcBadge+evLbl+'</div>'
-        +(evSub?'<div class="ev-mod-ev-sub">'+evSub+'</div>':'')+'</div>'
-        +'<button class="ev-mod-ev-add" style="'+addStyle+'white-space:nowrap;" onclick="evModAddEvidence('+i+')">'+addLabel+'</button>'
-        +'</div>');
+      if(evSrc2==='reference'){
+        // Two-button approach: mark Partial (from records) OR switch to Add New to upload doc
+        availableRows.push('<div class="ev-mod-ev-row" style="flex-direction:column;gap:6px;">'
+          +'<div style="display:flex;align-items:flex-start;gap:8px;">'
+          +'<span class="ev-mod-ev-icon">📋</span>'
+          +'<div style="flex:1;min-width:0;"><div class="ev-mod-ev-label">'+srcBadge+evLbl+'</div>'
+          +(evSub?'<div class="ev-mod-ev-sub">'+evSub+'</div>':'')+'</div>'
+          +'</div>'
+          +'<div style="display:flex;gap:6px;padding-left:28px;">'
+          +'<button onclick="evModAddEvidence('+i+')" style="flex:1;padding:6px 10px;border:1.5px solid #fde68a;border-radius:7px;background:#fffbeb;color:#92400e;font-size:10px;font-weight:700;cursor:pointer;font-family:Poppins,sans-serif;line-height:1.3;">◑ In our records<br><span style="font-weight:400;font-size:9px;">Sets Partial</span></button>'
+          +'<button id="ev-ref-upload-btn" style="flex:1;padding:6px 10px;border:1.5px solid #bbf7d0;border-radius:7px;background:#f0fdf4;color:#166534;font-size:10px;font-weight:700;cursor:pointer;font-family:Poppins,sans-serif;line-height:1.3;">📄 I have this doc<br><span style="font-weight:400;font-size:9px;">Upload → Available</span></button>'
+          +'</div>'
+          +'</div>');
+      } else if(evSrc2==='company'){
+        availableRows.push('<div class="ev-mod-ev-row">'
+          +'<span class="ev-mod-ev-icon">📋</span>'
+          +'<div style="flex:1;min-width:0;"><div class="ev-mod-ev-label">'+srcBadge+evLbl+'</div>'
+          +(evSub?'<div class="ev-mod-ev-sub">'+evSub+'</div>':'')+'</div>'
+          +'<button id="ev-co-upload-btn" style="padding:6px 10px;border:1.5px solid #fed7aa;border-radius:7px;background:#fff7ed;color:#c2410c;font-size:10px;font-weight:700;cursor:pointer;font-family:Poppins,sans-serif;white-space:nowrap;">📄 Upload doc</button>'
+          +'</div>');
+      } else {
+        // Public — standard + Add
+        availableRows.push('<div class="ev-mod-ev-row">'
+          +'<span class="ev-mod-ev-icon">'+(ev.icon||'📎')+'</span>'
+          +'<div style="flex:1;min-width:0;"><div class="ev-mod-ev-label">'+srcBadge+evLbl+'</div>'
+          +(evSub?'<div class="ev-mod-ev-sub">'+evSub+'</div>':'')+'</div>'
+          +'<button class="ev-mod-ev-add" onclick="evModAddEvidence('+i+')">+ Add</button>'
+          +'</div>');
+      }
     }
   });
 
@@ -6010,18 +6039,26 @@ function evModAddEvidence(idx){
   function applyToKde(kdeId,ans,note){
     if(!kdeId)return;
     if(!kResp[kdeId])kResp[kdeId]={};
-    if(!kResp[kdeId].ans||kResp[kdeId].ans==='')kResp[kdeId].ans=ans;
+    // Module items ALWAYS set Partial — only a manual upload upgrades to Available
+    const moduleAns='pa';
+    if(!kResp[kdeId].ans||kResp[kdeId].ans==='')kResp[kdeId].ans=moduleAns;
+    // If already manually set to Available by the user, don't downgrade
+    if(kResp[kdeId].ans==='av'&&kResp[kdeId]._manuallyAnswered)return;
+    if(!kResp[kdeId]._manuallyAnswered)kResp[kdeId].ans=moduleAns;
     kResp[kdeId].moduleNote=note;
+    kResp[kdeId]._hasModuleItem=true; // flag: module has contributed to this KDE
   }
 
   function addEvToKde(kdeId,evItem){
     if(!kdeId)return;
     if(!kResp[kdeId])kResp[kdeId]={};
     const existing=kResp[kdeId].evidence||[];
+    // Mark item as module-sourced
+    const moduleEvItem={...evItem,_fromModule:true};
     if(!existing.find(e=>e.name===evItem.name&&e.type===evItem.type)){
-      kResp[kdeId].evidence=[...existing,{type:evItem.type,value:evItem.value,name:evItem.name}];
+      kResp[kdeId].evidence=[...existing,moduleEvItem];
     }
-    addToBucket({type:evItem.type,value:evItem.value,name:evItem.name},kdeId);
+    addToBucket(moduleEvItem,kdeId);
   }
 
   const note=ev.moduleNote||ev.name+' — ✦ Manhattan';
@@ -6942,7 +6979,19 @@ function addEvItem(){
   } else {
     displayName=val;
   }
-  evTempItems.push({type:evSelType,value:val,name:displayName});
+  const manualItem={type:evSelType,value:val,name:displayName,_manual:true};
+  evTempItems.push(manualItem);
+  // If this KDE was Partial from a module, upgrade to Available now that they have their own doc
+  if(evKdeId){
+    if(!kResp[evKdeId])kResp[evKdeId]={};
+    const wasPartialFromModule=kResp[evKdeId]._hasModuleItem&&kResp[evKdeId].ans==='pa';
+    kResp[evKdeId]._manuallyAnswered=true;
+    if(wasPartialFromModule||!kResp[evKdeId].ans||kResp[evKdeId].ans===''){
+      kResp[evKdeId].ans='av';
+    }
+    kResp[evKdeId].manualNote=displayName+' — uploaded by company';
+  }
+  STAGES=buildStages();renderKDE();
   // Reset input area for next item
   inp.value='';
   inp.placeholder='';
@@ -8901,6 +8950,29 @@ document.addEventListener('click',e=>{if(e.target.id==='bucketModal')closeBucket
       <!-- What is a supply chain? -->
       <div style="background:#f8f9ff;border:1.5px solid #e0e3ed;border-radius:12px;padding:14px 16px;margin-bottom:20px;">
         <div style="font-size:12px;font-weight:800;color:#4a4e69;margin-bottom:8px;">💡 What is a supply chain, and why does it matter?</div>
+        <!-- Partial vs Available callout — most important concept -->
+        <div style="background:linear-gradient(135deg,#f4f0ff,#fdf4ff);border:1.5px solid #ddd6fe;border-radius:12px;padding:14px 16px;margin-bottom:16px;">
+          <div style="font-size:12px;font-weight:800;color:#7c3aed;margin-bottom:10px;">✦ How Available and Partial work in this assessment</div>
+          <div style="display:flex;flex-direction:column;gap:10px;font-size:12px;color:#4a4e69;line-height:1.6;">
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+              <div style="width:70px;flex-shrink:0;"><span style="padding:3px 8px;border-radius:6px;background:#f0fdf4;color:#166534;font-weight:700;font-size:11px;">✅ Available</span></div>
+              <div>You have the document and can produce it on demand. To mark Available, upload your own copy in the <strong>+ Add New</strong> tab — a PDF, photo, certificate or URL to your own records.</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+              <div style="width:70px;flex-shrink:0;"><span style="padding:3px 8px;border-radius:6px;background:#fffbeb;color:#92400e;font-weight:700;font-size:11px;">◑ Partial</span></div>
+              <div>Manhattan's database has a record of this data — but you haven't yet shown that your company holds the documentation itself. This means the data <em>exists somewhere</em> in the supply chain, but your own records may not have it.<br><br>
+              <strong>To upgrade Partial → Available:</strong> click the amber note on any question, then upload your own copy of the document.</div>
+            </div>
+            <div style="display:flex;gap:10px;align-items:flex-start;">
+              <div style="width:70px;flex-shrink:0;"><span style="padding:3px 8px;border-radius:6px;background:#fff5f5;color:#991b1b;font-weight:700;font-size:11px;">✗ Not Available</span></div>
+              <div>This data doesn't exist or cannot be produced. These are your genuine traceability gaps — the things Manhattan will help you build towards over time.</div>
+            </div>
+          </div>
+          <div style="margin-top:12px;padding:10px;background:rgba(255,255,255,0.7);border-radius:8px;font-size:11px;color:#6b7280;line-height:1.5;">
+            💡 <strong>The gap between Partial and Available is the gap report.</strong> A company scoring 80/100 on Partial but 40/100 on Available has the data in the supply chain — they just don't hold it themselves yet. That's exactly what Manhattan helps fix.
+          </div>
+        </div>
+
         <div style="font-size:12px;color:#4a4e69;line-height:1.7;">
           A supply chain is the journey your seafood product takes from the ocean (or farm) to the buyer. Every step in that journey is a node. You need to map it so Manhattan can ask the right traceability questions at each step — and so auditors can see exactly where the product came from, who handled it, and what checks were done along the way.
           <br><br>
