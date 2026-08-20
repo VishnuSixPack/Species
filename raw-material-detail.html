@@ -533,8 +533,7 @@ function renderEvents(){
         ${cell('Transshipped onto',e.transfer_to)}${cell('Where',e.transship_where)}
         ${cell('Transfer From',e.transfer_date,'date')}${cell('Transfer To',e.transfer_date_to,'date')}
         ${e.transship_where==='At sea'?cell('Position',pos):cell('Port',e.transfer_location)}
-        ${e.transship_where==='At sea'?cell('Observer aboard',e.observer_present,'bool'):''}
-        ${e.transship_where==='At sea'?cell('Observer',e.observer_name):''}
+        ${cell('Observer aboard',e.observer_present,'bool')}${cell('Observer',e.observer_name)}
         ${cell('B/L No',e.bl_no)}${cell('Trip No',e.trip_no)}
       </div>` + (e.containers?.length
         ? `<div class="sub-h">Containers</div><table>
@@ -796,9 +795,9 @@ async function load(){
 
     try{
       const {data:u}=await dbClient.from('shipment_batches')
-        .select('shipment_id,batch_lot,packages,processing_date,expiry_date,shipment_items(product_name),shipments(shipment_ref,shipment_date,status)')
+        .select('shipment_id,batch_lot,packages,processing_date,expiry_date,shipment_items(product_name),shipments(shipment_ref,shipment_date,status,deleted_at)')
         .eq('raw_material_id',id);
-      USED=(u||[]).map(x=>({shipment_id:x.shipment_id,batch_lot:x.batch_lot,packages:x.packages,
+      USED=(u||[]).filter(x=>!x.shipments?.deleted_at).map(x=>({shipment_id:x.shipment_id,batch_lot:x.batch_lot,packages:x.packages,
         processing_date:x.processing_date, expiry_date:x.expiry_date,
         product_name:x.shipment_items?.product_name,
         shipment_ref:x.shipments?.shipment_ref,

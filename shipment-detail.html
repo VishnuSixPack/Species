@@ -94,6 +94,8 @@
 
   .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:22px 20px;}
   .fld-label{font-size:11px;color:var(--muted);margin-bottom:5px;}
+  .fld-link{color:var(--primary);cursor:pointer;text-decoration:none;}
+  .fld-link:hover{text-decoration:underline;}
   .fld-value{font-size:13px;font-weight:500;word-break:break-word;}
   .fld-value.empty{color:var(--dim);font-weight:400;}
   .link-btn{background:none;border:none;padding:0;font-family:inherit;font-size:13px;font-weight:600;
@@ -572,6 +574,12 @@ const esc = s => String(s??'').replace(/[&<>"']/g, c =>
   ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 /** One label/value cell. An unfilled field shows a dash, never a blank gap. */
+function cellLink(label, raw, href){
+  var empty=!raw||raw==='';
+  var val=empty?'\u2014':(href?'<a class="fld-link" href="'+href+'">'+esc(raw)+'</a>':esc(raw));
+  return '<div><div class="fld-label">'+esc(label)+'</div><div class="fld-value">'+val+'</div></div>';
+}
+
 function cell(label, raw, kind, pkgType){
   let val = raw;
   if(Array.isArray(raw))      val = raw.length ? raw.join(', ') : null;
@@ -617,7 +625,13 @@ function render(){
   var vesselCount=LEGS.reduce(function(a,l){return a+(l.vessels||[]).length;},0);
   $('pills').innerHTML='<div class="pill"><div class="pill-label">Route</div><div class="pill-value">'+esc(s.origin_name||'—')+' \u2192 '+esc(s.destination_name||'—')+'</div><div class="pill-sub">'+LEGS.length+' leg'+(LEGS.length===1?'':'s')+' \u00b7 '+(s.load_type||'FCL')+'</div></div><div class="pill"><div class="pill-label">Mode</div><div class="pill-value">'+mode.icon+' '+esc(s.transport_mode||'—')+'</div><div class="pill-sub">'+(vesselCount?vesselCount+' vessel(s)':'')+'</div></div><div class="pill"><div class="pill-label">Container</div><div class="pill-value">'+esc(s.container_no||'—')+'</div><div class="pill-sub">'+esc(s.container_type||'')+'</div></div><div class="pill"><div class="pill-label">Packages</div><div class="pill-value">'+(fmtNum(totalPkg)||'—')+'</div><div class="pill-sub">'+ITEMS.length+' product'+(ITEMS.length===1?'':'s')+'</div></div><div class="pill"><div class="pill-label">Status</div><div class="pill-value"><span class="badge '+cls+'">'+esc(s.status||'Draft')+'</span></div></div>';
   var cc=$('connCard');if(cc)cc.innerHTML=CONNECTED.length?CONNECTED.map(function(c){return '<div class="tally ok" style="cursor:pointer;margin-bottom:12px;" onclick="location.href=\'shipment-detail.html?id='+encodeURIComponent(c.id)+'\'"><b>'+esc(c.shipment_ref||'')+'</b> ('+esc(c.transport_mode||'')+': '+esc(c.origin_name||'')+' \u2192 '+esc(c.destination_name||'')+') \u00b7 '+esc(c.status||'')+'</div>';}).join(''):'';
-  renderGrid('partyGrid',[['Exporter','exporter_name'],['Country of Export','country_of_export'],['Importer','importer_name'],['Destination Country','destination_country'],['Incoterms','incoterms']],s);
+  var partyHtml='';
+  partyHtml+=cellLink('Exporter',s.exporter_name,s.exporter_org_id?'organisation.html?id='+s.exporter_org_id:null);
+  partyHtml+=cell('Country of Export',s.country_of_export);
+  partyHtml+=cellLink('Importer',s.importer_name,s.importer_org_id?'organisation.html?id='+s.importer_org_id:null);
+  partyHtml+=cell('Destination Country',s.destination_country);
+  partyHtml+=cell('Incoterms',s.incoterms);
+  var pg=$('partyGrid'); if(pg) pg.innerHTML=partyHtml;
   var jh=$('journeyHost');
   var jh=$('journeyHost');
   if(jh){
@@ -654,7 +668,7 @@ function render(){
       if(vs.length){
         vesselHtml='<div class="leg-vessels"><table><thead><tr><th>Role</th><th>Vessel</th><th>IMO</th><th>Voyage</th></tr></thead><tbody>'+
           vs.map(function(v){return '<tr><td style="color:var(--muted);font-size:12px;">'+esc(v.role||'\u2014')+'</td>'+
-            '<td style="font-weight:700;">'+esc(v.vessel_name||'\u2014')+'</td>'+
+            '<td style="font-weight:700;">'+(v.vessel_id?'<a class="fld-link" href="vessel-detail.html?id='+v.vessel_id+'">'+esc(v.vessel_name||'\u2014')+'</a>':esc(v.vessel_name||'\u2014'))+'</td>'+
             '<td style="font-family:monospace;font-size:12px;">'+esc(v.imo||'\u2014')+'</td>'+
             '<td>'+esc(v.voyage_no||'\u2014')+'</td></tr>';}).join('')+
           '</tbody></table></div>';
@@ -672,7 +686,9 @@ function render(){
         '<div class="leg-body"><div class="leg-grid">'+gridHtml+'</div>'+vesselHtml+tsHtml+'</div></div>';
     }).join('');
   }
-  var pg2=$('procGrid');if(pg2)pg2.innerHTML=(s.exporter_is_processor?'<div class="tally ok" style="margin-bottom:14px;">Exporter is also the processor</div>':'')+[['Processor','processor_name'],['Processing Country','processing_country'],['Container Type','container_type']].map(function(f){return cell(f[0],s[f[1]]);}).join('');
+  var pg2=$('procGrid');if(pg2)pg2.innerHTML=(s.exporter_is_processor?'<div class="tally ok" style="margin-bottom:14px;">Exporter is also the processor</div>':'')+
+    cellLink('Processor',s.processor_name,s.processor_org_id?'organisation.html?id='+s.processor_org_id:null)+
+    cell('Processing Country',s.processing_country)+cell('Container Type',s.container_type);
   renderGrid('trackGrid',[['Invoice No','invoice_no'],['Invoice Date','invoice_date','date'],['Purchase Order','purchase_order_no'],['On-Board Date','on_board_date','date'],['Container Discharge','container_discharge_date','date']],s);
   renderGrid('finGrid',[['L/C No','lc_no'],['L/C Issue','lc_issue_date','date'],['L/C Due','lc_due_date','date'],['L/C Bank','lc_bank']],s);
   var finCard=$('finGrid')?.closest('.card');
@@ -723,7 +739,7 @@ function renderItems(){
       <div class="item-head" onclick="toggleItem(${i})">
         <div class="item-no">${it.line_no||i+1}</div>
         <div>
-          <div class="item-name">${esc(it.product_name||'Unnamed product')}${bad?'<span class="flag" title="Packages do not reconcile"></span>':''}</div>
+          <div class="item-name">${it.product_id?"<a class=\"fld-link\" href=\"product-detail.html?id="+it.product_id+"\">"+esc(it.product_name||"—")+"</a>":esc(it.product_name||'Unnamed product')}${bad?'<span class="flag" title="Packages do not reconcile"></span>':''}</div>
           <div class="item-meta">${[it.species_name, it.product_form].filter(Boolean).map(esc).join(' · ')||'—'}</div>
         </div>
         <div class="item-right">
@@ -736,8 +752,8 @@ function renderItems(){
       <div class="item-body">
         <div class="sub-label">Product &amp; packaging</div>
         <div class="grid">
-          ${cell('Product', it.product_name)}
-          ${cell('Species', it.species_name)}
+          ${cellLink('Product', it.product_name, it.product_id?'product-detail.html?id='+it.product_id:null)}
+          ${cellLink('Species', it.species_name, it.species_name?'Species.html?q='+encodeURIComponent(it.species_name):null)}
           ${cell('Product Form', it.product_form)}
           ${cell('GTIN', it.gtin)}
           ${cell('Number of Packages', it.number_of_packages,'packages',it.package_type)}
@@ -771,7 +787,7 @@ function buildBatchTable(it){
   const rows = lots.map(b=>`
     <tr>
       <td class="num">${fmtNum(b.packages)||'—'}</td>
-      <td>${esc(b.batch_lot||'—')}</td>
+      <td>${b.raw_material_id?'<a class="fld-link" href="raw-material-detail.html?id='+b.raw_material_id+'">'+esc(b.batch_lot||'—')+'</a>':esc(b.batch_lot||'—')}</td>
       <td>${fmtDate(b.processing_date)||'—'}</td>
       <td>${fmtDate(b.expiry_date)||'—'}</td>
       <td>${esc(b.raw_material_ref||b.raw_material_id||'—')}</td>
