@@ -50,6 +50,9 @@ const EUCatchGen = (function () {
     else if (window.supabase && cfg.url && cfg.key) sb = window.supabase.createClient(cfg.url, cfg.key);
     else { console.error('[EUCatchGen] No Supabase client available.'); return; }
 
+    const docId = qs('doc');
+    if (docId) { openInForm(docId); return; }
+
     const shipmentId = qs('shipment');
     if (!shipmentId) return;              // normal manual use of the form
     start(shipmentId);
@@ -542,7 +545,214 @@ const EUCatchGen = (function () {
     }
   }
 
-  return { init, close, start, _state: STATE };
+  /* ================================================================
+     OPEN A SAVED DOCUMENT IN THE REAL FORM
+
+     Fills the existing CC / SC / PS / ID template from a stored
+     catch_documents row, rather than showing a separate viewer.
+     ================================================================ */
+
+  const setVal = (id, v) => { const e = document.getElementById(id); if (e) e.value = v ?? ''; };
+  const setTxt = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v ?? '—'; };
+  const show   = id => { const e = document.getElementById(id); if (e) e.classList.remove('hidden'); };
+
+  /* The form's commodity rows are keyed by HS code. Payloads carry the FAO
+     3-alpha code instead, so find the subheading that lists that species. */
+  function hsForSpecies(afsis) {
+    if (typeof HS_TREE === 'undefined' || !afsis) return null;
+    for (const ch of HS_TREE)
+      for (const hd of ch.children || [])
+        for (const sub of hd.children || [])
+          if ((sub.species || []).some(s => s.code === afsis))
+            return { chapter: `${ch.code} ${ch.label}`, heading: `${hd.code} ${hd.label}`,
+                     sub: `${sub.code} ${sub.label}`, hsCode: sub.code,
+                     speciesOptions: sub.species || [] };
+    return null;
+  }
+
+  function hydrateCC(doc) {
+    const p = doc.payload || {};
+    showView('viewCC');
+
+    setVal('ccSerialNumber', doc.serial_number);
+    setVal('ccLocalRef', doc.local_ref);
+
+    const a = p.validating_authority;
+    if (a) {
+      setVal('ccAuthorityName', a.name);
+      setVal('ccAuthorityIso', a.iso_alpha2);
+      setVal('ccAuthorityCountry', a.country || p.flag_state);
+      setTxt('ccAuthorityAddress', a.address);
+      setTxt('ccAuthorityLocode', a.un_locode);
+      if (a.address || a.un_locode) show('ccAuthorityDetails');
+    }
+
+    /* Section 2 — fishing vessels */
+    STATE_FORM().ccVessels = (p.vessels || []).map(v => ({
+      name: v.name, flag: v.flag_state, imo: v.imo, reg: v.registration_number || '',
+      callsign: v.ircs || '', port: v.home_port || '',
+      licence: v.licence_no ? { reference: v.licence_no,
+                                expiration: v.licence_valid_until || 'Not on file' } : null
+    }));
+    if (typeof renderCCVesselTable === 'function') renderCCVesselTable();
+
+    /* Section 3 — one commodity per species, one row per catch event */
+    const byCode = new Map();
+    (p.lines || []).forEach(l => {
+      const code = l.afsis_3a_code || (Array.isArray(l.species) ? l.species[0] : l.species) || '—';
+      if (!byCode.has(code)) byCode.set(code, []);
+      byCode.get(code).push(l);
+    });
+
+    STATE_FORM().ccCommodities = [...byCode.entries()].map(([code, lines]) => {
+      const hs = hsForSpecies(code);
+      const first = lines[0];
+      return {
+        chapter: hs?.chapter || 'Commodity code not yet assigned',
+        heading: hs?.heading || `Species ${code}`,
+        sub: hs?.sub || (first.scientific_name || ''),
+        hsCode: hs?.hsCode || '000000',
+        speciesOptions: hs?.speciesOptions || [],
+        rows: lines.map(l => ({
+          species: [{ code: l.afsis_3a_code || code, name: l.scientific_name || '' }],
+          vessel: l.vessel_name || '',
+          catchArea: [l.fao_area, l.catch_area_detail].filter(Boolean).join(' — '),
+          highSeas: '', eez: '', rfmo: '',
+          catchFrom: l.catch_date_from || '', catchTo: l.catch_date_to || '',
+          estWeight: '', estUnit: 'kg',
+          netWeight: l.estimated_live_weight_kg ?? '', netUnit: 'kg',
+          verifiedWeight: l.verified_weight_landed_kg ?? '', verifiedUnit: 'kg'
+        }))
+      };
+    });
+    if (typeof renderCommodities === 'function') renderCommodities('cc');
+
+    /* Section 8 — exporter */
+    setVal('ccExporterName', p.exporter?.name);
+    setVal('ccExporterCountry', p.exporter?.country);
+
+    /* Transport tab */
+    setVal('ccCountryExport', p.transport?.country_of_export);
+    const legs = p.transport?.legs || [];
+    if (legs.length && typeof addTransportLeg === 'function') {
+      legs.forEach(l => {
+        const type = { Sea:'Vessel', Air:'Airplane', Road:'Road vehicle', Rail:'Railway' }[l.mode] || 'Other';
+        addTransportLeg('cc', type);
+        const cards = document.querySelectorAll('#ccTransportLegs .transport-leg');
+        const card = cards[cards.length - 1];
+        const inputs = card ? card.querySelectorAll('input') : [];
+        const fill = [l.vessel_name || l.flight_no || l.vehicle_plate, '', l.document_no, l.voyage_no];
+        inputs.forEach((inp, i) => { if (fill[i]) inp.value = fill[i]; });
+      });
+    }
+    if (p.transport?.container_no && typeof CONTAINER_ROWS !== 'undefined') {
+      CONTAINER_ROWS.cc[0].num = p.transport.container_no;
+      CONTAINER_ROWS.cc[0].seal = p.transport.seal_number || '';
+      if (typeof renderContainerRows === 'function') renderContainerRows('cc');
+    }
+  }
+
+  function hydratePS(doc) {
+    const p = doc.payload || {};
+    showView('viewPS');
+
+    setVal('psSerialNumber', doc.serial_number);
+    setVal('psDocNumber', doc.local_ref);
+
+    setVal('psPlantName', p.processing_plant?.name);
+    setVal('psPlantCountry', p.processing_plant?.country);
+    setVal('psApprovalNumberBox', p.processing_plant?.approval_number);
+
+    setVal('psExpName', p.exporter?.name);
+    setVal('psExpCountry', p.exporter?.country);
+
+    const ea = p.endorsing_authority;
+    if (ea) {
+      setVal('psEndorsingAuthorityName', ea.name);
+      setVal('psEndorsingAuthorityIso', ea.iso_alpha2);
+      setVal('psEndorsingAuthorityCountry', ea.country);
+      setTxt('psEndorsingAuthorityAddress', ea.address);
+      setTxt('psEndorsingAuthorityLocode', ea.un_locode);
+      if (ea.address || ea.un_locode) show('psEndorsingAuthorityDetails');
+    }
+
+    /* One commodity row per batch, each carrying its linked certificate */
+    const certs = p.linked_catch_certificates || [];
+    STATE_FORM().psCommodities = (p.batches || []).map((b, i) => {
+      const hs = hsForSpecies(b.afsis_3a_code);
+      const cert = certs[i] || certs[0];
+      return {
+        chapter: hs?.chapter || 'Commodity code not yet assigned',
+        heading: hs?.heading || `Species ${b.afsis_3a_code || ''}`,
+        sub: hs?.sub || (b.species_name || ''),
+        cnCode: hs ? hs.hsCode + '00' : '',
+        cnLabel: b.batch_lot ? `Lot ${b.batch_lot}` : '',
+        species: { code: b.afsis_3a_code || '', name: b.species_name || '' },
+        vessel: { name: b.raw_material_ref || '', flag: '' },
+        totalLandedWeight: b.quantity_kg ?? '',
+        linkedCert: b.supplier_catch_certificate_no || cert?.serial_number || '',
+        certDate: '',
+        catchProcessed: b.quantity_kg ?? '',
+        processedProduct: p.product?.processed_quantity_kg ?? ''
+      };
+    });
+    if (typeof renderPSCommodities === 'function') renderPSCommodities();
+
+    const links = document.getElementById('psLinksBox');
+    if (links && certs.length) {
+      links.innerHTML = certs.map(c =>
+        `🔗 Related to: <strong style="color:var(--primary);">${esc(c.serial_number)}</strong>` +
+        (c.flag_state ? ` <span style="color:var(--muted);">${esc(c.flag_state)}</span>` : '')
+      ).join('<br>');
+    }
+
+    setVal('psCountryExport', p.transport?.country_of_export);
+    if (p.transport?.container_no && typeof CONTAINER_ROWS !== 'undefined') {
+      CONTAINER_ROWS.ps[0].num = p.transport.container_no;
+      CONTAINER_ROWS.ps[0].seal = p.transport.seal_number || '';
+      if (typeof renderContainerRows === 'function') renderContainerRows('ps');
+    }
+  }
+
+  /* The form's own STATE object, not this module's. */
+  function STATE_FORM() {
+    return (typeof window.STATE !== 'undefined') ? window.STATE : {};
+  }
+
+  function banner(doc) {
+    const bar = document.querySelector('#view' + (doc.doc_type === 'PS' ? 'PS' : 'CC') + ' .doc-topbar');
+    if (!bar) return;
+    const note = document.createElement('div');
+    note.style.cssText = 'background:#eef4fd;border:1px solid #c8ddf8;border-radius:6px;padding:10px 14px;' +
+      'font-size:12px;color:#1e3a5f;margin-bottom:16px;display:flex;justify-content:space-between;' +
+      'align-items:center;gap:12px;';
+    note.innerHTML =
+      `<span>Opened from <b>My Documents</b> — saved ${doc.status}. ` +
+      `Empty fields couldn't be filled from your records.</span>` +
+      `<a href="eu-catch-documents.html" style="color:#1a6fdb;font-weight:600;text-decoration:none;` +
+      `white-space:nowrap;">← Back to documents</a>`;
+    bar.parentNode.insertBefore(note, bar.nextSibling);
+  }
+
+  async function openInForm(docId) {
+    try {
+      const { data, error } = await sb.from('catch_documents')
+        .select('*').eq('id', docId).maybeSingle();
+      if (error) throw new Error(error.message);
+      if (!data) throw new Error('That document could not be found, or it belongs to another organisation.');
+
+      if (data.doc_type === 'PS') hydratePS(data);
+      else hydrateCC(data);          // CC and SC both use the catch-certificate layout
+
+      banner(data);
+      close();
+    } catch (err) {
+      console.error('[EUCatchGen]', err);
+      showError(err.message || String(err));
+    }
+  }
+
+  return { init, close, start, openInForm, _state: STATE };
 })();
 
 window.EUCatchGen = EUCatchGen;

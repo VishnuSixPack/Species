@@ -162,7 +162,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL      = 'https://enbdaajcromxmhgcverp.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVuYmRhYWpjcm9teG1oZ2N2ZXJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxMjc4MTUsImV4cCI6MjA5MzcwMzgxNX0.wlVbN57eAwRmTROEEY3D6BIX3H5pI6MwZ5hM2BqpnEs';
+const SUPABASE_ANON_KEY = 'PASTE_THE_SAME_ANON_KEY_HERE';
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -250,7 +250,7 @@ function rowsFor(docs){
                    : '<span style="color:var(--gray-400);">—</span>'}</td>
       <td><span class="status status-${esc(d.status)}">${esc(d.status)}</span></td>
       <td>${fmtDate(d.created_at)}</td>
-      <td style="text-align:right;"><button class="btn btn-sm" onclick="event.stopPropagation();openDoc('${d.id}')">View</button></td>
+      <td style="text-align:right;"><button class="btn btn-sm" onclick="event.stopPropagation();openDoc('${d.id}')">Open</button></td>
     </tr>`;
   }).join('');
 }
@@ -302,133 +302,8 @@ function kv(pairs){
 function openDoc(id){
   const d = S.docs.find(x => x.id === id);
   if (!d) return;
-  S.current = d;
-  const p = d.payload || {};
-  const bundle = S.bundles.find(b => b.id === d.bundle_id);
-
-  document.getElementById('modalTitle').textContent = TYPE_NAME[d.doc_type] || d.doc_type;
-  document.getElementById('modalSerial').textContent = d.serial_number || '';
-
-  let html = '';
-
-  if (d.status === 'draft' || d.status === 'partial'){
-    html += `<div class="banner">This is a draft. Fields that couldn't be filled from your
-      records are marked "Not available" — complete them before submitting to CATCH.</div>`;
-  }
-
-  html += `<div class="sec"><div class="sec-t">Document</div>${kv([
-    ['Status', d.status],
-    ['Created', fmtDate(d.created_at)],
-    ['Shipment bundle', bundle ? bundle.bundle_ref : null],
-    ['Snapshot taken', p.snapshot_at ? fmtDate(p.snapshot_at) : null],
-  ])}</div>`;
-
-  if (d.doc_type === 'CC' || d.doc_type === 'SC'){
-    const a = p.validating_authority;
-    html += `<div class="sec"><div class="sec-t">Validating authority</div>${kv([
-      ['Name', a?.name], ['Country', a?.country || p.flag_state],
-      ['Code', a?.code], ['Address', a?.address],
-      ['Source', a?.source === 'typed' ? 'Typed by user' : a ? 'Authority register' : null],
-    ])}</div>`;
-
-    (p.vessels || []).forEach((v, i) => {
-      html += `<div class="sec"><div class="sec-t">Fishing vessel ${i + 1}</div>${kv([
-        ['Name', v.name], ['IMO', v.imo], ['Flag state', v.flag_state],
-        ['Fishing licence no.', v.licence_no], ['Licence valid until', v.licence_valid_until],
-        ['Master', v.master],
-      ])}</div>`;
-    });
-
-    (p.lines || []).forEach((l, i) => {
-      html += `<div class="sec"><div class="sec-t">Catch ${i + 1}</div>${kv([
-        ['Species', Array.isArray(l.species) ? l.species.filter(Boolean).join(', ') : l.species],
-        ['Scientific name', l.scientific_name], ['FAO 3-alpha code', l.afsis_3a_code],
-        ['Product form', l.product_form], ['FAO area', l.fao_area],
-        ['Catch area', l.catch_area_detail], ['Gear', l.gear_type],
-        ['Catch dates', l.catch_date_from ? `${fmtDate(l.catch_date_from)} – ${fmtDate(l.catch_date_to)}` : null],
-        ['Estimated live weight', l.estimated_live_weight_kg ? l.estimated_live_weight_kg + ' kg' : null],
-        ['Verified weight landed', l.verified_weight_landed_kg ? l.verified_weight_landed_kg + ' kg' : null],
-        ['Port of landing', l.landing_port], ['Landing date', fmtDate(l.landing_date)],
-      ])}</div>`;
-    });
-
-    (p.transshipments || []).forEach((t, i) => {
-      html += `<div class="sec"><div class="sec-t">Transhipment ${i + 1}</div>${kv([
-        ['Where', t.where], ['Transfer date', t.transfer_date ? fmtDate(t.transfer_date) : null],
-        ['Location', t.location], ['Carrier vessel', t.carrier_vessel],
-        ['Carrier IMO', t.carrier_imo], ['Carrier flag', t.carrier_flag],
-        ['Authorisation no.', t.authorisation_no], ['Declaration no.', t.declaration_no],
-        ['Observer', t.observer_present ? (t.observer_name || 'Yes') : null],
-        ['Master', t.master], ['Quantity', t.quantity_kg ? t.quantity_kg + ' kg' : null],
-      ])}</div>`;
-    });
-
-    html += `<div class="sec"><div class="sec-t">Exporter</div>${kv([
-      ['Name', p.exporter?.name], ['Country', p.exporter?.country],
-    ])}</div>`;
-
-    html += `<div class="sec"><div class="sec-t">Totals</div>${kv([
-      ['Verified weight landed', p.totals?.verified_weight_landed_kg
-        ? p.totals.verified_weight_landed_kg + ' kg' : null],
-      ['Estimated live weight', p.totals?.estimated_live_weight_kg
-        ? p.totals.estimated_live_weight_kg + ' kg' : null],
-    ])}</div>`;
-  }
-
-  if (d.doc_type === 'PS'){
-    html += `<div class="sec"><div class="sec-t">Processing plant</div>${kv([
-      ['Name', p.processing_plant?.name], ['Country', p.processing_plant?.country],
-      ['Approval number', p.processing_plant?.approval_number],
-    ])}</div>`;
-
-    html += `<div class="sec"><div class="sec-t">Endorsing authority</div>${kv([
-      ['Name', p.endorsing_authority?.name], ['Country', p.endorsing_authority?.country],
-      ['Code', p.endorsing_authority?.code],
-    ])}</div>`;
-
-    html += `<div class="sec"><div class="sec-t">Exporter</div>${kv([
-      ['Name', p.exporter?.name], ['Country', p.exporter?.country],
-    ])}</div>`;
-
-    html += `<div class="sec"><div class="sec-t">Processed product</div>${kv([
-      ['Product', p.product?.name], ['Species', p.product?.species_name],
-      ['Form', p.product?.product_form], ['GTIN', p.product?.gtin],
-      ['Packages', p.product?.packages ? `${p.product.packages} ${p.product.package_type || ''}`.trim() : null],
-      ['Gross weight', p.product?.gross_weight_kg ? p.product.gross_weight_kg + ' kg' : null],
-      ['Net weight', p.product?.net_weight_kg ? p.product.net_weight_kg + ' kg' : null],
-      ['Processed quantity', p.product?.processed_quantity_kg ? p.product.processed_quantity_kg + ' kg' : null],
-    ])}</div>`;
-
-    (p.batches || []).forEach((b, i) => {
-      html += `<div class="sec"><div class="sec-t">Batch ${i + 1}</div>${kv([
-        ['Lot', b.batch_lot], ['Packages', b.packages],
-        ['Quantity', b.quantity_kg ? b.quantity_kg + ' kg' : null],
-        ['Raw material', b.raw_material_ref], ['Species', b.species_name],
-        ['FAO 3-alpha code', b.afsis_3a_code],
-        ['Supplier catch certificate', b.supplier_catch_certificate_no],
-        ['Processing date', b.processing_date ? fmtDate(b.processing_date) : null],
-      ])}</div>`;
-    });
-
-    if ((p.linked_catch_certificates || []).length){
-      html += `<div class="sec"><div class="sec-t">Linked catch certificates</div>${kv(
-        p.linked_catch_certificates.map(c =>
-          [c.flag_state || 'Certificate', c.serial_number]))}</div>`;
-    }
-  }
-
-  html += `<div class="sec"><div class="sec-t">Transport</div>${kv([
-    ['Country of export', p.transport?.country_of_export],
-    ['Point of departure', p.transport?.point_of_departure],
-    ['Point of destination', p.transport?.point_of_destination],
-    ['Container no.', p.transport?.container_no],
-    ['Seal no.', p.transport?.seal_number],
-    ['Destination country', p.destination?.country],
-  ])}</div>`;
-
-  document.getElementById('modalBody').innerHTML = html;
-  document.getElementById('docModal').classList.add('open');
-  document.body.style.overflow = 'hidden';
+  // Open the saved document in the real CC / SC / PS / ID template.
+  location.href = 'eu-catch-support.html?doc=' + encodeURIComponent(id);
 }
 
 function closeModal(){
