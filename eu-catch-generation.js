@@ -37,7 +37,7 @@ const EUCatchGen = (function () {
        'Lithuania','Luxembourg','Malta','Netherlands','Poland','Portugal','Romania',
        'Slovakia','Slovenia','Spain','Sweden'];
 
-  const STATE = { shipment: null, items: [], batches: [], batchesForItem: [], rms: [],
+  const GEN = { shipment: null, items: [], batches: [], batchesForItem: [], rms: [],
                   catches: [], species: [], catchSpecies: [], legs: [], shipVessels: [],
                   vessels: {}, docs: [], item: null, bundle: null, mode: null };
 
@@ -135,13 +135,13 @@ const EUCatchGen = (function () {
   /* ================================================================= data */
 
   async function fetchVessels(ids) {
-    const missing = [...new Set(ids.filter(Boolean))].filter(id => !STATE.vessels[id]);
+    const missing = [...new Set(ids.filter(Boolean))].filter(id => !GEN.vessels[id]);
     if (!missing.length) return;
     const { data } = await sb.from('vessels')
       .select('id, current_name, imo, mmsi, ircs, vessel_flag, port_of_registry, ' +
               'registration_number, uvi_number, gear_type, vessel_category, vessel_subtype')
       .in('id', missing);
-    (data || []).forEach(v => { STATE.vessels[v.id] = v; });
+    (data || []).forEach(v => { GEN.vessels[v.id] = v; });
   }
 
   async function fetchRMDocuments(rmIds) {
@@ -172,16 +172,16 @@ const EUCatchGen = (function () {
       sb.from('raw_material_catches').select('*').in('raw_material_id', ids).order('line_no'),
       sb.from('raw_material_species').select('*').in('raw_material_id', ids).order('line_no')
     ]);
-    STATE.catches = c || [];
-    STATE.species = s || [];
-    if (STATE.catches.length) {
+    GEN.catches = c || [];
+    GEN.species = s || [];
+    if (GEN.catches.length) {
       const { data: cs } = await sb.from('raw_material_catch_species')
-        .select('*').in('catch_event_id', STATE.catches.map(x => x.id));
-      STATE.catchSpecies = cs || [];
+        .select('*').in('catch_event_id', GEN.catches.map(x => x.id));
+      GEN.catchSpecies = cs || [];
     }
-    await fetchVessels(STATE.catches.map(x => x.vessel_id));
-    await fetchVessels(STATE.catches.map(x => x.carrier_vessel_id));
-    STATE.docs = await fetchRMDocuments(ids);
+    await fetchVessels(GEN.catches.map(x => x.vessel_id));
+    await fetchVessels(GEN.catches.map(x => x.carrier_vessel_id));
+    GEN.docs = await fetchRMDocuments(ids);
   }
 
   async function loadFromShipment(shipmentId) {
@@ -197,7 +197,7 @@ const EUCatchGen = (function () {
       sb.from('shipment_vessels').select('*').eq('shipment_id', shipmentId).order('line_no')
     ]);
 
-    Object.assign(STATE, { shipment, items: items || [], batches: batches || [],
+    Object.assign(GEN, { shipment, items: items || [], batches: batches || [],
                            legs: legs || [], shipVessels: sv || [], mode: 'shipment' });
     await fetchVessels((sv || []).map(v => v.vessel_id));
 
@@ -217,7 +217,7 @@ const EUCatchGen = (function () {
         rms = rms.concat(data || []);
       }
     }
-    STATE.rms = rms;
+    GEN.rms = rms;
     await loadRawMaterials(rms);
   }
 
@@ -226,12 +226,12 @@ const EUCatchGen = (function () {
       .select('*').eq('id', rmId).maybeSingle();
     if (error) throw new Error('Could not read the raw material: ' + error.message);
     if (!rm) throw new Error('That raw material could not be found, or it belongs to another organisation.');
-    Object.assign(STATE, { shipment: null, items: [], batches: [], legs: [],
+    Object.assign(GEN, { shipment: null, items: [], batches: [], legs: [],
                            shipVessels: [], rms: [rm], mode: 'rm' });
     await loadRawMaterials([rm]);
   }
 
-  const rmFor = batch => STATE.rms.find(r =>
+  const rmFor = batch => GEN.rms.find(r =>
     (batch.raw_material_id && r.id === batch.raw_material_id) ||
     (batch.raw_material_ref && r.rm_ref === batch.raw_material_ref)) || null;
 
@@ -250,12 +250,12 @@ const EUCatchGen = (function () {
   /* ============================================================== payload */
 
   async function buildCC(flagState, rmList, gate) {
-    const s = STATE.shipment;
+    const s = GEN.shipment;
     const rmIds = new Set(rmList.map(r => r.id));
 
-    const catchEvents = STATE.catches.filter(c =>
+    const catchEvents = GEN.catches.filter(c =>
       rmIds.has(c.raw_material_id) && c.event_type === 'Catch' && c.flag_state === flagState);
-    const transships = STATE.catches.filter(c =>
+    const transships = GEN.catches.filter(c =>
       rmIds.has(c.raw_material_id) && c.event_type === 'Transshipment');
 
     const flagIso = await isoFor(flagState);
@@ -266,7 +266,7 @@ const EUCatchGen = (function () {
       const key = c.vessel_id || c.vessel_name;
       if (!key || seen.has(key)) continue;
       seen.add(key);
-      const v = c.vessel_id ? STATE.vessels[c.vessel_id] : null;
+      const v = c.vessel_id ? GEN.vessels[c.vessel_id] : null;
       vessels.push({
         vessel_id: c.vessel_id,
         name: clean(c.vessel_name) || (v && v.current_name),
@@ -287,12 +287,12 @@ const EUCatchGen = (function () {
 
     const lines = [];
     for (const c of catchEvents) {
-      const sp = STATE.catchSpecies.filter(x => x.catch_event_id === c.id);
+      const sp = GEN.catchSpecies.filter(x => x.catch_event_id === c.id);
       const rm = rmList.find(r => r.id === c.raw_material_id);
       const list = sp.length ? sp : [{ species_name: rm && rm.species_name, quantity_kg: c.quantity_kg }];
 
       for (const one of list) {
-        const rmSpecies = STATE.species.find(x =>
+        const rmSpecies = GEN.species.find(x =>
           x.raw_material_id === c.raw_material_id && x.species_name === one.species_name);
         const afsis = (rmSpecies && rmSpecies.afsis_3a_code) || (rm && rm.afsis_3a_code);
         const form  = (rmSpecies && rmSpecies.product_form) || (rm && rm.product_form);
@@ -318,8 +318,8 @@ const EUCatchGen = (function () {
       }
     }
 
-    const mother = STATE.shipVessels.find(v => /mother/i.test(v.role || ''));
-    const motherVessel = mother && mother.vessel_id ? STATE.vessels[mother.vessel_id] : null;
+    const mother = GEN.shipVessels.find(v => /mother/i.test(v.role || ''));
+    const motherVessel = mother && mother.vessel_id ? GEN.vessels[mother.vessel_id] : null;
     const motherFlagIso = motherVessel && motherVessel.vessel_flag
       ? await isoFor(motherVessel.vessel_flag) : null;
 
@@ -336,7 +336,7 @@ const EUCatchGen = (function () {
         loading_port: clean(mother.loading_port), discharge_port: clean(mother.discharge_port)
       });
     }
-    (STATE.legs || []).forEach(l => {
+    (GEN.legs || []).forEach(l => {
       meansOfTransport.push({
         type: { Sea:'Vessel', Air:'Airplane', Road:'Road vehicle', Rail:'Railway' }[l.transport_mode] || 'Other',
         leg_no: l.leg_no,
@@ -373,7 +373,7 @@ const EUCatchGen = (function () {
       validating_authority: null,
       vessels, lines,
       transshipments: transships.map(t => {
-        const cv = t.carrier_vessel_id ? STATE.vessels[t.carrier_vessel_id] : null;
+        const cv = t.carrier_vessel_id ? GEN.vessels[t.carrier_vessel_id] : null;
         /* 'At sea' → Box 6, 'In port' → Box 7. If the RM row didn't set
            transship_where, infer it: a named port means it happened in port. */
         const where = t.transship_where ||
@@ -404,7 +404,7 @@ const EUCatchGen = (function () {
         country: s ? s.country_of_export : null,
         iso: exporterIso ? exporterIso.alpha2 : null
       },
-      supporting_documents: STATE.docs.map(d => ({
+      supporting_documents: GEN.docs.map(d => ({
         doc_type: d.doc_type, file_name: d.file_name, mime_type: d.mime_type,
         issued_by: d.issued_by, issued_date: d.issued_date, expiry_date: d.expiry_date,
         storage_path: d.storage_path, url: d.url, notes: d.notes
@@ -417,7 +417,7 @@ const EUCatchGen = (function () {
         container_no: s ? s.container_no : null,
         seal_number: s ? s.seal_number : null,
         means_of_transport: meansOfTransport,
-        legs: (STATE.legs || []).map(l => ({
+        legs: (GEN.legs || []).map(l => ({
           leg_no: l.leg_no, mode: l.transport_mode,
           origin: clean(l.origin_name), destination: clean(l.destination_name),
           departure_date: l.departure_date, arrival_date: l.arrival_date,
@@ -433,13 +433,13 @@ const EUCatchGen = (function () {
         verified_weight_landed_kg: lines.reduce((a, l) => a + (l.verified_weight_landed_kg || 0), 0),
         estimated_live_weight_kg: lines.reduce((a, l) => a + (l.estimated_live_weight_kg || 0), 0)
       },
-      partial: STATE.mode === 'rm',
+      partial: GEN.mode === 'rm',
       snapshot_at: new Date().toISOString()
     };
   }
 
   async function buildPS(item, batches, ccRefs, gate) {
-    const s = STATE.shipment;
+    const s = GEN.shipment;
     const plantIso = s && s.processing_country ? await isoFor(s.processing_country) : null;
     const expIso   = s && s.country_of_export  ? await isoFor(s.country_of_export)  : null;
 
@@ -480,7 +480,7 @@ const EUCatchGen = (function () {
       },
       batches: batchOut,
       linked_catch_certificates: ccRefs,
-      supporting_documents: STATE.docs.map(d => ({
+      supporting_documents: GEN.docs.map(d => ({
         doc_type: d.doc_type, file_name: d.file_name, url: d.url, storage_path: d.storage_path
       })),
       transport: {
@@ -509,13 +509,13 @@ const EUCatchGen = (function () {
   }
 
   async function ensureBundle() {
-    if (STATE.bundle) return STATE.bundle;
-    const s = STATE.shipment;
+    if (GEN.bundle) return GEN.bundle;
+    const s = GEN.shipment;
     if (!s) return null;
 
     const { data: existing } = await sb.from('document_bundles')
       .select('*').eq('shipment_id', s.id).limit(1);
-    if (existing && existing[0]) { STATE.bundle = existing[0]; return STATE.bundle; }
+    if (existing && existing[0]) { GEN.bundle = existing[0]; return GEN.bundle; }
 
     const { data: ref, error: e1 } = await sb.rpc('next_bundle_ref', {
       p_org: s.organisation_id, p_destination: s.destination_country
@@ -526,23 +526,23 @@ const EUCatchGen = (function () {
       organisation_id: s.organisation_id, shipment_id: s.id, bundle_ref: ref, status: 'draft'
     }).select().single();
     if (error) throw new Error('Could not create the bundle: ' + error.message);
-    STATE.bundle = data;
+    GEN.bundle = data;
     return data;
   }
 
   async function saveDoc(docType, payload, extra) {
-    const s = STATE.shipment;
-    const org = (s && s.organisation_id) || (STATE.rms[0] && STATE.rms[0].organisation_id);
+    const s = GEN.shipment;
+    const org = (s && s.organisation_id) || (GEN.rms[0] && GEN.rms[0].organisation_id);
     const bundle = await ensureBundle();
     const serial = await nextSerial(docType);
 
     const { data, error } = await sb.from('catch_documents').insert({
       organisation_id: org, doc_type: docType, serial_number: serial,
       status: payload.partial ? 'partial' : 'draft',
-      source_type: STATE.mode === 'rm' ? 'raw_material' : 'shipment',
-      raw_material_id: STATE.mode === 'rm' ? (STATE.rms[0] && STATE.rms[0].id) : null,
+      source_type: GEN.mode === 'rm' ? 'raw_material' : 'shipment',
+      raw_material_id: GEN.mode === 'rm' ? (GEN.rms[0] && GEN.rms[0].id) : null,
       shipment_id: s ? s.id : null,
-      shipment_item_id: STATE.item ? STATE.item.id : null,
+      shipment_item_id: GEN.item ? GEN.item.id : null,
       flag_state: extra ? extra.flag_state : null,
       bundle_id: bundle ? bundle.id : null,
       payload
@@ -706,30 +706,30 @@ const EUCatchGen = (function () {
       else await loadFromRawMaterial(opts.rmId);
 
       let gate = { ok: true };
-      if (STATE.mode === 'shipment') {
-        gate = await checkEU27(STATE.shipment.destination_country);
+      if (GEN.mode === 'shipment') {
+        gate = await checkEU27(GEN.shipment.destination_country);
         if (!gate.ok) { showBlocked(gate.reason); return; }
-        if (!STATE.items.length) {
+        if (!GEN.items.length) {
           showBlocked('This shipment has no product lines, so there is nothing to certify.'); return; }
 
-        STATE.item = STATE.items.length === 1 ? STATE.items[0] : await askProduct(STATE.items);
+        GEN.item = GEN.items.length === 1 ? GEN.items[0] : await askProduct(GEN.items);
 
-        const batches = STATE.batches.filter(b => b.shipment_item_id === STATE.item.id);
+        const batches = GEN.batches.filter(b => b.shipment_item_id === GEN.item.id);
         if (!batches.length) {
           showBlocked("This product line has no batches, so it can't be traced to a raw material."); return; }
 
-        STATE.rms = [...new Set(batches.map(rmFor).filter(Boolean))];
-        if (!STATE.rms.length) {
+        GEN.rms = [...new Set(batches.map(rmFor).filter(Boolean))];
+        if (!GEN.rms.length) {
           showBlocked('None of the batches resolve to a raw material. Check that each batch has one selected.'); return; }
-        STATE.batchesForItem = batches;
+        GEN.batchesForItem = batches;
       }
 
-      const wild = STATE.rms.filter(r => r.source_type === 'Wild Capture');
+      const wild = GEN.rms.filter(r => r.source_type === 'Wild Capture');
       if (!wild.length) {
         showBlocked('This product is farmed. Catch certificates apply to wild-capture fisheries only.'); return; }
 
       const rmIds = new Set(wild.map(r => r.id));
-      const flags = [...new Set(STATE.catches
+      const flags = [...new Set(GEN.catches
         .filter(c => rmIds.has(c.raw_material_id) && c.event_type === 'Catch' && c.flag_state)
         .map(c => c.flag_state))];
 
@@ -762,18 +762,18 @@ const EUCatchGen = (function () {
         made.push(await saveDoc('CC', payload, { flag_state: flag }));
       }
 
-      if (STATE.mode === 'shipment') {
-        showStage('Generating processing statement', STATE.shipment.processing_country || '');
-        const endorsing = await askAuthority('PS', STATE.shipment.processing_country);
-        showStage('Generating processing statement', STATE.shipment.processing_country || '');
+      if (GEN.mode === 'shipment') {
+        showStage('Generating processing statement', GEN.shipment.processing_country || '');
+        const endorsing = await askAuthority('PS', GEN.shipment.processing_country);
+        showStage('Generating processing statement', GEN.shipment.processing_country || '');
 
-        const ps = await buildPS(STATE.item, STATE.batchesForItem,
+        const ps = await buildPS(GEN.item, GEN.batchesForItem,
           made.map(d => ({ id: d.id, serial_number: d.serial_number, flag_state: d.flag_state })), gate);
         ps.endorsing_authority = endorsing;
         made.push(await saveDoc('PS', ps, null));
       }
 
-      showDone(made, STATE.bundle);
+      showDone(made, GEN.bundle);
     } catch (err) {
       console.error('[EUCatchGen]', err);
       showError(err.message || String(err));
@@ -788,7 +788,11 @@ const EUCatchGen = (function () {
   const setVal = (id, v) => { const e = document.getElementById(id); if (e) e.value = v == null ? '' : v; };
   const setTxt = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v == null ? '—' : v; };
   const show   = id => { const e = document.getElementById(id); if (e) e.classList.remove('hidden'); };
-  const FORM   = () => (typeof window.STATE !== 'undefined') ? window.STATE : {};
+  /* The form declares `const STATE = {...}` at top level. A top-level const is
+     a global lexical binding, NOT a property of window — so window.STATE is
+     undefined. Both scripts share the global scope, so referencing STATE
+     directly resolves it now that this module's own state is called GEN. */
+  const FORM = () => (typeof STATE !== 'undefined') ? STATE : {};
 
   function hydrateCC(doc) {
     const p = doc.payload || {};
@@ -1079,7 +1083,7 @@ const EUCatchGen = (function () {
     if (rmId) { startRM(rmId); return; }
   }
 
-  return { init, close, start, startRM, openInForm, _state: STATE };
+  return { init, close, start, startRM, openInForm, _state: GEN };
 })();
 
 window.EUCatchGen = EUCatchGen;
