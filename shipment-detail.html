@@ -627,7 +627,10 @@ function render(){
       var mode=(l.transport_mode||'Sea').toLowerCase();
       var meta=[l.carrier_name,l.document_no].filter(Boolean).join(' \u00b7 ');
       var fields=[];
-      fields.push(['Departure',fmtDate(l.departure_date)],['Arrival',fmtDate(l.arrival_date)]);
+      var isFuture=l.arrival_date && new Date(l.arrival_date)>new Date();
+      var noDischarge=!s.container_discharge_date;
+      var estArr=(isFuture||noDischarge) && l.arrival_date;
+      fields.push(['Departure',fmtDate(l.departure_date)],[estArr?'Est. Arrival *':'Arrival',fmtDate(l.arrival_date)]);
       var modeLabels={Sea:['Shipping Line','B/L'],Air:['Airline','AWB'],Road:['Haulier','CMR'],Rail:['Rail Operator','Rail Doc']};
       var ml=modeLabels[l.transport_mode]||['Carrier','Document'];
       fields.push([ml[0],l.carrier_name],[l.document_type||ml[1],l.document_no]);

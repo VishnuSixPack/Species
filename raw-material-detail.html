@@ -218,9 +218,15 @@
   </div>
 
   <div class="card" id="flowCard" style="display:none;">
-    <div class="card-head"><div><div class="card-title">Chain Map</div>
+    <div class="card-head" style="cursor:pointer;" onclick="toggleFlow()">
+      <div><div class="card-title">Chain Map
+        <svg class="flow-caret" id="flowCaret" width="12" height="12" viewBox="0 0 24 24" fill="none"
+          stroke="var(--muted)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+          style="vertical-align:middle;margin-left:6px;transition:transform .2s;">
+          <polyline points="6 9 12 15 18 9"/></svg></div>
       <div class="card-sub" id="flowSub">—</div></div></div>
-    <div class="flow" id="flowHost"><svg class="flow-svg" id="flowSvg"></svg><div id="flowNodes"></div></div>
+    <div class="flow" id="flowHost" style="display:none;">
+      <svg class="flow-svg" id="flowSvg"></svg><div id="flowNodes"></div></div>
   </div>
 
   <div class="card" id="farmCard" style="display:none;">
@@ -366,7 +372,12 @@ const DEMO={
         size_bytes:412000,issued_date:'2026-07-20',storage_path:'demo/x.pdf'},
        {id:'d2',file_name:'catch-cert-00184.pdf',doc_type:'Catch Certificate',mime_type:'application/pdf',
         size_bytes:308000,issued_date:'2026-07-22',storage_path:'demo/y.pdf'}],
- used:[{shipment_ref:'EU-2026-00482',batch_lot:'OS-YFT-260714',packages:215,product_name:'Frozen Whole Round Tuna'}]};
+ used:[{shipment_ref:'EU-2026-00482',batch_lot:'OS-YFT-260714',packages:215,
+   product_name:'Frozen Whole Round Tuna',processing_date:'2026-07-20',expiry_date:'2027-07-20',
+   shipment_date:'2026-07-28',shipment_status:'In-Transit'},
+  {shipment_ref:'EU-2026-00495',batch_lot:'OS-SKJ-260718',packages:380,
+   product_name:'Tuna Loins Vacuum Packed',processing_date:'2026-07-22',expiry_date:'2027-07-22',
+   shipment_date:'2026-08-02',shipment_status:'Draft'}]};
 
 /* =====================================================================
    RENDER
@@ -522,7 +533,8 @@ function renderEvents(){
         ${cell('Transshipped onto',e.transfer_to)}${cell('Where',e.transship_where)}
         ${cell('Transfer From',e.transfer_date,'date')}${cell('Transfer To',e.transfer_date_to,'date')}
         ${e.transship_where==='At sea'?cell('Position',pos):cell('Port',e.transfer_location)}
-        ${cell('Observer aboard',e.observer_present,'bool')}${cell('Observer',e.observer_name)}
+        ${e.transship_where==='At sea'?cell('Observer aboard',e.observer_present,'bool'):''}
+        ${e.transship_where==='At sea'?cell('Observer',e.observer_name):''}
         ${cell('B/L No',e.bl_no)}${cell('Trip No',e.trip_no)}
       </div>` + (e.containers?.length
         ? `<div class="sub-h">Containers</div><table>
@@ -583,6 +595,13 @@ function renderMatrix(){
 }
 
 /* Read-only chain map — same node layout the form saved. */
+let FLOW_OPEN=false;
+function toggleFlow(){
+  FLOW_OPEN=!FLOW_OPEN;
+  $('flowHost').style.display=FLOW_OPEN?'block':'none';
+  $('flowCaret').style.transform=FLOW_OPEN?'rotate(180deg)':'';
+  if(FLOW_OPEN) renderFlow();
+}
 function renderFlow(){
   if(!FLOW||!FLOW.nodes||!Object.keys(FLOW.nodes).length){ $('flowCard').style.display='none'; return; }
   $('flowCard').style.display='block';
@@ -718,12 +737,23 @@ document.addEventListener('keydown',e=>{
 function toast(m){ console.log(m); alert(m); }
 
 function renderUsed(){
-  $('usedHost').innerHTML=USED.length
-    ? `<table><thead><tr><th>Shipment</th><th>Product</th><th>Batch / Lot</th><th class="num">Packages</th></tr></thead>
-       <tbody>${USED.map(u=>`<tr${u.shipment_id?` style="cursor:pointer;" onclick="location.href='shipment-detail.html?id=${encodeURIComponent(u.shipment_id)}'"`:''}>
-         <td style="font-weight:600;">${esc(u.shipment_ref||'—')}</td><td>${esc(u.product_name||'—')}</td>
-         <td>${esc(u.batch_lot||'—')}</td><td class="num">${fmtN(u.packages)||'—'}</td></tr>`).join('')}</tbody></table>`
-    : `<div class="empty-note">Not yet used in any shipment.</div>`;
+  if(!USED.length){
+    $('usedHost').innerHTML=`<div class="empty-note">Not yet used in any shipment.</div>`; return;
+  }
+  $('usedHost').innerHTML=`<table>
+    <thead><tr><th>Shipment</th><th>Product</th><th>Batch / Lot</th>
+      <th>Processing Date</th><th>Expiry Date</th><th class="num">Packages</th>
+      <th>Status</th></tr></thead>
+    <tbody>${USED.map(u=>`<tr${u.shipment_id?` style="cursor:pointer;" onclick="location.href='shipment-detail.html?id=${encodeURIComponent(u.shipment_id)}'"`:''}>
+      <td><div style="font-weight:600;">${esc(u.shipment_ref||'—')}</div>
+        <div class="sci">${fmtDate(u.shipment_date)||''}</div></td>
+      <td>${esc(u.product_name||'—')}</td>
+      <td style="font-weight:500;">${esc(u.batch_lot||'—')}</td>
+      <td>${fmtDate(u.processing_date)||'—'}</td>
+      <td>${fmtDate(u.expiry_date)||'—'}</td>
+      <td class="num">${fmtN(u.packages)||'—'}</td>
+      <td>${u.shipment_status?`<span class="chip grey">${esc(u.shipment_status)}</span>`:''}</td>
+    </tr>`).join('')}</tbody></table>`;
 }
 
 /* =====================================================================
@@ -766,10 +796,14 @@ async function load(){
 
     try{
       const {data:u}=await dbClient.from('shipment_batches')
-        .select('shipment_id,batch_lot,packages,shipment_items(product_name),shipments(shipment_ref)')
+        .select('shipment_id,batch_lot,packages,processing_date,expiry_date,shipment_items(product_name),shipments(shipment_ref,shipment_date,status)')
         .eq('raw_material_id',id);
       USED=(u||[]).map(x=>({shipment_id:x.shipment_id,batch_lot:x.batch_lot,packages:x.packages,
-        product_name:x.shipment_items?.product_name,shipment_ref:x.shipments?.shipment_ref}));
+        processing_date:x.processing_date, expiry_date:x.expiry_date,
+        product_name:x.shipment_items?.product_name,
+        shipment_ref:x.shipments?.shipment_ref,
+        shipment_date:x.shipments?.shipment_date,
+        shipment_status:x.shipments?.status}));
     }catch(e){ USED=[]; }
 
     render();
