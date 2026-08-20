@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>My Documents — EU Catch Support</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="icon" type="image/png" href="brand-logo.png"/>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  :root{--primary:#1a6fdb;--bg:#f0f2f7;--white:#fff;--text:#1a1a2e;--muted:#6b7280;--border:#e2e5ec;
+    --section-bg:#f4f5f7;--gray-100:#f5f5f5;--gray-400:#a0a0a0;--gray-600:#5a5a5a;--black:#0f0f0f;
+    --danger:#c0392b;--success:#1e7a4e;--radius-lg:10px;
+    --shadow:0 2px 8px rgba(0,0,0,.06);--shadow-lg:0 8px 28px rgba(0,0,0,.12);}
+  html,body{background:var(--bg);}
+  body{font-family:'Poppins','DM Sans',sans-serif;color:var(--text);font-size:13px;line-height:1.6;min-height:100vh;}
+  input,select,button{font-family:inherit;}
+  .hidden{display:none !important;}
+
+  .brand-logo-fixed{position:fixed;top:16px;left:16px;z-index:200;height:64px;width:auto;object-fit:contain;
+    filter:drop-shadow(0 8px 20px rgba(0,0,0,.18));}
+  .exit-control{position:fixed;top:16px;right:16px;z-index:200;display:flex;align-items:center;height:38px;width:38px;
+    padding:0 11px;overflow:hidden;white-space:nowrap;background:var(--white);border:1px solid var(--border);
+    border-radius:999px;box-shadow:var(--shadow-lg);text-decoration:none;transition:width .25s ease;}
+  .exit-control:hover{width:180px;border-color:#f0c4c0;}
+  .exit-icon{font-size:18px;font-weight:700;color:var(--danger);flex-shrink:0;line-height:1;}
+  .exit-label{margin-left:8px;font-size:13px;font-weight:700;color:var(--danger);opacity:0;transition:opacity .2s;}
+  .exit-control:hover .exit-label{opacity:1;}
+
+  .main{max-width:1200px;margin:0 auto;padding:68px 24px 60px;}
+  .page-head{margin-bottom:22px;}
+  .page-title{font-size:24px;font-weight:700;letter-spacing:-.01em;}
+  .page-sub{font-size:12px;color:var(--muted);margin-top:4px;}
+
+  .toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px;}
+  .seg{display:flex;border:1px solid var(--border);border-radius:999px;padding:3px;background:var(--white);}
+  .seg button{padding:6px 15px;border:none;background:transparent;border-radius:999px;font-size:12px;
+    font-weight:600;color:var(--muted);cursor:pointer;}
+  .seg button.active{background:var(--primary);color:#fff;}
+  .search{flex:1;min-width:200px;position:relative;}
+  .search input{width:100%;font-size:13px;padding:10px 12px 10px 34px;border:1px solid var(--border);
+    border-radius:6px;outline:none;background:var(--white);}
+  .search input:focus{border-color:var(--primary);}
+  .search span{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);}
+
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;font-size:12px;font-weight:500;
+    border-radius:4px;border:1px solid var(--border);cursor:pointer;background:var(--white);color:var(--text);
+    text-decoration:none;white-space:nowrap;}
+  .btn:hover{background:var(--gray-100);}
+  .btn-primary{background:var(--primary);color:#fff;border-color:var(--primary);font-weight:600;}
+  .btn-sm{padding:5px 12px;font-size:11px;}
+
+  .card{background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);
+    box-shadow:var(--shadow);overflow:hidden;}
+  table{width:100%;border-collapse:collapse;}
+  th{background:var(--gray-100);text-align:left;padding:10px 14px;font-size:10px;font-weight:700;
+    color:var(--gray-600);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);}
+  td{padding:12px 14px;font-size:12px;border-bottom:1px solid var(--gray-100);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:#f9fbfe;}
+
+  .tag{display:inline-block;font-size:10px;font-weight:700;padding:2px 9px;border-radius:999px;}
+  .tag-CC{background:#eef4fd;color:#1a6fdb;}
+  .tag-SC{background:#fef3c7;color:#d97706;}
+  .tag-PS{background:#ecfdf5;color:#047857;}
+  .tag-ID{background:#f3e8ff;color:#7e22ce;}
+  .status{font-size:11px;font-weight:700;}
+  .status-draft{color:var(--muted);}
+  .status-partial{color:#d97706;}
+  .status-finished{color:#16a34a;}
+
+  .bundle{margin-bottom:14px;}
+  .bundle-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;
+    background:var(--white);border:1px solid var(--border);border-radius:var(--radius-lg);cursor:pointer;}
+  .bundle.open .bundle-head{border-radius:var(--radius-lg) var(--radius-lg) 0 0;border-bottom:none;}
+  .bundle-ref{font-size:14px;font-weight:700;color:var(--primary);}
+  .bundle-meta{font-size:11px;color:var(--muted);margin-top:2px;}
+  .bundle-body{display:none;border:1px solid var(--border);border-top:1px solid var(--border);
+    border-radius:0 0 var(--radius-lg) var(--radius-lg);background:var(--white);overflow:hidden;}
+  .bundle.open .bundle-body{display:block;}
+  .chev{color:var(--muted);font-size:11px;transition:transform .2s;}
+  .bundle.open .chev{transform:rotate(90deg);}
+
+  .empty{text-align:center;padding:60px 24px;color:var(--muted);}
+  .empty h3{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px;}
+
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(15,15,15,.45);z-index:400;
+    align-items:center;justify-content:center;padding:24px;}
+  .modal-bg.open{display:flex;}
+  .modal{background:var(--white);border-radius:10px;width:100%;max-width:780px;max-height:88vh;
+    display:flex;flex-direction:column;box-shadow:var(--shadow-lg);}
+  .modal-h{padding:18px 22px;border-bottom:1px solid var(--border);font-size:15px;font-weight:700;
+    display:flex;justify-content:space-between;align-items:center;gap:12px;}
+  .modal-b{padding:20px 22px;overflow-y:auto;}
+  .modal-f{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;}
+
+  .sec{background:var(--section-bg);border-radius:8px;padding:14px 16px;margin-bottom:12px;}
+  .sec-t{font-size:12px;font-weight:700;margin-bottom:10px;}
+  .kv{display:grid;grid-template-columns:190px 1fr;gap:7px 14px;font-size:12px;}
+  .kv .k{color:var(--gray-600);}
+  .kv .v{color:var(--black);}
+  .kv .v.empty-v{color:var(--gray-400);}
+  .banner{background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:11px 13px;
+    font-size:12px;color:#92400e;margin-bottom:14px;}
+
+  @media(max-width:760px){
+    .kv{grid-template-columns:1fr;gap:2px 0;}
+    .kv .k{margin-top:8px;font-weight:600;}
+    th:nth-child(4),td:nth-child(4){display:none;}
+  }
+</style>
+</head>
+<body>
+
+<img src="st-concept.png" alt="Project Manhattan" class="brand-logo-fixed"/>
+<a href="home-logged-in.html" class="exit-control" title="Exit to Project Manhattan">
+  <span class="exit-icon">✕</span><span class="exit-label">Exit from EU CATCH</span>
+</a>
+
+<div class="main">
+  <div class="page-head">
+    <div class="page-title">My Documents</div>
+    <div class="page-sub">Catch certificates, processing statements and importer declarations generated from your shipments.</div>
+  </div>
+
+  <div class="toolbar">
+    <div class="seg" id="typeSeg">
+      <button class="active" data-type="">All</button>
+      <button data-type="CC">Catch Certificate</button>
+      <button data-type="SC">Simplified CC</button>
+      <button data-type="PS">Processing Statement</button>
+      <button data-type="ID">Importer Declaration</button>
+    </div>
+    <div class="seg" id="viewSeg">
+      <button data-view="list" class="active">By document</button>
+      <button data-view="bundle">By shipment</button>
+    </div>
+    <div class="search">
+      <span>🔍</span>
+      <input type="text" id="q" placeholder="Search serial number, reference, flag state…"/>
+    </div>
+    <a class="btn btn-primary" href="eu-catch-support.html">+ New document</a>
+  </div>
+
+  <div id="content"><div class="empty">Loading your documents…</div></div>
+</div>
+
+<div class="modal-bg" id="docModal">
+  <div class="modal">
+    <div class="modal-h">
+      <span id="modalTitle">Document</span>
+      <span id="modalSerial" style="font-size:12px;font-weight:400;color:var(--muted);"></span>
+    </div>
+    <div class="modal-b" id="modalBody"></div>
+    <div class="modal-f">
+      <button class="btn" onclick="copyJSON()">Copy raw data</button>
+      <button class="btn btn-primary" onclick="closeModal()">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL      = 'https://enbdaajcromxmhgcverp.supabase.co';
+const SUPABASE_ANON_KEY = 'PASTE_THE_SAME_ANON_KEY_HERE';
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const S = { docs: [], bundles: [], type: '', view: 'list', q: '', current: null };
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDate = d => d ? new Date(d).toLocaleDateString('en-GB',
+  { day:'2-digit', month:'short', year:'numeric' }) : '—';
+const val = v => (v === null || v === undefined || v === '') ? null : v;
+
+const TYPE_NAME = { CC:'Catch Certificate', SC:'Simplified Catch Certificate',
+                    PS:'Processing Statement', ID:'Importer Declaration' };
+
+/* ------------------------------------------------------------------ load */
+
+async function load(){
+  try {
+    const { data: docs, error: e1 } = await sb.from('catch_documents')
+      .select('*').order('created_at', { ascending: false });
+    if (e1) throw e1;
+
+    const { data: bundles, error: e2 } = await sb.from('document_bundles')
+      .select('*').order('created_at', { ascending: false });
+    if (e2) throw e2;
+
+    S.docs = docs || [];
+    S.bundles = bundles || [];
+    render();
+  } catch (err) {
+    console.error('[Documents]', err);
+    document.getElementById('content').innerHTML =
+      `<div class="card"><div class="empty">
+        <h3>Couldn't load your documents</h3>
+        <p>${esc(err.message || String(err))}</p>
+      </div></div>`;
+  }
+}
+
+/* --------------------------------------------------------------- filters */
+
+function visible(){
+  const q = S.q.trim().toLowerCase();
+  return S.docs.filter(d => {
+    if (S.type && d.doc_type !== S.type) return false;
+    if (!q) return true;
+    return [d.serial_number, d.local_ref, d.flag_state, d.doc_type,
+            d.payload?.exporter?.name, d.payload?.processing_plant?.name]
+      .filter(Boolean).some(v => String(v).toLowerCase().includes(q));
+  });
+}
+
+/* ---------------------------------------------------------------- render */
+
+function render(){
+  const host = document.getElementById('content');
+  const docs = visible();
+
+  if (!S.docs.length){
+    host.innerHTML = `<div class="card"><div class="empty">
+      <h3>No documents yet</h3>
+      <p>Generate a catch certificate from a shipment, or start one manually.</p>
+      <p style="margin-top:14px;"><a class="btn btn-primary" href="eu-catch-support.html">Start a document</a></p>
+    </div></div>`;
+    return;
+  }
+  if (!docs.length){
+    host.innerHTML = `<div class="card"><div class="empty">
+      <h3>Nothing matches that</h3><p>Try a different search or filter.</p></div></div>`;
+    return;
+  }
+
+  host.innerHTML = S.view === 'bundle' ? renderBundles(docs) : renderList(docs);
+}
+
+function rowsFor(docs){
+  return docs.map(d => {
+    const bundle = S.bundles.find(b => b.id === d.bundle_id);
+    return `<tr onclick="openDoc('${d.id}')" style="cursor:pointer;">
+      <td><b>${esc(d.serial_number || '—')}</b>
+        ${d.local_ref ? `<br><small style="color:var(--muted);">${esc(d.local_ref)}</small>` : ''}</td>
+      <td><span class="tag tag-${esc(d.doc_type)}">${esc(TYPE_NAME[d.doc_type] || d.doc_type)}</span></td>
+      <td>${d.flag_state ? esc(d.flag_state) : '<span style="color:var(--gray-400);">—</span>'}</td>
+      <td>${bundle ? `<span style="color:var(--primary);font-weight:600;">${esc(bundle.bundle_ref)}</span>`
+                   : '<span style="color:var(--gray-400);">—</span>'}</td>
+      <td><span class="status status-${esc(d.status)}">${esc(d.status)}</span></td>
+      <td>${fmtDate(d.created_at)}</td>
+      <td style="text-align:right;"><button class="btn btn-sm" onclick="event.stopPropagation();openDoc('${d.id}')">View</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderList(docs){
+  return `<div class="card"><table>
+    <thead><tr><th>Serial number</th><th>Type</th><th>Flag state</th><th>Shipment bundle</th>
+      <th>Status</th><th>Created</th><th></th></tr></thead>
+    <tbody>${rowsFor(docs)}</tbody></table></div>`;
+}
+
+function renderBundles(docs){
+  const groups = new Map();
+  docs.forEach(d => {
+    const key = d.bundle_id || 'none';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(d);
+  });
+
+  return [...groups.entries()].map(([key, list], i) => {
+    const b = S.bundles.find(x => x.id === key);
+    const types = [...new Set(list.map(d => d.doc_type))];
+    return `<div class="bundle ${i === 0 ? 'open' : ''}" id="b${i}">
+      <div class="bundle-head" onclick="document.getElementById('b${i}').classList.toggle('open')">
+        <div>
+          <div class="bundle-ref">${b ? esc(b.bundle_ref) : 'Not linked to a shipment'}</div>
+          <div class="bundle-meta">${list.length} document${list.length === 1 ? '' : 's'}
+            · ${types.map(t => TYPE_NAME[t] || t).join(' · ')}
+            ${b ? '· created ' + fmtDate(b.created_at) : ''}</div>
+        </div>
+        <span class="chev">▸</span>
+      </div>
+      <div class="bundle-body"><table>
+        <thead><tr><th>Serial number</th><th>Type</th><th>Flag state</th><th>Shipment bundle</th>
+          <th>Status</th><th>Created</th><th></th></tr></thead>
+        <tbody>${rowsFor(list)}</tbody></table></div>
+    </div>`;
+  }).join('');
+}
+
+/* ----------------------------------------------------------------- modal */
+
+function kv(pairs){
+  return `<div class="kv">${pairs.map(([k, v]) =>
+    `<div class="k">${esc(k)}</div><div class="v${val(v) === null ? ' empty-v' : ''}">${
+      val(v) === null ? 'Not available' : esc(v)}</div>`).join('')}</div>`;
+}
+
+function openDoc(id){
+  const d = S.docs.find(x => x.id === id);
+  if (!d) return;
+  S.current = d;
+  const p = d.payload || {};
+  const bundle = S.bundles.find(b => b.id === d.bundle_id);
+
+  document.getElementById('modalTitle').textContent = TYPE_NAME[d.doc_type] || d.doc_type;
+  document.getElementById('modalSerial').textContent = d.serial_number || '';
+
+  let html = '';
+
+  if (d.status === 'draft' || d.status === 'partial'){
+    html += `<div class="banner">This is a draft. Fields that couldn't be filled from your
+      records are marked "Not available" — complete them before submitting to CATCH.</div>`;
+  }
+
+  html += `<div class="sec"><div class="sec-t">Document</div>${kv([
+    ['Status', d.status],
+    ['Created', fmtDate(d.created_at)],
+    ['Shipment bundle', bundle ? bundle.bundle_ref : null],
+    ['Snapshot taken', p.snapshot_at ? fmtDate(p.snapshot_at) : null],
+  ])}</div>`;
+
+  if (d.doc_type === 'CC' || d.doc_type === 'SC'){
+    const a = p.validating_authority;
+    html += `<div class="sec"><div class="sec-t">Validating authority</div>${kv([
+      ['Name', a?.name], ['Country', a?.country || p.flag_state],
+      ['Code', a?.code], ['Address', a?.address],
+      ['Source', a?.source === 'typed' ? 'Typed by user' : a ? 'Authority register' : null],
+    ])}</div>`;
+
+    (p.vessels || []).forEach((v, i) => {
+      html += `<div class="sec"><div class="sec-t">Fishing vessel ${i + 1}</div>${kv([
+        ['Name', v.name], ['IMO', v.imo], ['Flag state', v.flag_state],
+        ['Fishing licence no.', v.licence_no], ['Licence valid until', v.licence_valid_until],
+        ['Master', v.master],
+      ])}</div>`;
+    });
+
+    (p.lines || []).forEach((l, i) => {
+      html += `<div class="sec"><div class="sec-t">Catch ${i + 1}</div>${kv([
+        ['Species', Array.isArray(l.species) ? l.species.filter(Boolean).join(', ') : l.species],
+        ['Scientific name', l.scientific_name], ['FAO 3-alpha code', l.afsis_3a_code],
+        ['Product form', l.product_form], ['FAO area', l.fao_area],
+        ['Catch area', l.catch_area_detail], ['Gear', l.gear_type],
+        ['Catch dates', l.catch_date_from ? `${fmtDate(l.catch_date_from)} – ${fmtDate(l.catch_date_to)}` : null],
+        ['Estimated live weight', l.estimated_live_weight_kg ? l.estimated_live_weight_kg + ' kg' : null],
+        ['Verified weight landed', l.verified_weight_landed_kg ? l.verified_weight_landed_kg + ' kg' : null],
+        ['Port of landing', l.landing_port], ['Landing date', fmtDate(l.landing_date)],
+      ])}</div>`;
+    });
+
+    (p.transshipments || []).forEach((t, i) => {
+      html += `<div class="sec"><div class="sec-t">Transhipment ${i + 1}</div>${kv([
+        ['Where', t.where], ['Transfer date', t.transfer_date ? fmtDate(t.transfer_date) : null],
+        ['Location', t.location], ['Carrier vessel', t.carrier_vessel],
+        ['Carrier IMO', t.carrier_imo], ['Carrier flag', t.carrier_flag],
+        ['Authorisation no.', t.authorisation_no], ['Declaration no.', t.declaration_no],
+        ['Observer', t.observer_present ? (t.observer_name || 'Yes') : null],
+        ['Master', t.master], ['Quantity', t.quantity_kg ? t.quantity_kg + ' kg' : null],
+      ])}</div>`;
+    });
+
+    html += `<div class="sec"><div class="sec-t">Exporter</div>${kv([
+      ['Name', p.exporter?.name], ['Country', p.exporter?.country],
+    ])}</div>`;
+
+    html += `<div class="sec"><div class="sec-t">Totals</div>${kv([
+      ['Verified weight landed', p.totals?.verified_weight_landed_kg
+        ? p.totals.verified_weight_landed_kg + ' kg' : null],
+      ['Estimated live weight', p.totals?.estimated_live_weight_kg
+        ? p.totals.estimated_live_weight_kg + ' kg' : null],
+    ])}</div>`;
+  }
+
+  if (d.doc_type === 'PS'){
+    html += `<div class="sec"><div class="sec-t">Processing plant</div>${kv([
+      ['Name', p.processing_plant?.name], ['Country', p.processing_plant?.country],
+      ['Approval number', p.processing_plant?.approval_number],
+    ])}</div>`;
+
+    html += `<div class="sec"><div class="sec-t">Endorsing authority</div>${kv([
+      ['Name', p.endorsing_authority?.name], ['Country', p.endorsing_authority?.country],
+      ['Code', p.endorsing_authority?.code],
+    ])}</div>`;
+
+    html += `<div class="sec"><div class="sec-t">Exporter</div>${kv([
+      ['Name', p.exporter?.name], ['Country', p.exporter?.country],
+    ])}</div>`;
+
+    html += `<div class="sec"><div class="sec-t">Processed product</div>${kv([
+      ['Product', p.product?.name], ['Species', p.product?.species_name],
+      ['Form', p.product?.product_form], ['GTIN', p.product?.gtin],
+      ['Packages', p.product?.packages ? `${p.product.packages} ${p.product.package_type || ''}`.trim() : null],
+      ['Gross weight', p.product?.gross_weight_kg ? p.product.gross_weight_kg + ' kg' : null],
+      ['Net weight', p.product?.net_weight_kg ? p.product.net_weight_kg + ' kg' : null],
+      ['Processed quantity', p.product?.processed_quantity_kg ? p.product.processed_quantity_kg + ' kg' : null],
+    ])}</div>`;
+
+    (p.batches || []).forEach((b, i) => {
+      html += `<div class="sec"><div class="sec-t">Batch ${i + 1}</div>${kv([
+        ['Lot', b.batch_lot], ['Packages', b.packages],
+        ['Quantity', b.quantity_kg ? b.quantity_kg + ' kg' : null],
+        ['Raw material', b.raw_material_ref], ['Species', b.species_name],
+        ['FAO 3-alpha code', b.afsis_3a_code],
+        ['Supplier catch certificate', b.supplier_catch_certificate_no],
+        ['Processing date', b.processing_date ? fmtDate(b.processing_date) : null],
+      ])}</div>`;
+    });
+
+    if ((p.linked_catch_certificates || []).length){
+      html += `<div class="sec"><div class="sec-t">Linked catch certificates</div>${kv(
+        p.linked_catch_certificates.map(c =>
+          [c.flag_state || 'Certificate', c.serial_number]))}</div>`;
+    }
+  }
+
+  html += `<div class="sec"><div class="sec-t">Transport</div>${kv([
+    ['Country of export', p.transport?.country_of_export],
+    ['Point of departure', p.transport?.point_of_departure],
+    ['Point of destination', p.transport?.point_of_destination],
+    ['Container no.', p.transport?.container_no],
+    ['Seal no.', p.transport?.seal_number],
+    ['Destination country', p.destination?.country],
+  ])}</div>`;
+
+  document.getElementById('modalBody').innerHTML = html;
+  document.getElementById('docModal').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(){
+  document.getElementById('docModal').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function copyJSON(){
+  if (!S.current) return;
+  navigator.clipboard.writeText(JSON.stringify(S.current.payload, null, 2))
+    .then(() => alert('Raw document data copied to the clipboard.'))
+    .catch(() => alert('Copy failed — your browser blocked clipboard access.'));
+}
+
+/* ---------------------------------------------------------------- events */
+
+document.getElementById('typeSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  S.type = b.dataset.type;
+  [...e.currentTarget.children].forEach(x => x.classList.toggle('active', x === b));
+  render();
+});
+document.getElementById('viewSeg').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  S.view = b.dataset.view;
+  [...e.currentTarget.children].forEach(x => x.classList.toggle('active', x === b));
+  render();
+});
+document.getElementById('q').addEventListener('input', e => { S.q = e.target.value; render(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+document.getElementById('docModal').addEventListener('click', e => {
+  if (e.target.id === 'docModal') closeModal();
+});
+
+load();
+</script>
+</body>
+</html>
