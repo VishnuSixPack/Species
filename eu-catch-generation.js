@@ -79,6 +79,58 @@ const EUCatchGen = (function () {
     return row;
   }
 
+  /* ---------------------------------------------------------------------
+     Resolve a CN code against the form's own HS_TREE, so a generated
+     commodity is indistinguishable from one picked by hand: same chapter,
+     heading and subheading strings, same species options, and the checkbox
+     for it is already ticked when "Modify commodities" is opened.
+     If a code isn't in the tree yet, it's inserted — the picker then shows
+     it in the right place instead of the commodity reading "not assigned".
+     --------------------------------------------------------------------- */
+
+  function hsFind(code) {
+    if (typeof HS_TREE === 'undefined' || !code) return null;
+    for (const ch of HS_TREE)
+      for (const hd of ch.children || [])
+        for (const sub of hd.children || [])
+          if (sub.code === code)
+            return { chapter: `${ch.code} ${ch.label}`, heading: `${hd.code} ${hd.label}`,
+                     sub: `${sub.code} ${sub.label}`, hsCode: sub.code,
+                     speciesOptions: sub.species || [] };
+    return null;
+  }
+
+  function hsEnsure(code, label, speciesEntry) {
+    if (typeof HS_TREE === 'undefined' || !code) return null;
+    const found = hsFind(code);
+    if (found) {
+      /* Make sure the species is offered on that code */
+      if (speciesEntry && speciesEntry.code &&
+          !found.speciesOptions.some(s => s.code === speciesEntry.code)) {
+        found.speciesOptions.push(speciesEntry);
+      }
+      return found;
+    }
+
+    const chCode = code.slice(0, 2), hdCode = code.slice(0, 4);
+    let ch = HS_TREE.find(c => c.code === chCode);
+    if (!ch) {
+      ch = { code: chCode, label: (CHAPTERS[chCode] || '').slice(3) || 'Other', children: [] };
+      HS_TREE.push(ch);
+    }
+    let hd = (ch.children = ch.children || []).find(h => h.code === hdCode);
+    if (!hd) {
+      hd = { code: hdCode, label: (HEADINGS[hdCode] || '').slice(5) || 'Other', children: [] };
+      ch.children.push(hd);
+      ch.children.sort((a, b) => a.code.localeCompare(b.code));
+    }
+    const sub = { code, label, species: speciesEntry ? [speciesEntry] : [] };
+    (hd.children = hd.children || []).push(sub);
+    hd.children.sort((a, b) => a.code.localeCompare(b.code));
+
+    return hsFind(code);
+  }
+
   /* =========================================================== CN MAPPING
      Species FAO 3-alpha + presentation → Combined Nomenclature heading. */
 
@@ -131,20 +183,28 @@ const EUCatchGen = (function () {
     return 'frozen';
   }
 
-  function cnFor(afsis, form, preservation) {
+  function cnFor(afsis, form, preservation, scientificName) {
     const table = CN[(afsis || '').toUpperCase()];
     if (!table) return null;
     const want = presentationOf(form, preservation);
     const pick = table[want] || table.frozen || table.fresh || Object.values(table)[0];
     if (!pick) return null;
     const [code, label] = pick;
-    return {
-      hsCode: code,
-      chapter: CHAPTERS[code.slice(0, 2)] || CHAPTERS['03'],
-      heading: HEADINGS[code.slice(0, 4)] || '',
-      sub: `${code.slice(0,4)} ${code.slice(4)} ${label}`,
-      label, presentation: want
-    };
+
+    /* Take the chapter/heading/sub strings from HS_TREE so they match a
+       manual selection exactly, adding the node if it isn't there yet. */
+    const node = hsEnsure(code, label,
+      afsis ? { code: afsis.toUpperCase(), name: scientificName || '' } : null);
+
+    return node
+      ? { hsCode: node.hsCode, chapter: node.chapter, heading: node.heading,
+          sub: node.sub, label, presentation: want,
+          speciesOptions: node.speciesOptions }
+      : { hsCode: code,
+          chapter: CHAPTERS[code.slice(0, 2)] || CHAPTERS['03'],
+          heading: HEADINGS[code.slice(0, 4)] || '',
+          sub: `${code.slice(0,4)} ${code.slice(4)} ${label}`,
+          label, presentation: want, speciesOptions: [] };
   }
 
   /* ================================================================= data */
@@ -304,14 +364,29 @@ const EUCatchGen = (function () {
     for (const c of catchEvents) {
       const sp = GEN.catchSpecies.filter(x => x.catch_event_id === c.id);
       const rm = rmList.find(r => r.id === c.raw_material_id);
-      const list = sp.length ? sp : [{ species_name: rm && rm.species_name, quantity_kg: c.quantity_kg }];
+
+      /* If the catch event has no per-species breakdown, fall back to the raw
+         material's species LINES — every species on it — rather than the
+         single header field, which names only one and would silently drop the
+         others from the certificate. */
+      let list;
+      if (sp.length) {
+        list = sp;
+      } else {
+        const rmLines = GEN.species.filter(x => x.raw_material_id === c.raw_material_id);
+        list = rmLines.length
+          ? rmLines.map(x => ({ species_name: x.species_name, quantity_kg: x.quantity_kg }))
+          : [{ species_name: rm && rm.species_name, quantity_kg: c.quantity_kg }];
+      }
 
       for (const one of list) {
         const rmSpecies = GEN.species.find(x =>
-          x.raw_material_id === c.raw_material_id && x.species_name === one.species_name);
+          x.raw_material_id === c.raw_material_id &&
+          (x.species_name || '').toLowerCase() === (one.species_name || '').toLowerCase());
         const afsis = (rmSpecies && rmSpecies.afsis_3a_code) || (rm && rm.afsis_3a_code);
         const form  = (rmSpecies && rmSpecies.product_form) || (rm && rm.product_form);
-        const cn    = cnFor(afsis, form, rm && rm.preservation);
+        const sci   = (rmSpecies && rmSpecies.scientific_name) || (rm && rm.scientific_name);
+        const cn    = cnFor(afsis, form, rm && rm.preservation, sci);
 
         lines.push({
           vessel_name: clean(c.vessel_name), imo: c.imo, flag_state: c.flag_state,
@@ -321,6 +396,7 @@ const EUCatchGen = (function () {
           cn_code: cn ? cn.hsCode : null, cn_label: cn ? cn.label : null,
           cn_chapter: cn ? cn.chapter : null, cn_heading: cn ? cn.heading : null,
           cn_sub: cn ? cn.sub : null, presentation: cn ? cn.presentation : null,
+          cn_species_options: cn ? cn.speciesOptions : null,
           fao_area: c.fao_area, catch_area_detail: c.catch_area_detail,
           gear_type: c.gear_type, latitude: c.latitude, longitude: c.longitude,
           catch_date_from: c.catch_date_from, catch_date_to: c.catch_date_to,
@@ -470,7 +546,8 @@ const EUCatchGen = (function () {
     const productCn = cnFor(
       productSpecies && productSpecies.afsis_3a_code,
       (pickedOpt && pickedOpt.form) || sourceRm.product_form || item.product_form,
-      sourceRm.preservation
+      sourceRm.preservation,
+      productSpecies && productSpecies.scientific_name
     );
 
     /* Vessels that caught the certified species, for the commodity table */
@@ -933,7 +1010,9 @@ const EUCatchGen = (function () {
         heading: f.cn_heading || `Species ${f.afsis_3a_code || ''}`,
         sub: f.cn_sub || f.scientific_name || '',
         hsCode: f.cn_code || '000000',
-        speciesOptions: [{ code: f.afsis_3a_code || '', name: f.scientific_name || '' }],
+        speciesOptions: (f.cn_species_options && f.cn_species_options.length)
+          ? f.cn_species_options
+          : [{ code: f.afsis_3a_code || '', name: f.scientific_name || '' }],
         rows: lines.map(l => ({
           species: [{ code: l.afsis_3a_code || '', name: l.scientific_name || '' }],
           vessel: l.vessel_name || '',
@@ -1182,6 +1261,43 @@ const EUCatchGen = (function () {
     }
   }
 
+  /* When the commodity picker opens, tick whatever is already on the
+     document — so a generated commodity behaves exactly like a manual one
+     and "Modify commodities" shows the current selection rather than a
+     blank tree. */
+  function hookCommodityPicker() {
+    if (typeof openCommodityModal !== 'function' || openCommodityModal.__eucg) return;
+    const original = openCommodityModal;
+    const wrapped = function (target) {
+      original.apply(this, arguments);
+      const form = FORM();
+      const arr = target === 'cc' ? form.ccCommodities
+                : target === 'sc' ? form.scCommodities
+                : target === 'ps' ? form.psCommodities
+                : form.idCommodities;
+      const codes = new Set((arr || []).map(c =>
+        (c.hsCode || String(c.cnCode || '').slice(0, 6))).filter(Boolean));
+      if (!codes.size) return;
+
+      document.querySelectorAll('#commodityTree .commodity-checkbox').forEach(cb => {
+        if (!codes.has(cb.dataset.hscode)) return;
+        cb.checked = true;
+        /* Open the branches so the ticked box is visible, not buried */
+        let node = cb.closest('.tree-children');
+        while (node) {
+          node.classList.remove('hidden');
+          const header = node.previousElementSibling;
+          const chev = header && header.querySelector('.tree-chevron');
+          if (chev) chev.textContent = '－';
+          node = node.parentElement ? node.parentElement.closest('.tree-children') : null;
+        }
+      });
+      if (typeof updateCommodityCount === 'function') updateCommodityCount();
+    };
+    wrapped.__eucg = true;
+    window.openCommodityModal = wrapped;
+  }
+
   /* ================================================================= init */
 
   function init(cfg) {
@@ -1189,6 +1305,7 @@ const EUCatchGen = (function () {
     else if (window.supabase && cfg.url && cfg.key) sb = window.supabase.createClient(cfg.url, cfg.key);
     else { console.error('[EUCatchGen] No Supabase client available.'); return; }
     if (cfg.docBucket) DOC_BUCKET = cfg.docBucket;
+    hookCommodityPicker();
 
     const docId = qs('doc');
     if (docId) { openInForm(docId); return; }
