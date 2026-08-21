@@ -40,6 +40,47 @@ const GDSN_COUNTRIES = [
   {code:'578', name:'Norway'}, {code:'218', name:'Ecuador'}, {code:'484', name:'Mexico'},
 ];
 
+// Real GS1 GDSN code lists + descriptions, as given — replaces the earlier
+// guessed/incomplete option lists for these 5 fields.
+const GDSN_VERIFICATION_DESC = {
+  EXTERNAL_VERIFICATION:'The values have been verified by an external party.',
+  NOT_VERIFIED:'The values have been calculated according to the reported calculation method, but have not been verified.',
+  PEER_REVIEWED:'The values and methodology have been reviewed internally or by 3rd party.',
+};
+const GDSN_BOUNDARIES_DESC = {
+  CRADLE_TO_CONSUMPTION:'Total amount of CO2 emission from a life cycle assessment (LCA) model that assesses a product\u2019s environmental footprint from raw materials extraction until it is consumed. (PEF guidance, the European Commission 2021b)',
+  CRADLE_TO_GATE:'Total amount of CO2 emission from a life cycle assessment (LCA) model that assesses a product\u2019s environmental footprint from raw materials extraction until it leaves the factory gate.',
+  CRADLE_TO_GRAVE:'Total amount of CO2 emission from a life cycle assessment (LCA) model that assesses a product\u2019s environmental footprint from raw materials extraction until its disposal, including manufacturing, transportation, product use.',
+  END_OF_LIFE:'The emission of the product when it is disposed, recycled, recovered after use.',
+  MANUFACTURING:'The emissions resulting from the manufacturing/production of the product.',
+  RAW_MATERIALS:'The emissions resulting from the production/extraction, packaging, storage, warehousing and transportation of raw materials.',
+  TRANSPORT_FINAL_PRODUCT:'The emissions resulting from the distribution of the product to the retail network or to downstream stakeholders. This stage includes transport of the final product and its packaging, storage and warehousing.',
+  USE:'The emissions of the product when used by the consumer.',
+};
+const GDSN_UOM_DESC = {
+  EUR_CO2_EQ_PER_KG:'Euro CO2 equivalent per kilogram.',
+  KG_CO2_EQ_PER_100G:'Kilogram CO2 equivalent per 100 grams.',
+  KG_CO2_EQ_PER_100ML:'Kilogram CO2 equivalent per 100 milliliters.',
+  KG_CO2_EQ_PER_FU:'Kilogram CO2 equivalent per functional unit.',
+  KG_CO2_EQ_PER_KG:'Kilogram CO2 equivalent per kilogram.',
+};
+const GDSN_METHODOLOGY_DESC = {
+  CARBON_FOOTPRINT_STANDARD:'Product-specific value, based on carbon footprint standard (ISO 14067).',
+  ENVIMAT:'Value for the product-group from an input-output study, based on ENVIMAT in Finland (Nissinen et al. 2019, SYKEra 15/2019).',
+  EPD:'Environmental Product Declaration (EPD).',
+  GHG_PROTOCOL:'The Product Life Cycle Accounting and Reporting Standard can be used to understand the full life cycle emissions of a product and focus efforts on the greatest Greenhouse Gas (GHG) reduction opportunities.',
+  ISO_14064:'ISO 14064 specifies requirements for selecting Greenhouse Gas (GHG) validators/verifiers, establishing the level of assurance, objectives, criteria and scope, determining the validation/verification approach, assessing GHG data, information, information systems and controls, evaluating GHG assertions and preparing validation/verification statements.',
+  OTHER:'A standard calculation method, not classified in the codelist.',
+  PCR:'Product Category Rules.',
+  PCR_EDF:'Product-specific value, based on Product Category Rule (PCR) of an Environmental Product Declaration (EPD) system.',
+  PEF:'The Product Environmental Footprint (PEF) methodology is performed following the PEF guidelines published by the European Commission and, if available, specific category rules (PEFCRs).',
+  RECIPE:'Based on National Institute for Public Health and the Environment (RIVM), Institute of Environmental Sciences (CML), Product Category Rule (PCR).',
+};
+const GDSN_ACCOUNTING_DESC = {
+  ATTRIBUTIONAL:'An attributional life cycle assessment (ALCA) is focusing on describing, assessing and quantifying environmentally relevant physical flows of specific life cycle(s) and its subsystems. An ALCA gives an estimate of what part of the global environmental burdens belongs to the study object. An ALCA does not include environmental benefits or other indirect consequences that arise outside the life cycle of the investigated product.',
+  CONSEQUENTIAL:'A consequential life cycle assessment (CLCA) is focusing on describing, assessing and quantifying environmentally relevant flows and how they will change in response to possible decisions. A CLCA gives an estimate of how the production and use of the study object affect the global environmental burdens. For example, an increased use of a material in the studied system can lead to less material being used in other systems.',
+};
+
 const gdsnData = {
   countryCode:'764',
   date:'',
@@ -281,16 +322,16 @@ function renderGDSNModal(){
       <div class="gdsn-group">
         <div class="gdsn-row"><label>cfpCountryCode</label><div class="control">${buildSelect('gdsn-country', GDSN_COUNTRIES.map(c=>c.code), {value:gdsnData.countryCode})}</div></div>
         <div class="gdsn-row"><label>cfpDate</label><div class="control"><div class="date-field">${CALENDAR_ICON_SVG}<input type="date" id="gdsn-date" value="${gdsnData.date}" oninput="onGDSNChange('date',this)"></div></div></div>
-        <div class="gdsn-row"><label>cfpValueVerificationCode</label><div class="control">${buildSelect('gdsn-verification', ['SELF_ASSESSED','PEER_REVIEWED','THIRD_PARTY_VERIFIED','CERTIFIED'], {value:gdsnData.verificationCode})}</div></div>
+        <div class="gdsn-row"><label>cfpValueVerificationCode</label><div class="control">${buildSelect('gdsn-verification', Object.keys(GDSN_VERIFICATION_DESC), {value:gdsnData.verificationCode, descriptions:GDSN_VERIFICATION_DESC})}</div></div>
       </div>
 
       <div class="gdsn-group">
-        <div class="gdsn-row"><label>cfpBoundariesCode</label><div class="control">${buildSelect('gdsn-boundaries', ['CRADLE_TO_GATE','GATE_TO_GATE','CRADLE_TO_GRAVE','CRADLE_TO_CONSUMPTION'], {value:gdsnData.boundariesCode})}</div></div>
+        <div class="gdsn-row"><label>cfpBoundariesCode</label><div class="control">${buildSelect('gdsn-boundaries', Object.keys(GDSN_BOUNDARIES_DESC), {value:gdsnData.boundariesCode, descriptions:GDSN_BOUNDARIES_DESC})}</div></div>
         <div class="gdsn-row"><label>cfpValue</label><div class="control"><input type="text" id="gdsn-value" class="is-computed" readonly value="${cfpValue}"></div></div>
-        <div class="gdsn-row"><label>cfpValueUom</label><div class="control">${buildSelect('gdsn-uom', ['KG_CO2_EQ_PER_KG','KG_CO2_EQ_PER_UNIT','G_CO2_EQ_PER_KG'], {value:gdsnData.valueUom})}</div></div>
+        <div class="gdsn-row"><label>cfpValueUom</label><div class="control">${buildSelect('gdsn-uom', Object.keys(GDSN_UOM_DESC), {value:gdsnData.valueUom, descriptions:GDSN_UOM_DESC})}</div></div>
         <div class="gdsn-row"><label>cfpFunctionalUnit</label><div class="control"><input type="text" id="gdsn-functional-unit" value="${gdsnData.functionalUnit}" placeholder="e.g. 1 kg finished product" oninput="onGDSNChange('functionalUnit',this)"></div></div>
-        <div class="gdsn-row"><label>cfpMethodologyCode</label><div class="control">${buildSelect('gdsn-methodology', ['GHG_PROTOCOL','ISO_14067','PAS_2050'], {value:gdsnData.methodologyCode})}</div></div>
-        <div class="gdsn-row"><label>cfpAccountingCode</label><div class="control">${buildSelect('gdsn-accounting', ['ATTRIBUTIONAL','CONSEQUENTIAL'], {value:gdsnData.accountingCode})}</div></div>
+        <div class="gdsn-row"><label>cfpMethodologyCode</label><div class="control">${buildSelect('gdsn-methodology', Object.keys(GDSN_METHODOLOGY_DESC), {value:gdsnData.methodologyCode, descriptions:GDSN_METHODOLOGY_DESC})}</div></div>
+        <div class="gdsn-row"><label>cfpAccountingCode</label><div class="control">${buildSelect('gdsn-accounting', Object.keys(GDSN_ACCOUNTING_DESC), {value:gdsnData.accountingCode, descriptions:GDSN_ACCOUNTING_DESC})}</div></div>
       </div>
 
       <div class="gdsn-footer">
@@ -449,6 +490,8 @@ const CTE_DATA = {
     title:'Landing',
     desc:'Emissions generated during the landing phase, particularly from road transport operations where trucks collect raw materials from reefer or container carriers and deliver them to the final destination.',
     headerToggle:'Direct Landing',
+    instanceBase:'Landing',
+    checkbox:'Multiple Landing Present',
     fields:[
       F('Event Date & Time','Nov 21, 2025  12:00 AM','datetime'),
       F('Dates of Landing','Aug 5, 2026 – Aug 7, 2026','daterange'),
@@ -591,7 +634,7 @@ const CTE_DATA = {
       facility:'MMP International Co., Ltd.',
       lotCode:'MIN56KCCDC3ZFI',
       gtin:'9123658622044',
-      transaction:'12345MMP',
+      product:'Canned Tuna in Olive Oil', // TODO: fetch from Product module
     },
     // Illustrative kg CO2e per kg of material — not sourced from a real
     // LCA database. Replace with your actual factors before relying on
@@ -665,6 +708,17 @@ const CTE_DATA = {
   }
 };
 
+const TAB_ICONS = {
+  harvesting: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 12C3 12 7 6 13 6C17 6 21 9 21 9C21 9 17 12 21 15C21 15 17 18 13 18C7 18 3 12 3 12Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 10.5C7 10.5 8 12 7 13.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+  onVesselProcessing: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="6" r="1.8" stroke="currentColor" stroke-width="1.6"/><path d="M12 8V14M12 14C12 14 6 14.5 6 19M12 14C12 14 18 14.5 18 19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M4 14H8M16 14H20" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+  transshipment: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 9H16M16 9L13 6M16 9L13 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 15H8M8 15L11 12M8 15L11 18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  landing: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="5" r="1.6" stroke="currentColor" stroke-width="1.6"/><path d="M12 7V19M6 12H4C4 15.5 7 18 12 19C17 18 20 15.5 20 12H18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  aggrDisaggr: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3L21 8.5L12 14L3 8.5L12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M3 15.5L12 21L21 15.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  processing: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6"/><path d="M12 3V5.5M12 18.5V21M21 12H18.5M5.5 12H3M18.4 5.6L16.6 7.4M7.4 16.6L5.6 18.4M18.4 18.4L16.6 16.6M7.4 7.4L5.6 5.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`,
+  packaging: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 8L12 4L20 8V16L12 20L4 16V8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M4 8L12 12M12 12L20 8M12 12V20" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>`,
+  shipReceive: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M3 16V7H14V16" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M14 10H18L21 13V16H14" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="7" cy="18" r="1.6" stroke="currentColor" stroke-width="1.6"/><circle cx="17" cy="18" r="1.6" stroke="currentColor" stroke-width="1.6"/></svg>`,
+};
+
 const TABS = [
   {id:'harvesting', label:'Harvesting'},
   {id:'onVesselProcessing', label:'On Vessel Processing'},
@@ -675,6 +729,133 @@ const TABS = [
   {id:'packaging', label:'Packaging'},
   {id:'shipReceive', label:'Ship/Receive'},
 ];
+
+/* ---------- GHG SCOPE CLASSIFICATION (for the Report pages) ----------
+   Splits each CTE's live per-kg contribution into Scope I (direct/owned
+   operations), Scope II (purchased energy), and Scope III (everything
+   else in the value chain — third-party transport, purchased materials,
+   purchased water). These are illustrative proportional assumptions,
+   NOT a rigorous re-derivation of every sub-factor in every formula —
+   flagged clearly since this report presents itself as "illustrative
+   estimates" throughout, same framing as the reference design. */
+const SCOPE_SPLIT = {
+  harvesting:     {s1:1.00, s2:0.00, s3:0.00, note:'Vessel fuel combustion — owned/controlled operations.'},
+  ovp:            {s1:0.70, s2:0.00, s3:0.30, note:'Refrigerant + onboard fuel (direct); water/wastewater treated as a purchased service.'},
+  transshipment:  {s1:0.00, s2:0.00, s3:1.00, note:'Third-party reefer carrier transport.'},
+  landing:        {s1:0.00, s2:0.00, s3:1.00, note:'Hired trucking/logistics.'},
+  aggrDisaggr:    {s1:0.15, s2:0.55, s3:0.30, note:'Refrigerant leakage (direct), purchased electricity, purchased water supply.'},
+  transformation: {s1:0.12, s2:0.03, s3:0.85, note:'On-site fuel + fugitive emissions (direct), purchased electricity, purchased materials/packaging inputs/waste/upstream energy/leased assets.'},
+  storage:        {s1:0.00, s2:1.00, s3:0.00, note:'Purchased electricity; enabling refrigeration shifts a portion to direct emissions.'},
+  packaging:      {s1:0.00, s2:0.00, s3:1.00, note:'Purchased packaging materials.'},
+  shipReceive:    {s1:0.00, s2:0.00, s3:1.00, note:'Third-party sea/air freight.'},
+};
+
+// Packaging isn't part of grandTotalParts (excluded from the running total
+// per earlier instruction not to wire it into the DB/overall figure yet),
+// but it does have a real, live-computed total via its own interactive
+// table — pulled here just for this report, not for the topbar total.
+function packagingLiveTotal(){
+  let total = 0;
+  packagingState.cols.forEach(col=>{
+    col.slots.forEach(slot=>{
+      const qty = parseNum(slot.qty);
+      const factor = pkgMaterialFactor(slot.material);
+      total += (qty*factor)/1000;
+    });
+  });
+  return total;
+}
+
+function weightedSplit(...parts){
+  // parts: [[value, splitObj], ...] -> combined {s1,s2,s3} weighted by value
+  const total = parts.reduce((a,[v])=>a+v, 0);
+  if(total<=0) return {s1:0,s2:0,s3:1};
+  return {
+    s1: parts.reduce((a,[v,sp])=>a+v*sp.s1,0)/total,
+    s2: parts.reduce((a,[v,sp])=>a+v*sp.s2,0)/total,
+    s3: parts.reduce((a,[v,sp])=>a+v*sp.s3,0)/total,
+  };
+}
+
+const REPORT_STAGES = [
+  {key:'harvesting', label:'Harvesting'},
+  {key:'onVesselProcessing', label:'On Vessel Processing'},
+  {key:'transshipment', label:'Transshipment'},
+  {key:'landing', label:'Landing'},
+  {key:'aggrDisaggr', label:'Aggr/Disaggr'},
+  {key:'processing', label:'Processing'},
+  {key:'packaging', label:'Packaging'},
+  {key:'shipReceive', label:'Ship/Receive'},
+];
+
+function computeScopeReport(){
+  const stageValues = {
+    harvesting: grandTotalParts.harvesting,
+    onVesselProcessing: grandTotalParts.ovp,
+    transshipment: grandTotalParts.transshipment,
+    landing: grandTotalParts.landing,
+    aggrDisaggr: grandTotalParts.aggrDisaggr,
+    processing: grandTotalParts.transformation + grandTotalParts.storage,
+    packaging: packagingLiveTotal(),
+    shipReceive: grandTotalParts.shipReceive,
+  };
+  const stageSplit = {
+    harvesting: SCOPE_SPLIT.harvesting,
+    onVesselProcessing: SCOPE_SPLIT.ovp,
+    transshipment: SCOPE_SPLIT.transshipment,
+    landing: SCOPE_SPLIT.landing,
+    aggrDisaggr: SCOPE_SPLIT.aggrDisaggr,
+    processing: weightedSplit([grandTotalParts.transformation, SCOPE_SPLIT.transformation], [grandTotalParts.storage, SCOPE_SPLIT.storage]),
+    packaging: SCOPE_SPLIT.packaging,
+    shipReceive: SCOPE_SPLIT.shipReceive,
+  };
+  let s1=0, s2=0, s3=0;
+  const perStage = {};
+  REPORT_STAGES.forEach(({key})=>{
+    const val = stageValues[key] || 0;
+    const split = stageSplit[key];
+    const v1 = val*split.s1, v2 = val*split.s2, v3 = val*split.s3;
+    perStage[key] = { total:val, s1:v1, s2:v2, s3:v3 };
+    // Packaging is shown as a stage (matching the reference design) but
+    // deliberately excluded from the summed total — it isn't part of
+    // grandTotalParts / the calculator's own running total either, per
+    // the earlier "don't wire Packaging into the total yet" instruction.
+    // Excluding it here keeps this report's total exactly matching the
+    // calculator's own displayed total.
+    if(key !== 'packaging'){ s1+=v1; s2+=v2; s3+=v3; }
+  });
+  const total = s1+s2+s3;
+  return { s1, s2, s3, total, perStage };
+}
+
+function renderEmissionBadge(staticValue){
+  const valueHTML = staticValue !== undefined
+    ? staticValue
+    : `<span id="grand-total-perkg">0.00</span>`;
+  return `
+    <div class="pm-emission-badge">
+      <div class="peb-section">
+        <div class="peb-icon peb-icon-green">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 20C6 20 4 14 8 9C11 5.5 17 5 17 5C17 5 17.5 11 14 15C11 18.5 6 20 6 20Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7.5 18.5C9.5 15.5 11.5 12.5 15 7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </div>
+        <div class="peb-text">
+          <div class="peb-label">Total Carbon Footprint</div>
+          <div class="peb-value">${valueHTML}<span class="peb-unit">kgCO₂e</span></div>
+        </div>
+      </div>
+      <div class="peb-divider"></div>
+      <div class="peb-section">
+        <div class="peb-icon peb-icon-blue">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4V2M17.66 6.34L19.07 4.93M4.93 19.07L6.34 17.66M20 12H22M2 12H4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 4C7.58 4 4 7.58 4 12C4 16.42 7.58 20 12 20C16.42 20 20 16.42 20 12C20 10.4 19.53 8.91 18.72 7.66" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M17 3.3L18.1 7.1L14.3 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="peb-text">
+          <div class="peb-label">Basis</div>
+          <div class="peb-basis">1 KG Tuna in Final Product</div>
+        </div>
+      </div>
+    </div>
+  `;
+}
 
 /* ---------- APP STATE ---------- */
 /* ---------- TOP-BAR GRAND TOTAL (per-kg, summed across CTEs) ----------
@@ -835,20 +1016,27 @@ function captureTransshipment(){
 }
 
 function captureLanding(){
-  const get = (id, fb) => document.getElementById(id)?.value ?? fb;
-  const weightRaw = get('ld-weight-input', landingCalc.weight.value);
-  const wUnit = landingCalc.weight.unit;
-  const weightKG = wUnit==='kg' ? parseNum(weightRaw) : parseNum(weightRaw)*1000;
-  const distanceRaw = get('ld-distance-input', landingCalc.distance.value);
-  const dUnit = landingCalc.distance.unit;
-  const distanceKM = dUnit==='km' ? parseNum(distanceRaw) : parseNum(distanceRaw)*KM_PER_MILE;
-  const emission = weightKG*distanceKM*0.0000542;
-  const perKg = weightKG>0 ? emission/weightKG : 0;
-  return {
-    weight_value:parseNum(weightRaw), weight_unit:wUnit, distance_value:parseNum(distanceRaw), distance_unit:dUnit,
-    total_emission_kg:round2(emission), emission_per_kg:round4(perKg),
-    raw_fields:serializeFields(CTE_DATA.landing.fields),
-  };
+  const st = instanceState.landing;
+  if(!st) return [];
+  return st.labels.map((label,i)=>{
+    const sec = st.data[label];
+    const isActive = label===st.active;
+    const get = (id, fb) => isActive ? (document.getElementById(id)?.value ?? fb) : fb;
+    const weightRaw = get('ld-weight-input', sec.weight.value);
+    const wUnit = sec.weight.unit;
+    const weightKG = wUnit==='kg' ? parseNum(weightRaw) : parseNum(weightRaw)*1000;
+    const distanceRaw = get('ld-distance-input', sec.distance.value);
+    const dUnit = sec.distance.unit;
+    const distanceKM = dUnit==='km' ? parseNum(distanceRaw) : parseNum(distanceRaw)*KM_PER_MILE;
+    const emission = weightKG*distanceKM*0.0000542;
+    const perKg = weightKG>0 ? emission/weightKG : 0;
+    return {
+      instance_label:label, instance_order:i+1,
+      weight_value:parseNum(weightRaw), weight_unit:wUnit, distance_value:parseNum(distanceRaw), distance_unit:dUnit,
+      total_emission_kg:round2(emission), emission_per_kg:round4(perKg),
+      raw_fields:serializeFields(sec.main),
+    };
+  });
 }
 
 function captureAggrDisaggr(){
@@ -1112,6 +1300,7 @@ async function saveCalculation(){
     const multiInserts = [
       ['cte_harvesting', confirmedData.harvesting],
       ['cte_transshipment', confirmedData.transshipment],
+      ['cte_landing', confirmedData.landing],
       ['cte_aggr_disaggr', confirmedData.aggrDisaggr],
       ['cte_processing_transformation', confirmedData.transformation],
       ['cte_processing_storage', confirmedData.storage],
@@ -1125,7 +1314,6 @@ async function saveCalculation(){
 
     const singleInserts = [
       ['cte_on_vessel_processing', confirmedData.ovp],
-      ['cte_landing', confirmedData.landing],
       ['cte_ship_receive', confirmedData.shipReceive],
     ];
     for(const [table, row] of singleInserts){
@@ -1248,6 +1436,7 @@ function addInstance(cteKey, baseLabel){
   if('rcs' in blanked) blanked.rcs = false;
   if(blanked.weightOff) blanked.weightOff = { value:'', unit:'mt' };
   if(blanked.weight && typeof blanked.weight==='object') blanked.weight = { value:'', unit:'kg' };
+  if(blanked.distance && typeof blanked.distance==='object') blanked.distance = { value:'', unit:'km' };
   if(blanked.driWeight) blanked.driWeight = { value:'', unit:'kg' };
   ['distanceOff','waterOff','containers','distanceOn','waterOn'].forEach(k=>{
     if(k in blanked) blanked[k] = '';
@@ -1359,6 +1548,11 @@ function recalcHarvesting(){
 
   grandTotalParts.harvesting = emissionPer1kg;
   updateGrandTotal();
+
+  const bbWeightEl = document.getElementById('bb-weight-value');
+  if(bbWeightEl) bbWeightEl.value = wField.value.value;
+  const bbUnitEl = document.getElementById('bb-weight-unit');
+  if(bbUnitEl) bbUnitEl.textContent = wField.value.unit.toUpperCase();
 }
 
 /* ---------- ON VESSEL PROCESSING CALC ENGINE ----------
@@ -1431,6 +1625,11 @@ function recalcOVP(){
 
   grandTotalParts.ovp = perKg;
   updateGrandTotal();
+
+  const bbWeightEl = document.getElementById('bb-weight-value');
+  if(bbWeightEl) bbWeightEl.value = ovpCalc.weight.value;
+  const bbUnitEl = document.getElementById('bb-weight-unit');
+  if(bbUnitEl) bbUnitEl.textContent = ovpCalc.weight.unit.toUpperCase();
 }
 
 /* ---------- TRANSSHIPMENT CALC ENGINE ----------
@@ -1500,6 +1699,16 @@ function recalcTransshipment(){
 
   grandTotalParts.transshipment = perKg;
   updateGrandTotal();
+
+  const bbWeightEl = document.getElementById('bb-weight-value');
+  const bbUnitEl = document.getElementById('bb-weight-unit');
+  if(sec.rcs){
+    if(bbWeightEl) bbWeightEl.value = '–';
+    if(bbUnitEl) bbUnitEl.textContent = '';
+  } else {
+    if(bbWeightEl) bbWeightEl.value = document.getElementById('ts-weight-input')?.value ?? sec.weightOff.value;
+    if(bbUnitEl) bbUnitEl.textContent = sec.weightOff.unit.toUpperCase();
+  }
 }
 
 /* ---------- LANDING CALC ENGINE ----------
@@ -1507,28 +1716,46 @@ function recalcTransshipment(){
    is a speed unit, not a distance one, so it can't be what a distance
    field toggles between. Implemented as KM/MI (miles) instead, which is
    the sensible read of that instruction; flag if MPH meant something else. */
-const landingCalc = { weight:{value:'311,112.00', unit:'kg'}, distance:{value:'48.00', unit:'km'} };
 const KM_PER_MILE = 1.60934;
+function landingFindActive(){
+  const st = instanceState.landing;
+  return st ? { st, sec: st.data[st.active] } : null;
+}
 
 function setLandingWeightUnit(unit){
-  const w = landingCalc.weight;
+  const f = landingFindActive();
+  if(!f) return;
+  const w = f.sec.weight;
   const currentKG = w.unit==='kg' ? parseNum(w.value) : parseNum(w.value)*1000;
   w.unit = unit;
   w.value = unit==='kg' ? fmtNum(currentKG) : fmtNum(currentKG/1000);
 }
-function onLandingWeightChange(el){ landingCalc.weight.value = el.value; recalcLanding(); }
+function onLandingWeightChange(el){
+  const f = landingFindActive();
+  if(f) f.sec.weight.value = el.value;
+  recalcLanding();
+}
 
 function setLandingDistanceUnit(unit){
-  const d = landingCalc.distance;
+  const f = landingFindActive();
+  if(!f) return;
+  const d = f.sec.distance;
   const currentKM = d.unit==='km' ? parseNum(d.value) : parseNum(d.value)*KM_PER_MILE;
   d.unit = unit;
   d.value = unit==='km' ? fmtNum(currentKM) : fmtNum(currentKM/KM_PER_MILE);
 }
-function onLandingDistanceChange(el){ landingCalc.distance.value = el.value; recalcLanding(); }
+function onLandingDistanceChange(el){
+  const f = landingFindActive();
+  if(f) f.sec.distance.value = el.value;
+  recalcLanding();
+}
 
 function recalcLanding(){
-  const weightKG = landingCalc.weight.unit==='kg' ? parseNum(landingCalc.weight.value) : parseNum(landingCalc.weight.value)*1000;
-  const distanceKM = landingCalc.distance.unit==='km' ? parseNum(landingCalc.distance.value) : parseNum(landingCalc.distance.value)*KM_PER_MILE;
+  const found = landingFindActive();
+  if(!found) return;
+  const { sec } = found;
+  const weightKG = sec.weight.unit==='kg' ? parseNum(document.getElementById('ld-weight-input')?.value ?? sec.weight.value) : parseNum(document.getElementById('ld-weight-input')?.value ?? sec.weight.value)*1000;
+  const distanceKM = sec.distance.unit==='km' ? parseNum(document.getElementById('ld-distance-input')?.value ?? sec.distance.value) : parseNum(document.getElementById('ld-distance-input')?.value ?? sec.distance.value)*KM_PER_MILE;
   const emission = weightKG * distanceKM * 0.0000542;
   const perKg = weightKG > 0 ? emission / weightKG : 0;
   const setVal = (id,v)=>{ const e=document.getElementById(id); if(e) e.value=fmtNum(v); };
@@ -1538,6 +1765,11 @@ function recalcLanding(){
 
   grandTotalParts.landing = perKg;
   updateGrandTotal();
+
+  const bbWeightEl = document.getElementById('bb-weight-value');
+  if(bbWeightEl) bbWeightEl.value = document.getElementById('ld-weight-input')?.value ?? sec.weight.value;
+  const bbUnitEl = document.getElementById('bb-weight-unit');
+  if(bbUnitEl) bbUnitEl.textContent = sec.weight.unit.toUpperCase();
 }
 
 /* ---------- AGGREGATION/DISAGGREGATION CALC ENGINE ----------
@@ -1649,6 +1881,11 @@ function recalcTransform(){
 
   grandTotalParts.transformation = perKg;
   updateGrandTotal();
+
+  const bbWeightEl = document.getElementById('bb-weight-value');
+  if(bbWeightEl) bbWeightEl.value = document.getElementById('tf-weight-input')?.value ?? sec.weight.value;
+  const bbUnitEl = document.getElementById('bb-weight-unit');
+  if(bbUnitEl) bbUnitEl.textContent = sec.weight.unit.toUpperCase();
 }
 
 /* ---------- STORAGE CALC ENGINE ---------- */
@@ -1705,6 +1942,11 @@ function recalcStorage(){
 
   grandTotalParts.storage = perKg;
   updateGrandTotal();
+
+  const bbWeightEl = document.getElementById('bb-weight-value');
+  if(bbWeightEl) bbWeightEl.value = document.getElementById('st-weight-input')?.value ?? sec.weight;
+  const bbUnitEl = document.getElementById('bb-weight-unit');
+  if(bbUnitEl) bbUnitEl.textContent = 'KG';
 }
 
 /* ---------- SHIP/RECEIVE (LOGISTICS) CALC ENGINE ----------
@@ -1772,6 +2014,11 @@ function recalcShip(){
 
   grandTotalParts.shipReceive = state.shipSub==='Sea' ? perKgSea : perKgAir;
   updateGrandTotal();
+
+  const bbWeightEl = document.getElementById('bb-weight-value');
+  if(bbWeightEl) bbWeightEl.value = `${fmtNum(teu,0)} (${fmtNum(distanceSea,0)} km)`;
+  const bbUnitEl = document.getElementById('bb-weight-unit');
+  if(bbUnitEl) bbUnitEl.textContent = 'containers';
 }
 
 function recalcAggr(){
@@ -1822,6 +2069,11 @@ function recalcAggr(){
   // this choice since it wasn't explicitly specified either way.
   grandTotalParts.aggrDisaggr = driWeightKG>0 ? dri.total/driWeightKG : 0;
   updateGrandTotal();
+
+  const bbWeightEl = document.getElementById('bb-weight-value');
+  if(bbWeightEl) bbWeightEl.value = document.getElementById('aggr-weight-input')?.value ?? sec.weight.value;
+  const bbUnitEl = document.getElementById('bb-weight-unit');
+  if(bbUnitEl) bbUnitEl.textContent = sec.weight.unit.toUpperCase();
 }
 
 function renderAggrDisaggr(){
@@ -1844,7 +2096,7 @@ function renderAggrDisaggr(){
         <div><h2>${data.title}${cteProductTag(sec.main, sec.species)}</h2><p>${data.desc}</p></div>
         <div class="card-top-actions">${renderInfoButton('aggrDisaggr')}${headerToggle(data.headerToggle)}</div>
       </div>
-      ${bottomBar(data.metrics, data.checkbox, multiple, 'aggrDisaggr')}
+      ${bottomBar(data.metrics, data.checkbox, multiple, 'aggrDisaggr', {label:'Total Volume', initial:sec.weight.value, unit:sec.weight.unit.toUpperCase()})}
       ${renderInstanceSubtabs('aggr', data.instanceBase)}
       <div style="height:16px"></div>
       ${fieldGrid(sec.main, 'aggr-main::'+st.active)}
@@ -1930,33 +2182,42 @@ function renderAggrDisaggr(){
 
 function renderLandingCTE(){
   const data = CTE_DATA.landing;
+  const initial = {
+    main: data.fields,
+    weight:{value:'311,112.00', unit:'kg'},
+    distance:{value:'48.00', unit:'km'},
+  };
+  const st = ensureInstance('landing', data.instanceBase, initial);
+  const sec = st.data[st.active];
+  const multiple = st.labels.length > 1;
   return `
     <div class="card">
       <div class="card-top">
-        <div><h2>${data.title}${cteProductTag(data.fields)}</h2><p>${data.desc}</p></div>
+        <div><h2>${data.title}${cteProductTag(sec.main)}</h2><p>${data.desc}</p></div>
         <div class="card-top-actions">${renderInfoButton('landing')}${headerToggle(data.headerToggle)}</div>
       </div>
-      ${bottomBar(data.metrics, null, false, 'landing')}
+      ${bottomBar(data.metrics, data.checkbox, multiple, 'landing', {label:'Total Volume', initial:sec.weight.value, unit:sec.weight.unit.toUpperCase()})}
+      ${renderInstanceSubtabs('landing', data.instanceBase)}
       <div style="height:16px"></div>
-      ${fieldGrid(data.fields, 'landing-main')}
+      ${fieldGrid(sec.main, 'landing-main::'+st.active)}
       <div class="field-grid" style="margin-top:2px;">
         <div class="field">
           <label>Weight or Quantity <span class="req">*</span></label>
           <div class="unit-row weight-unit-row">
-            <input type="text" id="ld-weight-input" value="${landingCalc.weight.value}" oninput="onLandingWeightChange(this)">
+            <input type="text" id="ld-weight-input" value="${sec.weight.value}" oninput="onLandingWeightChange(this)">
             <div class="seg-toggle-sm">
-              <button type="button" class="seg-opt-sm ${landingCalc.weight.unit==='kg'?'active':''}" data-action="ld-weight-unit" data-unit="kg">KG</button>
-              <button type="button" class="seg-opt-sm ${landingCalc.weight.unit==='mt'?'active':''}" data-action="ld-weight-unit" data-unit="mt">MT</button>
+              <button type="button" class="seg-opt-sm ${sec.weight.unit==='kg'?'active':''}" data-action="ld-weight-unit" data-unit="kg">KG</button>
+              <button type="button" class="seg-opt-sm ${sec.weight.unit==='mt'?'active':''}" data-action="ld-weight-unit" data-unit="mt">MT</button>
             </div>
           </div>
         </div>
         <div class="field">
           <label>Distance to Facility <span class="req">*</span></label>
           <div class="unit-row weight-unit-row">
-            <input type="text" id="ld-distance-input" value="${landingCalc.distance.value}" oninput="onLandingDistanceChange(this)">
+            <input type="text" id="ld-distance-input" value="${sec.distance.value}" oninput="onLandingDistanceChange(this)">
             <div class="seg-toggle-sm">
-              <button type="button" class="seg-opt-sm ${landingCalc.distance.unit==='km'?'active':''}" data-action="ld-distance-unit" data-unit="km">KM</button>
-              <button type="button" class="seg-opt-sm ${landingCalc.distance.unit==='mi'?'active':''}" data-action="ld-distance-unit" data-unit="mi">MI</button>
+              <button type="button" class="seg-opt-sm ${sec.distance.unit==='km'?'active':''}" data-action="ld-distance-unit" data-unit="km">KM</button>
+              <button type="button" class="seg-opt-sm ${sec.distance.unit==='mi'?'active':''}" data-action="ld-distance-unit" data-unit="mi">MI</button>
             </div>
           </div>
         </div>
@@ -2043,7 +2304,7 @@ function renderTransshipment(){
         <div><h2>${data.title}${cteProductTag(sec.main)}</h2><p>${data.desc}</p></div>
         <div class="card-top-actions">${renderInfoButton('transshipment')}${tsRCSToggleHTML(sec)}</div>
       </div>
-      ${bottomBar(data.metrics, data.checkbox, multiple, 'transshipment')}
+      ${bottomBar(data.metrics, data.checkbox, multiple, 'transshipment', {label:'Total Volume', initial: sec.rcs?'–':sec.weightOff.value, unit: sec.rcs?'':sec.weightOff.unit.toUpperCase(), tooltip:'We have considered the average total volume in a reefer carrier.'})}
       ${modePills}
       <div style="height:16px"></div>
       ${renderInstanceSubtabs('transshipment', data.instanceBase)}
@@ -2101,18 +2362,29 @@ function buildTagsField(id, allOptions, fallbackSelected){
 function buildSelect(id, options, field){
   const st = selVal(id, field.value);
   const isPlaceholder = !st.value || st.value==='Select an option';
+  const descriptions = field.descriptions || null;
   return `
-    <div class="pm-select ${st.open?'open':''}" data-select-root="${id}">
+    <div class="pm-select ${st.open?'open':''} ${descriptions?'pm-select-described':''}" data-select-root="${id}">
       <button type="button" class="pm-select-trigger ${isPlaceholder?'placeholder':''}" data-action="select-toggle" data-id="${id}">
         <span>${st.value || 'Select an option'}</span>
         <svg class="chev" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button>
       <div class="pm-select-menu">
-        ${options.map(o=>`
+        ${options.map(o=>{
+          const desc = descriptions ? descriptions[o] : null;
+          if(desc){
+            return `
+            <div class="pm-option pm-option-described ${o===st.value?'selected':''}" data-action="select-option" data-id="${id}" data-value="${o}">
+              <div class="pm-option-head"><span class="pm-option-code">${o}</span>${o===st.value?'<span class="tick">✓</span>':''}</div>
+              <div class="pm-option-desc">${desc}</div>
+            </div>`;
+          }
+          return `
           <div class="pm-option ${o===st.value?'selected':''}" data-action="select-option" data-id="${id}" data-value="${o}">
             <span>${o}</span>${o===st.value?'<span class="tick">✓</span>':''}
           </div>
-        `).join('')}
+        `;
+        }).join('')}
       </div>
     </div>`;
 }
@@ -2188,16 +2460,34 @@ function splitMetric(v){
   return m ? {value:m[1], unit:m[2]} : {value:s, unit:''};
 }
 
-function bottomBar(metrics, checkboxLabel, checked=false, cteKey=null){
+const METRIC_ICON_TOTAL = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 18C4.79 18 3 16.21 3 14C3 12.03 4.42 10.39 6.29 10.06C6.83 7.72 8.92 6 11.4 6C14.15 6 16.4 8.13 16.58 10.83C18.55 11.14 20.05 12.85 20.05 14.9C20.05 17.17 18.21 19 15.95 19H7.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const METRIC_ICON_PERKG = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3V21M12 3L8 7M12 3L16 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 15C4 15 4.5 12 6.5 12C8.5 12 9 15 9 15C9 15 8.5 18 6.5 18C4.5 18 4 15 4 15Z" stroke="currentColor" stroke-width="1.6"/><path d="M15 15C15 15 15.5 12 17.5 12C19.5 12 20 15 20 15C20 15 19.5 18 17.5 18C15.5 18 15 15 15 15Z" stroke="currentColor" stroke-width="1.6"/></svg>`;
+const METRIC_ICON_WEIGHT = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 8L12 4L20 8V16L12 20L4 16V8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M4 8L12 12M12 12L20 8M12 12V20" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+
+function bottomBar(metrics, checkboxLabel, checked=false, cteKey=null, weightConfig=null){
   const isConfirmed = cteKey && state.confirmed[cteKey];
+  const weightCard = weightConfig ? `
+    <div class="metric">
+      <div class="metric-icon metric-icon-blue">${METRIC_ICON_WEIGHT}</div>
+      <div class="metric-body">
+        <div class="metric-row"><input type="text" inputmode="decimal" class="metric-input is-computed" id="bb-weight-value" readonly value="${weightConfig.initial||''}"><span class="metric-unit" id="bb-weight-unit">${weightConfig.unit||''}</span></div>
+        <div class="l">${weightConfig.label}${weightConfig.tooltip?tooltip(weightConfig.tooltip):''}</div>
+      </div>
+    </div>
+  ` : '';
   return `<div class="bottombar">
-    <div class="metrics">${metrics.map(m=>{
+    <div class="metrics">${weightCard}${metrics.map((m,i)=>{
       const {value,unit} = splitMetric(m.v);
       const idAttr = m.id ? ` id="${m.id}"` : '';
       const roAttr = m.readonly ? ' readonly' : '';
+      const icon = i%2===0 ? METRIC_ICON_TOTAL : METRIC_ICON_PERKG;
+      const iconClass = i%2===0 ? 'metric-icon-green' : 'metric-icon-teal';
       return `<div class="metric">
-        <div class="metric-row"><input type="text" inputmode="decimal" class="metric-input${m.readonly?' is-computed':''}"${idAttr}${roAttr} value="${value}"><span class="metric-unit">${unit}</span></div>
-        <div class="l">${m.l}</div>
+        <div class="metric-icon ${iconClass}">${icon}</div>
+        <div class="metric-body">
+          <div class="metric-row"><input type="text" inputmode="decimal" class="metric-input${m.readonly?' is-computed':''}"${idAttr}${roAttr} value="${value}"><span class="metric-unit">${unit}</span></div>
+          <div class="l">${m.l}</div>
+        </div>
       </div>`;
     }).join('')}</div>
     <div class="right">
@@ -2236,7 +2526,7 @@ function renderOVP(){
         <div><h2>${data.title}${cteProductTag(data.fields)}</h2><p>${data.desc}</p></div>
         <div class="card-top-actions">${renderInfoButton('onVesselProcessing')}${ovpToggleHTML()}</div>
       </div>
-      ${bottomBar(data.metrics, null, false, 'ovp')}
+      ${bottomBar(data.metrics, null, false, 'ovp', {label:'Total Volume', initial:ovpCalc.weight.value, unit:ovpCalc.weight.unit.toUpperCase()})}
       <div style="height:16px"></div>
       ${fieldGrid(data.fields, 'ovp-main')}
 
@@ -2320,13 +2610,14 @@ function renderGenericTab(data, ctx, subKey){
     const st = ensureInstance(ctx, data.instanceBase, initial);
     const sec = st.data[st.active];
     const multiple = st.labels.length > 1;
+    const wField = findWeightField(sec);
     return `
       <div class="card">
         <div class="card-top">
           <div><h2>${data.title}${cteProductTag(sec.main)}</h2><p>${data.desc}</p></div>
           <div class="card-top-actions">${renderInfoButton(ctx)}${headerToggle(data.headerToggle)}</div>
         </div>
-        ${bottomBar(data.metrics, data.checkbox, multiple, ctx)}
+        ${bottomBar(data.metrics, data.checkbox, multiple, ctx, {label:'Total Volume', initial: wField?wField.value.value:'', unit: wField?wField.value.unit.toUpperCase():''})}
         ${renderInstanceSubtabs(ctx, data.instanceBase)}
         <div style="height:16px"></div>
         ${fieldGrid(sec.main, ctx+'-main::'+st.active)}
@@ -2409,7 +2700,7 @@ function renderProcessing(){
           <div><h2>Transformation${cteProductTag(sec.main)}</h2><p>${inner.desc}</p></div>
           <div class="card-top-actions">${renderInfoButton('transformation')}</div>
         </div>
-        ${bottomBar(inner.metrics, inner.checkbox, multiple, 'transformation')}
+        ${bottomBar(inner.metrics, inner.checkbox, multiple, 'transformation', {label:'Total Volume', initial:sec.weight.value, unit:sec.weight.unit.toUpperCase()})}
         ${subtabRow(CTE_DATA.processing.subtabs, sub, 'processingSub')}
         ${renderInstanceSubtabs('transformation', inner.instanceBase)}
         <div style="height:16px"></div>
@@ -2477,7 +2768,7 @@ function renderProcessing(){
           <div><h2>Storage</h2><p>${inner.desc}</p></div>
           <div class="card-top-actions">${renderInfoButton('storage')}</div>
         </div>
-        ${bottomBar(inner.metrics, inner.checkbox, multiple, 'storage')}
+        ${bottomBar(inner.metrics, inner.checkbox, multiple, 'storage', {label:'Total Volume', initial:sec.weight, unit:'KG'})}
         ${subtabRow(CTE_DATA.processing.subtabs, sub, 'processingSub')}
         ${renderInstanceSubtabs('storage', inner.instanceBase)}
         <div style="height:16px"></div>
@@ -2568,7 +2859,7 @@ function renderPackaging(){
         <div class="pkg-info-row"><div class="pkg-info-label">Packaging Facility</div><div class="pkg-info-value">${d.productInfo.facility}</div></div>
         <div class="pkg-info-row"><div class="pkg-info-label">Traceability Lot Code</div><div class="pkg-info-value">${d.productInfo.lotCode}</div></div>
         <div class="pkg-info-row"><div class="pkg-info-label">GTIN</div><div class="pkg-info-value">${d.productInfo.gtin}</div></div>
-        <div class="pkg-info-row highlight"><div class="pkg-info-label">Transaction</div><div class="pkg-info-value">${d.productInfo.transaction}</div></div>
+        <div class="pkg-info-row highlight"><div class="pkg-info-label">Product</div><div class="pkg-info-value">${d.productInfo.product}</div></div>
       </div>
 
       <div style="height:20px"></div>
@@ -2670,7 +2961,7 @@ function renderShipReceive(){
         <div><h2>${d.title}${cteProductTag(d.commonFields)}</h2><p>${d.desc}</p></div>
         ${renderInfoButton('shipReceive')}
       </div>
-      ${bottomBar(metrics, null, false, 'shipReceive')}
+      ${bottomBar(metrics, null, false, 'shipReceive', {label:'Total Volume', initial:`${fmtNum(parseNum(shipCalc.teu),0)} (${fmtNum(parseNum(shipCalc.distanceSea),0)} km)`, unit:'containers', tooltip:'We have considered the average number of containers and distance travelled.'})}
       <div class="subtab-row" style="margin:0;">
         <button class="subtab-btn ${mode==='Sea'?'active':''}" data-action="subtab" data-group="shipSub" data-value="Sea">Sea</button>
         <button class="subtab-btn ${mode==='Air'?'active':''}" data-action="subtab" data-group="shipSub" data-value="Air">Air</button>
@@ -2904,10 +3195,7 @@ function renderOverview(){
           <span class="sc-blue">SMARTUNA</span><span class="sc-black">CONCEPT</span>
         </div>
       </div>
-      <div class="pm-emission-badge">
-        <div class="num">${total} <span>kg CO₂e</span></div>
-        <div class="cap">Carbon Emission of 1 KG Tuna in Final Product</div>
-      </div>
+      ${renderEmissionBadge(total)}
       <div class="pm-detail-right"></div>
     </div>
 
@@ -2945,6 +3233,282 @@ function renderOverview(){
   </div>`;
 }
 
+const SCOPE_META = {
+  scope1:{label:'Scope I', desc:'Direct greenhouse gas emissions from sources that are owned or controlled by the organization.'},
+  scope2:{label:'Scope II', desc:'Indirect greenhouse gas emissions from the generation of purchased electricity, steam, heating, and cooling consumed by the organization.'},
+  scope3:{label:'Scope III', desc:'All other indirect greenhouse gas emissions that occur in the organization\u2019s value chain, both upstream and downstream.'},
+};
+
+function reportProductInfo(){
+  // Product name pulled live from the modal selection where available;
+  // GTIN/product code/image aren't tracked anywhere in this calculator,
+  // so those stay as illustrative placeholders matching the reference.
+  const liveProduct = selVal('modal-product', '').value;
+  return {
+    code:'PROCXX-123-9789',
+    name: liveProduct || 'Century Tuna Fishflakes (Tuna) in oil - 12 x 180 g',
+    gtin:'09001234567898',
+  };
+}
+
+function renderReportSummary(){
+  const report = computeScopeReport();
+  const pi = reportProductInfo();
+  const scopes = [
+    {key:'scope1', value:report.s1},
+    {key:'scope2', value:report.s2},
+    {key:'scope3', value:report.s3},
+  ];
+  const maxVal = Math.max(report.s1, report.s2, report.s3);
+
+  return `
+  <div class="shell">
+    <div class="pm-detail-topbar">
+      <div class="pm-detail-left">
+        <button class="pm-back" data-action="back-to-calculator">←</button>
+        <div class="pm-brand-pill">
+          <img src="sc-blue-logo.png" alt="" class="pm-brand-pill-logo" onerror="this.style.display='none';">
+          <span class="sc-blue">SMARTUNA</span><span class="sc-black">CONCEPT</span>
+        </div>
+      </div>
+      <div class="pm-detail-right"></div>
+    </div>
+    <div class="content-area">
+      <div class="report-hero">
+        <div class="report-hero-left">
+          <div class="report-kicker">
+            <span class="report-foot-icon">🐾</span>
+            <div><div class="report-kicker-label">Know your Products</div><div class="report-kicker-title">Carbon FootPrint</div></div>
+          </div>
+          <div class="report-product-row">
+            <div class="report-product-thumb">🥫</div>
+            <div>
+              <div class="report-product-code">${pi.code}</div>
+              <div class="report-product-name">${pi.name}</div>
+              <div class="report-product-gtin">GTIN : ${pi.gtin}</div>
+            </div>
+          </div>
+        </div>
+        <div class="report-hero-total">
+          <div class="report-total-value">${fmtNum(report.total,2)}<span> kg CO₂e</span></div>
+          <div class="report-total-label">Total Carbon Emission</div>
+        </div>
+      </div>
+
+      <div class="report-scope-grid">
+        ${scopes.map(s=>{
+          const meta = SCOPE_META[s.key];
+          const pct = report.total>0 ? (s.value/report.total*100) : 0;
+          const isMax = s.value===maxVal && maxVal>0;
+          return `
+          <div class="report-scope-card ${isMax?'highlight':''}">
+            <div class="report-scope-title">${meta.label}</div>
+            <div class="report-scope-value">${fmtNum(s.value,2)} kg CO₂e</div>
+            <div class="report-scope-pct">(${fmtNum(pct,0)}%)</div>
+            <div class="report-scope-desc">${meta.desc}</div>
+            <button class="btn ${isMax?'btn-primary':'btn-outline'} report-scope-btn" data-action="go-report-scope-detail" data-scope="${s.key}">View Detailed Summary</button>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="report-footnote">*Emission scopes are categories defined by the Greenhouse Gas (GHG) Protocol that classify an organization's greenhouse gas emissions based on their source and level of control.</div>
+      ${renderFlowReportCard(report)}
+    </div>
+  </div>`;
+}
+
+function renderReportScopeDetail(){
+  const report = computeScopeReport();
+  const scopeKey = state.reportScopeKey || 'scope3';
+  const sField = {scope1:'s1', scope2:'s2', scope3:'s3'}[scopeKey];
+  const meta = SCOPE_META[scopeKey];
+  const scopeTotal = report[sField];
+
+  const rows = REPORT_STAGES.map(({key,label})=>({
+    key, label, val: report.perStage[key][sField],
+  })).filter(r=>r.val > 0.0005).sort((a,b)=>b.val-a.val);
+
+  return `
+  <div class="shell">
+    <div class="pm-detail-topbar">
+      <div class="pm-detail-left">
+        <button class="pm-back" data-action="go-report-summary">←</button>
+        <div class="pm-brand-pill">
+          <img src="sc-blue-logo.png" alt="" class="pm-brand-pill-logo" onerror="this.style.display='none';">
+          <span class="sc-blue">SMARTUNA</span><span class="sc-black">CONCEPT</span>
+        </div>
+      </div>
+      <div class="pm-detail-right"></div>
+    </div>
+    <div class="content-area">
+      <div class="card">
+        <div class="card-top">
+          <div><h2>${meta.label} — Detailed Summary</h2><p>${meta.desc}</p></div>
+        </div>
+        <div class="overview-list">
+          ${rows.map(r=>`
+            <div class="overview-row ok">
+              <div class="overview-row-status">${TAB_ICONS[r.key]||'•'}</div>
+              <div class="overview-row-label">${r.label}</div>
+              <div class="overview-row-note">${scopeTotal>0?fmtNum(r.val/scopeTotal*100,0):0}% of ${meta.label}</div>
+              <div class="overview-row-value">${fmtNum(r.val,3)}<span> kg CO₂e</span></div>
+            </div>
+          `).join('')}
+        </div>
+        <div class="overview-actions" style="justify-content:space-between;align-items:center;">
+          <div style="font-size:13px;font-weight:800;color:var(--ink-900);">${meta.label} Total: ${fmtNum(scopeTotal,2)} kg CO₂e</div>
+          <button class="btn btn-outline" data-action="go-report-summary">Back to Summary</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderDonutChart(s1, s2, s3, total){
+  const r = 62, cx = 90, cy = 90, sw = 22;
+  const circumference = 2*Math.PI*r;
+  const p1 = total>0 ? s1/total : 0;
+  const p2 = total>0 ? s2/total : 0;
+  const p3 = total>0 ? s3/total : 1;
+  const len1 = p1*circumference, len2 = p2*circumference, len3 = p3*circumference;
+  const seg = (len, offset, color) => `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-dasharray="${len} ${circumference-len}" stroke-dashoffset="${offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
+  return `
+    <svg viewBox="0 0 180 180" width="168" height="168">
+      ${seg(len1, 0, '#f5b400')}
+      ${seg(len2, -len1, '#22c55e')}
+      ${seg(len3, -(len1+len2), '#3b82f6')}
+      <text x="${cx}" y="${cy-10}" text-anchor="middle" font-size="11" fill="#8a90a3" font-family="inherit">Total</text>
+      <text x="${cx}" y="${cy+12}" text-anchor="middle" font-size="22" font-weight="800" fill="#151b2e" font-family="inherit">${fmtNum(total,2)}</text>
+      <text x="${cx}" y="${cy+27}" text-anchor="middle" font-size="10" fill="#8a90a3" font-family="inherit">kg CO₂e</text>
+    </svg>`;
+}
+
+// Smooth cubic-bezier interpolation through a sequence of points — used to
+// give the stacked scope bands an organic "flowing" look between the 8
+// discrete stages, rather than a jagged stepped line.
+function smoothPath(points){
+  if(points.length<2) return `M ${points[0][0]},${points[0][1]}`;
+  let d = `M ${points[0][0]},${points[0][1]}`;
+  for(let i=0;i<points.length-1;i++){
+    const [x0,y0] = points[i], [x1,y1] = points[i+1];
+    const midX = (x0+x1)/2;
+    d += ` C ${midX},${y0} ${midX},${y1} ${x1},${y1}`;
+  }
+  return d;
+}
+
+function showFlowTooltip(e, label, s1, s2, s3, total){
+  const tip = document.getElementById('flow-tooltip');
+  if(!tip) return;
+  tip.innerHTML = `
+    <div class="flow-tooltip-title">${label}</div>
+    <div class="flow-tooltip-row"><span class="dot" style="background:#f5b400"></span>Scope I: ${fmtNum(s1,3)} kg CO₂e</div>
+    <div class="flow-tooltip-row"><span class="dot" style="background:#22c55e"></span>Scope II: ${fmtNum(s2,3)} kg CO₂e</div>
+    <div class="flow-tooltip-row"><span class="dot" style="background:#3b82f6"></span>Scope III: ${fmtNum(s3,3)} kg CO₂e</div>
+    <div class="flow-tooltip-total">Total: ${fmtNum(total,3)} kg CO₂e</div>
+  `;
+  tip.style.display = 'block';
+  positionFlowTooltip(e);
+}
+function positionFlowTooltip(e){
+  const tip = document.getElementById('flow-tooltip');
+  if(!tip) return;
+  const container = tip.parentElement.getBoundingClientRect();
+  tip.style.left = (e.clientX - container.left) + 'px';
+  tip.style.top = (e.clientY - container.top) + 'px';
+}
+function hideFlowTooltip(){
+  const tip = document.getElementById('flow-tooltip');
+  if(tip) tip.style.display = 'none';
+}
+
+function renderFlowChart(report){
+  const W = 900, H = 190, padX = 45, padTop = 15, padBottom = 15;
+  const chartH = H - padTop - padBottom;
+  const n = REPORT_STAGES.length;
+  const stepX = (W - padX*2) / (n-1);
+  const maxTotal = Math.max(...REPORT_STAGES.map(s=>report.perStage[s.key].total), 0.0001);
+  const scaleY = v => (v/maxTotal) * chartH;
+
+  // Baseline (bottom of chart) stays fixed; each stage stacks Scope III
+  // (bottom), Scope II (middle), Scope I (top), all vertically centered
+  // around the chart's mid-line so the ribbon grows both up and down.
+  const baseline = padTop + chartH/2;
+  const points = REPORT_STAGES.map((s,i)=>{
+    const p = report.perStage[s.key];
+    const totalH = scaleY(p.total);
+    const h3 = p.total>0 ? (p.s3/p.total)*totalH : 0;
+    const h2 = p.total>0 ? (p.s2/p.total)*totalH : 0;
+    const h1 = p.total>0 ? (p.s1/p.total)*totalH : 0;
+    const x = padX + i*stepX;
+    const yBottom = baseline + totalH/2;
+    const y3top = yBottom - h3;
+    const y2top = y3top - h2;
+    const y1top = y2top - h1;
+    return { x, yBottom, y3top, y2top, y1top };
+  });
+
+  const band = (bottomKey, topKey, color) => {
+    const top = points.map(p=>[p.x, p[topKey]]);
+    const bottom = points.map(p=>[p.x, p[bottomKey]]).reverse();
+    return `<path d="${smoothPath(top)} L ${bottom[0][0]},${bottom[0][1]} ${smoothPath(bottom).replace(/^M [^ ]+ /,'')} Z" fill="${color}" opacity="0.82"/>`;
+  };
+
+  const hoverZones = REPORT_STAGES.map((s,i)=>{
+    const p = report.perStage[s.key];
+    const x = padX + i*stepX - stepX/2;
+    const label = s.label.replace(/'/g, "\\'");
+    return `<rect class="report-flow-hover-zone" x="${x}" y="0" width="${stepX}" height="${H}"
+      onmouseenter="showFlowTooltip(event,'${label}',${p.s1},${p.s2},${p.s3},${p.total})"
+      onmousemove="positionFlowTooltip(event)"
+      onmouseleave="hideFlowTooltip()"/>`;
+  }).join('');
+
+  const bands = band('yBottom','y3top','#3b82f6') + band('y3top','y2top','#22c55e') + band('y2top','y1top','#f5b400');
+  const stageLines = points.map(p=>`<line x1="${p.x}" y1="${padTop}" x2="${p.x}" y2="${H-padBottom}" stroke="#e7e9f2" stroke-width="1"/>`).join('');
+
+  return `<svg viewBox="0 0 ${W} ${H}" class="report-flow-svg">${stageLines}${bands}${hoverZones}</svg>`;
+}
+
+function renderFlowReportCard(report){
+  return `
+      <div class="card" style="margin-top:26px;">
+        <div class="report-flow-top">
+          <div class="report-flow-donut">${renderDonutChart(report.s1, report.s2, report.s3, report.total)}</div>
+          <div class="report-flow-legend">
+            <div class="report-legend-row"><span class="report-legend-dot" style="background:#f5b400;"></span>Scope I <b>${fmtNum(report.s1,2)} kg CO₂e (${report.total>0?fmtNum(report.s1/report.total*100,1):0}%)</b></div>
+            <div class="report-legend-row"><span class="report-legend-dot" style="background:#22c55e;"></span>Scope II <b>${fmtNum(report.s2,2)} kg CO₂e (${report.total>0?fmtNum(report.s2/report.total*100,1):0}%)</b></div>
+            <div class="report-legend-row"><span class="report-legend-dot" style="background:#3b82f6;"></span>Scope III <b>${fmtNum(report.s3,2)} kg CO₂e (${report.total>0?fmtNum(report.s3/report.total*100,1):0}%)</b></div>
+          </div>
+        </div>
+        <p class="report-flow-caption">This chart illustrates the distribution of greenhouse gas emissions associated with the production of a single canned tuna product, expressed in kilograms of CO₂ equivalent (kg CO₂e). Emissions are categorized according to the Greenhouse Gas (GHG) Protocol into Scope 1 (direct operations), Scope 2 (purchased energy), and Scope 3 (value chain activities).</p>
+
+        <div class="report-stage-row">
+          ${REPORT_STAGES.map(s=>`
+            <div class="report-stage-card">
+              <div class="report-stage-icon">${TAB_ICONS[s.key]||''}</div>
+              <div class="report-stage-label">${s.label}</div>
+              <div class="report-stage-value">${fmtNum(report.perStage[s.key].total,2)}</div>
+              <div class="report-stage-unit">kg CO₂e</div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="report-flow-scroll">${renderFlowChart(report)}<div class="report-flow-tooltip" id="flow-tooltip"></div></div>
+
+        <div class="report-flow-legend report-flow-legend-bottom">
+          <div class="report-legend-row"><span class="report-legend-dot" style="background:#f5b400;"></span>Scope I</div>
+          <div class="report-legend-row"><span class="report-legend-dot" style="background:#22c55e;"></span>Scope II</div>
+          <div class="report-legend-row"><span class="report-legend-dot" style="background:#3b82f6;"></span>Scope III</div>
+          <div class="report-flow-total">Total Emission (All Stages) <b>${fmtNum(report.total,2)} kg CO₂e</b></div>
+        </div>
+      </div>
+      <div class="report-disclaimer">
+        <b>Disclaimer:</b> The emissions data presented are illustrative estimates and may not represent actual values. Figures are based on available data and reasonable assumptions and are subject to uncertainty due to limitations in data availability, quality, and completeness.
+      </div>
+      <div class="report-copyright">© 2026 SmarTuna Concept. All rights reserved.</div>
+  `;
+}
+
 function renderCalculator(){
   return `
   <div class="pm-detail-topbar">
@@ -2955,14 +3519,11 @@ function renderCalculator(){
         <span class="sc-blue">SMARTUNA</span><span class="sc-black">CONCEPT</span>
       </div>
     </div>
-    <div class="pm-emission-badge">
-      <div class="num"><span id="grand-total-perkg">5.86</span> <span>kg CO₂e</span></div>
-      <div class="cap">Carbon Emission of 1 KG Tuna in Final Product</div>
-    </div>
+    ${renderEmissionBadge()}
     <div class="pm-detail-right">
       <button class="btn btn-outline btn-sm" data-action="gdsn-open">View in GSI GDSN Format</button>
       <button class="btn btn-primary btn-sm" data-action="go-overview">Review &amp; Save</button>
-      <button class="btn btn-primary btn-sm">Report →</button>
+      <button class="btn btn-primary btn-sm" data-action="go-report-summary">Report →</button>
     </div>
   </div>
   <div class="tab-strip">
@@ -2972,7 +3533,7 @@ function renderCalculator(){
           : t.id==='onVesselProcessing' ? state.confirmed.ovp
           : t.id==='packaging' ? false
           : !!state.confirmed[t.id];
-        return `<button class="tab-btn ${t.id===state.activeTab?'active':''}" data-action="tab" data-value="${t.id}">${t.label}${isConfirmed?' <span class="tab-confirmed-dot">✓</span>':''}</button>`;
+        return `<button class="tab-btn ${t.id===state.activeTab?'active':''}" data-action="tab" data-value="${t.id}"><span class="tab-icon">${TAB_ICONS[t.id]||''}</span>${t.label}${isConfirmed?' <span class="tab-confirmed-dot">✓</span>':''}</button>`;
       }).join('')}
     </div>
   </div>
@@ -3060,6 +3621,8 @@ function render(){
   if(state.page==='landing') app.innerHTML = renderLanding();
   else if(state.page==='modal') app.innerHTML = renderModal();
   else if(state.page==='overview') app.innerHTML = renderOverview();
+  else if(state.page==='reportSummary') app.innerHTML = renderReportSummary();
+  else if(state.page==='reportScopeDetail') app.innerHTML = renderReportScopeDetail();
   else app.innerHTML = renderCalculator();
 
   mountPillNav(document.querySelector('.nav-pill'), 'topnav');
@@ -3235,6 +3798,13 @@ document.getElementById('app').addEventListener('click', (e)=>{
   }
   else if(action==='back-to-calculator'){
     state.page = 'calculator';
+  }
+  else if(action==='go-report-summary'){
+    state.page = 'reportSummary';
+  }
+  else if(action==='go-report-scope-detail'){
+    state.reportScopeKey = el.dataset.scope;
+    state.page = 'reportScopeDetail';
   }
   else if(action==='overview-cancel'){
     state.page = 'calculator';
