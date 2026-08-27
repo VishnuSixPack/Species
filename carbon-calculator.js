@@ -35,6 +35,13 @@ const dbClient = (typeof window !== 'undefined' && window.supabase)
    existing demo is completely unaffected. */
 let shipmentOverrides = null;   // built once the fetch resolves; null until then / if absent
 let shipmentFetchError = null;  // set if the fetch fails, so we can surface it rather than silently show the demo
+let ovpShipmentApplied = false; // OVP has no per-instance state to flag against — it's a single static fields array
+let shipReceiveShipmentApplied = false; // same reason — Ship/Receive's fields are static shared arrays too
+
+// Placeholder species reference list — stand-in for a real Species
+// module/table, which I don't have access to. Used to populate the
+// multi-select Species fields with a reasonable option pool.
+const SPECIES_OPTIONS = ['Skipjack','Yellowfin','Albacore','Bigeye','Bluefin','Bonito'];
 
 async function loadShipmentContext(shipmentId){
   if(!dbClient) throw new Error('Supabase client not available.');
@@ -50,6 +57,10 @@ async function loadShipmentContext(shipmentId){
   const { data: batches } = item ? await dbClient
     .from('shipment_batches').select('*').eq('shipment_id', shipmentId).order('line_no') : { data: [] };
   const batch = (batches || []).find(b => b.raw_material_id) || null;
+
+  const { data: vessels } = await dbClient
+    .from('shipment_vessels').select('*').eq('shipment_id', shipmentId);
+  const shipVessel = (vessels || [])[0] || null;
 
   let product = null;
   if(item?.product_id){
@@ -69,7 +80,7 @@ async function loadShipmentContext(shipmentId){
     catchRows = ev.data || [];
   }
 
-  return { shipment, item, batch, product, rawMaterial, speciesRows, catchRows };
+  return { shipment, item, batch, product, rawMaterial, speciesRows, catchRows, shipVessel };
 }
 
 // The shipment item's own species_name tells us which row in a mixed
@@ -93,57 +104,137 @@ function buildShipmentOverrides(ctx){
   const catchEvent = ctx.catchRows.find(e => e.event_type === 'Catch') || null;
   const transshipEvent = ctx.catchRows.find(e => e.event_type === 'Transshipment') || null;
 
-  const allSpeciesLabel = ctx.speciesRows.length
-    ? ctx.speciesRows.map(s=>s.species_name).filter(Boolean).join(' + ')
-    : (ctx.rawMaterial?.species_name || null);
-  const allSpeciesWeight = ctx.rawMaterial?.quantity_kg ?? null;
+  // Harvesting / On Vessel Processing / Landing all handle the WHOLE
+  // mixed catch (every species in the lot), not one species-specific
+  // slice — so their Species list and Weight both use lot-wide figures.
+  // Transformation and Ship/Receive represent the finished, single-species
+  // product, so those use the target species' own weight specifically.
+  const allSpeciesNames = ctx.speciesRows.length
+    ? ctx.speciesRows.map(s=>s.species_name).filter(Boolean)
+    : (ctx.rawMaterial?.species_name ? [ctx.rawMaterial.species_name] : []);
+  const lotTotalKg = ctx.rawMaterial?.quantity_kg ?? null;
+  const targetKg = target?.quantity_kg ?? null;
+  const lotWeight = lotTotalKg ? { value: fmtNum(lotTotalKg), unit:'kg' } : null;
+  const targetWeight = targetKg ? { value: fmtNum(targetKg), unit:'kg' } : null;
+
+  const supplierName = ctx.rawMaterial?.supplier_name || null;   // Landing / Aggr-Disaggr "Product Ownership"
+  const processorName = ctx.shipment.processor_name || null;      // Transformation "Product Ownership"
+  const rmRef = ctx.rawMaterial?.rm_ref || null;
+  const portName = catchEvent?.landing_port_name || transshipEvent?.transfer_location || null;
+
+  // Packaging: pull Product Type from the real product record when it
+  // matches a known rule; ask actual input questions (not just an
+  // informational note) for whatever numbers genuinely don't exist
+  // anywhere in the product/shipment/raw-material data.
+  const packagingQuestions = [];
+  if(ctx.product?.primary_packaging && PACKAGING_RULES[ctx.product.primary_packaging]){
+    packagingContext.productType = ctx.product.primary_packaging;
+  }
+  if(ctx.product?.net_weight_g){
+    packagingContext.netWeightG = ctx.product.net_weight_g;
+  } else {
+    packagingQuestions.push({ key:'pkg-q-net-weight', label:'Net Weight (per unit)', unit:'g',
+      apply:(v)=>{ packagingContext.netWeightG = v; } });
+  }
+  packagingQuestions.push(
+    { key:'pkg-q-inner-unit', label:'Inner Unit (units per carton)', unit:'',
+      apply:(v)=>{ packagingContext.innerUnit = v; } },
+    { key:'pkg-q-carton-min', label:'Empty Carton Weight — Min', unit:'g',
+      apply:(v)=>{ packagingContext.cartonMinWeight = v; } },
+    { key:'pkg-q-carton-max', label:'Empty Carton Weight — Max', unit:'g',
+      apply:(v)=>{ packagingContext.cartonMaxWeight = v; } },
+    { key:'pkg-q-pallet-weight', label:'Empty Wooden Pallet Weight', unit:'kg',
+      apply:(v)=>{ packagingContext.palletWeight = v; } },
+    { key:'pkg-q-pallet-units', label:'Pallet Stacking Configuration (total units, e.g. 10×12=120)', unit:'',
+      apply:(v)=>{ packagingContext.palletUnits = v; } },
+  );
 
   return {
     modal: {
       product: ctx.shipment.product_name || ctx.item?.product_name || null,
       destinationCountry: ctx.shipment.destination_country || null,
       destinationPort: ctx.shipment.destination_name || null,
-      dri: ctx.rawMaterial?.rm_ref || null,
+      dri: rmRef,
     },
+
     harvesting: {
       'Vessel Name': need('Harvesting: Vessel Name', catchEvent?.vessel_name),
       'Unique Vessel Identification': need('Harvesting: Vessel IMO', catchEvent?.imo),
       'Vessel Flag': catchEvent?.flag_state || null,
       'Gear type': need('Harvesting: Gear type', catchEvent?.gear_type),
       'FAO Area': need('Harvesting: FAO Area', catchEvent?.fao_area),
-      'Species': need('Harvesting: Species', target?.species_name),
-      'Linking KDE': ctx.rawMaterial?.rm_ref || null,
+      'Linking KDE': rmRef,
+      'Satellite Vessel Tracking Authority': 'Available',
     },
+    harvestingSpecies: allSpeciesNames,
     harvestingDates: (catchEvent?.catch_date_from && catchEvent?.catch_date_to)
       ? `${catchEvent.catch_date_from} – ${catchEvent.catch_date_to}` : null,
-    harvestingWeight: target?.quantity_kg ? { value: String(target.quantity_kg), unit:'kg' } : null,
+    harvestingWeight: lotWeight,
+
+    ovp: {
+      'Chain of Custody Certification': rmRef,
+      'Linking KDE (batch, lot or serial number)': rmRef,
+      // Same fishing vessel that did the catch — On Vessel Processing
+      // happens aboard it, not a separate carrier.
+      'Vessel Name': catchEvent?.vessel_name || null,
+      'Unique Vessel Identification': catchEvent?.imo || null,
+      'Vessel Flag': catchEvent?.flag_state || null,
+    },
+    ovpSpecies: allSpeciesNames,
+    ovpWeight: lotWeight,
 
     transshipment: transshipEvent ? {
+      'Chain of Custody Certification': rmRef,
       'Transshipment Vessel Name': transshipEvent.carrier_vessel_name || null,
       'Transshipment Vessel Flag': transshipEvent.carrier_flag_state || null,
       'Transshipment Vessel Unique Vessel ID (IMO)': transshipEvent.carrier_imo || null,
-      'Species': target?.species_name || null,
-      'Linking KDE': ctx.rawMaterial?.rm_ref || null,
+      'Linking KDE': rmRef,
+      'Port': portName,
     } : null,
-    // Transshipment's actual formula needs Weight+Distance (or
-    // Containers+GW) — none of that exists on a transshipment catch
-    // event record, so those stay at their defaults / get asked about.
+    transshipmentSpecies: allSpeciesNames,
 
     landing: {
-      'Species': target?.species_name || null,
-      'Linking KDE': ctx.rawMaterial?.rm_ref || null,
+      'Linking KDE': rmRef,
+      'Product Ownership': supplierName,
     },
-    landingWeight: target?.quantity_kg ? { value: String(target.quantity_kg), unit:'kg' } : null,
+    landingSpecies: allSpeciesNames,
+    landingWeight: lotWeight,
 
     aggr: {
-      species: allSpeciesLabel,
-      weight: allSpeciesWeight ? { value: String(allSpeciesWeight), unit:'kg' } : null,
+      species: allSpeciesNames.join(' + '),
+      weight: lotWeight,
       driSpecies: target?.species_name || null,
-      driWeight: target?.quantity_kg ? { value: String(target.quantity_kg), unit:'kg' } : null,
+      driWeight: targetWeight,
+      productOwnership: supplierName,
     },
 
+    transformation: {
+      'Product Ownership': processorName,
+    },
+    transformationWeight: targetWeight,
+
+    shipReceive: {
+      'Transaction No. (s)': ctx.shipment.shipment_ref || null,
+      'Vessel Name': ctx.shipVessel?.vessel_name || null,
+    },
+    shipReceiveWeight: targetWeight,
+
     missing,
+    packagingQuestions,
   };
+}
+
+// Converts a CTE's Species field from plain text to a multi-select (tags)
+// field and pre-seeds it with the given species list, without touching
+// tagsState if it's already been seeded once (so user edits stick).
+function applySpeciesTagsOverride(cteCtx, mainFields, selectedSpecies){
+  if(!selectedSpecies || !selectedSpecies.length) return;
+  const idx = mainFields.findIndex(f => f.label.toLowerCase().includes('species'));
+  if(idx===-1) return;
+  mainFields[idx].type = 'tags';
+  mainFields[idx].options = SPECIES_OPTIONS.slice();
+  const id = `${cteCtx}::${idx}::${mainFields[idx].label}`;
+  if(!(id in tagsState)) tagsState[id] = { selected: [...selectedSpecies], options: SPECIES_OPTIONS.slice(), open:false };
 }
 
 // Applies label-matched string overrides onto a main-style fields array
@@ -777,19 +868,6 @@ const CTE_DATA = {
       gtin:'9123658622044',
       product:'Canned Tuna in Olive Oil', // TODO: fetch from Product module
     },
-    // Illustrative kg CO2e per kg of material — not sourced from a real
-    // LCA database. Replace with your actual factors before relying on
-    // these numbers; flagging clearly rather than presenting as fact.
-    materials:[
-      {label:'Metal other', factor:8.24},
-      {label:'Paperboard', factor:0.94},
-      {label:'Wood', factor:0.42},
-      {label:'Plastic', factor:2.50},
-      {label:'Glass', factor:0.50},
-      {label:'Not Applicable', factor:0},
-    ],
-    typeOptions:['Can','Carton','Wooden Pallet','Printed labels','Shrink wrap','Food grade laquer coating','Pouch','Bottle','Not Applicable'],
-    columns:['Primary Pkg','Secondary Pkg','Tertiary Pkg'],
     circularity:{
       cols:['Can','Food-grade','Printed Carton','Carton','Shrink Wrap','Pallet'],
       rows:[
@@ -895,16 +973,54 @@ const SCOPE_SPLIT = {
 // per earlier instruction not to wire it into the DB/overall figure yet),
 // but it does have a real, live-computed total via its own interactive
 // table — pulled here just for this report, not for the topbar total.
-function packagingLiveTotal(){
-  let total = 0;
-  packagingState.cols.forEach(col=>{
-    col.slots.forEach(slot=>{
-      const qty = parseNum(slot.qty);
-      const factor = pkgMaterialFactor(slot.material);
-      total += (qty*factor)/1000;
-    });
+// Comprehensive option lists derived from the rules engine, so the
+// Type/Material dropdowns offer every known value across all product
+// types (not just the current one) — needed since overriding a slot
+// might mean picking a type that belongs to a different product type's
+// rules than the one currently selected.
+function pkgFactorForType(typeName){
+  for(const rules of Object.values(PACKAGING_RULES)){
+    const hit = [...rules.primary, ...rules.secondary, ...rules.tertiary].find(e=>e.type===typeName);
+    if(hit) return hit.factor;
+  }
+  return 0;
+}
+
+// Per-slot overrides — null means "use the rules-engine default for this
+// slot"; an object means the user has typed/selected something for that
+// specific cell. Padded to 3 slots per layer to match the grid's fixed
+// 3-row-per-column layout. Reset whenever Product Type changes (a fresh
+// product type should start from its own clean defaults).
+const packagingOverrides = {
+  primary: [null,null,null], secondary: [null,null,null], tertiary: [null,null,null],
+  _lastProductType: null,
+};
+
+function computePackagingBreakdown(){
+  const rules = PACKAGING_RULES[packagingContext.productType] || PACKAGING_RULES['Can'];
+  const ctx = packagingCtx();
+  const layer = (entries, overrides) => [0,1,2].map(slotIdx=>{
+    const rule = entries[slotIdx];
+    const ov = overrides[slotIdx];
+    const defaultType = rule ? rule.type : 'Not Applicable';
+    const defaultMaterial = rule ? rule.material : 'Not Applicable';
+    const defaultQty = rule ? (rule.qty(ctx) || 0) : 0;
+    const type = ov?.type ?? defaultType;
+    const material = ov?.material ?? defaultMaterial;
+    const qty = (ov?.qty !== undefined && ov?.qty !== null) ? ov.qty : defaultQty;
+    const factor = pkgFactorForType(type);
+    const emission = (qty * factor) / 1000; // qty in grams, factor in kg CO2e per kg — /1000 converts g to kg
+    return { type, material, factor, qty, emission };
   });
-  return total;
+  const primary = layer(rules.primary, packagingOverrides.primary);
+  const secondary = layer(rules.secondary, packagingOverrides.secondary);
+  const tertiary = layer(rules.tertiary, packagingOverrides.tertiary);
+  const total = [...primary, ...secondary, ...tertiary].reduce((a,r)=>a+r.emission, 0);
+  return { primary, secondary, tertiary, total, sizeOptions: rules.sizeOptions };
+}
+
+function packagingLiveTotal(){
+  return computePackagingBreakdown().total;
 }
 
 function weightedSplit(...parts){
@@ -1344,55 +1460,184 @@ function captureShipReceive(){
    Emission = (Quantity in g x material factor in kgCO2e/kg) / 1000,
    so changing either the Material dropdown or the Quantity recomputes
    that cell live, matching the "value below should change" ask. */
-const packagingState = {
-  cols: [
-    { slots: [
-      {type:'Can', material:'Metal other', qty:'28.00'},
-      {type:'Printed labels', material:'Not Applicable', qty:'0.25'},
-      {type:'Food grade laquer coating', material:'Not Applicable', qty:'0.08'},
-    ]},
-    { slots: [
-      {type:'Carton', material:'Paperboard', qty:'27.08'},
-      {type:'Shrink wrap', material:'Plastic', qty:'1.00'},
-      {type:'Not Applicable', material:'Not Applicable', qty:'0'},
-    ]},
-    { slots: [
-      {type:'Wooden Pallet', material:'Wood', qty:'8.68'},
-      {type:'Not Applicable', material:'Not Applicable', qty:'0'},
-      {type:'Not Applicable', material:'Not Applicable', qty:'0'},
-    ]},
-  ],
+/* ---------- PACKAGING RULES ENGINE (per Directions.docx) ----------
+   Product Type selects the whole Primary/Secondary/Tertiary cascade.
+   Each entry's `factor` is specific to that packaging TYPE (not a
+   generic per-material lookup like the old free-form grid used) —
+   confirmed against the doc's real numbers. `qty(ctx)` computes the
+   Packaging Quantity from whatever inputs that formula needs; ctx is
+   { netWeightG, innerUnit, cartonAvgWeight, palletWeight, palletUnits, size }.
+
+   Resolved inconsistencies in the source doc (stated before writing
+   this, never contested):
+   - Pouch's Primary Material is "Plastic" (the specific rule, not the
+     contradicting general statement at the top of that section).
+   - Plastic Cup/Bowl's formulas substitute their own product name in
+     place of the doc's "pouch"/"Can" copy-paste leftovers.
+   - Slip Sheet has no given formula/factor anywhere, so it's left out
+     as a Tertiary option — Wooden Pallet is the only working path. */
+const PACKAGING_RULES = {
+  'Can': {
+    sizeOptions: ['28g','70g','100g'],
+    primary: [
+      { type:'Can', material:'Metal-others', factor:2.85,
+        qty:(ctx)=> ({'28g':28,'70g':70,'100g':100})[ctx.size] || 0 },
+      { type:'Food grade lacquer coating', material:'Polymer', factor:0.19,
+        qty:(ctx)=> ({'28g':0.08,'70g':0.10,'100g':0.12})[ctx.size] || 0 },
+      { type:'Printed labels', material:'Paper', factor:1.56,
+        qty:(ctx)=> ctx.netWeightG * 0.00267 },
+    ],
+    secondary: [
+      { type:'Carton', material:'Paperboard', factor:0.80,
+        qty:(ctx)=> ctx.innerUnit>0 ? ctx.cartonAvgWeight/ctx.innerUnit : 0 },
+      { type:'Shrink wrap', material:'Plastic film', factor:3.14,
+        qty:(ctx)=> ({'28g':1.00,'70g':2.00,'100g':2.50})[ctx.size] || 0 },
+    ],
+    tertiary: [
+      { type:'Wooden pallet', material:'Wood', factor:5.00,
+        qty:(ctx)=> (ctx.innerUnit>0 && ctx.palletUnits>0) ? ctx.palletWeight/(ctx.innerUnit*ctx.palletUnits) : 0 },
+    ],
+  },
+  'Pouch': {
+    sizeOptions: ['Standard'],
+    primary: [
+      { type:'Pouch', material:'Plastic', factor:1.89,
+        qty:(ctx)=> ctx.netWeightG * 0.021 },
+      { type:'Printed labels', material:'Paper', factor:1.56,
+        qty:(ctx)=> ctx.netWeightG * 0.00267 },
+    ],
+    secondary: [
+      { type:'Carton', material:'Paperboard', factor:0.80,
+        qty:(ctx)=> ctx.innerUnit>0 ? ctx.cartonAvgWeight/ctx.innerUnit : 0 },
+      { type:'Shrink wrap', material:'Plastic film', factor:3.14,
+        qty:()=> 3.00 }, // only variant given in the doc: 3g per 1000g pouch
+    ],
+    tertiary: [
+      { type:'Wooden pallet', material:'Wood', factor:5.00,
+        qty:(ctx)=> (ctx.innerUnit>0 && ctx.palletUnits>0) ? ctx.palletWeight/(ctx.innerUnit*ctx.palletUnits) : 0 },
+    ],
+  },
+  'Plastic Cup': {
+    sizeOptions: ['94g','170g'],
+    primary: [
+      { type:'Plastic cup', material:'Plastic', factor:2.70,
+        qty:(ctx)=> ctx.netWeightG * 0.025 },
+      { type:'Printed labels', material:'Paper', factor:1.56,
+        qty:(ctx)=> ctx.netWeightG * 0.00267 },
+    ],
+    secondary: [
+      { type:'Carton', material:'Paperboard', factor:0.80,
+        qty:(ctx)=> ctx.innerUnit>0 ? ctx.cartonAvgWeight/ctx.innerUnit : 0 },
+      { type:'Shrink wrap', material:'Plastic film', factor:3.14,
+        qty:()=> 1.00 }, // doc: 1g for both 170g and 94g cup
+    ],
+    tertiary: [
+      { type:'Wooden pallet', material:'Wood', factor:5.00,
+        qty:(ctx)=> (ctx.innerUnit>0 && ctx.palletUnits>0) ? ctx.palletWeight/(ctx.innerUnit*ctx.palletUnits) : 0 },
+    ],
+  },
+  'Plastic Bowl': {
+    sizeOptions: ['94g','170g'],
+    primary: [
+      { type:'Plastic bowl', material:'Plastic', factor:2.70,
+        qty:(ctx)=> ctx.netWeightG * 0.025 },
+      { type:'Printed labels', material:'Paper', factor:1.56,
+        qty:(ctx)=> ctx.netWeightG * 0.00267 },
+    ],
+    secondary: [
+      { type:'Carton', material:'Paperboard', factor:0.80,
+        qty:(ctx)=> ctx.innerUnit>0 ? ctx.cartonAvgWeight/ctx.innerUnit : 0 },
+      { type:'Shrink wrap', material:'Plastic film', factor:3.14,
+        qty:()=> 1.00 }, // doc: 1g for both 170g and 94g bowl
+    ],
+    tertiary: [
+      { type:'Wooden pallet', material:'Wood', factor:5.00,
+        qty:(ctx)=> (ctx.innerUnit>0 && ctx.palletUnits>0) ? ctx.palletWeight/(ctx.innerUnit*ctx.palletUnits) : 0 },
+    ],
+  },
 };
 
-function pkgMaterialFactor(label){
-  const m = CTE_DATA.packaging.materials.find(x=>x.label===label);
-  return m ? m.factor : 0;
+// Holds both fetched (productType, netWeightG when available) and
+// user-answered (via the missing-fields modal) inputs. Stays at these
+// defaults for the plain demo (no ?shipment=) — matches the app's usual
+// "illustrative until told otherwise" convention.
+const PKG_TYPE_OPTIONS = ['Not Applicable', ...new Set(
+  Object.values(PACKAGING_RULES).flatMap(r => [...r.primary, ...r.secondary, ...r.tertiary]).map(e=>e.type)
+)];
+const PKG_MATERIAL_OPTIONS = ['Not Applicable', ...new Set(
+  Object.values(PACKAGING_RULES).flatMap(r => [...r.primary, ...r.secondary, ...r.tertiary]).map(e=>e.material)
+)];
+
+const packagingContext = {
+  productType: 'Can',
+  size: '100g',
+  netWeightG: 100,
+  innerUnit: 24,
+  cartonMinWeight: 480, cartonMaxWeight: 520,
+  palletWeight: 22, palletUnits: 120,
+  answered: false, // true once real/user-supplied values are in (vs. demo defaults)
+};
+function packagingCartonAvgWeight(){ return (packagingContext.cartonMinWeight + packagingContext.cartonMaxWeight) / 2; }
+function packagingCtx(){
+  return {
+    size: packagingContext.size,
+    netWeightG: parseNum(packagingContext.netWeightG),
+    innerUnit: parseNum(packagingContext.innerUnit),
+    cartonAvgWeight: packagingCartonAvgWeight(),
+    palletWeight: parseNum(packagingContext.palletWeight) * 1000, // kg -> g, matching the gram convention of every other quantity
+    palletUnits: parseNum(packagingContext.palletUnits),
+  };
 }
 
+
+let pkgRecalcGuard = false;
 function recalcPackaging(){
-  let grandTotal = 0;
-  packagingState.cols.forEach((col, colIdx)=>{
-    let colTotal = 0;
-    col.slots.forEach((slot, slotIdx)=>{
-      const qtyEl = document.getElementById(`pkg-qty::${colIdx}::${slotIdx}`);
-      if(qtyEl) slot.qty = qtyEl.value;
-      slot.material = selVal(`pkg-material::${colIdx}::${slotIdx}`, slot.material).value;
-      slot.type = selVal(`pkg-type::${colIdx}::${slotIdx}`, slot.type).value;
+  if(pkgRecalcGuard) return; // re-entrancy guard: render() below re-triggers this via the recalc-gate
+  pkgRecalcGuard = true;
 
-      const qty = parseNum(slot.qty);
-      const factor = pkgMaterialFactor(slot.material);
-      const emission = (qty * factor) / 1000;
+  const newType = selVal('pkg-product-type', packagingContext.productType).value;
+  packagingContext.productType = PACKAGING_RULES[newType] ? newType : packagingContext.productType;
+  const rules = PACKAGING_RULES[packagingContext.productType] || PACKAGING_RULES['Can'];
+  let size = selVal('pkg-size', packagingContext.size).value;
+  if(!rules.sizeOptions.includes(size)) size = rules.sizeOptions[0];
+  packagingContext.size = size;
 
-      const emEl = document.getElementById(`pkg-emission::${colIdx}::${slotIdx}`);
-      if(emEl) emEl.value = fmtNum(emission, 3);
-      colTotal += emission;
+  const num = (id, fallback) => parseNum(document.getElementById(id)?.value ?? fallback);
+  packagingContext.netWeightG = num('pkg-net-weight', packagingContext.netWeightG);
+  packagingContext.innerUnit = num('pkg-inner-unit', packagingContext.innerUnit);
+  packagingContext.cartonMinWeight = num('pkg-carton-min', packagingContext.cartonMinWeight);
+  packagingContext.cartonMaxWeight = num('pkg-carton-max', packagingContext.cartonMaxWeight);
+  packagingContext.palletWeight = num('pkg-pallet-weight', packagingContext.palletWeight);
+  packagingContext.palletUnits = num('pkg-pallet-units', packagingContext.palletUnits);
+
+  // A fresh Product Type should start from its own clean rules-driven
+  // defaults, not carry over overrides typed in for a different product.
+  if(packagingOverrides._lastProductType !== packagingContext.productType){
+    packagingOverrides.primary = [null,null,null];
+    packagingOverrides.secondary = [null,null,null];
+    packagingOverrides.tertiary = [null,null,null];
+    packagingOverrides._lastProductType = packagingContext.productType;
+  } else {
+    // Snapshot whatever's currently in each grid cell's dropdowns/input
+    // as that slot's override — harmless when it just echoes the rules
+    // default, meaningful when the user has actually changed something.
+    ['primary','secondary','tertiary'].forEach(layerKey=>{
+      [0,1,2].forEach(slotIdx=>{
+        const cellId = `pkg-${layerKey}::${slotIdx}`;
+        const typeEl = selectState[cellId+'::type'];
+        const materialEl = selectState[cellId+'::material'];
+        const qtyEl = document.getElementById(cellId+'::qty');
+        if(!typeEl && !materialEl && !qtyEl) return;
+        packagingOverrides[layerKey][slotIdx] = {
+          type: typeEl?.value, material: materialEl?.value,
+          qty: qtyEl ? parseNum(qtyEl.value) : undefined,
+        };
+      });
     });
-    const ttlEl = document.getElementById(`pkg-ttl::${colIdx}`);
-    if(ttlEl) ttlEl.textContent = fmtNum(colTotal, 3);
-    grandTotal += colTotal;
-  });
-  const gtEl = document.getElementById('pkg-grand-total');
-  if(gtEl) gtEl.textContent = fmtNum(grandTotal, 3);
+  }
+
+  render();
+  pkgRecalcGuard = false;
 }
 
 function captureCTESnapshot(cteKey){
@@ -1618,7 +1863,8 @@ function removeInstance(cteKey, label){
    toggle rewrites instanceState and goes through the normal render()
    cycle since it needs the segmented toggle's active class to update. */
 function fmtNum(n, dec=2){
-  return isFinite(n) ? n.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec}) : (0).toFixed(dec);
+  const num = typeof n === 'number' ? n : parseFloat(String(n).replace(/,/g,''));
+  return isFinite(num) ? num.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec}) : (0).toFixed(dec);
 }
 function parseNum(v){ return parseFloat(String(v).replace(/,/g,'')) || 0; }
 function toISODate(str){
@@ -1735,9 +1981,12 @@ function ovpYieldWeightMT(){
 function recalcOVP(){
   ensureOVPWeight();
   const yieldWeightMT = ovpYieldWeightMT();
-
+  const yieldDisplayUnit = ovpCalc.weight.unit;
+  const yieldWeightDisplay = yieldDisplayUnit==='kg' ? yieldWeightMT*1000 : yieldWeightMT;
   const yieldEl = document.getElementById('ovp-yield-weight');
-  if(yieldEl) yieldEl.value = fmtNum(yieldWeightMT);
+  if(yieldEl) yieldEl.value = fmtNum(yieldWeightDisplay);
+  const yieldUnitEl = document.getElementById('ovp-yield-unit-label');
+  if(yieldUnitEl) yieldUnitEl.textContent = yieldDisplayUnit;
 
   const refrigEnergy = parseNum(document.getElementById('ovp-refrig-energy')?.value);
   const refrigLabel = selVal('ovp-refrigerant', CTE_DATA.onVesselProcessing.refrigerants[0].label).value;
@@ -2255,6 +2504,7 @@ function renderAggrDisaggr(){
     if(a.weight) sec.weight = { ...a.weight };
     if(a.driSpecies) sec.driSpecies = a.driSpecies;
     if(a.driWeight) sec.driWeight = { ...a.driWeight };
+    if(a.productOwnership) applyLabelOverrides(sec.main, {'Product Ownership': a.productOwnership});
     sec._shipmentApplied = true;
   }
   const multiple = st.labels.length > 1;
@@ -2361,6 +2611,7 @@ function renderLandingCTE(){
   const sec = st.data[st.active];
   if(shipmentOverrides && !sec._shipmentApplied){
     applyLabelOverrides(sec.main, shipmentOverrides.landing);
+    applySpeciesTagsOverride('landing-main::'+st.active, sec.main, shipmentOverrides.landingSpecies);
     if(shipmentOverrides.landingWeight) sec.weight = { ...shipmentOverrides.landingWeight };
     sec._shipmentApplied = true;
   }
@@ -2416,6 +2667,7 @@ function renderTransshipment(){
   const sec = st.data[st.active];
   if(shipmentOverrides?.transshipment && !sec._shipmentApplied){
     applyLabelOverrides(sec.main, shipmentOverrides.transshipment);
+    applySpeciesTagsOverride('transship-main::'+st.active, sec.main, shipmentOverrides.transshipmentSpecies);
     sec._shipmentApplied = true;
   }
   const multiple = st.labels.length > 1;
@@ -2693,6 +2945,13 @@ function renderOVP(){
   const data = CTE_DATA.onVesselProcessing;
   ensureOVPWeight();
 
+  if(shipmentOverrides && !ovpShipmentApplied){
+    applyLabelOverrides(data.fields, shipmentOverrides.ovp);
+    applySpeciesTagsOverride('ovp-main', data.fields, shipmentOverrides.ovpSpecies);
+    if(shipmentOverrides.ovpWeight) ovpCalc.weight = { ...shipmentOverrides.ovpWeight };
+    ovpShipmentApplied = true;
+  }
+
   if(!state.ovpEnabled){
     return `
       <div class="card">
@@ -2734,7 +2993,7 @@ function renderOVP(){
         </div>
         <div class="field">
           <label>Yield of Weight or Quantity</label>
-          <div class="unit-row"><input type="text" id="ovp-yield-weight" class="is-computed" readonly value="0.00"><div class="unit">mt</div></div>
+          <div class="unit-row"><input type="text" id="ovp-yield-weight" class="is-computed" readonly value="0.00"><div class="unit" id="ovp-yield-unit-label">${ovpCalc.weight.unit}</div></div>
         </div>
       </div>
 
@@ -2797,6 +3056,7 @@ function renderGenericTab(data, ctx, subKey){
     const sec = st.data[st.active];
     if(ctx==='harvesting' && shipmentOverrides && !sec._shipmentApplied){
       applyLabelOverrides(sec.main, shipmentOverrides.harvesting);
+      applySpeciesTagsOverride(ctx+'-main::'+st.active, sec.main, shipmentOverrides.harvestingSpecies);
       if(shipmentOverrides.harvestingDates){
         const dateField = sec.main.find(f=>f.type==='daterange');
         if(dateField) dateField.value = shipmentOverrides.harvestingDates;
@@ -2891,6 +3151,11 @@ function renderProcessing(){
     };
     const st = ensureInstance('transformation', inner.instanceBase, initial);
     const sec = st.data[st.active];
+    if(shipmentOverrides && !sec._shipmentApplied){
+      applyLabelOverrides(sec.main, shipmentOverrides.transformation);
+      if(shipmentOverrides.transformationWeight) sec.weight = { ...shipmentOverrides.transformationWeight };
+      sec._shipmentApplied = true;
+    }
     const multiple = st.labels.length > 1;
     return `
       <div class="card">
@@ -3036,7 +3301,11 @@ function renderPackaging(){
     `;
   }
 
-  const materialLabels = d.materials.map(m=>m.label);
+  const breakdown = computePackagingBreakdown();
+  const sizeOptions = breakdown.sizeOptions || ['Standard'];
+  const columns = ['Primary Pkg','Secondary Pkg','Tertiary Pkg'];
+  const layerKeys = ['primary','secondary','tertiary'];
+  const layers = [breakdown.primary, breakdown.secondary, breakdown.tertiary];
   const rowsMeta = [
     {label:'Packaging Type', kind:'type'},
     {label:'Packaging Material', kind:'material'},
@@ -3061,43 +3330,59 @@ function renderPackaging(){
       </div>
 
       <div style="height:20px"></div>
+      <div class="section-label">Packaging Inputs${packagingContext.answered?'':' <span class=\"pkg-demo-tag\">demo values — not yet confirmed for this shipment</span>'}</div>
+      <div class="field-grid">
+        <div class="field"><label>Product Type</label>${buildSelect('pkg-product-type', Object.keys(PACKAGING_RULES), {value:packagingContext.productType})}</div>
+        <div class="field"><label>Size</label>${buildSelect('pkg-size', sizeOptions, {value:packagingContext.size})}</div>
+        <div class="field"><label>Net Weight</label><div class="unit-row"><input type="text" id="pkg-net-weight" value="${packagingContext.netWeightG}" oninput="recalcPackaging()"><div class="unit">g</div></div></div>
+        <div class="field"><label>Inner Unit</label><input type="text" id="pkg-inner-unit" value="${packagingContext.innerUnit}" oninput="recalcPackaging()"></div>
+        <div class="field"><label>Empty Carton Weight — Min</label><div class="unit-row"><input type="text" id="pkg-carton-min" value="${packagingContext.cartonMinWeight}" oninput="recalcPackaging()"><div class="unit">g</div></div></div>
+        <div class="field"><label>Empty Carton Weight — Max</label><div class="unit-row"><input type="text" id="pkg-carton-max" value="${packagingContext.cartonMaxWeight}" oninput="recalcPackaging()"><div class="unit">g</div></div></div>
+        <div class="field"><label>Empty Wooden Pallet Weight</label><div class="unit-row"><input type="text" id="pkg-pallet-weight" value="${packagingContext.palletWeight}" oninput="recalcPackaging()"><div class="unit">kg</div></div></div>
+        <div class="field"><label>Pallet Stacking Configuration</label><input type="text" id="pkg-pallet-units" value="${packagingContext.palletUnits}" oninput="recalcPackaging()" placeholder="e.g. 120 for 10×12"></div>
+      </div>
+
+      <div style="height:20px"></div>
 
       <div class="pkg-grid-table">
         <div class="pkg-grid-head">KDE's</div>
-        ${d.columns.map(c=>`<div class="pkg-grid-head">${c}</div>`).join('')}
+        ${columns.map(c=>`<div class="pkg-grid-head">${c}</div>`).join('')}
 
         ${[0,1,2].map(slotIdx => rowsMeta.map(rm => `
           <div class="pkg-grid-kde${rm.kind==='emission'?' emission-label':''}">${rm.kind==='type' ? `${rm.label} ${slotIdx+1}` : rm.label}</div>
-          ${[0,1,2].map(colIdx=>{
-            const slot = packagingState.cols[colIdx].slots[slotIdx];
-            if(rm.kind==='type'){
-              return `<div class="pkg-grid-cell">${buildSelect(`pkg-type::${colIdx}::${slotIdx}`, d.typeOptions, {value:slot.type})}</div>`;
-            }
-            if(rm.kind==='material'){
-              return `<div class="pkg-grid-cell">${buildSelect(`pkg-material::${colIdx}::${slotIdx}`, materialLabels, {value:slot.material})}</div>`;
-            }
-            if(rm.kind==='qty'){
-              return `<div class="pkg-grid-cell"><input type="text" id="pkg-qty::${colIdx}::${slotIdx}" value="${slot.qty}" oninput="recalcPackaging()"></div>`;
-            }
-            return `<div class="pkg-grid-cell emission-cell"><input type="text" id="pkg-emission::${colIdx}::${slotIdx}" class="is-computed" readonly value="0.000"></div>`;
+          ${layerKeys.map((layerKey,colIdx)=>{
+            const row = layers[colIdx][slotIdx];
+            const cellId = `pkg-${layerKey}::${slotIdx}`;
+            if(rm.kind==='type') return `<div class="pkg-grid-cell">${buildSelect(cellId+'::type', PKG_TYPE_OPTIONS, {value:row.type})}</div>`;
+            if(rm.kind==='material') return `<div class="pkg-grid-cell">${buildSelect(cellId+'::material', PKG_MATERIAL_OPTIONS, {value:row.material})}</div>`;
+            if(rm.kind==='qty') return `<div class="pkg-grid-cell"><input type="text" id="${cellId}::qty" value="${fmtNum(row.qty,3)}" oninput="recalcPackaging()"></div>`;
+            return `<div class="pkg-grid-cell emission-cell"><input type="text" class="is-computed" readonly value="${fmtNum(row.emission,3)}"></div>`;
           }).join('')}
         `).join('')).join('')}
 
         <div class="pkg-grid-kde ttl-label">TTL Emissions (kg CO₂e)</div>
-        ${[0,1,2].map(colIdx=>`<div class="pkg-grid-cell ttl-cell"><span id="pkg-ttl::${colIdx}">0.000</span></div>`).join('')}
+        ${layers.map(layerRows=>`<div class="pkg-grid-cell ttl-cell">${fmtNum(layerRows.reduce((a,r)=>a+r.emission,0),3)}</div>`).join('')}
       </div>
 
       <div class="pkg-grand-total">
-        <span id="pkg-grand-total">0.000</span> <span>kg CO₂e</span>
+        <span id="pkg-grand-total">${fmtNum(breakdown.total,3)}</span> <span>kg CO₂e</span>
       </div>
     </div>
     <div style="height:26px"></div>
   `;
 }
 
+
 function renderShipReceive(){
   const d = CTE_DATA.shipReceive;
   const mode = state.shipSub; // 'Sea' | 'Air'
+
+  if(shipmentOverrides && !shipReceiveShipmentApplied){
+    applyLabelOverrides(d.commonFields, shipmentOverrides.shipReceive);
+    applyLabelOverrides(d.seaFields, shipmentOverrides.shipReceive);
+    if(shipmentOverrides.shipReceiveWeight) shipCalc.yieldWeight = { ...shipmentOverrides.shipReceiveWeight };
+    shipReceiveShipmentApplied = true;
+  }
 
   const modeFieldsHTML = mode==='Sea' ? `
     ${fieldGrid(d.seaFields, 'ship-sea')}
@@ -3999,6 +4284,16 @@ document.getElementById('app').addEventListener('click', (e)=>{
   else if(action==='close-missing-modal'){
     state.showMissingModal = false;
   }
+  else if(action==='submit-missing-modal'){
+    const questions = shipmentOverrides?.packagingQuestions || [];
+    questions.forEach(q=>{
+      const el = document.getElementById(q.key);
+      const v = parseNum(el?.value);
+      if(el?.value && v>0) q.apply(v);
+    });
+    if(questions.length) packagingContext.answered = true;
+    state.showMissingModal = false;
+  }
   else if(action==='submit-cte'){
     const cteKey = el.dataset.cte;
     confirmedData[cteKey] = captureCTESnapshot(cteKey);
@@ -4057,22 +4352,34 @@ document.addEventListener('click', (e)=>{
 function renderMissingFieldsModal(){
   if(!state.showMissingModal) return '';
   const items = shipmentOverrides?.missing || [];
+  const questions = shipmentOverrides?.packagingQuestions || [];
+  const hasAnything = items.length || questions.length;
   return `
   <div class="modal-overlay">
     <div class="gdsn-card" style="width:480px;">
       <div class="gdsn-head">
         <div>
           <span class="gdsn-badge">shipment data</span>
-          <h3>${items.length ? 'A few things weren\u2019t in the shipment data' : 'Shipment data loaded'}</h3>
-          <p>${items.length
-            ? 'Everything else pre-filled from the real shipment/raw material records. These specific fields weren\u2019t available and kept their existing default values — fill them in manually wherever they matter.'
+          <h3>${hasAnything ? 'A few things aren\u2019t in the shipment data' : 'Shipment data loaded'}</h3>
+          <p>${hasAnything
+            ? 'Everything else pre-filled from the real shipment/raw material records. Fill in what you can below — Packaging can\u2019t compute correctly without these.'
             : 'All the fields this page tries to pre-fill were found in the shipment and raw material records.'}</p>
         </div>
         <button type="button" class="gdsn-close-x" data-action="close-missing-modal">✕</button>
       </div>
+      ${questions.length ? `
+        <div class="gdsn-group">
+          ${questions.map(q=>`
+            <div class="missing-field-row">
+              <label>${q.label}</label>
+              <input type="text" id="${q.key}" placeholder="${q.unit||'value'}">
+            </div>
+          `).join('')}
+        </div>
+      ` : ''}
       ${items.length ? `<div class="gdsn-group">${items.map(i=>`<div class="gdsn-row"><label style="width:auto;font-family:inherit;font-weight:600;color:var(--ink-700);">${i}</label></div>`).join('')}</div>` : ''}
       <div class="gdsn-footer">
-        <button type="button" class="btn btn-primary" style="padding:12px 40px;" data-action="close-missing-modal">Continue to Calculator</button>
+        <button type="button" class="btn btn-primary" style="padding:12px 40px;" data-action="submit-missing-modal">${questions.length?'Save & Continue':'Continue to Calculator'}</button>
       </div>
     </div>
   </div>`;
