@@ -24,12 +24,149 @@ const dbClient = (typeof window !== 'undefined' && window.supabase)
   ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY)
   : null;
 
+/* ---------- LAUNCH-FROM-SHIPMENT: real data fetch + field mapping ----------
+   Triggered only when the URL carries ?shipment=<uuid> (set by
+   shipment-detail.html's existing goCarbon() button — nothing on that
+   side needs to change). Fetches the real chain: shipments ->
+   shipment_items -> shipment_batches -> products -> raw_materials ->
+   raw_material_species (per-species breakdown for mixed lots) ->
+   raw_material_catches (Catch + Transshipment events). Everything here
+   is additive: with no ?shipment= param, none of this runs and the
+   existing demo is completely unaffected. */
+let shipmentOverrides = null;   // built once the fetch resolves; null until then / if absent
+let shipmentFetchError = null;  // set if the fetch fails, so we can surface it rather than silently show the demo
+
+async function loadShipmentContext(shipmentId){
+  if(!dbClient) throw new Error('Supabase client not available.');
+
+  const { data: shipment, error: shipErr } = await dbClient
+    .from('shipments').select('*').eq('id', shipmentId).single();
+  if(shipErr || !shipment) throw shipErr || new Error('Shipment not found.');
+
+  const { data: items } = await dbClient
+    .from('shipment_items').select('*').eq('shipment_id', shipmentId).order('line_no');
+  const item = (items || [])[0] || null;
+
+  const { data: batches } = item ? await dbClient
+    .from('shipment_batches').select('*').eq('shipment_id', shipmentId).order('line_no') : { data: [] };
+  const batch = (batches || []).find(b => b.raw_material_id) || null;
+
+  let product = null;
+  if(item?.product_id){
+    const { data } = await dbClient.from('products').select('*').eq('id', item.product_id).single();
+    product = data || null;
+  }
+
+  let rawMaterial = null, speciesRows = [], catchRows = [];
+  if(batch?.raw_material_id){
+    const [rm, sp, ev] = await Promise.all([
+      dbClient.from('raw_materials').select('*').eq('id', batch.raw_material_id).single(),
+      dbClient.from('raw_material_species').select('*').eq('raw_material_id', batch.raw_material_id),
+      dbClient.from('raw_material_catches').select('*').eq('raw_material_id', batch.raw_material_id).order('line_no'),
+    ]);
+    rawMaterial = rm.data || null;
+    speciesRows = sp.data || [];
+    catchRows = ev.data || [];
+  }
+
+  return { shipment, item, batch, product, rawMaterial, speciesRows, catchRows };
+}
+
+// The shipment item's own species_name tells us which row in a mixed
+// raw-material lot's species breakdown is the one actually being shipped
+// (confirmed against real data: FMC2500526 is a mixed Skipjack/Yellowfin
+// lot, and only the Skipjack portion is relevant to this shipment).
+function pickTargetSpecies(ctx){
+  const targetName = (ctx.item?.species_name || ctx.rawMaterial?.species_name || '').toLowerCase();
+  if(ctx.speciesRows.length){
+    const match = ctx.speciesRows.find(s => (s.species_name||'').toLowerCase() === targetName);
+    return match || ctx.speciesRows[0];
+  }
+  return ctx.rawMaterial ? { species_name: ctx.rawMaterial.species_name, quantity_kg: ctx.rawMaterial.quantity_kg } : null;
+}
+
+function buildShipmentOverrides(ctx){
+  const missing = [];
+  const need = (label, val) => { if(val===undefined || val===null || val==='') missing.push(label); return val; };
+
+  const target = pickTargetSpecies(ctx);
+  const catchEvent = ctx.catchRows.find(e => e.event_type === 'Catch') || null;
+  const transshipEvent = ctx.catchRows.find(e => e.event_type === 'Transshipment') || null;
+
+  const allSpeciesLabel = ctx.speciesRows.length
+    ? ctx.speciesRows.map(s=>s.species_name).filter(Boolean).join(' + ')
+    : (ctx.rawMaterial?.species_name || null);
+  const allSpeciesWeight = ctx.rawMaterial?.quantity_kg ?? null;
+
+  return {
+    modal: {
+      product: ctx.shipment.product_name || ctx.item?.product_name || null,
+      destinationCountry: ctx.shipment.destination_country || null,
+      destinationPort: ctx.shipment.destination_name || null,
+      dri: ctx.rawMaterial?.rm_ref || null,
+    },
+    harvesting: {
+      'Vessel Name': need('Harvesting: Vessel Name', catchEvent?.vessel_name),
+      'Unique Vessel Identification': need('Harvesting: Vessel IMO', catchEvent?.imo),
+      'Vessel Flag': catchEvent?.flag_state || null,
+      'Gear type': need('Harvesting: Gear type', catchEvent?.gear_type),
+      'FAO Area': need('Harvesting: FAO Area', catchEvent?.fao_area),
+      'Species': need('Harvesting: Species', target?.species_name),
+      'Linking KDE': ctx.rawMaterial?.rm_ref || null,
+    },
+    harvestingDates: (catchEvent?.catch_date_from && catchEvent?.catch_date_to)
+      ? `${catchEvent.catch_date_from} – ${catchEvent.catch_date_to}` : null,
+    harvestingWeight: target?.quantity_kg ? { value: String(target.quantity_kg), unit:'kg' } : null,
+
+    transshipment: transshipEvent ? {
+      'Transshipment Vessel Name': transshipEvent.carrier_vessel_name || null,
+      'Transshipment Vessel Flag': transshipEvent.carrier_flag_state || null,
+      'Transshipment Vessel Unique Vessel ID (IMO)': transshipEvent.carrier_imo || null,
+      'Species': target?.species_name || null,
+      'Linking KDE': ctx.rawMaterial?.rm_ref || null,
+    } : null,
+    // Transshipment's actual formula needs Weight+Distance (or
+    // Containers+GW) — none of that exists on a transshipment catch
+    // event record, so those stay at their defaults / get asked about.
+
+    landing: {
+      'Species': target?.species_name || null,
+      'Linking KDE': ctx.rawMaterial?.rm_ref || null,
+    },
+    landingWeight: target?.quantity_kg ? { value: String(target.quantity_kg), unit:'kg' } : null,
+
+    aggr: {
+      species: allSpeciesLabel,
+      weight: allSpeciesWeight ? { value: String(allSpeciesWeight), unit:'kg' } : null,
+      driSpecies: target?.species_name || null,
+      driWeight: target?.quantity_kg ? { value: String(target.quantity_kg), unit:'kg' } : null,
+    },
+
+    missing,
+  };
+}
+
+// Applies label-matched string overrides onto a main-style fields array
+// (the F() objects used across every CTE's `main`/`fields` list) — matches
+// by case-insensitive substring so slightly different label phrasing
+// across CTEs (e.g. "Linking KDE" vs "Linking KDE (batch, lot or serial
+// number)") still resolves, and silently skips anything that doesn't
+// exist on a given CTE rather than erroring.
+function applyLabelOverrides(fields, overrides){
+  if(!fields || !overrides) return;
+  const keys = Object.keys(overrides);
+  fields.forEach(f=>{
+    const key = keys.find(k => f.label.toLowerCase().includes(k.toLowerCase()));
+    if(key && overrides[key] !== null && overrides[key] !== undefined) f.value = overrides[key];
+  });
+}
+
 const F = (label, value, type='text', extra={}) => ({label, value, type, ...extra});
 const SCOPE_OPTS = ['Scope I','Scope II','Scope III','Mixed'];
 
 // TODO(supabase): swap for a live query against the Country / Port Atlas
 // modules once this is wired in — these are placeholder reference lists.
-const COUNTRIES = ['Republic of Korea','United States','China','Japan','Thailand','Spain','Norway','Ecuador','Indonesia','Vietnam','Philippines','India','Taiwan','France','Italy','United Kingdom','Chile','Peru','Mexico','Papua New Guinea'];
+const COUNTRIES = ['Republic of Korea','United States','China','Japan','Thailand','Spain','Norway','Ecuador','Indonesia','Vietnam','Philippines','India','Taiwan','France','Italy','United Kingdom','Chile','Peru','Mexico','Papua New Guinea','Germany'];
 
 // ISO 3166-1 numeric codes for the GS1 GDSN Carbon Footprint modal's
 // cfpCountryCode — a representative subset, not the full ISO list.
@@ -125,7 +262,7 @@ function stopQuoteRotation(){
   clearInterval(quoteTimer);
   quoteTimer = null;
 }
-const PORTS = ['Busan, South Korea','Kaohsiung, Taiwan','Bangkok, Thailand','General Santos, Philippines','Manta, Ecuador','Vigo, Spain','Bergen, Norway','Singapore','Jakarta, Indonesia','Cochin, India'];
+const PORTS = ['Busan, South Korea','Kaohsiung, Taiwan','Bangkok, Thailand','General Santos, Philippines','Manta, Ecuador','Vigo, Spain','Bergen, Norway','Singapore','Jakarta, Indonesia','Cochin, India','Hamburg, Germany'];
 
 // TODO(supabase): replace with a live query against the Raw Material
 // module, e.g. `dbClient.from('raw_materials').select('id,label')`.
@@ -232,8 +369,10 @@ const FIELD_INFO = {
       '(Leakage) Unintended release of gases or materials during processing operations, such as refrigerant leaks from cooling systems or gas emissions from equipment.',
       'The different leakage sources were multiplied with Fuel Efficiency / Oxidation / Density-related Factor (0.919) to get the LCI value. The emission factor for different leakage sources vary. The total emission was calculated by multiplying the emission factor with the LCI value.',
     ]},
-    {label:'Emissions', text:'Yield of Weight or Quantity × (Electricity Consumption + Purchased Raw Material and Services + Ingredients + Equipment & Machinery + Water Usage + Waste Disposal + On-Site Fuel Combustion + Fuel Consumption + Upstream Energy + Leased assets + Fugitive Emission).'},
-    {label:'Emissions of 1KG', text:'Emissions ÷ Yield of Weight or Quantity.'},
+    {label:'Emissions', text:'Weight or Quantity × (Electricity Consumption + Purchased Raw Material and Services + Ingredients + Equipment & Machinery + Water Usage + Waste Disposal + On-Site Fuel Combustion + Fuel Consumption + Upstream Energy + Leased assets + Fugitive Emission). This is the total embodied emissions across ALL the raw material processed, before splitting into Yield vs Other Product.'},
+    {label:'Emissions of 1KG', text:'Emissions ÷ Weight or Quantity. This rate is shared by Yield and Other Product too — algebraically, dividing either one\u2019s own emission by its own weight always gives back the same number.'},
+    {label:'Yield Emission', text:'Emissions × Yield %  the portion of the total attributable to the usable Yield.'},
+    {label:'Other Product Emission', text:'Emissions × (100% \u2212 Yield %)  the portion attributable to the remainder that isn\u2019t counted as Yield.'},
   ],
   storage:[
     {label:'Yield of Weight', text:'Pulled from Transformation\u2019s Yield of Weight or Quantity when this tab first opens. Editing it here doesn\u2019t change Transformation.'},
@@ -600,6 +739,8 @@ const CTE_DATA = {
       metrics:[
         {v:'0.00 kg CO₂e', l:'Emissions', id:'tf-metric-total', readonly:true},
         {v:'0.00 kg CO₂e', l:'Emissions of 1KG', id:'tf-metric-perkg', readonly:true},
+        {v:'0.00 kg CO₂e', l:'Yield Emission', id:'tf-metric-yield', readonly:true},
+        {v:'0.00 kg CO₂e', l:'Other Product Emission', id:'tf-metric-other', readonly:true},
       ],
       checkbox:'Multiple Transformation Present'
     },
@@ -1112,8 +1253,10 @@ function captureTransformation(){
       factors[col] = val;
       sum += val;
     }
-    const emission = yieldWeightKG*sum;
-    const perKg = yieldWeightKG>0 ? emission/yieldWeightKG : 0;
+    const emission = weightKG*sum;
+    const perKg = weightKG>0 ? emission/weightKG : 0;
+    const yieldEmission = emission * (yieldPct/100);
+    const otherEmission = emission - yieldEmission;
     const stationaryField = sec.tagFields.find(f=>f.label==='Stationary Fuel Combustion Type');
     const combustionField = sec.tagFields.find(f=>f.label==='Combustion Fuel Type');
     const stationaryId = `transform-tags::${label}::0::Stationary Fuel Combustion Type`;
@@ -1125,6 +1268,7 @@ function captureTransformation(){
       production_date: sec.productionDate || null, expiry_date: sec.expiryDate || null,
       ...factors,
       total_emission_kg:round2(emission), emission_per_kg:round4(perKg),
+      yield_emission_kg:round2(yieldEmission), other_product_emission_kg:round2(otherEmission),
       raw_fields:{
         ...serializeFields(sec.main),
         stationaryFuelCombustionType: tagsVal(stationaryId, stationaryField?stationaryField.value:[], stationaryField?stationaryField.options:[]).selected,
@@ -1349,6 +1493,7 @@ const state = {
   aggrFactorsOpen:false,
   infoPanelOpen:null,
   gdsnModalOpen:false,
+  showMissingModal:false,
   confirmed:{ harvesting:false, ovp:false, transshipment:false, landing:false, aggrDisaggr:false, transformation:false, storage:false, shipReceive:false },
 };
 
@@ -1872,12 +2017,29 @@ function recalcTransform(){
     return acc + (el ? parseNum(el.value) : 0);
   }, 0);
 
-  const emission = yieldWeightKG * sum;
-  const perKg = yieldWeightKG > 0 ? emission / yieldWeightKG : 0;
+  // TTL Emission now uses the RAW Weight or Quantity, not the yield-adjusted
+  // weight — this represents the total embodied emissions across ALL the
+  // raw material processed, before splitting into Yield vs Other Product.
+  const emission = weightKG * sum;
+  const perKg = weightKG > 0 ? emission / weightKG : 0;
+
+  // Yield Emission = the portion of TTL attributable to the Yield % (this
+  // is exactly what "Emissions" used to mean before this change — same
+  // formula, same number, just relabeled as one of three metrics now).
+  // Other Product Emission = the remaining portion (100% - Yield %).
+  // Per-kg is deliberately NOT split into separate Yield/Other figures:
+  // algebraically, Emission ÷ its own weight always reduces to Sum
+  // regardless of which weight subset you use, so a separate "Yield per
+  // kg" / "Other per kg" would just repeat the same number as "Emissions
+  // of 1KG" — verified numerically before implementing this.
+  const yieldEmission = emission * (yieldPct/100);
+  const otherEmission = emission - yieldEmission;
 
   const setVal = (id,v)=>{ const e=document.getElementById(id); if(e) e.value=fmtNum(v); };
   setVal('tf-metric-total', emission);
   setVal('tf-metric-perkg', perKg);
+  setVal('tf-metric-yield', yieldEmission);
+  setVal('tf-metric-other', otherEmission);
 
   grandTotalParts.transformation = perKg;
   updateGrandTotal();
@@ -2087,6 +2249,14 @@ function renderAggrDisaggr(){
   };
   const st = ensureInstance('aggr', data.instanceBase, initial);
   const sec = st.data[st.active];
+  if(shipmentOverrides?.aggr && !sec._shipmentApplied){
+    const a = shipmentOverrides.aggr;
+    if(a.species) sec.species = a.species;
+    if(a.weight) sec.weight = { ...a.weight };
+    if(a.driSpecies) sec.driSpecies = a.driSpecies;
+    if(a.driWeight) sec.driWeight = { ...a.driWeight };
+    sec._shipmentApplied = true;
+  }
   const multiple = st.labels.length > 1;
   const refrigOptions = data.refrigerants.map(r=>r.label);
 
@@ -2189,6 +2359,11 @@ function renderLandingCTE(){
   };
   const st = ensureInstance('landing', data.instanceBase, initial);
   const sec = st.data[st.active];
+  if(shipmentOverrides && !sec._shipmentApplied){
+    applyLabelOverrides(sec.main, shipmentOverrides.landing);
+    if(shipmentOverrides.landingWeight) sec.weight = { ...shipmentOverrides.landingWeight };
+    sec._shipmentApplied = true;
+  }
   const multiple = st.labels.length > 1;
   return `
     <div class="card">
@@ -2239,6 +2414,10 @@ function renderTransshipment(){
   };
   const st = ensureInstance('transshipment', data.instanceBase, initial);
   const sec = st.data[st.active];
+  if(shipmentOverrides?.transshipment && !sec._shipmentApplied){
+    applyLabelOverrides(sec.main, shipmentOverrides.transshipment);
+    sec._shipmentApplied = true;
+  }
   const multiple = st.labels.length > 1;
 
   const modePills = `<div class="subtab-row" style="margin:0;">
@@ -2462,6 +2641,8 @@ function splitMetric(v){
 
 const METRIC_ICON_TOTAL = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 18C4.79 18 3 16.21 3 14C3 12.03 4.42 10.39 6.29 10.06C6.83 7.72 8.92 6 11.4 6C14.15 6 16.4 8.13 16.58 10.83C18.55 11.14 20.05 12.85 20.05 14.9C20.05 17.17 18.21 19 15.95 19H7.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const METRIC_ICON_PERKG = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3V21M12 3L8 7M12 3L16 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 15C4 15 4.5 12 6.5 12C8.5 12 9 15 9 15C9 15 8.5 18 6.5 18C4.5 18 4 15 4 15Z" stroke="currentColor" stroke-width="1.6"/><path d="M15 15C15 15 15.5 12 17.5 12C19.5 12 20 15 20 15C20 15 19.5 18 17.5 18C15.5 18 15 15 15 15Z" stroke="currentColor" stroke-width="1.6"/></svg>`;
+const METRIC_ICON_YIELD = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12.5L9 17.5L20 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const METRIC_ICON_OTHER = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3V11M12 11L6 17M12 11L18 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="19" r="1.8" stroke="currentColor" stroke-width="1.6"/><circle cx="18" cy="19" r="1.8" stroke="currentColor" stroke-width="1.6"/></svg>`;
 const METRIC_ICON_WEIGHT = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 8L12 4L20 8V16L12 20L4 16V8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M4 8L12 12M12 12L20 8M12 12V20" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
 
 function bottomBar(metrics, checkboxLabel, checked=false, cteKey=null, weightConfig=null){
@@ -2480,8 +2661,13 @@ function bottomBar(metrics, checkboxLabel, checked=false, cteKey=null, weightCon
       const {value,unit} = splitMetric(m.v);
       const idAttr = m.id ? ` id="${m.id}"` : '';
       const roAttr = m.readonly ? ' readonly' : '';
-      const icon = i%2===0 ? METRIC_ICON_TOTAL : METRIC_ICON_PERKG;
-      const iconClass = i%2===0 ? 'metric-icon-green' : 'metric-icon-teal';
+      const cycle = [
+        [METRIC_ICON_TOTAL, 'metric-icon-green'],
+        [METRIC_ICON_PERKG, 'metric-icon-teal'],
+        [METRIC_ICON_YIELD, 'metric-icon-amber'],
+        [METRIC_ICON_OTHER, 'metric-icon-violet'],
+      ][i%4];
+      const [icon, iconClass] = cycle;
       return `<div class="metric">
         <div class="metric-icon ${iconClass}">${icon}</div>
         <div class="metric-body">
@@ -2609,6 +2795,18 @@ function renderGenericTab(data, ctx, subKey){
     const initial = { main: data.fields, emission: data.emissionFields };
     const st = ensureInstance(ctx, data.instanceBase, initial);
     const sec = st.data[st.active];
+    if(ctx==='harvesting' && shipmentOverrides && !sec._shipmentApplied){
+      applyLabelOverrides(sec.main, shipmentOverrides.harvesting);
+      if(shipmentOverrides.harvestingDates){
+        const dateField = sec.main.find(f=>f.type==='daterange');
+        if(dateField) dateField.value = shipmentOverrides.harvestingDates;
+      }
+      if(shipmentOverrides.harvestingWeight){
+        const wf = findWeightField(sec);
+        if(wf) wf.value = { ...shipmentOverrides.harvestingWeight };
+      }
+      sec._shipmentApplied = true;
+    }
     const multiple = st.labels.length > 1;
     const wField = findWeightField(sec);
     return `
@@ -3541,7 +3739,8 @@ function renderCalculator(){
     ${renderTabContent()}
   </div>
   ${renderInfoPanel()}
-  ${renderGDSNModal()}`;
+  ${renderGDSNModal()}
+  ${renderMissingFieldsModal()}`;
 }
 
 // Remembers each pill's last on-screen position across full re-renders.
@@ -3699,7 +3898,14 @@ document.getElementById('app').addEventListener('click', (e)=>{
     if(st){ st.selected.push(el.dataset.value); st.open = false; }
   }
   else if(action==='calc-mode'){ state.calcMode = el.dataset.value; }
-  else if(action==='dest-mode'){ state.destinationMode = el.dataset.value; }
+  else if(action==='dest-mode'){
+    state.destinationMode = el.dataset.value;
+    if(shipmentOverrides?.modal){
+      const m = shipmentOverrides.modal;
+      const next = state.destinationMode==='port' ? m.destinationPort : m.destinationCountry;
+      if(next) selVal('modal-destination', next).value = next;
+    }
+  }
   else if(action==='proceed-landing'){
     const production = selVal('landing-production', 'Wild Capture').value || 'Wild Capture';
     if(production !== 'Wild Capture'){
@@ -3711,7 +3917,10 @@ document.getElementById('app').addEventListener('click', (e)=>{
     }
   }
   else if(action==='cancel-modal'){ state.page='landing'; }
-  else if(action==='proceed-modal'){ state.page='calculator'; state.activeTab='harvesting'; }
+  else if(action==='proceed-modal'){
+    state.page='calculator'; state.activeTab='harvesting';
+    if(shipmentOverrides) state.showMissingModal = true;
+  }
   else if(action==='back-landing'){ state.page='landing'; }
   else if(action==='tab'){ state.activeTab = el.dataset.value; }
   else if(action==='subtab'){
@@ -3787,6 +3996,9 @@ document.getElementById('app').addEventListener('click', (e)=>{
   else if(action==='gdsn-close'){
     state.gdsnModalOpen = false;
   }
+  else if(action==='close-missing-modal'){
+    state.showMissingModal = false;
+  }
   else if(action==='submit-cte'){
     const cteKey = el.dataset.cte;
     confirmedData[cteKey] = captureCTESnapshot(cteKey);
@@ -3842,8 +4054,62 @@ document.addEventListener('click', (e)=>{
    This doesn't build the actual product-page integration (that page
    doesn't exist here) — it's the receiving end of that link, ready for
    whenever the product module actually passes these along. */
-(function prefillFromURL(){
+function renderMissingFieldsModal(){
+  if(!state.showMissingModal) return '';
+  const items = shipmentOverrides?.missing || [];
+  return `
+  <div class="modal-overlay">
+    <div class="gdsn-card" style="width:480px;">
+      <div class="gdsn-head">
+        <div>
+          <span class="gdsn-badge">shipment data</span>
+          <h3>${items.length ? 'A few things weren\u2019t in the shipment data' : 'Shipment data loaded'}</h3>
+          <p>${items.length
+            ? 'Everything else pre-filled from the real shipment/raw material records. These specific fields weren\u2019t available and kept their existing default values — fill them in manually wherever they matter.'
+            : 'All the fields this page tries to pre-fill were found in the shipment and raw material records.'}</p>
+        </div>
+        <button type="button" class="gdsn-close-x" data-action="close-missing-modal">✕</button>
+      </div>
+      ${items.length ? `<div class="gdsn-group">${items.map(i=>`<div class="gdsn-row"><label style="width:auto;font-family:inherit;font-weight:600;color:var(--ink-700);">${i}</label></div>`).join('')}</div>` : ''}
+      <div class="gdsn-footer">
+        <button type="button" class="btn btn-primary" style="padding:12px 40px;" data-action="close-missing-modal">Continue to Calculator</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+async function initFromURL(){
   const params = new URLSearchParams(window.location.search);
+  const shipmentId = params.get('shipment');
+
+  if(shipmentId){
+    try{
+      const ctx = await loadShipmentContext(shipmentId);
+      shipmentOverrides = buildShipmentOverrides(ctx);
+
+      const m = shipmentOverrides.modal;
+      if(m.product) selVal('modal-product', m.product).value = m.product;
+      if(m.dri) selVal('modal-dri', m.dri).value = m.dri;
+      if(m.destinationCountry) selVal('modal-destination', m.destinationCountry).value = m.destinationCountry;
+      state.destinationMode = 'country';
+
+      // Real shipment data is already known — skip straight past the
+      // outer landing page (Processor / Production Type / System vs
+      // Manual) into the Wild Capture modal itself, pre-filled, so the
+      // user can see and confirm DRI/Product/Destination before hitting
+      // the existing Proceed button to enter the calculator.
+      state.page = 'modal';
+    }catch(err){
+      console.error('[loadShipmentContext] failed:', err);
+      shipmentFetchError = (err && err.message) ? err.message : String(err);
+      showToast('Could not load shipment data — check the console for details.');
+    }
+    render();
+    return;
+  }
+
+  // No ?shipment= param — existing demo/product/destination/dri prefill,
+  // completely unchanged from before.
   const product = params.get('product');
   const destination = params.get('destination');
   const dri = params.get('dri');
@@ -3854,6 +4120,7 @@ document.addEventListener('click', (e)=>{
     state.destinationMode = isPort ? 'port' : 'country';
     selVal('modal-destination', destination).value = destination;
   }
-})();
+}
 
+initFromURL();
 render();
