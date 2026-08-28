@@ -203,7 +203,7 @@ var RM_SPECIES=null; // populated from RM when generating
 function onVesselSelect(i, sel){
   var name=sel.value;
   VESSELS[i].vessel_name=name;
-  var v=VESSELS_ALL.find(function(vv){return vv.current_name===name;});
+  var v=VESSELS_ALL.find(function(vv){return (vv.current_name||vv.vessel_name||vv.name)===name;});
   if(v){
     VESSELS[i].registration_no=v.imo||'';
     // Update the row inputs
@@ -228,7 +228,7 @@ function renderVessels(){
   if(!VESSELS.length){ $('vslHost').innerHTML='<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;border:1px dashed var(--border);border-radius:10px;">No vessels yet. Add the fishing vessels that provided catches.</div>'; return; }
   $('vslHost').innerHTML='<table><thead><tr><th>#</th><th>Vessel Name</th><th>Licence</th><th>Master</th><th>Gear</th><th>Area</th><th>From</th><th>To</th><th>Species</th><th>Volume (kg)</th><th></th></tr></thead><tbody>'+
     VESSELS.map(function(v,i){
-      var vslOpts='<option value="">—</option>'+VESSELS_ALL.map(function(vv){return '<option value="'+esc(vv.current_name||'')+'"'+(v.vessel_name===(vv.current_name||'')?'selected':'')+' data-imo="'+(vv.imo||'')+'" data-flag="'+(vv.vessel_flag||'')+'">'+esc(vv.current_name||'')+'</option>';}).join('');
+      var vslOpts='<option value="">—</option>'+VESSELS_ALL.map(function(vv){var vn=vv.current_name||vv.vessel_name||vv.name||'';if(!vn)return '';return '<option value="'+esc(vn)+'"'+(v.vessel_name===vn?'selected':'')+' data-imo="'+(vv.imo||'')+'" data-flag="'+(vv.vessel_flag||vv.flag||'')+'">'+esc(vn)+'</option>';}).join('');
       var faoOpts=['18','21','27','31','34','37','41','47','48','51','57','58','61','67','71','77','81','87','88'];
       var areaOpts='<option value="">—</option>'+faoOpts.map(function(f){return '<option value="'+f+'"'+(v.catch_area===f||String(v.catch_area).includes(f)?' selected':'')+'>'+f+'</option>';}).join('');
       var spOpts='<option value="">—</option>'+(RM_SPECIES||SPECIES_ALL).map(function(s){return '<option value="'+(s.scientific_name||s.species_name||'')+'"'+((v.species===(s.scientific_name||s.species_name||''))?' selected':'')+'>'+esc(s.species_name||s.scientific_name||'')+'</option>';}).join('');
@@ -295,13 +295,13 @@ async function loadLookups(){
   if(!dbClient) return;
   try{
     var [co,ct,vs,sp]=await Promise.all([
-      dbClient.from('companies').select('id,company_name,company_address,country').order('company_name'),
-      dbClient.from('countries').select('id,country').order('country'),
-      dbClient.from('vessels').select('id,current_name,imo,vessel_flag').order('current_name'),
-      dbClient.from('species').select('id,species_name,scientific_name,fao_code').order('species_name')
+      dbClient.from('companies').select('*').order('company_name'),
+      dbClient.from('countries').select('*').order('country'),
+      dbClient.from('vessels').select('*').order('current_name'),
+      dbClient.from('species').select('*').order('species_name')
     ]);
     COMPANIES=co.data||[]; COUNTRIES=ct.data||[]; VESSELS_ALL=vs.data||[]; SPECIES_ALL=sp.data||[];
-    FLAGS=[...new Set(VESSELS_ALL.map(function(v){return v.vessel_flag;}).filter(Boolean))].sort();
+    FLAGS=[...new Set(VESSELS_ALL.map(function(v){return v.vessel_flag||v.flag||'';}).filter(Boolean))].sort();
 
     // Populate country selects
     ['issuing_country','exporter_country','importer_country'].forEach(function(id){
@@ -315,8 +315,10 @@ async function loadLookups(){
     ['exporter_name','importer_name'].forEach(function(id){
       var sel=$(id); if(!sel) return;
       COMPANIES.forEach(function(c){
-        var o=document.createElement('option'); o.value=c.company_name; 
-        o.textContent=c.company_name; o.dataset.addr=c.company_address||''; o.dataset.country=c.country||'';
+        var name=c.company_name||c.name||'';
+        if(!name) return;
+        var o=document.createElement('option'); o.value=name; 
+        o.textContent=name; o.dataset.addr=c.company_address||c.address||''; o.dataset.country=c.country||'';
         sel.appendChild(o);
       });
     });
@@ -336,9 +338,11 @@ async function loadLookups(){
     // Populate vessel selects (transport vessel + flag)
     var vsel=$('vessel_name');
     VESSELS_ALL.forEach(function(v){
-      var o=document.createElement('option'); o.value=v.current_name||'';
-      o.textContent=(v.current_name||'')+(v.imo?' ('+v.imo+')':'');
-      o.dataset.flag=v.vessel_flag||''; vsel.appendChild(o);
+      var vname=v.current_name||v.vessel_name||v.name||'';
+      if(!vname) return;
+      var o=document.createElement('option'); o.value=vname;
+      o.textContent=vname+(v.imo?' ('+v.imo+')':'');
+      o.dataset.flag=v.vessel_flag||v.flag||''; vsel.appendChild(o);
     });
     vsel.onchange=function(){
       var opt=this.options[this.selectedIndex];
@@ -361,6 +365,7 @@ async function loadLookups(){
       $('species_common').value=opt.dataset.common||'';
     };
 
+    console.log('Lookups loaded:','companies:',COMPANIES.length,'countries:',COUNTRIES.length,'vessels:',VESSELS_ALL.length,'species:',SPECIES_ALL.length);
   }catch(e){ console.warn('Lookups:',e); }
 }
 
