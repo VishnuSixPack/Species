@@ -497,6 +497,7 @@ async function load(){
     var p=await dbClient.from('profiles').select('first_name,company_id,avatar_color').eq('id',s.data.session.user.id).single();
     if(p.data) ORG_ID=p.data.company_id;
 
+    var _editData=null;
     var mode=new URLSearchParams(location.search).get('mode');
     if(!mode && !EDIT_ID) $('generateCard').style.display='none';
     if(EDIT_ID){
@@ -504,12 +505,17 @@ async function load(){
       $('generateCard').style.display='none';
       var r=await dbClient.from('catch_certificates').select('*').eq('id',EDIT_ID).single();
       if(r.error) throw r.error;
-      FIELDS.forEach(function(f){ var el=$(f); if(el&&r.data[f]!=null) el.value=r.data[f]; });
+      _editData=r.data;
       var v=await dbClient.from('cc_vessels').select('*').eq('cc_id',EDIT_ID).order('line_no');
       VESSELS=v.data||[];
     }
+    await loadLookups();
+    // Set field values AFTER selects are populated with options
+    if(typeof _editData!=='undefined' && _editData){
+      FIELDS.forEach(function(f){ var el=$(f); if(el&&_editData[f]!=null) el.value=_editData[f]; });
+    }
     renderVessels();
-    loadPickers();
+    await loadPickers();
   }catch(e){ console.error(e); toast('Load failed: '+(e.message||e)); }
 }
 load();
