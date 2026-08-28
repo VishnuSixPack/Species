@@ -61,6 +61,23 @@
 <div class="wrap">
   <div class="page-head"><div><div class="h1" id="pageTitle">New Catch Certificate</div><div class="h1-sub">EU IUU catch certificate linked to raw material and shipment</div></div></div>
 
+
+  <div class="card" style="border-color:var(--primary);background:var(--primary-soft);">
+    <div class="card-title">Generate from Raw Material + Shipment</div>
+    <div class="card-sub">Select a Shipment — the certificate auto-fills from the shipment and its linked raw materials. You then add the authority and validation details.</div>
+    <div class="grid" style="grid-template-columns:1fr auto;">
+      <div><label>Shipment</label>
+        <select id="pickShipment" style="width:100%;height:40px;padding:0 12px;border:1.5px solid var(--border);border-radius:10px;font:inherit;font-size:13px;color:var(--text);background:var(--surface);">
+          <option value="">— Select shipment —</option>
+        </select></div>
+      <div style="display:flex;align-items:flex-end;">
+        <button class="btn btn-primary" onclick="generateCC()" style="white-space:nowrap;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          Generate</button></div>
+    </div>
+    <div id="genStatus" style="margin-top:12px;font-size:12px;color:var(--muted);display:none;"></div>
+  </div>
+
   <div class="card">
     <div class="card-title">Certificate Details</div><div class="card-sub">Document number and product information</div>
     <div class="grid" id="certFields">
@@ -179,7 +196,7 @@ function renderVessels(){
 }
 
 function collectData(){
-  var out={organisation_id:ORG_ID};
+  var out={organisation_id:ORG_ID, shipment_id:$('pickShipment')?.value||null};
   FIELDS.forEach(function(f){
     var el=$(f); if(!el) return;
     var v=el.type==='number'?Number(el.value)||null:(el.value.trim()||null);
@@ -221,6 +238,114 @@ async function save(){
   }catch(e){ toast('Save failed: '+(e.message||e)); }
 }
 
+async function loadPickers(){
+  if(!dbClient) return;
+  // Load Shipments
+  try{
+    var r=await dbClient.from('shipments').select('id,shipment_ref,exporter_name,destination_name').is('deleted_at',null).order('created_at',{ascending:false}).limit(100);
+    var sel=$('pickShipment');
+    (r.data||[]).forEach(function(s){
+      var o=document.createElement('option'); o.value=s.id;
+      o.textContent=s.shipment_ref+(s.exporter_name?' — '+s.exporter_name:'');
+      sel.appendChild(o);
+    });
+  }catch(e){}
+}
+
+async function generateCC(){
+  var shipId=$('pickShipment').value;
+  if(!shipId){ toast('Select a shipment'); return; }
+  var status=$('genStatus'); status.style.display='block'; status.textContent='Loading data...';
+
+  try{
+    // Load Shipment + trace back to RM via batches
+    if(shipId){
+      status.textContent='Loading shipment...';
+      var sh=await dbClient.from('shipments').select('*').eq('id',shipId).single();
+      var items=await dbClient.from('shipment_items').select('*').eq('shipment_id',shipId);
+      var legs=await dbClient.from('shipment_legs').select('*').eq('shipment_id',shipId).order('leg_no');
+      var s=sh.data;
+      if(s){
+        // Exporter
+        $('exporter_name').value=s.exporter_name||'';
+        $('exporter_country').value=s.country_of_export||'';
+        // Importer
+        $('importer_name').value=s.importer_name||'';
+        $('importer_country').value=s.destination_country||'';
+        // Product from first item
+        var it=(items.data||[])[0];
+        if(it){
+          $('product_description').value=it.product_name||'';
+          $('product_code').value=it.hs_code||'';
+          $('verified_weight_kg').value=it.net_weight_kg||'';
+        }
+        // Transport from last sea leg
+        var seaLeg=(legs.data||[]).filter(function(l){return l.transport_mode==='Sea';});
+        var leg=seaLeg.length?seaLeg[seaLeg.length-1]:(legs.data||[])[0];
+        if(leg){
+          $('port_of_export').value=leg.origin_name||s.origin_name||'';
+          $('container_no').value=leg.container_no||s.container_no||'';
+          $('bl_no').value=leg.document_no||'';
+        }
+        // Vessel from shipment legs
+        if(leg){
+          var vsl=await dbClient.from('shipment_vessels').select('*').eq('shipment_id',shipId).order('line_no');
+          var mother=(vsl.data||[]).find(function(v){return v.role==='Mother';}) || (vsl.data||[])[0];
+          if(mother){
+            $('vessel_name').value=mother.vessel_name||'';
+            $('vessel_flag').value=mother.vessel_flag||mother.flag_state||'';
+          }
+        }
+        $('status').value='Draft';
+      }
+
+      // Trace back to RM via shipment batches
+      status.textContent='Loading raw material from batches...';
+      var batches=await dbClient.from('shipment_batches').select('raw_material_id').eq('shipment_id',shipId);
+      var rmIds=[...new Set((batches.data||[]).map(function(b){return b.raw_material_id;}).filter(Boolean))];
+
+      for(var ri=0;ri<rmIds.length;ri++){
+        var rmr=await dbClient.from('raw_materials').select('*').eq('id',rmIds[ri]).single();
+        var rmSpecies=await dbClient.from('raw_material_species').select('*').eq('raw_material_id',rmIds[ri]);
+        var rmCatches=await dbClient.from('raw_material_catches').select('*').eq('raw_material_id',rmIds[ri]).order('event_order');
+
+        if(rmr.data){
+          var sp=(rmSpecies.data||[])[0];
+          if(sp && !$('species_scientific').value){
+            $('species_scientific').value=sp.scientific_name||sp.species_name||'';
+            $('species_common').value=sp.species_name||'';
+          }
+          var catches=(rmCatches.data||[]).filter(function(c){return c.event_type==='Catch';});
+          if(catches.length && !$('catch_area').value){
+            $('catch_area').value=catches[0].fao_area||catches[0].catch_area||'';
+            $('fishing_gear').value=catches[0].gear_type||'';
+          }
+          catches.forEach(function(c){
+            VESSELS.push({
+              vessel_name:c.vessel_name||'',
+              registration_no:c.license_no||'',
+              fisherman_name:c.master_name||'',
+              fishing_gear:c.gear_type||'',
+              catch_area:c.fao_area||c.catch_area||'',
+              catch_period_start:c.catch_date_start||c.event_date||'',
+              catch_period_end:c.catch_date_end||'',
+              species:sp?(sp.scientific_name||sp.species_name||''):'',
+              volume_kg:c.quantity_kg||''
+            });
+          });
+          if(!$('issuing_country').value) $('issuing_country').value=rmr.data.landing_country||rmr.data.country_of_landing||'';
+        }
+      }
+      renderVessels();
+    }
+
+    status.innerHTML='<span style="color:var(--good-fg);font-weight:600;">\u2713 Generated</span> — review all fields, then fill in the <b>authority details</b>, <b>certificate number</b>, and <b>verified weight</b>.';
+  }catch(e){
+    status.textContent='Generate failed: '+(e.message||e);
+    console.error(e);
+  }
+}
+
 async function load(){
   if(!dbClient) return;
   try{
@@ -237,6 +362,7 @@ async function load(){
       VESSELS=v.data||[];
     }
     renderVessels();
+    loadPickers();
   }catch(e){ console.error(e); toast('Load failed: '+(e.message||e)); }
 }
 load();
