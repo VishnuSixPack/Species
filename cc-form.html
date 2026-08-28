@@ -18,7 +18,12 @@
   .topbar-brand{display:flex;align-items:center;gap:8px;text-decoration:none;}
   .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 30px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:400;}
   .nav{display:flex;gap:2px;}.nav-item{padding:7px 14px;border-radius:999px;font-size:13px;color:var(--muted);text-decoration:none;}.nav-item.active{background:var(--bg);color:var(--text);font-weight:600;}
-  .avatar-wrap{position:relative;}.avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  .avatar-wrap{position:relative;}
+  .avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--shadow-1);min-width:186px;overflow:hidden;z-index:999;}
+  .avatar-menu.open{display:block;}
+  .avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;border-bottom:1px solid var(--border);}
+  .avatar-menu a,.avatar-menu button{display:block;padding:9px 15px;font-size:13px;color:var(--text);text-decoration:none;font-weight:500;width:100%;background:none;border:none;font-family:inherit;cursor:pointer;text-align:left;}
+  .avatar-menu a:hover,.avatar-menu button:hover{background:var(--bg);color:var(--primary);}.avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;}
   .wrap{max-width:1200px;margin:0 auto;padding:20px 30px 70px;}
   .page-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap;}
   .h1{font-size:20px;font-weight:700;}.h1-sub{font-size:12px;color:var(--muted);margin-top:3px;}
@@ -70,11 +75,16 @@
   <a href="home-logged-in.html" class="topbar-brand"><img src="sc-blue-logo.png" data-dark-src="sc-white-logo.png" alt="SmarTuna" style="width:28px;height:28px;object-fit:contain;"/>
     <span class="sc-wm"><span class="sc-wm-top">SmarTuna</span><span class="sc-wm-sub">concept</span></span></a>
   <div class="nav"><a href="home-logged-in.html" class="nav-item">Home</a><a href="shipment-list.html" class="nav-item active">My Studio</a><a href="Species.html" class="nav-item">Atlas</a></div>
-  <div class="page-head" style="border:none;padding:0;">
-    <div></div>
-    <div style="display:flex;gap:8px;">
-      <a href="cc-list.html" class="btn">Cancel</a>
-      <button class="btn btn-primary" onclick="save()">Save Certificate</button>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <a href="cc-list.html" class="btn">Cancel</a>
+    <button class="btn btn-primary" onclick="save()">Save Certificate</button>
+    <div class="avatar-wrap">
+      <div class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()"><span id="avatarInitials">··</span></div>
+      <div class="avatar-menu" id="avatarMenu">
+        <div class="avatar-menu-name" id="avatarGreeting">Hello!</div>
+        <a href="profile.html">Profile</a><a href="organisation.html">Your Company</a>
+        <button onclick="handleLogout()">Logout</button>
+      </div>
     </div>
   </div>
 </div>
@@ -216,7 +226,21 @@ var $=function(id){return document.getElementById(id);};
 var esc=function(s){return String(s||'').replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
 function toast(m){var t=$('toast');t.textContent=m;t.classList.add('vis');setTimeout(function(){t.classList.remove('vis');},2800);}
 
+function toggleAvatarMenu(){$('avatarMenu').classList.toggle('open');}
+async function handleLogout(){if(dbClient) await dbClient.auth.signOut(); location.href='index.html';}
+
 var EDIT_ID=new URLSearchParams(location.search).get('id');
+
+// Populate FAO areas immediately (static data)
+(function(){
+  var FAO=[['18','Arctic Sea'],['21','Atlantic, NW'],['27','Atlantic, NE'],['31','Atlantic, WC'],['34','Atlantic, EC'],['37','Mediterranean'],['41','Atlantic, SW'],['47','Atlantic, SE'],['48','Antarctic, Atl'],['51','Indian Ocean, W'],['57','Indian Ocean, E'],['58','Antarctic, Ind'],['61','Pacific, NW'],['67','Pacific, NE'],['71','Pacific, WC'],['77','Pacific, EC'],['81','Pacific, SW'],['87','Pacific, SE'],['88','Antarctic, Pac']];
+  var el=document.getElementById('catch_area_drop'); if(!el) return;
+  el.innerHTML=FAO.map(function(f){
+    return '<div class="msel-opt" data-val="'+f[0]+'" onclick="toggleFaoOpt(this)">'+
+      '<span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>'+
+      f[0]+' \u2014 '+f[1]+'</div>';
+  }).join('');
+})();
 var ORG_ID=null;
 var VESSELS=[];
 
@@ -248,12 +272,7 @@ function toggleMsel(id){
   var wrap=$(id);
   wrap.classList.toggle('open');
 }
-// Close on outside click
-document.addEventListener('click',function(e){
-  document.querySelectorAll('.msel.open').forEach(function(m){
-    if(!m.contains(e.target)) m.classList.remove('open');
-  });
-});
+
 function toggleFaoOpt(el){
   el.classList.toggle('on');
   updateFaoValue();
@@ -350,25 +369,24 @@ var COMPANIES=[], COUNTRIES=[], VESSELS_ALL=[], SPECIES_ALL=[], FLAGS=[];
 async function loadLookups(){
   if(!dbClient) return;
   try{
-    var [co,ct,vs,sp]=await Promise.all([
-      dbClient.from('companies').select('*'),
-      dbClient.from('countries').select('*'),
-      dbClient.from('vessels').select('*'),
-      dbClient.from('species').select('*')
-    ]);
-    COMPANIES=(co.data||[]).sort(function(a,b){return(a.company_name||a.name||'').localeCompare(b.company_name||b.name||'');});
-    COUNTRIES=(ct.data||[]).sort(function(a,b){return(a.country||'').localeCompare(b.country||'');});
-    VESSELS_ALL=(vs.data||[]).sort(function(a,b){return(a.current_name||a.name||'').localeCompare(b.current_name||b.name||'');});
-    SPECIES_ALL=(sp.data||[]).sort(function(a,b){return(a.species_name||'').localeCompare(b.species_name||'');});
-    FLAGS=[...new Set(VESSELS_ALL.map(function(v){return v.vessel_flag||v.flag||'';}).filter(Boolean))].sort();
+    try{ var co=await dbClient.from('companies').select('*');
+      COMPANIES=(co.data||[]).sort(function(a,b){return(a.company_name||a.name||'').localeCompare(b.company_name||b.name||'');});
+    }catch(e){console.warn('Companies:',e.message);}
 
-    // FAO areas multi-select dropdown
-    var FAO=[['18','Arctic Sea'],['21','Atlantic, NW'],['27','Atlantic, NE'],['31','Atlantic, WC'],['34','Atlantic, EC'],['37','Mediterranean'],['41','Atlantic, SW'],['47','Atlantic, SE'],['48','Antarctic, Atl'],['51','Indian Ocean, W'],['57','Indian Ocean, E'],['58','Antarctic, Ind'],['61','Pacific, NW'],['67','Pacific, NE'],['71','Pacific, WC'],['77','Pacific, EC'],['81','Pacific, SW'],['87','Pacific, SE'],['88','Antarctic, Pac']];
-    $('catch_area_drop').innerHTML=FAO.map(function(f){
-      return '<div class="msel-opt" data-val="'+f[0]+'" onclick="toggleFaoOpt(this)">'+
-        '<span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>'+
-        f[0]+' \u2014 '+f[1]+'</div>';
-    }).join('');
+    try{ var ct=await dbClient.from('countries').select('*');
+      COUNTRIES=(ct.data||[]).sort(function(a,b){return(a.country||'').localeCompare(b.country||'');});
+    }catch(e){console.warn('Countries:',e.message);}
+
+    try{ var vs=await dbClient.from('vessels').select('*');
+      VESSELS_ALL=(vs.data||[]).sort(function(a,b){return(a.current_name||a.name||'').localeCompare(b.current_name||b.name||'');});
+      FLAGS=[...new Set(VESSELS_ALL.map(function(v){return v.vessel_flag||v.flag||'';}).filter(Boolean))].sort();
+    }catch(e){console.warn('Vessels:',e.message);}
+
+    try{ var sp=await dbClient.from('species').select('*');
+      SPECIES_ALL=(sp.data||[]).sort(function(a,b){return(a.species_name||'').localeCompare(b.species_name||'');});
+    }catch(e){console.warn('Species:',e.message);}
+
+
 
     // Populate country selects
     ['issuing_country','exporter_country','importer_country'].forEach(function(id){
@@ -432,7 +450,7 @@ async function loadLookups(){
       $('species_common').value=opt.dataset.common||'';
     };
 
-    console.log('Lookups loaded:','companies:',COMPANIES.length,'countries:',COUNTRIES.length,'vessels:',VESSELS_ALL.length,'species:',SPECIES_ALL.length);
+    console.log('Lookups loaded — companies:',COMPANIES.length,'countries:',COUNTRIES.length,'vessels:',VESSELS_ALL.length,'species:',SPECIES_ALL.length,'flags:',FLAGS.length);
   }catch(e){ console.warn('Lookups:',e); }
 }
 
@@ -567,7 +585,13 @@ async function load(){
   try{
     var s=await dbClient.auth.getSession(); if(!s.data.session) return;
     var p=await dbClient.from('profiles').select('first_name,company_id,avatar_color').eq('id',s.data.session.user.id).single();
-    if(p.data) ORG_ID=p.data.company_id;
+    if(p.data){
+      ORG_ID=p.data.company_id;
+      var fn=p.data.first_name||'';
+      $('avatarBtn').style.background=p.data.avatar_color||'var(--primary)';
+      $('avatarInitials').textContent=fn.charAt(0).toUpperCase()||'·';
+      $('avatarGreeting').textContent='Hello, '+fn+'!';
+    }
 
     var _editData=null;
     var mode=new URLSearchParams(location.search).get('mode');
