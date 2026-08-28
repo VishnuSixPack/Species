@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Catch Certificate — print</title>
+<link rel="icon" type="image/png" href="sc-blue-logo.png"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:Arial,Helvetica,sans-serif;font-size:9pt;color:#000;background:#e8e8e8;padding:20px;}
+  .sheet{width:210mm;min-height:297mm;margin:0 auto 20px;background:#fff;padding:12mm 10mm;
+    box-shadow:0 2px 10px rgba(0,0,0,.15);}
+  h1{font-size:12pt;text-align:center;font-weight:bold;letter-spacing:.02em;}
+  .sub{font-size:8pt;text-align:center;margin-bottom:8px;}
+  table{width:100%;border-collapse:collapse;table-layout:fixed;}
+  td,th{border:1px solid #000;padding:3px 5px;vertical-align:top;font-size:8pt;
+    word-wrap:break-word;overflow-wrap:break-word;}
+  .lbl{font-weight:bold;font-size:7.5pt;display:block;}
+  .val{min-height:13px;padding-top:2px;font-size:8.5pt;}
+  .auth{background:#e9e9e9;color:#555;font-style:italic;font-size:7pt;}
+  .sect{background:#f2f2f2;font-weight:bold;font-size:8pt;padding:3px 5px;border:1px solid #000;
+    border-bottom:none;}
+  .nb{border:none;}
+  .toolbar{width:210mm;margin:0 auto 12px;display:flex;gap:8px;justify-content:flex-end;}
+  .btn{padding:8px 16px;border:1px solid #1a6fdb;background:#1a6fdb;color:#fff;border-radius:4px;
+    font-size:12px;font-weight:600;cursor:pointer;font-family:Arial,sans-serif;}
+  .btn.sec{background:#fff;color:#1a1a2e;border-color:#ccc;}
+  .msg{width:210mm;margin:40px auto;background:#fff;padding:30px;text-align:center;font-size:13px;}
+  @media print{
+    body{background:#fff;padding:0;}
+    .sheet{box-shadow:none;margin:0;width:auto;min-height:0;padding:0;page-break-after:always;}
+    .sheet:last-child{page-break-after:auto;}
+    .toolbar{display:none;}
+    @page{size:A4;margin:12mm 10mm;}
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <button class="btn sec" onclick="location.href='eu-catch-documents.html'">← Documents</button>
+  <button class="btn" onclick="window.print()">Print / Save as PDF</button>
+</div>
+
+<div id="out"><div class="msg">Loading certificate…</div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL      = 'https://enbdaajcromxmhgcverp.supabase.co';
+const SUPABASE_ANON_KEY = 'PASTE_THE_SAME_ANON_KEY_HERE';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const esc = s => String(s ?? '').replace(/[&<>"']/g,
+  c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const v = x => (x === null || x === undefined || x === '') ? '' : esc(x);
+const d = x => x ? new Date(x).toLocaleDateString('en-GB',
+  {day:'2-digit',month:'short',year:'numeric'}) : '';
+const kg = x => (x === null || x === undefined || x === '') ? '' : Number(x).toLocaleString();
+
+const AUTH = '<span class="auth">to be filled in by the Authorities</span>';
+
+function render(doc){
+  const p = doc.payload || {};
+  const a = p.validating_authority || {};
+  const ves = p.vessels || [];
+  const lines = p.lines || [];
+  const sea = (p.transshipments || []).filter(t => /sea/i.test(t.where || ''));
+  const port = (p.transshipments || []).filter(t => /port/i.test(t.where || ''));
+  const t0 = sea[0] || {};
+  const p0 = port[0] || {};
+  const tr = p.transport || {};
+  const means = tr.means_of_transport || [];
+
+  /* Box 2 repeats per vessel; the certificate is one vessel per sheet in the
+     official form, so the first is shown and any others follow underneath. */
+  const vesselRows = ves.map(x => `
+    <tr>
+      <td colspan="2"><span class="lbl">2. Fishing vessel name</span><div class="val">${v(x.name)}</div></td>
+      <td colspan="2"><span class="lbl">Flag – Home port and registration number</span>
+        <div class="val">${[v(x.flag_state), v(x.home_port), v(x.registration_number)]
+          .filter(Boolean).join(' – ')}</div></td>
+      <td><span class="lbl">Call sign</span><div class="val">${v(x.ircs)}</div></td>
+      <td><span class="lbl">IMO/Lloyd's number</span><div class="val">${v(x.imo)}</div></td>
+    </tr>
+    <tr>
+      <td colspan="2"><span class="lbl">Fishing licence No – Valid to</span>
+        <div class="val">${x.licence_no ? v(x.licence_no) + (x.licence_valid_until
+          ? ' – ' + v(x.licence_valid_until) : '') : AUTH}</div></td>
+      <td colspan="4"><span class="lbl">Inmarsat No, fax No, telephone No, e-mail address</span>
+        <div class="val">${v(x.mmsi)}</div></td>
+    </tr>`).join('');
+
+  const productRows = lines.map(l => `
+    <tr>
+      <td>${v(l.species && l.species[0])}</td>
+      <td>${v(l.cn_code)}</td>
+      <td>${[v(l.fao_area), v(l.catch_area_detail)].filter(Boolean).join(' / ')}</td>
+      <td>${[d(l.catch_date_from), d(l.catch_date_to)].filter(Boolean).join(' – ')}</td>
+      <td style="text-align:right;">${kg(l.estimated_live_weight_kg)}</td>
+      <td class="auth"></td>
+    </tr>`).join('') || `<tr><td colspan="6" style="height:20px;"></td></tr>`;
+
+  const sheet1 = `
+  <div class="sheet">
+    <h1>EUROPEAN COMMUNITY CATCH CERTIFICATE</h1>
+    <div class="sub">(EC) nr 1005/2008, appendix II</div>
+
+    <table>
+      <tr>
+        <td colspan="3"><span class="lbl">Document number</span>
+          <div class="val">${v(doc.serial_number)}</div></td>
+        <td colspan="3"><span class="lbl">Validating authority</span>
+          <div class="val">${v(a.name)}</div></td>
+      </tr>
+      <tr>
+        <td colspan="2"><span class="lbl">1. Name</span><div class="val">${v(a.name)}</div></td>
+        <td colspan="2"><span class="lbl">Address</span><div class="val">${v(a.address)}</div></td>
+        <td colspan="2"><span class="lbl">Tel. / Fax</span><div class="val">${v(a.un_locode)}</div></td>
+      </tr>
+      ${vesselRows || `<tr><td colspan="6" style="height:30px;">
+        <span class="lbl">2. Fishing vessel name</span></td></tr>`}
+      <tr>
+        <td colspan="2"><span class="lbl">3. Description of product</span>
+          <div class="val">${v((lines[0] || {}).cn_label)}</div></td>
+        <td colspan="2"><span class="lbl">Type of processing authorised on board</span>
+          <div class="val">${AUTH}</div></td>
+        <td colspan="2"><span class="lbl">4. References of applicable conservation
+          and management measures</span><div class="val"></div></td>
+      </tr>
+      <tr>
+        <th style="width:16%;">Species</th>
+        <th style="width:14%;">Product code</th>
+        <th style="width:22%;">Catch area(s)</th>
+        <th style="width:20%;">Dates</th>
+        <th style="width:14%;">Estimated live weight (kg)</th>
+        <th style="width:14%;">Estimated weight to be landed (kg)</th>
+      </tr>
+      ${productRows}
+      <tr>
+        <td colspan="4"><span class="lbl">5. Name of master of fishing vessel – Signature – Seal</span>
+          <div class="val">${v((ves[0] || {}).master)}</div></td>
+        <td colspan="2"><span class="lbl">Total</span>
+          <div class="val" style="text-align:right;">${kg(p.totals && p.totals.estimated_live_weight_kg)}</div></td>
+      </tr>
+      <tr>
+        <td colspan="2"><span class="lbl">6. Declaration of transhipment at sea</span>
+          <div class="val">${v(t0.master)}</div></td>
+        <td><span class="lbl">Signature and date</span><div class="val">${d(t0.transfer_date)}</div></td>
+        <td colspan="2"><span class="lbl">Transhipment date / Area / Position</span>
+          <div class="val">${[d(t0.transfer_date), v(t0.location),
+            (t0.latitude != null ? t0.latitude + ' / ' + (t0.longitude ?? '') : '')]
+            .filter(Boolean).join(' · ')}</div></td>
+        <td><span class="lbl">Estimated weight (kg)</span>
+          <div class="val" style="text-align:right;">${kg(t0.quantity_kg)}</div></td>
+      </tr>
+      <tr>
+        <td colspan="2"><span class="lbl">Master of receiving vessel</span>
+          <div class="val">${v(t0.master)}</div></td>
+        <td><span class="lbl">Signature</span><div class="val"></div></td>
+        <td><span class="lbl">Vessel name</span><div class="val">${v(t0.carrier_vessel)}</div></td>
+        <td><span class="lbl">Call sign</span><div class="val">${v(t0.carrier_ircs)}</div></td>
+        <td><span class="lbl">IMO/Lloyds number</span><div class="val">${v(t0.carrier_imo)}</div></td>
+      </tr>
+      <tr><td colspan="6" class="sect" style="border-bottom:1px solid #000;">
+        7. Transhipment authorisation within a port area</td></tr>
+      <tr>
+        <td colspan="2"><span class="lbl">Name / Authority</span>
+          <div class="val">${p0.authorisation_no ? v(p0.authorisation_no) : AUTH}</div></td>
+        <td colspan="2"><span class="lbl">Address</span><div class="val">${AUTH}</div></td>
+        <td><span class="lbl">Port of landing</span><div class="val">${v(p0.port_name)}</div></td>
+        <td><span class="lbl">Date of landing</span><div class="val">${d(p0.landing_date)}</div></td>
+      </tr>
+      <tr>
+        <td colspan="3"><span class="lbl">8. Name of exporter</span>
+          <div class="val">${v(p.exporter && p.exporter.name)}</div></td>
+        <td colspan="2"><span class="lbl">Address</span>
+          <div class="val">${v(p.exporter && p.exporter.country)}</div></td>
+        <td><span class="lbl">Date – Seal</span><div class="val"></div></td>
+      </tr>
+      <tr>
+        <td colspan="3"><span class="lbl">9. Flag state authority validation</span>
+          <div class="val">${AUTH}</div></td>
+        <td colspan="2"><span class="lbl">Signature</span><div class="val">${AUTH}</div></td>
+        <td><span class="lbl">Date – Seal</span><div class="val">${AUTH}</div></td>
+      </tr>
+      <tr>
+        <td colspan="6"><span class="lbl">10. Transport details (see Appendix)</span>
+          <div class="val">${v(tr.point_of_departure)}${tr.point_of_destination
+            ? ' → ' + v(tr.point_of_destination) : ''}</div></td>
+      </tr>
+    </table>
+  </div>`;
+
+  const meansRows = means.map(m => `
+    <tr>
+      <td colspan="2">${[v(m.ship_name), v(m.flag_state)].filter(Boolean).join(' / ')}
+        ${m.flight_no ? 'Flight ' + v(m.flight_no) : ''}
+        ${m.vehicle_plate ? 'Vehicle ' + v(m.vehicle_plate) : ''}</td>
+      <td>${v(tr.container_no)}</td>
+      <td>${v(m.voyage_no)}</td>
+      <td>${v(m.transport_document)}</td>
+      <td></td>
+    </tr>`).join('') || `<tr><td colspan="6" style="height:20px;"></td></tr>`;
+
+  const sheet2 = `
+  <div class="sheet">
+    <div style="font-weight:bold;font-size:9pt;">European community catch certificate</div>
+    <div class="sub" style="text-align:left;">(EC) nr 1005/2008, Appendix II.</div>
+    <table>
+      <tr><td colspan="6" class="sect" style="border-bottom:1px solid #000;">
+        Appendix: Transport details</td></tr>
+      <tr>
+        <td colspan="3"><span class="lbl">1. Country of exportation</span>
+          <div class="val">${v(tr.country_of_export)}
+            ${tr.country_of_export_iso ? '(' + v(tr.country_of_export_iso) + ')' : ''}</div></td>
+        <td colspan="3"><span class="lbl">2. Exporter signature</span><div class="val"></div></td>
+      </tr>
+      <tr>
+        <td colspan="3"><span class="lbl">Port / airport / other place of departure</span>
+          <div class="val">${v(tr.point_of_departure)}</div></td>
+        <td colspan="3"><span class="lbl">Place of destination</span>
+          <div class="val">${v(tr.point_of_destination)}</div></td>
+      </tr>
+      <tr>
+        <th colspan="2" style="width:40%;">Vessel name and flag</th>
+        <th style="width:15%;">Container number(s)</th>
+        <th style="width:15%;">Voyage / flight</th>
+        <th style="width:20%;">Transport document</th>
+        <th style="width:10%;">Signature</th>
+      </tr>
+      ${meansRows}
+      <tr>
+        <td colspan="2"><span class="lbl">Seal number</span>
+          <div class="val">${v(tr.seal_number)}</div></td>
+        <td colspan="4"><span class="lbl">Documents attached</span>
+          <div class="val">${(p.supporting_documents || [])
+            .map(x => v(x.doc_type || x.file_name)).join(', ')}</div></td>
+      </tr>
+    </table>
+  </div>`;
+
+  document.getElementById('out').innerHTML = sheet1 + sheet2;
+  document.title = doc.serial_number || 'Catch Certificate';
+}
+
+(async function(){
+  const id = new URLSearchParams(location.search).get('doc');
+  if (!id){
+    document.getElementById('out').innerHTML =
+      '<div class="msg">No document selected. Open one from My Documents.</div>';
+    return;
+  }
+  try {
+    const { data, error } = await sb.from('catch_documents')
+      .select('*').eq('id', id).maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) throw new Error('That document could not be found, or it belongs to another organisation.');
+    if (data.doc_type === 'PS'){
+      document.getElementById('out').innerHTML =
+        '<div class="msg">This is a Processing Statement. The printable layout currently covers the Catch Certificate only.</div>';
+      return;
+    }
+    render(data);
+  } catch (err){
+    console.error('[CC print]', err);
+    document.getElementById('out').innerHTML =
+      '<div class="msg">Could not load the certificate.<br><br>' + esc(err.message) + '</div>';
+  }
+})();
+</script>
+</body>
+</html>

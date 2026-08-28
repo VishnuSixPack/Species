@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>My Documents — EU Catch Support</title>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-<link rel="icon" type="image/png" href="brand-logo.png"/>
+<link rel="icon" type="image/png" href="sc-blue-logo.png"/>
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
   :root{--primary:#1a6fdb;--bg:#f0f2f7;--white:#fff;--text:#1a1a2e;--muted:#6b7280;--border:#e2e5ec;
@@ -162,7 +162,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL      = 'https://enbdaajcromxmhgcverp.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVuYmRhYWpjcm9teG1oZ2N2ZXJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxMjc4MTUsImV4cCI6MjA5MzcwMzgxNX0.wlVbN57eAwRmTROEEY3D6BIX3H5pI6MwZ5hM2BqpnEs';
+const SUPABASE_ANON_KEY = 'PASTE_THE_SAME_ANON_KEY_HERE';
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -250,7 +250,13 @@ function rowsFor(docs){
                    : '<span style="color:var(--gray-400);">—</span>'}</td>
       <td><span class="status status-${esc(d.status)}">${esc(d.status)}</span></td>
       <td>${fmtDate(d.created_at)}</td>
-      <td style="text-align:right;"><button class="btn btn-sm" onclick="event.stopPropagation();openDoc('${d.id}')">Open</button></td>
+      <td style="text-align:right;white-space:nowrap;">
+        <button class="btn btn-sm" onclick="event.stopPropagation();openDoc('${d.id}')">Open</button>
+        ${d.doc_type === 'CC' || d.doc_type === 'SC'
+          ? `<button class="btn btn-sm" onclick="event.stopPropagation();printDoc('${d.id}')">PDF</button>` : ''}
+        <button class="btn btn-sm" style="color:var(--danger);border-color:#f0c4c0;"
+          onclick="event.stopPropagation();deleteDoc('${d.id}')">Delete</button>
+      </td>
     </tr>`;
   }).join('');
 }
@@ -304,6 +310,36 @@ function openDoc(id){
   if (!d) return;
   // Open the saved document in the real CC / SC / PS / ID template.
   location.href = 'eu-catch-support.html?doc=' + encodeURIComponent(id);
+}
+
+function printDoc(id){
+  location.href = 'eu-catch-print.html?doc=' + encodeURIComponent(id);
+}
+
+async function deleteDoc(id){
+  const d = S.docs.find(x => x.id === id);
+  if (!d) return;
+  if (!confirm(`Delete ${d.serial_number || 'this document'}?\n\nThis cannot be undone.`)) return;
+  try {
+    const { error } = await sb.from('catch_documents').delete().eq('id', id);
+    if (error) throw error;
+
+    /* Remove the bundle too once nothing is left in it, so the shipment view
+       doesn't keep showing an empty reference. */
+    if (d.bundle_id){
+      const { data: left } = await sb.from('catch_documents')
+        .select('id').eq('bundle_id', d.bundle_id).limit(1);
+      if (!left || !left.length){
+        await sb.from('document_bundles').delete().eq('id', d.bundle_id);
+        S.bundles = S.bundles.filter(b => b.id !== d.bundle_id);
+      }
+    }
+    S.docs = S.docs.filter(x => x.id !== id);
+    render();
+  } catch (err){
+    console.error('[Documents] delete', err);
+    alert('Could not delete: ' + (err.message || err));
+  }
 }
 
 function closeModal(){

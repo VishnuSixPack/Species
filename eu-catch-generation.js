@@ -183,10 +183,63 @@ const EUCatchGen = (function () {
     return 'frozen';
   }
 
+  /* CN codes come from ref_cn_codes when it's populated — the built-in map
+     below is the fallback so the module still works before the table is
+     seeded, or for a species not yet in it. */
+  let CN_DB = null;
+
+  async function loadCnCodes() {
+    if (CN_DB) return CN_DB;
+    try {
+      const { data } = await sb.from('ref_cn_codes')
+        .select('cn_code, cn_display, description, afsis_3a_code, scientific_name, presentation, for_industry, heading, chapter')
+        .eq('is_active', true)
+        .order('cn_code');
+      CN_DB = data || [];
+    } catch (_) { CN_DB = []; }
+    return CN_DB;
+  }
+
+  /* Prefer the 'for industry' line when the catch is destined for processing,
+     otherwise the plain one. Falls back to whatever matches the species and
+     presentation. */
+  function cnFromDb(afsis, presentation, forIndustry) {
+    if (!CN_DB || !CN_DB.length || !afsis) return null;
+    const hits = CN_DB.filter(r =>
+      r.afsis_3a_code === afsis.toUpperCase() && r.presentation === presentation);
+    if (!hits.length) return null;
+    const exact = hits.find(r => r.for_industry === forIndustry);
+    const row = exact || hits.find(r => r.for_industry === null) || hits[0];
+    return {
+      hsCode: row.cn_code.slice(0, 6),
+      cnCode: row.cn_code,
+      cnDisplay: row.cn_display,
+      label: row.description,
+      heading: row.heading,
+      chapter: row.chapter
+    };
+  }
+
   function cnFor(afsis, form, preservation, scientificName) {
     const table = CN[(afsis || '').toUpperCase()];
     if (!table) return null;
     const want = presentationOf(form, preservation);
+
+    /* Database first */
+    const fromDb = cnFromDb(afsis, want, true);
+    if (fromDb) {
+      const nodeDb = hsEnsure(fromDb.hsCode, fromDb.label,
+        afsis ? { code: afsis.toUpperCase(), name: scientificName || '' } : null);
+      return {
+        hsCode: fromDb.hsCode, cnCode: fromDb.cnCode, cnDisplay: fromDb.cnDisplay,
+        chapter: nodeDb ? nodeDb.chapter : (CHAPTERS[fromDb.chapter] || ''),
+        heading: nodeDb ? nodeDb.heading : (HEADINGS[fromDb.heading] || ''),
+        sub: nodeDb ? nodeDb.sub : `${fromDb.cnDisplay} ${fromDb.label}`,
+        label: fromDb.label, presentation: want,
+        speciesOptions: nodeDb ? nodeDb.speciesOptions : []
+      };
+    }
+
     const pick = table[want] || table.frozen || table.fresh || Object.values(table)[0];
     if (!pick) return null;
     const [code, label] = pick;
@@ -394,14 +447,19 @@ const EUCatchGen = (function () {
           scientific_name: (rmSpecies && rmSpecies.scientific_name) || (rm && rm.scientific_name),
           afsis_3a_code: afsis, product_form: form,
           cn_code: cn ? cn.hsCode : null, cn_label: cn ? cn.label : null,
+          cn_code_full: cn ? (cn.cnCode || null) : null,
+          cn_display: cn ? (cn.cnDisplay || null) : null,
           cn_chapter: cn ? cn.chapter : null, cn_heading: cn ? cn.heading : null,
           cn_sub: cn ? cn.sub : null, presentation: cn ? cn.presentation : null,
           cn_species_options: cn ? cn.speciesOptions : null,
           fao_area: c.fao_area, catch_area_detail: c.catch_area_detail,
           gear_type: c.gear_type, latitude: c.latitude, longitude: c.longitude,
           catch_date_from: c.catch_date_from, catch_date_to: c.catch_date_to,
+          /* The two weight columns carry the same figure: the species line's
+             own quantity. Using the event total for one and the species split
+             for the other made them disagree. */
           estimated_live_weight_kg: num(one.quantity_kg),
-          verified_weight_landed_kg: num(c.quantity_kg),
+          verified_weight_landed_kg: num(one.quantity_kg),
           landing_port: clean(c.landing_port_name), landing_date: c.landing_date,
           departure_port: clean(c.departure_port_name), departure_date: c.departure_date,
           trip_no: c.trip_no
@@ -428,6 +486,10 @@ const EUCatchGen = (function () {
       });
     }
     (GEN.legs || []).forEach(l => {
+      /* Skip a leg that merely repeats the mother vessel already listed */
+      if (mother && l.transport_mode === 'Sea' &&
+          clean(l.vessel_name) && clean(mother.vessel_name) &&
+          clean(l.vessel_name).toLowerCase() === clean(mother.vessel_name).toLowerCase()) return;
       meansOfTransport.push({
         type: { Sea:'Vessel', Air:'Airplane', Road:'Road vehicle', Rail:'Railway' }[l.transport_mode] || 'Other',
         leg_no: l.leg_no,
@@ -442,10 +504,14 @@ const EUCatchGen = (function () {
       });
     });
 
+    /* Point of departure is the shipment's Port of Loading — the port in the
+       country of exportation the consignment actually leaves from. The raw
+       material's landing port is a different thing and belongs in the catch
+       lines, not here. */
     const firstEvent = catchEvents[0] || {};
-    const departure = clean(firstEvent.departure_port_name)
-                   || clean(firstEvent.landing_port_name)
-                   || (s ? clean(s.origin_name) : null);
+    const departure = (s ? clean(s.origin_name) : null)
+                   || clean(firstEvent.departure_port_name)
+                   || clean(firstEvent.landing_port_name);
 
     const exporterIso = s && s.country_of_export ? await isoFor(s.country_of_export) : null;
 
@@ -550,6 +616,37 @@ const EUCatchGen = (function () {
       productSpecies && productSpecies.scientific_name
     );
 
+    /* Means of transport for the statement — same shipment data as the CC */
+    const psMother = GEN.shipVessels.find(v => /mother/i.test(v.role || ''));
+    const psMotherVessel = psMother && psMother.vessel_id ? GEN.vessels[psMother.vessel_id] : null;
+    const psMotherIso = psMotherVessel && psMotherVessel.vessel_flag
+      ? await isoFor(psMotherVessel.vessel_flag) : null;
+
+    const psMeans = [];
+    if (psMother) {
+      psMeans.push({
+        type: 'Vessel', role: psMother.role,
+        ship_name: clean(psMother.vessel_name) || (psMotherVessel && psMotherVessel.current_name),
+        flag_state: psMotherVessel ? psMotherVessel.vessel_flag : null,
+        flag_iso: psMotherIso ? psMotherIso.alpha2 : null,
+        imo: psMother.imo || (psMotherVessel && psMotherVessel.imo) || null,
+        voyage_no: psMother.voyage_no || (s && s.voyage_no) || null,
+        transport_document: s ? (s.bl_no || s.awb_no || s.cmr_no) : null
+      });
+    }
+    (GEN.legs || []).forEach(l => {
+      if (psMother && l.transport_mode === 'Sea' && clean(l.vessel_name) &&
+          clean(psMother.vessel_name) &&
+          clean(l.vessel_name).toLowerCase() === clean(psMother.vessel_name).toLowerCase()) return;
+      psMeans.push({
+        type: { Sea:'Vessel', Air:'Airplane', Road:'Road vehicle', Rail:'Railway' }[l.transport_mode] || 'Other',
+        ship_name: clean(l.vessel_name) || null,
+        voyage_no: l.voyage_no || null, flight_no: l.flight_no || null,
+        vehicle_plate: l.vehicle_plate || null,
+        transport_document: l.document_no || null
+      });
+    });
+
     /* Vessels that caught the certified species, for the commodity table */
     const catchVessels = [...new Set(GEN.catches
       .filter(c => c.event_type === 'Catch' && c.vessel_name)
@@ -636,9 +733,18 @@ const EUCatchGen = (function () {
       transport: {
         country_of_export: s && s.country_of_export,
         country_of_export_iso: expIso ? expIso.alpha2 : null,
-        point_of_departure: clean(s && s.origin_name),
-        point_of_destination: clean(s && s.destination_name),
-        container_no: s && s.container_no, seal_number: s && s.seal_number
+        point_of_departure: clean(s && s.origin_name),      /* Port of Loading */
+        point_of_destination: clean(s && s.destination_name), /* Port of Discharge */
+        container_no: s && s.container_no, seal_number: s && s.seal_number,
+        means_of_transport: psMeans,
+        legs: (GEN.legs || []).map(l => ({
+          leg_no: l.leg_no, mode: l.transport_mode,
+          origin: clean(l.origin_name), destination: clean(l.destination_name),
+          departure_date: l.departure_date, arrival_date: l.arrival_date,
+          carrier: clean(l.carrier_name), document_type: l.document_type,
+          document_no: l.document_no, vessel_name: clean(l.vessel_name),
+          voyage_no: l.voyage_no, flight_no: l.flight_no, vehicle_plate: l.vehicle_plate
+        }))
       },
       destination: gate.ok && gate.country ? { country: gate.country, alpha3: gate.alpha3 } : null,
       snapshot_at: new Date().toISOString()
@@ -741,6 +847,37 @@ const EUCatchGen = (function () {
       <div style="color:#6b7280;font-size:12px;">${esc(detail || '')}</div></div></div>
       <style>@keyframes eucgspin{to{transform:rotate(360deg)}}</style>`));
 
+  /* Warn before generating a second set for the same shipment or raw
+     material. Regenerating is legitimate — a snapshot can be superseded —
+     but it should be a decision, not an accident. */
+  function askDuplicate(existing, bundleRef) {
+    return new Promise(resolve => {
+      const rows = existing.slice(0, 8).map(d => `
+        <div style="display:flex;justify-content:space-between;padding:8px 0;
+          border-bottom:1px solid #f5f5f5;font-size:12px;">
+          <span><b>${esc(d.doc_type)}</b>${d.flag_state ? ' · ' + esc(d.flag_state) : ''}</span>
+          <span style="color:#6b7280;">${esc(d.serial_number)}</span></div>`).join('');
+      box(head('Documents already exist') +
+          body(`<p style="margin-bottom:12px;">${existing.length} document${existing.length === 1 ? ' has' : 's have'}
+            already been generated from this source${bundleRef
+              ? `, filed under <b style="color:#1a6fdb;">${esc(bundleRef)}</b>` : ''}.</p>
+            ${rows}
+            <p style="margin-top:14px;color:#6b7280;font-size:12px;">Generating again creates a
+            second set — the existing ones are not replaced or deleted.</p>`) +
+          foot(btn('Open the existing ones', "location.href='eu-catch-documents.html'") +
+               btn('Generate anyway', 'EUCatchGen._dupYes()', true)));
+      window.EUCatchGen._dupYes = () => resolve(true);
+    });
+  }
+
+  async function existingDocsFor() {
+    const q = sb.from('catch_documents').select('id, doc_type, serial_number, flag_state, bundle_id');
+    const { data } = GEN.mode === 'rm'
+      ? await q.eq('raw_material_id', GEN.rms[0] && GEN.rms[0].id)
+      : await q.eq('shipment_id', GEN.shipment.id);
+    return data || [];
+  }
+
   function askProduct(items) {
     return new Promise(resolve => {
       const rows = items.map((it, i) => `
@@ -818,12 +955,13 @@ const EUCatchGen = (function () {
         ? `The catch certificate is validated by the flag state of the fishing vessel — <b>${esc(countryName)}</b>${iso ? ` (${esc(iso.alpha2)})` : ''}.`
         : `The processing statement is endorsed by the authority controlling the plant — <b>${esc(countryName)}</b>${iso ? ` (${esc(iso.alpha2)})` : ''}.`;
       const options = list.length
-        ? list.map((a, i) => `
-            <label style="display:flex;gap:10px;padding:11px;border:1px solid #e2e5ec;
-              border-radius:6px;margin-bottom:6px;cursor:pointer;">
-              <input type="radio" name="eucgAuth" value="${i}" ${i === 0 ? 'checked' : ''} style="margin-top:3px;">
-              <span><b>${esc(a.name)}</b><br><span style="color:#6b7280;font-size:12px;">
-              ${esc(a.address || '')}${a.un_locode ? ' · ' + esc(a.un_locode) : ''}</span></span></label>`).join('')
+        ? `<label style="font-size:11px;font-weight:600;color:#5a5a5a;">Authority</label>
+           <select id="eucgAuthSel" style="width:100%;padding:9px 10px;border:1px solid #e2e5ec;
+             border-radius:4px;font-family:inherit;font-size:13px;margin-top:5px;background:#fff;">
+             ${list.map((a, i) => `<option value="${i}">${esc(a.name)}${
+               a.un_locode ? ' — ' + esc(a.un_locode) : ''}</option>`).join('')}
+           </select>
+           <div id="eucgAuthMeta" style="font-size:11px;color:#6b7280;margin-top:6px;"></div>`
         : `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;
              padding:12px;color:#92400e;font-size:12px;margin-bottom:12px;">
              No authority is on file for ${esc(countryName)}. Type the name exactly as it
@@ -836,11 +974,21 @@ const EUCatchGen = (function () {
                 style="width:100%;padding:8px 10px;border:1px solid #e2e5ec;border-radius:4px;
                 font-family:inherit;font-size:13px;margin-top:5px;"></div>`) +
           foot(btn('Cancel', 'EUCatchGen.close()') + btn('Use this authority', 'EUCatchGen._pickAuth()', true)));
+      /* Show the selected authority's address under the dropdown */
+      const sel0 = document.getElementById('eucgAuthSel');
+      const meta = document.getElementById('eucgAuthMeta');
+      const paint = () => {
+        if (!sel0 || !meta) return;
+        const a = list[Number(sel0.value)];
+        meta.textContent = a ? [a.address, a.code].filter(Boolean).join(' · ') : '';
+      };
+      if (sel0) { sel0.addEventListener('change', paint); paint(); }
+
       window.EUCatchGen._pickAuth = () => {
         const free = (document.getElementById('eucgAuthFree').value || '').trim();
         if (free) { resolve({ name: free, source: 'typed', country: countryName,
                               iso_alpha2: iso ? iso.alpha2 : null }); return; }
-        const sel = document.querySelector('input[name="eucgAuth"]:checked');
+        const sel = document.getElementById('eucgAuthSel');
         if (!sel) { alert('Pick an authority from the list, or type a name.'); return; }
         const a = list[Number(sel.value)];
         resolve({ id: a.id, name: a.name, country: a.country, iso_alpha2: a.iso_alpha2,
@@ -871,6 +1019,7 @@ const EUCatchGen = (function () {
         ? 'Shipment, products, batches and catch history'
         : 'Raw material and catch history');
 
+      await loadCnCodes();
       if (opts.shipmentId) await loadFromShipment(opts.shipmentId);
       else await loadFromRawMaterial(opts.rmId);
 
@@ -904,6 +1053,18 @@ const EUCatchGen = (function () {
 
       if (!flags.length) {
         showBlocked("No catch events with a flag state were found. A catch certificate is validated by the vessel's flag state."); return; }
+
+      /* Nothing has been written yet — check for an earlier run first */
+      const already = await existingDocsFor();
+      if (already.length) {
+        let ref = null;
+        if (already[0].bundle_id) {
+          const { data: b } = await sb.from('document_bundles')
+            .select('bundle_ref').eq('id', already[0].bundle_id).maybeSingle();
+          ref = b && b.bundle_ref;
+        }
+        await askDuplicate(already, ref);
+      }
 
       /* Ask once, before any certificate is built — the answer applies to
          every flag state and to the processing statement. */
@@ -1225,6 +1386,33 @@ const EUCatchGen = (function () {
     }
 
     setVal('psCountryExport', p.transport && p.transport.country_of_export);
+
+    /* Port of Loading → Point of Departure, Port of Discharge → Destination */
+    document.querySelectorAll('#psTabTransport .eu-section').forEach(sec => {
+      const t = sec.querySelector('.eu-section-title');
+      if (!t) return;
+      const inp = sec.querySelector('input');
+      if (!inp) return;
+      if (/Point of Departure/i.test(t.textContent))
+        inp.value = (p.transport && p.transport.point_of_departure) || '';
+      if (/Point of Destination/i.test(t.textContent))
+        inp.value = (p.transport && p.transport.point_of_destination) || '';
+    });
+
+    ((p.transport && p.transport.means_of_transport) || []).forEach(m => {
+      if (typeof addTransportLeg !== 'function') return;
+      addTransportLeg('ps', m.type || 'Vessel');
+      const cards = document.querySelectorAll('#psTransportLegs .transport-leg');
+      const card = cards[cards.length - 1];
+      if (!card) return;
+      const inputs = card.querySelectorAll('input');
+      const fill = (m.type === 'Vessel')
+        ? [m.ship_name, m.flag_state, m.imo, m.voyage_no, m.transport_document]
+        : (m.type === 'Airplane') ? [m.flight_no, m.transport_document]
+        : (m.type === 'Road vehicle') ? [m.vehicle_plate]
+        : [m.transport_document];
+      inputs.forEach((inp, i) => { if (fill[i]) inp.value = fill[i]; });
+    });
     if (p.transport && p.transport.container_no && typeof CONTAINER_ROWS !== 'undefined') {
       CONTAINER_ROWS.ps[0].num = p.transport.container_no;
       CONTAINER_ROWS.ps[0].seal = p.transport.seal_number || '';
