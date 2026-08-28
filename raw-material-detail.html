@@ -48,6 +48,8 @@
   .btn{padding:10px 18px;border-radius:10px;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;
        border:1px solid var(--border);background:var(--surface);color:var(--text);text-decoration:none;display:inline-block;}
   .btn:hover{border-color:var(--primary);color:var(--primary);}
+  .btn-danger{border-color:var(--bad-fg);color:var(--bad-fg);}
+  .btn-danger:hover{background:var(--bad-bg);color:var(--bad-fg);}
   .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff;}
   .btn-primary:hover{background:var(--primary-hover);color:#fff;}
   .btn-sm{padding:7px 13px;font-size:11.5px;}
@@ -184,6 +186,9 @@
       <div class="h1-sub" id="headSub">—</div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button class="btn btn-danger" onclick="openTrashModal()" style="display:flex;align-items:center;gap:6px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>
+        Delete</button>
       <button class="btn" onclick="goEdit()">Edit</button>
       <button class="btn btn-primary" onclick="goEuCatch()">Use in EU Catch document</button>
     </div>
@@ -320,6 +325,28 @@ function cell(label,raw,kind){
 }
 
 const params=()=>new URLSearchParams(location.search);
+function openTrashModal(){ document.getElementById('trashModal').classList.add('open'); document.body.style.overflow='hidden'; }
+function closeTrashModal(){ document.getElementById('trashModal').classList.remove('open'); document.body.style.overflow=''; }
+async function doDelete(){
+  closeTrashModal();
+  var id=new URLSearchParams(location.search).get('id');
+  if(!id||!dbClient) return;
+  try{
+    await dbClient.from('raw_material_transformations').delete().eq('raw_material_id',id);
+    await dbClient.from('raw_material_catches').delete().eq('raw_material_id',id);
+    await dbClient.from('raw_material_species').delete().eq('raw_material_id',id);
+    await dbClient.from('raw_material_documents').delete().eq('raw_material_id',id);
+    var {error}=await dbClient.from('raw_materials').delete().eq('id',id);
+    if(error) throw error;
+    var t=document.createElement('div');
+    t.style.cssText='position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:11px 22px;border-radius:10px;font-size:13px;font-weight:500;z-index:999;';
+    t.textContent='Deleted'; document.body.appendChild(t);
+    setTimeout(function(){ location.href='raw-material-list.html'; },800);
+  }catch(e){
+    alert('Delete failed: '+(e.message||e));
+  }
+}
+
 function goEdit(){ location.href='raw-material-form.html'+(params().get('id')?('?id='+params().get('id')):''); }
 function goEuCatch(){ location.href='eu-catch-support.html?raw_material='+(params().get('id')||''); }
 
@@ -834,5 +861,22 @@ async function loadProfile(){
 
 load(); loadProfile();
 </script>
+<div class="trash-modal" id="trashModal" onclick="if(event.target===this)closeTrashModal()">
+  <div class="trash-box">
+    <div class="trash-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+    </div>
+    <div class="trash-title">Delete this raw material?</div>
+    <div class="trash-desc">
+      This will <b>permanently delete</b> this raw material and all its species lines, catch events, and transformations.<br><br>
+      This cannot be undone.
+    </div>
+    <div class="trash-btns">
+      <button class="btn" onclick="closeTrashModal()">Cancel</button>
+      <button class="btn trash-confirm" onclick="doDelete()">Yes, delete permanently</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

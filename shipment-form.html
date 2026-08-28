@@ -1312,11 +1312,21 @@ function renderItems(){
             value="${esc(b.batch_lot||'')}" placeholder="e.g. LOT-2026-001"/></div>
           ${datePicker(b.processing_date,v=>{ITEMS[i].batches[j].processing_date=v;})}
           ${datePicker(b.expiry_date,v=>{ITEMS[i].batches[j].expiry_date=v;})}
-          <div>${picker(b.raw_material_ref,[],(val,row)=>{
-            ITEMS[i].batches[j].raw_material_ref=val;
-            if(row) ITEMS[i].batches[j].raw_material_id=row._id;
-          },{searchable:true,allowNew:true,source:'raw_materials',
-             placeholder:'Search RM lots…'})}</div>
+          <div>
+            <div style="display:flex;gap:3px;margin-bottom:4px;">
+              <button style="font-size:9px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);cursor:pointer;font-family:inherit;font-weight:700;background:${b._ccMode?'var(--surface)':'var(--primary)'};color:${b._ccMode?'var(--muted)':'#fff'};"
+                onclick="ITEMS[${i}].batches[${j}]._ccMode=false;renderItems();">RM</button>
+              <button style="font-size:9px;padding:2px 8px;border-radius:5px;border:1px solid var(--border);cursor:pointer;font-family:inherit;font-weight:700;background:${b._ccMode?'var(--primary)':'var(--surface)'};color:${b._ccMode?'#fff':'var(--muted)'};"
+                onclick="ITEMS[${i}].batches[${j}]._ccMode=true;renderItems();">CC</button>
+            </div>
+            ${picker(b.raw_material_ref,[],(val,row)=>{
+              ITEMS[i].batches[j].raw_material_ref=val;
+              if(row) ITEMS[i].batches[j].raw_material_id=row._id;
+              ITEMS[i].batches[j].ref_type=b._ccMode?'cc':'rm';
+            },{searchable:true,allowNew:true,
+               source:b._ccMode?'catch_certificates':'raw_materials',
+               placeholder:b._ccMode?'Search catch certificates…':'Search RM lots…'})}
+          </div>
           <button class="icon-btn" onclick="removeLot(${i},${j})" title="Remove lot">${IC_TRASH}</button></div>`).join('')}
         ${tally}
       </div></div>`;
@@ -1419,6 +1429,12 @@ async function loadLookups(){
       .filter(Boolean).join(' · ')})).filter(x=>x._label);
 
   LOOK.shipping_lines=SHIPPING_LINES.map(n=>({_label:n}));
+
+  var ccRaw=await grab('catch_certificates',500);
+  LOOK.catch_certificates=ccRaw.map(function(c){return {_id:c.id,
+    _label:c.cc_ref||'',
+    _sub:[c.species_common,c.issuing_country,c.verified_weight_kg?c.verified_weight_kg+' kg':null].filter(Boolean).join(' \u00b7 ')};})
+    .filter(function(x){return x._label;});
 
   const rmLots=await grab('raw_materials',500);
   LOOK.raw_materials=rmLots.filter(r=>!r.deleted_at)
