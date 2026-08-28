@@ -152,16 +152,17 @@
 <div class="modal-bg" id="createModal" onclick="if(event.target===this)closeCreate()">
   <div class="modal">
     <h3>New Catch Certificate</h3>
-    <label>Certificate Number *</label>
-    <input id="newRef" placeholder="e.g. ID-B013-LTS04-251215-SUB-437690"/>
-    <label>Issuing Country</label>
-    <input id="newCountry" placeholder="e.g. Indonesia"/>
-    <label>Species (common name)</label>
-    <input id="newSpecies" placeholder="e.g. Blue Swimming Crab"/>
-    <div class="foot">
-      <button class="btn" onclick="closeCreate()">Cancel</button>
-      <button class="btn btn-primary" onclick="doCreate()">Create Bucket</button>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.6;">
+      Generate from a shipment to auto-fill product, parties, transport and vessel details.<br>
+      Or create from scratch if you have the certificate in hand.</p>
+    <div style="display:flex;gap:10px;margin-bottom:20px;">
+      <button class="btn btn-primary" onclick="closeCreate();location.href='cc-form.html?mode=generate'" style="flex:1;justify-content:center;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>
+        Generate from Shipment</button>
+      <button class="btn" onclick="closeCreate();location.href='cc-form.html'" style="flex:1;justify-content:center;">
+        From Scratch</button>
     </div>
+    <button class="btn" onclick="closeCreate()" style="width:100%;justify-content:center;">Cancel</button>
   </div>
 </div>
 
@@ -195,24 +196,7 @@ let CERTS=[], FILTER='All', ORG_ID=null;
 function openCreate(){ $('createModal').classList.add('open'); $('newPO').focus(); }
 function closeCreate(){ $('createModal').classList.remove('open'); }
 
-async function doCreate(){
-  const ref=$('newRef').value.trim();
-  if(!ref){ toast('Certificate number is required'); return; }
-  if(!dbClient||!ORG_ID){ toast('Not connected'); return; }
-  try{
-    const {data,error}=await dbClient.from('catch_certificates').insert({
-      organisation_id:ORG_ID, cc_ref:ref,
-      issuing_country:$('newCountry').value.trim()||null,
-      species_common:$('newSpecies').value.trim()||null
-    }).select('id').single();
-    if(error) throw error;
-    closeCreate();
-    toast('Certificate created');
-    location.href='cc-detail.html?id='+data.id;
-  }catch(e){
-    toast('Failed: '+(e.message||e));
-  }
-}
+
 
 function renderStatusSeg(){
   const counts={All:CERTS.length, Draft:0, Validated:0, Linked:0, Archived:0};
