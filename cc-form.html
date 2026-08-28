@@ -32,6 +32,26 @@
   .grid input,.grid select,.grid textarea{width:100%;height:40px;padding:0 12px;border:1.5px solid var(--border);border-radius:10px;font:inherit;font-size:13px;color:var(--text);background:var(--surface);outline:none;}
   .grid input:focus,.grid select:focus,.grid textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,111,219,.1);}
   .grid textarea{height:80px;padding:10px 12px;resize:vertical;}
+  .msel{position:relative;}
+  .msel-display{width:100%;height:40px;padding:0 12px;border:1.5px solid var(--border);border-radius:10px;
+    font:inherit;font-size:13px;color:var(--text);background:var(--surface);cursor:pointer;display:flex;
+    align-items:center;justify-content:space-between;gap:8px;}
+  .msel-display:hover{border-color:var(--primary);}
+  .msel.open .msel-display{border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,111,219,.1);}
+  .msel-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);}
+  .msel-text.placeholder{color:var(--dim);}
+  .msel-drop{position:absolute;top:calc(100% + 4px);left:0;width:100%;min-width:240px;background:var(--surface);
+    border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(10,12,18,.12);
+    z-index:999;display:none;max-height:260px;overflow-y:auto;padding:4px;}
+  .msel.open .msel-drop{display:block;}
+  .msel-opt{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;cursor:pointer;
+    font-size:12.5px;transition:background .08s;}
+  .msel-opt:hover{background:var(--hover);}
+  .msel-opt .check{width:16px;height:16px;border:1.5px solid var(--border);border-radius:4px;display:flex;
+    align-items:center;justify-content:center;flex-shrink:0;transition:.1s;}
+  .msel-opt.on .check{background:var(--primary);border-color:var(--primary);}
+  .msel-opt.on .check svg{display:block;}
+  .msel-opt .check svg{display:none;width:10px;height:10px;color:#fff;}
   .sub-h{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:22px 0 12px;display:flex;align-items:center;justify-content:space-between;}
   .btn-sm{padding:7px 13px;font-size:11.5px;}
   table{width:100%;border-collapse:collapse;font-size:13px;}
@@ -121,9 +141,16 @@
         <option value="2301.20">2301.20 — Fish meal</option>
       </select></div>
       <div><label>Verified Weight (kg)</label><input id="verified_weight_kg" type="number" step="0.01"/></div>
-      <div style="grid-column:span 2;"><label>Catch Area (FAO)</label>
-        <div id="catch_area" style="display:flex;flex-wrap:wrap;gap:6px;padding:10px;border:1.5px solid var(--border);border-radius:10px;background:var(--surface);max-height:120px;overflow-y:auto;">
-        </div></div>
+      <div><label>Catch Area (FAO)</label>
+        <div class="msel" id="catch_area_wrap">
+          <div class="msel-display" onclick="toggleMsel('catch_area_wrap')">
+            <span class="msel-text" id="catch_area_text">Select areas…</span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="msel-drop" id="catch_area_drop"></div>
+        </div>
+        <input type="hidden" id="catch_area"/>
+      </div>
       <div><label>Fishing Gear</label><input id="fishing_gear" placeholder="e.g. Bubu (trap)"/></div>
     </div>
   </div>
@@ -217,6 +244,33 @@ function onVesselSelect(i, sel){
   }
 }
 
+function toggleMsel(id){
+  var wrap=$(id);
+  wrap.classList.toggle('open');
+}
+// Close on outside click
+document.addEventListener('click',function(e){
+  document.querySelectorAll('.msel.open').forEach(function(m){
+    if(!m.contains(e.target)) m.classList.remove('open');
+  });
+});
+function toggleFaoOpt(el){
+  el.classList.toggle('on');
+  updateFaoValue();
+}
+function updateFaoValue(){
+  var selected=[...$('catch_area_drop').querySelectorAll('.msel-opt.on')].map(function(o){return o.dataset.val;});
+  $('catch_area').value=selected.join(', ');
+  var text=$('catch_area_text');
+  if(selected.length){
+    text.textContent=selected.join(', ');
+    text.classList.remove('placeholder');
+  }else{
+    text.textContent='Select areas\u2026';
+    text.classList.add('placeholder');
+  }
+}
+
 function addVessel(){
   VESSELS.push({vessel_name:'',registration_no:'',fisherman_name:'',fishing_gear:'',catch_area:'',
     catch_period_start:'',catch_period_end:'',species:'',volume_kg:''});
@@ -252,7 +306,7 @@ function collectData(){
   var out={organisation_id:ORG_ID, shipment_id:$('pickShipment')?.value||null};
   FIELDS.forEach(function(f){
     var el=$(f); if(!el) return;
-    var v; if(f==='catch_area'){v=[...$('catch_area').querySelectorAll('input:checked')].map(function(cb){return cb.value;}).join(', ')||null;}else{v=el.type==='number'?Number(el.value)||null:(el.value.trim()||null);}
+    var v; if(f==='catch_area'){v=$('catch_area').value||null;}else{v=el.type==='number'?Number(el.value)||null:(el.value.trim()||null);}
     out[f]=v;
   });
   return out;
@@ -308,11 +362,12 @@ async function loadLookups(){
     SPECIES_ALL=(sp.data||[]).sort(function(a,b){return(a.species_name||'').localeCompare(b.species_name||'');});
     FLAGS=[...new Set(VESSELS_ALL.map(function(v){return v.vessel_flag||v.flag||'';}).filter(Boolean))].sort();
 
-    // FAO areas
+    // FAO areas multi-select dropdown
     var FAO=[['18','Arctic Sea'],['21','Atlantic, NW'],['27','Atlantic, NE'],['31','Atlantic, WC'],['34','Atlantic, EC'],['37','Mediterranean'],['41','Atlantic, SW'],['47','Atlantic, SE'],['48','Antarctic, Atl'],['51','Indian Ocean, W'],['57','Indian Ocean, E'],['58','Antarctic, Ind'],['61','Pacific, NW'],['67','Pacific, NE'],['71','Pacific, WC'],['77','Pacific, EC'],['81','Pacific, SW'],['87','Pacific, SE'],['88','Antarctic, Pac']];
-    $('catch_area').innerHTML=FAO.map(function(f){
-      return '<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;white-space:nowrap;padding:3px 8px;border-radius:6px;background:var(--bg);">'+
-        '<input type="checkbox" value="'+f[0]+'" style="accent-color:var(--primary);"/> '+f[0]+' — '+f[1]+'</label>';
+    $('catch_area_drop').innerHTML=FAO.map(function(f){
+      return '<div class="msel-opt" data-val="'+f[0]+'" onclick="toggleFaoOpt(this)">'+
+        '<span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>'+
+        f[0]+' \u2014 '+f[1]+'</div>';
     }).join('');
 
     // Populate country selects
@@ -531,8 +586,12 @@ async function load(){
     if(typeof _editData!=='undefined' && _editData){
       FIELDS.forEach(function(f){ var el=$(f); if(!el||_editData[f]==null) return;
       if(f==='catch_area'){
+        $('catch_area').value=_editData[f]||'';
         var vals=String(_editData[f]).split(/[,;]/).map(function(s){return s.trim();});
-        $('catch_area').querySelectorAll('input').forEach(function(cb){cb.checked=vals.includes(cb.value);});
+        $('catch_area_drop').querySelectorAll('.msel-opt').forEach(function(o){
+          if(vals.includes(o.dataset.val)) o.classList.add('on');
+        });
+        updateFaoValue();
       }else{
         el.value=_editData[f];
       }
