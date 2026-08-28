@@ -169,10 +169,11 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-init.js"></script>
 <script>
 const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVuYmRhYWpjcm9teG1oZ2N2ZXJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxMjc4MTUsImV4cCI6MjA5MzcwMzgxNX0.wlVbN57eAwRmTROEEY3D6BIX3H5pI6MwZ5hM2BqpnEs';
-const dbClient=window.supabase?window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+var dbClient=window._sbClient||(window.supabase?window._sbClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null);
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -181,7 +182,7 @@ function toggleAvatarMenu(){ $('avatarMenu').classList.toggle('open'); }
 document.addEventListener('click',e=>{const w=document.querySelector('.avatar-wrap');
   if(w&&!w.contains(e.target)) $('avatarMenu')?.classList.remove('open');});
 function greetingTime(){const h=new Date().getHours();return h<12?'Good Morning':(h<18?'Good Afternoon':'Good Evening');}
-async function handleLogout(){ if(dbClient) await dbClient.auth.signOut(); location.href='index.html'; }
+async function handleLogout(){ if(dbClient) await dbClient.auth.signOut(); location.href='login.html'; }
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('vis');setTimeout(()=>t.classList.remove('vis'),2800);}
 function fmtDate(v){ if(!v) return ''; const d=new Date(v); return isNaN(d)?v:d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}); }
 function timeAgo(v){ if(!v) return '';
