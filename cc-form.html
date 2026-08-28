@@ -121,7 +121,9 @@
         <option value="2301.20">2301.20 — Fish meal</option>
       </select></div>
       <div><label>Verified Weight (kg)</label><input id="verified_weight_kg" type="number" step="0.01"/></div>
-      <div><label>Catch Area</label><select id="catch_area" multiple style="height:80px;"><option value="18">18 — Arctic Sea</option><option value="21">21 — Atlantic, NW</option><option value="27">27 — Atlantic, NE</option><option value="31">31 — Atlantic, WC</option><option value="34">34 — Atlantic, EC</option><option value="37">37 — Mediterranean</option><option value="41">41 — Atlantic, SW</option><option value="47">47 — Atlantic, SE</option><option value="48">48 — Antarctic, Atlantic</option><option value="51">51 — Indian Ocean, W</option><option value="57">57 — Indian Ocean, E</option><option value="58">58 — Antarctic, Indian</option><option value="61">61 — Pacific, NW</option><option value="67">67 — Pacific, NE</option><option value="71">71 — Pacific, WC</option><option value="77">77 — Pacific, EC</option><option value="81">81 — Pacific, SW</option><option value="87">87 — Pacific, SE</option><option value="88">88 — Antarctic, Pacific</option></select></div>
+      <div style="grid-column:span 2;"><label>Catch Area (FAO)</label>
+        <div id="catch_area" style="display:flex;flex-wrap:wrap;gap:6px;padding:10px;border:1.5px solid var(--border);border-radius:10px;background:var(--surface);max-height:120px;overflow-y:auto;">
+        </div></div>
       <div><label>Fishing Gear</label><input id="fishing_gear" placeholder="e.g. Bubu (trap)"/></div>
     </div>
   </div>
@@ -250,7 +252,7 @@ function collectData(){
   var out={organisation_id:ORG_ID, shipment_id:$('pickShipment')?.value||null};
   FIELDS.forEach(function(f){
     var el=$(f); if(!el) return;
-    var v; if(el.multiple){v=[...el.selectedOptions].map(function(o){return o.value;}).join(', ')||null;}else{v=el.type==='number'?Number(el.value)||null:(el.value.trim()||null);}
+    var v; if(f==='catch_area'){v=[...$('catch_area').querySelectorAll('input:checked')].map(function(cb){return cb.value;}).join(', ')||null;}else{v=el.type==='number'?Number(el.value)||null:(el.value.trim()||null);}
     out[f]=v;
   });
   return out;
@@ -295,13 +297,23 @@ async function loadLookups(){
   if(!dbClient) return;
   try{
     var [co,ct,vs,sp]=await Promise.all([
-      dbClient.from('companies').select('*').order('company_name'),
-      dbClient.from('countries').select('*').order('country'),
-      dbClient.from('vessels').select('*').order('current_name'),
-      dbClient.from('species').select('*').order('species_name')
+      dbClient.from('companies').select('*'),
+      dbClient.from('countries').select('*'),
+      dbClient.from('vessels').select('*'),
+      dbClient.from('species').select('*')
     ]);
-    COMPANIES=co.data||[]; COUNTRIES=ct.data||[]; VESSELS_ALL=vs.data||[]; SPECIES_ALL=sp.data||[];
+    COMPANIES=(co.data||[]).sort(function(a,b){return(a.company_name||a.name||'').localeCompare(b.company_name||b.name||'');});
+    COUNTRIES=(ct.data||[]).sort(function(a,b){return(a.country||'').localeCompare(b.country||'');});
+    VESSELS_ALL=(vs.data||[]).sort(function(a,b){return(a.current_name||a.name||'').localeCompare(b.current_name||b.name||'');});
+    SPECIES_ALL=(sp.data||[]).sort(function(a,b){return(a.species_name||'').localeCompare(b.species_name||'');});
     FLAGS=[...new Set(VESSELS_ALL.map(function(v){return v.vessel_flag||v.flag||'';}).filter(Boolean))].sort();
+
+    // FAO areas
+    var FAO=[['18','Arctic Sea'],['21','Atlantic, NW'],['27','Atlantic, NE'],['31','Atlantic, WC'],['34','Atlantic, EC'],['37','Mediterranean'],['41','Atlantic, SW'],['47','Atlantic, SE'],['48','Antarctic, Atl'],['51','Indian Ocean, W'],['57','Indian Ocean, E'],['58','Antarctic, Ind'],['61','Pacific, NW'],['67','Pacific, NE'],['71','Pacific, WC'],['77','Pacific, EC'],['81','Pacific, SW'],['87','Pacific, SE'],['88','Antarctic, Pac']];
+    $('catch_area').innerHTML=FAO.map(function(f){
+      return '<label style="display:inline-flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;white-space:nowrap;padding:3px 8px;border-radius:6px;background:var(--bg);">'+
+        '<input type="checkbox" value="'+f[0]+'" style="accent-color:var(--primary);"/> '+f[0]+' — '+f[1]+'</label>';
+    }).join('');
 
     // Populate country selects
     ['issuing_country','exporter_country','importer_country'].forEach(function(id){
@@ -517,7 +529,14 @@ async function load(){
     await loadLookups();
     // Set field values AFTER selects are populated with options
     if(typeof _editData!=='undefined' && _editData){
-      FIELDS.forEach(function(f){ var el=$(f); if(el&&_editData[f]!=null) el.value=_editData[f]; });
+      FIELDS.forEach(function(f){ var el=$(f); if(!el||_editData[f]==null) return;
+      if(f==='catch_area'){
+        var vals=String(_editData[f]).split(/[,;]/).map(function(s){return s.trim();});
+        $('catch_area').querySelectorAll('input').forEach(function(cb){cb.checked=vals.includes(cb.value);});
+      }else{
+        el.value=_editData[f];
+      }
+    });
     }
     renderVessels();
     await loadPickers();
