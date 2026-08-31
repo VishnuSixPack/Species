@@ -142,6 +142,11 @@ async function loadProductForEdit(id) {
   setDualMode('packStyle', p.pack_style);
   setDualMode('packMedium', p.pack_medium);
   setSelectField('primaryPackaging', p.primary_packaging);
+  // New packaging fields
+  if (document.getElementById('packagingTypeDesc'))   document.getElementById('packagingTypeDesc').value   = p.packaging_type_desc   || '';
+  if (document.getElementById('packagingMaterialCode')) document.getElementById('packagingMaterialCode').value = p.packaging_material_code || '';
+  if (document.getElementById('packagingMaterialQty'))  document.getElementById('packagingMaterialQty').value  = p.packaging_material_qty  || '';
+  if (document.getElementById('packagingMaterialUnit') && p.packaging_material_unit) document.getElementById('packagingMaterialUnit').value = p.packaging_material_unit;
   if (p.no_inner_packaging) {
     document.getElementById('noInnerPackaging').checked = true;
     document.getElementById('innerPackaging').disabled = true;
@@ -807,6 +812,10 @@ function collectFormData() {
       primary_packaging: document.getElementById('primaryPackaging')?.value || '',
       inner_packaging: document.getElementById('innerPackaging')?.value || '',
       no_inner_packaging: document.getElementById('noInnerPackaging')?.checked || false,
+      packaging_type_desc:    document.getElementById('packagingTypeDesc')?.value.trim()    || null,
+      packaging_material_code: document.getElementById('packagingMaterialCode')?.value.trim() || null,
+      packaging_material_qty:  document.getElementById('packagingMaterialQty')?.value  ? parseFloat(document.getElementById('packagingMaterialQty').value) : null,
+      packaging_material_unit: document.getElementById('packagingMaterialUnit')?.value  || 'g',
       min_temp_c: parseFloat(document.getElementById('minTemp')?.value) || null,
       max_temp_c: parseFloat(document.getElementById('maxTemp')?.value) || null,
       shelf_life_value: parseFloat(document.getElementById('shelfLifeValue')?.value) || null,
