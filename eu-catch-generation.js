@@ -1543,6 +1543,30 @@ const EUCatchGen = (function () {
     const fmt = d => d ? new Date(d).toLocaleDateString('en-GB',
       { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
+    /* A vessel's authorisations live in several tables — the fishing licence
+       proper, RFMO authorisations, FFA registration, PNA vessel day scheme
+       and FSMA. All of them are "licences" as far as Box 2 is concerned, so
+       list them together and let the user pick the right one. */
+    const SOURCES = [
+      { table:'vessel_other_licenses', kind:'Fishing licence',
+        ref:r => r.license_number, by:r => r.licensing_authority,
+        from:r => r.start_date, to:r => r.end_date,
+        note:r => r.agreement_note },
+      { table:'vessel_rfmo_history', kind:'RFMO authorisation',
+        ref:r => r.auth_no || r.registration_no, by:r => r.rfmo_name,
+        from:r => r.auth_start, to:r => r.auth_end,
+        note:r => [r.auth_form, r.auth_species, r.auth_areas].filter(Boolean).join(' · ') },
+      { table:'vessel_ffa_history', kind:'FFA registration',
+        ref:r => r.ffa_id, by:() => 'Forum Fisheries Agency',
+        from:r => r.valid_from, to:r => r.valid_to, note:r => r.notes },
+      { table:'vessel_pna_vds_history', kind:'PNA vessel day scheme',
+        ref:r => r.vds_no, by:r => r.vessel_flag || 'PNA',
+        from:r => r.valid_from, to:r => r.valid_to, note:r => r.notes },
+      { table:'vessel_pna_fsma_history', kind:'PNA FSMA',
+        ref:r => r.ral_no, by:() => 'PNA FSMA',
+        from:r => r.valid_from, to:r => r.valid_to, note:r => r.notes }
+    ];
+
     const openReal = async function (vesselIdx) {
       const form = FORM();
       const vessel = (form.ccVessels || [])[vesselIdx];
@@ -1550,36 +1574,59 @@ const EUCatchGen = (function () {
       form.licenceVesselIdx = vesselIdx;
 
       const title = document.getElementById('licenceModalTitle');
-      if (title) title.textContent = `${vessel.name || 'Vessel'} — select fishing licence`;
+      if (title) title.textContent = `${vessel.name || 'Vessel'} — licences and authorisations`;
+
+      /* The page's table has four columns; this list needs a type as well */
+      const thead = document.querySelector('#licencePickerModal thead tr');
+      if (thead) thead.innerHTML =
+        '<th>Type</th><th>Reference</th><th>Issued by</th><th>Valid from</th><th>Valid until</th><th></th>';
 
       const bodyEl = document.getElementById('licenceResultsBody');
       if (bodyEl) bodyEl.innerHTML =
-        '<tr><td colspan="4" style="text-align:center;color:#6b7280;padding:14px;">Loading…</td></tr>';
+        '<tr><td colspan="6" style="text-align:center;color:#6b7280;padding:14px;">Loading…</td></tr>';
       document.getElementById('licencePickerModal').classList.add('open');
 
       let rows = [];
-      try {
-        let q = sb.from('vessel_other_licenses').select('*');
-        q = vessel.vessel_id ? q.eq('vessel_id', vessel.vessel_id) : q.limit(0);
-        const { data } = await q.order('start_date', { ascending: false });
-        rows = data || [];
-      } catch (e) { log('licence lookup failed:', e.message); }
+      if (vessel.vessel_id) {
+        const results = await Promise.all(SOURCES.map(async src => {
+          try {
+            const { data } = await sb.from(src.table).select('*').eq('vessel_id', vessel.vessel_id);
+            return (data || []).map(r => ({
+              kind: src.kind, reference: src.ref(r), issued_by: src.by(r),
+              from: src.from(r), to: src.to(r), note: src.note(r)
+            }));
+          } catch (e) { log(src.table, 'unavailable:', e.message); return []; }
+        }));
+        rows = [].concat.apply([], results).filter(r => r.reference);
+        /* Current authorisations first, expired last */
+        rows.sort((a, b) => String(b.to || '').localeCompare(String(a.to || '')));
+      }
 
       GEN.licences = rows;
       if (!bodyEl) return;
 
-      bodyEl.innerHTML = rows.length ? rows.map((l, i) => `
-        <tr>
-          <td><b>${esc(l.license_number || '—')}</b>${l.licensing_authority
-            ? `<br><small style="color:#6b7280;">${esc(l.licensing_authority)}</small>` : ''}</td>
-          <td>${fmt(l.start_date)}</td>
-          <td>${fmt(l.end_date)}</td>
+      /* Flag anything that had already lapsed by the time of the catch — an
+         authority will query a certificate covered by an expired licence. */
+      const catchTo = (((FORM().ccCommodities || [])[0] || {}).rows || [])
+        .map(r => r.catchTo).filter(Boolean).sort().pop();
+
+      bodyEl.innerHTML = rows.length ? rows.map((l, i) => {
+        const lapsed = l.to && catchTo && String(l.to) < String(catchTo);
+        return `<tr${lapsed ? ' style="background:#fff5f5;"' : ''}>
+          <td><span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:999px;
+            background:#eef4fd;color:#1a6fdb;white-space:nowrap;">${esc(l.kind)}</span></td>
+          <td><b>${esc(l.reference)}</b>${l.note
+            ? `<br><small style="color:#6b7280;">${esc(l.note)}</small>` : ''}</td>
+          <td style="font-size:11px;">${esc(l.issued_by || '—')}</td>
+          <td>${fmt(l.from)}</td>
+          <td>${fmt(l.to)}${lapsed
+            ? '<br><small style="color:#c0392b;font-weight:600;">expired before the catch</small>' : ''}</td>
           <td style="white-space:nowrap;">
             <button class="btn btn-sm" onclick="EUCatchGen._useLicence(${i})">✓ Select</button>
-          </td>
-        </tr>`).join('')
-        : `<tr><td colspan="4" style="text-align:center;color:#6b7280;padding:14px;">
-             No licences on file for ${esc(vessel.name || 'this vessel')} yet.</td></tr>`;
+          </td></tr>`;
+      }).join('')
+        : `<tr><td colspan="6" style="text-align:center;color:#6b7280;padding:14px;">
+             No licences or authorisations on file for ${esc(vessel.name || 'this vessel')} yet.</td></tr>`;
     };
     openReal.__eucg = true;
     window.openFishingLicenceModal = openReal;
@@ -1590,11 +1637,10 @@ const EUCatchGen = (function () {
       if (!l) return;
       const v = form.ccVessels[form.licenceVesselIdx];
       v.licence = {
-        reference: l.license_number,
-        expiration: l.end_date
-          ? new Date(l.end_date).toLocaleDateString('en-GB') : 'Not stated',
-        authority: l.licensing_authority || null,
-        start_date: l.start_date, end_date: l.end_date
+        reference: l.reference,
+        expiration: l.to ? new Date(l.to).toLocaleDateString('en-GB') : 'Not stated',
+        authority: l.issued_by || null, kind: l.kind,
+        start_date: l.from, end_date: l.to
       };
       if (typeof renderCCVesselTable === 'function') renderCCVesselTable();
       if (typeof closeModal === 'function') closeModal('licencePickerModal');
