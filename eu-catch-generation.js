@@ -41,6 +41,17 @@ const EUCatchGen = (function () {
                   catches: [], species: [], catchSpecies: [], legs: [], shipVessels: [],
                   vessels: {}, docs: [], item: null, bundle: null, mode: null };
 
+  const log = (...a) => { try { console.log('[EUCatchGen]', ...a); } catch (_) {} };
+
+  /* Never let one slow or misconfigured call stall the whole run. */
+  function withTimeout(promise, ms, label) {
+    return Promise.race([
+      Promise.resolve(promise),
+      new Promise((_, rej) => setTimeout(
+        () => rej(new Error(`${label} timed out after ${ms / 1000}s`)), ms))
+    ]);
+  }
+
   const clean = v => (typeof v === 'string' ? v.trim() : v);
   const esc = s => String(s ?? '').replace(/[&<>"']/g,
     c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -190,13 +201,15 @@ const EUCatchGen = (function () {
 
   async function loadCnCodes() {
     if (CN_DB) return CN_DB;
+    log('loading CN codes');
     try {
       const { data } = await sb.from('ref_cn_codes')
         .select('cn_code, cn_display, description, afsis_3a_code, scientific_name, presentation, for_industry, heading, chapter')
         .eq('is_active', true)
         .order('cn_code');
       CN_DB = data || [];
-    } catch (_) { CN_DB = []; }
+      log('CN codes:', CN_DB.length);
+    } catch (e) { log('CN table unavailable, using built-in map:', e.message); CN_DB = []; }
     return CN_DB;
   }
 
@@ -277,14 +290,17 @@ const EUCatchGen = (function () {
     const { data } = await sb.from('raw_material_documents')
       .select('*').in('raw_material_id', rmIds).order('created_at');
     const docs = data || [];
+    log('raw material documents:', docs.length);
+
     for (const d of docs) {
       d.url = null;
       if (!d.storage_path) continue;
       try {
-        const { data: signed } = await sb.storage.from(DOC_BUCKET)
-          .createSignedUrl(d.storage_path, 60 * 60 * 8);
+        const { data: signed } = await withTimeout(
+          sb.storage.from(DOC_BUCKET).createSignedUrl(d.storage_path, 60 * 60 * 8),
+          5000, 'storage signed URL');
         if (signed && signed.signedUrl) { d.url = signed.signedUrl; continue; }
-      } catch (_) {}
+      } catch (e) { log('signed URL unavailable:', e.message); }
       try {
         const { data: pub } = sb.storage.from(DOC_BUCKET).getPublicUrl(d.storage_path);
         if (pub && pub.publicUrl) d.url = pub.publicUrl;
@@ -296,10 +312,11 @@ const EUCatchGen = (function () {
   async function loadRawMaterials(rms) {
     const ids = rms.map(r => r.id);
     if (!ids.length) return;
-    const [{ data: c }, { data: s }] = await Promise.all([
+    const [{ data: c }, { data: s }] = await withTimeout(Promise.all([
       sb.from('raw_material_catches').select('*').in('raw_material_id', ids).order('line_no'),
       sb.from('raw_material_species').select('*').in('raw_material_id', ids).order('line_no')
-    ]);
+    ]), 15000, 'raw material query');
+    log('catch events', (c||[]).length, 'species lines', (s||[]).length);
     GEN.catches = c || [];
     GEN.species = s || [];
     if (GEN.catches.length) {
@@ -313,17 +330,22 @@ const EUCatchGen = (function () {
   }
 
   async function loadFromShipment(shipmentId) {
-    const { data: shipment, error } = await sb.from('shipments')
-      .select('*').eq('id', shipmentId).maybeSingle();
+    log('loading shipment', shipmentId);
+    const { data: shipment, error } = await withTimeout(
+      sb.from('shipments').select('*').eq('id', shipmentId).maybeSingle(),
+      15000, 'shipment query');
     if (error) throw new Error('Could not read the shipment: ' + error.message);
     if (!shipment) throw new Error('That shipment could not be found, or it belongs to another organisation.');
 
-    const [{ data: items }, { data: batches }, { data: legs }, { data: sv }] = await Promise.all([
+    log('shipment ok:', shipment.shipment_ref);
+    const [{ data: items }, { data: batches }, { data: legs }, { data: sv }] = await withTimeout(Promise.all([
       sb.from('shipment_items').select('*').eq('shipment_id', shipmentId).order('line_no'),
       sb.from('shipment_batches').select('*').eq('shipment_id', shipmentId).order('line_no'),
       sb.from('shipment_legs').select('*').eq('shipment_id', shipmentId).order('leg_no'),
       sb.from('shipment_vessels').select('*').eq('shipment_id', shipmentId).order('line_no')
-    ]);
+    ]), 15000, 'shipment children query');
+    log('items', (items||[]).length, 'batches', (batches||[]).length,
+        'legs', (legs||[]).length, 'vessels', (sv||[]).length);
 
     Object.assign(GEN, { shipment, items: items || [], batches: batches || [],
                            legs: legs || [], shipVessels: sv || [], mode: 'shipment' });
@@ -346,7 +368,9 @@ const EUCatchGen = (function () {
       }
     }
     GEN.rms = rms;
+    log('raw materials', rms.length);
     await loadRawMaterials(rms);
+    log('load complete');
   }
 
   async function loadFromRawMaterial(rmId) {
@@ -376,6 +400,92 @@ const EUCatchGen = (function () {
   }
 
   /* ============================================================== payload */
+
+
+  /* ------------------------------------------------------------------
+     Means of transport.
+
+     A shipment describes the same voyage in two places: shipment_vessels
+     (the mother vessel, with flag and IMO) and shipment_legs (the routing,
+     with the bill of lading). Emitting both produced two cards — one with
+     the vessel, one holding nothing but the BL number.
+
+     So: legs merge into the vessel entry they belong to. A leg only becomes
+     its own entry when it names a different vessel, or is a different mode.
+     Nothing is emitted that carries a document number and no transport.
+     ------------------------------------------------------------------ */
+  async function buildMeans(s) {
+    const MODE = { Sea:'Vessel', Air:'Airplane', Road:'Road vehicle', Rail:'Railway' };
+    const out = [];
+
+    const mother = GEN.shipVessels.find(v => /mother/i.test(v.role || ''))
+                || GEN.shipVessels[0];
+    const mv = mother && mother.vessel_id ? GEN.vessels[mother.vessel_id] : null;
+    const mvIso = mv && mv.vessel_flag ? await isoFor(mv.vessel_flag) : null;
+
+    if (mother) {
+      out.push({
+        type: 'Vessel', role: mother.role || null,
+        ship_name: clean(mother.vessel_name) || (mv && mv.current_name) || null,
+        flag_state: (mv && mv.vessel_flag) || null,
+        flag_iso: mvIso ? mvIso.alpha2 : null,
+        imo: mother.imo || (mv && mv.imo) || null,
+        voyage_no: mother.voyage_no || (s && s.voyage_no) || null,
+        transport_document: (s && (s.bl_no || s.awb_no || s.cmr_no)) || null,
+        loading_port: clean(mother.loading_port) || null,
+        discharge_port: clean(mother.discharge_port) || null
+      });
+    }
+
+    const same = (a, b) => a && b && String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
+
+    (GEN.legs || []).forEach(l => {
+      const type = MODE[l.transport_mode] || 'Other';
+      const legName = clean(l.vessel_name) || clean(l.flight_no) || clean(l.vehicle_plate);
+
+      /* Does this leg belong to an entry we already have? */
+      let host = null;
+      if (!legName) {
+        host = out.find(e => e.type === type) || out[0] || null;
+      } else {
+        host = out.find(e => e.type === type &&
+          (same(e.ship_name, l.vessel_name) || same(e.voyage_no, l.voyage_no))) || null;
+      }
+
+      if (host) {
+        /* Fill the gaps rather than duplicating the card */
+        if (!host.transport_document && l.document_no) host.transport_document = l.document_no;
+        if (!host.document_type && l.document_type)    host.document_type = l.document_type;
+        if (!host.voyage_no && l.voyage_no)            host.voyage_no = l.voyage_no;
+        if (!host.ship_name && l.vessel_name)          host.ship_name = clean(l.vessel_name);
+        if (!host.carrier && l.carrier_name)           host.carrier = clean(l.carrier_name);
+        if (!host.origin && l.origin_name)             host.origin = clean(l.origin_name);
+        if (!host.destination && l.destination_name)   host.destination = clean(l.destination_name);
+        if (!host.departure_date && l.departure_date)  host.departure_date = l.departure_date;
+        if (!host.arrival_date && l.arrival_date)      host.arrival_date = l.arrival_date;
+        return;
+      }
+
+      out.push({
+        type, leg_no: l.leg_no,
+        ship_name: clean(l.vessel_name) || null,
+        flag_state: null, imo: null,
+        voyage_no: l.voyage_no || null,
+        flight_no: l.flight_no || null,
+        vehicle_plate: l.vehicle_plate || null,
+        transport_document: l.document_no || null,
+        document_type: l.document_type || null,
+        origin: clean(l.origin_name), destination: clean(l.destination_name),
+        departure_date: l.departure_date, arrival_date: l.arrival_date,
+        carrier: clean(l.carrier_name)
+      });
+    });
+
+    /* Drop anything that ended up with no means of transport at all —
+       a bare document number is not a vessel. */
+    return out.filter(e => e.ship_name || e.flight_no || e.vehicle_plate ||
+                           e.imo || e.voyage_no);
+  }
 
   async function buildCC(flagState, rmList, gate) {
     const s = GEN.shipment;
@@ -467,47 +577,8 @@ const EUCatchGen = (function () {
       }
     }
 
-    const mother = GEN.shipVessels.find(v => /mother/i.test(v.role || ''));
-    const motherVessel = mother && mother.vessel_id ? GEN.vessels[mother.vessel_id] : null;
-    const motherFlagIso = motherVessel && motherVessel.vessel_flag
-      ? await isoFor(motherVessel.vessel_flag) : null;
+    const meansOfTransport = await buildMeans(s);
 
-    const meansOfTransport = [];
-    if (mother) {
-      meansOfTransport.push({
-        type: 'Vessel', role: mother.role,
-        ship_name: clean(mother.vessel_name) || (motherVessel && motherVessel.current_name),
-        flag_state: motherVessel ? motherVessel.vessel_flag : null,
-        flag_iso: motherFlagIso ? motherFlagIso.alpha2 : null,
-        imo: mother.imo || (motherVessel && motherVessel.imo) || null,
-        voyage_no: mother.voyage_no || (s && s.voyage_no) || null,
-        transport_document: s ? (s.bl_no || s.awb_no || s.cmr_no) : null,
-        loading_port: clean(mother.loading_port), discharge_port: clean(mother.discharge_port)
-      });
-    }
-    (GEN.legs || []).forEach(l => {
-      /* Skip a leg that merely repeats the mother vessel already listed */
-      if (mother && l.transport_mode === 'Sea' &&
-          clean(l.vessel_name) && clean(mother.vessel_name) &&
-          clean(l.vessel_name).toLowerCase() === clean(mother.vessel_name).toLowerCase()) return;
-      meansOfTransport.push({
-        type: { Sea:'Vessel', Air:'Airplane', Road:'Road vehicle', Rail:'Railway' }[l.transport_mode] || 'Other',
-        leg_no: l.leg_no,
-        ship_name: clean(l.vessel_name) || null,
-        flag_state: null, imo: null,
-        voyage_no: l.voyage_no || null, flight_no: l.flight_no || null,
-        vehicle_plate: l.vehicle_plate || null,
-        transport_document: l.document_no || null, document_type: l.document_type || null,
-        origin: clean(l.origin_name), destination: clean(l.destination_name),
-        departure_date: l.departure_date, arrival_date: l.arrival_date,
-        carrier: clean(l.carrier_name)
-      });
-    });
-
-    /* Point of departure is the shipment's Port of Loading — the port in the
-       country of exportation the consignment actually leaves from. The raw
-       material's landing port is a different thing and belongs in the catch
-       lines, not here. */
     const firstEvent = catchEvents[0] || {};
     const departure = (s ? clean(s.origin_name) : null)
                    || clean(firstEvent.departure_port_name)
@@ -616,36 +687,7 @@ const EUCatchGen = (function () {
       productSpecies && productSpecies.scientific_name
     );
 
-    /* Means of transport for the statement — same shipment data as the CC */
-    const psMother = GEN.shipVessels.find(v => /mother/i.test(v.role || ''));
-    const psMotherVessel = psMother && psMother.vessel_id ? GEN.vessels[psMother.vessel_id] : null;
-    const psMotherIso = psMotherVessel && psMotherVessel.vessel_flag
-      ? await isoFor(psMotherVessel.vessel_flag) : null;
-
-    const psMeans = [];
-    if (psMother) {
-      psMeans.push({
-        type: 'Vessel', role: psMother.role,
-        ship_name: clean(psMother.vessel_name) || (psMotherVessel && psMotherVessel.current_name),
-        flag_state: psMotherVessel ? psMotherVessel.vessel_flag : null,
-        flag_iso: psMotherIso ? psMotherIso.alpha2 : null,
-        imo: psMother.imo || (psMotherVessel && psMotherVessel.imo) || null,
-        voyage_no: psMother.voyage_no || (s && s.voyage_no) || null,
-        transport_document: s ? (s.bl_no || s.awb_no || s.cmr_no) : null
-      });
-    }
-    (GEN.legs || []).forEach(l => {
-      if (psMother && l.transport_mode === 'Sea' && clean(l.vessel_name) &&
-          clean(psMother.vessel_name) &&
-          clean(l.vessel_name).toLowerCase() === clean(psMother.vessel_name).toLowerCase()) return;
-      psMeans.push({
-        type: { Sea:'Vessel', Air:'Airplane', Road:'Road vehicle', Rail:'Railway' }[l.transport_mode] || 'Other',
-        ship_name: clean(l.vessel_name) || null,
-        voyage_no: l.voyage_no || null, flight_no: l.flight_no || null,
-        vehicle_plate: l.vehicle_plate || null,
-        transport_document: l.document_no || null
-      });
-    });
+    const psMeans = await buildMeans(s);
 
     /* Vessels that caught the certified species, for the commodity table */
     const catchVessels = [...new Set(GEN.catches
