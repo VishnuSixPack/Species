@@ -666,9 +666,70 @@ const EUCatchGen = (function () {
     };
   }
 
+
+  /* ------------------------------------------------------------------
+     EU facility approval.
+
+     The approval number on a Processing Statement is the plant's EU
+     establishment approval — held in company_certifications against the
+     processing company. Without a valid one the consignment cannot enter
+     the EU, so an expired or missing approval is surfaced rather than left
+     as an empty box.
+     ------------------------------------------------------------------ */
+  async function companyFor(orgId, name) {
+    try {
+      if (orgId) {
+        const { data } = await sb.from('companies').select('*').eq('id', orgId).maybeSingle();
+        if (data) return data;
+      }
+      if (name) {
+        const { data } = await sb.from('companies').select('*')
+          .ilike('company_name', name).limit(1);
+        if (data && data[0]) { log('processor matched by name:', name); return data[0]; }
+      }
+    } catch (e) { log('company lookup failed:', e.message); }
+    return null;
+  }
+
+  async function euApprovalFor(company) {
+    if (!company) return null;
+    try {
+      const { data } = await sb.from('company_certifications')
+        .select('*').eq('company_id', company.id);
+      const rows = data || [];
+
+      const isEu = r => {
+        const t = `${r.cert_type || ''} ${r.cert_name || ''}`.toLowerCase();
+        return /eu/.test(t) && /(facility|establishment|approv)/.test(t);
+      };
+      const hits = rows.filter(isEu);
+      if (!hits.length) return null;
+
+      const today = new Date().toISOString().slice(0, 10);
+      const valid = hits.filter(r => !r.expiry_date || r.expiry_date >= today);
+      const row = valid[0] || hits[0];
+
+      return {
+        number: row.cert_number || null,
+        cert_name: row.cert_name || row.cert_type || null,
+        issuing_body: row.cert_body || null,
+        valid_from: row.issued_date || null,
+        valid_until: row.expiry_date || null,
+        scope: row.scope || null,
+        url: row.url || null,
+        status: row.status || null,
+        expired: !!(row.expiry_date && row.expiry_date < today),
+        no_expiry: !row.expiry_date
+      };
+    } catch (e) { log('certification lookup failed:', e.message); return null; }
+  }
+
   async function buildPS(item, batches, ccRefs, gate) {
     const s = GEN.shipment;
     const plantIso = s && s.processing_country ? await isoFor(s.processing_country) : null;
+
+    const plantCompany = await companyFor(s && s.processor_org_id, s && s.processor_name);
+    const approval = await euApprovalFor(plantCompany);
     const expIso   = s && s.country_of_export  ? await isoFor(s.country_of_export)  : null;
 
     /* The CN code on the statement describes the catch as certified — the raw
@@ -738,7 +799,10 @@ const EUCatchGen = (function () {
       processing_plant: {
         name: clean(s && s.processor_name), org_id: s && s.processor_org_id,
         country: s && s.processing_country, iso: plantIso ? plantIso.alpha2 : null,
-        approval_number: null
+        address: plantCompany ? plantCompany.address : null,
+        gln: plantCompany ? plantCompany.gln : null,
+        approval_number: approval ? approval.number : null,
+        approval: approval
       },
       exporter: {
         name: clean(s && s.exporter_name), org_id: s && s.exporter_org_id,
@@ -1039,6 +1103,43 @@ const EUCatchGen = (function () {
     });
   }
 
+
+  /* An EU establishment approval is a precondition for placing the product on
+     the EU market. Missing or lapsed, the processing statement cannot be
+     endorsed — so stop and say so plainly rather than saving a document that
+     will be refused. A draft is still allowed, deliberately marked as such. */
+  function askApproval(plantName, approval) {
+    const expired = approval && approval.expired;
+    return new Promise(resolve => {
+      const detail = expired
+        ? `<p style="margin-bottom:12px;">The EU facility approval held by
+             <b>${esc(plantName || 'the processing plant')}</b>
+             (<b>${esc(approval.number || '—')}</b>) expired on
+             <b>${esc(approval.valid_until)}</b>.</p>`
+        : `<p style="margin-bottom:12px;">No EU facility approval is recorded for
+             <b>${esc(plantName || 'the processing plant')}</b>.</p>`;
+
+      box(head(expired ? 'EU approval has expired' : 'No EU facility approval') +
+          body(`<div style="background:#fff5f5;border:1px solid #fecaca;border-radius:6px;
+                  padding:14px;margin-bottom:14px;color:#991b1b;">
+                  <b>This consignment cannot enter the EU market.</b><br>
+                  Under EU food law, fishery products may only be imported from
+                  establishments holding a valid EU approval number. Without one, the
+                  processing statement will not be endorsed and the consignment will be
+                  refused at the border.
+                </div>
+                ${detail}
+                <p style="color:#6b7280;font-size:12px;">Add or renew it on the organisation
+                  under <b>Regulatory → EU Facility Approval</b>, then generate again.
+                  You can still save a draft to continue working, but it will be incomplete.</p>`) +
+          foot(btn('Save as draft anyway', 'EUCatchGen._approvalGo()') +
+               btn('Stop and fix this', 'EUCatchGen._approvalStop()', true)));
+
+      window.EUCatchGen._approvalGo   = () => resolve(true);
+      window.EUCatchGen._approvalStop = () => resolve(false);
+    });
+  }
+
   function showDone(docs, bundle) {
     const rows = docs.map(d => `
       <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f5f5f5;">
@@ -1149,6 +1250,16 @@ const EUCatchGen = (function () {
         const ps = await buildPS(GEN.item, GEN.batchesForItem,
           made.map(d => ({ id: d.id, serial_number: d.serial_number, flag_state: d.flag_state })), gate);
         ps.endorsing_authority = endorsing;
+
+        const ap = ps.processing_plant && ps.processing_plant.approval;
+        if (!ap || ap.expired) {
+          const go = await askApproval(ps.processing_plant && ps.processing_plant.name, ap);
+          if (!go) {
+            showDone(made, GEN.bundle);   /* the catch certificates still stand */
+            return;
+          }
+        }
+
         made.push(await saveDoc('PS', ps, null));
       }
 
@@ -1367,6 +1478,47 @@ const EUCatchGen = (function () {
     setVal('psPlantCountry', p.processing_plant && p.processing_plant.country);
     setVal('psPlantIsoDisplay', p.processing_plant && p.processing_plant.iso);
     setVal('psApprovalNumberBox', p.processing_plant && p.processing_plant.approval_number);
+    setVal('psPlantAddress', p.processing_plant && p.processing_plant.address);
+
+    /* Detail and status for the approval box */
+    (function () {
+      const ap = (p.processing_plant || {}).approval;
+      const boxEl = document.getElementById('psApprovalNumberBox');
+      if (!boxEl) return;
+      const host = boxEl.closest('.eu-section');
+      if (!host || host.querySelector('.eucg-approval')) return;
+
+      const note = document.createElement('div');
+      note.className = 'eucg-approval';
+      note.style.cssText = 'margin-top:10px;font-size:12px;';
+
+      if (!ap) {
+        note.innerHTML = `<div class="hint-banner" style="margin:0;">
+          ⚠️ No EU facility approval is recorded for
+          <b>${esc((p.processing_plant || {}).name || 'this plant')}</b>.
+          A processing plant must hold a valid EU establishment approval for the
+          consignment to enter the EU. Add it under the organisation's
+          <b>Regulatory → EU Facility Approval</b> certification, then regenerate.</div>`;
+      } else {
+        const bits = [];
+        if (ap.issuing_body) bits.push(`Issued by ${esc(ap.issuing_body)}`);
+        if (ap.valid_from)   bits.push(`Valid from ${esc(ap.valid_from)}`);
+        bits.push(ap.valid_until ? `Valid until ${esc(ap.valid_until)}` : 'No expiry recorded');
+        if (ap.scope)        bits.push(esc(ap.scope));
+
+        note.innerHTML =
+          `<div style="color:#6b7280;">${bits.join(' · ')}
+             ${ap.url ? ` · <a href="${esc(ap.url)}" target="_blank" rel="noopener"
+               style="color:#1a6fdb;">certificate</a>` : ''}</div>` +
+          (ap.expired ? `<div class="hint-banner" style="margin-top:8px;margin-bottom:0;">
+             ⚠️ This approval expired on ${esc(ap.valid_until)}. It cannot support an export
+             to the EU until renewed.</div>` : '') +
+          (ap.no_expiry ? `<div class="hint-banner" style="margin-top:8px;margin-bottom:0;">
+             No expiry date is recorded against this approval. Endorsing authorities
+             normally expect one — check the certificate.</div>` : '');
+      }
+      host.appendChild(note);
+    })();
     setVal('psExpName', p.exporter && p.exporter.name);
     setVal('psExpCountry', p.exporter && p.exporter.country);
     setVal('psExpIsoDisplay', p.exporter && p.exporter.iso);
