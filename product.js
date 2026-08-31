@@ -142,6 +142,13 @@ async function loadProductForEdit(id) {
   setDualMode('packStyle', p.pack_style);
   setDualMode('packMedium', p.pack_medium);
   setSelectField('primaryPackaging', p.primary_packaging);
+  // Inner unit
+  if (p.inner_unit) {
+    const cb = document.getElementById('enableInnerUnit');
+    if (cb) { cb.checked = true; toggleInnerUnit(cb); }
+    const iu = document.getElementById('innerUnit');
+    if (iu) iu.value = p.inner_unit;
+  }
   // New packaging fields
   if (document.getElementById('packagingTypeDesc'))   document.getElementById('packagingTypeDesc').value   = p.packaging_type_desc   || '';
   if (document.getElementById('packagingMaterialCode')) document.getElementById('packagingMaterialCode').value = p.packaging_material_code || '';
@@ -374,6 +381,13 @@ function initDualModeToggles() {
 }
 
 // ── INNER PACKAGING CHECKBOX ──────────────────────────────────
+function toggleInnerUnit(checkbox) {
+  const wrap = document.getElementById('innerUnitWrap');
+  if (!wrap) return;
+  wrap.style.display = checkbox.checked ? 'block' : 'none';
+  if (!checkbox.checked) document.getElementById('innerUnit').value = '';
+}
+
 function toggleInnerPackaging(checkbox) {
   const select = document.getElementById('innerPackaging');
   select.disabled = checkbox.checked;
@@ -812,6 +826,9 @@ function collectFormData() {
       primary_packaging: document.getElementById('primaryPackaging')?.value || '',
       inner_packaging: document.getElementById('innerPackaging')?.value || '',
       no_inner_packaging: document.getElementById('noInnerPackaging')?.checked || false,
+      inner_unit: document.getElementById('enableInnerUnit')?.checked
+        ? (parseInt(document.getElementById('innerUnit')?.value) || null)
+        : null,
       packaging_type_desc:    document.getElementById('packagingTypeDesc')?.value.trim()    || null,
       packaging_material_code: document.getElementById('packagingMaterialCode')?.value.trim() || null,
       packaging_material_qty:  document.getElementById('packagingMaterialQty')?.value  ? parseFloat(document.getElementById('packagingMaterialQty').value) : null,
