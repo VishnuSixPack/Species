@@ -1191,7 +1191,7 @@ const EUCatchGen = (function () {
     }
 
     FORM().ccVessels = (p.vessels || []).map(v => ({
-      name: v.name, flag: v.flag_state, imo: v.imo,
+      vessel_id: v.vessel_id, name: v.name, flag: v.flag_state, imo: v.imo,
       reg: v.registration_number || '', callsign: v.ircs || '',
       port: v.home_port || '', mobileSat: v.mmsi || '', procType: v.gear_type || '',
       licence: v.licence_no
@@ -1528,6 +1528,127 @@ const EUCatchGen = (function () {
     window.openCommodityModal = wrapped;
   }
 
+
+  /* ------------------------------------------------------------------
+     Fishing licence picker.
+
+     The page ships with a sample lookup and a native prompt() for adding
+     one. Both are replaced here: the list reads vessel_other_licenses, and
+     adding a licence uses a proper form that captures the authority and the
+     validity dates the certificate actually needs.
+     ------------------------------------------------------------------ */
+  function hookFishingLicence() {
+    if (typeof openFishingLicenceModal !== 'function' || openFishingLicenceModal.__eucg) return;
+
+    const fmt = d => d ? new Date(d).toLocaleDateString('en-GB',
+      { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+
+    const openReal = async function (vesselIdx) {
+      const form = FORM();
+      const vessel = (form.ccVessels || [])[vesselIdx];
+      if (!vessel) return;
+      form.licenceVesselIdx = vesselIdx;
+
+      const title = document.getElementById('licenceModalTitle');
+      if (title) title.textContent = `${vessel.name || 'Vessel'} — select fishing licence`;
+
+      const bodyEl = document.getElementById('licenceResultsBody');
+      if (bodyEl) bodyEl.innerHTML =
+        '<tr><td colspan="4" style="text-align:center;color:#6b7280;padding:14px;">Loading…</td></tr>';
+      document.getElementById('licencePickerModal').classList.add('open');
+
+      let rows = [];
+      try {
+        let q = sb.from('vessel_other_licenses').select('*');
+        q = vessel.vessel_id ? q.eq('vessel_id', vessel.vessel_id) : q.limit(0);
+        const { data } = await q.order('start_date', { ascending: false });
+        rows = data || [];
+      } catch (e) { log('licence lookup failed:', e.message); }
+
+      GEN.licences = rows;
+      if (!bodyEl) return;
+
+      bodyEl.innerHTML = rows.length ? rows.map((l, i) => `
+        <tr>
+          <td><b>${esc(l.license_number || '—')}</b>${l.licensing_authority
+            ? `<br><small style="color:#6b7280;">${esc(l.licensing_authority)}</small>` : ''}</td>
+          <td>${fmt(l.start_date)}</td>
+          <td>${fmt(l.end_date)}</td>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-sm" onclick="EUCatchGen._useLicence(${i})">✓ Select</button>
+          </td>
+        </tr>`).join('')
+        : `<tr><td colspan="4" style="text-align:center;color:#6b7280;padding:14px;">
+             No licences on file for ${esc(vessel.name || 'this vessel')} yet.</td></tr>`;
+    };
+    openReal.__eucg = true;
+    window.openFishingLicenceModal = openReal;
+
+    window.EUCatchGen._useLicence = idx => {
+      const form = FORM();
+      const l = (GEN.licences || [])[idx];
+      if (!l) return;
+      const v = form.ccVessels[form.licenceVesselIdx];
+      v.licence = {
+        reference: l.license_number,
+        expiration: l.end_date
+          ? new Date(l.end_date).toLocaleDateString('en-GB') : 'Not stated',
+        authority: l.licensing_authority || null,
+        start_date: l.start_date, end_date: l.end_date
+      };
+      if (typeof renderCCVesselTable === 'function') renderCCVesselTable();
+      if (typeof closeModal === 'function') closeModal('licencePickerModal');
+    };
+
+    /* Replace the native prompt with a form matching the rest of the page */
+    const createReal = function () {
+      const form = FORM();
+      const v = (form.ccVessels || [])[form.licenceVesselIdx];
+      if (!v) return;
+      if (typeof closeModal === 'function') closeModal('licencePickerModal');
+
+      const field = (id, label, type, ph) => `
+        <div style="margin-bottom:12px;">
+          <label style="font-size:11px;font-weight:600;color:#5a5a5a;display:block;">${esc(label)}</label>
+          <input id="${id}" type="${type}" ${ph ? `placeholder="${esc(ph)}"` : ''}
+            style="width:100%;padding:8px 10px;border:1px solid #e2e5ec;border-radius:4px;
+            font-family:inherit;font-size:13px;margin-top:5px;">
+        </div>`;
+
+      box(head(`Add a fishing licence — ${v.name || 'vessel'}`) +
+          body(`<p style="margin-bottom:14px;color:#6b7280;font-size:12px;">
+              Box 2 of the catch certificate requires the licence number and the date it is
+              valid until. Enter them exactly as they appear on the licence.</p>
+            ${field('eucgLicNo', 'Licence number', 'text', 'e.g. PNG-FL-2026-0881')}
+            ${field('eucgLicAuth', 'Licensing authority', 'text', 'e.g. National Fisheries Authority')}
+            <div style="display:flex;gap:12px;">
+              <div style="flex:1;">${field('eucgLicFrom', 'Valid from', 'date', '')}</div>
+              <div style="flex:1;">${field('eucgLicTo', 'Valid until', 'date', '')}</div>
+            </div>`) +
+          foot(btn('Cancel', 'EUCatchGen.close()') +
+               btn('Add licence', 'EUCatchGen._saveLicence()', true)));
+    };
+    createReal.__eucg = true;
+    window.createNewFishingLicence = createReal;
+
+    window.EUCatchGen._saveLicence = () => {
+      const ref = (document.getElementById('eucgLicNo').value || '').trim();
+      if (!ref) { alert('The licence number is required.'); return; }
+      const to = document.getElementById('eucgLicTo').value;
+      const form = FORM();
+      const v = form.ccVessels[form.licenceVesselIdx];
+      v.licence = {
+        reference: ref,
+        expiration: to ? new Date(to).toLocaleDateString('en-GB') : 'Not stated',
+        authority: (document.getElementById('eucgLicAuth').value || '').trim() || null,
+        start_date: document.getElementById('eucgLicFrom').value || null,
+        end_date: to || null
+      };
+      if (typeof renderCCVesselTable === 'function') renderCCVesselTable();
+      close();
+    };
+  }
+
   /* ================================================================= init */
 
   function init(cfg) {
@@ -1536,6 +1657,7 @@ const EUCatchGen = (function () {
     else { console.error('[EUCatchGen] No Supabase client available.'); return; }
     if (cfg.docBucket) DOC_BUCKET = cfg.docBucket;
     hookCommodityPicker();
+    hookFishingLicence();
 
     const docId = qs('doc');
     if (docId) { openInForm(docId); return; }
