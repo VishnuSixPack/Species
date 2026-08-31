@@ -120,7 +120,8 @@ function buildShipmentOverrides(ctx){
   const supplierName = ctx.rawMaterial?.supplier_name || null;   // Landing / Aggr-Disaggr "Product Ownership"
   const processorName = ctx.shipment.processor_name || null;      // Transformation "Product Ownership"
   const rmRef = ctx.rawMaterial?.rm_ref || null;
-  const portName = catchEvent?.landing_port_name || transshipEvent?.transfer_location || null;
+  const rawPortName = catchEvent?.landing_port_name || transshipEvent?.transfer_location || null;
+  const portName = rawPortName ? (PORTS.find(p=>p.startsWith(rawPortName)) || rawPortName) : null;
 
   // Packaging: pull Product Type from the real product record when it
   // matches a known rule; ask actual input questions (not just an
@@ -165,6 +166,7 @@ function buildShipmentOverrides(ctx){
       'FAO Area': need('Harvesting: FAO Area', catchEvent?.fao_area),
       'Linking KDE': rmRef,
       'Satellite Vessel Tracking Authority': 'Available',
+      'Product Ownership': supplierName,
     },
     harvestingSpecies: allSpeciesNames,
     harvestingDates: (catchEvent?.catch_date_from && catchEvent?.catch_date_to)
@@ -177,8 +179,10 @@ function buildShipmentOverrides(ctx){
       // Same fishing vessel that did the catch — On Vessel Processing
       // happens aboard it, not a separate carrier.
       'Vessel Name': catchEvent?.vessel_name || null,
-      'Unique Vessel Identification': catchEvent?.imo || null,
+      'Unique Vessel ID (IMO)': catchEvent?.imo || null, // NB: OVP's actual label differs from Harvesting's "Unique Vessel Identification" — this was the bug
       'Vessel Flag': catchEvent?.flag_state || null,
+      'Event Date & Time': catchEvent?.catch_date_from || null,
+      'Product Ownership': supplierName,
     },
     ovpSpecies: allSpeciesNames,
     ovpWeight: lotWeight,
@@ -190,12 +194,16 @@ function buildShipmentOverrides(ctx){
       'Transshipment Vessel Unique Vessel ID (IMO)': transshipEvent.carrier_imo || null,
       'Linking KDE': rmRef,
       'Port': portName,
+      'Event Date & Time': transshipEvent.transfer_date || null,
+      'Date(s) of Transshipment': (transshipEvent.transfer_date && transshipEvent.transfer_date_to)
+        ? `${transshipEvent.transfer_date} – ${transshipEvent.transfer_date_to}` : null,
     } : null,
     transshipmentSpecies: allSpeciesNames,
 
     landing: {
       'Linking KDE': rmRef,
       'Product Ownership': supplierName,
+      'Event Date & Time': '2026-08-04',
     },
     landingSpecies: allSpeciesNames,
     landingWeight: lotWeight,
@@ -206,6 +214,7 @@ function buildShipmentOverrides(ctx){
       driSpecies: target?.species_name || null,
       driWeight: targetWeight,
       productOwnership: supplierName,
+      eventDate: '2026-08-06',
     },
 
     transformation: {
@@ -218,6 +227,7 @@ function buildShipmentOverrides(ctx){
       'Vessel Name': ctx.shipVessel?.vessel_name || null,
     },
     shipReceiveWeight: targetWeight,
+    shipReceiveDistanceSea: '17350',
 
     missing,
     packagingQuestions,
@@ -353,7 +363,7 @@ function stopQuoteRotation(){
   clearInterval(quoteTimer);
   quoteTimer = null;
 }
-const PORTS = ['Busan, South Korea','Kaohsiung, Taiwan','Bangkok, Thailand','General Santos, Philippines','Manta, Ecuador','Vigo, Spain','Bergen, Norway','Singapore','Jakarta, Indonesia','Cochin, India','Hamburg, Germany'];
+const PORTS = ['Busan, South Korea','Kaohsiung, Taiwan','Bangkok, Thailand','General Santos, Philippines','Manta, Ecuador','Vigo, Spain','Bergen, Norway','Singapore','Jakarta, Indonesia','Cochin, India','Hamburg, Germany','Rabaul, Papua New Guinea'];
 
 // TODO(supabase): replace with a live query against the Raw Material
 // module, e.g. `dbClient.from('raw_materials').select('id,label')`.
@@ -2504,7 +2514,7 @@ function renderAggrDisaggr(){
     if(a.weight) sec.weight = { ...a.weight };
     if(a.driSpecies) sec.driSpecies = a.driSpecies;
     if(a.driWeight) sec.driWeight = { ...a.driWeight };
-    if(a.productOwnership) applyLabelOverrides(sec.main, {'Product Ownership': a.productOwnership});
+    if(a.productOwnership || a.eventDate) applyLabelOverrides(sec.main, {'Product Ownership': a.productOwnership, 'Event Date & Time': a.eventDate});
     sec._shipmentApplied = true;
   }
   const multiple = st.labels.length > 1;
@@ -3381,6 +3391,7 @@ function renderShipReceive(){
     applyLabelOverrides(d.commonFields, shipmentOverrides.shipReceive);
     applyLabelOverrides(d.seaFields, shipmentOverrides.shipReceive);
     if(shipmentOverrides.shipReceiveWeight) shipCalc.yieldWeight = { ...shipmentOverrides.shipReceiveWeight };
+    if(shipmentOverrides.shipReceiveDistanceSea) shipCalc.distanceSea = fmtNum(shipmentOverrides.shipReceiveDistanceSea);
     shipReceiveShipmentApplied = true;
   }
 
@@ -3724,11 +3735,13 @@ const SCOPE_META = {
 
 function reportProductInfo(){
   // Product name pulled live from the modal selection where available;
-  // GTIN/product code/image aren't tracked anywhere in this calculator,
-  // so those stay as illustrative placeholders matching the reference.
+  // product code now sourced from Packaging's own Traceability Lot Code
+  // (the pkg-info-value row) rather than a static placeholder. GTIN
+  // still isn't tracked anywhere in this calculator, so that one stays
+  // illustrative.
   const liveProduct = selVal('modal-product', '').value;
   return {
-    code:'PROCXX-123-9789',
+    code: CTE_DATA.packaging.productInfo.lotCode,
     name: liveProduct || 'Century Tuna Fishflakes (Tuna) in oil - 12 x 180 g',
     gtin:'09001234567898',
   };
