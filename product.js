@@ -150,7 +150,6 @@ async function loadProductForEdit(id) {
     if (iu) iu.value = p.inner_unit;
   }
   // New packaging fields
-  if (document.getElementById('packagingTypeDesc'))   document.getElementById('packagingTypeDesc').value   = p.packaging_type_desc   || '';
   if (document.getElementById('packagingMaterialCode')) document.getElementById('packagingMaterialCode').value = p.packaging_material_code || '';
   if (document.getElementById('packagingMaterialQty'))  document.getElementById('packagingMaterialQty').value  = p.packaging_material_qty  || '';
   if (document.getElementById('packagingMaterialUnit') && p.packaging_material_unit) document.getElementById('packagingMaterialUnit').value = p.packaging_material_unit;
@@ -829,7 +828,6 @@ function collectFormData() {
       inner_unit: document.getElementById('enableInnerUnit')?.checked
         ? (parseInt(document.getElementById('innerUnit')?.value) || null)
         : null,
-      packaging_type_desc:    document.getElementById('packagingTypeDesc')?.value.trim()    || null,
       packaging_material_code: document.getElementById('packagingMaterialCode')?.value.trim() || null,
       packaging_material_qty:  document.getElementById('packagingMaterialQty')?.value  ? parseFloat(document.getElementById('packagingMaterialQty').value) : null,
       packaging_material_unit: document.getElementById('packagingMaterialUnit')?.value  || 'g',
