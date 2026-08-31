@@ -1586,6 +1586,20 @@ const EUCatchGen = (function () {
         '<tr><td colspan="6" style="text-align:center;color:#6b7280;padding:14px;">Loading…</td></tr>';
       document.getElementById('licencePickerModal').classList.add('open');
 
+      /* Older documents were saved without the vessel's id. Recover it from
+         the register by IMO, then by name, so the licence list still works. */
+      if (!vessel.vessel_id && (vessel.imo || vessel.name)) {
+        try {
+          let q = sb.from('vessels').select('id, current_name, imo');
+          q = vessel.imo ? q.eq('imo', vessel.imo) : q.ilike('current_name', vessel.name);
+          const { data } = await q.limit(1);
+          if (data && data[0]) {
+            vessel.vessel_id = data[0].id;
+            log('recovered vessel id for', vessel.name);
+          }
+        } catch (e) { log('vessel lookup failed:', e.message); }
+      }
+
       let rows = [];
       if (vessel.vessel_id) {
         const results = await Promise.all(SOURCES.map(async src => {
@@ -1626,7 +1640,10 @@ const EUCatchGen = (function () {
           </td></tr>`;
       }).join('')
         : `<tr><td colspan="6" style="text-align:center;color:#6b7280;padding:14px;">
-             No licences or authorisations on file for ${esc(vessel.name || 'this vessel')} yet.</td></tr>`;
+             No licences or authorisations on file for ${esc(vessel.name || 'this vessel')}.
+             ${vessel.vessel_id ? '' :
+               '<br><small>This vessel could not be matched in the vessel register, so nothing could be looked up.</small>'}
+             </td></tr>`;
     };
     openReal.__eucg = true;
     window.openFishingLicenceModal = openReal;
