@@ -180,6 +180,13 @@ function renderProduct(p, allergens, nutrition, artwork) {
   setText('d-pack_medium', p.pack_medium);
   setText('d-primary_packaging', p.primary_packaging);
   setText('d-inner_packaging', p.no_inner_packaging ? 'No Secondary / Inner Packaging' : p.inner_packaging);
+  setText('d-packaging_type_desc', p.packaging_type_desc);
+  setText('d-packaging_material_code', p.packaging_material_code);
+  setText('d-packaging_material_qty',
+    p.packaging_material_qty !== null && p.packaging_material_qty !== undefined
+      ? `${p.packaging_material_qty} ${p.packaging_material_unit || 'g'}`
+      : null
+  );
 
   // ── Storage ──
   setText('d-min_temp', p.min_temp_c !== null ? `${p.min_temp_c} °C` : null);
