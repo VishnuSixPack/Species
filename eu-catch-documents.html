@@ -189,6 +189,10 @@ async function load(){
     const { data: bundles, error: e2 } = await sb.from('document_bundles')
       .select('*').order('created_at', { ascending: false });
     if (e2) throw e2;
+    /* Newest version of each consignment first */
+    (bundles || []).sort((a, b) =>
+      String(b.base_ref || b.bundle_ref).localeCompare(String(a.base_ref || a.bundle_ref)) ||
+      ((b.version || 1) - (a.version || 1)));
 
     S.docs = docs || [];
     S.bundles = bundles || [];
@@ -253,8 +257,8 @@ function rowsFor(docs){
       <td>${fmtDate(d.created_at)}</td>
       <td style="text-align:right;white-space:nowrap;">
         <button class="btn btn-sm" onclick="event.stopPropagation();openDoc('${d.id}')">Open</button>
-        ${d.doc_type === 'CC' || d.doc_type === 'SC'
-          ? `<button class="btn btn-sm" onclick="event.stopPropagation();printDoc('${d.id}')">PDF</button>` : ''}
+        ${d.doc_type === 'ID' ? ''
+          : `<button class="btn btn-sm" onclick="event.stopPropagation();printDoc('${d.id}')">PDF</button>`}
         <button class="btn btn-sm" style="color:var(--danger);border-color:#f0c4c0;"
           onclick="event.stopPropagation();deleteDoc('${d.id}')">Delete</button>
       </td>

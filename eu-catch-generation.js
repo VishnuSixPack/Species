@@ -870,24 +870,38 @@ const EUCatchGen = (function () {
     return prefix + String(last + 1).padStart(7, '0');
   }
 
+  /* Each generation run produces a version. The first is V1; regenerating the
+     same shipment creates V2 alongside it rather than overwriting, so an
+     earlier submission stays exactly as it was issued. */
   async function ensureBundle() {
     if (GEN.bundle) return GEN.bundle;
     const s = GEN.shipment;
     if (!s) return null;
 
-    const { data: existing } = await sb.from('document_bundles')
-      .select('*').eq('shipment_id', s.id).limit(1);
-    if (existing && existing[0]) { GEN.bundle = existing[0]; return GEN.bundle; }
+    const { data: prior } = await sb.from('document_bundles')
+      .select('*').eq('shipment_id', s.id).order('version', { ascending: false });
 
-    const { data: ref, error: e1 } = await sb.rpc('next_bundle_ref', {
-      p_org: s.organisation_id, p_destination: s.destination_country
-    });
-    if (e1) throw new Error('Could not generate a bundle reference: ' + e1.message);
+    let baseRef, version;
+    if (prior && prior.length) {
+      baseRef = prior[0].base_ref || String(prior[0].bundle_ref).replace(/ V\d+$/, '');
+      version = Math.max.apply(null, prior.map(b => b.version || 1)) + 1;
+      log('regenerating', baseRef, '→ V' + version);
+    } else {
+      const { data: ref, error: e1 } = await sb.rpc('next_bundle_ref', {
+        p_org: s.organisation_id, p_destination: s.destination_country
+      });
+      if (e1) throw new Error('Could not generate a bundle reference: ' + e1.message);
+      baseRef = ref;
+      version = 1;
+    }
 
     const { data, error } = await sb.from('document_bundles').insert({
-      organisation_id: s.organisation_id, shipment_id: s.id, bundle_ref: ref, status: 'draft'
+      organisation_id: s.organisation_id, shipment_id: s.id,
+      base_ref: baseRef, version, bundle_ref: `${baseRef} V${version}`,
+      status: 'draft'
     }).select().single();
     if (error) throw new Error('Could not create the bundle: ' + error.message);
+
     GEN.bundle = data;
     return data;
   }
@@ -968,10 +982,12 @@ const EUCatchGen = (function () {
             already been generated from this source${bundleRef
               ? `, filed under <b style="color:#1a6fdb;">${esc(bundleRef)}</b>` : ''}.</p>
             ${rows}
-            <p style="margin-top:14px;color:#6b7280;font-size:12px;">Generating again creates a
-            second set — the existing ones are not replaced or deleted.</p>`) +
+            <p style="margin-top:14px;color:#6b7280;font-size:12px;">Generating again creates the
+            next version${bundleRef ? ' of ' + esc(String(bundleRef).replace(/ V\d+$/, '')) : ''}.
+            The existing documents stay exactly as they are — an issued version is never
+            altered.</p>`) +
           foot(btn('Open the existing ones', "location.href='eu-catch-documents.html'") +
-               btn('Generate anyway', 'EUCatchGen._dupYes()', true)));
+               btn('Generate next version', 'EUCatchGen._dupYes()', true)));
       window.EUCatchGen._dupYes = () => resolve(true);
     });
   }
