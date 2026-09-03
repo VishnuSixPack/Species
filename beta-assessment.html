@@ -7987,21 +7987,46 @@ function buildReview(){
       const currentScore=rvOverrides[q.id]!==undefined?rvOverrides[q.id]:defaultScore;
       const safeQid=q.id.replace(/[^a-zA-Z0-9]/g,'_');
       const isOverridden=rvOverrides[q.id]!==undefined;
-      const skippedFlag=r.autoSkipped?`<span style="font-size:9px;font-weight:700;color:#e63946;background:#fff5f5;border:1px solid #fecaca;border-radius:5px;padding:1px 7px;margin-left:6px;">⚠ Skipped — auto-defaulted</span>`:'';
+      const skippedFlag=r.autoSkipped?`<span style="font-size:9px;font-weight:700;color:#e63946;background:#fff5f5;border:1px solid #fecaca;border-radius:5px;padding:1px 7px;margin-left:6px;">⚠ Skipped</span>`:'';
+
+      // Evidence source flags
+      const hasManualDoc=evs.some(e=>e._manual||((!e._fromModule)&&(e.type==='doc'||e.type==='cert'||e.type==='photo')));
+      const hasModuleItem=r._hasModuleItem||evs.some(e=>e._fromModule);
+
+      // Source badge — tells reviewer exactly how this KDE was answered
+      let srcBadge='';
+      if(r.ans==='av'&&hasManualDoc){
+        srcBadge='<span style="font-size:9px;font-weight:700;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:1px 6px;margin-left:6px;">📄 Company doc uploaded</span>';
+      } else if(r.ans==='av'&&!hasModuleItem){
+        srcBadge='<span style="font-size:9px;font-weight:700;color:#166534;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:4px;padding:1px 6px;margin-left:6px;">✅ Manually confirmed</span>';
+      } else if(r.ans==='pa'&&hasModuleItem&&!hasManualDoc){
+        srcBadge='<span style="font-size:9px;font-weight:700;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:1px 6px;margin-left:6px;">✦ From SmarTuna records — no company doc</span>';
+      } else if(r.ans==='pa'&&hasModuleItem&&hasManualDoc){
+        srcBadge='<span style="font-size:9px;font-weight:700;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:1px 6px;margin-left:6px;">◑ SmarTuna record + company doc</span>';
+      } else if(r.ans==='pa'&&!hasModuleItem){
+        srcBadge='<span style="font-size:9px;font-weight:700;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:1px 6px;margin-left:6px;">◑ Manually set Partial</span>';
+      }
+
+      // Evidence chips — amber for module-sourced, blue for company-uploaded
+      const evIcons={'cert':'🏅','url':'🔗','doc':'📄','ref':'📋','photo':'🖼️','statement':'✍️'};
+      const evChipsHtml=evs.map(e=>{
+        const safeVal=btoa(unescape(encodeURIComponent(JSON.stringify({type:e.type,value:e.value||'',name:e.name||''}))));
+        const isModule=!!e._fromModule;
+        const chipStyle=isModule
+          ?'background:#fffbeb;border:1px solid #fde68a;color:#92400e;'
+          :'background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;';
+        return `<span style="display:inline-flex;align-items:center;gap:4px;${chipStyle}border-radius:6px;padding:2px 8px;font-size:10px;font-weight:600;cursor:pointer;" onclick="previewEvFromData(this)" data-ev="${safeVal}">${isModule?'✦ ':''}${evIcons[e.type]||'📎'} ${(e.name||e.value||'').slice(0,30)} 👁</span>`;
+      }).join('');
 
       html+=`<div class="rv-kde-row" id="rvrow_${safeQid}">
         <div class="rv-kde-icon">${r.ans==='av'?'✅':r.ans==='pa'?'🔶':r.ans==='un'?'❌':'⬜'}</div>
         <div style="flex:1;">
-          <div class="rv-kde-q">${q.q}${skippedFlag}</div>
+          <div class="rv-kde-q">${q.q}${skippedFlag}${srcBadge}</div>
+          ${r.gapNote?`<div style="font-size:10px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:4px 8px;margin-top:4px;">⚠ ${r.gapNote}</div>`:''}
+          ${r.moduleNote&&!r.gapNote?`<div style="font-size:10px;color:#1e40af;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:4px 8px;margin-top:4px;">✦ ${r.moduleNote}</div>`:''}
           ${r.note?`<div class="rv-kde-note">Partial note: ${r.note}</div>`:''}
           ${r.unNote?`<div class="rv-kde-note" style="color:#e63946;">Not available note: ${r.unNote}</div>`:''}
-          ${evs.length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">
-            ${evs.map((e,ei)=>{
-              const safeVal=btoa(unescape(encodeURIComponent(JSON.stringify({type:e.type,value:e.value||'',name:e.name||''}))));
-              return `<span style="display:inline-flex;align-items:center;gap:4px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:600;color:#1e40af;cursor:pointer;" onclick="previewEvFromData(this)"
-                data-ev="${safeVal}">${{'cert':'🏅','url':'🔗','doc':'📄','ref':'📋','photo':'🖼️','statement':'✍️'}[e.type]||'📎'} ${(e.name||e.value||'').slice(0,30)} 👁</span>`;
-            }).join('')}
-          </div>`:''}
+          ${evs.length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;">${evChipsHtml}</div>`:''}
           <div class="rv-score-edit" id="rvscore_${safeQid}">
             <span style="font-size:11px;color:#6b7280;">Score: <strong style="color:${isOverridden?'#e63946':'#1a1a2e'};">${currentScore}</strong>/50${isOverridden?' <span style="color:#e63946;font-weight:600;">(edited)</span>':''}</span>
             <span class="rv-score-editlink" onclick="openScoreEditor('${q.id}')">✎ Edit</span>
