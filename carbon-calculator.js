@@ -884,7 +884,7 @@ const CTE_DATA = {
     subtabs:['Packaging Emission','Circularity'],
     scope:'Scope 3',
     productInfo:{
-      facility:'MMP International Co., Ltd.',
+      facility:'JP International Co., Ltd.',
       lotCode:'MIN56KCCDC3ZFI',
       gtin:'9123658622044',
       product:'Canned Tuna in Olive Oil', // TODO: fetch from Product module
@@ -1030,7 +1030,15 @@ function computePackagingBreakdown(){
     const material = ov?.material ?? defaultMaterial;
     const qty = (ov?.qty !== undefined && ov?.qty !== null) ? ov.qty : defaultQty;
     const factor = pkgFactorForType(type);
-    const emission = (qty * factor) / 1000; // qty in grams, factor in kg CO2e per kg — /1000 converts g to kg
+    // Emission = Quantity x Factor directly — NO /1000 conversion.
+    // Confirmed against 6 independent values in the authoritative
+    // reference table (Can: 37x2.85=105.45, Carton: 54.17x0.80=43.33,
+    // Wooden Pallet: 17.36x5.00=86.81, Shrink wrap: 0.10x3.14=0.31,
+    // Printed labels: 0.48x1.56=0.75, Lacquer: 0.08x0.19=0.02 — every
+    // one matches exactly with no division). An earlier /1000 "fix" was
+    // correct for the OLD free-form grid's different illustrative
+    // factors, but was carried over incorrectly into this rules engine.
+    const emission = qty * factor;
     return { type, material, factor, qty, emission };
   });
   const primary = layer(rules.primary, packagingOverrides.primary);
@@ -1545,12 +1553,11 @@ const PACKAGING_RULES = {
     secondary: [
       { type:'Carton', material:'Paperboard', factor:0.80,
         qty:(ctx)=> ctx.innerUnit>0 ? ctx.cartonAvgWeight/ctx.innerUnit : 0 },
-      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.06 },
+      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.10 },
     ],
     tertiary: [
       { type:'Wooden pallet', material:'Wood', factor:5.00,
         qty:(ctx)=> (ctx.innerUnit>0 && ctx.palletUnits>0) ? ctx.palletWeight/(ctx.innerUnit*ctx.palletUnits) : 0 },
-      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.06 },
     ],
   },
   'Pouch': {
@@ -1568,7 +1575,6 @@ const PACKAGING_RULES = {
     tertiary: [
       { type:'Wooden pallet', material:'Wood', factor:5.00,
         qty:(ctx)=> (ctx.innerUnit>0 && ctx.palletUnits>0) ? ctx.palletWeight/(ctx.innerUnit*ctx.palletUnits) : 0 },
-      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.61 },
     ],
   },
   'Plastic Cup': {
@@ -1586,7 +1592,6 @@ const PACKAGING_RULES = {
     tertiary: [
       { type:'Wooden pallet', material:'Wood', factor:5.00,
         qty:(ctx)=> (ctx.innerUnit>0 && ctx.palletUnits>0) ? ctx.palletWeight/(ctx.innerUnit*ctx.palletUnits) : 0 },
-      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.17 },
     ],
   },
   'Plastic Bowl': {
@@ -1604,7 +1609,6 @@ const PACKAGING_RULES = {
     tertiary: [
       { type:'Wooden pallet', material:'Wood', factor:5.00,
         qty:(ctx)=> (ctx.innerUnit>0 && ctx.palletUnits>0) ? ctx.palletWeight/(ctx.innerUnit*ctx.palletUnits) : 0 },
-      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.22 },
     ],
   },
   'Shelf Ready Tray': {
@@ -1622,7 +1626,6 @@ const PACKAGING_RULES = {
     tertiary: [
       { type:'Wooden pallet', material:'Wood', factor:5.00,
         qty:(ctx)=> (ctx.innerUnit>0 && ctx.palletUnits>0) ? ctx.palletWeight/(ctx.innerUnit*ctx.palletUnits) : 0 },
-      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.21 },
     ],
   },
 };
@@ -1640,10 +1643,10 @@ const PKG_MATERIAL_OPTIONS = ['Not Applicable', ...new Set(
 
 const packagingContext = {
   productType: 'Can',
-  netWeightG: 100,
-  packagingMaterialQuantity: 37, // matches the confirmed real value for Century Tuna Flakes (37g)
-  innerUnit: 24,
-  palletWeight: 22, palletUnits: 120,
+  netWeightG: 180,  // solved from reference table: 0.48 / 0.00267 = 179.78 ≈ 180
+  packagingMaterialQuantity: 37, // confirmed real value for Century Tuna Flakes
+  innerUnit: 12,    // solved from reference: 54.17 = 650(Medium tier avg) / 12
+  palletWeight: 25, palletUnits: 120, // 25kg matches the doc's stated pallet weight; 120 = 10x12
   answered: false, // true once real/user-supplied values are in (vs. demo defaults)
 };
 function packagingCtx(){
