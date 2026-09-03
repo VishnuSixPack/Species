@@ -1468,6 +1468,73 @@ const EUCatchGen = (function () {
     window.updateCCTotals = patched;
   }
 
+
+  /* --------------------------------------------------------------------
+     Thousand separators on the weight inputs.
+
+     The form renders these as <input type="number">, which browsers refuse
+     to show commas in. Switch them to text, format the displayed value, and
+     strip the separators again before the form's own handlers parse them —
+     otherwise parseFloat('311,950') returns 311.
+     -------------------------------------------------------------------- */
+  const WEIGHT_FIELDS = ['estWeight', 'netWeight', 'verifiedWeight'];
+
+  function formatWeightInputs() {
+    document.querySelectorAll('#ccCommodityList input').forEach(inp => {
+      const handler = inp.getAttribute('oninput') || '';
+      if (!/updateCCWeight/.test(handler)) return;
+      if (!WEIGHT_FIELDS.some(f => handler.includes(`'${f}'`))) return;
+      if (inp.dataset.eucgFmt) { paint(inp); return; }
+
+      inp.dataset.eucgFmt = '1';
+      inp.type = 'text';
+      inp.setAttribute('inputmode', 'decimal');
+
+      /* Plain number while editing, separated when not */
+      inp.addEventListener('focus', () => {
+        inp.value = String(inp.value).replace(/,/g, '');
+      });
+      inp.addEventListener('blur', () => paint(inp));
+      paint(inp);
+    });
+
+    function paint(inp) {
+      const raw = parseFloat(String(inp.value).replace(/,/g, ''));
+      inp.value = isNaN(raw) ? '' : nf(raw);
+    }
+  }
+
+  /* The form's handlers parse the raw input value, so strip separators
+     before they see it. */
+  function hookWeightInputs() {
+    if (typeof updateCCWeight === 'function' && !updateCCWeight.__eucg) {
+      const original = updateCCWeight;
+      const patched = function (cIdx, rIdx, field, value) {
+        const cleaned = (typeof value === 'string' && WEIGHT_FIELDS.indexOf(field) !== -1)
+          ? value.replace(/,/g, '') : value;
+        return original.call(this, cIdx, rIdx, field, cleaned);
+      };
+      patched.__eucg = true;
+      window.updateCCWeight = patched;
+    }
+
+    /* Re-apply after every re-render, since renderCommodities rebuilds the
+       inputs from scratch. */
+    if (typeof renderCommodities === 'function' && !renderCommodities.__eucg) {
+      const original = renderCommodities;
+      const patched = function (target) {
+        const out = original.apply(this, arguments);
+        if (target === 'cc') {
+          formatWeightInputs();
+          if (typeof updateCCTotals === 'function') updateCCTotals();
+        }
+        return out;
+      };
+      patched.__eucg = true;
+      window.renderCommodities = patched;
+    }
+  }
+
   /* Box 9 — flag state authority validation. Demo values: a signature date a
      few days after the last landing, a contact derived from the authority,
      and the signature box ticked. */
@@ -1706,6 +1773,7 @@ const EUCatchGen = (function () {
       if (typeof renderContainerRows === 'function') renderContainerRows('cc');
     }
 
+    formatWeightInputs();
     fillFlagStateValidation(p);
     fillQrCode(doc);
     if (typeof updateCCTotals === 'function') updateCCTotals();
@@ -2155,6 +2223,7 @@ const EUCatchGen = (function () {
     hookFishingLicence();
     hookTransportLegs();
     hookWeightFormatting();
+    hookWeightInputs();
 
     const docId = qs('doc');
     if (docId) { openInForm(docId); return; }
