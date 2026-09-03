@@ -1284,6 +1284,30 @@ const EUCatchGen = (function () {
      directly resolves it now that this module's own state is called GEN. */
   const FORM = () => (typeof STATE !== 'undefined') ? STATE : {};
 
+
+  /* Documents saved before the transport fix hold two entries: the vessel,
+     and a second carrying nothing but the bill of lading. Merge them at
+     render time so an old snapshot still displays correctly — the stored
+     payload is left untouched, as a snapshot should be. */
+  function mergeMeans(list) {
+    const out = [];
+    (list || []).forEach(m => {
+      const hasTransport = m.ship_name || m.flight_no || m.vehicle_plate || m.imo || m.voyage_no;
+      if (!hasTransport) {
+        const host = out.find(e => e.type === m.type) || out[0];
+        if (host) {
+          if (!host.transport_document && m.transport_document)
+            host.transport_document = m.transport_document;
+          if (!host.document_type && m.document_type) host.document_type = m.document_type;
+          return;                      /* folded in, no extra card */
+        }
+        if (!m.transport_document) return;   /* nothing at all to show */
+      }
+      out.push(Object.assign({}, m));
+    });
+    return out;
+  }
+
   function hydrateCC(doc) {
     const p = doc.payload || {};
     showView('viewCC');
@@ -1446,7 +1470,7 @@ const EUCatchGen = (function () {
       }
     });
 
-    ((p.transport && p.transport.means_of_transport) || []).forEach(m => {
+    mergeMeans(p.transport && p.transport.means_of_transport).forEach(m => {
       if (typeof addTransportLeg !== 'function') return;
       addTransportLeg('cc', m.type || 'Vessel');
       const cards = document.querySelectorAll('#ccTransportLegs .transport-leg');
@@ -1593,7 +1617,7 @@ const EUCatchGen = (function () {
         inp.value = (p.transport && p.transport.point_of_destination) || '';
     });
 
-    ((p.transport && p.transport.means_of_transport) || []).forEach(m => {
+    mergeMeans(p.transport && p.transport.means_of_transport).forEach(m => {
       if (typeof addTransportLeg !== 'function') return;
       addTransportLeg('ps', m.type || 'Vessel');
       const cards = document.querySelectorAll('#psTransportLegs .transport-leg');

@@ -137,13 +137,24 @@ function buildShipmentOverrides(ctx){
     packagingQuestions.push({ key:'pkg-q-net-weight', label:'Net Weight (per unit)', unit:'g',
       apply:(v)=>{ packagingContext.netWeightG = v; } });
   }
+  // Best-effort column names for the two new Product fields — not yet
+  // confirmed against the real schema, so this falls back to asking
+  // when either column comes back undefined.
+  const pmQty = ctx.product?.packaging_material_quantity_g ?? ctx.product?.packaging_material_quantity;
+  if(pmQty){
+    packagingContext.packagingMaterialQuantity = pmQty;
+  } else {
+    packagingQuestions.push({ key:'pkg-q-material-qty', label:'Packaging Material Quantity', unit:'g',
+      apply:(v)=>{ packagingContext.packagingMaterialQuantity = v; } });
+  }
+  const pmCode = ctx.product?.packaging_material_type_code;
+  if(pmCode){
+    const normalized = /metal/i.test(pmCode) ? 'Metal-Others' : /plastic/i.test(pmCode) ? 'Plastic' : /paper/i.test(pmCode) ? 'Paper' : pmCode;
+    packagingOverrides.primary[0] = { ...(packagingOverrides.primary[0]||{}), material: normalized };
+  }
   packagingQuestions.push(
     { key:'pkg-q-inner-unit', label:'Inner Unit (units per carton)', unit:'',
       apply:(v)=>{ packagingContext.innerUnit = v; } },
-    { key:'pkg-q-carton-min', label:'Empty Carton Weight — Min', unit:'g',
-      apply:(v)=>{ packagingContext.cartonMinWeight = v; } },
-    { key:'pkg-q-carton-max', label:'Empty Carton Weight — Max', unit:'g',
-      apply:(v)=>{ packagingContext.cartonMaxWeight = v; } },
     { key:'pkg-q-pallet-weight', label:'Empty Wooden Pallet Weight', unit:'kg',
       apply:(v)=>{ packagingContext.palletWeight = v; } },
     { key:'pkg-q-pallet-units', label:'Pallet Stacking Configuration (total units, e.g. 10×12=120)', unit:'',
@@ -1026,7 +1037,7 @@ function computePackagingBreakdown(){
   const secondary = layer(rules.secondary, packagingOverrides.secondary);
   const tertiary = layer(rules.tertiary, packagingOverrides.tertiary);
   const total = [...primary, ...secondary, ...tertiary].reduce((a,r)=>a+r.emission, 0);
-  return { primary, secondary, tertiary, total, sizeOptions: rules.sizeOptions };
+  return { primary, secondary, tertiary, total };
 }
 
 function packagingLiveTotal(){
@@ -1476,93 +1487,142 @@ function captureShipReceive(){
    generic per-material lookup like the old free-form grid used) —
    confirmed against the doc's real numbers. `qty(ctx)` computes the
    Packaging Quantity from whatever inputs that formula needs; ctx is
-   { netWeightG, innerUnit, cartonAvgWeight, palletWeight, palletUnits, size }.
+   { netWeightG, innerUnit, packagingMaterialQuantity, packagingMaterial,
+     cartonAvgWeight, palletWeight, palletUnits }.
 
    Resolved inconsistencies in the source doc (stated before writing
    this, never contested):
    - Pouch's Primary Material is "Plastic" (the specific rule, not the
      contradicting general statement at the top of that section).
-   - Plastic Cup/Bowl's formulas substitute their own product name in
-     place of the doc's "pouch"/"Can" copy-paste leftovers.
+   - Plastic Cup/Bowl/Shelf Ready Tray's formulas substitute their own
+     product name in place of the doc's "pouch"/"Can" copy-paste leftovers.
    - Slip Sheet has no given formula/factor anywhere, so it's left out
-     as a Tertiary option — Wooden Pallet is the only working path. */
+     as a Tertiary option — Wooden Pallet is the only working path.
+   - Type 2 (lacquer) quantity is only given for 28g/70g/100g cans in the
+     doc. Confirmed with the user: 37g -> 0.08. The 40/85 bracket
+     boundaries below are MY OWN interpolation from that one confirmed
+     point, not something stated in the doc — flagged clearly since it's
+     a judgment call, not sourced fact.
+   - Tertiary Type 2 and Secondary Type 2's quantities are given as a
+     "dropdown" of discrete options in the doc (multiple valid values per
+     primary type), not a strict formula — the default below is just the
+     first listed option; the grid's Quantity cell stays freely editable
+     so any of the doc's other listed values can be typed in directly. */
+
+// Carton size tier lookup — replaces the earlier (incorrect) "Avg WT =
+// average of user-given Min/Max carton weight" approach. Confirmed
+// against the doc's own worked example: Net Weight(95) x Inner Unit(24)
+// = 2280g total capacity needed -> falls in the Medium tier (1,500-3,000)
+// -> Avg Wt = 650g, exactly matching the doc's stated result.
+const CARTON_SIZE_TIERS = [
+  { tier:'Small',  capMin:800,  capMax:1500,     avgWtG:325  },
+  { tier:'Medium', capMin:1500, capMax:3000,     avgWtG:650  },
+  { tier:'Large',  capMin:3000, capMax:Infinity, avgWtG:1250 },
+];
+function cartonAvgWtForCapacity(capacityG){
+  const tier = CARTON_SIZE_TIERS.find(t => capacityG >= t.capMin && capacityG <= t.capMax)
+    || (capacityG < CARTON_SIZE_TIERS[0].capMin ? CARTON_SIZE_TIERS[0] : CARTON_SIZE_TIERS[CARTON_SIZE_TIERS.length-1]);
+  return tier.avgWtG;
+}
+
+// Type 2 (lacquer coating) quantity bracket — see note above.
+function pkgLacquerQtyForCanWeight(canQtyG){
+  if(canQtyG <= 40) return 0.08;
+  if(canQtyG <= 85) return 0.10;
+  return 0.12;
+}
+
 const PACKAGING_RULES = {
   'Can': {
-    sizeOptions: ['28g','70g','100g'],
     primary: [
-      { type:'Can', material:'Metal-others', factor:2.85,
-        qty:(ctx)=> ({'28g':28,'70g':70,'100g':100})[ctx.size] || 0 },
+      { type:'Can', material:'Metal-Others', factor:2.85,
+        qty:(ctx)=> ctx.packagingMaterialQuantity },
       { type:'Food grade lacquer coating', material:'Polymer', factor:0.19,
-        qty:(ctx)=> ({'28g':0.08,'70g':0.10,'100g':0.12})[ctx.size] || 0 },
+        qty:(ctx)=> pkgLacquerQtyForCanWeight(ctx.packagingMaterialQuantity) },
       { type:'Printed labels', material:'Paper', factor:1.56,
         qty:(ctx)=> ctx.netWeightG * 0.00267 },
     ],
     secondary: [
       { type:'Carton', material:'Paperboard', factor:0.80,
         qty:(ctx)=> ctx.innerUnit>0 ? ctx.cartonAvgWeight/ctx.innerUnit : 0 },
-      { type:'Shrink wrap', material:'Plastic film', factor:3.14,
-        qty:(ctx)=> ({'28g':1.00,'70g':2.00,'100g':2.50})[ctx.size] || 0 },
+      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.06 },
     ],
     tertiary: [
       { type:'Wooden pallet', material:'Wood', factor:5.00,
         qty:(ctx)=> (ctx.innerUnit>0 && ctx.palletUnits>0) ? ctx.palletWeight/(ctx.innerUnit*ctx.palletUnits) : 0 },
+      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.06 },
     ],
   },
   'Pouch': {
-    sizeOptions: ['Standard'],
     primary: [
-      { type:'Pouch', material:'Plastic', factor:1.89,
-        qty:(ctx)=> ctx.netWeightG * 0.021 },
+      { type:'Pouch', material:'Plastic', factor:1.8,
+        qty:(ctx)=> ctx.packagingMaterialQuantity },
       { type:'Printed labels', material:'Paper', factor:1.56,
         qty:(ctx)=> ctx.netWeightG * 0.00267 },
     ],
     secondary: [
       { type:'Carton', material:'Paperboard', factor:0.80,
         qty:(ctx)=> ctx.innerUnit>0 ? ctx.cartonAvgWeight/ctx.innerUnit : 0 },
-      { type:'Shrink wrap', material:'Plastic film', factor:3.14,
-        qty:()=> 3.00 }, // only variant given in the doc: 3g per 1000g pouch
+      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.61 },
     ],
     tertiary: [
       { type:'Wooden pallet', material:'Wood', factor:5.00,
         qty:(ctx)=> (ctx.innerUnit>0 && ctx.palletUnits>0) ? ctx.palletWeight/(ctx.innerUnit*ctx.palletUnits) : 0 },
+      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.61 },
     ],
   },
   'Plastic Cup': {
-    sizeOptions: ['94g','170g'],
     primary: [
       { type:'Plastic cup', material:'Plastic', factor:2.70,
-        qty:(ctx)=> ctx.netWeightG * 0.025 },
+        qty:(ctx)=> ctx.packagingMaterialQuantity },
       { type:'Printed labels', material:'Paper', factor:1.56,
         qty:(ctx)=> ctx.netWeightG * 0.00267 },
     ],
     secondary: [
       { type:'Carton', material:'Paperboard', factor:0.80,
         qty:(ctx)=> ctx.innerUnit>0 ? ctx.cartonAvgWeight/ctx.innerUnit : 0 },
-      { type:'Shrink wrap', material:'Plastic film', factor:3.14,
-        qty:()=> 1.00 }, // doc: 1g for both 170g and 94g cup
+      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.20 },
     ],
     tertiary: [
       { type:'Wooden pallet', material:'Wood', factor:5.00,
         qty:(ctx)=> (ctx.innerUnit>0 && ctx.palletUnits>0) ? ctx.palletWeight/(ctx.innerUnit*ctx.palletUnits) : 0 },
+      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.17 },
     ],
   },
   'Plastic Bowl': {
-    sizeOptions: ['94g','170g'],
     primary: [
       { type:'Plastic bowl', material:'Plastic', factor:2.70,
-        qty:(ctx)=> ctx.netWeightG * 0.025 },
+        qty:(ctx)=> ctx.packagingMaterialQuantity },
       { type:'Printed labels', material:'Paper', factor:1.56,
         qty:(ctx)=> ctx.netWeightG * 0.00267 },
     ],
     secondary: [
       { type:'Carton', material:'Paperboard', factor:0.80,
         qty:(ctx)=> ctx.innerUnit>0 ? ctx.cartonAvgWeight/ctx.innerUnit : 0 },
-      { type:'Shrink wrap', material:'Plastic film', factor:3.14,
-        qty:()=> 1.00 }, // doc: 1g for both 170g and 94g bowl
+      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.22 },
     ],
     tertiary: [
       { type:'Wooden pallet', material:'Wood', factor:5.00,
         qty:(ctx)=> (ctx.innerUnit>0 && ctx.palletUnits>0) ? ctx.palletWeight/(ctx.innerUnit*ctx.palletUnits) : 0 },
+      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.22 },
+    ],
+  },
+  'Shelf Ready Tray': {
+    primary: [
+      { type:'Shelf ready trays', material:'Plastic', factor:2.50,
+        qty:(ctx)=> ctx.packagingMaterialQuantity },
+      { type:'Printed labels', material:'Paper', factor:1.56,
+        qty:(ctx)=> ctx.netWeightG * 0.00267 },
+    ],
+    secondary: [
+      { type:'Carton', material:'Paperboard', factor:0.80,
+        qty:(ctx)=> ctx.innerUnit>0 ? ctx.cartonAvgWeight/ctx.innerUnit : 0 },
+      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.21 },
+    ],
+    tertiary: [
+      { type:'Wooden pallet', material:'Wood', factor:5.00,
+        qty:(ctx)=> (ctx.innerUnit>0 && ctx.palletUnits>0) ? ctx.palletWeight/(ctx.innerUnit*ctx.palletUnits) : 0 },
+      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.21 },
     ],
   },
 };
@@ -1580,20 +1640,20 @@ const PKG_MATERIAL_OPTIONS = ['Not Applicable', ...new Set(
 
 const packagingContext = {
   productType: 'Can',
-  size: '100g',
   netWeightG: 100,
+  packagingMaterialQuantity: 37, // matches the confirmed real value for Century Tuna Flakes (37g)
   innerUnit: 24,
-  cartonMinWeight: 480, cartonMaxWeight: 520,
   palletWeight: 22, palletUnits: 120,
   answered: false, // true once real/user-supplied values are in (vs. demo defaults)
 };
-function packagingCartonAvgWeight(){ return (packagingContext.cartonMinWeight + packagingContext.cartonMaxWeight) / 2; }
 function packagingCtx(){
+  const netWeightG = parseNum(packagingContext.netWeightG);
+  const innerUnit = parseNum(packagingContext.innerUnit);
   return {
-    size: packagingContext.size,
-    netWeightG: parseNum(packagingContext.netWeightG),
-    innerUnit: parseNum(packagingContext.innerUnit),
-    cartonAvgWeight: packagingCartonAvgWeight(),
+    netWeightG,
+    innerUnit,
+    packagingMaterialQuantity: parseNum(packagingContext.packagingMaterialQuantity),
+    cartonAvgWeight: cartonAvgWtForCapacity(netWeightG * innerUnit),
     palletWeight: parseNum(packagingContext.palletWeight) * 1000, // kg -> g, matching the gram convention of every other quantity
     palletUnits: parseNum(packagingContext.palletUnits),
   };
@@ -1607,16 +1667,11 @@ function recalcPackaging(){
 
   const newType = selVal('pkg-product-type', packagingContext.productType).value;
   packagingContext.productType = PACKAGING_RULES[newType] ? newType : packagingContext.productType;
-  const rules = PACKAGING_RULES[packagingContext.productType] || PACKAGING_RULES['Can'];
-  let size = selVal('pkg-size', packagingContext.size).value;
-  if(!rules.sizeOptions.includes(size)) size = rules.sizeOptions[0];
-  packagingContext.size = size;
 
   const num = (id, fallback) => parseNum(document.getElementById(id)?.value ?? fallback);
   packagingContext.netWeightG = num('pkg-net-weight', packagingContext.netWeightG);
+  packagingContext.packagingMaterialQuantity = num('pkg-material-qty', packagingContext.packagingMaterialQuantity);
   packagingContext.innerUnit = num('pkg-inner-unit', packagingContext.innerUnit);
-  packagingContext.cartonMinWeight = num('pkg-carton-min', packagingContext.cartonMinWeight);
-  packagingContext.cartonMaxWeight = num('pkg-carton-max', packagingContext.cartonMaxWeight);
   packagingContext.palletWeight = num('pkg-pallet-weight', packagingContext.palletWeight);
   packagingContext.palletUnits = num('pkg-pallet-units', packagingContext.palletUnits);
 
@@ -3312,7 +3367,6 @@ function renderPackaging(){
   }
 
   const breakdown = computePackagingBreakdown();
-  const sizeOptions = breakdown.sizeOptions || ['Standard'];
   const columns = ['Primary Pkg','Secondary Pkg','Tertiary Pkg'];
   const layerKeys = ['primary','secondary','tertiary'];
   const layers = [breakdown.primary, breakdown.secondary, breakdown.tertiary];
@@ -3322,6 +3376,8 @@ function renderPackaging(){
     {label:'Packaging Quantity (g)', kind:'qty'},
     {label:'Emission (kg CO₂e)', kind:'emission'},
   ];
+  const capacityG = parseNum(packagingContext.netWeightG) * parseNum(packagingContext.innerUnit);
+  const cartonTier = CARTON_SIZE_TIERS.find(t=>capacityG>=t.capMin && capacityG<=t.capMax) || CARTON_SIZE_TIERS[CARTON_SIZE_TIERS.length-1];
 
   return `
     <div class="card">
@@ -3343,13 +3399,12 @@ function renderPackaging(){
       <div class="section-label">Packaging Inputs${packagingContext.answered?'':' <span class=\"pkg-demo-tag\">demo values — not yet confirmed for this shipment</span>'}</div>
       <div class="field-grid">
         <div class="field"><label>Product Type</label>${buildSelect('pkg-product-type', Object.keys(PACKAGING_RULES), {value:packagingContext.productType})}</div>
-        <div class="field"><label>Size</label>${buildSelect('pkg-size', sizeOptions, {value:packagingContext.size})}</div>
         <div class="field"><label>Net Weight</label><div class="unit-row"><input type="text" id="pkg-net-weight" value="${packagingContext.netWeightG}" oninput="recalcPackaging()"><div class="unit">g</div></div></div>
+        <div class="field"><label>Packaging Material Quantity</label><div class="unit-row"><input type="text" id="pkg-material-qty" value="${packagingContext.packagingMaterialQuantity}" oninput="recalcPackaging()"><div class="unit">g</div></div></div>
         <div class="field"><label>Inner Unit</label><input type="text" id="pkg-inner-unit" value="${packagingContext.innerUnit}" oninput="recalcPackaging()"></div>
-        <div class="field"><label>Empty Carton Weight — Min</label><div class="unit-row"><input type="text" id="pkg-carton-min" value="${packagingContext.cartonMinWeight}" oninput="recalcPackaging()"><div class="unit">g</div></div></div>
-        <div class="field"><label>Empty Carton Weight — Max</label><div class="unit-row"><input type="text" id="pkg-carton-max" value="${packagingContext.cartonMaxWeight}" oninput="recalcPackaging()"><div class="unit">g</div></div></div>
         <div class="field"><label>Empty Wooden Pallet Weight</label><div class="unit-row"><input type="text" id="pkg-pallet-weight" value="${packagingContext.palletWeight}" oninput="recalcPackaging()"><div class="unit">kg</div></div></div>
         <div class="field"><label>Pallet Stacking Configuration</label><input type="text" id="pkg-pallet-units" value="${packagingContext.palletUnits}" oninput="recalcPackaging()" placeholder="e.g. 120 for 10×12"></div>
+        <div class="field"><label>Carton Size Tier (auto)</label><input type="text" class="is-computed" readonly value="${cartonTier.tier} — Avg WT ${cartonTier.avgWtG}g (capacity ${fmtNum(capacityG,0)}g)"></div>
       </div>
 
       <div style="height:20px"></div>
