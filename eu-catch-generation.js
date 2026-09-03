@@ -698,16 +698,22 @@ const EUCatchGen = (function () {
         .select('*').eq('company_id', company.id);
       const rows = data || [];
 
+      /* Match 'EU' as a word, not as letters inside another one, and require
+         it to be an approval rather than any other EU-related certificate.
+         Also exclude the UK / US equivalents that sit next to it in the list. */
       const isEu = r => {
         const t = `${r.cert_type || ''} ${r.cert_name || ''}`.toLowerCase();
-        return /eu/.test(t) && /(facility|establishment|approv)/.test(t);
+        if (/\b(uk|usa|us|noaa|fsvp)\b/.test(t)) return false;
+        return /\b(eu|european union)\b/.test(t) &&
+               /(facility|establishment|approv)/.test(t);
       };
       const hits = rows.filter(isEu);
       if (!hits.length) return null;
 
       const today = new Date().toISOString().slice(0, 10);
-      const valid = hits.filter(r => !r.expiry_date || r.expiry_date >= today);
-      const row = valid[0] || hits[0];
+      const live = r => !r.status || /^(active|valid|current)$/i.test(String(r.status));
+      const valid = hits.filter(r => live(r) && (!r.expiry_date || r.expiry_date >= today));
+      const row = valid[0] || hits.filter(live)[0] || hits[0];
 
       return {
         number: row.cert_number || null,
@@ -719,6 +725,7 @@ const EUCatchGen = (function () {
         url: row.url || null,
         status: row.status || null,
         expired: !!(row.expiry_date && row.expiry_date < today),
+        inactive: !!(row.status && !/^(active|valid|current)$/i.test(String(row.status))),
         no_expiry: !row.expiry_date
       };
     } catch (e) { log('certification lookup failed:', e.message); return null; }
