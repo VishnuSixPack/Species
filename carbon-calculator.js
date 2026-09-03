@@ -232,6 +232,7 @@ function buildShipmentOverrides(ctx){
       'Product Ownership': processorName,
     },
     transformationWeight: targetWeight,
+    packagingFacility: processorName,
 
     shipReceive: {
       'Transaction No. (s)': ctx.shipment.shipment_ref || null,
@@ -884,7 +885,7 @@ const CTE_DATA = {
     subtabs:['Packaging Emission','Circularity'],
     scope:'Scope 3',
     productInfo:{
-      facility:'JP International Co., Ltd.',
+      facility:'AT Seafood Global Limited',
       lotCode:'MIN56KCCDC3ZFI',
       gtin:'9123658622044',
       product:'Canned Tuna in Olive Oil', // TODO: fetch from Product module
@@ -1258,7 +1259,7 @@ function captureOVP(){
     emission_refrigeration:round2(emRefrig), emission_electricity:round2(emElectricity),
     emission_water:round2(emWater), emission_wastewater:round2(emWasteWater), emission_fuel:round2(emFuel),
     total_emission_kg:round2(total), emission_per_kg:round4(perKg),
-    raw_fields:serializeFields(CTE_DATA.onVesselProcessing.fields),
+    raw_fields:serializeFields(getOVPFields()),
   };
 }
 
@@ -1477,8 +1478,8 @@ function captureShipReceive(){
     distance_air_km:distanceAir, emission_air_total:round2(emissionAir), emission_air_per_kg:round4(perKgAir),
     yield_weight_value:parseNum(yieldRaw), yield_weight_unit:shipCalc.yieldWeight.unit,
     raw_fields:{
-      ...serializeFields(CTE_DATA.shipReceive.commonFields),
-      ...serializeFields(state.shipSub==='Sea' ? CTE_DATA.shipReceive.seaFields : CTE_DATA.shipReceive.airFields),
+      ...serializeFields(getShipReceiveFields().common),
+      ...serializeFields(state.shipSub==='Sea' ? getShipReceiveFields().sea : getShipReceiveFields().air),
     },
   };
 }
@@ -1882,6 +1883,48 @@ function isSectionsEmpty(sections){
     }
     return true;
   });
+}
+
+// ---------- FRESH (MANUAL) CALCULATION RESET ----------
+// Blanks shipment-specific VALUE fields (weight, dates, vessel/species/
+// company identifiers, distances) while preserving emission-FACTOR
+// fields (Transformation's 11 factors, Storage's electricity/refrigerant
+// rate constants) since those are standardized multipliers that don't
+// vary per shipment, not data specific to any one calculation.
+let freshCalcMode = false;
+
+function applyFreshReset(sec, preserveKeys = []){
+  const saved = {};
+  preserveKeys.forEach(k => { saved[k] = sec[k]; });
+  const blanked = blankSections(sec);
+  Object.assign(sec, blanked);
+  preserveKeys.forEach(k => { sec[k] = saved[k]; });
+}
+
+function startFreshCalculation(){
+  Object.keys(instanceState).forEach(k => delete instanceState[k]);
+  ovpFieldsWorking = JSON.parse(JSON.stringify(CTE_DATA.onVesselProcessing.fields)).map(blankField);
+  shipReceiveFieldsWorking = {
+    common: JSON.parse(JSON.stringify(CTE_DATA.shipReceive.commonFields)).map(blankField),
+    sea: JSON.parse(JSON.stringify(CTE_DATA.shipReceive.seaFields)).map(blankField),
+    air: JSON.parse(JSON.stringify(CTE_DATA.shipReceive.airFields)).map(blankField),
+  };
+  ovpCalc.weight = {value:'', unit:'mt'}; ovpCalc.yieldPct = ''; ovpCalc.initialized = false;
+  shipCalc.distanceSea = ''; shipCalc.distanceAir = ''; shipCalc.teu = '';
+  shipCalc.dryGW = {value:'', unit:'mt'}; shipCalc.reeferGW = {value:'', unit:'mt'};
+  shipCalc.aircraftGW = {value:'', unit:'mt'}; shipCalc.yieldWeight = {value:'', unit:'kg'};
+  packagingContext.netWeightG = ''; packagingContext.packagingMaterialQuantity = '';
+  packagingContext.innerUnit = ''; packagingContext.palletWeight = ''; packagingContext.palletUnits = '';
+  packagingContext.answered = false;
+  packagingOverrides.primary = [null,null,null];
+  packagingOverrides.secondary = [null,null,null];
+  packagingOverrides.tertiary = [null,null,null];
+  packagingOverrides._lastProductType = null;
+  shipmentOverrides = null;
+  ovpShipmentApplied = false;
+  shipReceiveShipmentApplied = false;
+  freshCalcMode = true;
+  state.page = 'modal';
 }
 
 function addInstance(cteKey, baseLabel){
@@ -2575,6 +2618,11 @@ function renderAggrDisaggr(){
     if(a.productOwnership || a.eventDate) applyLabelOverrides(sec.main, {'Product Ownership': a.productOwnership, 'Event Date & Time': a.eventDate});
     sec._shipmentApplied = true;
   }
+  if(freshCalcMode && !sec._freshApplied){
+    applyFreshReset(sec, []);
+    sec.species = ''; sec.driSpecies = ''; // flat strings — blankSections() doesn't touch these
+    sec._freshApplied = true;
+  }
   const multiple = st.labels.length > 1;
   const refrigOptions = data.refrigerants.map(r=>r.label);
 
@@ -2683,6 +2731,10 @@ function renderLandingCTE(){
     if(shipmentOverrides.landingWeight) sec.weight = { ...shipmentOverrides.landingWeight };
     sec._shipmentApplied = true;
   }
+  if(freshCalcMode && !sec._freshApplied){
+    applyFreshReset(sec, []);
+    sec._freshApplied = true;
+  }
   const multiple = st.labels.length > 1;
   return `
     <div class="card">
@@ -2738,6 +2790,12 @@ function renderTransshipment(){
     applySpeciesTagsOverride('transship-main::'+st.active, sec.main, shipmentOverrides.transshipmentSpecies);
     sec._shipmentApplied = true;
   }
+  if(freshCalcMode && !sec._freshApplied){
+    applyFreshReset(sec, []);
+    sec.rcs = null; // forces the explicit RCS/Normal Carrier question below, rather than silently defaulting
+    sec.mode = 'atPort';
+    sec._freshApplied = true;
+  }
   const multiple = st.labels.length > 1;
 
   const modePills = `<div class="subtab-row" style="margin:0;">
@@ -2756,6 +2814,26 @@ function renderTransshipment(){
         <div style="height:16px"></div>
         ${renderInstanceSubtabs('transshipment', data.instanceBase)}
         <div class="ovp-disabled-note" style="margin-top:16px;">At Sea transshipment isn't built out yet — in progress. Switch to "At Port" for now.</div>
+      </div>`;
+  }
+
+  if(sec.rcs === null){
+    return `
+      <div class="card">
+        <div class="card-top">
+          <div><h2>${data.title}${cteProductTag(sec.main)}</h2><p>${data.desc}</p></div>
+          <div class="card-top-actions">${renderInfoButton('transshipment')}</div>
+        </div>
+        ${modePills}
+        <div style="height:16px"></div>
+        ${renderInstanceSubtabs('transshipment', data.instanceBase)}
+        <div class="ts-rcs-question">
+          <p>Is this an RCS (Reefer Container Shipment) or a normal carrier transshipment?</p>
+          <div class="ts-rcs-question-btns">
+            <button class="btn btn-outline" data-action="ts-choose-rcs" data-value="false">Normal Carrier</button>
+            <button class="btn btn-primary" data-action="ts-choose-rcs" data-value="true">RCS</button>
+          </div>
+        </div>
       </div>`;
   }
 
@@ -3009,13 +3087,37 @@ function ovpToggleHTML(){
   return `<label class="pill-toggle">Enable<span class="switch"><input type="checkbox" ${state.ovpEnabled?'checked':''} data-action="ovp-toggle"><span class="track"></span></span></label>`;
 }
 
+// OVP and Ship/Receive never went through ensureInstance()'s clone-per-
+// instance pattern like the other CTEs — they read/wrote CTE_DATA's
+// field arrays directly. That's fine for a single demo session, but it
+// means any override (shipment-launch or fresh-calculation-reset) would
+// permanently mutate the SAME object the demo displays. These lazy-
+// cloned working copies fix that: everything reads/writes here instead,
+// leaving CTE_DATA.onVesselProcessing/shipReceive untouched as the
+// permanent demo reference.
+let ovpFieldsWorking = null;
+function getOVPFields(){
+  if(!ovpFieldsWorking) ovpFieldsWorking = JSON.parse(JSON.stringify(CTE_DATA.onVesselProcessing.fields));
+  return ovpFieldsWorking;
+}
+let shipReceiveFieldsWorking = null;
+function getShipReceiveFields(){
+  if(!shipReceiveFieldsWorking) shipReceiveFieldsWorking = {
+    common: JSON.parse(JSON.stringify(CTE_DATA.shipReceive.commonFields)),
+    sea: JSON.parse(JSON.stringify(CTE_DATA.shipReceive.seaFields)),
+    air: JSON.parse(JSON.stringify(CTE_DATA.shipReceive.airFields)),
+  };
+  return shipReceiveFieldsWorking;
+}
+
 function renderOVP(){
   const data = CTE_DATA.onVesselProcessing;
+  const workingFields = getOVPFields();
   ensureOVPWeight();
 
   if(shipmentOverrides && !ovpShipmentApplied){
-    applyLabelOverrides(data.fields, shipmentOverrides.ovp);
-    applySpeciesTagsOverride('ovp-main', data.fields, shipmentOverrides.ovpSpecies);
+    applyLabelOverrides(workingFields, shipmentOverrides.ovp);
+    applySpeciesTagsOverride('ovp-main', workingFields, shipmentOverrides.ovpSpecies);
     if(shipmentOverrides.ovpWeight) ovpCalc.weight = { ...shipmentOverrides.ovpWeight };
     ovpShipmentApplied = true;
   }
@@ -3036,12 +3138,12 @@ function renderOVP(){
   return `
     <div class="card">
       <div class="card-top">
-        <div><h2>${data.title}${cteProductTag(data.fields)}</h2><p>${data.desc}</p></div>
+        <div><h2>${data.title}${cteProductTag(workingFields)}</h2><p>${data.desc}</p></div>
         <div class="card-top-actions">${renderInfoButton('onVesselProcessing')}${ovpToggleHTML()}</div>
       </div>
       ${bottomBar(data.metrics, null, false, 'ovp', {label:'Total Volume', initial:ovpCalc.weight.value, unit:ovpCalc.weight.unit.toUpperCase()})}
       <div style="height:16px"></div>
-      ${fieldGrid(data.fields, 'ovp-main')}
+      ${fieldGrid(workingFields, 'ovp-main')}
 
       <div class="section-label">Weight &amp; Yield</div>
       <div class="field-grid">
@@ -3135,6 +3237,10 @@ function renderGenericTab(data, ctx, subKey){
       }
       sec._shipmentApplied = true;
     }
+    if(ctx==='harvesting' && freshCalcMode && !sec._freshApplied){
+      applyFreshReset(sec, []); // no emission-factor fields to preserve here
+      sec._freshApplied = true;
+    }
     const multiple = st.labels.length > 1;
     const wField = findWeightField(sec);
     return `
@@ -3224,6 +3330,11 @@ function renderProcessing(){
       if(shipmentOverrides.transformationWeight) sec.weight = { ...shipmentOverrides.transformationWeight };
       sec._shipmentApplied = true;
     }
+    if(freshCalcMode && !sec._freshApplied){
+      applyFreshReset(sec, ['factorFields']); // preserve the 11 emission factors
+      sec.yieldPct = ''; sec.productionDate = ''; sec.expiryDate = ''; // flat strings blankSections() won't touch
+      sec._freshApplied = true;
+    }
     const multiple = st.labels.length > 1;
     return `
       <div class="card">
@@ -3291,6 +3402,11 @@ function renderProcessing(){
     };
     const st = ensureInstance('storage', inner.instanceBase, initial);
     const sec = st.data[st.active];
+    if(freshCalcMode && !sec._freshApplied){
+      applyFreshReset(sec, ['electricPerKg','efElectricity','refrigPerKg','gwp']);
+      sec.weight = ''; sec.weightPulled = false; // force a clean re-pull from Transformation
+      sec._freshApplied = true;
+    }
     ensureStorageWeight(sec);
     const multiple = st.labels.length > 1;
     return `
@@ -3356,6 +3472,7 @@ function renderPackaging(){
   const sub = state.packagingSub;
   const isEmission = sub==='Packaging Emission';
   const d = CTE_DATA.packaging;
+  if(shipmentOverrides?.packagingFacility) d.productInfo.facility = shipmentOverrides.packagingFacility;
 
   if(!isEmission){
     return `
@@ -3443,18 +3560,19 @@ function renderPackaging(){
 
 function renderShipReceive(){
   const d = CTE_DATA.shipReceive;
+  const wf = getShipReceiveFields();
   const mode = state.shipSub; // 'Sea' | 'Air'
 
   if(shipmentOverrides && !shipReceiveShipmentApplied){
-    applyLabelOverrides(d.commonFields, shipmentOverrides.shipReceive);
-    applyLabelOverrides(d.seaFields, shipmentOverrides.shipReceive);
+    applyLabelOverrides(wf.common, shipmentOverrides.shipReceive);
+    applyLabelOverrides(wf.sea, shipmentOverrides.shipReceive);
     if(shipmentOverrides.shipReceiveWeight) shipCalc.yieldWeight = { ...shipmentOverrides.shipReceiveWeight };
     if(shipmentOverrides.shipReceiveDistanceSea) shipCalc.distanceSea = fmtNum(shipmentOverrides.shipReceiveDistanceSea);
     shipReceiveShipmentApplied = true;
   }
 
   const modeFieldsHTML = mode==='Sea' ? `
-    ${fieldGrid(d.seaFields, 'ship-sea')}
+    ${fieldGrid(wf.sea, 'ship-sea')}
     <div class="field-grid" style="margin-top:2px;">
       <div class="field">
         <label>Distance travelled <span class="req">*</span></label>
@@ -3486,7 +3604,7 @@ function renderShipReceive(){
       </div>
     </div>
   ` : `
-    ${fieldGrid(d.airFields, 'ship-air')}
+    ${fieldGrid(wf.air, 'ship-air')}
     <div class="field-grid" style="margin-top:2px;">
       <div class="field">
         <label>Distance travelled <span class="req">*</span></label>
@@ -3510,7 +3628,7 @@ function renderShipReceive(){
   return `
     <div class="card">
       <div class="card-top">
-        <div><h2>${d.title}${cteProductTag(d.commonFields)}</h2><p>${d.desc}</p></div>
+        <div><h2>${d.title}${cteProductTag(wf.common)}</h2><p>${d.desc}</p></div>
         ${renderInfoButton('shipReceive')}
       </div>
       ${bottomBar(metrics, null, false, 'shipReceive', {label:'Total Volume', initial:`${fmtNum(parseNum(shipCalc.teu),0)} (${fmtNum(parseNum(shipCalc.distanceSea),0)} km)`, unit:'containers', tooltip:'We have considered the average number of containers and distance travelled.'})}
@@ -3519,7 +3637,7 @@ function renderShipReceive(){
         <button class="subtab-btn ${mode==='Air'?'active':''}" data-action="subtab" data-group="shipSub" data-value="Air">Air</button>
       </div>
       <div style="height:16px"></div>
-      ${fieldGrid(d.commonFields, 'ship-common')}
+      ${fieldGrid(wf.common, 'ship-common')}
       ${modeFieldsHTML}
       <div class="field-grid" style="margin-top:2px;">
         <div class="field"><label>Inner Unit</label><input type="text" value="${d.innerRow.inner}"></div>
@@ -4267,7 +4385,7 @@ document.getElementById('app').addEventListener('click', (e)=>{
     if(production !== 'Wild Capture'){
       showToast(`${production} is still in progress — check back soon.`);
     } else if(state.calcMode === 'manual'){
-      showToast('Manual Calculation is still in progress — check back soon.');
+      startFreshCalculation();
     } else {
       state.page = 'modal';
     }
@@ -4306,6 +4424,10 @@ document.getElementById('app').addEventListener('click', (e)=>{
   }
   else if(action==='ts-rcs'){
     toggleTSRCS();
+  }
+  else if(action==='ts-choose-rcs'){
+    const st = instanceState.transshipment;
+    if(st) st.data[st.active].rcs = (el.dataset.value === 'true');
   }
   else if(action==='ts-unit'){
     setTSUnit(el.dataset.unit);
