@@ -887,27 +887,11 @@ const CTE_DATA = {
     productInfo:{
       facility:'AT Seafood Global Limited',
       lotCode:'MIN56KCCDC3ZFI',
-      gtin:'9123658622044',
+      gtin:'09300462344485',
       product:'Canned Tuna in Olive Oil', // TODO: fetch from Product module
     },
-    circularity:{
-      cols:['Can','Food-grade','Printed Carton','Carton','Shrink Wrap','Pallet'],
-      rows:[
-        {label:'Packaging GTIN', span:'(ST Product-GTIN)'},
-        {label:'Packaging material element', vals:['Can','Food-grade','Printed Carton','Carton','Shrink Wrap','Pallet']},
-        {label:'Packaging material quantity', vals:['28','0.08','0.25','27.08','1','8.68']},
-        {label:'Recycled Content (%)', vals:['30%','0%','10%','80%','35%','50%']},
-        {label:'Recycling rate (%)', vals:['85%','5%','30%','85%','20%','95%']},
-        {label:'Circular Input', vals:['8.4','0','0.03','21.67','0.35','4.34']},
-        {label:'Recoverable materials', vals:['23.8','0.004','0.08','23.02','0.2','8.25']},
-        {label:'Input Circularity (%)', span:'53%'},
-        {label:'Output Circularity (%)', span:'85%'},
-        {label:'Virgin material Input (kg)', span:'30.30'},
-        {label:'Unrecoverable material', span:'9.74'},
-        {label:'Linear Flow Index (LFI)', span:'0.31'},
-        {label:'Material Circularity Indicator (MCI)', span:'0.69'},
-      ]
-    }
+    // Circularity table is now computed live via computePackagingCircularity()
+    // rather than hardcoded here — see renderPackaging()'s !isEmission branch.
   },
 
   shipReceive:{
@@ -1051,6 +1035,45 @@ function computePackagingBreakdown(){
 
 function packagingLiveTotal(){
   return computePackagingBreakdown().total;
+}
+
+function pkgCircularityForType(typeName){
+  for(const rules of Object.values(PACKAGING_RULES)){
+    const hit = [...rules.primary, ...rules.secondary, ...rules.tertiary].find(e=>e.type===typeName);
+    if(hit) return { recycledContent: hit.recycledContent ?? 0, recyclingRate: hit.recyclingRate ?? 0 };
+  }
+  return { recycledContent: 0, recyclingRate: 0 };
+}
+
+// Every formula here verified exactly against a real reference table
+// before implementing: Circular Input = Quantity x Recycled Content%;
+// Recoverable materials = Quantity x Recycling rate%; Input/Output
+// Circularity% = sum of those / total quantity; Virgin material Input =
+// total qty - circular input; Unrecoverable material = total qty -
+// recoverable materials; LFI = 1 - average(input%, output%); MCI = 1 - LFI.
+function computePackagingCircularity(){
+  const bd = computePackagingBreakdown();
+  const rows = [...bd.primary, ...bd.secondary, ...bd.tertiary]
+    .filter(r => r.type !== 'Not Applicable')
+    .map(r => {
+      const c = pkgCircularityForType(r.type);
+      return {
+        type: r.type, qty: r.qty,
+        recycledContent: c.recycledContent, recyclingRate: c.recyclingRate,
+        circularInput: r.qty * c.recycledContent,
+        recoverable: r.qty * c.recyclingRate,
+      };
+    });
+  const totalQty = rows.reduce((a,r)=>a+r.qty, 0);
+  const totalCircular = rows.reduce((a,r)=>a+r.circularInput, 0);
+  const totalRecoverable = rows.reduce((a,r)=>a+r.recoverable, 0);
+  const inputCircularity = totalQty>0 ? totalCircular/totalQty : 0;
+  const outputCircularity = totalQty>0 ? totalRecoverable/totalQty : 0;
+  const virginInput = totalQty - totalCircular;
+  const unrecoverable = totalQty - totalRecoverable;
+  const lfi = 1 - (inputCircularity+outputCircularity)/2;
+  const mci = 1 - lfi;
+  return { rows, totalQty, totalCircular, totalRecoverable, inputCircularity, outputCircularity, virginInput, unrecoverable, lfi, mci };
 }
 
 function weightedSplit(...parts){
@@ -1544,88 +1567,93 @@ function pkgLacquerQtyForCanWeight(canQtyG){
 const PACKAGING_RULES = {
   'Can': {
     primary: [
-      { type:'Can', material:'Metal-Others', factor:2.85,
+      { type:'Can', material:'Metal-Others', factor:2.85, recycledContent:0.30, recyclingRate:0.85,
         qty:(ctx)=> ctx.packagingMaterialQuantity },
-      { type:'Food grade lacquer coating', material:'Polymer', factor:0.19,
+      { type:'Food grade lacquer coating', material:'Polymer', factor:0.19, recycledContent:0.00, recyclingRate:0.05,
         qty:(ctx)=> pkgLacquerQtyForCanWeight(ctx.packagingMaterialQuantity) },
-      { type:'Printed labels', material:'Paper', factor:1.56,
+      { type:'Printed labels', material:'Paper', factor:1.56, recycledContent:0.10, recyclingRate:0.30,
         qty:(ctx)=> ctx.netWeightG * 0.00267 },
     ],
     secondary: [
-      { type:'Carton', material:'Paperboard', factor:0.80,
+      { type:'Carton', material:'Paperboard', factor:0.80, recycledContent:0.80, recyclingRate:0.85,
         qty:(ctx)=> ctx.innerUnit>0 ? ctx.cartonAvgWeight/ctx.innerUnit : 0 },
-      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.10 },
+      { type:'Shrink wrap', material:'Plastic film', factor:3.14, recycledContent:0.35, recyclingRate:0.20, qty:()=> 0.10 },
     ],
     tertiary: [
-      { type:'Wooden pallet', material:'Wood', factor:5.00,
+      { type:'Wooden pallet', material:'Wood', factor:5.00, recycledContent:0.50, recyclingRate:0.95,
         qty:(ctx)=> (ctx.innerUnit>0 && ctx.palletUnits>0) ? ctx.palletWeight/(ctx.innerUnit*ctx.palletUnits) : 0 },
     ],
   },
   'Pouch': {
     primary: [
-      { type:'Pouch', material:'Plastic', factor:1.8,
+      // NB: recycledContent/recyclingRate for this Plastic primary layer
+      // are NOT independently confirmed (only Can's full circularity set
+      // has been validated against a real reference table) — reusing
+      // Shrink wrap's confirmed Plastic film percentages as a reasonable
+      // stand-in until real data is available for this specific layer.
+      { type:'Pouch', material:'Plastic', factor:1.8, recycledContent:0.35, recyclingRate:0.20,
         qty:(ctx)=> ctx.packagingMaterialQuantity },
-      { type:'Printed labels', material:'Paper', factor:1.56,
+      { type:'Printed labels', material:'Paper', factor:1.56, recycledContent:0.10, recyclingRate:0.30,
         qty:(ctx)=> ctx.netWeightG * 0.00267 },
     ],
     secondary: [
-      { type:'Carton', material:'Paperboard', factor:0.80,
+      { type:'Carton', material:'Paperboard', factor:0.80, recycledContent:0.80, recyclingRate:0.85,
         qty:(ctx)=> ctx.innerUnit>0 ? ctx.cartonAvgWeight/ctx.innerUnit : 0 },
-      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.61 },
+      { type:'Shrink wrap', material:'Plastic film', factor:3.14, recycledContent:0.35, recyclingRate:0.20, qty:()=> 0.61 },
     ],
     tertiary: [
-      { type:'Wooden pallet', material:'Wood', factor:5.00,
+      { type:'Wooden pallet', material:'Wood', factor:5.00, recycledContent:0.50, recyclingRate:0.95,
         qty:(ctx)=> (ctx.innerUnit>0 && ctx.palletUnits>0) ? ctx.palletWeight/(ctx.innerUnit*ctx.palletUnits) : 0 },
     ],
   },
   'Plastic Cup': {
     primary: [
-      { type:'Plastic cup', material:'Plastic', factor:2.70,
+      { type:'Plastic cup', material:'Plastic', factor:2.70, recycledContent:0.35, recyclingRate:0.20,
         qty:(ctx)=> ctx.packagingMaterialQuantity },
-      { type:'Printed labels', material:'Paper', factor:1.56,
+      { type:'Printed labels', material:'Paper', factor:1.56, recycledContent:0.10, recyclingRate:0.30,
         qty:(ctx)=> ctx.netWeightG * 0.00267 },
     ],
     secondary: [
-      { type:'Carton', material:'Paperboard', factor:0.80,
+      { type:'Carton', material:'Paperboard', factor:0.80, recycledContent:0.80, recyclingRate:0.85,
         qty:(ctx)=> ctx.innerUnit>0 ? ctx.cartonAvgWeight/ctx.innerUnit : 0 },
-      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.20 },
+      { type:'Shrink wrap', material:'Plastic film', factor:3.14, recycledContent:0.35, recyclingRate:0.20, qty:()=> 0.20 },
     ],
     tertiary: [
-      { type:'Wooden pallet', material:'Wood', factor:5.00,
+      { type:'Wooden pallet', material:'Wood', factor:5.00, recycledContent:0.50, recyclingRate:0.95,
         qty:(ctx)=> (ctx.innerUnit>0 && ctx.palletUnits>0) ? ctx.palletWeight/(ctx.innerUnit*ctx.palletUnits) : 0 },
     ],
   },
   'Plastic Bowl': {
     primary: [
-      { type:'Plastic bowl', material:'Plastic', factor:2.70,
+      { type:'Plastic bowl', material:'Plastic', factor:2.70, recycledContent:0.35, recyclingRate:0.20,
         qty:(ctx)=> ctx.packagingMaterialQuantity },
-      { type:'Printed labels', material:'Paper', factor:1.56,
+      { type:'Printed labels', material:'Paper', factor:1.56, recycledContent:0.10, recyclingRate:0.30,
         qty:(ctx)=> ctx.netWeightG * 0.00267 },
     ],
     secondary: [
-      { type:'Carton', material:'Paperboard', factor:0.80,
+      { type:'Carton', material:'Paperboard', factor:0.80, recycledContent:0.80, recyclingRate:0.85,
         qty:(ctx)=> ctx.innerUnit>0 ? ctx.cartonAvgWeight/ctx.innerUnit : 0 },
-      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.22 },
+      { type:'Shrink wrap', material:'Plastic film', factor:3.14, recycledContent:0.35, recyclingRate:0.20, qty:()=> 0.22 },
     ],
     tertiary: [
-      { type:'Wooden pallet', material:'Wood', factor:5.00,
+      { type:'Wooden pallet', material:'Wood', factor:5.00, recycledContent:0.50, recyclingRate:0.95,
         qty:(ctx)=> (ctx.innerUnit>0 && ctx.palletUnits>0) ? ctx.palletWeight/(ctx.innerUnit*ctx.palletUnits) : 0 },
     ],
   },
   'Shelf Ready Tray': {
     primary: [
-      { type:'Shelf ready trays', material:'Plastic', factor:2.50,
+      { type:'Shelf ready trays', material:'Plastic', factor:2.50, recycledContent:0.35, recyclingRate:0.20,
         qty:(ctx)=> ctx.packagingMaterialQuantity },
-      { type:'Printed labels', material:'Paper', factor:1.56,
+      { type:'Printed labels', material:'Paper', factor:1.56, recycledContent:0.10, recyclingRate:0.30,
         qty:(ctx)=> ctx.netWeightG * 0.00267 },
     ],
     secondary: [
-      { type:'Carton', material:'Paperboard', factor:0.80,
+      { type:'Carton', material:'Paperboard', factor:0.80, recycledContent:0.80, recyclingRate:0.85,
         qty:(ctx)=> ctx.innerUnit>0 ? ctx.cartonAvgWeight/ctx.innerUnit : 0 },
-      { type:'Shrink wrap', material:'Plastic film', factor:3.14, qty:()=> 0.21 },
+      { type:'Shrink wrap', material:'Plastic film', factor:3.14, recycledContent:0.35, recyclingRate:0.20, qty:()=> 0.21 },
     ],
     tertiary: [
-      { type:'Wooden pallet', material:'Wood', factor:5.00,
+      { type:'Wooden pallet', material:'Wood', factor:5.00, recycledContent:0.50, recyclingRate:0.95,
         qty:(ctx)=> (ctx.innerUnit>0 && ctx.palletUnits>0) ? ctx.palletWeight/(ctx.innerUnit*ctx.palletUnits) : 0 },
     ],
   },
@@ -3475,12 +3503,33 @@ function renderPackaging(){
   if(shipmentOverrides?.packagingFacility) d.productInfo.facility = shipmentOverrides.packagingFacility;
 
   if(!isEmission){
+    const circ = computePackagingCircularity();
+    const cols = circ.rows.map(r=>r.type);
+    const pctRow = (vals) => vals.map(v=>fmtNum(v*100,0)+'%');
+    const circData = {
+      cols,
+      rows: [
+        {label:'Packaging GTIN', span: d.productInfo.gtin},
+        {label:'Packaging material element', vals: circ.rows.map(r=>r.type)},
+        {label:'Packaging material quantity', vals: circ.rows.map(r=>fmtNum(r.qty,2))},
+        {label:'Recycled Content (%)', vals: pctRow(circ.rows.map(r=>r.recycledContent))},
+        {label:'Recycling rate (%)', vals: pctRow(circ.rows.map(r=>r.recyclingRate))},
+        {label:'Circular Input', vals: circ.rows.map(r=>fmtNum(r.circularInput,2))},
+        {label:'Recoverable materials', vals: circ.rows.map(r=>fmtNum(r.recoverable,2))},
+        {label:'Input Circularity (%)', span: fmtNum(circ.inputCircularity*100,0)+'%'},
+        {label:'Output Circularity (%)', span: fmtNum(circ.outputCircularity*100,0)+'%'},
+        {label:'Virgin material Input (kg)', span: fmtNum(circ.virginInput,2)},
+        {label:'Unrecoverable material', span: fmtNum(circ.unrecoverable,2)},
+        {label:'Linear Flow Index (LFI)', span: fmtNum(circ.lfi,2)},
+        {label:'Material Circularity Indicator (MCI)', span: fmtNum(circ.mci,2)},
+      ],
+    };
     return `
       <div class="card">
         <div class="card-top"><div><h2>Packaging</h2></div></div>
         ${subtabRow(d.subtabs, sub, 'packagingSub')}
         <div style="height:16px"></div>
-        <div class="pkg-layout"><div>${pkgTable(d.circularity, true)}</div></div>
+        <div class="pkg-layout"><div>${pkgTable(circData, true)}</div></div>
       </div>
       <div style="height:26px"></div>
     `;
