@@ -1864,6 +1864,42 @@ const EUCatchGen = (function () {
     };
   }
 
+
+  /* ------------------------------------------------------------------
+     The page's addTransportLeg() resolves its container with
+        target === 'cc' ? ccTransportLegs : scTransportLegs
+     so a 'ps' or 'id' leg lands in the Simplified CC section instead of its
+     own, and transportLegCounter has no key for them (giving NaN ids).
+     Patch both here rather than editing the form.
+     ------------------------------------------------------------------ */
+  function hookTransportLegs() {
+    if (typeof addTransportLeg !== 'function' || addTransportLeg.__eucg) return;
+    const original = addTransportLeg;
+
+    const patched = function (target, type) {
+      const form = FORM();
+      if (form.transportLegCounter && form.transportLegCounter[target] === undefined) {
+        form.transportLegCounter[target] = 0;
+      }
+
+      const host = document.getElementById(target + 'TransportLegs');
+      if (!host || target === 'cc' || target === 'sc') {
+        return original.apply(this, arguments);   /* already correct */
+      }
+
+      /* Run the original, then move what it produced into the right place */
+      const wrong = document.getElementById(
+        target === 'cc' ? 'ccTransportLegs' : 'scTransportLegs');
+      const before = wrong ? wrong.children.length : 0;
+      original.apply(this, arguments);
+      if (wrong && wrong.children.length > before) {
+        host.appendChild(wrong.lastElementChild);
+      }
+    };
+    patched.__eucg = true;
+    window.addTransportLeg = patched;
+  }
+
   /* ================================================================= init */
 
   function init(cfg) {
@@ -1873,6 +1909,7 @@ const EUCatchGen = (function () {
     if (cfg.docBucket) DOC_BUCKET = cfg.docBucket;
     hookCommodityPicker();
     hookFishingLicence();
+    hookTransportLegs();
 
     const docId = qs('doc');
     if (docId) { openInForm(docId); return; }
