@@ -888,7 +888,7 @@ const CTE_DATA = {
       facility:'AT Seafood Global Limited',
       lotCode:'MIN56KCCDC3ZFI',
       gtin:'09300462344485',
-      product:'Canned Tuna in Olive Oil', // TODO: fetch from Product module
+      product:'Century Tuna Flakes in Oil',
     },
     // Circularity table is now computed live via computePackagingCircularity()
     // rather than hardcoded here — see renderPackaging()'s !isEmission branch.
@@ -1098,16 +1098,17 @@ const REPORT_STAGES = [
   {key:'shipReceive', label:'Ship/Receive'},
 ];
 
-function computeScopeReport(){
+function computeScopeReport(partsOverride, packagingTotalOverride){
+  const parts = partsOverride || grandTotalParts;
   const stageValues = {
-    harvesting: grandTotalParts.harvesting,
-    onVesselProcessing: grandTotalParts.ovp,
-    transshipment: grandTotalParts.transshipment,
-    landing: grandTotalParts.landing,
-    aggrDisaggr: grandTotalParts.aggrDisaggr,
-    processing: grandTotalParts.transformation + grandTotalParts.storage,
-    packaging: packagingLiveTotal(),
-    shipReceive: grandTotalParts.shipReceive,
+    harvesting: parts.harvesting,
+    onVesselProcessing: parts.ovp,
+    transshipment: parts.transshipment,
+    landing: parts.landing,
+    aggrDisaggr: parts.aggrDisaggr,
+    processing: parts.transformation + parts.storage,
+    packaging: packagingTotalOverride !== undefined ? packagingTotalOverride : packagingLiveTotal(),
+    shipReceive: parts.shipReceive,
   };
   const stageSplit = {
     harvesting: SCOPE_SPLIT.harvesting,
@@ -1115,7 +1116,7 @@ function computeScopeReport(){
     transshipment: SCOPE_SPLIT.transshipment,
     landing: SCOPE_SPLIT.landing,
     aggrDisaggr: SCOPE_SPLIT.aggrDisaggr,
-    processing: weightedSplit([grandTotalParts.transformation, SCOPE_SPLIT.transformation], [grandTotalParts.storage, SCOPE_SPLIT.storage]),
+    processing: weightedSplit([parts.transformation, SCOPE_SPLIT.transformation], [parts.storage, SCOPE_SPLIT.storage]),
     packaging: SCOPE_SPLIT.packaging,
     shipReceive: SCOPE_SPLIT.shipReceive,
   };
@@ -1160,7 +1161,7 @@ function renderEmissionBadge(staticValue){
         </div>
         <div class="peb-text">
           <div class="peb-label">Basis</div>
-          <div class="peb-basis">1 KG Tuna in Final Product</div>
+          <div class="peb-basis">${(()=>{ const p = selVal('modal-product','').value; return p ? `1 KG ${p}` : '1 KG Product in Final Product'; })()}</div>
         </div>
       </div>
     </div>
@@ -1183,6 +1184,12 @@ const grandTotalParts = {
   harvesting:0.9465328, ovp:0.096, transshipment:0.099256, landing:0.0026016,
   aggrDisaggr:0.8950241, transformation:3.4658340, storage:0.0794841, shipReceive:0.2716385,
 };
+// Frozen snapshot of the demo's seeded defaults, taken immediately at
+// load time — grandTotalParts itself gets zeroed by startFreshCalculation()
+// for the rest of the session, so anything wanting to show the demo's
+// real numbers later (e.g. the Past Calculations page's permanent Demo
+// entry) needs to read from here, not the live object.
+const DEMO_GRAND_TOTAL_PARTS = { ...grandTotalParts };
 function updateGrandTotal(){
   const sum = Object.values(grandTotalParts).reduce((a,b)=>a+b, 0);
   const el = document.getElementById('grand-total-perkg');
@@ -1678,6 +1685,9 @@ const packagingContext = {
   palletWeight: 25, palletUnits: 120, // 25kg matches the doc's stated pallet weight; 120 = 10x12
   answered: false, // true once real/user-supplied values are in (vs. demo defaults)
 };
+// Snapshot taken now, before any reset can mutate packagingContext — same
+// reasoning as DEMO_GRAND_TOTAL_PARTS above.
+const DEMO_PACKAGING_TOTAL = packagingLiveTotal();
 function packagingCtx(){
   const netWeightG = parseNum(packagingContext.netWeightG);
   const innerUnit = parseNum(packagingContext.innerUnit);
@@ -1757,6 +1767,47 @@ function captureCTESnapshot(cteKey){
 // only Supabase project I can reach is a different, unrelated one.
 // Verify against a dev/staging branch of the real project before
 // relying on this in production.
+// The demo is a permanent, non-deletable reference entry in the Overview
+// list — not a real DB row. Values match the plain demo's own computed
+// output so it's an honest reflection of "what the untouched demo shows",
+// not a separately-maintained set of numbers that could drift out of sync.
+const DEMO_CALCULATION_ENTRY = {
+  id: 'demo',
+  isDemo: true,
+  product_name: 'Century Tuna Flakes in Oil (Demo)',
+  destination_value: 'Republic of Korea',
+  shipment_ref: null,
+  created_at: null,
+  status: 'demo',
+};
+
+let calculationsListCache = null;
+let overviewDetailCache = null;
+async function loadCalculationsList(){
+  if(!dbClient) return [];
+  const { data, error } = await dbClient
+    .from('carbon_calculations')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if(error){ console.error('[loadCalculationsList] failed:', error.message); return []; }
+  calculationsListCache = data || [];
+  return calculationsListCache;
+}
+
+async function loadCalculationDetail(id){
+  if(!dbClient) return null;
+  const { data: calc, error } = await dbClient.from('carbon_calculations').select('*').eq('id', id).single();
+  if(error || !calc) return null;
+  const childTables = ['cte_harvesting','cte_transshipment','cte_landing','cte_aggr_disaggr',
+    'cte_processing_transformation','cte_processing_storage','cte_packaging'];
+  const children = {};
+  for(const t of childTables){
+    const { data: rows } = await dbClient.from(t).select('*').eq('calculation_id', id);
+    children[t] = rows || [];
+  }
+  return { calc, children };
+}
+
 async function saveCalculation(){
   const saveBtn = document.querySelector('[data-action="overview-save"]');
   if(!dbClient){
@@ -1775,9 +1826,21 @@ async function saveCalculation(){
     const destination_value = selVal('modal-destination', '').value || null;
     const total_emission_per_kg = round4(Object.values(grandTotalParts).reduce((a,b)=>a+b, 0));
 
+    const scopeReport = computeScopeReport();
+    const shipment_id = shipmentOverrides ? (currentShipmentId || null) : null;
+    const shipment_ref = shipmentOverrides?.shipReceive?.['Transaction No. (s)'] || null;
+    const raw_material_ref = shipmentOverrides?.modal?.dri || null;
+    const destination_country = shipmentOverrides?.modal?.destinationCountry || (destination_type==='country' ? destination_value : null);
+
     const { data: calc, error: calcErr } = await dbClient
       .from('carbon_calculations')
-      .insert({ production_type, calculation_mode, dri_code, product_name, destination_type, destination_value, status:'submitted', total_emission_per_kg })
+      .insert({
+        production_type, calculation_mode, dri_code, product_name, destination_type, destination_value,
+        status:'submitted', total_emission_per_kg,
+        shipment_id, shipment_ref, raw_material_ref, destination_country,
+        scope1_per_kg: round4(scopeReport.s1), scope2_per_kg: round4(scopeReport.s2), scope3_per_kg: round4(scopeReport.s3),
+        packaging_total_emission_kg: round4(packagingLiveTotal()),
+      })
       .select()
       .single();
     if(calcErr) throw calcErr;
@@ -1836,6 +1899,9 @@ const state = {
   infoPanelOpen:null,
   gdsnModalOpen:false,
   showMissingModal:false,
+  overviewListLoading:false,
+  overviewDetailLoading:false,
+  overviewDetailId:null,
   confirmed:{ harvesting:false, ovp:false, transshipment:false, landing:false, aggrDisaggr:false, transformation:false, storage:false, shipReceive:false },
 };
 
@@ -1949,6 +2015,8 @@ function startFreshCalculation(){
   packagingOverrides.tertiary = [null,null,null];
   packagingOverrides._lastProductType = null;
   shipmentOverrides = null;
+  currentShipmentId = null;
+  Object.keys(grandTotalParts).forEach(k => { grandTotalParts[k] = 0; });
   ovpShipmentApplied = false;
   shipReceiveShipmentApplied = false;
   freshCalcMode = true;
@@ -3793,6 +3861,149 @@ async function handleLogout(){
   window.location.href = 'index.html';
 }
 
+function overviewListTotal(calc){
+  return (calc.scope1_per_kg||0) + (calc.scope2_per_kg||0) + (calc.scope3_per_kg||0);
+}
+
+function renderOverviewList(){
+  const real = calculationsListCache || [];
+  const all = [DEMO_CALCULATION_ENTRY, ...real];
+
+  return `
+  ${topNav()}
+  <div class="page-wrap">
+    <div class="page-header">
+      <div>
+        <h1>Past Calculations</h1>
+        <div class="sub">Every saved carbon calculation, including the built-in demo — compare totals across shipments and destinations.</div>
+      </div>
+      <button class="btn btn-outline btn-sm" data-action="back-to-landing">← Back</button>
+    </div>
+
+    ${state.overviewListLoading ? `<div class="ovlist-loading">Loading saved calculations…</div>` : `
+      <div class="ovlist-grid">
+        ${all.map(c=>{
+          const isDemo = c.id==='demo';
+          const total = isDemo ? null : overviewListTotal(c);
+          return `
+          <div class="ovlist-card ${isDemo?'demo':''}" data-action="go-overview-detail" data-id="${c.id}">
+            ${isDemo ? `<span class="ovlist-badge">DEMO</span>` : ''}
+            <div class="ovlist-product">${c.product_name || 'Untitled calculation'}</div>
+            <div class="ovlist-meta">
+              ${c.destination_country || c.destination_value ? `<span>${c.destination_country || c.destination_value}</span>` : ''}
+              ${c.shipment_ref ? `<span>${c.shipment_ref}</span>` : ''}
+            </div>
+            <div class="ovlist-total">${isDemo ? '—' : fmtNum(total,2)+' kg CO₂e'}</div>
+            <div class="ovlist-date">${c.created_at ? new Date(c.created_at).toLocaleDateString() : 'Reference example'}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      ${real.length===0 ? `<div class="ovlist-empty">No saved calculations yet — the demo above is always available as a reference.</div>` : ''}
+    `}
+  </div>`;
+}
+
+function renderOverviewDetail(){
+  const id = state.overviewDetailId;
+  const isDemo = id==='demo';
+
+  if(!isDemo && state.overviewDetailLoading){
+    return `${topNav()}<div class="page-wrap"><div class="ovlist-loading">Loading calculation…</div></div>`;
+  }
+
+  let title, s1, s2, s3, perCte, destination, shipmentRef;
+  if(isDemo){
+    const report = computeScopeReport(DEMO_GRAND_TOTAL_PARTS, DEMO_PACKAGING_TOTAL);
+    title = 'Century Tuna Flakes in Oil (Demo)';
+    s1 = report.s1; s2 = report.s2; s3 = report.s3;
+    perCte = REPORT_STAGES.map(({key,label})=>({ label, value: report.perStage[key].total }));
+    destination = 'Republic of Korea'; shipmentRef = null;
+  } else {
+    const detail = overviewDetailCache;
+    if(!detail) return `${topNav()}<div class="page-wrap"><div class="ovlist-loading">Calculation not found.</div></div>`;
+    const c = detail.calc;
+    title = c.product_name || 'Untitled calculation';
+    s1 = c.scope1_per_kg||0; s2 = c.scope2_per_kg||0; s3 = c.scope3_per_kg||0;
+    destination = c.destination_country || c.destination_value; shipmentRef = c.shipment_ref;
+    const ctePretty = {
+      cte_harvesting:'Harvesting', cte_transshipment:'Transshipment', cte_landing:'Landing',
+      cte_aggr_disaggr:'Aggr/Disaggr', cte_processing_transformation:'Transformation',
+      cte_processing_storage:'Storage', cte_packaging:'Packaging',
+    };
+    perCte = Object.entries(ctePretty).map(([table,label])=>{
+      const rows = detail.children[table] || [];
+      const value = rows.reduce((a,r)=> a + parseNum(r.emission_per_kg ?? r.total_emission_kg ?? 0), 0);
+      return { label, value };
+    });
+  }
+
+  const total = s1+s2+s3;
+  const topCte = perCte.reduce((a,b)=> b.value>a.value ? b : a, {label:'—',value:0});
+  const others = (calculationsListCache||[]).filter(c=>c.id!==id);
+  const maxOther = Math.max(total, ...others.map(overviewListTotal), 0.0001);
+
+  return `
+  ${topNav()}
+  <div class="page-wrap">
+    <div class="page-header">
+      <div>
+        <h1>${title}</h1>
+        <div class="sub">${destination?`Destination: ${destination}`:''}${shipmentRef?` · Shipment ${shipmentRef}`:''}</div>
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-outline btn-sm" data-action="go-overview-list">← Back to list</button>
+        ${!isDemo ? `<button class="btn btn-primary btn-sm" data-action="edit-calculation" data-id="${id}">Edit</button>` : ''}
+      </div>
+    </div>
+
+    <div class="ovdetail-kpi-row">
+      <div class="ovdetail-kpi"><div class="l">Total Emissions</div><div class="v">${fmtNum(total,2)}<span> kg CO₂e</span></div></div>
+      <div class="ovdetail-kpi"><div class="l">Scope III Share</div><div class="v">${total>0?fmtNum(s3/total*100,0):0}<span>%</span></div></div>
+      <div class="ovdetail-kpi"><div class="l">Top Contributing CTE</div><div class="v" style="font-size:20px;">${topCte.label}</div></div>
+    </div>
+
+    <div class="ovdetail-row">
+      <div class="card ovdetail-donut-card">
+        <div class="section-label">Scope Breakdown</div>
+        ${renderDonutChart(s1, s2, s3, total)}
+        <div class="report-flow-legend" style="margin-top:14px;">
+          <div class="report-legend-row"><span class="report-legend-dot" style="background:#f5b400;"></span>Scope I <b>${fmtNum(s1,2)}</b></div>
+          <div class="report-legend-row"><span class="report-legend-dot" style="background:#22c55e;"></span>Scope II <b>${fmtNum(s2,2)}</b></div>
+          <div class="report-legend-row"><span class="report-legend-dot" style="background:#3b82f6;"></span>Scope III <b>${fmtNum(s3,2)}</b></div>
+        </div>
+      </div>
+
+      <div class="card ovdetail-compare-card">
+        <div class="section-label">Compare vs Other Saved Calculations</div>
+        <div class="ovdetail-bars">
+          ${[{label:'This calculation', value:total, current:true}, ...others.map(c=>({label:c.product_name||c.shipment_ref||'—', value:overviewListTotal(c)}))]
+            .slice(0,6).map(b=>`
+            <div class="ovdetail-bar-row">
+              <div class="ovdetail-bar-label">${b.label}</div>
+              <div class="ovdetail-bar-track"><div class="ovdetail-bar-fill ${b.current?'current':''}" style="width:${(b.value/maxOther*100).toFixed(1)}%"></div></div>
+              <div class="ovdetail-bar-value">${fmtNum(b.value,2)}</div>
+            </div>
+          `).join('')}
+          ${others.length===0 ? `<div class="ovlist-empty" style="padding:20px 0;">No other saved calculations yet to compare against.</div>` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-label">Per-CTE Breakdown</div>
+      <div class="overview-list">
+        ${perCte.filter(r=>r.value>0.0005).sort((a,b)=>b.value-a.value).map(r=>`
+          <div class="overview-row ok">
+            <div class="overview-row-label">${r.label}</div>
+            <div class="overview-row-note">${total>0?fmtNum(r.value/total*100,0):0}% of total</div>
+            <div class="overview-row-value">${fmtNum(r.value,3)}<span> kg CO₂e</span></div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
 function renderLanding(){
   return `
   ${topNav()}
@@ -3802,7 +4013,7 @@ function renderLanding(){
         <h1>Carbon Footprint Calculator</h1>
         <div class="sub">Trace emissions across your seafood supply chain using GDST-compliant Critical Tracking Events (CTEs) and Key Data Elements (KDEs).</div>
       </div>
-      <button class="btn btn-outline btn-sm">View past calculations</button>
+      <button class="btn btn-outline btn-sm" data-action="go-overview-list">View past calculations</button>
     </div>
 
     <div class="stat-row">
@@ -4343,6 +4554,8 @@ function render(){
   if(state.page==='landing') app.innerHTML = renderLanding();
   else if(state.page==='modal') app.innerHTML = renderModal();
   else if(state.page==='overview') app.innerHTML = renderOverview();
+  else if(state.page==='overviewList') app.innerHTML = renderOverviewList();
+  else if(state.page==='overviewDetail') app.innerHTML = renderOverviewDetail();
   else if(state.page==='reportSummary') app.innerHTML = renderReportSummary();
   else if(state.page==='reportScopeDetail') app.innerHTML = renderReportScopeDetail();
   else app.innerHTML = renderCalculator();
@@ -4523,6 +4736,26 @@ document.getElementById('app').addEventListener('click', (e)=>{
   else if(action==='gdsn-close'){
     state.gdsnModalOpen = false;
   }
+  else if(action==='go-overview-list'){
+    state.page = 'overviewList';
+    state.overviewListLoading = true;
+    loadCalculationsList().then(()=>{ state.overviewListLoading = false; render(); });
+  }
+  else if(action==='go-overview-detail'){
+    const id = el.dataset.id;
+    state.overviewDetailId = id;
+    state.page = 'overviewDetail';
+    if(id !== 'demo'){
+      state.overviewDetailLoading = true;
+      loadCalculationDetail(id).then(detail => { overviewDetailCache = detail; state.overviewDetailLoading = false; render(); });
+    }
+  }
+  else if(action==='back-to-landing'){
+    state.page = 'landing';
+  }
+  else if(action==='edit-calculation'){
+    showToast('Loading a saved calculation back into the editable calculator isn\'t built yet — this is view-only for now.');
+  }
   else if(action==='close-missing-modal'){
     state.showMissingModal = false;
   }
@@ -4627,9 +4860,12 @@ function renderMissingFieldsModal(){
   </div>`;
 }
 
+let currentShipmentId = null;
+
 async function initFromURL(){
   const params = new URLSearchParams(window.location.search);
   const shipmentId = params.get('shipment');
+  currentShipmentId = shipmentId || null;
 
   if(shipmentId){
     try{
