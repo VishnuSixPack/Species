@@ -487,6 +487,46 @@ const EUCatchGen = (function () {
                            e.imo || e.voyage_no);
   }
 
+
+  /* ------------------------------------------------------------------
+     High seas / EEZ and RFMO.
+
+     The two new Raw Material toggles are found by matching the column name
+     on the catch row rather than hard-coding it, so whatever they were
+     called they will be picked up.
+     ------------------------------------------------------------------ */
+  function pickField(row, patterns) {
+    if (!row) return null;
+    for (const k of Object.keys(row)) {
+      const key = k.toLowerCase();
+      if (patterns.some(rx => rx.test(key))) {
+        const val = row[k];
+        if (val === null || val === undefined || val === '') continue;
+        return { key: k, value: val };
+      }
+    }
+    return null;
+  }
+
+  const HIGH_SEAS_KEYS = [/high[_ ]?seas/, /^hs$/, /beyond.*jurisdiction/, /abnj/];
+  const EEZ_KEYS       = [/eez/, /exclusive.*economic/, /economic[_ ]?zone/];
+
+  /* FAO major fishing area → the RFMO with competence over it. Areas that
+     genuinely sit under more than one body list the tuna commission, since
+     that is what a catch certificate for these species concerns. */
+  const RFMO_BY_AREA = {
+    '18':'NAFO',   '21':'NAFO',   '27':'NEAFC',  '31':'ICCAT',  '34':'ICCAT',
+    '37':'GFCM',   '41':'ICCAT',  '47':'ICCAT',  '48':'CCAMLR', '51':'IOTC',
+    '57':'IOTC',   '58':'CCAMLR', '61':'NPFC',   '67':'NPFC',   '71':'WCPFC',
+    '77':'IATTC',  '81':'SPRFMO', '87':'IATTC',  '88':'CCAMLR'
+  };
+
+  function rfmoForArea(faoArea) {
+    if (!faoArea) return null;
+    const m = String(faoArea).match(/\d{2}/);
+    return m ? (RFMO_BY_AREA[m[0]] || null) : null;
+  }
+
   async function buildCC(flagState, rmList, gate) {
     const s = GEN.shipment;
     const rmIds = new Set(rmList.map(r => r.id));
@@ -563,6 +603,9 @@ const EUCatchGen = (function () {
           cn_sub: cn ? cn.sub : null, presentation: cn ? cn.presentation : null,
           cn_species_options: cn ? cn.speciesOptions : null,
           fao_area: c.fao_area, catch_area_detail: c.catch_area_detail,
+          high_seas: (pickField(c, HIGH_SEAS_KEYS) || {}).value ?? null,
+          eez: (pickField(c, EEZ_KEYS) || {}).value ?? null,
+          rfmo: rfmoForArea(c.fao_area),
           gear_type: c.gear_type, latitude: c.latitude, longitude: c.longitude,
           catch_date_from: c.catch_date_from, catch_date_to: c.catch_date_to,
           /* The two weight columns carry the same figure: the species line's
@@ -570,6 +613,7 @@ const EUCatchGen = (function () {
              for the other made them disagree. */
           estimated_live_weight_kg: num(one.quantity_kg),
           verified_weight_landed_kg: num(one.quantity_kg),
+          estimated_weight_to_be_landed_kg: num(one.quantity_kg),
           landing_port: clean(c.landing_port_name), landing_date: c.landing_date,
           departure_port: clean(c.departure_port_name), departure_date: c.departure_date,
           trip_no: c.trip_no
@@ -1381,6 +1425,99 @@ const EUCatchGen = (function () {
     return out;
   }
 
+
+  /* The form's High seas / EEZ / RFMO selects hold a fixed option list. Match
+     the stored value to one of them; a boolean toggle resolves to the first
+     option only when there is exactly one sensible choice, otherwise the free
+     text is returned and the select simply shows nothing. */
+  function matchOption(value, options) {
+    if (value === null || value === undefined || value === '') return '';
+    if (value === true) return '';
+    const want = String(value).trim().toLowerCase();
+    const hit = (options || []).find(o => String(o).toLowerCase() === want)
+             || (options || []).find(o => String(o).toLowerCase().includes(want))
+             || (options || []).find(o => want.includes(String(o).toLowerCase()));
+    return hit || String(value);
+  }
+
+
+  /* --------------------------------------------------------------- extras */
+
+  const nf = n => Number(n || 0).toLocaleString('en-GB',
+    { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  /* Thousand separators on the weight totals. updateCCTotals() writes raw
+     toFixed(2) values, so re-format after it runs. */
+  function hookWeightFormatting() {
+    if (typeof updateCCTotals !== 'function' || updateCCTotals.__eucg) return;
+    const original = updateCCTotals;
+    const patched = function () {
+      original.apply(this, arguments);
+      ['ccTotalVerified', 'ccTotalLive', 'ccTotalToBeLanded'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const raw = parseFloat(String(el.value).replace(/[^0-9.\-]/g, ''));
+        if (!isNaN(raw)) el.value = nf(raw) + ' kg';
+      });
+      document.querySelectorAll('[id^="ccSub-"]').forEach(el => {
+        const raw = parseFloat(String(el.textContent).replace(/[^0-9.\-]/g, ''));
+        if (!isNaN(raw)) el.textContent = nf(raw);
+      });
+    };
+    patched.__eucg = true;
+    window.updateCCTotals = patched;
+  }
+
+  /* Box 9 — flag state authority validation. Demo values: a signature date a
+     few days after the last landing, a contact derived from the authority,
+     and the signature box ticked. */
+  function fillFlagStateValidation(p) {
+    const sec = (() => {
+      const a = document.getElementById('anchor-cc-authority');
+      return a ? a.closest('.eu-section') : null;
+    })();
+    if (!sec) return;
+
+    const landings = (p.lines || []).map(l => l.landing_date).filter(Boolean).sort();
+    const base = landings.length ? new Date(landings[landings.length - 1]) : new Date();
+    base.setDate(base.getDate() + 2 + Math.floor(Math.random() * 6));
+    const signed = base.toISOString().slice(0, 10);
+
+    const a = p.validating_authority || {};
+    const officers = ['A. Bakani', 'M. Tabua', 'J. Loi', 'R. Kaupa', 'S. Wangi'];
+    const officer = officers[Math.floor(Math.random() * officers.length)];
+    const domain = (a.name || 'fisheries')
+      .toLowerCase().replace(/[^a-z]+/g, '').slice(0, 12) || 'fisheries';
+    const email = `${officer.split(' ').pop().toLowerCase()}@${domain}.gov`;
+
+    const dateEl  = sec.querySelector('input[type="date"]');
+    const textEl  = sec.querySelector('input[type="text"]');
+    const mailEl  = sec.querySelector('input[type="email"]');
+    const checkEl = sec.querySelector('input[type="checkbox"]');
+
+    if (dateEl  && !dateEl.value)  dateEl.value  = signed;
+    if (textEl  && !textEl.value)  textEl.value  = officer;
+    if (mailEl  && !mailEl.value)  mailEl.value  = email;
+    if (checkEl) checkEl.checked = true;
+  }
+
+  /* QR code carrying the document reference, as the real certificate does. */
+  function fillQrCode(doc) {
+    const boxes = document.querySelectorAll('#ccTabDetails .eu-field');
+    let host = null;
+    boxes.forEach(f => {
+      const lbl = f.querySelector('label');
+      if (lbl && /QR Code/i.test(lbl.textContent)) host = f.querySelector('div');
+    });
+    if (!host) return;
+    const payload = encodeURIComponent(doc.serial_number || doc.id);
+    host.style.padding = '0';
+    host.innerHTML =
+      `<img alt="QR code for ${esc(doc.serial_number || '')}" style="width:88px;height:88px;"
+        src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=0&data=${payload}"
+        onerror="this.parentNode.textContent='▦';">`;
+  }
+
   function hydrateCC(doc) {
     const p = doc.payload || {};
     showView('viewCC');
@@ -1428,9 +1565,14 @@ const EUCatchGen = (function () {
           species: [{ code: l.afsis_3a_code || '', name: l.scientific_name || '' }],
           vessel: l.vessel_name || '',
           catchArea: [l.fao_area, l.catch_area_detail].filter(Boolean).join(' — '),
-          highSeas: '', eez: '', rfmo: '',
+          highSeas: matchOption(l.high_seas, typeof HIGH_SEAS_OPTIONS !== 'undefined' ? HIGH_SEAS_OPTIONS : []),
+          eez: matchOption(l.eez, typeof EEZ_OPTIONS !== 'undefined' ? EEZ_OPTIONS : []),
+          rfmo: matchOption(l.rfmo, typeof RFMO_OPTIONS !== 'undefined' ? RFMO_OPTIONS : []),
           catchFrom: l.catch_date_from || '', catchTo: l.catch_date_to || '',
-          estWeight: '', estUnit: 'kg',
+          estWeight: l.estimated_weight_to_be_landed_kg == null
+            ? (l.estimated_live_weight_kg == null ? '' : l.estimated_live_weight_kg)
+            : l.estimated_weight_to_be_landed_kg,
+          estUnit: 'kg',
           netWeight: l.estimated_live_weight_kg == null ? '' : l.estimated_live_weight_kg, netUnit: 'kg',
           verifiedWeight: l.verified_weight_landed_kg == null ? '' : l.verified_weight_landed_kg,
           verifiedUnit: 'kg'
@@ -1563,6 +1705,10 @@ const EUCatchGen = (function () {
       CONTAINER_ROWS.cc[0].seal = p.transport.seal_number || '';
       if (typeof renderContainerRows === 'function') renderContainerRows('cc');
     }
+
+    fillFlagStateValidation(p);
+    fillQrCode(doc);
+    if (typeof updateCCTotals === 'function') updateCCTotals();
   }
 
   function hydratePS(doc) {
@@ -2008,6 +2154,7 @@ const EUCatchGen = (function () {
     hookCommodityPicker();
     hookFishingLicence();
     hookTransportLegs();
+    hookWeightFormatting();
 
     const docId = qs('doc');
     if (docId) { openInForm(docId); return; }
