@@ -697,6 +697,8 @@ const EUCatchGen = (function () {
       const { data } = await sb.from('company_certifications')
         .select('*').eq('company_id', company.id);
       const rows = data || [];
+      log('certifications for', company.company_name, '→',
+          rows.map(r => `${r.cert_type || r.cert_name || '?'}=${r.cert_number || '—'}`));
 
       /* Match 'EU' as a word, not as letters inside another one, and require
          it to be an approval rather than any other EU-related certificate.
@@ -708,7 +710,10 @@ const EUCatchGen = (function () {
                /(facility|establishment|approv)/.test(t);
       };
       const hits = rows.filter(isEu);
-      if (!hits.length) return null;
+      if (!hits.length) {
+        log('no EU facility approval matched among', rows.length, 'certifications');
+        return null;
+      }
 
       const today = new Date().toISOString().slice(0, 10);
       const live = r => !r.status || /^(active|valid|current)$/i.test(String(r.status));
@@ -1152,13 +1157,45 @@ const EUCatchGen = (function () {
                   refused at the border.
                 </div>
                 ${detail}
-                <p style="color:#6b7280;font-size:12px;">Add or renew it on the organisation
-                  under <b>Regulatory → EU Facility Approval</b>, then generate again.
-                  You can still save a draft to continue working, but it will be incomplete.</p>`) +
-          foot(btn('Save as draft anyway', 'EUCatchGen._approvalGo()') +
-               btn('Stop and fix this', 'EUCatchGen._approvalStop()', true)));
+                <p style="color:#6b7280;font-size:12px;margin-bottom:14px;">
+                  The lasting fix is to record it on the organisation under
+                  <b>Regulatory → EU Facility Approval</b>. If you have the number to
+                  hand, enter it here and it will be used on this statement.</p>
+                <label style="font-size:11px;font-weight:600;color:#5a5a5a;">
+                  EU approval number</label>
+                <input id="eucgApprovalNo" type="text" placeholder="e.g. 1500EU"
+                  style="width:100%;padding:9px 10px;border:1px solid #e2e5ec;border-radius:4px;
+                  font-family:inherit;font-size:13px;margin-top:5px;">
+                <div style="display:flex;gap:12px;margin-top:10px;">
+                  <div style="flex:1;">
+                    <label style="font-size:11px;font-weight:600;color:#5a5a5a;">Valid until
+                      <span style="font-weight:400;">(optional)</span></label>
+                    <input id="eucgApprovalTo" type="date"
+                      style="width:100%;padding:8px 10px;border:1px solid #e2e5ec;border-radius:4px;
+                      font-family:inherit;font-size:13px;margin-top:5px;"></div>
+                  <div style="flex:1;">
+                    <label style="font-size:11px;font-weight:600;color:#5a5a5a;">Issuing body
+                      <span style="font-weight:400;">(optional)</span></label>
+                    <input id="eucgApprovalBy" type="text"
+                      style="width:100%;padding:8px 10px;border:1px solid #e2e5ec;border-radius:4px;
+                      font-family:inherit;font-size:13px;margin-top:5px;"></div>
+                </div>`) +
+          foot(btn('Cancel', 'EUCatchGen._approvalStop()') +
+               btn('Use this number', 'EUCatchGen._approvalGo()', true)));
 
-      window.EUCatchGen._approvalGo   = () => resolve(true);
+      window.EUCatchGen._approvalGo = () => {
+        const no = (document.getElementById('eucgApprovalNo').value || '').trim();
+        if (!no) {
+          alert('Enter the EU approval number, or cancel and record it on the organisation first.');
+          return;
+        }
+        resolve({
+          number: no,
+          valid_until: document.getElementById('eucgApprovalTo').value || null,
+          issuing_body: (document.getElementById('eucgApprovalBy').value || '').trim() || null,
+          source: 'entered'
+        });
+      };
       window.EUCatchGen._approvalStop = () => resolve(false);
     });
   }
@@ -1276,11 +1313,24 @@ const EUCatchGen = (function () {
 
         const ap = ps.processing_plant && ps.processing_plant.approval;
         if (!ap || ap.expired) {
-          const go = await askApproval(ps.processing_plant && ps.processing_plant.name, ap);
-          if (!go) {
+          const answer = await askApproval(ps.processing_plant && ps.processing_plant.name, ap);
+          if (!answer) {
             showDone(made, GEN.bundle);   /* the catch certificates still stand */
             return;
           }
+          /* Typed in by hand — recorded as such, so it is clear on the document
+             that this did not come from the organisation's certifications. */
+          ps.processing_plant.approval_number = answer.number;
+          ps.processing_plant.approval = {
+            number: answer.number,
+            issuing_body: answer.issuing_body,
+            valid_until: answer.valid_until,
+            valid_from: null, scope: null, url: null,
+            cert_name: 'EU Facility Approval',
+            source: 'entered',
+            expired: false,
+            no_expiry: !answer.valid_until
+          };
         }
 
         made.push(await saveDoc('PS', ps, null));
@@ -1548,6 +1598,7 @@ const EUCatchGen = (function () {
           <b>Regulatory → EU Facility Approval</b> certification, then regenerate.</div>`;
       } else {
         const bits = [];
+        if (ap.source === 'entered') bits.push('Entered manually during generation');
         if (ap.issuing_body) bits.push(`Issued by ${esc(ap.issuing_body)}`);
         if (ap.valid_from)   bits.push(`Valid from ${esc(ap.valid_from)}`);
         bits.push(ap.valid_until ? `Valid until ${esc(ap.valid_until)}` : 'No expiry recorded');
