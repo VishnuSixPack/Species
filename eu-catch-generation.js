@@ -1515,20 +1515,55 @@ const EUCatchGen = (function () {
           font-family:inherit;font-size:13px;color:#1a1a2e;cursor:pointer;
           display:flex;justify-content:space-between;align-items:center;gap:8px;">
           <span class="eucg-eez-label" style="overflow:hidden;text-overflow:ellipsis;
-            white-space:nowrap;">${current.length ? esc(current.join(', ')) : 'No selection'}</span>
+            white-space:nowrap;color:${current.length ? '#1a1a2e' : '#a0a0a0'};">${
+            current.length ? current.length + ' zone' + (current.length === 1 ? '' : 's') + ' selected'
+                           : 'Select zones'}</span>
           <span style="color:#6b7280;font-size:11px;">▾</span></button>
         <div class="eucg-eez-menu" style="display:none;position:absolute;top:calc(100% + 2px);
           left:0;right:0;z-index:60;background:#fff;border:1px solid #e2e5ec;border-radius:6px;
           box-shadow:0 8px 28px rgba(0,0,0,.12);max-height:230px;overflow-y:auto;">
           ${group('PNA parties', PNA_EEZ)}
           ${group('Other', OTHER_EEZ)}
-        </div>`;
+        </div>
+        <div class="species-chips eucg-eez-chips"></div>`;
 
       sel.parentNode.replaceChild(wrap, sel);
+
+      const shortName = z => String(z)
+        .replace(/\s*EEZ\s*/i, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
 
       const trigger = wrap.querySelector('.eucg-eez-trigger');
       const menu    = wrap.querySelector('.eucg-eez-menu');
       const label   = wrap.querySelector('.eucg-eez-label');
+      const chips   = wrap.querySelector('.eucg-eez-chips');
+
+      /* Selected zones as removable tags, matching the species chips */
+      function paintChips() {
+        const picked = [...menu.querySelectorAll('input:checked')].map(i => i.value);
+        label.textContent = picked.length
+          ? `${picked.length} zone${picked.length === 1 ? '' : 's'} selected`
+          : 'No selection';
+        chips.innerHTML = picked.map(z =>
+          `<span class="species-chip" title="${esc(z)}">${esc(shortName(z))}
+             <span data-zone="${esc(z)}">✕</span></span>`).join('');
+        chips.querySelectorAll('span[data-zone]').forEach(x => {
+          x.addEventListener('click', ev => {
+            ev.stopPropagation();
+            const box = [...menu.querySelectorAll('input')]
+              .find(i => i.value === x.dataset.zone);
+            if (box) { box.checked = false; commit(); }
+          });
+        });
+      }
+
+      function commit() {
+        const picked = [...menu.querySelectorAll('input:checked')].map(i => i.value);
+        paintChips();
+        if (typeof updateRowField === 'function')
+          updateRowField(cIdx, rIdx, 'eez', picked.join(', '));
+      }
 
       trigger.addEventListener('click', e => {
         e.stopPropagation();
@@ -1538,12 +1573,8 @@ const EUCatchGen = (function () {
         menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
       });
 
-      menu.addEventListener('change', () => {
-        const picked = [...menu.querySelectorAll('input:checked')].map(i => i.value);
-        label.textContent = picked.length ? picked.join(', ') : 'No selection';
-        if (typeof updateRowField === 'function')
-          updateRowField(cIdx, rIdx, 'eez', picked.join(', '));
-      });
+      menu.addEventListener('change', commit);
+      paintChips();
     });
   }
 
