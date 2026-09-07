@@ -611,8 +611,28 @@ const EUCatchGen = (function () {
           cn_sub: cn ? cn.sub : null, presentation: cn ? cn.presentation : null,
           cn_species_options: cn ? cn.speciesOptions : null,
           fao_area: c.fao_area, catch_area_detail: c.catch_area_detail,
-          high_seas: (pickField(c, HIGH_SEAS_KEYS) || {}).value ?? null,
-          eez: (pickField(c, EEZ_KEYS) || {}).value ?? null,
+          catch_area_label: (function () {
+            const a = String(c.fao_area || '').trim();
+            if (!a) return c.catch_area_detail || null;
+            return /^fao/i.test(a) ? a : `FAO ${a}`;
+          })(),
+          high_seas: (function () {
+            const f = pickField(c, HIGH_SEAS_KEYS);
+            /* An explicit false, or no flag at all, means it was not a high
+               seas catch — say so rather than leaving the box empty. */
+            if (!f || f.value === false || /^(no|false|0)$/i.test(String(f.value)))
+              return 'No high seas catch';
+            return f.value === true ? null : f.value;
+          })(),
+          eez: (function () {
+            const f = pickField(c, EEZ_KEYS);
+            if (f && f.value !== true && f.value !== false) return f.value;
+            /* Fall back to the catch area detail, which is where the zone is
+               recorded today (e.g. "71 — PNA Area"). */
+            const detail = c.catch_area_detail || '';
+            if (/pna/i.test(detail)) return 'PNA Area';
+            return f && f.value === true ? null : null;
+          })(),
           rfmo: rfmoForArea(c.fao_area),
           gear_type: c.gear_type, latitude: c.latitude, longitude: c.longitude,
           catch_date_from: c.catch_date_from, catch_date_to: c.catch_date_to,
@@ -1426,6 +1446,24 @@ const EUCatchGen = (function () {
   }
 
 
+
+  /* The form's High seas / EEZ selects ship with a fixed list that has no way
+     of saying "not caught on the high seas", and no PNA entry. Add both so the
+     certificate can state the position rather than leaving it blank. */
+  const NO_HIGH_SEAS = 'No high seas catch';
+
+  function extendCatchOptions() {
+    if (typeof HIGH_SEAS_OPTIONS !== 'undefined' &&
+        HIGH_SEAS_OPTIONS.indexOf(NO_HIGH_SEAS) === -1) {
+      HIGH_SEAS_OPTIONS.unshift(NO_HIGH_SEAS);
+    }
+    if (typeof EEZ_OPTIONS !== 'undefined') {
+      ['PNA Area', 'Papua New Guinea EEZ'].forEach(o => {
+        if (EEZ_OPTIONS.indexOf(o) === -1) EEZ_OPTIONS.push(o);
+      });
+    }
+  }
+
   /* The form's High seas / EEZ / RFMO selects hold a fixed option list. Match
      the stored value to one of them; a boolean toggle resolves to the first
      option only when there is exactly one sensible choice, otherwise the free
@@ -1743,7 +1781,14 @@ const EUCatchGen = (function () {
         rows: lines.map(l => ({
           species: [{ code: l.afsis_3a_code || '', name: l.scientific_name || '' }],
           vessel: l.vessel_name || '',
-          catchArea: [l.fao_area, l.catch_area_detail].filter(Boolean).join(' — '),
+          catchArea: (function () {
+            const label = l.catch_area_label || (l.fao_area ? `FAO ${l.fao_area}` : '');
+            const detail = l.catch_area_detail || '';
+            /* Don't repeat the zone here when it is already in the EEZ field */
+            const dup = l.eez && detail.toLowerCase().includes(String(l.eez).toLowerCase());
+            return [label, dup ? '' : detail.replace(/^\d+\s*[—-]\s*/, '')]
+              .filter(Boolean).join(' — ');
+          })(),
           highSeas: matchOption(l.high_seas, typeof HIGH_SEAS_OPTIONS !== 'undefined' ? HIGH_SEAS_OPTIONS : []),
           eez: matchOption(l.eez, typeof EEZ_OPTIONS !== 'undefined' ? EEZ_OPTIONS : []),
           rfmo: matchOption(l.rfmo, typeof RFMO_OPTIONS !== 'undefined' ? RFMO_OPTIONS : []),
@@ -2350,6 +2395,7 @@ const EUCatchGen = (function () {
     hookWeightFormatting();
     hookWeightInputs();
     hookPSCommodityTable();
+    extendCatchOptions();
 
     const docId = qs('doc');
     if (docId) { openInForm(docId); return; }
