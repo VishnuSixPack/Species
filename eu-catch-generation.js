@@ -630,7 +630,17 @@ const EUCatchGen = (function () {
             /* Fall back to the catch area detail, which is where the zone is
                recorded today (e.g. "71 — PNA Area"). */
             const detail = c.catch_area_detail || '';
-            if (/pna/i.test(detail)) return 'PNA Area';
+            if (/pna/i.test(detail)) {
+              /* Name the zone actually fished where the flag state identifies
+                 it, rather than the group as a whole. */
+              const byFlag = {
+                'papua new guinea':'Papua New Guinea EEZ', 'micronesia':'Federated States of Micronesia EEZ',
+                'kiribati':'Kiribati EEZ (Gilbert Islands)', 'marshall islands':'Marshall Islands EEZ',
+                'nauru':'Nauru EEZ', 'palau':'Palau EEZ', 'solomon islands':'Solomon Islands EEZ',
+                'tuvalu':'Tuvalu EEZ', 'tokelau':'Tokelau EEZ'
+              };
+              return byFlag[String(c.flag_state || '').trim().toLowerCase()] || 'PNA Area';
+            }
             return f && f.value === true ? null : null;
           })(),
           rfmo: rfmoForArea(c.fao_area),
@@ -1447,6 +1457,100 @@ const EUCatchGen = (function () {
 
 
 
+
+  /* --------------------------------------------------------------------
+     Exclusive economic zone — multi-select.
+
+     A single trip commonly fishes more than one EEZ, so this replaces the
+     form's single select with a checkbox list of the PNA zones plus the
+     other Pacific EEZs. Values are stored comma-separated, which is what the
+     rest of the form and the certificate expect.
+     -------------------------------------------------------------------- */
+  const PNA_EEZ = [
+    'Federated States of Micronesia EEZ',
+    'Kiribati EEZ (Gilbert Islands)',
+    'Kiribati EEZ (Phoenix Islands)',
+    'Kiribati EEZ (Line Islands)',
+    'Marshall Islands EEZ',
+    'Nauru EEZ',
+    'Palau EEZ',
+    'Papua New Guinea EEZ',
+    'Solomon Islands EEZ',
+    'Tuvalu EEZ',
+    'Tokelau EEZ'
+  ];
+
+  const OTHER_EEZ = [
+    'Cook Islands EEZ', 'Fiji EEZ', 'French Polynesia EEZ', 'Indonesia EEZ',
+    'New Caledonia EEZ', 'Niue EEZ', 'Philippines EEZ', 'Samoa EEZ',
+    'Tonga EEZ', 'Vanuatu EEZ', 'Wallis and Futuna EEZ'
+  ];
+
+  function enhanceEezFields() {
+    document.querySelectorAll('#ccCommodityList select').forEach(sel => {
+      const handler = sel.getAttribute('onchange') || '';
+      const m = handler.match(/updateRowField\((\d+),\s*(\d+),\s*'eez'/);
+      if (!m || sel.dataset.eucgEez) return;
+
+      const cIdx = Number(m[1]), rIdx = Number(m[2]);
+      const current = String(sel.value || '')
+        .split(',').map(x => x.trim()).filter(Boolean);
+
+      const wrap = document.createElement('div');
+      wrap.dataset.eucgEez = '1';
+      wrap.style.position = 'relative';
+
+      const group = (label, list) =>
+        `<div style="padding:6px 10px 2px;font-size:10px;font-weight:700;
+           color:#5a5a5a;text-transform:uppercase;letter-spacing:.04em;">${label}</div>` +
+        list.map(z => `
+          <label style="display:flex;gap:8px;align-items:center;padding:5px 10px;
+            font-size:12px;cursor:pointer;">
+            <input type="checkbox" value="${esc(z)}" ${current.indexOf(z) !== -1 ? 'checked' : ''}>
+            <span>${esc(z)}</span></label>`).join('');
+
+      wrap.innerHTML = `
+        <button type="button" class="eucg-eez-trigger" style="width:100%;text-align:left;
+          padding:8px 10px;border:1px solid #e2e5ec;border-radius:4px;background:#fff;
+          font-family:inherit;font-size:13px;color:#1a1a2e;cursor:pointer;
+          display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <span class="eucg-eez-label" style="overflow:hidden;text-overflow:ellipsis;
+            white-space:nowrap;">${current.length ? esc(current.join(', ')) : 'No selection'}</span>
+          <span style="color:#6b7280;font-size:11px;">▾</span></button>
+        <div class="eucg-eez-menu" style="display:none;position:absolute;top:calc(100% + 2px);
+          left:0;right:0;z-index:60;background:#fff;border:1px solid #e2e5ec;border-radius:6px;
+          box-shadow:0 8px 28px rgba(0,0,0,.12);max-height:230px;overflow-y:auto;">
+          ${group('PNA parties', PNA_EEZ)}
+          ${group('Other', OTHER_EEZ)}
+        </div>`;
+
+      sel.parentNode.replaceChild(wrap, sel);
+
+      const trigger = wrap.querySelector('.eucg-eez-trigger');
+      const menu    = wrap.querySelector('.eucg-eez-menu');
+      const label   = wrap.querySelector('.eucg-eez-label');
+
+      trigger.addEventListener('click', e => {
+        e.stopPropagation();
+        document.querySelectorAll('.eucg-eez-menu').forEach(m2 => {
+          if (m2 !== menu) m2.style.display = 'none';
+        });
+        menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+      });
+
+      menu.addEventListener('change', () => {
+        const picked = [...menu.querySelectorAll('input:checked')].map(i => i.value);
+        label.textContent = picked.length ? picked.join(', ') : 'No selection';
+        if (typeof updateRowField === 'function')
+          updateRowField(cIdx, rIdx, 'eez', picked.join(', '));
+      });
+    });
+  }
+
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.eucg-eez-menu').forEach(m => { m.style.display = 'none'; });
+  });
+
   /* The form's High seas / EEZ selects ship with a fixed list that has no way
      of saying "not caught on the high seas", and no PNA entry. Add both so the
      certificate can state the position rather than leaving it blank. */
@@ -1458,7 +1562,7 @@ const EUCatchGen = (function () {
       HIGH_SEAS_OPTIONS.unshift(NO_HIGH_SEAS);
     }
     if (typeof EEZ_OPTIONS !== 'undefined') {
-      ['PNA Area', 'Papua New Guinea EEZ'].forEach(o => {
+      PNA_EEZ.concat(OTHER_EEZ).forEach(o => {
         if (EEZ_OPTIONS.indexOf(o) === -1) EEZ_OPTIONS.push(o);
       });
     }
@@ -1676,6 +1780,7 @@ const EUCatchGen = (function () {
         const out = original.apply(this, arguments);
         if (target === 'cc') {
           formatWeightInputs();
+          enhanceEezFields();
           if (typeof updateCCTotals === 'function') updateCCTotals();
         }
         return out;
@@ -1931,6 +2036,7 @@ const EUCatchGen = (function () {
     }
 
     formatWeightInputs();
+    enhanceEezFields();
     fillFlagStateValidation(p);
     fillQrCode(doc);
     if (typeof updateCCTotals === 'function') updateCCTotals();
