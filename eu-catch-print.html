@@ -249,50 +249,65 @@ function renderPS(doc){
   const p = doc.payload || {};
   const plant = p.processing_plant || {};
   const ap = plant.approval || null;
-  const exp = p.exporter || {};
+  const exp = p.exporter || null;
   const ea = p.endorsing_authority || {};
   const prod = p.product || {};
   const tr = p.transport || {};
   const certs = p.linked_catch_certificates || [];
   const inputs = p.inputs || {};
   const means = mergeMeans(tr.means_of_transport);
+  const docs = p.supporting_documents || [];
 
-  const certRows = certs.length ? certs.map(c => `
-    <tr>
-      <td>${v(c.serial_number)}</td>
-      <td>${v(prod.cn_display || prod.cn_code)}</td>
-      <td>${v(prod.species_name)}${prod.afsis_3a_code ? ' (' + v(prod.afsis_3a_code) + ')' : ''}</td>
-      <td>${(inputs.vessels || []).map(v).join(', ')}</td>
-      <td style="text-align:right;">${kg(inputs.raw_material_total_kg)}</td>
-      <td style="text-align:right;">${kg(prod.processed_quantity_kg || prod.net_weight_kg)}</td>
-    </tr>`).join('')
-    : `<tr>
-         <td></td>
-         <td>${v(prod.cn_display || prod.cn_code)}</td>
-         <td>${v(prod.species_name)}</td>
-         <td>${(inputs.vessels || []).map(v).join(', ')}</td>
-         <td style="text-align:right;">${kg(inputs.raw_material_total_kg)}</td>
-         <td style="text-align:right;">${kg(prod.processed_quantity_kg || prod.net_weight_kg)}</td>
-       </tr>`;
+  const cnShown = (() => {
+    const cn = String(prod.cn_code || '').replace(/\s+/g, '');
+    return cn ? `${cn.slice(0,4)} ${cn.slice(4,6)}${cn.length > 6 ? ' ' + cn.slice(6) : ''}` : '';
+  })();
 
-  const batchRows = (p.batches || []).map(b => `
-    <tr>
-      <td>${v(b.batch_lot)}</td>
-      <td>${v(b.raw_material_ref)}</td>
-      <td>${v(b.supplier_catch_certificate_no)}</td>
-      <td>${v(b.processing_date)}</td>
-      <td style="text-align:right;">${kg(b.quantity_kg)}</td>
-    </tr>`).join('') || '<tr><td colspan="5" style="height:18px;"></td></tr>';
+  /* ── Processed fishery products — the breadcrumb shown on the form ── */
+  const breadcrumb = `
+    <div style="font-size:8pt;line-height:1.6;">
+      <div style="font-weight:bold;">${v(prod.cn_chapter)}</div>
+      <div style="padding-left:12px;">↳ ${v(prod.cn_heading)}</div>
+      <div style="padding-left:26px;font-weight:bold;">↳ ${v(prod.cn_sub)}</div>
+    </div>`;
 
-  const meansRows = means.map(m => `
+  /* ── Catch certificate commodities, as laid out on the form ── */
+  const commodityRows = (certs.length ? certs : [{}]).map(c => `
     <tr>
-      <td colspan="2">${[v(m.ship_name), v(m.flag_state)].filter(Boolean).join(' / ')}
+      <td style="width:19%;">
+        ${c.serial_number ? `<div style="font-weight:bold;">${v(c.serial_number)}</div>` : ''}
+        ${c.issued_on ? `<div style="font-size:7pt;color:#555;">${d(c.issued_on)}</div>` : ''}
+        ${c.flag_state ? `<div style="font-size:7pt;color:#555;">${v(c.flag_state)}</div>` : ''}
+      </td>
+      <td style="width:29%;">
+        ${cnShown ? `<b>${v(cnShown)}</b> ` : ''}${v(prod.cn_label)}
+        ${prod.afsis_3a_code || prod.species_name
+          ? `<div style="margin-top:3px;font-size:7.5pt;">
+               <b>${v(prod.afsis_3a_code)}</b>
+               <i style="color:#555;">${v(prod.scientific_name || prod.species_name)}</i></div>` : ''}
+      </td>
+      <td style="width:15%;">${(inputs.vessels || []).map(v).join('<br>') || ''}</td>
+      <td style="width:12%;text-align:right;">${kg(inputs.raw_material_total_kg)}</td>
+      <td style="width:12%;text-align:right;">${kg(inputs.raw_material_total_kg)}</td>
+      <td style="width:13%;text-align:right;">${kg(prod.processed_quantity_kg || prod.net_weight_kg)}</td>
+    </tr>`).join('');
+
+  const docRows = docs.length ? docs.map(x => `
+    <tr><td colspan="2">${v(x.doc_type || 'Document')}</td>
+        <td colspan="2">${v(x.file_name)}</td>
+        <td colspan="2">${v(x.issued_date)}</td></tr>`).join('')
+    : '<tr><td colspan="6" style="height:16px;color:#777;">None attached</td></tr>';
+
+  const meansRows = means.length ? means.map(m => `
+    <tr>
+      <td colspan="2">${v(m.ship_name)}${m.flag_state ? ' / ' + v(m.flag_state) : ''}
         ${m.flight_no ? 'Flight ' + v(m.flight_no) : ''}
         ${m.vehicle_plate ? 'Vehicle ' + v(m.vehicle_plate) : ''}</td>
       <td>${v(m.imo)}</td>
       <td>${v(m.voyage_no)}</td>
-      <td>${v(m.transport_document)}</td>
-    </tr>`).join('') || '<tr><td colspan="5" style="height:18px;"></td></tr>';
+      <td colspan="2">${v(m.transport_document)}</td>
+    </tr>`).join('')
+    : '<tr><td colspan="6" style="height:16px;"></td></tr>';
 
   document.getElementById('out').innerHTML = `
   <div class="sheet">
@@ -301,23 +316,15 @@ function renderPS(doc){
 
     <table>
       <tr>
-        <td colspan="4"><span class="lbl">Document number</span>
+        <td colspan="3"><span class="lbl">Serial number of the processing statement</span>
           <div class="val">${v(doc.serial_number)}</div></td>
-        <td colspan="2"><span class="lbl">Date</span>
-          <div class="val">${d(doc.created_at)}</div></td>
+        <td colspan="3"><span class="lbl">Document number</span>
+          <div class="val">${v(doc.local_ref)}</div></td>
       </tr>
 
       <tr><td colspan="6" class="sect" style="border-bottom:1px solid #000;">
-        I. Description of the processed fishery products</td></tr>
-      <tr>
-        <th style="width:22%;">Catch certificate</th>
-        <th style="width:14%;">CN code</th>
-        <th style="width:20%;">Species</th>
-        <th style="width:18%;">Fishing vessel(s)</th>
-        <th style="width:13%;">Catch processed (kg)</th>
-        <th style="width:13%;">Processed product (kg)</th>
-      </tr>
-      ${certRows}
+        Processed fishery products</td></tr>
+      <tr><td colspan="6">${breadcrumb}</td></tr>
       <tr>
         <td colspan="2"><span class="lbl">Product description</span>
           <div class="val">${v(prod.name)}</div></td>
@@ -328,68 +335,103 @@ function renderPS(doc){
       </tr>
 
       <tr><td colspan="6" class="sect" style="border-bottom:1px solid #000;">
-        Batches processed</td></tr>
+        Catch certificate commodities</td></tr>
       <tr>
-        <th>Batch / lot</th><th>Raw material</th><th>Supplier catch certificate</th>
-        <th>Processing date</th><th>Quantity (kg)</th>
+        <th>Certificate</th><th>Commodities</th><th>Vessel name</th>
+        <th>Total landed weight</th><th>Catch processed</th><th>Processed fishery products</th>
       </tr>
-      ${batchRows}
+      ${commodityRows}
 
       <tr><td colspan="6" class="sect" style="border-bottom:1px solid #000;">
-        II. Processing plant</td></tr>
+        Name and address of processing plant</td></tr>
       <tr>
-        <td colspan="3"><span class="lbl">Name and address of the processing plant</span>
-          <div class="val">${v(plant.name)}${plant.address ? '<br>' + v(plant.address) : ''}</div></td>
-        <td colspan="3"><span class="lbl">Approval number</span>
+        <td colspan="3"><span class="lbl">Name</span>
+          <div class="val">${v(plant.name)}</div>
+          ${plant.address ? `<div class="val">${v(plant.address)}</div>` : ''}</td>
+        <td colspan="2"><span class="lbl">Country</span>
+          <div class="val">${v(plant.country)}</div></td>
+        <td><span class="lbl">ISO code</span>
+          <div class="val">${v(plant.iso)}</div></td>
+      </tr>
+      <tr>
+        <td colspan="6"><span class="lbl">Approval number of the processing plant</span>
           <div class="val">${ap && ap.number
-            ? v(ap.number) + (ap.valid_until ? '<br><span style="font-size:7pt;">valid until ' +
-                v(ap.valid_until) + '</span>' : '')
+            ? v(ap.number) + (ap.valid_until
+                ? ` <span style="font-size:7pt;color:#555;">(valid until ${v(ap.valid_until)})</span>` : '')
             : '<span style="color:#c0392b;">No EU facility approval on record</span>'}</div></td>
       </tr>
+
+      <tr><td colspan="6" class="sect" style="border-bottom:1px solid #000;">
+        Name and address of exporter <span style="font-weight:normal;">
+        (only if different from the processing plant)</span></td></tr>
       <tr>
-        <td colspan="3"><span class="lbl">Country of processing</span>
-          <div class="val">${v(plant.country)}${plant.iso ? ' (' + v(plant.iso) + ')' : ''}</div></td>
-        <td colspan="3"><span class="lbl">Name and address of the exporter</span>
-          <div class="val">${v(exp.name)}${exp.country ? '<br>' + v(exp.country) : ''}</div></td>
+        <td colspan="3"><span class="lbl">Name</span>
+          <div class="val">${exp && exp.name ? v(exp.name) : ''}</div></td>
+        <td colspan="2"><span class="lbl">Country</span>
+          <div class="val">${exp && exp.country ? v(exp.country) : ''}</div></td>
+        <td><span class="lbl">ISO code</span>
+          <div class="val">${exp && exp.iso ? v(exp.iso) : ''}</div></td>
+      </tr>
+
+      <tr><td colspan="6" class="sect" style="border-bottom:1px solid #000;">
+        Name and address of endorsing authority</td></tr>
+      <tr>
+        <td colspan="3"><span class="lbl">Name</span>
+          <div class="val" style="height:16px;">${v(ea.name)}</div>
+          <span class="lbl">Address</span>
+          <div class="val" style="height:16px;">${v(ea.address)}</div></td>
+        <td colspan="2"><span class="lbl">Country</span>
+          <div class="val" style="height:16px;">${v(ea.country)}</div></td>
+        <td><span class="lbl">ISO code</span>
+          <div class="val" style="height:16px;">${v(ea.iso_alpha2)}</div></td>
       </tr>
       <tr>
-        <td colspan="3"><span class="lbl">Signature of responsible person</span>
+        <td colspan="4"><span class="lbl">Endorsing authority — name and signature</span>
           <div class="val" style="height:26px;"></div></td>
-        <td colspan="3"><span class="lbl">Date and seal</span>
+        <td colspan="2"><span class="lbl">Signature and seal present</span>
           <div class="val" style="height:26px;"></div></td>
       </tr>
 
       <tr><td colspan="6" class="sect" style="border-bottom:1px solid #000;">
-        III. Endorsement by the competent authority</td></tr>
-      <tr>
-        <td colspan="3"><span class="lbl">Name and address of the endorsing authority</span>
-          <div class="val">${v(ea.name)}${ea.address ? '<br>' + v(ea.address) : ''}</div></td>
-        <td colspan="3"><span class="lbl">Country</span>
-          <div class="val">${v(ea.country)}${ea.iso_alpha2 ? ' (' + v(ea.iso_alpha2) + ')' : ''}</div></td>
-      </tr>
-      <tr>
-        <td colspan="2"><span class="lbl">Name</span><div class="val">${AUTH}</div></td>
-        <td colspan="2"><span class="lbl">Signature</span><div class="val">${AUTH}</div></td>
-        <td colspan="2"><span class="lbl">Date and seal</span><div class="val">${AUTH}</div></td>
-      </tr>
+        Supporting documents</td></tr>
+      <tr><th colspan="2">Type</th><th colspan="2">File</th><th colspan="2">Date</th></tr>
+      ${docRows}
 
       <tr><td colspan="6" class="sect" style="border-bottom:1px solid #000;">
-        IV. Transport details</td></tr>
+        Paper version — signatures</td></tr>
+      <tr>
+        <td colspan="3"><span class="lbl">Responsible person (processing plant)</span>
+          <div class="val" style="height:22px;"></div>
+          <span class="lbl">Date</span><div class="val" style="height:14px;"></div></td>
+        <td colspan="3"><span class="lbl">Endorsing authority</span>
+          <div class="val" style="height:22px;"></div>
+          <span class="lbl">Date and seal</span>
+          <div class="val" style="height:14px;"></div></td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="sheet">
+    <div style="font-weight:bold;font-size:9pt;">Processing statement — ${v(doc.serial_number)}</div>
+    <div class="sub" style="text-align:left;">II. Transport details</div>
+    <table>
       <tr>
         <td colspan="2"><span class="lbl">Country of exportation</span>
-          <div class="val">${v(tr.country_of_export)}</div></td>
-        <td colspan="2"><span class="lbl">Port of loading</span>
+          <div class="val">${v(tr.country_of_export)}
+            ${tr.country_of_export_iso ? '(' + v(tr.country_of_export_iso) + ')' : ''}</div></td>
+        <td colspan="2"><span class="lbl">Port / airport / other point of departure</span>
           <div class="val">${v(tr.point_of_departure)}</div></td>
-        <td colspan="2"><span class="lbl">Port of discharge</span>
+        <td colspan="2"><span class="lbl">Point of destination</span>
           <div class="val">${v(tr.point_of_destination)}</div></td>
       </tr>
       <tr>
-        <th colspan="2">Vessel name and flag</th>
-        <th>IMO</th><th>Voyage / flight</th><th>Transport document</th>
+        <th colspan="2">Means of transport — vessel name and flag</th>
+        <th>IMO</th><th>Voyage / flight</th>
+        <th colspan="2">International transport document</th>
       </tr>
       ${meansRows}
       <tr>
-        <td colspan="2"><span class="lbl">Container number</span>
+        <td colspan="3"><span class="lbl">Container number</span>
           <div class="val">${v(tr.container_no)}</div></td>
         <td colspan="3"><span class="lbl">Seal number</span>
           <div class="val">${v(tr.seal_number)}</div></td>

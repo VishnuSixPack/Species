@@ -2780,7 +2780,7 @@ function renderAggrDisaggr(){
   return `
     <div class="card">
       <div class="card-top">
-        <div><h2>${data.title}${cteProductTag(sec.main, sec.species)}</h2><p>${data.desc}</p></div>
+        <div>${cteProductTag(sec.main, sec.species)}<p>${data.desc}</p></div>
         <div class="card-top-actions">${renderInfoButton('aggrDisaggr')}${headerToggle(data.headerToggle)}</div>
       </div>
       ${bottomBar(data.metrics, data.checkbox, multiple, 'aggrDisaggr', {label:'Total Volume', initial:sec.weight.value, unit:sec.weight.unit.toUpperCase()}, {value: document.getElementById('aggr-water-perkg')?.value ?? aggrConstants.waterPerKg, unit:'L/kg'}, {id:'aggr-metric-percan', perKgValue:grandTotalParts.aggrDisaggr})}
@@ -2890,7 +2890,7 @@ function renderLandingCTE(){
   return `
     <div class="card">
       <div class="card-top">
-        <div><h2>${data.title}${cteProductTag(sec.main)}</h2><p>${data.desc}</p></div>
+        <div>${cteProductTag(sec.main)}<p>${data.desc}</p></div>
         <div class="card-top-actions">${renderInfoButton('landing')}${headerToggle(data.headerToggle)}</div>
       </div>
       ${bottomBar(data.metrics, data.checkbox, multiple, 'landing', {label:'Total Volume', initial:sec.weight.value, unit:sec.weight.unit.toUpperCase()}, null, {id:'ld-metric-percan', perKgValue:grandTotalParts.landing})}
@@ -2958,7 +2958,7 @@ function renderTransshipment(){
     return `
       <div class="card">
         <div class="card-top">
-          <div><h2>${data.title}${cteProductTag(sec.main)}</h2><p>${data.desc}</p></div>
+          <div>${cteProductTag(sec.main)}<p>${data.desc}</p></div>
           <div class="card-top-actions">${renderInfoButton('transshipment')}${tsRCSToggleHTML(sec)}</div>
         </div>
         ${modePills}
@@ -2972,7 +2972,7 @@ function renderTransshipment(){
     return `
       <div class="card">
         <div class="card-top">
-          <div><h2>${data.title}${cteProductTag(sec.main)}</h2><p>${data.desc}</p></div>
+          <div>${cteProductTag(sec.main)}<p>${data.desc}</p></div>
           <div class="card-top-actions">${renderInfoButton('transshipment')}</div>
         </div>
         ${modePills}
@@ -3029,7 +3029,7 @@ function renderTransshipment(){
   return `
     <div class="card">
       <div class="card-top">
-        <div><h2>${data.title}${cteProductTag(sec.main)}</h2><p>${data.desc}</p></div>
+        <div>${cteProductTag(sec.main)}<p>${data.desc}</p></div>
         <div class="card-top-actions">${renderInfoButton('transshipment')}${tsRCSToggleHTML(sec)}</div>
       </div>
       ${bottomBar(data.metrics, data.checkbox, multiple, 'transshipment', {label:'Total Volume', initial: sec.rcs?'–':sec.weightOff.value, unit: sec.rcs?'':sec.weightOff.unit.toUpperCase(), tooltip:'We have considered the average total volume in a reefer carrier.'}, null, {id:'ts-metric-percan', perKgValue:grandTotalParts.transshipment})}
@@ -3290,7 +3290,7 @@ function renderOVP(){
     return `
       <div class="card">
         <div class="card-top">
-          <div><h2>${data.title}</h2><p>${data.desc}</p></div>
+          <div><p>${data.desc}</p></div>
           ${ovpToggleHTML()}
         </div>
         <div class="ovp-disabled-note">On Vessel Processing isn't available for this batch. Switch "Enable" on above if this vessel does perform onboard processing.</div>
@@ -3302,7 +3302,7 @@ function renderOVP(){
   return `
     <div class="card">
       <div class="card-top">
-        <div><h2>${data.title}${cteProductTag(workingFields)}</h2><p>${data.desc}</p></div>
+        <div>${cteProductTag(workingFields)}<p>${data.desc}</p></div>
         <div class="card-top-actions">${renderInfoButton('onVesselProcessing')}${ovpToggleHTML()}</div>
       </div>
       ${bottomBar(data.metrics, null, false, 'ovp', {label:'Total Volume', initial:ovpCalc.weight.value, unit:ovpCalc.weight.unit.toUpperCase()}, {value: document.getElementById('ovp-water')?.value ?? '0.00', unit:''}, {id:'ovp-metric-percan', perKgValue:grandTotalParts.ovp})}
@@ -3410,7 +3410,7 @@ function renderGenericTab(data, ctx, subKey){
     return `
       <div class="card">
         <div class="card-top">
-          <div><h2>${data.title}${cteProductTag(sec.main)}</h2><p>${data.desc}</p></div>
+          <div>${cteProductTag(sec.main)}<p>${data.desc}</p></div>
           <div class="card-top-actions">${renderInfoButton(ctx)}${headerToggle(data.headerToggle)}</div>
         </div>
         ${bottomBar(data.metrics, data.checkbox, multiple, ctx, {label:'Total Volume', initial: wField?wField.value.value:'', unit: wField?wField.value.unit.toUpperCase():''}, null, {id:'hv-metric-percan', perKgValue:grandTotalParts.harvesting})}
@@ -3429,7 +3429,7 @@ function renderGenericTab(data, ctx, subKey){
   return `
     <div class="card">
       <div class="card-top">
-        <div><h2>${data.title}${cteProductTag(data.fields)}</h2><p>${data.desc}</p></div>
+        <div>${cteProductTag(data.fields)}<p>${data.desc}</p></div>
         ${headerToggle(data.headerToggle)}
       </div>
       ${bottomBar(data.metrics, data.checkbox, false, ctx)}
@@ -3503,7 +3503,7 @@ function renderProcessing(){
     return `
       <div class="card">
         <div class="card-top">
-          <div><h2>Transformation${cteProductTag(sec.main)}</h2><p>${inner.desc}</p></div>
+          <div>${cteProductTag(sec.main)}<p>${inner.desc}</p></div>
           <div class="card-top-actions">${renderInfoButton('transformation')}</div>
         </div>
         ${bottomBar(inner.metrics, inner.checkbox, multiple, 'transformation', {label:'Total Volume', initial:sec.weight.value, unit:sec.weight.unit.toUpperCase()}, {value: document.getElementById('tf-water')?.value ?? sec.factorFields.find(f=>f.id==='tf-water')?.value ?? '0', unit:'kg CO₂e/kg'}, {id:'tf-metric-percan', perKgValue:grandTotalParts.transformation})}
@@ -3576,7 +3576,7 @@ function renderProcessing(){
     return `
       <div class="card">
         <div class="card-top">
-          <div><h2>Storage</h2><p>${inner.desc}</p></div>
+          <div><p>${inner.desc}</p></div>
           <div class="card-top-actions">${renderInfoButton('storage')}</div>
         </div>
         ${bottomBar(inner.metrics, inner.checkbox, multiple, 'storage', {label:'Total Volume', initial:sec.weight, unit:'KG'}, null, {id:'st-metric-percan', perKgValue:grandTotalParts.storage})}
@@ -3662,7 +3662,7 @@ function renderPackaging(){
     };
     return `
       <div class="card">
-        <div class="card-top"><div><h2>Packaging</h2></div></div>
+        <div class="card-top"></div>
         ${subtabRow(d.subtabs, sub, 'packagingSub')}
         <div style="height:16px"></div>
         <div class="pkg-layout"><div>${pkgTable(circData, true)}</div></div>
@@ -3687,7 +3687,7 @@ function renderPackaging(){
   return `
     <div class="card">
       <div class="card-top">
-        <div><h2>Packaging</h2><p>Emissions embodied in the primary, secondary, and tertiary packaging materials used for this product.</p></div>
+        <div><p>Emissions embodied in the primary, secondary, and tertiary packaging materials used for this product.</p></div>
         <div class="card-top-actions"><span class="scope-badge">${d.scope}</span></div>
       </div>
       ${subtabRow(d.subtabs, sub, 'packagingSub')}
@@ -3813,7 +3813,7 @@ function renderShipReceive(){
   return `
     <div class="card">
       <div class="card-top">
-        <div><h2>${d.title}${cteProductTag(wf.common)}</h2><p>${d.desc}</p></div>
+        <div>${cteProductTag(wf.common)}<p>${d.desc}</p></div>
         ${renderInfoButton('shipReceive')}
       </div>
       ${bottomBar(metrics, null, false, 'shipReceive', {label:'Total Volume', initial:`${fmtNum(parseNum(shipCalc.teu),0)} (${fmtNum(parseNum(shipCalc.distanceSea),0)} km)`, unit:'containers', tooltip:'We have considered the average number of containers and distance travelled.'}, null, {id:'ship-metric-percan', perKgValue:grandTotalParts.shipReceive})}

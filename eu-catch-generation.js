@@ -30,6 +30,14 @@ const EUCatchGen = (function () {
      Override at init: EUCatchGen.init({ ..., docBucket: 'your-bucket' }) */
   let DOC_BUCKET = 'raw-material-documents';
 
+  /* Used when the organisation has no EU facility approval recorded, so the
+     statement always carries a number. Override at init if needed:
+        EUCatchGen.init({ ..., defaultApproval: '1500' })  */
+  let DEFAULT_APPROVAL = { number: '1500', issuing_body: null, valid_from: null,
+                           valid_until: null, scope: null, url: null,
+                           cert_name: 'EU Facility Approval', source: 'default',
+                           expired: false, no_expiry: true };
+
   const EU27 = (typeof EU27_COUNTRIES !== 'undefined' && EU27_COUNTRIES.length === 27)
     ? EU27_COUNTRIES
     : ['Austria','Belgium','Bulgaria','Croatia','Cyprus','Czechia','Denmark','Estonia',
@@ -785,7 +793,7 @@ const EUCatchGen = (function () {
     const plantIso = s && s.processing_country ? await isoFor(s.processing_country) : null;
 
     const plantCompany = await companyFor(s && s.processor_org_id, s && s.processor_name);
-    const approval = await euApprovalFor(plantCompany);
+    const approval = (await euApprovalFor(plantCompany)) || DEFAULT_APPROVAL;
 
     /* Same company by id where both are set, otherwise by name */
     const sameAsPlant = (function () {
@@ -1362,37 +1370,12 @@ const EUCatchGen = (function () {
 
       if (GEN.mode === 'shipment') {
         showStage('Generating processing statement', GEN.shipment.processing_country || '');
-        const endorsing = await askAuthority('PS', GEN.shipment.processing_country);
-        showStage('Generating processing statement', GEN.shipment.processing_country || '');
 
         const ps = await buildPS(GEN.item, GEN.batchesForItem,
           made.map(d => ({
             id: d.id, serial_number: d.serial_number, flag_state: d.flag_state,
             issued_on: d.created_at ? String(d.created_at).slice(0, 10) : null
           })), gate);
-        ps.endorsing_authority = endorsing;
-
-        const ap = ps.processing_plant && ps.processing_plant.approval;
-        if (!ap || ap.expired) {
-          const answer = await askApproval(ps.processing_plant && ps.processing_plant.name, ap);
-          if (!answer) {
-            showDone(made, GEN.bundle);   /* the catch certificates still stand */
-            return;
-          }
-          /* Typed in by hand — recorded as such, so it is clear on the document
-             that this did not come from the organisation's certifications. */
-          ps.processing_plant.approval_number = answer.number;
-          ps.processing_plant.approval = {
-            number: answer.number,
-            issuing_body: answer.issuing_body,
-            valid_until: answer.valid_until,
-            valid_from: null, scope: null, url: null,
-            cert_name: 'EU Facility Approval',
-            source: 'entered',
-            expired: false,
-            no_expiry: !answer.valid_until
-          };
-        }
 
         made.push(await saveDoc('PS', ps, null));
       }
@@ -1970,6 +1953,9 @@ const EUCatchGen = (function () {
       setVal('psExpIsoDisplay', p.exporter.iso);
     }
 
+    /* Endorsing authority is left blank — the authority completes it on the
+       paper document. The section stays visible so it is clear what is
+       outstanding rather than looking as though it does not apply. */
     const ea = p.endorsing_authority;
     if (ea) {
       setVal('psEndorsingAuthorityName', ea.name);
@@ -2354,6 +2340,10 @@ const EUCatchGen = (function () {
     else if (window.supabase && cfg.url && cfg.key) sb = window.supabase.createClient(cfg.url, cfg.key);
     else { console.error('[EUCatchGen] No Supabase client available.'); return; }
     if (cfg.docBucket) DOC_BUCKET = cfg.docBucket;
+    if (cfg.defaultApproval)
+      DEFAULT_APPROVAL = Object.assign({}, DEFAULT_APPROVAL,
+        typeof cfg.defaultApproval === 'string'
+          ? { number: cfg.defaultApproval } : cfg.defaultApproval);
     hookCommodityPicker();
     hookFishingLicence();
     hookTransportLegs();
