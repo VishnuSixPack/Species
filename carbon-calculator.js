@@ -128,6 +128,7 @@ function buildShipmentOverrides(ctx){
   // informational note) for whatever numbers genuinely don't exist
   // anywhere in the product/shipment/raw-material data.
   const packagingQuestions = [];
+  packagingContext.answered = true; // Inner Unit/Pallet specs are validated defaults now, not unconfirmed placeholders
   if(ctx.product?.primary_packaging && PACKAGING_RULES[ctx.product.primary_packaging]){
     packagingContext.productType = ctx.product.primary_packaging;
   }
@@ -143,23 +144,19 @@ function buildShipmentOverrides(ctx){
   const pmQty = ctx.product?.packaging_material_quantity_g ?? ctx.product?.packaging_material_quantity;
   if(pmQty){
     packagingContext.packagingMaterialQuantity = pmQty;
-  } else {
-    packagingQuestions.push({ key:'pkg-q-material-qty', label:'Packaging Material Quantity', unit:'g',
-      apply:(v)=>{ packagingContext.packagingMaterialQuantity = v; } });
   }
+  // Inner Unit / Pallet Weight / Pallet Stacking Configuration are no
+  // longer asked as questions — packagingContext already carries
+  // validated static defaults for these (confirmed against a real
+  // reference table), so re-asking every time would just re-answer with
+  // the same numbers. If a real per-product data source for these
+  // becomes available later, wire it in here the same way
+  // packagingMaterialQuantity is above — no modal needed either way.
   const pmCode = ctx.product?.packaging_material_type_code;
   if(pmCode){
     const normalized = /metal/i.test(pmCode) ? 'Metal-Others' : /plastic/i.test(pmCode) ? 'Plastic' : /paper/i.test(pmCode) ? 'Paper' : pmCode;
     packagingOverrides.primary[0] = { ...(packagingOverrides.primary[0]||{}), material: normalized };
   }
-  packagingQuestions.push(
-    { key:'pkg-q-inner-unit', label:'Inner Unit (units per carton)', unit:'',
-      apply:(v)=>{ packagingContext.innerUnit = v; } },
-    { key:'pkg-q-pallet-weight', label:'Empty Wooden Pallet Weight', unit:'kg',
-      apply:(v)=>{ packagingContext.palletWeight = v; } },
-    { key:'pkg-q-pallet-units', label:'Pallet Stacking Configuration (total units, e.g. 10×12=120)', unit:'',
-      apply:(v)=>{ packagingContext.palletUnits = v; } },
-  );
 
   return {
     modal: {
@@ -394,6 +391,14 @@ function tooltip(text, link){
   return `<span class="info-tip" tabindex="0">
     <span class="info-tip-icon">i</span>
     <span class="info-tip-bubble">${text}${link?` <a href="${link}" target="_blank" rel="noopener">Read more</a>`:''}</span>
+  </span>`;
+}
+
+const WATER_DROP_ICON = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3C12 3 5.5 10.5 5.5 15C5.5 18.59 8.41 21.5 12 21.5C15.59 21.5 18.5 18.59 18.5 15C18.5 10.5 12 3 12 3Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`;
+function waterTooltip(value, unit){
+  return `<span class="info-tip water-tip" tabindex="0">
+    <span class="info-tip-icon water-tip-icon">${WATER_DROP_ICON}</span>
+    <span class="info-tip-bubble">Water Usage: <b>${value}</b> ${unit||''}</span>
   </span>`;
 }
 
@@ -1094,9 +1099,14 @@ const REPORT_STAGES = [
   {key:'landing', label:'Landing'},
   {key:'aggrDisaggr', label:'Aggr/Disaggr'},
   {key:'processing', label:'Processing'},
-  {key:'packaging', label:'Packaging'},
   {key:'shipReceive', label:'Ship/Receive'},
 ];
+// Packaging is deliberately NOT included here — its total is computed on
+// a per-unit basis (e.g. ~236 kg CO2e for one can), a completely
+// different scale from every other stage's per-kg rate (0-4 range), so
+// mixing it into the Sankey/donut/stage-row would be visually and
+// numerically misleading. It still appears elsewhere (its own CTE tab,
+// the topbar's new per-can section) just not in these charts.
 
 function computeScopeReport(partsOverride, packagingTotalOverride){
   const parts = partsOverride || grandTotalParts;
@@ -1143,6 +1153,10 @@ function renderEmissionBadge(staticValue){
   const valueHTML = staticValue !== undefined
     ? staticValue
     : `<span id="grand-total-perkg">0.00</span>`;
+  const netWeightG = parseNum(packagingContext.netWeightG);
+  const netWeightKG = netWeightG / 1000;
+  const percanSum = Object.values(grandTotalParts).reduce((a,v)=>a+v*netWeightKG, 0);
+  const grandPercan = percanSum + packagingLiveTotal();
   return `
     <div class="pm-emission-badge">
       <div class="peb-section">
@@ -1152,6 +1166,16 @@ function renderEmissionBadge(staticValue){
         <div class="peb-text">
           <div class="peb-label">Total Carbon Footprint</div>
           <div class="peb-value">${valueHTML}<span class="peb-unit">kgCO₂e</span></div>
+        </div>
+      </div>
+      <div class="peb-divider"></div>
+      <div class="peb-section">
+        <div class="peb-icon peb-icon-pink">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="4" width="12" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M9 4V2.5H15V4" stroke="currentColor" stroke-width="1.7"/><path d="M9 10H15M9 14H13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        </div>
+        <div class="peb-text">
+          <div class="peb-label" id="grand-total-percan-label">Per ${fmtNum(netWeightG,0)}g</div>
+          <div class="peb-value"><span id="grand-total-percan">${fmtNum(grandPercan,2)}</span><span class="peb-unit">kgCO₂e</span></div>
         </div>
       </div>
       <div class="peb-divider"></div>
@@ -1190,10 +1214,41 @@ const grandTotalParts = {
 // real numbers later (e.g. the Past Calculations page's permanent Demo
 // entry) needs to read from here, not the live object.
 const DEMO_GRAND_TOTAL_PARTS = { ...grandTotalParts };
+const PERCAN_METRIC_IDS = {
+  'hv-metric-percan': 'harvesting', 'ovp-metric-percan': 'ovp', 'ts-metric-percan': 'transshipment',
+  'ld-metric-percan': 'landing', 'aggr-metric-percan': 'aggrDisaggr', 'tf-metric-percan': 'transformation',
+  'st-metric-percan': 'storage', 'ship-metric-percan': 'shipReceive',
+};
+
 function updateGrandTotal(){
   const sum = Object.values(grandTotalParts).reduce((a,b)=>a+b, 0);
   const el = document.getElementById('grand-total-perkg');
   if(el) el.textContent = fmtNum(sum, 2);
+
+  // Per-can (per actual product unit) metrics — Net Weight lives on
+  // Packaging, but every other CTE needs it to convert its own per-kg
+  // rate into "emissions for one actual unit of this product". Kept
+  // live here (called from every recalc function already) rather than
+  // touching each recalc individually.
+  const netWeightG = parseNum(packagingContext.netWeightG);
+  const netWeightKG = netWeightG / 1000;
+  Object.entries(PERCAN_METRIC_IDS).forEach(([id, stageKey])=>{
+    const pel = document.getElementById(id);
+    if(pel) pel.value = fmtNum(grandTotalParts[stageKey] * netWeightKG, 3);
+    const lel = document.getElementById(id+'-label');
+    if(lel) lel.textContent = `Per ${fmtNum(netWeightG,0)}g`;
+  });
+
+  // Grand "Per {NetWeight}g" badge total: sum of every stage's per-can
+  // contribution, PLUS Packaging's own total added directly — Packaging
+  // is already computed on a per-unit (per-can) basis by construction,
+  // not a per-kg rate, so it must NOT be multiplied by net weight again.
+  const percanSum = Object.values(grandTotalParts).reduce((a,v)=>a+v*netWeightKG, 0);
+  const grandPercan = percanSum + packagingLiveTotal();
+  const gpEl = document.getElementById('grand-total-percan');
+  if(gpEl) gpEl.textContent = fmtNum(grandPercan, 2);
+  const gpLabelEl = document.getElementById('grand-total-percan-label');
+  if(gpLabelEl) gpLabelEl.textContent = `Per ${fmtNum(netWeightG,0)}g`;
 }
 
 /* ---------- SUBMIT-TO-CONFIRM + DATABASE SAVE ----------
@@ -2728,7 +2783,7 @@ function renderAggrDisaggr(){
         <div><h2>${data.title}${cteProductTag(sec.main, sec.species)}</h2><p>${data.desc}</p></div>
         <div class="card-top-actions">${renderInfoButton('aggrDisaggr')}${headerToggle(data.headerToggle)}</div>
       </div>
-      ${bottomBar(data.metrics, data.checkbox, multiple, 'aggrDisaggr', {label:'Total Volume', initial:sec.weight.value, unit:sec.weight.unit.toUpperCase()})}
+      ${bottomBar(data.metrics, data.checkbox, multiple, 'aggrDisaggr', {label:'Total Volume', initial:sec.weight.value, unit:sec.weight.unit.toUpperCase()}, {value: document.getElementById('aggr-water-perkg')?.value ?? aggrConstants.waterPerKg, unit:'L/kg'}, {id:'aggr-metric-percan', perKgValue:grandTotalParts.aggrDisaggr})}
       ${renderInstanceSubtabs('aggr', data.instanceBase)}
       <div style="height:16px"></div>
       ${fieldGrid(sec.main, 'aggr-main::'+st.active)}
@@ -2838,7 +2893,7 @@ function renderLandingCTE(){
         <div><h2>${data.title}${cteProductTag(sec.main)}</h2><p>${data.desc}</p></div>
         <div class="card-top-actions">${renderInfoButton('landing')}${headerToggle(data.headerToggle)}</div>
       </div>
-      ${bottomBar(data.metrics, data.checkbox, multiple, 'landing', {label:'Total Volume', initial:sec.weight.value, unit:sec.weight.unit.toUpperCase()})}
+      ${bottomBar(data.metrics, data.checkbox, multiple, 'landing', {label:'Total Volume', initial:sec.weight.value, unit:sec.weight.unit.toUpperCase()}, null, {id:'ld-metric-percan', perKgValue:grandTotalParts.landing})}
       ${renderInstanceSubtabs('landing', data.instanceBase)}
       <div style="height:16px"></div>
       ${fieldGrid(sec.main, 'landing-main::'+st.active)}
@@ -2977,7 +3032,7 @@ function renderTransshipment(){
         <div><h2>${data.title}${cteProductTag(sec.main)}</h2><p>${data.desc}</p></div>
         <div class="card-top-actions">${renderInfoButton('transshipment')}${tsRCSToggleHTML(sec)}</div>
       </div>
-      ${bottomBar(data.metrics, data.checkbox, multiple, 'transshipment', {label:'Total Volume', initial: sec.rcs?'–':sec.weightOff.value, unit: sec.rcs?'':sec.weightOff.unit.toUpperCase(), tooltip:'We have considered the average total volume in a reefer carrier.'})}
+      ${bottomBar(data.metrics, data.checkbox, multiple, 'transshipment', {label:'Total Volume', initial: sec.rcs?'–':sec.weightOff.value, unit: sec.rcs?'':sec.weightOff.unit.toUpperCase(), tooltip:'We have considered the average total volume in a reefer carrier.'}, null, {id:'ts-metric-percan', perKgValue:grandTotalParts.transshipment})}
       ${modePills}
       <div style="height:16px"></div>
       ${renderInstanceSubtabs('transshipment', data.instanceBase)}
@@ -3137,9 +3192,10 @@ const METRIC_ICON_TOTAL = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://ww
 const METRIC_ICON_PERKG = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3V21M12 3L8 7M12 3L16 7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 15C4 15 4.5 12 6.5 12C8.5 12 9 15 9 15C9 15 8.5 18 6.5 18C4.5 18 4 15 4 15Z" stroke="currentColor" stroke-width="1.6"/><path d="M15 15C15 15 15.5 12 17.5 12C19.5 12 20 15 20 15C20 15 19.5 18 17.5 18C15.5 18 15 15 15 15Z" stroke="currentColor" stroke-width="1.6"/></svg>`;
 const METRIC_ICON_YIELD = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 12.5L9 17.5L20 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const METRIC_ICON_OTHER = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3V11M12 11L6 17M12 11L18 17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="19" r="1.8" stroke="currentColor" stroke-width="1.6"/><circle cx="18" cy="19" r="1.8" stroke="currentColor" stroke-width="1.6"/></svg>`;
+const METRIC_ICON_PERCAN = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="4" width="12" height="16" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M9 4V2.5H15V4" stroke="currentColor" stroke-width="1.6"/><path d="M9 10H15M9 14H13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`;
 const METRIC_ICON_WEIGHT = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 8L12 4L20 8V16L12 20L4 16V8Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M4 8L12 12M12 12L20 8M12 12V20" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
 
-function bottomBar(metrics, checkboxLabel, checked=false, cteKey=null, weightConfig=null){
+function bottomBar(metrics, checkboxLabel, checked=false, cteKey=null, weightConfig=null, waterConfig=null, percanConfig=null){
   const isConfirmed = cteKey && state.confirmed[cteKey];
   const weightCard = weightConfig ? `
     <div class="metric">
@@ -3169,8 +3225,20 @@ function bottomBar(metrics, checkboxLabel, checked=false, cteKey=null, weightCon
           <div class="l">${m.l}</div>
         </div>
       </div>`;
-    }).join('')}</div>
+    }).join('')}${percanConfig ? (()=>{
+      const netWeightG = parseNum(packagingContext.netWeightG);
+      const netWeightKG = netWeightG / 1000;
+      const perCan = percanConfig.perKgValue * netWeightKG;
+      return `<div class="metric">
+        <div class="metric-icon metric-icon-percan">${METRIC_ICON_PERCAN}</div>
+        <div class="metric-body">
+          <div class="metric-row"><input type="text" class="metric-input is-computed" id="${percanConfig.id}" readonly value="${fmtNum(perCan,3)}"><span class="metric-unit">kg CO₂e</span></div>
+          <div class="l" id="${percanConfig.id}-label">Per ${fmtNum(netWeightG,0)}g</div>
+        </div>
+      </div>`;
+    })() : ''}</div>
     <div class="right">
+      ${waterConfig ? waterTooltip(waterConfig.value, waterConfig.unit) : ''}
       ${checkboxLabel?`<label class="check"><input type="checkbox" ${checked?'checked':''}> ${checkboxLabel}</label>`:''}
       ${cteKey ? `<button class="btn ${isConfirmed?'btn-confirmed':'btn-primary'}" data-action="submit-cte" data-cte="${cteKey}">${isConfirmed?'✓ Confirmed':'Submit'}</button>`
                : `<button class="btn btn-primary">Submit</button>`}
@@ -3237,7 +3305,7 @@ function renderOVP(){
         <div><h2>${data.title}${cteProductTag(workingFields)}</h2><p>${data.desc}</p></div>
         <div class="card-top-actions">${renderInfoButton('onVesselProcessing')}${ovpToggleHTML()}</div>
       </div>
-      ${bottomBar(data.metrics, null, false, 'ovp', {label:'Total Volume', initial:ovpCalc.weight.value, unit:ovpCalc.weight.unit.toUpperCase()})}
+      ${bottomBar(data.metrics, null, false, 'ovp', {label:'Total Volume', initial:ovpCalc.weight.value, unit:ovpCalc.weight.unit.toUpperCase()}, {value: document.getElementById('ovp-water')?.value ?? '0.00', unit:''}, {id:'ovp-metric-percan', perKgValue:grandTotalParts.ovp})}
       <div style="height:16px"></div>
       ${fieldGrid(workingFields, 'ovp-main')}
 
@@ -3345,7 +3413,7 @@ function renderGenericTab(data, ctx, subKey){
           <div><h2>${data.title}${cteProductTag(sec.main)}</h2><p>${data.desc}</p></div>
           <div class="card-top-actions">${renderInfoButton(ctx)}${headerToggle(data.headerToggle)}</div>
         </div>
-        ${bottomBar(data.metrics, data.checkbox, multiple, ctx, {label:'Total Volume', initial: wField?wField.value.value:'', unit: wField?wField.value.unit.toUpperCase():''})}
+        ${bottomBar(data.metrics, data.checkbox, multiple, ctx, {label:'Total Volume', initial: wField?wField.value.value:'', unit: wField?wField.value.unit.toUpperCase():''}, null, {id:'hv-metric-percan', perKgValue:grandTotalParts.harvesting})}
         ${renderInstanceSubtabs(ctx, data.instanceBase)}
         <div style="height:16px"></div>
         ${fieldGrid(sec.main, ctx+'-main::'+st.active)}
@@ -3438,7 +3506,7 @@ function renderProcessing(){
           <div><h2>Transformation${cteProductTag(sec.main)}</h2><p>${inner.desc}</p></div>
           <div class="card-top-actions">${renderInfoButton('transformation')}</div>
         </div>
-        ${bottomBar(inner.metrics, inner.checkbox, multiple, 'transformation', {label:'Total Volume', initial:sec.weight.value, unit:sec.weight.unit.toUpperCase()})}
+        ${bottomBar(inner.metrics, inner.checkbox, multiple, 'transformation', {label:'Total Volume', initial:sec.weight.value, unit:sec.weight.unit.toUpperCase()}, {value: document.getElementById('tf-water')?.value ?? sec.factorFields.find(f=>f.id==='tf-water')?.value ?? '0', unit:'kg CO₂e/kg'}, {id:'tf-metric-percan', perKgValue:grandTotalParts.transformation})}
         ${subtabRow(CTE_DATA.processing.subtabs, sub, 'processingSub')}
         ${renderInstanceSubtabs('transformation', inner.instanceBase)}
         <div style="height:16px"></div>
@@ -3511,7 +3579,7 @@ function renderProcessing(){
           <div><h2>Storage</h2><p>${inner.desc}</p></div>
           <div class="card-top-actions">${renderInfoButton('storage')}</div>
         </div>
-        ${bottomBar(inner.metrics, inner.checkbox, multiple, 'storage', {label:'Total Volume', initial:sec.weight, unit:'KG'})}
+        ${bottomBar(inner.metrics, inner.checkbox, multiple, 'storage', {label:'Total Volume', initial:sec.weight, unit:'KG'}, null, {id:'st-metric-percan', perKgValue:grandTotalParts.storage})}
         ${subtabRow(CTE_DATA.processing.subtabs, sub, 'processingSub')}
         ${renderInstanceSubtabs('storage', inner.instanceBase)}
         <div style="height:16px"></div>
@@ -3748,7 +3816,7 @@ function renderShipReceive(){
         <div><h2>${d.title}${cteProductTag(wf.common)}</h2><p>${d.desc}</p></div>
         ${renderInfoButton('shipReceive')}
       </div>
-      ${bottomBar(metrics, null, false, 'shipReceive', {label:'Total Volume', initial:`${fmtNum(parseNum(shipCalc.teu),0)} (${fmtNum(parseNum(shipCalc.distanceSea),0)} km)`, unit:'containers', tooltip:'We have considered the average number of containers and distance travelled.'})}
+      ${bottomBar(metrics, null, false, 'shipReceive', {label:'Total Volume', initial:`${fmtNum(parseNum(shipCalc.teu),0)} (${fmtNum(parseNum(shipCalc.distanceSea),0)} km)`, unit:'containers', tooltip:'We have considered the average number of containers and distance travelled.'}, null, {id:'ship-metric-percan', perKgValue:grandTotalParts.shipReceive})}
       <div class="subtab-row" style="margin:0;">
         <button class="subtab-btn ${mode==='Sea'?'active':''}" data-action="subtab" data-group="shipSub" data-value="Sea">Sea</button>
         <button class="subtab-btn ${mode==='Air'?'active':''}" data-action="subtab" data-group="shipSub" data-value="Air">Air</button>

@@ -786,6 +786,16 @@ const EUCatchGen = (function () {
 
     const plantCompany = await companyFor(s && s.processor_org_id, s && s.processor_name);
     const approval = await euApprovalFor(plantCompany);
+
+    /* Same company by id where both are set, otherwise by name */
+    const sameAsPlant = (function () {
+      if (!s) return false;
+      if (s.exporter_org_id && s.processor_org_id)
+        return s.exporter_org_id === s.processor_org_id;
+      const a = (s.exporter_name || '').trim().toLowerCase();
+      const b = (s.processor_name || '').trim().toLowerCase();
+      return !!a && a === b;
+    })();
     const expIso   = s && s.country_of_export  ? await isoFor(s.country_of_export)  : null;
 
     /* The CN code on the statement describes the catch as certified — the raw
@@ -860,10 +870,14 @@ const EUCatchGen = (function () {
         approval_number: approval ? approval.number : null,
         approval: approval
       },
-      exporter: {
+      /* The form states this is only needed when the exporter differs from
+         the processing plant, so leave it empty when they are the same
+         company — filling it in duplicates the block above for no purpose. */
+      exporter: sameAsPlant ? null : {
         name: clean(s && s.exporter_name), org_id: s && s.exporter_org_id,
         country: s && s.country_of_export, iso: expIso ? expIso.alpha2 : null
       },
+      exporter_same_as_plant: sameAsPlant,
       endorsing_authority: null,
       product: {
         product_id: item.product_id, name: clean(item.product_name),
@@ -1352,7 +1366,10 @@ const EUCatchGen = (function () {
         showStage('Generating processing statement', GEN.shipment.processing_country || '');
 
         const ps = await buildPS(GEN.item, GEN.batchesForItem,
-          made.map(d => ({ id: d.id, serial_number: d.serial_number, flag_state: d.flag_state })), gate);
+          made.map(d => ({
+            id: d.id, serial_number: d.serial_number, flag_state: d.flag_state,
+            issued_on: d.created_at ? String(d.created_at).slice(0, 10) : null
+          })), gate);
         ps.endorsing_authority = endorsing;
 
         const ap = ps.processing_plant && ps.processing_plant.approval;
@@ -1468,6 +1485,118 @@ const EUCatchGen = (function () {
     window.updateCCTotals = patched;
   }
 
+
+
+  /* --------------------------------------------------------------------
+     Catch certificate commodities — TRACES-style layout.
+
+     Replaces the page's flat table with the grouped presentation used by
+     CATCH: the certificate and its date on the left, the commodity with its
+     CN code and species badges beside it, then the vessel and the three
+     weight columns.
+     -------------------------------------------------------------------- */
+  function hookPSCommodityTable() {
+    if (typeof renderPSCommodities !== 'function' || renderPSCommodities.__eucg) return;
+    const original = renderPSCommodities;
+
+    const patched = function () {
+      original.apply(this, arguments);          /* keeps the top list intact */
+
+      const host = document.getElementById('psCatchProcessedRows');
+      const arr = (FORM().psCommodities) || [];
+      if (!host || !arr.length) return;
+
+      const cell = (c, i) => {
+        const sp = c.species || {};
+        const cn = String(c.cnCode || '').replace(/\s+/g, '');
+        const cnShown = cn ? `${cn.slice(0,4)} ${cn.slice(4,6)}${cn.length > 6 ? ' ' + cn.slice(6) : ''}` : '';
+        const desc = (c.sub || '').replace(/^[\d\s]+/, '') || c.cnLabel || '';
+
+        return `<tr>
+          <td style="vertical-align:top;width:19%;">
+            ${c.linkedCert
+              ? `<div style="color:#1a6fdb;font-weight:600;">${esc(c.linkedCert)}</div>` : ''}
+            ${c.localRef ? `<div style="font-size:11px;">${esc(c.localRef)}</div>` : ''}
+            ${c.certDate
+              ? `<div style="font-size:11px;color:#6b7280;">${esc(fmtLong(c.certDate))}</div>` : ''}
+            ${!c.linkedCert ? '<span style="color:#6b7280;">Manually added</span>' : ''}
+          </td>
+
+          <td style="vertical-align:top;width:29%;">
+            <div style="font-size:11px;font-weight:700;color:#5a5a5a;margin-bottom:4px;">
+              Catch description</div>
+            ${cnShown
+              ? `<span style="display:inline-block;border:1px solid #1a6fdb;color:#1a6fdb;
+                   border-radius:3px;padding:1px 6px;font-weight:700;font-size:11px;
+                   margin-right:6px;">${esc(cnShown)}</span>` : ''}
+            <span style="font-size:11px;">${esc(desc)}</span>
+            ${sp.code || sp.name ? `<div style="margin-top:6px;">
+              ${sp.code ? `<span style="display:inline-block;background:#dcfce7;color:#166534;
+                 border-radius:3px;padding:1px 6px;font-size:10px;font-weight:700;
+                 margin-right:4px;">${esc(sp.code)}</span>` : ''}
+              ${sp.name ? `<em style="font-size:11px;color:#6b7280;">${esc(sp.name)}</em>` : ''}
+            </div>` : ''}
+          </td>
+
+          <td style="vertical-align:top;width:14%;">
+            ${c.vessel && c.vessel.name
+              ? `${c.vessel.flag ? esc(c.vessel.flag) + ' ' : ''}${esc(c.vessel.name)}`
+              : '<span style="color:#a0a0a0;">—</span>'}
+          </td>
+
+          <td style="vertical-align:top;width:12%;white-space:nowrap;">
+            ${c.totalLandedWeight !== '' && c.totalLandedWeight != null
+              ? nf(c.totalLandedWeight) + ' kg' : '<span style="color:#a0a0a0;">—</span>'}
+          </td>
+
+          <td style="vertical-align:top;width:13%;">
+            <div class="unit-input-group" style="max-width:140px;">
+              <input type="text" inputmode="decimal" value="${esc(fmtNum(c.catchProcessed))}"
+                oninput="EUCatchGen._psWeight(${i},'catchProcessed',this.value)"
+                onblur="EUCatchGen._psPaint(this)">
+              <select><option>kg</option><option>lb</option></select></div>
+          </td>
+
+          <td style="vertical-align:top;width:13%;">
+            <div class="unit-input-group" style="max-width:140px;">
+              <input type="text" inputmode="decimal" value="${esc(fmtNum(c.processedProduct))}"
+                oninput="EUCatchGen._psWeight(${i},'processedProduct',this.value)"
+                onblur="EUCatchGen._psPaint(this)">
+              <select><option>kg</option><option>lb</option></select></div>
+          </td>
+        </tr>`;
+      };
+
+      const sum = k => arr.reduce((a, c) =>
+        a + (parseFloat(String(c[k]).replace(/,/g, '')) || 0), 0);
+
+      host.innerHTML = `
+        <table class="eu-table">
+          <thead><tr>
+            <th>Certificate</th><th>Commodities</th><th>Vessel name</th>
+            <th>Total landed weight</th><th>Catch processed</th>
+            <th>Processed fishery products</th>
+          </tr></thead>
+          <tbody>${arr.map(cell).join('')}</tbody>
+          <tfoot><tr style="background:#f5f5f5;font-weight:700;">
+            <td colspan="3" style="text-align:right;">Total</td>
+            <td style="white-space:nowrap;">${nf(sum('totalLandedWeight'))} kg</td>
+            <td style="white-space:nowrap;">${nf(sum('catchProcessed'))} kg</td>
+            <td style="white-space:nowrap;">${nf(sum('processedProduct'))} kg</td>
+          </tr></tfoot>
+        </table>`;
+    };
+    patched.__eucg = true;
+    window.renderPSCommodities = patched;
+  }
+
+  const fmtNum = v => (v === '' || v === null || v === undefined) ? '' : nf(v);
+  const fmtLong = d => {
+    if (!d) return '';
+    const dt = new Date(d);
+    return isNaN(dt) ? String(d) : dt.toLocaleDateString('en-GB',
+      { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+  };
 
   /* --------------------------------------------------------------------
      Thousand separators on the weight inputs.
@@ -1831,9 +1960,15 @@ const EUCatchGen = (function () {
       }
       host.appendChild(note);
     })();
-    setVal('psExpName', p.exporter && p.exporter.name);
-    setVal('psExpCountry', p.exporter && p.exporter.country);
-    setVal('psExpIsoDisplay', p.exporter && p.exporter.iso);
+    if (p.exporter_same_as_plant || !p.exporter) {
+      setVal('psExpName', '');
+      setVal('psExpCountry', '');
+      setVal('psExpIsoDisplay', '');
+    } else {
+      setVal('psExpName', p.exporter.name);
+      setVal('psExpCountry', p.exporter.country);
+      setVal('psExpIsoDisplay', p.exporter.iso);
+    }
 
     const ea = p.endorsing_authority;
     if (ea) {
@@ -2224,6 +2359,7 @@ const EUCatchGen = (function () {
     hookTransportLegs();
     hookWeightFormatting();
     hookWeightInputs();
+    hookPSCommodityTable();
 
     const docId = qs('doc');
     if (docId) { openInForm(docId); return; }
@@ -2235,7 +2371,31 @@ const EUCatchGen = (function () {
     if (rmId) { startRM(rmId); return; }
   }
 
-  return { init, close, start, startRM, openInForm, _state: GEN };
+  /* Weight editing in the restyled table: store the clean number, redraw the
+     footer totals, and re-format the field when focus leaves. */
+  function psWeight(idx, field, value) {
+    const arr = (FORM().psCommodities) || [];
+    if (!arr[idx]) return;
+    arr[idx][field] = String(value).replace(/,/g, '');
+    const host = document.getElementById('psCatchProcessedRows');
+    const foot = host && host.querySelector('tfoot tr');
+    if (!foot) return;
+    const sum = k => arr.reduce((a, c) =>
+      a + (parseFloat(String(c[k]).replace(/,/g, '')) || 0), 0);
+    const tds = foot.querySelectorAll('td');
+    if (tds.length >= 4) {
+      tds[tds.length - 2].textContent = nf(sum('catchProcessed')) + ' kg';
+      tds[tds.length - 1].textContent = nf(sum('processedProduct')) + ' kg';
+    }
+  }
+
+  function psPaint(inp) {
+    const raw = parseFloat(String(inp.value).replace(/,/g, ''));
+    inp.value = isNaN(raw) ? '' : nf(raw);
+  }
+
+  return { init, close, start, startRM, openInForm,
+           _psWeight: psWeight, _psPaint: psPaint, _state: GEN };
 })();
 
 window.EUCatchGen = EUCatchGen;
