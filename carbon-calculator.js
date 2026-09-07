@@ -1156,7 +1156,7 @@ function renderEmissionBadge(staticValue){
   const netWeightG = parseNum(packagingContext.netWeightG);
   const netWeightKG = netWeightG / 1000;
   const percanSum = Object.values(grandTotalParts).reduce((a,v)=>a+v*netWeightKG, 0);
-  const grandPercan = percanSum + packagingLiveTotal();
+  const grandPercan = percanSum + packagingLiveTotal() + INGREDIENTS_CF_HARDCODE;
   return `
     <div class="pm-emission-badge">
       <div class="peb-section">
@@ -1214,6 +1214,11 @@ const grandTotalParts = {
 // real numbers later (e.g. the Past Calculations page's permanent Demo
 // entry) needs to read from here, not the live object.
 const DEMO_GRAND_TOTAL_PARTS = { ...grandTotalParts };
+// TEMPORARY HARDCODE: Carbon Footprint of Ingredients, not yet computed
+// from real data — added directly to the Per-Can grand total per explicit
+// instruction, until a real calculation/source exists for this.
+const INGREDIENTS_CF_HARDCODE = 109.62;
+
 const PERCAN_METRIC_IDS = {
   'hv-metric-percan': 'harvesting', 'ovp-metric-percan': 'ovp', 'ts-metric-percan': 'transshipment',
   'ld-metric-percan': 'landing', 'aggr-metric-percan': 'aggrDisaggr', 'tf-metric-percan': 'transformation',
@@ -1244,7 +1249,7 @@ function updateGrandTotal(){
   // is already computed on a per-unit (per-can) basis by construction,
   // not a per-kg rate, so it must NOT be multiplied by net weight again.
   const percanSum = Object.values(grandTotalParts).reduce((a,v)=>a+v*netWeightKG, 0);
-  const grandPercan = percanSum + packagingLiveTotal();
+  const grandPercan = percanSum + packagingLiveTotal() + INGREDIENTS_CF_HARDCODE;
   const gpEl = document.getElementById('grand-total-percan');
   if(gpEl) gpEl.textContent = fmtNum(grandPercan, 2);
   const gpLabelEl = document.getElementById('grand-total-percan-label');
