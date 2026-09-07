@@ -1170,22 +1170,22 @@ function renderEmissionBadge(staticValue){
       </div>
       <div class="peb-divider"></div>
       <div class="peb-section">
+        <div class="peb-icon peb-icon-blue">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4V2M17.66 6.34L19.07 4.93M4.93 19.07L6.34 17.66M20 12H22M2 12H4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 4C7.58 4 4 7.58 4 12C4 16.42 7.58 20 12 20C16.42 20 20 16.42 20 12C20 10.4 19.53 8.91 18.72 7.66" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M17 3.3L18.1 7.1L14.3 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+        <div class="peb-text">
+          <div class="peb-label">Basis</div>
+          <div class="peb-basis">${(()=>{ const p = selVal('modal-product','').value; return p ? `Emission per 1 KG of ${p}` : 'Emission per 1 KG of Product in Final Form'; })()}</div>
+        </div>
+      </div>
+      <div class="peb-divider"></div>
+      <div class="peb-section">
         <div class="peb-icon peb-icon-pink">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="4" width="12" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M9 4V2.5H15V4" stroke="currentColor" stroke-width="1.7"/><path d="M9 10H15M9 14H13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         </div>
         <div class="peb-text">
           <div class="peb-label" id="grand-total-percan-label">Per ${fmtNum(netWeightG,0)}g</div>
           <div class="peb-value"><span id="grand-total-percan">${fmtNum(grandPercan,2)}</span><span class="peb-unit">kgCO₂e</span></div>
-        </div>
-      </div>
-      <div class="peb-divider"></div>
-      <div class="peb-section">
-        <div class="peb-icon peb-icon-blue">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4V2M17.66 6.34L19.07 4.93M4.93 19.07L6.34 17.66M20 12H22M2 12H4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 4C7.58 4 4 7.58 4 12C4 16.42 7.58 20 12 20C16.42 20 20 16.42 20 12C20 10.4 19.53 8.91 18.72 7.66" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M17 3.3L18.1 7.1L14.3 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </div>
-        <div class="peb-text">
-          <div class="peb-label">Basis</div>
-          <div class="peb-basis">${(()=>{ const p = selVal('modal-product','').value; return p ? `1 KG ${p}` : '1 KG Product in Final Product'; })()}</div>
         </div>
       </div>
     </div>
