@@ -1156,7 +1156,7 @@ function renderEmissionBadge(staticValue){
   const netWeightG = parseNum(packagingContext.netWeightG);
   const netWeightKG = netWeightG / 1000;
   const percanSum = Object.values(grandTotalParts).reduce((a,v)=>a+v*netWeightKG, 0);
-  const grandPercan = percanSum + packagingLiveTotal() + INGREDIENTS_CF_HARDCODE;
+  const grandPercan = percanSum + (packagingLiveTotal()/1000) + INGREDIENTS_CF_HARDCODE;
   return `
     <div class="pm-emission-badge">
       <div class="peb-section">
@@ -1245,11 +1245,17 @@ function updateGrandTotal(){
   });
 
   // Grand "Per {NetWeight}g" badge total: sum of every stage's per-can
-  // contribution, PLUS Packaging's own total added directly — Packaging
-  // is already computed on a per-unit (per-can) basis by construction,
-  // not a per-kg rate, so it must NOT be multiplied by net weight again.
+  // contribution, PLUS Packaging's own total, PLUS the hardcoded
+  // Ingredients CF. Packaging's total is NOT multiplied by net weight
+  // (it's already per-unit, not a per-kg rate) but IS divided by 1000
+  // here specifically — its own tab's numbers are effectively on a
+  // gram-CO2e scale relative to every other stage's kg-CO2e figures, so
+  // this correction is needed only when combining it into this grand
+  // total, not in Packaging's own display (which stays matched to the
+  // validated reference table as-is). Confirmed via the exact formula
+  // requested: 0.170+0.017+0.018+0.0005+0.161+0.624+0.014+0.049+(236.668/1000)+109.62.
   const percanSum = Object.values(grandTotalParts).reduce((a,v)=>a+v*netWeightKG, 0);
-  const grandPercan = percanSum + packagingLiveTotal() + INGREDIENTS_CF_HARDCODE;
+  const grandPercan = percanSum + (packagingLiveTotal()/1000) + INGREDIENTS_CF_HARDCODE;
   const gpEl = document.getElementById('grand-total-percan');
   if(gpEl) gpEl.textContent = fmtNum(grandPercan, 2);
   const gpLabelEl = document.getElementById('grand-total-percan-label');
