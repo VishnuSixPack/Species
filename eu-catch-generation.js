@@ -33,6 +33,10 @@ const EUCatchGen = (function () {
   /* Used when the organisation has no EU facility approval recorded, so the
      statement always carries a number. Override at init if needed:
         EUCatchGen.init({ ..., defaultApproval: '1500' })  */
+  /* Pre-selected exclusive economic zone when the catch record doesn't name
+     one. Override at init:  EUCatchGen.init({ ..., defaultEez: 'Nauru EEZ' })  */
+  let DEFAULT_EEZ = 'Kiribati EEZ';
+
   let DEFAULT_APPROVAL = { number: '1500', issuing_body: null, valid_from: null,
                            valid_until: null, scope: null, url: null,
                            cert_name: 'EU Facility Approval', source: 'default',
@@ -626,22 +630,11 @@ const EUCatchGen = (function () {
           })(),
           eez: (function () {
             const f = pickField(c, EEZ_KEYS);
+            /* An explicit zone on the catch record always wins */
             if (f && f.value !== true && f.value !== false) return f.value;
-            /* Fall back to the catch area detail, which is where the zone is
-               recorded today (e.g. "71 — PNA Area"). */
-            const detail = c.catch_area_detail || '';
-            if (/pna/i.test(detail)) {
-              /* Name the zone actually fished where the flag state identifies
-                 it, rather than the group as a whole. */
-              const byFlag = {
-                'papua new guinea':'Papua New Guinea EEZ', 'micronesia':'Federated States of Micronesia EEZ',
-                'kiribati':'Kiribati EEZ (Gilbert Islands)', 'marshall islands':'Marshall Islands EEZ',
-                'nauru':'Nauru EEZ', 'palau':'Palau EEZ', 'solomon islands':'Solomon Islands EEZ',
-                'tuvalu':'Tuvalu EEZ', 'tokelau':'Tokelau EEZ'
-              };
-              return byFlag[String(c.flag_state || '').trim().toLowerCase()] || 'PNA Area';
-            }
-            return f && f.value === true ? null : null;
+            /* Otherwise fall back to the configured default so the field is
+               never left empty on the certificate. */
+            return DEFAULT_EEZ;
           })(),
           rfmo: rfmoForArea(c.fao_area),
           gear_type: c.gear_type, latitude: c.latitude, longitude: c.longitude,
@@ -1468,9 +1461,7 @@ const EUCatchGen = (function () {
      -------------------------------------------------------------------- */
   const PNA_EEZ = [
     'Federated States of Micronesia EEZ',
-    'Kiribati EEZ (Gilbert Islands)',
-    'Kiribati EEZ (Phoenix Islands)',
-    'Kiribati EEZ (Line Islands)',
+    'Kiribati EEZ',
     'Marshall Islands EEZ',
     'Nauru EEZ',
     'Palau EEZ',
@@ -2522,6 +2513,7 @@ const EUCatchGen = (function () {
     else if (window.supabase && cfg.url && cfg.key) sb = window.supabase.createClient(cfg.url, cfg.key);
     else { console.error('[EUCatchGen] No Supabase client available.'); return; }
     if (cfg.docBucket) DOC_BUCKET = cfg.docBucket;
+    if (cfg.defaultEez) DEFAULT_EEZ = cfg.defaultEez;
     if (cfg.defaultApproval)
       DEFAULT_APPROVAL = Object.assign({}, DEFAULT_APPROVAL,
         typeof cfg.defaultApproval === 'string'
