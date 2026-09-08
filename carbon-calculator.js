@@ -1175,7 +1175,7 @@ function renderEmissionBadge(staticValue){
         </div>
         <div class="peb-text">
           <div class="peb-label">Basis</div>
-          <div class="peb-basis">${(()=>{ const p = selVal('modal-product','').value; return p ? `Emission per 1 KG of ${p}` : 'Emission per 1 KG of Product in Final Form'; })()}</div>
+          <div class="peb-basis">Emission Per Kg of Raw Material</div>
         </div>
       </div>
       <div class="peb-divider"></div>
