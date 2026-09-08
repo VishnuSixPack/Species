@@ -4105,7 +4105,7 @@ function renderLanding(){
   <div class="page-wrap">
     <div class="page-header">
       <div>
-        <h1>Carbon Footprint Calculator</h1>
+        <h1>Environmental Impact Calculator</h1>
         <div class="sub">Trace emissions across your seafood supply chain using GDST-compliant Critical Tracking Events (CTEs) and Key Data Elements (KDEs).</div>
       </div>
       <button class="btn btn-outline btn-sm" data-action="go-overview-list">View past calculations</button>
