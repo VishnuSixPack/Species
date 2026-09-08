@@ -3690,7 +3690,7 @@ function renderPackaging(){
     {label:'Packaging Type', kind:'type'},
     {label:'Packaging Material', kind:'material'},
     {label:'Packaging Quantity (g)', kind:'qty'},
-    {label:'Emission (kg CO₂e)', kind:'emission'},
+    {label:'Emission (g CO₂e)', kind:'emission'},
   ];
   const capacityG = parseNum(packagingContext.netWeightG) * parseNum(packagingContext.innerUnit);
   const cartonTier = CARTON_SIZE_TIERS.find(t=>capacityG>=t.capMin && capacityG<=t.capMax) || CARTON_SIZE_TIERS[CARTON_SIZE_TIERS.length-1];
@@ -3741,12 +3741,12 @@ function renderPackaging(){
           }).join('')}
         `).join('')).join('')}
 
-        <div class="pkg-grid-kde ttl-label">TTL Emissions (kg CO₂e)</div>
+        <div class="pkg-grid-kde ttl-label">TTL Emissions (g CO₂e)</div>
         ${layers.map(layerRows=>`<div class="pkg-grid-cell ttl-cell">${fmtNum(layerRows.reduce((a,r)=>a+r.emission,0),3)}</div>`).join('')}
       </div>
 
       <div class="pkg-grand-total">
-        <span id="pkg-grand-total">${fmtNum(breakdown.total,3)}</span> <span>kg CO₂e</span>
+        <span id="pkg-grand-total">${fmtNum(breakdown.total/1000,3)}</span> <span>kg CO₂e</span>
       </div>
     </div>
     <div style="height:26px"></div>
