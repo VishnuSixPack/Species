@@ -138,6 +138,20 @@ function buildShipmentOverrides(ctx){
     packagingQuestions.push({ key:'pkg-q-net-weight', label:'Net Weight (per unit)', unit:'g',
       apply:(v)=>{ packagingContext.netWeightG = v; } });
   }
+  // Drained Weight — now the basis for the Per-Can badge total (moved
+  // from Net Weight per explicit correction), stored on Ship/Receive
+  // rather than Packaging. Best-effort column name, not yet confirmed
+  // against the real schema.
+  const drainedWeight = ctx.product?.drained_weight_g ?? ctx.product?.drain_weight_g;
+  if(drainedWeight){
+    shipCalc.drainedWeightG = drainedWeight;
+  } else {
+    packagingQuestions.push({ key:'pkg-q-drained-weight', label:'Drained Weight (per unit)', unit:'g',
+      apply:(v)=>{ shipCalc.drainedWeightG = v; } });
+  }
+  if(ctx.product?.gross_weight_g){
+    shipCalc.grossWeightG = ctx.product.gross_weight_g;
+  }
   // Best-effort column names for the two new Product fields — not yet
   // confirmed against the real schema, so this falls back to asking
   // when either column comes back undefined.
@@ -926,7 +940,7 @@ const CTE_DATA = {
     airFields:[
       F('Air Carrier Name','AIR CARGO'),
     ],
-    innerRow:{inner:'24', gross:'95', drain:'62'},
+    innerRow:{inner:'24', gross:'220', drain:'116'},
     metricsSea:[
       {v:'0.00 kg CO₂e', l:'Emissions of Vessel (s)', id:'sr-metric-sea-total', readonly:true},
       {v:'0.00 kg CO₂e', l:'Emissions of 1 KG in Vessel (s)', id:'sr-metric-sea-perkg', readonly:true},
@@ -1153,13 +1167,13 @@ function renderEmissionBadge(staticValue){
   const valueHTML = staticValue !== undefined
     ? staticValue
     : `<span id="grand-total-perkg">0.00</span>`;
-  const netWeightG = parseNum(packagingContext.netWeightG);
-  const netWeightKG = netWeightG / 1000;
-  const percanSum = Object.values(grandTotalParts).reduce((a,v)=>a+v*netWeightKG, 0);
+  const drainedWeightG = parseNum(shipCalc.drainedWeightG);
+  const drainedWeightKG = drainedWeightG / 1000;
+  const percanSum = Object.values(grandTotalParts).reduce((a,v)=>a+v*drainedWeightKG, 0);
   const grandPercan = percanSum + (packagingLiveTotal()/1000) + INGREDIENTS_CF_HARDCODE;
   return `
     <div class="pm-emission-badge">
-      <div class="peb-section">
+      <div class="peb-group">
         <div class="peb-icon peb-icon-green">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 20C6 20 4 14 8 9C11 5.5 17 5 17 5C17 5 17.5 11 14 15C11 18.5 6 20 6 20Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7.5 18.5C9.5 15.5 11.5 12.5 15 7.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         </div>
@@ -1167,25 +1181,23 @@ function renderEmissionBadge(staticValue){
           <div class="peb-label">Total Carbon Footprint</div>
           <div class="peb-value">${valueHTML}<span class="peb-unit">kgCO₂e</span></div>
         </div>
-      </div>
-      <div class="peb-divider"></div>
-      <div class="peb-section">
-        <div class="peb-icon peb-icon-blue">
-          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4V2M17.66 6.34L19.07 4.93M4.93 19.07L6.34 17.66M20 12H22M2 12H4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M12 4C7.58 4 4 7.58 4 12C4 16.42 7.58 20 12 20C16.42 20 20 16.42 20 12C20 10.4 19.53 8.91 18.72 7.66" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M17 3.3L18.1 7.1L14.3 8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </div>
-        <div class="peb-text">
-          <div class="peb-label">Basis</div>
+        <div class="peb-basis-block">
+          <div class="peb-basis-label">Basis</div>
           <div class="peb-basis">Emission Per Kg of Raw Material</div>
         </div>
       </div>
       <div class="peb-divider"></div>
-      <div class="peb-section">
+      <div class="peb-group">
         <div class="peb-icon peb-icon-pink">
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="4" width="12" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M9 4V2.5H15V4" stroke="currentColor" stroke-width="1.7"/><path d="M9 10H15M9 14H13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         </div>
         <div class="peb-text">
-          <div class="peb-label" id="grand-total-percan-label">Per ${fmtNum(netWeightG,0)}g</div>
+          <div class="peb-label" id="grand-total-percan-label">Per ${fmtNum(drainedWeightG,0)}g</div>
           <div class="peb-value"><span id="grand-total-percan">${fmtNum(grandPercan,2)}</span><span class="peb-unit">kgCO₂e</span></div>
+        </div>
+        <div class="peb-basis-block">
+          <div class="peb-basis-label">Basis</div>
+          <div class="peb-basis">Emission Per Product</div>
         </div>
       </div>
     </div>
@@ -1230,36 +1242,36 @@ function updateGrandTotal(){
   const el = document.getElementById('grand-total-perkg');
   if(el) el.textContent = fmtNum(sum, 2);
 
-  // Per-can (per actual product unit) metrics — Net Weight lives on
-  // Packaging, but every other CTE needs it to convert its own per-kg
+  // Per-can (per actual product unit) metrics — Drained Weight now lives
+  // on Ship/Receive (moved from Packaging's Net Weight per explicit
+  // correction), but every other CTE needs it to convert its own per-kg
   // rate into "emissions for one actual unit of this product". Kept
   // live here (called from every recalc function already) rather than
   // touching each recalc individually.
-  const netWeightG = parseNum(packagingContext.netWeightG);
-  const netWeightKG = netWeightG / 1000;
+  const drainedWeightG = parseNum(shipCalc.drainedWeightG);
+  const drainedWeightKG = drainedWeightG / 1000;
   Object.entries(PERCAN_METRIC_IDS).forEach(([id, stageKey])=>{
     const pel = document.getElementById(id);
-    if(pel) pel.value = fmtNum(grandTotalParts[stageKey] * netWeightKG, 3);
+    if(pel) pel.value = fmtNum(grandTotalParts[stageKey] * drainedWeightKG, 3);
     const lel = document.getElementById(id+'-label');
-    if(lel) lel.textContent = `Per ${fmtNum(netWeightG,0)}g`;
+    if(lel) lel.textContent = `Per ${fmtNum(drainedWeightG,0)}g`;
   });
 
-  // Grand "Per {NetWeight}g" badge total: sum of every stage's per-can
-  // contribution, PLUS Packaging's own total, PLUS the hardcoded
-  // Ingredients CF. Packaging's total is NOT multiplied by net weight
+  // Grand "Per {DrainedWeight}g" badge total: sum of every stage's
+  // per-can contribution, PLUS Packaging's own total, PLUS the hardcoded
+  // Ingredients CF. Packaging's total is NOT multiplied by drained weight
   // (it's already per-unit, not a per-kg rate) but IS divided by 1000
   // here specifically — its own tab's numbers are effectively on a
   // gram-CO2e scale relative to every other stage's kg-CO2e figures, so
   // this correction is needed only when combining it into this grand
   // total, not in Packaging's own display (which stays matched to the
-  // validated reference table as-is). Confirmed via the exact formula
-  // requested: 0.170+0.017+0.018+0.0005+0.161+0.624+0.014+0.049+(236.668/1000)+109.62.
-  const percanSum = Object.values(grandTotalParts).reduce((a,v)=>a+v*netWeightKG, 0);
+  // validated reference table as-is).
+  const percanSum = Object.values(grandTotalParts).reduce((a,v)=>a+v*drainedWeightKG, 0);
   const grandPercan = percanSum + (packagingLiveTotal()/1000) + INGREDIENTS_CF_HARDCODE;
   const gpEl = document.getElementById('grand-total-percan');
   if(gpEl) gpEl.textContent = fmtNum(grandPercan, 2);
   const gpLabelEl = document.getElementById('grand-total-percan-label');
-  if(gpLabelEl) gpLabelEl.textContent = `Per ${fmtNum(netWeightG,0)}g`;
+  if(gpLabelEl) gpLabelEl.textContent = `Per ${fmtNum(drainedWeightG,0)}g`;
 }
 
 /* ---------- SUBMIT-TO-CONFIRM + DATABASE SAVE ----------
@@ -2073,6 +2085,7 @@ function startFreshCalculation(){
   shipCalc.distanceSea = ''; shipCalc.distanceAir = ''; shipCalc.teu = '';
   shipCalc.dryGW = {value:'', unit:'mt'}; shipCalc.reeferGW = {value:'', unit:'mt'};
   shipCalc.aircraftGW = {value:'', unit:'mt'}; shipCalc.yieldWeight = {value:'', unit:'kg'};
+  shipCalc.grossWeightG = ''; shipCalc.drainedWeightG = '';
   packagingContext.netWeightG = ''; packagingContext.packagingMaterialQuantity = '';
   packagingContext.innerUnit = ''; packagingContext.palletWeight = ''; packagingContext.palletUnits = '';
   packagingContext.answered = false;
@@ -2650,6 +2663,8 @@ const shipCalc = {
   reeferGW:{value:'30.4', unit:'mt'},
   aircraftGW:{value:'250', unit:'mt'},
   yieldWeight:{value:'258,265.00', unit:'kg'},
+  grossWeightG: '220',   // per-unit spec, e.g. one can including everything
+  drainedWeightG: '116', // per-unit spec — now the basis for the Per-Can badge total, replacing Net Weight
 };
 
 function shipToMT(v, unit){ return unit==='mt' ? parseNum(v) : parseNum(v)/1000; }
@@ -2682,6 +2697,8 @@ function recalcShip(){
   const distanceSea = parseNum(document.getElementById('sr-distance-sea')?.value ?? shipCalc.distanceSea);
   const distanceAir = parseNum(document.getElementById('sr-distance-air')?.value ?? shipCalc.distanceAir);
   const yieldWeightKG = shipToKG(document.getElementById('sr-yield-weight')?.value ?? shipCalc.yieldWeight.value, shipCalc.yieldWeight.unit);
+  shipCalc.grossWeightG = document.getElementById('ship-gross-weight')?.value ?? shipCalc.grossWeightG;
+  shipCalc.drainedWeightG = document.getElementById('ship-drain-weight')?.value ?? shipCalc.drainedWeightG;
 
   const emissionSea = (teu * reeferMT * 0.9 * 0.01681 * distanceSea) + (teu * dryMT * 0.1 * 0.0129 * distanceSea);
   const emissionAir = aircraftMT * distanceAir * 0.68;
@@ -3837,8 +3854,8 @@ function renderShipReceive(){
       ${modeFieldsHTML}
       <div class="field-grid" style="margin-top:2px;">
         <div class="field"><label>Inner Unit</label><input type="text" value="${d.innerRow.inner}"></div>
-        <div class="field"><label>Gross Weight (g)</label><input type="text" value="${d.innerRow.gross}"></div>
-        <div class="field"><label>Drain Weight (g)</label><input type="text" value="${d.innerRow.drain}"></div>
+        <div class="field"><label>Gross Weight (g)</label><input type="text" id="ship-gross-weight" value="${shipCalc.grossWeightG}" oninput="recalcShip()"></div>
+        <div class="field"><label>Drain Weight (g)</label><input type="text" id="ship-drain-weight" value="${shipCalc.drainedWeightG}" oninput="recalcShip()"></div>
       </div>
       <div class="field-grid" style="margin-top:2px;">
         <div class="field">
