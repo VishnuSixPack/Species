@@ -1192,7 +1192,7 @@ function renderEmissionBadge(staticValue){
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="4" width="12" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M9 4V2.5H15V4" stroke="currentColor" stroke-width="1.7"/><path d="M9 10H15M9 14H13" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         </div>
         <div class="peb-text">
-          <div class="peb-label" id="grand-total-percan-label">Per ${fmtNum(drainedWeightG,0)}g</div>
+          <div class="peb-label" id="grand-total-percan-label">Per Product</div>
           <div class="peb-value"><span id="grand-total-percan">${fmtNum(grandPercan,2)}</span><span class="peb-unit">kgCO₂e</span></div>
         </div>
         <div class="peb-basis-block">
@@ -1229,7 +1229,7 @@ const DEMO_GRAND_TOTAL_PARTS = { ...grandTotalParts };
 // TEMPORARY HARDCODE: Carbon Footprint of Ingredients, not yet computed
 // from real data — added directly to the Per-Can grand total per explicit
 // instruction, until a real calculation/source exists for this.
-const INGREDIENTS_CF_HARDCODE = 109.62;
+const INGREDIENTS_CF_HARDCODE = 0.1096;
 
 const PERCAN_METRIC_IDS = {
   'hv-metric-percan': 'harvesting', 'ovp-metric-percan': 'ovp', 'ts-metric-percan': 'transshipment',
@@ -1254,7 +1254,7 @@ function updateGrandTotal(){
     const pel = document.getElementById(id);
     if(pel) pel.value = fmtNum(grandTotalParts[stageKey] * drainedWeightKG, 3);
     const lel = document.getElementById(id+'-label');
-    if(lel) lel.textContent = `Per ${fmtNum(drainedWeightG,0)}g`;
+    if(lel) lel.textContent = `Per Product`;
   });
 
   // Grand "Per {DrainedWeight}g" badge total: sum of every stage's
@@ -1271,7 +1271,7 @@ function updateGrandTotal(){
   const gpEl = document.getElementById('grand-total-percan');
   if(gpEl) gpEl.textContent = fmtNum(grandPercan, 2);
   const gpLabelEl = document.getElementById('grand-total-percan-label');
-  if(gpLabelEl) gpLabelEl.textContent = `Per ${fmtNum(drainedWeightG,0)}g`;
+  if(gpLabelEl) gpLabelEl.textContent = `Per Product`;
 }
 
 /* ---------- SUBMIT-TO-CONFIRM + DATABASE SAVE ----------
@@ -3254,14 +3254,13 @@ function bottomBar(metrics, checkboxLabel, checked=false, cteKey=null, weightCon
         </div>
       </div>`;
     }).join('')}${percanConfig ? (()=>{
-      const netWeightG = parseNum(packagingContext.netWeightG);
-      const netWeightKG = netWeightG / 1000;
-      const perCan = percanConfig.perKgValue * netWeightKG;
+      const drainedWeightKG = parseNum(shipCalc.drainedWeightG) / 1000;
+      const perCan = percanConfig.perKgValue * drainedWeightKG;
       return `<div class="metric">
         <div class="metric-icon metric-icon-percan">${METRIC_ICON_PERCAN}</div>
         <div class="metric-body">
           <div class="metric-row"><input type="text" class="metric-input is-computed" id="${percanConfig.id}" readonly value="${fmtNum(perCan,3)}"><span class="metric-unit">kg CO₂e</span></div>
-          <div class="l" id="${percanConfig.id}-label">Per ${fmtNum(netWeightG,0)}g</div>
+          <div class="l" id="${percanConfig.id}-label">Per Product</div>
         </div>
       </div>`;
     })() : ''}</div>
