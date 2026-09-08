@@ -51,7 +51,7 @@
     /* ══════════════════════ SIDEBAR (dark) ══════════════════════ */
     .sidebar{
       width:236px;min-width:236px;
-      background:linear-gradient(180deg,var(--sb-bg),var(--sb-bg-2));
+      background:var(--sb-bg);
       display:flex;flex-direction:column;height:100vh;flex-shrink:0;
       padding:20px 14px;position:relative;
     }
@@ -86,17 +86,6 @@
 
     /* ══════════════════════ MAIN ══════════════════════ */
     .main{flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;position:relative;min-width:0;}
-
-    /* Softens the sidebar/main boundary — instead of a hard dark-to-light
-       cut, a blurred glow in the sidebar's own tone bleeds a short way
-       into the light mesh, so the two areas read as one continuous
-       atmosphere rather than two flat, separately-colored panels. */
-    .sidebar-glow{
-      position:absolute;left:-50px;top:0;bottom:0;width:280px;z-index:0;
-      pointer-events:none;
-      background:linear-gradient(90deg, rgba(12,17,32,0.55) 0%, rgba(16,21,38,0.30) 35%, rgba(20,26,46,0.10) 65%, transparent 100%);
-      filter:blur(20px);
-    }
 
     .mesh-bg{
       position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden;
@@ -138,7 +127,7 @@
     .top-avatar-menu button:hover{background:#fff0f1;}
 
     /* ── WELCOME ── */
-    .welcome{position:relative;z-index:1;flex:1;overflow-y:auto;padding:20px 48px 24px;}
+    .welcome{position:relative;z-index:1;flex:1;overflow-y:auto;overflow-x:hidden;padding:20px 48px 24px;}
     .w-eyebrow{font-size:11px;font-weight:700;letter-spacing:1.4px;color:#8890a8;text-transform:uppercase;margin-bottom:6px;animation:fadeIn 0.5s ease;}
     .w-title{font-size:40px;font-weight:800;color:var(--text-dark);letter-spacing:-0.8px;margin-bottom:14px;animation:fadeIn 0.55s ease;}
     .w-title .grad{background:linear-gradient(120deg,var(--accent-a),var(--accent-b));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;}
@@ -188,8 +177,30 @@
     .switch-thumb{position:absolute;top:2.5px;left:2.5px;width:14px;height:14px;background:#fff;border-radius:50%;transition:transform 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2);}
     .switch input:checked ~ .switch-thumb{transform:translateX(15px);}
     .input-sep{width:1px;height:16px;background:#e0e3f0;}
+    .model-select-wrap{position:relative;}
     .model-select{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted);font-weight:500;background:none;border:none;cursor:pointer;font-family:'Inter',sans-serif;padding:2px;}
-    .model-select svg:last-child{opacity:0.6;}
+    .model-select svg:last-child{opacity:0.6;transition:transform 0.15s;}
+    .model-select[aria-expanded="true"] svg:last-child{transform:rotate(180deg);}
+
+    .model-menu{
+      display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);
+      background:#fff;border:1px solid var(--border);border-radius:14px;
+      box-shadow:0 12px 32px rgba(20,20,40,0.14);min-width:220px;overflow:hidden;z-index:50;padding:6px;
+    }
+    .model-menu.open{display:block;}
+    .model-menu-item{
+      display:flex;align-items:center;gap:9px;padding:9px 11px;border-radius:9px;
+      font-size:12.5px;font-weight:500;color:var(--text-dark);cursor:pointer;
+      background:none;border:none;width:100%;text-align:left;font-family:'Inter',sans-serif;
+    }
+    .model-menu-item:hover{background:#f4f6fb;}
+    .model-menu-item.active{color:var(--accent-b);font-weight:700;}
+    .model-menu-item.disabled{color:#c0c4d4;cursor:not-allowed;}
+    .model-menu-item.disabled:hover{background:none;}
+    .model-menu-item svg:first-child{flex-shrink:0;}
+    .model-menu-item-name{flex:1;}
+    .model-soon{font-size:8.5px;font-weight:700;color:#d97706;background:#fef3c7;padding:2px 7px;border-radius:999px;flex-shrink:0;}
+    .model-check{width:13px;height:13px;flex-shrink:0;color:var(--accent-b);}
 
     /* ── QUICK ACTIONS ── */
     .qa-section{position:relative;z-index:1;margin-top:26px;}
@@ -218,7 +229,7 @@
     .qa-arrow{position:absolute;bottom:14px;right:14px;width:26px;height:26px;border-radius:50%;background:#fff;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:#8890a8;}
 
     /* ── CHAT STATE ── */
-    .chat-msgs{position:relative;z-index:1;flex:1;overflow-y:auto;padding:24px 48px;display:flex;flex-direction:column;gap:20px;}
+    .chat-msgs{position:relative;z-index:1;flex:1;overflow-y:auto;overflow-x:hidden;padding:24px 48px;display:flex;flex-direction:column;gap:20px;}
     .chat-msgs::-webkit-scrollbar{width:4px;}
     .chat-msgs::-webkit-scrollbar-thumb{background:rgba(140,150,200,0.25);border-radius:999px;}
     .msg-row{display:flex;gap:11px;align-items:flex-start;animation:slideInUp 0.32s ease;max-width:900px;}
@@ -289,7 +300,6 @@
 <!-- MAIN -->
 <div class="main">
   <div class="mesh-bg"></div>
-  <div class="sidebar-glow" aria-hidden="true"></div>
 
   <!-- TOPBAR -->
   <div class="topbar">
@@ -388,11 +398,39 @@
             Web Search
           </label>
           <div class="input-sep"></div>
-          <button class="model-select" type="button" title="Model">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
-            Llama 3.3 70B
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg>
-          </button>
+          <div class="model-select-wrap">
+            <button class="model-select" type="button" id="modelSelectBtn" onclick="toggleModelMenu()" aria-haspopup="true" aria-expanded="false">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+              Groq
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="model-menu" id="modelMenu">
+              <button type="button" class="model-menu-item active" onclick="toggleModelMenu()">
+                <svg class="model-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><polyline points="20 6 9 17 4 12"/></svg>
+                <span class="model-menu-item-name">Groq</span>
+              </button>
+              <button type="button" class="model-menu-item disabled" disabled>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0" style="visibility:hidden;"></svg>
+                <span class="model-menu-item-name">GPT-4o</span>
+                <span class="model-soon">Soon</span>
+              </button>
+              <button type="button" class="model-menu-item disabled" disabled>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0" style="visibility:hidden;"></svg>
+                <span class="model-menu-item-name">Claude 3.5 Sonnet</span>
+                <span class="model-soon">Soon</span>
+              </button>
+              <button type="button" class="model-menu-item disabled" disabled>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0" style="visibility:hidden;"></svg>
+                <span class="model-menu-item-name">Gemini 1.5 Pro</span>
+                <span class="model-soon">Soon</span>
+              </button>
+              <button type="button" class="model-menu-item disabled" disabled>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="0" style="visibility:hidden;"></svg>
+                <span class="model-menu-item-name">Mistral Large</span>
+                <span class="model-soon">Soon</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -540,6 +578,19 @@ async function handleLogout(){await db.auth.signOut();window.location.href='logi
 function toggleAvatarMenu(){document.getElementById('topAvatarMenu').classList.toggle('open');}
 document.addEventListener('click',e=>{
   if(!e.target.closest('.top-avatar-wrap'))document.getElementById('topAvatarMenu')?.classList.remove('open');
+});
+
+function toggleModelMenu(){
+  const menu=document.getElementById('modelMenu');
+  const btn=document.getElementById('modelSelectBtn');
+  const open=menu.classList.toggle('open');
+  btn.setAttribute('aria-expanded',String(open));
+}
+document.addEventListener('click',e=>{
+  if(!e.target.closest('.model-select-wrap')){
+    document.getElementById('modelMenu')?.classList.remove('open');
+    document.getElementById('modelSelectBtn')?.setAttribute('aria-expanded','false');
+  }
 });
 
 // ── History management ──
