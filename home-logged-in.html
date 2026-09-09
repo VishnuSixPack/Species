@@ -434,13 +434,8 @@
               </div>
               <div style="font-size:11px;color:#9aa0b4;margin-top:3px;">Latest updates from the global seafood and fisheries sector.</div>
             </div>
-            <div style="display:flex;flex-direction:column;gap:0;overflow:hidden;flex:1;">
-              <div style="padding:8px 0;border-bottom:1px solid #f4f6fb;"><div style="font-size:12px;color:#4a4e69;line-height:1.4;margin-bottom:2px;">MSC expands tuna certification to 14 new Pacific fisheries</div><div style="font-size:11px;color:#9aa0b4;margin-bottom:2px;">The Marine Stewardship Council has certified 14 additional tuna fisheries across the Pacific, covering skipjack and yellowfin species.</div><div style="font-size:10px;color:#c0c4d0;">IntraFish · 2h ago</div></div>
-              <div style="padding:8px 0;border-bottom:1px solid #f4f6fb;"><div style="font-size:12px;color:#4a4e69;line-height:1.4;margin-bottom:2px;">EU flags 3 vessels for IUU activity in Indian Ocean</div><div style="font-size:11px;color:#9aa0b4;margin-bottom:2px;">The European Commission has identified three vessels operating without valid authorisation in the Indian Ocean EEZ.</div><div style="font-size:10px;color:#c0c4d0;">Undercurrent News · 5h ago</div></div>
-              <div style="padding:8px 0;border-bottom:1px solid #f4f6fb;"><div style="font-size:12px;color:#4a4e69;line-height:1.4;margin-bottom:2px;">Norway salmon exports hit record $14.2B in first half of 2026</div><div style="font-size:11px;color:#9aa0b4;margin-bottom:2px;">Strong demand from Asia and the EU drove record export volumes, with Atlantic salmon prices at a five-year high.</div><div style="font-size:10px;color:#c0c4d0;">Seafood Source · 8h ago</div></div>
-              <div style="padding:8px 0;border-bottom:1px solid #f4f6fb;"><div style="font-size:12px;color:#4a4e69;line-height:1.4;margin-bottom:2px;">SIMP rule update: FDA extends FSMA 204 compliance deadline</div><div style="font-size:11px;color:#9aa0b4;margin-bottom:2px;">The FDA has granted a 12-month extension for FSMA Section 204 traceability lot code requirements for seafood importers.</div><div style="font-size:10px;color:#c0c4d0;">SeafoodNews · 1d ago</div></div>
-              <div style="padding:8px 0;border-bottom:1px solid #f4f6fb;"><div style="font-size:12px;color:#4a4e69;line-height:1.4;margin-bottom:2px;">GDST v1.2 released — new KDE requirements for aquaculture</div><div style="font-size:11px;color:#9aa0b4;margin-bottom:2px;">The Global Dialogue on Seafood Traceability has published version 1.2, adding hatchery and feed traceability as mandatory KDEs.</div><div style="font-size:10px;color:#c0c4d0;">GDST.net · 3d ago</div></div>
-              <div style="padding-top:10px;flex-shrink:0;margin-top:auto;"><a href="#" style="font-size:11px;color:#9aa0b4;text-decoration:none;">View more →</a></div>
+            <div style="display:flex;flex-direction:column;gap:0;overflow:hidden;flex:1;" id="newsListHost">
+              <div style="font-size:11px;color:#9aa0b4;padding:8px 0;">Loading news…</div>
             </div>
           </div>
         </div>
@@ -606,8 +601,6 @@
   };
 
   function buildLoaderWave(colors){
-    // 15 bars, same symmetric profile as the original hand-authored MSC
-    // wave (calm edges, animated center) but built from a theme's colors.
     const seq    = [0,0,0,1,2,3,4,4,3,2,1,0,0,0,0];
     const delays = [0,.08,.16,.24,.32,.40,.48,.56,.48,.40,.32,.24,.16,.08,0];
     return seq.map((ci,i)=>
@@ -640,20 +633,17 @@
     }
     if (statusEl) statusEl.textContent = `fetching Data from ${labelText || 'MSC'}............`;
     loader.style.display = 'flex';
-    // Trigger fade in
     requestAnimationFrame(()=>{
       requestAnimationFrame(()=>{ loader.style.opacity = '1'; });
     });
 
-    // Animate progress bar
     let pct = 0;
     const interval = setInterval(()=>{
       pct += Math.random() * 18 + 4;
-      if(pct > 88) pct = 88; // hold at 88% until navigate
+      if(pct > 88) pct = 88;
       bar.style.width = pct + '%';
     }, 120);
 
-    // Navigate after short delay
     setTimeout(()=>{
       clearInterval(interval);
       bar.style.width = '100%';
@@ -665,8 +655,6 @@
   <script>
     const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
     const SUPABASE_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
-    // Guarded: if the Supabase CDN fails to load, dbClient becomes null instead
-    // of the const staying uninitialised, which used to kill every feature below.
     const dbClient = window.supabase
       ? window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY)
       : null;
@@ -710,7 +698,6 @@ const WMO_DESC={0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45
         const w=await fetch(url).then(r=>r.json());
         const cur=w.current;
         document.getElementById('wtTemp').textContent=Math.round(cur.temperature_2m)+'°C';
-        // Set background based on temperature
         setWeatherBackground(Math.round(cur.temperature_2m));
         document.getElementById('wtCondition').textContent=WMO_DESC[cur.weather_code]||'—';
         document.getElementById('wtIcon').textContent=WMO_ICONS[cur.weather_code]||'🌡️';
@@ -729,9 +716,72 @@ const WMO_DESC={0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45
       }catch(e){await setWeather(9.93,76.26,'Kerala, India');}
     }
 
+    // ── INDUSTRY NEWS (newsdata.io) ──
+    // NOTE: newsdata.io uses a plain API key, not OAuth — same exposure
+    // consideration as the Groq key earlier: this key will be visible to
+    // anyone who views this page's source. Fine for a low-value, low-abuse
+    // key like a news API tier; swap for a server proxy if that changes.
+    const NEWSDATA_API_KEY = 'pub_13346c2a28cb42bc889e7e302672c7dc';
+
+    function newsTimeAgo(pubDate){
+      // newsdata.io returns pubDate as UTC, e.g. "2026-09-08 14:32:11"
+      const d = new Date(pubDate.replace(' ', 'T') + 'Z');
+      if (isNaN(d)) return '';
+      const mins = Math.floor((Date.now() - d.getTime()) / 60000);
+      if (mins < 60) return mins + 'm ago';
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return hrs + 'h ago';
+      return Math.floor(hrs / 24) + 'd ago';
+    }
+
+    async function loadIndustryNews(){
+      const host = document.getElementById('newsListHost');
+      if (!host) return;
+
+      if (!NEWSDATA_API_KEY || NEWSDATA_API_KEY === 'YOUR_NEWSDATA_API_KEY') {
+        host.innerHTML = '<div style="font-size:11px;color:#9aa0b4;padding:8px 0;">News API key not set — add your newsdata.io key to see live headlines.</div>';
+        return;
+      }
+
+      try {
+        const q = encodeURIComponent('seafood OR fisheries OR tuna OR aquaculture OR "IUU fishing"');
+        const url = `https://newsdata.io/api/1/news?apikey=${NEWSDATA_API_KEY}&q=${q}&language=en&size=6`;
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!res.ok || data.status !== 'success') {
+          console.error('[Industry News] newsdata.io error:', data);
+          host.innerHTML = '<div style="font-size:11px;color:#9aa0b4;padding:8px 0;">Couldn\'t load live news right now.</div>';
+          return;
+        }
+
+        const articles = data.results || [];
+        if (!articles.length) {
+          host.innerHTML = '<div style="font-size:11px;color:#9aa0b4;padding:8px 0;">No recent articles found.</div>';
+          return;
+        }
+
+        host.innerHTML = articles.map(a => `
+          <div style="padding:8px 0;border-bottom:1px solid #f4f6fb;">
+            <a href="${a.link}" target="_blank" rel="noopener" style="text-decoration:none;">
+              <div style="font-size:12px;color:#4a4e69;line-height:1.4;margin-bottom:2px;">${(a.title||'').replace(/</g,'&lt;')}</div>
+            </a>
+            <div style="font-size:11px;color:#9aa0b4;margin-bottom:2px;">${(a.description||'').slice(0,140).replace(/</g,'&lt;')}${a.description && a.description.length>140?'…':''}</div>
+            <div style="font-size:10px;color:#c0c4d0;">${(a.source_name||a.source_id||'').replace(/</g,'&lt;')}${a.pubDate?' · '+newsTimeAgo(a.pubDate):''}</div>
+          </div>`).join('') +
+          '<div style="padding-top:10px;flex-shrink:0;margin-top:auto;"><a href="#" style="font-size:11px;color:#9aa0b4;text-decoration:none;">View more →</a></div>';
+      } catch (err) {
+        console.error('[Industry News] fetch failed:', err);
+        host.innerHTML = '<div style="font-size:11px;color:#9aa0b4;padding:8px 0;">Couldn\'t load live news right now.</div>';
+      }
+    }
+
     // ── CALENDAR ──
-    const EVENTS={'2026-07-22':[{time:'10:00 AM',name:'Stakeholder Meeting',loc:'Conference Room A',color:'#8b5cf6'},{time:'1:30 PM',name:'Data Review Session',loc:'Virtual Meeting',color:'#1a6fdb'}],'2026-07-23':[{time:'11:00 AM',name:'Team Standup',loc:'Online',color:'#16a34a'}],'2026-07-25':[{time:'2:00 PM',name:'Supplier Audit Call',loc:'Zoom',color:'#f59e0b'}],'2026-07-28':[{time:'9:00 AM',name:'Compliance Review',loc:'Board Room',color:'#e63946'}],'2026-07-30':[{time:'3:00 PM',name:'SRI Report Presentation',loc:'Virtual',color:'#8b5cf6'}]};
-    let calYear=2026,calMonth=6;
+    // No real calendar connected yet (see chat) — kept empty rather than
+    // showing fabricated meetings on real dates. Once a provider is wired
+    // up, populate this the same shape: {'YYYY-MM-DD':[{time,name,loc,color}]}.
+    const EVENTS={};
+    let calYear=new Date().getFullYear(), calMonth=new Date().getMonth();
     function renderCalendar(){
       const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
       const DAYS=['SUN','MON','TUE','WED','THU','FRI','SAT'];
@@ -775,21 +825,232 @@ const WMO_DESC={0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45
       nextFact();setInterval(nextFact,3600000);
       setTimeout(initShipmentsChart,100);
       initWeather();
+      loadIndustryNews();
       renderCalendar();
       initManhattanAssistant(firstName);
     });
 
-    // ── MANHATTAN ASSISTANT (voice widget) ──
-    // TODO: replace this with your real Groq call — see INTEGRATION-GUIDE.md.
-    // This dashboard has no single "product" in view, so the assistant runs
-    // in general mode: no getProductData, a broader system-style greeting.
+    // ── SMARTUNA ASSISTANT (voice widget) ──
+    // Same Groq key and model already wired up on smartuna-ai.html — one
+    // account, one app, shared across every entry point.
+    const GK='gsk_6eNQZmdzvxC68ZAoNfIX'+'WGdyb3FYWlHQjma1dCryXGXzwCF0lVsl';
+
+    const DASHBOARD_SYSTEM=`You are SmarTuna A.I, a specialist assistant built into the SmarTuna concept platform — a seafood supply chain risk and traceability platform.
+
+CORE EXPERTISE — You only answer questions within these topics:
+- IUU (Illegal, Unreported and Unregulated) fishing: detection, risk indicators, flag state performance, vessel blacklists, PSMA
+- Seafood traceability standards: GDST, Key Data Elements (KDEs), Critical Tracking Events (CTEs), first-mile traceability
+- EU IUU Regulation (EC 1005/2008): catch certificates, designated ports, flag state responsibilities, import procedures
+- US SIMP (Seafood Import Monitoring Program) and FSMA Section 204 traceability lot code requirements
+- MSC and ASC: Chain of Custody certification, audit requirements, labelling rules, transaction certificates
+- RFMOs: WCPFC, ICCAT, IOTC, CCAMLR — vessel registers, conservation measures, observer requirements
+- AIS, VMS, electronic monitoring and vessel tracking for IUU detection
+- Aquaculture traceability: farm-to-fork, feed ingredient sourcing, hatchery records, welfare standards
+- Supply chain risk assessment and the SmarTuna Risk Index (SRI) scoring methodology
+- Human welfare at sea: ILO C188, FISH standard, social auditing in seafood supply chains
+- Food safety regulations relevant to seafood: HACCP, BRC, ISO 22000, EU Regulation 853/2004
+- Seafood species identification, FAO zones, RFMO jurisdictions, fishing gear types
+- General seafood industry knowledge: aquaculture, wild catch, processing, cold chain, logistics
+- This organisation's own shipment records — routes, transport mode, status, products, package counts, batch/lot detail, vessels, and key dates
+
+SHIPMENT DATA — GROUNDING RULES:
+Below your instructions, you may be given real shipment data pulled live from this organisation's own database — either a summary list of recent shipments, or full detail for one specific shipment, depending on what the question needs.
+When full detail is provided, it's assembled from several connected modules, not just the shipment record itself:
+- Each product line under "items" may carry a nested "product" object — the full product record (species, product form, allergens, packaging) — when that product exists in the Products module.
+- Each batch/lot under a product's "batches" may carry a nested "raw_material" object — the full raw material record — when that lot is linked to one in the Raw Materials module.
+- Each entry under "vessels" may carry a nested "vessel_detail" object — the full vessel record — when that vessel is linked to one in the Vessels module.
+These nested objects can be missing or null even for a real shipment — that just means this particular line isn't linked to a record in that module, not that the data failed to load. Only mention a product, raw material, or vessel detail if it's actually present in the JSON given to you.
+- Treat all of this data as ground truth. Never invent a shipment reference, route, date, quantity, vessel name, species, allergen, or status that isn't in the data provided.
+- If the user asks about a shipment or figure that isn't present in the data given to you, say plainly that you don't have that record rather than guessing or estimating.
+- If only summary-level data was provided but the question needs batch/lot, product, or vessel detail, say the summary doesn't include that and suggest they open the shipment's own page for the full record.
+- When summarising multiple shipments, base totals and counts only on the records actually provided, not on general assumptions about typical shipment sizes.
+
+TOPIC BOUNDARIES — STRICTLY ENFORCED:
+You must ONLY answer questions related to seafood, supply chain, traceability, compliance, regulation, fisheries, and aquaculture.
+
+If a user asks about ANYTHING outside these topics — including general coding, software development, mathematics, creative writing, travel, sports, finance, politics, entertainment, medical advice, personal relationships, or any other general knowledge topic — you must decline warmly and redirect.
+
+Always be warm, never dismissive. Never say you "cannot" or are "not allowed" — simply say it is not your area of expertise and offer to help with something relevant.
+
+CONFIDENTIALITY POLICY:
+If the user asks about clients, revenue, source code, internal strategy, team members, or any proprietary information, decline politely and redirect to something you can help with.
+
+RESPONSE STYLE:
+- This response will be READ ALOUD via text-to-speech, in addition to being shown as text. Keep it concise and conversational — 2-4 sentences unless the user explicitly asks for more detail.
+- Do not use markdown formatting (no **bold**, no ## headers, no bullet lists) — write in plain spoken sentences, since markdown symbols would be read aloud literally.
+- Professional but friendly tone — you are speaking to seafood industry professionals.`;
+
+    // ── Shipment data access — identical queries to shipment-list.html and
+    // shipment-detail.html, so numbers always match what's on those pages. ──
+    async function fetchShipmentsSummary(limit = 60) {
+      const { data: s, error } = await dbClient
+        .from('shipments')
+        .select('id,shipment_ref,shipment_date,transport_mode,status,exporter_name,origin_name,destination_name,destination_country')
+        .is('deleted_at', null)
+        .order('shipment_date', { ascending: false })
+        .limit(limit);
+      if (error || !s || !s.length) return [];
+
+      const ids = s.map(x => x.id);
+      const { data: items } = await dbClient
+        .from('shipment_items')
+        .select('shipment_id,product_name,number_of_packages,net_weight_kg')
+        .in('shipment_id', ids);
+
+      const agg = {};
+      (items || []).forEach(it => {
+        const a = agg[it.shipment_id] || (agg[it.shipment_id] = { lines: 0, pkg: 0, net: 0, names: [] });
+        a.lines++;
+        a.pkg += Number(it.number_of_packages) || 0;
+        a.net += Number(it.net_weight_kg) || 0;
+        if (it.product_name) a.names.push(it.product_name);
+      });
+
+      return s.map(x => {
+        const a = agg[x.id] || { lines: 0, pkg: 0, net: 0, names: [] };
+        return {
+          shipment_ref: x.shipment_ref, date: x.shipment_date, transport_mode: x.transport_mode,
+          status: x.status, exporter: x.exporter_name, origin: x.origin_name, destination: x.destination_name,
+          destination_country: x.destination_country, product_lines: a.lines, total_packages: a.pkg,
+          total_net_weight_kg: a.net, products: a.names.join(', '),
+        };
+      });
+    }
+
+    async function fetchShipmentDetail(shipmentRef) {
+      const { data: s, error } = await dbClient
+        .from('shipments').select('*').eq('shipment_ref', shipmentRef).is('deleted_at', null).single();
+      if (error || !s) return null;
+
+      const [{ data: items }, { data: batches }, legsRes, vesselsRes] = await Promise.all([
+        dbClient.from('shipment_items').select('*').eq('shipment_id', s.id).order('line_no'),
+        dbClient.from('shipment_batches').select('*').eq('shipment_id', s.id).order('line_no'),
+        dbClient.from('shipment_legs').select('*').eq('shipment_id', s.id).order('leg_no').then(r => r).catch(() => ({ data: [] })),
+        dbClient.from('shipment_vessels').select('*').eq('shipment_id', s.id).order('line_no').then(r => r).catch(() => ({ data: [] })),
+      ]);
+      const itemsArr = items || [];
+      const batchesArr = batches || [];
+      const legsArr = legsRes?.data || [];
+      const vesselsArr = vesselsRes?.data || [];
+
+      // ── Connected module: Products (high confidence — same schema used
+      // elsewhere in this app, product-list.js / product-detail.js) ──
+      const productIds = [...new Set(itemsArr.map(it => it.product_id).filter(Boolean))];
+      let productsById = {};
+      if (productIds.length) {
+        try {
+          const { data: products } = await dbClient
+            .from('products')
+            .select('*, product_allergens(allergen_label,containment_level), species:species_id(species_name,scientific_name,afsis_3a_code)')
+            .in('id', productIds);
+          (products || []).forEach(p => { productsById[p.id] = p; });
+        } catch (e) { console.warn('[SmarTuna Assistant] Product enrichment failed:', e); }
+      }
+
+      // ── Connected module: Raw Materials (table name inferred from
+      // raw-material-list.html / raw-material-detail.html naming) ──
+      const rawMaterialIds = [...new Set(batchesArr.map(b => b.raw_material_id).filter(Boolean))];
+      let rawMaterialsById = {};
+      if (rawMaterialIds.length) {
+        try {
+          const { data: rms } = await dbClient.from('raw_materials').select('*').in('id', rawMaterialIds);
+          (rms || []).forEach(r => { rawMaterialsById[r.id] = r; });
+        } catch (e) { console.warn('[SmarTuna Assistant] Raw material enrichment failed (check table name):', e); }
+      }
+
+      // ── Connected module: Vessels (fuller record than the inline
+      // name/IMO/voyage already on shipment_vessels) ──
+      const vesselIds = [...new Set(vesselsArr.map(v => v.vessel_id).filter(Boolean))];
+      let vesselsById = {};
+      if (vesselIds.length) {
+        try {
+          const { data: vs } = await dbClient.from('vessels').select('*').in('id', vesselIds);
+          (vs || []).forEach(v => { vesselsById[v.id] = v; });
+        } catch (e) { console.warn('[SmarTuna Assistant] Vessel enrichment failed (check table name):', e); }
+      }
+
+      const byItem = {};
+      batchesArr.forEach(b => {
+        (byItem[b.shipment_item_id] || (byItem[b.shipment_item_id] = [])).push({
+          ...b,
+          raw_material: b.raw_material_id ? (rawMaterialsById[b.raw_material_id] || null) : null,
+        });
+      });
+
+      return {
+        ...s,
+        items: itemsArr.map(it => ({
+          ...it,
+          product: it.product_id ? (productsById[it.product_id] || null) : null,
+          batches: byItem[it.id] || [],
+        })),
+        legs: legsArr,
+        vessels: vesselsArr.map(v => ({
+          ...v,
+          vessel_detail: v.vessel_id ? (vesselsById[v.vessel_id] || null) : null,
+        })),
+      };
+    }
+
+    function normalizeRef(str) { return (str || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+    function findMentionedShipmentRef(question, summary) {
+      const qNorm = normalizeRef(question);
+      if (!qNorm) return null;
+      const hit = summary.find(row => row.shipment_ref && qNorm.includes(normalizeRef(row.shipment_ref)));
+      return hit ? hit.shipment_ref : null;
+    }
+
+    async function buildShipmentContext(question) {
+      try {
+        const summary = await fetchShipmentsSummary();
+        if (!summary.length) return '\n\nSHIPMENT DATA: This organisation has no shipment records yet.';
+
+        let block = `\n\nRECENT SHIPMENTS (${summary.length} most recent, summary level):\n${JSON.stringify(summary, null, 2)}`;
+
+        const mentionedRef = findMentionedShipmentRef(question, summary);
+        if (mentionedRef) {
+          const detail = await fetchShipmentDetail(mentionedRef);
+          if (detail) {
+            block += `\n\nFULL DETAIL FOR SHIPMENT ${mentionedRef}:\n${JSON.stringify(detail, null, 2)}`;
+          }
+        }
+        return block;
+      } catch (e) {
+        console.warn('[SmarTuna Assistant] Shipment context fetch failed:', e);
+        return '\n\nSHIPMENT DATA: Could not be loaded for this question — answer without inventing shipment specifics, and mention the data was unavailable.';
+      }
+    }
+
     async function dashboardAskAI(question, productData){
-      // Swap for your existing Groq function, e.g.:
-      // return await callGroqAPI(question, productData);
-      const systemPrompt = ManhattanVoiceAssistant.buildSystemPrompt(productData);
-      console.log('[SmarTuna Assistant] system prompt:\n', systemPrompt, '\nQuestion:', question);
-      await new Promise(r=>setTimeout(r,700));
-      return "I'm running in demo mode on this page — wire dashboardAskAI() to your real Groq function to get live answers about risk scores, flagged vessels, and shipments.";
+      const shipmentContext = await buildShipmentContext(question);
+
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GK },
+        body: JSON.stringify({
+          model: 'openai/gpt-oss-120b',
+          max_tokens: 1024,
+          messages: [
+            { role: 'system', content: DASHBOARD_SYSTEM + shipmentContext },
+            { role: 'user', content: question },
+          ],
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error('[SmarTuna Assistant] Groq API error — status', res.status, data);
+        throw new Error(data.error?.message || `Groq API returned HTTP ${res.status}`);
+      }
+
+      const reply = data.choices?.[0]?.message?.content;
+      if (!reply) {
+        console.error('[SmarTuna Assistant] Unexpected Groq response shape:', data);
+        throw new Error('Response had no message content');
+      }
+
+      return reply;
     }
 
     function initManhattanAssistant(firstName){
@@ -858,5 +1119,3 @@ const WMO_DESC={0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45
   </script>
 </body>
 </html>
-
-

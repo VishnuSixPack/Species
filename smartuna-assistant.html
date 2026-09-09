@@ -385,12 +385,22 @@
     // ── Auth (same pattern as home-logged-in.html) ──
     const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
     const SUPABASE_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
-    const dbClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+    // Guarded the same way home-logged-in.html already does — if the
+    // Supabase CDN script fails to load, dbClient becomes null instead of
+    // throwing here and killing every script after it on the page.
+    const dbClient = window.supabase
+      ? window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY)
+      : null;
 
     // ── Stand-in for your existing Groq function — replace with the real one. ──
     // See INTEGRATION-GUIDE.md, "Step 2".
     async function manhattanAskAI(question, productData){
-      const systemPrompt = SmarTunaVoiceAssistant.buildSystemPrompt(productData);
+      // FIX: this previously referenced `SmarTunaVoiceAssistant`, a class
+      // that doesn't exist anywhere — voice-assistant.js exports
+      // `ManhattanVoiceAssistant`. That mismatch threw a ReferenceError the
+      // instant the assistant tried to construct, before anything ever
+      // mounted, which is why nothing rendered on this page at all.
+      const systemPrompt = ManhattanVoiceAssistant.buildSystemPrompt(productData);
       console.log('[SmarTuna Assistant] system prompt:\n', systemPrompt, '\nQuestion:', question);
       await new Promise(r=>setTimeout(r,700));
       return "I'm running in demo mode on this page — wire manhattanAskAI() to your real Groq function for live answers.";
@@ -398,7 +408,7 @@
 
     let assistant;
     function initAssistant(firstName){
-      assistant = new SmarTunaVoiceAssistant({
+      assistant = new ManhattanVoiceAssistant({
         embedded: true,
         mountTo: document.getElementById('assistantMount'),
         askAI: manhattanAskAI,
@@ -419,7 +429,7 @@
     document.addEventListener('click', e=>{
       if(!e.target.closest('.ma-user-wrap')) document.getElementById('maUserMenu')?.classList.remove('open');
     });
-    async function handleLogout(){ await dbClient.auth.signOut(); window.location.href='index.html'; }
+    async function handleLogout(){ if(dbClient) await dbClient.auth.signOut(); window.location.href='index.html'; }
 
     // ── Ambient idle background — scattered drifting dots for a "living"
     // assistant presence even when nothing is happening. Pure decoration,
@@ -445,6 +455,8 @@
     window.addEventListener('DOMContentLoaded', async ()=>{
       initAmbientDots();
 
+      if(!dbClient){ initAssistant(''); return; }
+
       const {data:{session}} = await dbClient.auth.getSession();
       if(!session){ window.location.href='login.html'; return; }
 
@@ -466,5 +478,3 @@
   </script>
 </body>
 </html>
-
-
