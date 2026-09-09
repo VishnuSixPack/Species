@@ -2717,7 +2717,7 @@ function recalcShip(){
   updateGrandTotal();
 
   const bbWeightEl = document.getElementById('bb-weight-value');
-  if(bbWeightEl) bbWeightEl.value = `${fmtNum(teu,0)} (${fmtNum(distanceSea,0)} km)`;
+  if(bbWeightEl) bbWeightEl.value = `${fmtNum(teu,0)}`;
   const bbUnitEl = document.getElementById('bb-weight-unit');
   if(bbUnitEl) bbUnitEl.textContent = 'containers';
 }
@@ -3843,7 +3843,7 @@ function renderShipReceive(){
         <div>${cteProductTag(wf.common)}<p>${d.desc}</p></div>
         ${renderInfoButton('shipReceive')}
       </div>
-      ${bottomBar(metrics, null, false, 'shipReceive', {label:'Total Volume', initial:`${fmtNum(parseNum(shipCalc.teu),0)} (${fmtNum(parseNum(shipCalc.distanceSea),0)} km)`, unit:'containers', tooltip:'We have considered the average number of containers and distance travelled.'}, null, {id:'ship-metric-percan', perKgValue:grandTotalParts.shipReceive})}
+      ${bottomBar(metrics, null, false, 'shipReceive', {label:'Total Volume', initial:`${fmtNum(parseNum(shipCalc.teu),0)}`, unit:'containers', tooltip:'We have considered the average number of containers.'}, null, {id:'ship-metric-percan', perKgValue:grandTotalParts.shipReceive})}
       <div class="subtab-row" style="margin:0;">
         <button class="subtab-btn ${mode==='Sea'?'active':''}" data-action="subtab" data-group="shipSub" data-value="Sea">Sea</button>
         <button class="subtab-btn ${mode==='Air'?'active':''}" data-action="subtab" data-group="shipSub" data-value="Air">Air</button>
