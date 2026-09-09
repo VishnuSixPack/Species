@@ -689,13 +689,30 @@ async function chat(text){
       })
     });
     const data=await res.json();
-    const reply=data.choices?.[0]?.message?.content||'Sorry, I could not generate a response. Please try again.';
+
+    if(!res.ok){
+      // Groq returned an error (bad/revoked key, rate limit, invalid model,
+      // etc.) — this is still valid JSON, just shaped as {error:{...}}
+      // instead of {choices:[...]}, so it needs to be checked explicitly
+      // rather than assumed. Logged in full so the actual cause shows up
+      // in the console instead of a generic message with no trace.
+      console.error('[SmarTuna AI] Groq API error — status', res.status, data);
+      throw new Error(data.error?.message || `Groq API returned HTTP ${res.status}`);
+    }
+
+    const reply=data.choices?.[0]?.message?.content;
+    if(!reply){
+      console.error('[SmarTuna AI] Unexpected Groq response shape:', data);
+      throw new Error('Response had no message content');
+    }
+
     messages.push({role:'assistant',content:reply});
     document.getElementById(tid)?.remove();
     addBubble('ai',fmt(reply));
     if(isFirst)saveCurrentChat(text);
     else saveCurrentChat(chatHistory[currentChatId]?.title||text);
   }catch(e){
+    console.error('[SmarTuna AI] chat() failed:', e);
     document.getElementById(tid)?.remove();
     addBubble('ai','I\'m having trouble connecting right now. Please check your connection and try again.');
   }
