@@ -705,10 +705,24 @@
     _pickVoice() {
       if (!this._ttsSupported) return null;
       const voices = global.speechSynthesis.getVoices();
+      if (!voices.length) return null;
+
+      // 1. Exact matches from the configured preference list, in order.
       for (const name of this.config.preferredVoiceNames) {
         const match = voices.find((v) => v.name === name);
         if (match) return match;
       }
+
+      // 2. Any English voice whose name signals a modern, natural-sounding
+      // engine rather than the classic robotic system default — these
+      // markers catch Edge's "Online (Natural)" voices, Chrome's "Google"
+      // voices, and macOS/iOS's "Premium"/"Enhanced" voices, without
+      // needing to know each one's exact name in advance.
+      const qualityMarkers = /natural|online|premium|enhanced|neural|google/i;
+      const qualityMatch = voices.find((v) => v.lang && v.lang.startsWith('en') && qualityMarkers.test(v.name));
+      if (qualityMatch) return qualityMatch;
+
+      // 3. Any English voice at all, then just whatever's first.
       return voices.find((v) => v.lang && v.lang.startsWith('en')) || voices[0] || null;
     }
 
