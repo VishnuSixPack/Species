@@ -594,7 +594,7 @@ generic industry definition instead of checking the data:
 - If BOTH arrival_date and container_discharge_date are present for the same shipment, state both, clearly labelled ("estimated" vs "actual") — don't silently pick one, since they can legitimately differ and both are useful.
 - "ETD", "departure date", "when did/does it leave" → departure_date (shipment-level, or a specific leg's departure_date under "legs" if they name a leg/port).
 - "on-board date", "laden on board" → on_board_date.
-- "status", "where is it", "is it in transit" → the status field (Draft/Booked/In-Transit/Arrived/Delivered/Cancelled).
+- "status", "where is it", "is it in transit", "afloat", "at sea" → the status field (Draft/Booked/In-Transit/Arrived/Delivered/Cancelled). "Afloat"/"at sea" specifically means status = In-Transit.
 - "what ship/vessel is it on" → the vessels array (vessel_name, or the nested vessel_detail record when present).
 - "what container" → container_no. "seal" → seal_number.
 - "where did it leave from" / "port of loading" → origin_name. "where's it going" / "port of discharge" → destination_name.
@@ -795,15 +795,36 @@ async function fetchShipmentDetail(shipmentRef) {
 function normalizeRef(str) {
   return (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 }
-function findMentionedShipmentRef(question, summary) {
-  const qNorm = normalizeRef(question);
-  if (!qNorm) return null;
-  const hit = summary.find(row => row.shipment_ref && qNorm.includes(normalizeRef(row.shipment_ref)));
+function findRefInText(text, summary) {
+  const norm = normalizeRef(text);
+  if (!norm) return null;
+  const hit = summary.find(row => row.shipment_ref && norm.includes(normalizeRef(row.shipment_ref)));
   return hit ? hit.shipment_ref : null;
+}
+/**
+ * Finds which shipment the CURRENT turn is about. A short follow-up like
+ * "vessel name" or "what about the ETA" never repeats the ref itself —
+ * it relies on the conversation already having established which
+ * shipment is being discussed. So: check the current question first,
+ * and if that comes up empty, walk backwards through recent history
+ * (most recent turn first) until a ref turns up, rather than assuming
+ * "no ref in THIS message" means "no shipment is being discussed."
+ */
+function findMentionedShipmentRef(question, summary, priorMessages) {
+  const direct = findRefInText(question, summary);
+  if (direct) return direct;
+
+  if (priorMessages && priorMessages.length) {
+    for (let i = priorMessages.length - 1; i >= 0; i--) {
+      const hit = findRefInText(priorMessages[i]?.content, summary);
+      if (hit) return hit;
+    }
+  }
+  return null;
 }
 
 /** Builds the shipment-data block appended to the system prompt for this one request. */
-async function buildShipmentContext(question) {
+async function buildShipmentContext(question, priorMessages) {
   try {
     const summary = await fetchShipmentsSummary();
     if (!summary.length) {
@@ -812,7 +833,7 @@ async function buildShipmentContext(question) {
 
     let block = `\n\nRECENT SHIPMENTS (${summary.length} most recent, summary level):\n${JSON.stringify(summary, null, 2)}`;
 
-    const mentionedRef = findMentionedShipmentRef(question, summary);
+    const mentionedRef = findMentionedShipmentRef(question, summary, priorMessages);
     if (mentionedRef) {
       const detail = await fetchShipmentDetail(mentionedRef);
       if (detail) {
@@ -967,8 +988,11 @@ async function chat(text){
   try{
     // Live shipment data for THIS question only — never cached, never baked
     // into the static SYSTEM prompt, since it has to reflect what's in the
-    // database right now, not what it was when the page loaded.
-    const shipmentContext = await buildShipmentContext(text);
+    // database right now, not what it was when the page loaded. Passing
+    // `messages` lets a bare follow-up ("vessel name?") still resolve to
+    // whichever shipment the conversation already established, instead of
+    // only ever detecting a ref when it's repeated in the exact same turn.
+    const shipmentContext = await buildShipmentContext(text, messages);
 
     const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{
       method:'POST',
