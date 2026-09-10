@@ -3,22 +3,25 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Add new Cold Storage · SmarTuna concept</title>
+<title>Add new Cold Storage · Project Manhattan</title>
 <link rel="icon" type="image/png" href="sc-blue-logo.png" />
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+function updateCertTag(prefix, tagId) {
+  const fields = {
+    msc: ['msc_coc_cert','msc_coc_number','msc_certifier'],
+    uk:  ['uk_approval','uk_approval_date','uk_activities'],
+    eu:  ['eu_approval','eu_approval_date','eu_activities'],
+  };
+  const filled = (fields[prefix]||[]).some(id => {
+    const el = document.getElementById(id);
+    return el && el.value.trim();
+  });
+  const tag = document.getElementById(tagId);
+  if (tag) tag.style.display = filled ? 'inline-flex' : 'none';
+}
+</script>
 <style>
-    /* ── SMARTUNA WORDMARK ── */
-    @font-face {
-      font-family: 'Bitsumis';
-      src: url('BITSUMIS.TTF') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-      font-display: swap;
-    }
-    .sc-wm { display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1;gap:0;text-decoration:none; }
-    .sc-wm-top { font-family:'Bitsumis',sans-serif !important;font-weight:900 !important;font-size:15px;letter-spacing:.04em;text-transform:uppercase;background:linear-gradient(90deg,#1a6fdb,#1a6fdb) !important;-webkit-background-clip:text !important;-webkit-text-fill-color:transparent !important;background-clip:text !important; }
-    .sc-wm-sub { font-family:'Bitsumis',sans-serif !important;font-weight:700 !important;font-size:7px;letter-spacing:.22em;text-transform:uppercase;color:#1a1a2e;-webkit-text-fill-color:#1a1a2e !important;margin-top:2px; }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --primary:#1a6fdb; --primary-ink:#1558b0; --primary-soft:#e8f1fc;
@@ -162,17 +165,187 @@ select option{color:var(--text)}
 .csel-panel::-webkit-scrollbar-thumb{background:#e2e6ee;border-radius:6px;border:3px solid #fff}
 .csel-panel::-webkit-scrollbar-track{background:transparent}
 
-</style>
+
+    /* ── CERTIFICATION REDESIGN ── */
+    .cert-msc { margin-bottom: 16px; }
+    .cert-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .cert-card {
+      border: 1.5px solid var(--line);
+      border-radius: 14px;
+      padding: 20px;
+      background: linear-gradient(180deg, #fbfcfe, #fff);
+    }
+    .cert-card-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    .cert-badge {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: .06em;
+      padding: 3px 8px;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+    .cert-badge-msc { background: #e8f4ec; color: #1a7a3c; border: 1px solid #b8dfc4; }
+    .cert-badge-uk  { background: #eef1fd; color: #1a3a7a; border: 1px solid #b8c4df; }
+    .cert-badge-eu  { background: #fdf3e8; color: #7a4a1a; border: 1px solid #dfccb8; }
+    .cert-optional-tag {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 600;
+      color: #16a34a;
+      background: #dcfce7;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    .cert-body-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+    .cert-body-grid-2 {
+      grid-template-columns: 1fr 1fr;
+    }
+    @media(max-width:700px) {
+      .cert-two-col { grid-template-columns: 1fr; }
+      .cert-body-grid { grid-template-columns: 1fr; }
+      .cert-body-grid-2 { grid-template-columns: 1fr; }
+    }
+    
+    /* ── BEHALF CSEL ── */
+    .behalf-csel { position: relative; }
+    .behalf-trigger {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      width: 100%; height: var(--field-h); padding: 0 14px;
+      border: 1.5px solid var(--border); border-radius: 10px;
+      background: #fff; cursor: pointer; font-family: inherit;
+      font-size: 13.5px; color: var(--text); transition: border-color .14s, box-shadow .14s;
+    }
+    .behalf-trigger:hover { border-color: var(--line-strong); }
+    .behalf-trigger .lbl.ph { color: var(--muted); }
+    .behalf-csel.open .behalf-trigger { border-color: var(--primary); box-shadow: 0 0 0 3.5px rgba(26,111,219,.13); }
+    .behalf-panel {
+      display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+      background: #fff; border: 1.5px solid var(--border); border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 80;
+      max-height: 260px; overflow: hidden; flex-direction: column;
+    }
+    .behalf-csel.open .behalf-panel { display: flex; }
+    .behalf-panel #behalfOpts { overflow-y: auto; flex: 1; padding: 4px; }
+    .behalf-opt {
+      padding: 9px 12px; border-radius: 8px; cursor: pointer;
+      font-size: 13px; color: var(--text); transition: background .12s;
+    }
+    .behalf-opt:hover { background: var(--primary-soft); color: var(--primary); }
+    .behalf-opt.selected { color: var(--primary); font-weight: 600; }
+    .behalf-opt.selected::after { content: ' ✓'; }
+
+    /* ── TEMPERATURE PICKER ── */
+    .temp-picker {
+      margin-top: 10px;
+      border: 1.5px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 20px 14px;
+      background: linear-gradient(135deg, #f0f7ff 0%, #e8f4ff 100%);
+    }
+    .temp-picker-display {
+      display: flex; align-items: center; gap: 16px; margin-bottom: 16px;
+    }
+    .temp-val-wrap { display: flex; flex-direction: column; align-items: center; gap: 2px; flex-shrink: 0; }
+    .temp-label { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+    .temp-val {
+      font-size: 28px; font-weight: 800; color: var(--primary);
+      min-width: 56px; text-align: center; line-height: 1;
+    }
+    .temp-unit { font-size: 11px; color: var(--muted); }
+    .temp-range-bar-wrap { flex: 1; }
+    .temp-range-track {
+      position: relative; height: 8px;
+      background: linear-gradient(90deg, #bfdbfe 0%, #93c5fd 40%, #60a5fa 70%, #3b82f6 100%);
+      border-radius: 999px; margin: 16px 0 8px;
+    }
+    .temp-range-fill {
+      position: absolute; height: 100%; background: var(--primary);
+      border-radius: 999px; pointer-events: none;
+    }
+    .temp-thumb {
+      position: absolute; top: 50%; transform: translate(-50%,-50%);
+      width: 22px; height: 22px; border-radius: 50%;
+      background: #fff; border: 3px solid var(--primary);
+      box-shadow: 0 2px 8px rgba(26,111,219,.3);
+      cursor: grab; z-index: 2; touch-action: none;
+      transition: box-shadow .15s, transform .1s;
+    }
+    .temp-thumb:active { cursor: grabbing; transform: translate(-50%,-50%) scale(1.2); box-shadow: 0 4px 16px rgba(26,111,219,.4); }
+    .temp-thumb-max { background: var(--primary); border-color: #1558b0; }
+    .temp-scale {
+      display: flex; justify-content: space-between;
+      font-size: 10px; color: var(--muted); padding: 0 2px;
+    }
+    .temp-presets {
+      display: flex; gap: 6px; flex-wrap: wrap; padding-top: 12px;
+      border-top: 1px solid rgba(26,111,219,.12);
+    }
+    .temp-preset {
+      display: inline-flex; flex-direction: column; align-items: center;
+      padding: 6px 10px; border-radius: 8px;
+      border: 1.5px solid rgba(26,111,219,.18);
+      background: rgba(255,255,255,.8); cursor: pointer;
+      font-family: 'Poppins', sans-serif;
+      font-size: 11.5px; font-weight: 600; color: var(--text);
+      transition: all .14s; line-height: 1.3; gap: 2px;
+    }
+    .temp-preset span { font-size: 10px; font-weight: 400; color: var(--muted); }
+    .temp-preset:hover { border-color: var(--primary); background: #fff; color: var(--primary); }
+    .temp-preset:hover span { color: var(--primary); }
+    .temp-preset.active { border-color: var(--primary); background: var(--primary); color: #fff; }
+    .temp-preset.active span { color: rgba(255,255,255,.8); }
+    
+    /* ── UNIT TOGGLE ── */
+    .unit-toggle {
+      display: inline-flex;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .unit-btn {
+      padding: 0 13px;
+      height: var(--field-h);
+      border: none;
+      background: #fff;
+      font-family: 'Poppins', sans-serif;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all .14s;
+      border-right: 1px solid var(--border);
+    }
+    .unit-btn:last-child { border-right: none; }
+    .unit-btn.active {
+      background: var(--primary);
+      color: #fff;
+    }
+    .unit-btn:not(.active):hover {
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+    </style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
   <!-- TOP BAR (shared) -->
   <div class="topbar">
-    <a href="index.html" class="topbar-brand" style="display:flex;align-items:center;gap:9px;">
-      <img src="sc-blue-logo.png" alt="SmarTuna" style="width:26px;height:26px;object-fit:contain;flex-shrink:0;"/>
-      <span class="sc-wm">
-        <span class="sc-wm-top">SmarTuna</span>
-        <span class="sc-wm-sub">concept</span>
-      </span>
+    <a href="index.html" class="topbar-brand">
+      <span class="topbar-brand-project">PROJECT</span>
+      <span class="topbar-brand-name">Manhattan.</span>
     </a>
     <div class="topbar-nav">
       <div class="nav-pill">
@@ -247,7 +420,7 @@ select option{color:var(--text)}
     </div>
   </div>
 
-  <div class="gate" id="gate">Only SmarTuna concept admins can create or edit cold storage facilities.</div>
+  <div class="gate" id="gate">Only Project Manhattan admins can create or edit cold storage facilities.</div>
 
   <form id="csForm" autocomplete="off">
 
@@ -265,6 +438,9 @@ select option{color:var(--text)}
             <option>Cold Room</option>
             <option>Chiller Room</option>
             <option>Frozen Storage</option>
+            <option>Controlled Atmosphere</option>
+            <option>Ice Storage</option>
+            <option>Refrigerated Warehouse</option>
           </select>
         </label>
         <label class="field">Status
@@ -275,9 +451,18 @@ select option{color:var(--text)}
         </label>
         <label class="field full" id="behalfWrap">On behalf of
           <span class="hint">Attach the organisations that use this facility. Granting access here is what lets an org see this cold storage. Admins see every attached org; each org only sees its own name.</span>
-          <div class="chips" id="behalfChips">
-            <select id="behalfSelect"><option value="">Add organisation…</option></select>
+          <div class="behalf-csel" id="behalfCsel">
+            <button type="button" class="behalf-trigger" id="behalfTrigger" onclick="toggleBehalfPanel(event)">
+              <span class="lbl ph" id="behalfTriggerLbl">Add organisation…</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="behalf-panel" id="behalfPanel">
+              <div class="csel-search"><input type="text" id="behalfSearch" placeholder="Search organisations…" oninput="filterBehalfPanel(this.value)" onclick="event.stopPropagation()"/></div>
+              <div id="behalfOpts"></div>
+            </div>
+            <select id="behalfSelect" style="display:none"><option value="">Add organisation…</option></select>
           </div>
+          <div class="chips" id="behalfChips" style="margin-top:8px;"></div>
         </label>
       </div>
     </section>
@@ -294,8 +479,16 @@ select option{color:var(--text)}
         </label>
         <label class="field">Postal Code<input id="postal_code" /></label>
         <label class="field">GLN<input id="gln" /></label>
-        <label class="field">Latitude<input id="latitude" type="number" step="any" /></label>
-        <label class="field">Longitude<input id="longitude" type="number" step="any" /></label>
+        <label class="field">Latitude<input id="latitude" type="number" step="any" placeholder="e.g. 51.5074" /></label>
+        <label class="field">Longitude<input id="longitude" type="number" step="any" placeholder="e.g. -0.1278" /></label>
+        <!-- Pick from Map -->
+        <div style="grid-column:1/-1;display:flex;align-items:center;gap:10px;padding-top:2px;">
+          <button type="button" onclick="openMapPicker()" style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:8px;border:1.5px solid var(--primary,#1a6fdb);background:#eef4fd;color:#1a6fdb;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;" onmouseover="this.style.background='#ddeeff'" onmouseout="this.style.background='#eef4fd'">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            Pick from Map
+          </button>
+          <span id="mapPickerCoords" style="font-size:12px;color:#9aa0b4;"></span>
+        </div>
       </div>
     </section>
 
@@ -310,9 +503,53 @@ select option{color:var(--text)}
     <section class="card">
       <h2>Operational &amp; Capacity</h2>
       <div class="grid-3">
-        <label class="field">Minimum Temperature (°C)<input id="min_temp_c" type="number" step="any" /></label>
-        <label class="field">Maximum Temperature (°C)<input id="max_temp_c" type="number" step="any" /></label>
-        <label class="field">Storage Capacity<input id="storage_capacity" placeholder="e.g. 500 MT" /></label>
+        <!-- Temperature Picker -->
+        <label class="field" style="grid-column:1/-1">
+          Temperature Range (°C)
+          <div class="temp-picker" id="tempPicker">
+            <div class="temp-picker-display">
+              <div class="temp-val-wrap">
+                <span class="temp-label">Min</span>
+                <div class="temp-val" id="tempMinDisplay" title="Click to type" onclick="editTempVal('min')" style="cursor:text;">--</div>
+                <span class="temp-unit">°C</span>
+              </div>
+              <div class="temp-range-bar-wrap">
+                <div class="temp-range-track" id="tempTrack">
+                  <div class="temp-range-fill" id="tempFill"></div>
+                  <div class="temp-thumb" id="tempThumbMin" onmousedown="startTempDrag(event,'min')" ontouchstart="startTempDrag(event,'min')"></div>
+                  <div class="temp-thumb temp-thumb-max" id="tempThumbMax" onmousedown="startTempDrag(event,'max')" ontouchstart="startTempDrag(event,'max')"></div>
+                </div>
+                <div class="temp-scale">
+                  <span>-40°</span><span>-20°</span><span>0°</span><span>+20°</span><span>+40°</span>
+                </div>
+              </div>
+              <div class="temp-val-wrap">
+                <span class="temp-label">Max</span>
+                <div class="temp-val" id="tempMaxDisplay" title="Click to type" onclick="editTempVal('max')" style="cursor:text;">--</div>
+                <span class="temp-unit">°C</span>
+              </div>
+            </div>
+            <div class="temp-presets">
+              <button type="button" class="temp-preset" onclick="setTempPreset(-30,-18)" title="Deep Frozen">❄️ Deep Frozen<span>−30° to −18°</span></button>
+              <button type="button" class="temp-preset" onclick="setTempPreset(-18,-12)" title="Frozen">🧊 Frozen<span>−18° to −12°</span></button>
+              <button type="button" class="temp-preset" onclick="setTempPreset(-5,0)" title="Near Frozen">🐟 Near Frozen<span>−5° to 0°</span></button>
+              <button type="button" class="temp-preset" onclick="setTempPreset(0,4)" title="Chilled">🌊 Chilled<span>0° to +4°</span></button>
+              <button type="button" class="temp-preset" onclick="setTempPreset(2,8)" title="Refrigerated">🧺 Refrigerated<span>+2° to +8°</span></button>
+            </div>
+          </div>
+          <input type="hidden" id="min_temp_c"/>
+          <input type="hidden" id="max_temp_c"/>
+        </label>
+        <label class="field">Storage Capacity
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input id="storage_capacity" type="number" step="any" min="0" placeholder="e.g. 500" style="flex:1;min-width:0;"/>
+            <div class="unit-toggle" id="capacityUnitToggle">
+              <button type="button" class="unit-btn active" id="unitKg" onclick="setCapacityUnit('KG')">KG</button>
+              <button type="button" class="unit-btn" id="unitMt" onclick="setCapacityUnit('MT')">MT</button>
+            </div>
+          </div>
+          <input type="hidden" id="capacity_unit" value="MT"/>
+        </label>
         <label class="field full">Remarks<textarea id="remarks"></textarea></label>
       </div>
     </section>
@@ -320,34 +557,71 @@ select option{color:var(--text)}
     <!-- CERTIFICATION -->
     <section class="card">
       <h2>Certification</h2>
-      <div class="cert-grid">
-        <div class="cert-card">
-          <h3>MSC Certification</h3>
-          <label class="field">MSC CoC Cert<input id="msc_coc_cert" /></label>
-          <label class="field">MSC CoC Number<input id="msc_coc_number" /></label>
-          <label class="field">Certifier<input id="msc_certifier" /></label>
-          <label class="field">Certifier's Website<input id="msc_website" /></label>
-          <label class="field">Main Activity<input id="msc_activity" /></label>
-          <label class="field">Species
-            <div class="chips" id="speciesChips">
-              <select id="speciesSelect"><option value="">Add species…</option></select>
+
+      <!-- ROW 1: MSC (full width) -->
+      <div class="cert-card cert-msc">
+        <div class="cert-card-head">
+          <div class="cert-badge cert-badge-msc">MSC</div>
+          <h3 style="margin:0;font-size:15px;font-weight:700;color:var(--text)">MSC Chain of Custody Certification</h3>
+          <span class="cert-optional-tag" id="mscTag" style="display:none">Filled</span>
+        </div>
+        <div class="cert-body-grid">
+          <label class="field">CoC Certificate Number<input id="msc_coc_cert" placeholder="e.g. MSC-C-12345" oninput="updateCertTag('msc','mscTag')"/></label>
+          <label class="field">CoC Certificate Name<input id="msc_coc_number" placeholder="Certificate name" /></label>
+          <label class="field">Certifier / CB<input id="msc_certifier" placeholder="Certification body" /></label>
+          <label class="field">Certifier Website<input id="msc_website" placeholder="https://..." /></label>
+          <label class="field">Main Activity<input id="msc_activity" placeholder="e.g. Storage, Processing" /></label>
+          <label class="field">Certificate URL<input id="msc_url" placeholder="Link to certificate" /></label>
+        </div>
+        <label class="field" style="margin-top:10px">Certified Species
+          <div class="behalf-csel" id="speciesCsel" style="margin-bottom:8px;">
+            <button type="button" class="behalf-trigger" id="speciesTrigger" onclick="toggleSpeciesPanel(event)">
+              <span class="lbl ph" id="speciesTriggerLbl">Add species…</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <div class="behalf-panel" id="speciesPanel">
+              <div class="csel-search"><input type="text" id="speciesSearch" placeholder="Search species…" oninput="filterSpeciesPanel(this.value)" onclick="event.stopPropagation()"/></div>
+              <div id="speciesOpts"></div>
             </div>
-          </label>
-          <label class="field">URL<input id="msc_url" /></label>
-        </div>
-
-        <div class="cert-card approval-card">
-          <strong>UK Approval</strong>
-          <input id="uk_approval" placeholder="Approval number" />
-          <span class="count">Optional</span>
-        </div>
-
-        <div class="cert-card approval-card">
-          <strong>EU Approval</strong>
-          <input id="eu_approval" placeholder="Approval number" />
-          <span class="count">Optional</span>
-        </div>
+            <select id="speciesSelect" style="display:none"><option value="">Add species…</option></select>
+          </div>
+          <div class="chips" id="speciesChips"></div>
+        </label>
       </div>
+
+      <!-- ROW 2: UK + EU side by side -->
+      <div class="cert-two-col">
+
+        <!-- UK Approval -->
+        <div class="cert-card cert-approval">
+          <div class="cert-card-head">
+            <div class="cert-badge cert-badge-uk">UK</div>
+            <h3 style="margin:0;font-size:15px;font-weight:700;color:var(--text)">UK Approval</h3>
+            <span class="cert-optional-tag" id="ukTag" style="display:none">Filled</span>
+          </div>
+          <div class="cert-body-grid cert-body-grid-2">
+            <label class="field">Approval Number<input id="uk_approval" placeholder="e.g. UK-AB-1234" oninput="updateCertTag('uk','ukTag')"/></label>
+            <label class="field">Approval Date<input id="uk_approval_date" type="date"/></label>
+            <label class="field" style="grid-column:1/-1">Authorised Activities<input id="uk_activities" placeholder="e.g. Freezing, Cold Storage" /></label>
+          </div>
+        </div>
+
+        <!-- EU Approval -->
+        <div class="cert-card cert-approval">
+          <div class="cert-card-head">
+            <div class="cert-badge cert-badge-eu">EU</div>
+            <h3 style="margin:0;font-size:15px;font-weight:700;color:var(--text)">EU Approval</h3>
+            <span class="cert-optional-tag" id="euTag" style="display:none">Filled</span>
+          </div>
+          <div class="cert-body-grid cert-body-grid-2">
+            <label class="field">Approval Number<input id="eu_approval" placeholder="e.g. IE 1234 EC" oninput="updateCertTag('eu','euTag')"/></label>
+            <label class="field">Approval Date<input id="eu_approval_date" type="date"/></label>
+            <label class="field" style="grid-column:1/-1">Activities / Scope<input id="eu_activities" placeholder="e.g. Freezing, Cold Storage" /></label>
+          </div>
+        </div>
+
+      </div>
+      <div class="cert-grid" style="display:none">
 
       <!-- Custom certs: arbitrary key/value, stored as JSONB, no schema change -->
       <div class="custom-cert">
@@ -474,7 +748,6 @@ async function loadOrganisations(){
   const { data } = await sb.from('companies').select('id,company_name').order('company_name');
   const sel=$('behalfSelect');
   (data||[]).forEach(o=>{ const op=document.createElement('option'); op.value=o.id; op.textContent=o.company_name; sel.appendChild(op); });
-  sel.addEventListener('change',()=>{ if(sel.value){ addOrgChip(sel.value, sel.options[sel.selectedIndex].text); sel.value=''; }});
 }
 async function loadSpecies(){
   const { data } = await sb.from('species').select('id,species_name').order('species_name');
@@ -493,15 +766,17 @@ function addOrgChip(id,name){
   if(selectedOrgs.has(id))return; selectedOrgs.set(id,name);
   const c=document.createElement('span'); c.className='chip'; c.dataset.id=id;
   c.innerHTML=`${name} <button type="button">×</button>`;
-  c.querySelector('button').onclick=()=>{ selectedOrgs.delete(id); c.remove(); };
-  $('behalfChips').insertBefore(c,$('behalfSelect'));
+  c.querySelector('button').onclick=()=>{ selectedOrgs.delete(id); c.remove(); if(typeof updateBehalfTriggerLabel==='function') updateBehalfTriggerLabel(); };
+  $('behalfChips').appendChild(c);
+  if(typeof updateBehalfTriggerLabel==='function') updateBehalfTriggerLabel();
 }
 function addSpeciesChip(id,name){
   if(selectedSpecies.has(id))return; selectedSpecies.set(id,name);
   const c=document.createElement('span'); c.className='chip'; c.dataset.id=id;
   c.innerHTML=`${name} <button type="button">×</button>`;
   c.querySelector('button').onclick=()=>{ selectedSpecies.delete(id); c.remove(); };
-  $('speciesChips').insertBefore(c,$('speciesSelect'));
+  $('speciesChips').appendChild(c);
+  if(typeof updateSpeciesTriggerLabel==='function') updateSpeciesTriggerLabel();
 }
 
 /* ---------- repeatable contacts ---------- */
@@ -534,8 +809,18 @@ $('addKV').onclick=()=>addKVRow();
 async function loadFacility(id){
   const { data:f } = await sb.from('cold_storage_facilities').select('*').eq('id',id).single();
   if(!f){ toast('Facility not found',true); return; }
-  ['name','storage_type','status','address','state_province','city','country','postal_code','gln','latitude','longitude','min_temp_c','max_temp_c','storage_capacity','remarks']
+  ['name','storage_type','status','address','state_province','city','country','postal_code','gln','latitude','longitude','remarks']
     .forEach(k=>{ if($(k)!=null && f[k]!=null) $(k).value=f[k]; });
+  // Load storage capacity + unit
+  if (f.storage_capacity) {
+    const parts = String(f.storage_capacity).trim().split(' ');
+    const unit = parts.length > 1 && ['KG','MT'].includes(parts[parts.length-1].toUpperCase())
+      ? parts[parts.length-1].toUpperCase() : 'MT';
+    const num = parts.filter(p => !isNaN(p)).join('');
+    $('storage_capacity').value = num || f.storage_capacity;
+    setCapacityUnit(unit);
+  }
+  loadTempPicker(f.min_temp_c, f.max_temp_c);
 
   const { data:grants } = await sb.from('cold_storage_access')
     .select('company_id, companies(company_name)').eq('facility_id',id);
@@ -551,8 +836,16 @@ async function loadFacility(id){
       $('msc_certifier').value=d.certifier||''; $('msc_website').value=d.website||'';
       $('msc_activity').value=d.main_activity||''; $('msc_url').value=d.url||'';
       (d.species||[]).forEach(s=>addSpeciesChip(s.id,s.name));
-    } else if(c.cert_type==='UK Approval'){ $('uk_approval').value=(c.data||{}).number||'';
-    } else if(c.cert_type==='EU Approval'){ $('eu_approval').value=(c.data||{}).number||'';
+    } else if(c.cert_type==='UK Approval'){
+      $('uk_approval').value=(c.data||{}).number||'';
+      $('uk_approval_date').value=(c.data||{}).date||'';
+      $('uk_activities').value=(c.data||{}).activities||'';
+      updateCertTag('uk','ukTag');
+    } else if(c.cert_type==='EU Approval'){
+      $('eu_approval').value=(c.data||{}).number||'';
+      $('eu_approval_date').value=(c.data||{}).date||'';
+      $('eu_activities').value=(c.data||{}).activities||'';
+      updateCertTag('eu','euTag');
     } else if(c.cert_type==='Custom'){ $('custom_title').value=c.title||'';
       $('customKV').innerHTML='';
       Object.entries(c.data||{}).forEach(([k,v])=>addKVRow({k,v}));
@@ -576,8 +869,8 @@ $('csForm').addEventListener('submit', async e=>{
     city:$('city').value||null, country:$('country').value||null,
     postal_code:$('postal_code').value||null, gln:$('gln').value||null,
     latitude:$('latitude').value||null, longitude:$('longitude').value||null,
-    min_temp_c:$('min_temp_c').value||null, max_temp_c:$('max_temp_c').value||null,
-    storage_capacity:$('storage_capacity').value||null, remarks:$('remarks').value||null
+    min_temp_c:$('min_temp_c').value!==''?parseFloat($('min_temp_c').value):null, max_temp_c:$('max_temp_c').value!==''?parseFloat($('max_temp_c').value):null,
+    storage_capacity:$('storage_capacity').value ? ($('storage_capacity').value + ' ' + ($('capacity_unit').value||'MT')) : null, remarks:$('remarks').value||null
   };
   if(!payload.name){ toast('Name is required',true); $('saveBtn').disabled=false; return; }
 
@@ -618,8 +911,8 @@ $('csForm').addEventListener('submit', async e=>{
         species:[...selectedSpecies].map(([id,name])=>({id,name}))
       }});
     }
-    if($('uk_approval').value) certs.push({facility_id:facilityId,cert_type:'UK Approval',data:{number:$('uk_approval').value}});
-    if($('eu_approval').value) certs.push({facility_id:facilityId,cert_type:'EU Approval',data:{number:$('eu_approval').value}});
+    if($('uk_approval').value||$('uk_approval_date').value||$('uk_activities').value) certs.push({facility_id:facilityId,cert_type:'UK Approval',data:{number:$('uk_approval').value,date:$('uk_approval_date').value,activities:$('uk_activities').value}});
+    if($('eu_approval').value||$('eu_approval_date').value||$('eu_activities').value) certs.push({facility_id:facilityId,cert_type:'EU Approval',data:{number:$('eu_approval').value,date:$('eu_approval_date').value,activities:$('eu_activities').value}});
     const kv={}; document.querySelectorAll('#customKV .kv-row').forEach(r=>{
       const k=r.querySelector('.kv-k').value.trim(); if(k) kv[k]=r.querySelector('.kv-v').value;
     });
@@ -649,7 +942,332 @@ function applyAvatar(p, email){
 }
 
 </script>
+
+<!-- MAP PICKER MODAL -->
+<div id="mapPickerModal" onclick="if(event.target===this)closeMapPicker()" style="display:none;position:fixed;inset:0;background:rgba(20,24,45,.55);backdrop-filter:blur(5px);z-index:900;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:20px;box-shadow:0 8px 40px rgba(20,24,45,.18);width:680px;max-width:95vw;overflow:hidden;display:flex;flex-direction:column;">
+    <!-- Header -->
+    <div style="padding:18px 22px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e8eaf0;">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:#1a1a2e;">Pick Location</div>
+        <div style="font-size:12px;color:#9aa0b4;margin-top:2px;" id="mapPickerHint">Click anywhere on the map to place a pin</div>
+      </div>
+      <button onclick="closeMapPicker()" style="width:30px;height:30px;border-radius:50%;border:1.5px solid #e8eaf0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#9aa0b4;">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <!-- Map -->
+    <div id="mapPickerEl" style="height:420px;width:100%;"></div>
+    <!-- Footer -->
+    <div style="padding:14px 22px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #e8eaf0;gap:12px;">
+      <div style="font-size:13px;color:#4a4e69;" id="mapPickerSelected">No location selected</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="closeMapPicker()" style="padding:8px 18px;border-radius:8px;border:1.5px solid #e8eaf0;background:#fff;font:600 13px/1 inherit;cursor:pointer;color:#6b7280;">Cancel</button>
+        <button onclick="confirmMapPick()" id="mapPickerConfirm" disabled style="padding:8px 18px;border-radius:8px;border:none;background:#1a6fdb;color:#fff;font:600 13px/1 inherit;cursor:pointer;opacity:.4;">Use this location</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let _mapPicker = null, _mapMarker = null, _pickedLat = null, _pickedLon = null;
+
+function openMapPicker() {
+  document.getElementById('mapPickerModal').style.display = 'flex';
+
+  // Init map once
+  if (!_mapPicker) {
+    _mapPicker = L.map('mapPickerEl').setView([20, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(_mapPicker);
+
+    _mapPicker.on('click', function(e) {
+      const { lat, lng } = e.latlng;
+      _pickedLat = parseFloat(lat.toFixed(6));
+      _pickedLon = parseFloat(lng.toFixed(6));
+
+      if (_mapMarker) _mapMarker.setLatLng([_pickedLat, _pickedLon]);
+      else _mapMarker = L.marker([_pickedLat, _pickedLon]).addTo(_mapPicker);
+
+      document.getElementById('mapPickerSelected').textContent =
+        `📍 ${_pickedLat}, ${_pickedLon}`;
+      const btn = document.getElementById('mapPickerConfirm');
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    });
+  }
+
+  // If lat/lng already filled, centre map there and show marker
+  const existLat = parseFloat(document.getElementById('latitude').value);
+  const existLon = parseFloat(document.getElementById('longitude').value);
+  if (!isNaN(existLat) && !isNaN(existLon)) {
+    _mapPicker.setView([existLat, existLon], 14);
+    _pickedLat = existLat; _pickedLon = existLon;
+    if (_mapMarker) _mapMarker.setLatLng([existLat, existLon]);
+    else _mapMarker = L.marker([existLat, existLon]).addTo(_mapPicker);
+    document.getElementById('mapPickerSelected').textContent =
+      `📍 ${existLat}, ${existLon}`;
+    const btn = document.getElementById('mapPickerConfirm');
+    btn.disabled = false; btn.style.opacity = '1';
+  }
+
+  // Leaflet needs a size refresh after display:flex
+  setTimeout(() => _mapPicker.invalidateSize(), 100);
+}
+
+function closeMapPicker() {
+  document.getElementById('mapPickerModal').style.display = 'none';
+}
+
+function confirmMapPick() {
+  if (_pickedLat === null) return;
+  document.getElementById('latitude').value  = _pickedLat;
+  document.getElementById('longitude').value = _pickedLon;
+  document.getElementById('mapPickerCoords').textContent =
+    `📍 ${_pickedLat}, ${_pickedLon}`;
+  closeMapPicker();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && document.getElementById('mapPickerModal').style.display === 'flex')
+    closeMapPicker();
+});
+
+// ── TEMPERATURE PICKER ──────────────────────────────────────────
+const TEMP_MIN = -40, TEMP_MAX = 40;
+let _tempMin = null, _tempMax = null;
+
+function tempPct(v) { return ((v - TEMP_MIN) / (TEMP_MAX - TEMP_MIN)) * 100; }
+function pctToTemp(pct) { return Math.round(TEMP_MIN + (pct / 100) * (TEMP_MAX - TEMP_MIN)); }
+
+function updateTempUI() {
+  const minPct = Math.max(0, Math.min(100, tempPct(_tempMin ?? TEMP_MIN)));
+  const maxPct = Math.max(0, Math.min(100, tempPct(_tempMax ?? TEMP_MAX)));
+  document.getElementById('tempThumbMin').style.left = minPct + '%';
+  document.getElementById('tempThumbMax').style.left = maxPct + '%';
+  document.getElementById('tempFill').style.left  = minPct + '%';
+  document.getElementById('tempFill').style.width = (maxPct - minPct) + '%';
+  document.getElementById('tempMinDisplay').textContent = _tempMin !== null ? _tempMin : '--';
+  document.getElementById('tempMaxDisplay').textContent = _tempMax !== null ? _tempMax : '--';
+  document.getElementById('min_temp_c').value = _tempMin ?? '';
+  document.getElementById('max_temp_c').value = _tempMax ?? '';
+  // Highlight matching preset
+  document.querySelectorAll('.temp-preset').forEach(b => {
+    const [mn,mx] = b.dataset.range ? b.dataset.range.split(',').map(Number) : [null,null];
+    b.classList.toggle('active', mn===_tempMin && mx===_tempMax);
+  });
+}
+
+function setTempPreset(min, max) {
+  _tempMin = min; _tempMax = max;
+  updateTempUI();
+}
+
+function startTempDrag(e, which) {
+  e.preventDefault();
+  const track = document.getElementById('tempTrack');
+  function onMove(ev) {
+    const rect = track.getBoundingClientRect();
+    const clientX = ev.touches ? ev.touches[0].clientX : ev.clientX;
+    let pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+    let val = pctToTemp(pct);
+    if (which === 'min') {
+      _tempMin = Math.min(val, _tempMax ?? TEMP_MAX);
+    } else {
+      _tempMax = Math.max(val, _tempMin ?? TEMP_MIN);
+    }
+    updateTempUI();
+  }
+  function onUp() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend', onUp);
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('touchend', onUp);
+}
+
+// Load existing temp values into picker
+function loadTempPicker(min, max) {
+  _tempMin = min != null ? Number(min) : null;
+  _tempMax = max != null ? Number(max) : null;
+  // Defer so the track has layout before positioning thumbs
+  requestAnimationFrame(() => requestAnimationFrame(updateTempUI));
+}
+
+// Add data-range attrs to preset buttons
+document.querySelectorAll('.temp-preset').forEach(b => {
+  const onclick = b.getAttribute('onclick');
+  const m = onclick && onclick.match(/setTempPreset\((-?\d+),(-?\d+)\)/);
+  if (m) b.dataset.range = m[1] + ',' + m[2];
+});
+
+// ── BEHALF PANEL ──────────────────────────────────────────────────
+function toggleBehalfPanel(e) {
+  e.stopPropagation();
+  const csel = document.getElementById('behalfCsel');
+  const isOpen = csel.classList.contains('open');
+  document.querySelectorAll('.behalf-csel.open').forEach(x => x.classList.remove('open'));
+  if (!isOpen) {
+    csel.classList.add('open');
+    renderBehalfOpts('');
+    setTimeout(() => document.getElementById('behalfSearch')?.focus(), 50);
+  }
+}
+
+function renderBehalfOpts(filter) {
+  const sel = document.getElementById('behalfSelect');
+  const container = document.getElementById('behalfOpts');
+  const f = filter.toLowerCase();
+  container.innerHTML = '';
+  let count = 0;
+  [...sel.options].forEach(o => {
+    if (!o.value) return;
+    if (f && !o.text.toLowerCase().includes(f)) return;
+    const div = document.createElement('div');
+    div.className = 'behalf-opt' + (selectedOrgs.has(o.value) ? ' selected' : '');
+    div.textContent = o.text;
+    div.onclick = (e) => {
+      e.stopPropagation();
+      if (selectedOrgs.has(o.value)) {
+        selectedOrgs.delete(o.value);
+        document.querySelector(`.chip[data-id="${o.value}"]`)?.remove();
+      } else {
+        addOrgChip(o.value, o.text);
+      }
+      renderBehalfOpts(document.getElementById('behalfSearch').value);
+      updateBehalfTriggerLabel();
+    };
+    container.appendChild(div);
+    count++;
+  });
+  if (!count) {
+    const empty = document.createElement('div');
+    empty.className = 'csel-empty';
+    empty.textContent = 'No organisations found';
+    container.appendChild(empty);
+  }
+}
+
+function filterBehalfPanel(val) { renderBehalfOpts(val); }
+
+function updateBehalfTriggerLabel() {
+  const lbl = document.getElementById('behalfTriggerLbl');
+  const count = selectedOrgs.size;
+  if (count === 0) { lbl.textContent = 'Add organisation…'; lbl.className = 'lbl ph'; }
+  else { lbl.textContent = count === 1 ? '1 organisation selected' : count + ' organisations selected'; lbl.className = 'lbl'; }
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#behalfCsel'))
+    document.querySelectorAll('.behalf-csel.open').forEach(x => x.classList.remove('open'));
+});
+
+// ── CAPACITY UNIT TOGGLE ──────────────────────────────────────────
+function setCapacityUnit(unit) {
+  document.getElementById('capacity_unit').value = unit;
+  document.getElementById('unitKg').classList.toggle('active', unit === 'KG');
+  document.getElementById('unitMt').classList.toggle('active', unit === 'MT');
+}
+
+// Click-to-type temperature override
+function editTempVal(which) {
+  const dispId = which === 'min' ? 'tempMinDisplay' : 'tempMaxDisplay';
+  const disp = document.getElementById(dispId);
+  const current = which === 'min' ? _tempMin : _tempMax;
+  const inp = document.createElement('input');
+  inp.type = 'number'; inp.step = '1';
+  inp.value = current ?? '';
+  inp.style.cssText = 'width:60px;font-size:26px;font-weight:800;font-family:inherit;border:none;border-bottom:2px solid var(--primary);background:transparent;color:var(--primary);text-align:center;outline:none;';
+  disp.replaceWith(inp);
+  inp.focus(); inp.select();
+  function commit() {
+    const v = inp.value.trim();
+    const num = v !== '' ? parseInt(v, 10) : null;
+    if (which === 'min') _tempMin = num;
+    else _tempMax = num;
+    // Expand slider range if needed
+    if (num !== null) {
+      if (num < TEMP_MIN) { /* out of range — still save, just clamp thumb */ }
+      if (num > TEMP_MAX) { /* same */ }
+    }
+    const newDisp = document.createElement('div');
+    newDisp.className = 'temp-val'; newDisp.id = dispId;
+    newDisp.title = 'Click to type'; newDisp.style.cursor = 'text';
+    newDisp.onclick = () => editTempVal(which);
+    inp.replaceWith(newDisp);
+    updateTempUI();
+  }
+  inp.addEventListener('blur', commit);
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') inp.blur(); });
+}
+
+// ── SPECIES PANEL ──────────────────────────────────────────────────
+function toggleSpeciesPanel(e) {
+  e.stopPropagation();
+  const csel = document.getElementById('speciesCsel');
+  const isOpen = csel.classList.contains('open');
+  document.querySelectorAll('.behalf-csel.open').forEach(x => x.classList.remove('open'));
+  if (!isOpen) {
+    csel.classList.add('open');
+    renderSpeciesOpts('');
+    setTimeout(() => document.getElementById('speciesSearch')?.focus(), 50);
+  }
+}
+
+function renderSpeciesOpts(filter) {
+  const sel = document.getElementById('speciesSelect');
+  const container = document.getElementById('speciesOpts');
+  const f = filter.toLowerCase();
+  container.innerHTML = '';
+  let count = 0;
+  [...sel.options].forEach(o => {
+    if (!o.value) return;
+    if (f && !o.text.toLowerCase().includes(f)) return;
+    const div = document.createElement('div');
+    div.className = 'behalf-opt' + (selectedSpecies.has(o.value) ? ' selected' : '');
+    div.textContent = o.text;
+    div.onclick = (e) => {
+      e.stopPropagation();
+      if (selectedSpecies.has(o.value)) {
+        selectedSpecies.delete(o.value);
+        document.querySelector(`.chip[data-id="${o.value}"]`)?.remove();
+        updateSpeciesTriggerLabel();
+      } else {
+        addSpeciesChip(o.value, o.text);
+      }
+      renderSpeciesOpts(document.getElementById('speciesSearch')?.value || '');
+    };
+    container.appendChild(div);
+    count++;
+  });
+  if (!count) {
+    const empty = document.createElement('div');
+    empty.className = 'csel-empty';
+    empty.textContent = filter ? 'No matches' : 'No species loaded';
+    container.appendChild(empty);
+  }
+}
+
+function filterSpeciesPanel(val) { renderSpeciesOpts(val); }
+
+function updateSpeciesTriggerLabel() {
+  const lbl = document.getElementById('speciesTriggerLbl');
+  const count = selectedSpecies.size;
+  if (count === 0) { lbl.textContent = 'Add species…'; lbl.className = 'lbl ph'; }
+  else { lbl.textContent = count === 1 ? '1 species selected' : count + ' species selected'; lbl.className = 'lbl'; }
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#speciesCsel'))
+    document.querySelectorAll('#speciesCsel.open').forEach(x => x.classList.remove('open'));
+});
+</script>
+
 </body>
 </html>
-
-
