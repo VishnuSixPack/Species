@@ -577,8 +577,10 @@ SHIPMENT DATA — GROUNDING RULES:
 Below your instructions, you may be given real shipment data pulled live from this organisation's own database — either a summary list of recent shipments, or full detail for one specific shipment, depending on what the question needs.
 When full detail is provided, it's assembled from several connected modules, not just the shipment record itself:
 - Each product line under "items" may carry a nested "product" object — the full product record (species, product form, allergens, packaging) — when that product exists in the Products module.
-- Each batch/lot under a product's "batches" may carry a nested "raw_material" object — the full raw material record — when that lot is linked to one in the Raw Materials module.
+- Each batch/lot under a product's "batches" is linked to either a Raw Materials record or a Catch Certificate record (see below), never a generic one.
 - Each entry under "vessels" may carry a nested "vessel_detail" object — the full vessel record — when that vessel is linked to one in the Vessels module.
+- The shipment itself, and each entry under "legs", may carry nested "origin_port" and "destination_port" objects — the full port record — when that leg is linked to one in the Ports module.
+- Each batch/lot's raw-material reference is EITHER a Raw Material record OR a Catch Certificate record, never both — check which of "raw_material" or "catch_certificate" is non-null on that batch, and cite whichever one is actually present.
 These nested objects can be missing or null even for a real shipment — that just means this particular line isn't linked to a record in that module, not that the data failed to load. Only mention a product, raw material, or vessel detail if it's actually present in the JSON given to you.
 - Treat all of this data as ground truth. Never invent a shipment reference, route, date, quantity, vessel name, species, allergen, or status that isn't in the data provided.
 - If the user asks about a shipment or figure that isn't present in the data given to you, say plainly that you don't have that record rather than guessing or estimating.
@@ -711,49 +713,77 @@ async function fetchShipmentDetail(shipmentRef) {
     } catch (e) { console.warn('[SmarTuna AI] Product enrichment failed:', e); }
   }
 
-  // ── Connected module: Raw Materials ─────────────────────────────────
-  // Table name inferred from raw-material-list.html / raw-material-detail.html
-  // — same naming convention as shipments→shipments, products→products.
-  // Wrapped defensively: if the real table is named differently, this
-  // just contributes nothing rather than breaking the whole answer.
-  const rawMaterialIds = [...new Set(batchesArr.map(b => b.raw_material_id).filter(Boolean))];
-  let rawMaterialsById = {};
-  if (rawMaterialIds.length) {
+  // ── Connected module: Raw Materials AND Catch Certificates ──────────
+  // A batch's raw_material_id can point to EITHER table, distinguished
+  // by its own ref_type ('rm' or 'cc') — confirmed from shipment-form.html's
+  // RM/CC toggle, which stores both kinds of reference in the same
+  // raw_material_id column. Querying only raw_materials would silently
+  // miss every batch that's actually a catch-certificate reference.
+  const rmIds = [...new Set(batchesArr.filter(b => b.ref_type !== 'cc' && b.raw_material_id).map(b => b.raw_material_id))];
+  const ccIds = [...new Set(batchesArr.filter(b => b.ref_type === 'cc' && b.raw_material_id).map(b => b.raw_material_id))];
+  let rawMaterialsById = {}, catchCertsById = {};
+  if (rmIds.length) {
     try {
-      const { data: rms } = await db.from('raw_materials').select('*').in('id', rawMaterialIds);
+      const { data: rms } = await db.from('raw_materials').select('*').in('id', rmIds);
       (rms || []).forEach(r => { rawMaterialsById[r.id] = r; });
-    } catch (e) { console.warn('[SmarTuna AI] Raw material enrichment failed (check table name):', e); }
+    } catch (e) { console.warn('[SmarTuna AI] Raw material enrichment failed:', e); }
+  }
+  if (ccIds.length) {
+    try {
+      const { data: ccs } = await db.from('catch_certificates').select('*').in('id', ccIds);
+      (ccs || []).forEach(c => { catchCertsById[c.id] = c; });
+    } catch (e) { console.warn('[SmarTuna AI] Catch certificate enrichment failed:', e); }
   }
 
   // ── Connected module: Vessels ───────────────────────────────────────
-  // shipment_vessels already carries name/IMO/voyage inline; this joins
-  // to the main vessels table (table name inferred the same way as
-  // above) for anything fuller — flag state, risk flags, ownership, etc.
   const vesselIds = [...new Set(vesselsArr.map(v => v.vessel_id).filter(Boolean))];
   let vesselsById = {};
   if (vesselIds.length) {
     try {
       const { data: vs } = await db.from('vessels').select('*').in('id', vesselIds);
       (vs || []).forEach(v => { vesselsById[v.id] = v; });
-    } catch (e) { console.warn('[SmarTuna AI] Vessel enrichment failed (check table name):', e); }
+    } catch (e) { console.warn('[SmarTuna AI] Vessel enrichment failed:', e); }
   }
+
+  // ── Connected module: Ports ──────────────────────────────────────────
+  // Confirmed real (not inferred) — shipment-form.html saves
+  // origin_port_id/destination_port_id on both the shipment header and
+  // each leg, resolved against a real `ports` table (LOOK.ports).
+  const portIds = [...new Set([
+    s.origin_port_id, s.destination_port_id,
+    ...legsArr.flatMap(l => [l.origin_port_id, l.destination_port_id]),
+  ].filter(Boolean))];
+  let portsById = {};
+  if (portIds.length) {
+    try {
+      const { data: ports } = await db.from('ports').select('*').in('id', portIds);
+      (ports || []).forEach(p => { portsById[p.id] = p; });
+    } catch (e) { console.warn('[SmarTuna AI] Port enrichment failed:', e); }
+  }
+  const portOf = id => id ? (portsById[id] || null) : null;
 
   const byItem = {};
   batchesArr.forEach(b => {
-    (byItem[b.shipment_item_id] || (byItem[b.shipment_item_id] = [])).push({
-      ...b,
-      raw_material: b.raw_material_id ? (rawMaterialsById[b.raw_material_id] || null) : null,
-    });
+    const ref = b.ref_type === 'cc'
+      ? { raw_material: null, catch_certificate: catchCertsById[b.raw_material_id] || null }
+      : { raw_material: rawMaterialsById[b.raw_material_id] || null, catch_certificate: null };
+    (byItem[b.shipment_item_id] || (byItem[b.shipment_item_id] = [])).push({ ...b, ...ref });
   });
 
   return {
     ...s,
+    origin_port: portOf(s.origin_port_id),
+    destination_port: portOf(s.destination_port_id),
     items: itemsArr.map(it => ({
       ...it,
       product: it.product_id ? (productsById[it.product_id] || null) : null,
       batches: byItem[it.id] || [],
     })),
-    legs: legsArr,
+    legs: legsArr.map(l => ({
+      ...l,
+      origin_port: portOf(l.origin_port_id),
+      destination_port: portOf(l.destination_port_id),
+    })),
     vessels: vesselsArr.map(v => ({
       ...v,
       vessel_detail: v.vessel_id ? (vesselsById[v.vessel_id] || null) : null,
