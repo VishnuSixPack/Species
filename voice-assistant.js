@@ -1,31 +1,3 @@
-/* ==========================================================================
-   PROJECT MANHATTAN — AI VOICE ASSISTANT
-   voice-assistant.js
-   --------------------------------------------------------------------------
-   A self-contained, dependency-free voice assistant widget.
-
-   INTEGRATION WITH YOUR EXISTING GROQ CALL
-   -----------------------------------------
-   This file does NOT call Groq directly. It calls a function you provide
-   via `askAI` in the config. Point it at your existing Groq request
-   function and nothing about your API logic needs to change.
-
-       const assistant = new ManhattanVoiceAssistant({
-         askAI: async (question, productData) => {
-           // your existing function, e.g.:
-           return await callGroqAPI(question, productData);
-           // must return a plain string (the answer to speak/display)
-         },
-         getProductData: () => window.currentProductData // optional
-       });
-       assistant.init();
-
-   If you don't pass `askAI`, the widget will:
-     1. look for a few common global function names (see AUTO_DETECT_NAMES)
-     2. otherwise POST to `/api/groq` as a placeholder (see _fallbackAskAI)
-   Both are meant as convenience/dev fallbacks — see INTEGRATION-GUIDE.md.
-   ========================================================================== */
-
 (function (global) {
   'use strict';
 
@@ -37,43 +9,27 @@
     ERROR: 'error',
   };
 
-  // Common existing-function names we'll try before falling back to a
-  // placeholder fetch. Purely a convenience for auto-wiring during dev.
   const AUTO_DETECT_NAMES = ['callGroqAPI', 'askGroq', 'groqRequest', 'sendToGroq'];
 
   const DEFAULT_CONFIG = {
-    // --- integration points -------------------------------------------------
-    askAI: null,              // async (question, productData) => string
-    getProductData: null,     // () => object | null  (called fresh on every question)
-    productData: null,        // static alternative to getProductData
-
-    // --- speech ---------------------------------------------------------------
+    askAI: null,
+    getProductData: null,
+    productData: null,
     lang: 'en-US',
     speechRate: 1.0,
     speechPitch: 1.0,
     preferredVoiceNames: ['Google US English', 'Samantha', 'Microsoft Aria Online (Natural)'],
-
-    // --- behaviour --------------------------------------------------------------
-    autoSpeak: true,          // speak AI responses aloud automatically
-    showTextFallback: true,   // always show a typed-input option, not just on unsupported browsers
+    autoSpeak: true,
+    showTextFallback: true,
     greeting: 'Ask me anything about this product — allergens, sustainability, sourcing.',
     panelTitle: 'Manhattan Assistant',
     panelSubtitle: 'Voice-powered product Q&A',
     modalHeading: 'How can I help you today?',
-
-    // --- prompt engineering -------------------------------------------------
-    systemPromptBuilder: null, // (productData) => string, overrides buildSystemPrompt()
-
-    // --- mount ---------------------------------------------------------------
-    mountTo: null,     // defaults to document.body
-    embedded: false,   // true = render inline, always-open, no fab/backdrop — for a dedicated full page
+    systemPromptBuilder: null,
+    mountTo: null,
+    embedded: false,
   };
 
-  /**
-   * Builds the reusable system prompt described in the spec:
-   * answer strictly from product data, never invent facts, defer
-   * medical questions to general info + "consult a professional".
-   */
   function buildSystemPrompt(productData) {
     const hasProduct = productData && Object.keys(productData).length > 0;
     const productBlock = hasProduct
@@ -92,7 +48,6 @@
     ].join('\n');
   }
 
-  /** Friendly copy for every error case the spec calls out. */
   const ERROR_MESSAGES = {
     micDenied: 'Microphone access was denied. Enable it in your browser settings to use voice input.',
     micNotFound: 'No microphone was found on this device. You can type your question instead.',
@@ -109,7 +64,7 @@
     constructor(userConfig = {}) {
       this.config = Object.assign({}, DEFAULT_CONFIG, userConfig);
       this.state = STATE.IDLE;
-      this.history = []; // { role: 'user' | 'ai', text, timestamp }
+      this.history = [];
       this.isProcessing = false;
 
       this._recognition = null;
@@ -125,14 +80,12 @@
       this._onVoicesChanged = this._onVoicesChanged.bind(this);
     }
 
-    /** Build DOM, wire events, ready to use. Call once. */
     init() {
       this._buildDOM();
       this._bindEvents();
       this._applySupportFlags();
 
       if (this._ttsSupported) {
-        // Voice list loads async in some browsers.
         global.speechSynthesis.addEventListener('voiceschanged', this._onVoicesChanged);
         this._onVoicesChanged();
       }
@@ -147,7 +100,6 @@
       return this;
     }
 
-    /** Remove all DOM, listeners, and stop any in-flight audio. Call on teardown. */
     destroy() {
       this._stopListening({ silent: true });
       this._stopSpeaking();
@@ -159,17 +111,10 @@
       }
     }
 
-    // ------------------------------------------------------------------------
-    // Public API for external triggers (e.g. a "Start talking" button or a
-    // suggested-question chip elsewhere on the page)
-    // ------------------------------------------------------------------------
-
-    /** Opens the panel without starting the microphone. */
     open() {
       this._openPanel();
     }
 
-    /** Opens the panel and submits `question` as if it were typed. */
     ask(question) {
       if (!question) {
         this.open();
@@ -179,14 +124,33 @@
       this._handleFinalQuestion(question);
     }
 
-    /** Closes the panel and stops any in-progress listening/speaking. */
     close() {
       this._closePanel();
     }
 
-    // ------------------------------------------------------------------------
-    // DOM construction
-    // ------------------------------------------------------------------------
+    /**
+     * Clears the current conversation and returns to the fresh greeting
+     * state — the gap this fixes: closing the panel and reopening it
+     * previously left the old thread in place indefinitely, since
+     * _closePanel() only resets state/listening, never history or DOM.
+     */
+    newChat() {
+      this._stopListening({ silent: true });
+      this._stopSpeaking();
+      this._removeLiveBubble();
+      this.history = [];
+      this.isProcessing = false;
+      this._finalTranscript = '';
+
+      this.$messages.innerHTML = '';
+      const empty = document.createElement('div');
+      empty.className = 'mh-va-empty-state';
+      empty.textContent = this.config.greeting;
+      this.$messages.appendChild(empty);
+      this.$emptyState = empty;
+
+      this._setState(STATE.IDLE);
+    }
 
     _buildDOM() {
       const root = document.createElement('div');
@@ -221,9 +185,14 @@
                 <div class="mh-va-panel-subtitle">${this._esc(this.config.panelSubtitle)}</div>
               </div>
             </div>
-            <button type="button" class="mh-va-close-btn" aria-label="Close assistant">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
-            </button>
+            <div class="mh-va-header-actions">
+              <button type="button" class="mh-va-newchat-btn" aria-label="Start a new chat" title="New chat">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></svg>
+              </button>
+              <button type="button" class="mh-va-close-btn" aria-label="Close assistant">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+              </button>
+            </div>
           </header>
 
           <div class="mh-va-modal-heading">
@@ -308,10 +277,10 @@
       (this.config.mountTo || document.body).appendChild(root);
       this.root = root;
 
-      // cache refs
       this.$backdrop = root.querySelector('.mh-va-backdrop');
       this.$panel = root.querySelector('.mh-va-panel');
       this.$close = root.querySelector('.mh-va-close-btn');
+      this.$newChatBtn = root.querySelector('.mh-va-newchat-btn');
       this.$fab = root.querySelector('.mh-va-fab');
       this.$modalMic = root.querySelector('.mh-va-modal-mic');
       this.$modalMicIconMic = this.$modalMic.querySelector('.mh-va-icon-mic');
@@ -337,27 +306,20 @@
       this.root.setAttribute('data-mic-supported', String(this._speechSupported));
     }
 
-    // ------------------------------------------------------------------------
-    // Event wiring
-    // ------------------------------------------------------------------------
-
     _bindEvents() {
-      // Corner fab only launches the modal — the big mic button inside is
-      // the actual talk control once it's open.
       this.$fab.addEventListener('click', () => {
         this._openPanel();
         if (!this._speechSupported) this.$textInput.focus();
       });
       this.$modalMic.addEventListener('click', () => this._onModalMicClick());
       this.$close.addEventListener('click', () => this._closePanel());
+      this.$newChatBtn.addEventListener('click', () => this.newChat());
       this.$backdrop.addEventListener('click', () => this._closePanel());
 
-      // Escape closes the panel (accessibility) — not applicable when embedded as a full page
       this.root.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && !this.config.embedded) this._closePanel();
       });
 
-      // Typed fallback
       this.$textInput.addEventListener('input', () => {
         this.$textSend.disabled = this.$textInput.value.trim().length === 0;
       });
@@ -375,7 +337,6 @@
       }
 
       if (this.state === STATE.SPEAKING) {
-        // Spec #8: pressing mic while AI is speaking stops speech, allows recording again.
         this._stopSpeaking();
         this._setState(STATE.IDLE);
         return;
@@ -387,7 +348,7 @@
       }
 
       if (this.state === STATE.THINKING) {
-        return; // ignore taps while a request is in flight
+        return;
       }
 
       this._startListening();
@@ -427,15 +388,10 @@
       this._handleFinalQuestion(text);
     }
 
-    // ------------------------------------------------------------------------
-    // State machine
-    // ------------------------------------------------------------------------
-
     _setState(next) {
       this.state = next;
       this.root.setAttribute('data-state', next);
 
-      // Light up the matching pill, dim the rest.
       Object.entries(this.$pills).forEach(([key, el]) => {
         el.classList.toggle('mh-va-pill-active', key === next);
       });
@@ -454,17 +410,12 @@
       this.$modalMicIconStop.style.display = showStop ? 'block' : 'none';
 
       if (next === STATE.ERROR) {
-        // Self-heal back to idle after the shake animation + a brief hold.
         clearTimeout(this._errorTimer);
         this._errorTimer = setTimeout(() => {
           if (this.state === STATE.ERROR) this._setState(STATE.IDLE);
         }, 2200);
       }
     }
-
-    // ------------------------------------------------------------------------
-    // Speech recognition (listening + live transcript + waveform)
-    // ------------------------------------------------------------------------
 
     async _startListening() {
       if (!this._speechSupported) {
@@ -473,10 +424,6 @@
       }
       if (this.isProcessing) return;
 
-      // SpeechRecognition needs a secure context (https://, or localhost) —
-      // on plain http:// or a file:// page it fails immediately with no
-      // permission prompt ever shown, which otherwise looks exactly like a
-      // real denial. Catch that specific case with its own message.
       if (global.isSecureContext === false) {
         this._showError('insecureContext');
         return;
@@ -485,13 +432,6 @@
       this._finalTranscript = '';
       this._showLiveBubble();
 
-      // Note: we deliberately do NOT call getUserMedia() here. Recognition
-      // requests and manages its own microphone access internally — asking
-      // for the mic a second time via getUserMedia was starving recognition
-      // of audio on some browser/OS combinations, causing it to report
-      // "no speech" almost immediately even while the user was talking.
-      // The waveform below is a synthetic animation for this reason, not an
-      // audio-reactive one — see _startWaveform.
       this._startWaveform('listening');
 
       const SpeechRecognitionImpl = global.SpeechRecognition || global.webkitSpeechRecognition;
@@ -510,8 +450,6 @@
       try {
         recognition.start();
       } catch (err) {
-        // start() throws synchronously if called while already running, or
-        // in some browsers if permission was previously blocked outright.
         this._recognition = null;
         this._stopWaveform();
         this._removeLiveBubble();
@@ -521,12 +459,6 @@
 
       this._setState(STATE.LISTENING);
     }
-
-    // ------------------------------------------------------------------------
-    // Live transcript bubble — shows what the user is saying in real time,
-    // right where their message will land in the conversation once it's
-    // finalized. Far more visible than a single truncated helper line.
-    // ------------------------------------------------------------------------
 
     _showLiveBubble() {
       if (this.$liveBubble) return;
@@ -593,9 +525,6 @@
 
       this._removeLiveBubble();
       this._stopListening({ silent: true });
-      // Every failure gets a toast now, including no-speech — a silent
-      // revert to idle looks indistinguishable from a bug. See it, know
-      // what happened, try again.
       this._showError(key);
     }
 
@@ -607,7 +536,6 @@
       this._finalTranscript = '';
 
       if (this.state === STATE.LISTENING) {
-        // Recognition ended on its own (silence) or via manual stop.
         if (finalText) {
           this._handleFinalQuestion(finalText);
         } else {
@@ -618,7 +546,7 @@
 
     _stopListening(opts = {}) {
       if (this._recognition) {
-        try { this._recognition.stop(); } catch (e) { /* already stopped */ }
+        try { this._recognition.stop(); } catch (e) { }
         this._recognition = null;
       }
       this._stopWaveform();
@@ -627,12 +555,6 @@
         this._setState(STATE.IDLE);
       }
     }
-
-    // ------------------------------------------------------------------------
-    // Waveform visualizer — a synthetic animated pulse, not audio-reactive.
-    // (See the note in _startListening for why this isn't wired to real
-    // microphone amplitude via getUserMedia/AnalyserNode.)
-    // ------------------------------------------------------------------------
 
     _startWaveform(mode) {
       this._stopWaveform();
@@ -647,9 +569,6 @@
         canvases.forEach(({ canvas, ctx }) => this._drawBars(ctx, canvas.width, canvas.height, barCount, amplitudeFn));
       };
 
-      // Same synthetic pulse for both listening and speaking — a bit livelier
-      // while listening, a bit steadier while speaking, but neither is tied
-      // to real microphone amplitude (see the note above _startListening).
       const speed = mode === 'listening' ? 0.22 : 0.18;
       let t = 0;
       const draw = () => {
@@ -702,10 +621,6 @@
       }
     }
 
-    // ------------------------------------------------------------------------
-    // Sending the question to your Groq integration
-    // ------------------------------------------------------------------------
-
     async _handleFinalQuestion(question) {
       if (!question || this.isProcessing) return;
       this.isProcessing = true;
@@ -743,7 +658,6 @@
       return this.config.productData || null;
     }
 
-    /** Payload shape matches the spec exactly: { question, product }. */
     _buildPayload(question, productData) {
       return { question, product: productData };
     }
@@ -762,7 +676,6 @@
       return await this._fallbackAskAI(question, productData);
     }
 
-    /** Placeholder network call — replace by passing `askAI` in the config. */
     async _fallbackAskAI(question, productData) {
       const systemPrompt = typeof this.config.systemPromptBuilder === 'function'
         ? this.config.systemPromptBuilder(productData)
@@ -782,13 +695,8 @@
       }
 
       const data = await response.json();
-      // Accept a couple of common shapes so the fallback is useful out of the box.
       return data.answer || data.response || data.text || JSON.stringify(data);
     }
-
-    // ------------------------------------------------------------------------
-    // Text-to-speech
-    // ------------------------------------------------------------------------
 
     _onVoicesChanged() {
       this._voicesReady = true;
@@ -811,7 +719,7 @@
         return;
       }
 
-      this._stopSpeaking(); // cancel any previous utterance first
+      this._stopSpeaking();
 
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = this.config.lang;
@@ -824,10 +732,7 @@
         this._setState(STATE.SPEAKING);
         this._startWaveform('speaking');
       };
-      utterance.onboundary = () => {
-        // Word-boundary events give the waveform a natural "talking" pulse;
-        // the animation loop already reacts to time, this just keeps it lively.
-      };
+      utterance.onboundary = () => {};
       utterance.onend = () => {
         this._stopWaveform();
         this._currentUtterance = null;
@@ -850,10 +755,6 @@
       this._currentUtterance = null;
       this._stopWaveform();
     }
-
-    // ------------------------------------------------------------------------
-    // Conversation rendering
-    // ------------------------------------------------------------------------
 
     _showThinkingBubble(show) {
       let el = this.$messages.querySelector('.mh-va-thinking-dots');
@@ -899,11 +800,6 @@
       });
     }
 
-    // ------------------------------------------------------------------------
-    // Errors — always surfaced as a toast, never inside the modal frame,
-    // so the pill/mic/waveform animation stays uninterrupted.
-    // ------------------------------------------------------------------------
-
     _showError(key) {
       const message = ERROR_MESSAGES[key] || ERROR_MESSAGES.generic;
       this._showToast(message);
@@ -928,7 +824,6 @@
     }
   }
 
-  // Expose helpers alongside the class for advanced/custom integrations.
   ManhattanVoiceAssistant.buildSystemPrompt = buildSystemPrompt;
   ManhattanVoiceAssistant.STATE = STATE;
 
