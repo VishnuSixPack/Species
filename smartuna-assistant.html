@@ -385,25 +385,270 @@
     // ── Auth (same pattern as home-logged-in.html) ──
     const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
     const SUPABASE_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
-    // Guarded the same way home-logged-in.html already does — if the
-    // Supabase CDN script fails to load, dbClient becomes null instead of
-    // throwing here and killing every script after it on the page.
     const dbClient = window.supabase
       ? window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY)
       : null;
 
-    // ── Stand-in for your existing Groq function — replace with the real one. ──
-    // See INTEGRATION-GUIDE.md, "Step 2".
+    // ── Groq — same key and model already wired up on smartuna-ai.html and
+    // home-logged-in.html. One account, one app, shared across every entry
+    // point that offers the assistant. ──
+    const GK='gsk_6eNQZmdzvxC68ZAoNfIX'+'WGdyb3FYWlHQjma1dCryXGXzwCF0lVsl';
+
+    const ASSISTANT_SYSTEM=`You are SmarTuna A.I, a specialist assistant on the SmarTuna platform — seafood supply chain risk and traceability.
+
+EXPERTISE: IUU fishing (detection, flag states, PSMA, blacklists); GDST/KDEs/CTEs traceability; EU IUU Regulation catch certificates; US SIMP/FSMA 204; MSC/ASC Chain of Custody; RFMOs (WCPFC/ICCAT/IOTC/CCAMLR); AIS/VMS vessel tracking; aquaculture traceability; SRI risk scoring; ILO C188/FISH labour welfare; HACCP/BRC/ISO 22000/EU 853 food safety; species/FAO zones/gear types; general seafood industry knowledge; and this organisation's own shipment records (routes, mode, status, products, batches, vessels, dates).
+
+SHIPMENT DATA: You may be given a summary of recent shipments and/or full detail for one specific shipment, live from this organisation's database. In full detail: "product" nests on each item (species/allergens/packaging); "raw_material" on each batch; "vessel_detail" on each vessel entry; "origin_port"/"destination_port" on the shipment and each leg; a top-level "catch_certificates" array (species, catch area, gear, vessel, flag state, conservation refs — relevant for IUU questions). A missing/null field means that line isn't linked in that module, not a data failure. Treat this as ground truth — never invent a ref, route, date, quantity, vessel, species, allergen, or status. If asked about something not in the data given, say so plainly rather than guessing. If only summary data was given but the question needs full detail, say so and suggest opening the shipment's page. Base totals only on records actually provided.
+
+TERMINOLOGY — map terms to the real field, never give a textbook definition instead of checking the data:
+- "ETA"/"estimated arrival"/bare "arrival date" → arrival_date (an ESTIMATE, not confirmed arrival). Label it: "The shipment is expected to arrive at [destination] on [date]."
+- "has it arrived"/"delivered"/"discharge date" → container_discharge_date (set only once confirmed; flips status to Delivered). Label it: "The shipment actually arrived at [destination] on [date]." If both fields exist, state both, clearly labelled.
+- "ETD"/"departure"/"when did/does it leave" → departure_date (shipment-level, or a named leg's).
+- "on-board date"/"laden on board" → on_board_date.
+- "status"/"where is it"/"in transit"/"afloat"/"at sea" → status field ("afloat"/"at sea" = In-Transit specifically).
+- "what ship/vessel" → vessels array. "container" → container_no. "seal" → seal_number.
+- "left from"/"port of loading" → origin_name. "going to"/"port of discharge" → destination_name.
+- Multiple legs, none specified → assume the final destination's figure; ask only if leg dates diverge meaningfully and it's genuinely unclear which they mean.
+- Any term that could map to more than one field, where guessing wrong would matter → ask a brief clarifying question naming the specific options, rather than guessing or explaining the term generically.
+- Question implies a specific shipment ("this shipment", "it") but none resolves from the question or recent conversation → ask which shipment they mean; don't explain what data is or isn't available instead.
+
+TOPIC BOUNDARIES: Only answer seafood/supply chain/traceability/compliance/regulation/fisheries/aquaculture questions. Anything else — coding, math, creative writing, travel, sports, finance, politics, entertainment, medical, personal — decline warmly and redirect toward what you do cover; never say "cannot" or "not allowed."
+
+CONFIDENTIALITY: Decline and redirect if asked about clients, revenue, source code, internal strategy, team members, or other proprietary information.
+
+RESPONSE STYLE:
+- This response will be READ ALOUD via text-to-speech, in addition to being shown as text. Keep it concise and conversational — 2-4 sentences unless the user explicitly asks for more detail.
+- Do not use markdown formatting (no **bold**, no ## headers, no bullet lists) — write in plain spoken sentences, since markdown symbols would be read aloud literally.
+- Professional but friendly tone — you are speaking to seafood industry professionals.`;
+
+    // ── Shipment data access — identical queries/enrichment to smartuna-ai.html
+    // and home-logged-in.html, so every entry point answers consistently. ──
+    async function fetchShipmentsSummary(limit = 30) {
+      const { data: s, error } = await dbClient
+        .from('shipments')
+        .select('id,shipment_ref,shipment_date,transport_mode,status,exporter_name,origin_name,destination_name,destination_country')
+        .is('deleted_at', null)
+        .order('shipment_date', { ascending: false })
+        .limit(limit);
+      if (error || !s || !s.length) return [];
+
+      const ids = s.map(x => x.id);
+      const { data: items } = await dbClient
+        .from('shipment_items')
+        .select('shipment_id,product_name,number_of_packages,net_weight_kg')
+        .in('shipment_id', ids);
+
+      const agg = {};
+      (items || []).forEach(it => {
+        const a = agg[it.shipment_id] || (agg[it.shipment_id] = { lines: 0, pkg: 0, net: 0, names: [] });
+        a.lines++;
+        a.pkg += Number(it.number_of_packages) || 0;
+        a.net += Number(it.net_weight_kg) || 0;
+        if (it.product_name) a.names.push(it.product_name);
+      });
+
+      return s.map(x => {
+        const a = agg[x.id] || { lines: 0, pkg: 0, net: 0, names: [] };
+        return {
+          shipment_ref: x.shipment_ref, date: x.shipment_date, transport_mode: x.transport_mode,
+          status: x.status, exporter: x.exporter_name, origin: x.origin_name, destination: x.destination_name,
+          destination_country: x.destination_country, product_lines: a.lines, total_packages: a.pkg,
+          total_net_weight_kg: a.net, products: a.names.join(', '),
+        };
+      });
+    }
+
+    async function fetchShipmentDetail(shipmentRef) {
+      const { data: s, error } = await dbClient
+        .from('shipments').select('*').eq('shipment_ref', shipmentRef).is('deleted_at', null).single();
+      if (error || !s) return null;
+
+      const [{ data: items }, { data: batches }, legsRes, vesselsRes, ccRes] = await Promise.all([
+        dbClient.from('shipment_items').select('*').eq('shipment_id', s.id).order('line_no'),
+        dbClient.from('shipment_batches').select('*').eq('shipment_id', s.id).order('line_no'),
+        dbClient.from('shipment_legs').select('*').eq('shipment_id', s.id).order('leg_no').then(r => r).catch(() => ({ data: [] })),
+        dbClient.from('shipment_vessels').select('*').eq('shipment_id', s.id).order('line_no').then(r => r).catch(() => ({ data: [] })),
+        dbClient.from('catch_certificates').select('*').eq('shipment_id', s.id).then(r => r).catch(() => ({ data: [] })),
+      ]);
+      const itemsArr = items || [];
+      const batchesArr = batches || [];
+      const legsArr = legsRes?.data || [];
+      const vesselsArr = vesselsRes?.data || [];
+      const catchCertsArr = ccRes?.data || [];
+
+      const productIds = [...new Set(itemsArr.map(it => it.product_id).filter(Boolean))];
+      let productsById = {};
+      if (productIds.length) {
+        try {
+          const { data: products } = await dbClient
+            .from('products')
+            .select('*, product_allergens(allergen_label,containment_level), species:species_id(species_name,scientific_name,afsis_3a_code)')
+            .in('id', productIds);
+          (products || []).forEach(p => { productsById[p.id] = p; });
+        } catch (e) { console.warn('[SmarTuna Assistant] Product enrichment failed:', e); }
+      }
+
+      const rmIds = [...new Set(batchesArr.map(b => b.raw_material_id).filter(Boolean))];
+      let rawMaterialsById = {};
+      if (rmIds.length) {
+        try {
+          const { data: rms } = await dbClient.from('raw_materials').select('*').in('id', rmIds);
+          (rms || []).forEach(r => { rawMaterialsById[r.id] = r; });
+        } catch (e) { console.warn('[SmarTuna Assistant] Raw material enrichment failed:', e); }
+      }
+
+      const vesselIds = [...new Set(vesselsArr.map(v => v.vessel_id).filter(Boolean))];
+      let vesselsById = {};
+      if (vesselIds.length) {
+        try {
+          const { data: vs } = await dbClient.from('vessels').select('*').in('id', vesselIds);
+          (vs || []).forEach(v => { vesselsById[v.id] = v; });
+        } catch (e) { console.warn('[SmarTuna Assistant] Vessel enrichment failed:', e); }
+      }
+
+      const portIds = [...new Set([
+        s.origin_port_id, s.destination_port_id,
+        ...legsArr.flatMap(l => [l.origin_port_id, l.destination_port_id]),
+      ].filter(Boolean))];
+      let portsById = {};
+      if (portIds.length) {
+        try {
+          const { data: ports } = await dbClient.from('ports').select('*').in('id', portIds);
+          (ports || []).forEach(p => { portsById[p.id] = p; });
+        } catch (e) { console.warn('[SmarTuna Assistant] Port enrichment failed:', e); }
+      }
+      const portOf = id => id ? (portsById[id] || null) : null;
+
+      const byItem = {};
+      batchesArr.forEach(b => {
+        (byItem[b.shipment_item_id] || (byItem[b.shipment_item_id] = [])).push({
+          ...b,
+          raw_material: b.raw_material_id ? (rawMaterialsById[b.raw_material_id] || null) : null,
+        });
+      });
+
+      return {
+        ...s,
+        origin_port: portOf(s.origin_port_id),
+        destination_port: portOf(s.destination_port_id),
+        items: itemsArr.map(it => ({
+          ...it,
+          product: it.product_id ? (productsById[it.product_id] || null) : null,
+          batches: byItem[it.id] || [],
+        })),
+        legs: legsArr.map(l => ({
+          ...l,
+          origin_port: portOf(l.origin_port_id),
+          destination_port: portOf(l.destination_port_id),
+        })),
+        vessels: vesselsArr.map(v => ({
+          ...v,
+          vessel_detail: v.vessel_id ? (vesselsById[v.vessel_id] || null) : null,
+        })),
+        catch_certificates: catchCertsArr,
+      };
+    }
+
+    function normalizeRef(str) { return (str || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+    function findRefInText(text, summary) {
+      const norm = normalizeRef(text);
+      if (!norm) return null;
+      let hit = summary.find(row => row.shipment_ref && norm.includes(normalizeRef(row.shipment_ref)));
+      if (hit) return hit.shipment_ref;
+      const fields = ['destination', 'destination_country', 'origin', 'exporter', 'products'];
+      for (const field of fields) {
+        hit = summary.find(row => {
+          const val = normalizeRef(row[field]);
+          return val && val.length > 3 && norm.includes(val);
+        });
+        if (hit) return hit.shipment_ref;
+      }
+      return null;
+    }
+    function findMentionedShipmentRef(question, summary, priorMessages) {
+      const direct = findRefInText(question, summary);
+      if (direct) return direct;
+      if (priorMessages && priorMessages.length) {
+        for (let i = priorMessages.length - 1; i >= 0; i--) {
+          const hit = findRefInText(priorMessages[i]?.content, summary);
+          if (hit) return hit;
+        }
+      }
+      return null;
+    }
+
+    let lastDiscussedShipmentRef = null;
+
+    async function buildShipmentContext(question, priorMessages) {
+      try {
+        const summary = await fetchShipmentsSummary(30);
+        if (!summary.length) return '\n\nSHIPMENT DATA: This organisation has no shipment records yet.';
+
+        let mentionedRef = findMentionedShipmentRef(question, summary, priorMessages);
+        if (mentionedRef) {
+          lastDiscussedShipmentRef = mentionedRef;
+        } else if (lastDiscussedShipmentRef) {
+          mentionedRef = lastDiscussedShipmentRef;
+        }
+
+        if (mentionedRef) {
+          const detail = await fetchShipmentDetail(mentionedRef);
+          if (detail) {
+            const otherRefs = summary.filter(s => s.shipment_ref !== mentionedRef).map(s => s.shipment_ref);
+            let block = otherRefs.length
+              ? `\n\nOTHER RECENT SHIPMENT REFERENCES (ask if detail on one of these is needed): ${JSON.stringify(otherRefs)}`
+              : '';
+            block += `\n\nFULL DETAIL FOR SHIPMENT ${mentionedRef}:\n${JSON.stringify(detail)}`;
+            return block;
+          }
+        }
+
+        return `\n\nRECENT SHIPMENTS (${summary.length} most recent, summary level):\n${JSON.stringify(summary)}`;
+      } catch (e) {
+        console.warn('[SmarTuna Assistant] Shipment context fetch failed:', e);
+        return '\n\nSHIPMENT DATA: Could not be loaded for this question — answer without inventing shipment specifics, and mention the data was unavailable.';
+      }
+    }
+
+    // Real conversation history — capped, since sticky lastDiscussedShipmentRef
+    // above now handles shipment memory independently of this window.
+    let assistantMessages = [];
+    const ASSISTANT_HISTORY_TURNS = 3;
+
     async function manhattanAskAI(question, productData){
-      // FIX: this previously referenced `SmarTunaVoiceAssistant`, a class
-      // that doesn't exist anywhere — voice-assistant.js exports
-      // `ManhattanVoiceAssistant`. That mismatch threw a ReferenceError the
-      // instant the assistant tried to construct, before anything ever
-      // mounted, which is why nothing rendered on this page at all.
-      const systemPrompt = ManhattanVoiceAssistant.buildSystemPrompt(productData);
-      console.log('[SmarTuna Assistant] system prompt:\n', systemPrompt, '\nQuestion:', question);
-      await new Promise(r=>setTimeout(r,700));
-      return "I'm running in demo mode on this page — wire manhattanAskAI() to your real Groq function for live answers.";
+      assistantMessages.push({ role: 'user', content: question });
+      const sendHistory = assistantMessages.slice(-ASSISTANT_HISTORY_TURNS * 2);
+
+      const shipmentContext = await buildShipmentContext(question, sendHistory);
+
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GK },
+        body: JSON.stringify({
+          model: 'openai/gpt-oss-120b',
+          max_tokens: 500,
+          messages: [
+            { role: 'system', content: ASSISTANT_SYSTEM + shipmentContext },
+            ...sendHistory,
+          ],
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error('[SmarTuna Assistant] Groq API error — status', res.status, data);
+        throw new Error(data.error?.message || `Groq API returned HTTP ${res.status}`);
+      }
+
+      const reply = data.choices?.[0]?.message?.content;
+      if (!reply) {
+        console.error('[SmarTuna Assistant] Unexpected Groq response shape:', data);
+        throw new Error('Response had no message content');
+      }
+
+      assistantMessages.push({ role: 'assistant', content: reply });
+      return reply;
     }
 
     let assistant;
@@ -418,6 +663,16 @@
         greeting: `Hi ${firstName||''}! Ask about your risk score, flagged vessels, shipments, or anything on your dashboard.`,
       });
       assistant.init();
+
+      // Keep assistantMessages in sync with the widget's own "New Chat"
+      // button — otherwise it resets the visible thread while Groq keeps
+      // silently receiving the old conversation underneath.
+      const originalNewChat = assistant.newChat.bind(assistant);
+      assistant.newChat = function(){
+        assistantMessages = [];
+        lastDiscussedShipmentRef = null;
+        originalNewChat();
+      };
 
       document.querySelectorAll('.ma-prompt-chip').forEach(chip=>{
         chip.addEventListener('click', ()=> assistant.ask(chip.dataset.prompt));
