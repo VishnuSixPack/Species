@@ -4053,14 +4053,32 @@ async function searchFisheryPicker(q){
 async function selectFishery(fisheryId){
   const f=_fisheryCache.find(x=>x.id===fisheryId);
   if(!f)return;
-  kResp['_fishery_c_msc']={id:f.id,name:f.fishery_name,cert:f.certificate_code,status:f.msc_status};
-  // Now check certificate history against catch periods
+  // Multi-fishery: add to array if not already there
+  if(!kResp['_selectedFisheries'])kResp['_selectedFisheries']=[];
+  const existing=kResp['_selectedFisheries'];
+  if(!existing.find(x=>x.id===f.id)){
+    existing.push({id:f.id,name:f.fishery_name,cert:f.certificate_code,status:f.msc_status});
+  }
+  // Clear the search input
+  const inp=document.getElementById('fisheryPickerInput');
+  if(inp)inp.value='';
+  const dd=document.getElementById('fisheryPickerDd');
+  if(dd)dd.style.display='none';
+  // Check cert against catch periods for the last-added fishery
   await checkFisheryCertification(f);
   STAGES=buildStages();renderKDE();
 }
 
+function removeFishery(fisheryId){
+  if(!kResp['_selectedFisheries'])return;
+  kResp['_selectedFisheries']=kResp['_selectedFisheries'].filter(x=>x.id!==fisheryId);
+  if(!kResp['_selectedFisheries'].length)delete kResp['_selectedFisheries'];
+  STAGES=buildStages();renderKDE();
+}
+
 function clearFisheryPicker(){
-  delete kResp['_fishery_c_msc'];
+  delete kResp['_selectedFisheries'];
+  delete kResp['_fishery_c_msc']; // legacy cleanup
   delete kResp['_fisheryVerify_c_msc'];
   if(kResp['c_msc']?.moduleNote){delete kResp['c_msc'].moduleNote;delete kResp['c_msc'].ans;}
   STAGES=buildStages();renderKDE();
@@ -4570,7 +4588,10 @@ function buildCertQs(hasMSC,hasASC,hasEU,hasUS,hasTuna){
   const whoPrefix=isExternal?'Does the supply chain company/processor you are assessing':'Does your company';
   const whoOr=isExternal?'Does the supply chain include':'Does your company or processor hold';
   return [
-    // MSC/ASC — only ask if product is certified; rephrase for external roles
+    // Fishery linking — non-scoring, always shown when MSC product selected
+    // Allows multiple fisheries — stored in kResp['_selectedFisheries'] array
+    ...(hasMSC||hasASC?[{id:'c_fisheries',q:'Which certified fishery or fisheries does your supply chain source from? (You can add multiple)',_nonScoring:true}]:[]),
+    // MSC/ASC CoC — answered from company/organisation module, not fishery
     ...(hasMSC?[{id:'c_msc',q:isExternal?'Does the supplier or processor in your supply chain hold a valid MSC Chain of Custody certificate?':'Does your company hold a valid MSC Chain of Custody certificate?'}]:[]),
     ...(hasASC?[{id:'c_asc',q:isExternal?'Does the supplier or processor in your supply chain hold a valid ASC Chain of Custody certificate?':'Does your company hold a valid ASC Chain of Custody certificate?'}]:[]),
     // ISSF PVR — relevant for all roles in tuna supply chains; rephrase for non-vessel-owning roles
@@ -5095,37 +5116,35 @@ function setTSZone(stKey,zone){kResp[`_tsZone_${stKey}`]=zone;renderKDE();}
 function setSRTransport(stKey,transport){kResp[`_srTransport_${stKey}`]=transport;renderKDE();}
 // Special KDE renderer for c_msc — includes fishery picker
 function renderMSCFisheryKDE(q){
-  const r=kResp[q.id]||{};const evs=r.evidence||[];
+  if(q._nonScoring)return renderMSCFisheryKDE(q);
+    const r=kResp[q.id]||{};const evs=r.evidence||[];
   const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};
   const evChips=evs.map(e=>`<span class="ev-chip" onclick="openEvMod('${q.id}')">${evIcons[e.type]||'📎'} ${(e.name||e.value).slice(0,22)}</span>`).join('');
   const addChip=evs.length>0?`<span class="ev-add-chip ev-add-chip-done" onclick="openEvMod('${q.id}')">✓ ${evs.length} Evidence</span>`:`<span class="ev-add-chip" onclick="openEvMod('${q.id}')">+ Add Evidence</span>`;
   const showEv=r.ans==='av'||r.ans==='pa';
   const safeId=q.id.replace(/[^a-zA-Z0-9]/g,'_');
   const safeQ=encodeURIComponent(q.q);
-  const selectedFishery=kResp['_fishery_c_msc'];
+  const selectedFishery=kResp['_selectedFisheries']?.[0]||kResp['_fishery_c_msc']; // multi-fishery
   return `<div class="kq kde-card ${r.ans?'done':''}" id="kq${safeId}">
     <div style="display:flex;align-items:flex-start;gap:6px;">
       <div class="kqtxt" style="flex:1;">${q.q}</div>
       <button class="kde-ai-btn" onclick="openAIModal('${safeQ}')" title="What does this mean?">✦ Explain</button>
     </div>
-    <!-- Fishery Picker -->
+    <!-- Fishery multi-picker (for c_fisheries non-scoring KDE only) -->
     <div style="margin:8px 0;padding:10px 12px;background:#f0fdf4;border:1.5px solid #bbf7d0;border-radius:10px;">
-      <div style="font-size:10px;font-weight:700;color:#166534;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">🎣 Link MSC Fishery from Module</div>
+      <div style="font-size:10px;font-weight:700;color:#166534;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">🎣 Link Certified Fisheries</div>
+      <!-- Selected fisheries chips -->
+      ${(kResp['_selectedFisheries']||[]).length?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">${(kResp['_selectedFisheries']||[]).map(f=>`<span style="display:inline-flex;align-items:center;gap:5px;background:#dcfce7;border:1px solid #86efac;border-radius:6px;padding:3px 10px;font-size:11px;font-weight:600;color:#166534;">🎣 ${f.name}<span onclick="removeFishery('${f.id}')" style="cursor:pointer;color:#6b7280;font-size:13px;line-height:1;">×</span></span>`).join('')}</div>`:''}
+      <!-- Search input — always shown so they can add more -->
       <div class="fishery-picker-wrap">
-        ${selectedFishery?
-          `<div class="fishery-selected-chip">
-            🎣 ${selectedFishery.name}
-            <span class="fishery-selected-chip-x" onclick="clearFisheryPicker()">×</span>
-           </div>`
-        :`<input type="text" class="fishery-picker-input" id="fisheryPickerInput"
-            placeholder="Search MSC fishery by name or certificate code..."
-            oninput="searchFisheryPicker(this.value)"
-            onfocus="document.getElementById('fisheryPickerDd').style.display='block'"
-          />
-          <div class="fishery-picker-dd" id="fisheryPickerDd"></div>`
-        }
+        <input type="text" class="fishery-picker-input" id="fisheryPickerInput"
+          placeholder="Search fishery by name or certificate code..."
+          oninput="searchFisheryPicker(this.value)"
+          onfocus="document.getElementById('fisheryPickerDd').style.display='block'"
+        />
+        <div class="fishery-picker-dd" id="fisheryPickerDd"></div>
       </div>
-      ${kResp['_fisheryVerify_c_msc']?renderFisheryVerifyBanner():`<div style="font-size:10px;color:#9aa0b4;margin-top:5px;">Select a fishery to auto-verify MSC certification against your catch period(s)</div>`}
+      ${kResp['_fisheryVerify_c_msc']?renderFisheryVerifyBanner():`<div style="font-size:10px;color:#9aa0b4;margin-top:6px;">Add as many fisheries as needed. Certification periods will be checked against your catch dates.</div>`}
     </div>
     ${r.gapNote?`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 6px;padding:6px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:10px;color:#92400e;line-height:1.4;cursor:pointer;" onclick="openEvMod('${q.id}');setTimeout(()=>switchEvTab('add'),80)">
       <span style="display:flex;align-items:center;gap:5px;"><span>⚠</span><span>${r.gapNote}</span></span>
@@ -5281,7 +5300,7 @@ function renderNoteArea(qid,type,savedValue){
   // COMPOSER state — textarea + submit button
   const placeholder=type==='av'?'Add a note about this evidence (optional)...'
     :type==='pa'?'Describe what data you currently have...'
-    :'Explain why this is not available...';
+    :'Let us know the situation — we can help you work towards this...';
   const btnColor=type==='av'?'#16a34a':type==='pa'?'#f59e0b':'#e63946';
   const cls=type==='av'?'kpta av-note':type==='pa'?'kpta':'kpta un-note';
   return `<div class="knote-composer">
@@ -5326,7 +5345,7 @@ function editNote(qid,type){
   const currentVal=type==='av'?(r.avNote||''):type==='pa'?(r.note||''):(r.unNote||'');
   const placeholder=type==='av'?'Add a note about this evidence...'
     :type==='pa'?'Describe what data you currently have...'
-    :'Explain why this is not available...';
+    :'Let us know the situation — we can help you work towards this...';
   const btnColor=type==='av'?'#16a34a':type==='pa'?'#f59e0b':'#e63946';
   const cls=type==='av'?'kpta av-note':type==='pa'?'kpta':'kpta un-note';
   if(box)box.innerHTML='<div class="knote-composer"><textarea class="'+cls+'" rows="2" id="ta_'+areaId+'" placeholder="'+placeholder+'">'+currentVal+'</textarea><button class="knote-submit-btn" style="background:'+btnColor+';" onclick="submitNote(\''+qid+'\',\''+type+'\')">Save Changes</button></div>';
@@ -5535,7 +5554,7 @@ function getModulesForKDE(kdeId){
     'fv_dep_port':['port'],'fv_arr_port':['port'],
     'fv_coords':['vessel','port'],
     // Certifications — Company + Fishery
-    'c_msc':['fishery','company'],'c_asc':['company'],
+    'c_fisheries':['fishery'],'c_msc':['company'],'c_asc':['company'],
     'c_issf_pvr':['vessel'],'c_brc':['company'],'c_haccp':['company'],
     'c_iso':['company'],'c_eu':['company'],'c_audit':['company'],
     'c_recall':['company'],'c_digital':['company'],'c_interop':['company'],
@@ -7964,7 +7983,8 @@ function buildReview(){
       }
     });
     const stQs=allInstQs;let stScore=0,stMax=0;
-    stQs.forEach(q=>{const r=kResp[q.id]||{};if(r.ans){stMax+=50;const ov=rvOverrides[q.id];if(ov!==undefined)stScore+=Number(ov);else if(r.ans==='av')stScore+=0;else if(r.ans==='pa')stScore+=getPartialScore(q.id);else if(r.ans==='un')stScore+=50;}});
+    stQs.forEach(q=>{const r=kResp[q.id]||{};if(q._nonScoring)return; // non-scoring KDEs excluded
+    if(r.ans){stMax+=50;const ov=rvOverrides[q.id];if(ov!==undefined)stScore+=Number(ov);else if(r.ans==='av')stScore+=0;else if(r.ans==='pa')stScore+=getPartialScore(q.id);else if(r.ans==='un')stScore+=50;}});
     const stScoreLabel=stMax?`${stScore}`:null;
     html+=`<div class="rv-stage"><div class="rv-stage-hd" onclick="toggleStage(${si})"><div class="rv-stage-title">${st.i} ${st.t}</div><div style="display:flex;align-items:center;gap:10px;">${stScoreLabel!==null?`<div class="rv-stage-score">${stScoreLabel}</div>`:''}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9aa0b4" stroke-width="2.5" id="rv-chev-${si}"><polyline points="6 9 12 15 18 9"/></svg></div></div><div class="rv-stage-body" id="rv-body-${si}">`;
     if(!stQs.length)html+=`<div style="padding:14px 0;font-size:12px;color:#9aa0b4;">No questions for this stage.</div>`;
