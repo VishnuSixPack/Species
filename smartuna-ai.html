@@ -825,6 +825,15 @@ function findMentionedShipmentRef(question, summary, priorMessages) {
   return null;
 }
 
+// Tracks which shipment is currently "in focus" as actual conversation
+// state — not by re-scanning text. The text-scan fallback above only
+// works if the literal ref string shows up somewhere; but a reply like
+// "headed to Hamburg, Germany" describes the shipment by its route, not
+// its reference code, so there's nothing ref-shaped for the NEXT
+// question to find even though a specific shipment is still clearly
+// what's being discussed. This is what "remembering" actually requires.
+let lastDiscussedShipmentRef = null;
+
 /** Builds the shipment-data block appended to the system prompt for this one request. */
 async function buildShipmentContext(question, priorMessages) {
   try {
@@ -839,7 +848,12 @@ async function buildShipmentContext(question, priorMessages) {
     // benefit to the model.
     let block = `\n\nRECENT SHIPMENTS (${summary.length} most recent, summary level):\n${JSON.stringify(summary)}`;
 
-    const mentionedRef = findMentionedShipmentRef(question, summary, priorMessages);
+    let mentionedRef = findMentionedShipmentRef(question, summary, priorMessages);
+    if (mentionedRef) {
+      lastDiscussedShipmentRef = mentionedRef;
+    } else if (lastDiscussedShipmentRef) {
+      mentionedRef = lastDiscussedShipmentRef;
+    }
     if (mentionedRef) {
       const detail = await fetchShipmentDetail(mentionedRef);
       if (detail) {
@@ -925,6 +939,7 @@ function loadChat(i){
   const h=chatHistory[i];if(!h)return;
   currentChatId=i;
   messages=[...h.messages];
+  lastDiscussedShipmentRef=null;
   switchToChat();
   const el=document.getElementById('chatState');
   el.innerHTML='';
@@ -1083,7 +1098,7 @@ function addBubble(role,html){
 }
 
 function newChat(){
-  messages=[];currentChatId=null;
+  messages=[];currentChatId=null;lastDiscussedShipmentRef=null;
   const c=document.getElementById('chatState');
   const w=document.getElementById('welcomeState');
   const bar2=document.getElementById('chatInputBar');
