@@ -872,11 +872,11 @@ SHIPMENT DATA — GROUNDING RULES:
 Below your instructions, you may be given real shipment data pulled live from this organisation's own database — either a summary list of recent shipments, or full detail for one specific shipment, depending on what the question needs.
 When full detail is provided, it's assembled from several connected modules, not just the shipment record itself:
 - Each product line under "items" may carry a nested "product" object — the full product record (species, product form, allergens, packaging) — when that product exists in the Products module.
-- Each batch/lot under a product's "batches" is linked to either a Raw Materials record or a Catch Certificate record (see below), never a generic one.
+- Each batch/lot under a product's "batches" may carry a nested "raw_material" object — the full raw material record — when that lot is linked to one in the Raw Materials module.
 - Each entry under "vessels" may carry a nested "vessel_detail" object — the full vessel record — when that vessel is linked to one in the Vessels module.
 - The shipment itself, and each entry under "legs", may carry nested "origin_port" and "destination_port" objects — the full port record — when that leg is linked to one in the Ports module.
-- Each batch/lot's raw-material reference is EITHER a Raw Material record OR a Catch Certificate record, never both — check which of "raw_material" or "catch_certificate" is non-null on that batch, and cite whichever one is actually present.
-These nested objects can be missing or null even for a real shipment — that just means this particular line isn't linked to a record in that module, not that the data failed to load. Only mention a product, raw material, or vessel detail if it's actually present in the JSON given to you.
+- A top-level "catch_certificates" array lists every catch certificate linked directly to this shipment (not nested under any product or batch) — species, catch area, fishing gear, vessel, flag state, conservation measure references, export/import authorisation. Very relevant for IUU-related questions.
+These nested objects can be missing or null (or the catch_certificates array empty) even for a real shipment — that just means this particular line isn't linked to a record in that module, not that the data failed to load. Only mention a product, raw material, vessel detail, or catch certificate if it's actually present in the JSON given to you.
 - Treat all of this data as ground truth. Never invent a shipment reference, route, date, quantity, vessel name, species, allergen, or status that isn't in the data provided.
 - If the user asks about a shipment or figure that isn't present in the data given to you, say plainly that you don't have that record rather than guessing or estimating.
 - If only summary-level data was provided but the question needs batch/lot, product, or vessel detail, say the summary doesn't include that and suggest they open the shipment's own page for the full record.
@@ -955,16 +955,18 @@ RESPONSE STYLE:
         .from('shipments').select('*').eq('shipment_ref', shipmentRef).is('deleted_at', null).single();
       if (error || !s) return null;
 
-      const [{ data: items }, { data: batches }, legsRes, vesselsRes] = await Promise.all([
+      const [{ data: items }, { data: batches }, legsRes, vesselsRes, ccRes] = await Promise.all([
         dbClient.from('shipment_items').select('*').eq('shipment_id', s.id).order('line_no'),
         dbClient.from('shipment_batches').select('*').eq('shipment_id', s.id).order('line_no'),
         dbClient.from('shipment_legs').select('*').eq('shipment_id', s.id).order('leg_no').then(r => r).catch(() => ({ data: [] })),
         dbClient.from('shipment_vessels').select('*').eq('shipment_id', s.id).order('line_no').then(r => r).catch(() => ({ data: [] })),
+        dbClient.from('catch_certificates').select('*').eq('shipment_id', s.id).then(r => r).catch(() => ({ data: [] })),
       ]);
       const itemsArr = items || [];
       const batchesArr = batches || [];
       const legsArr = legsRes?.data || [];
       const vesselsArr = vesselsRes?.data || [];
+      const catchCertsArr = ccRes?.data || [];
 
       // ── Connected module: Products (high confidence — same schema used
       // elsewhere in this app, product-list.js / product-detail.js) ──
@@ -980,26 +982,19 @@ RESPONSE STYLE:
         } catch (e) { console.warn('[SmarTuna Assistant] Product enrichment failed:', e); }
       }
 
-      // ── Connected module: Raw Materials AND Catch Certificates ──────────
-      // A batch's raw_material_id can point to EITHER table, distinguished
-      // by its own ref_type ('rm' or 'cc') — confirmed from shipment-form.html's
-      // RM/CC toggle, which stores both kinds of reference in the same
-      // raw_material_id column. Querying only raw_materials would silently
-      // miss every batch that's actually a catch-certificate reference.
-      const rmIds = [...new Set(batchesArr.filter(b => b.ref_type !== 'cc' && b.raw_material_id).map(b => b.raw_material_id))];
-      const ccIds = [...new Set(batchesArr.filter(b => b.ref_type === 'cc' && b.raw_material_id).map(b => b.raw_material_id))];
-      let rawMaterialsById = {}, catchCertsById = {};
+      // ── Connected module: Raw Materials ──────────────────────────────────
+      // shipment_batches.raw_material_id always points to raw_materials —
+      // confirmed against the real schema. (An earlier version of this code
+      // branched on a batches.ref_type column to also check catch_certificates
+      // here, based on reading a form-local UI toggle; that column doesn't
+      // actually exist in the database, so that branch never did anything.)
+      const rmIds = [...new Set(batchesArr.map(b => b.raw_material_id).filter(Boolean))];
+      let rawMaterialsById = {};
       if (rmIds.length) {
         try {
           const { data: rms } = await dbClient.from('raw_materials').select('*').in('id', rmIds);
           (rms || []).forEach(r => { rawMaterialsById[r.id] = r; });
         } catch (e) { console.warn('[SmarTuna Assistant] Raw material enrichment failed:', e); }
-      }
-      if (ccIds.length) {
-        try {
-          const { data: ccs } = await dbClient.from('catch_certificates').select('*').in('id', ccIds);
-          (ccs || []).forEach(c => { catchCertsById[c.id] = c; });
-        } catch (e) { console.warn('[SmarTuna Assistant] Catch certificate enrichment failed:', e); }
       }
 
       // ── Connected module: Vessels ──────────────────────────────────────
@@ -1031,10 +1026,10 @@ RESPONSE STYLE:
 
       const byItem = {};
       batchesArr.forEach(b => {
-        const ref = b.ref_type === 'cc'
-          ? { raw_material: null, catch_certificate: catchCertsById[b.raw_material_id] || null }
-          : { raw_material: rawMaterialsById[b.raw_material_id] || null, catch_certificate: null };
-        (byItem[b.shipment_item_id] || (byItem[b.shipment_item_id] = [])).push({ ...b, ...ref });
+        (byItem[b.shipment_item_id] || (byItem[b.shipment_item_id] = [])).push({
+          ...b,
+          raw_material: b.raw_material_id ? (rawMaterialsById[b.raw_material_id] || null) : null,
+        });
       });
 
       return {
@@ -1055,6 +1050,10 @@ RESPONSE STYLE:
           ...v,
           vessel_detail: v.vessel_id ? (vesselsById[v.vessel_id] || null) : null,
         })),
+        // Catch certificates link directly to the shipment (catch_certificates.
+        // shipment_id), independent of the item/batch structure — confirmed
+        // from the real schema, not routed through batches at all.
+        catch_certificates: catchCertsArr,
       };
     }
 
@@ -1062,8 +1061,25 @@ RESPONSE STYLE:
     function findRefInText(text, summary) {
       const norm = normalizeRef(text);
       if (!norm) return null;
-      const hit = summary.find(row => row.shipment_ref && norm.includes(normalizeRef(row.shipment_ref)));
-      return hit ? hit.shipment_ref : null;
+
+      // Most precise match: the literal reference code, if it's there.
+      let hit = summary.find(row => row.shipment_ref && norm.includes(normalizeRef(row.shipment_ref)));
+      if (hit) return hit.shipment_ref;
+
+      // Real conversation names a shipment by its route, exporter, or
+      // product far more often than by reciting its reference code — "the
+      // one headed to Hamburg" needs to resolve just as well as the exact
+      // ref would. Length guard avoids a short/common substring (e.g. a
+      // 2-letter country code) causing a false match on unrelated text.
+      const fields = ['destination', 'destination_country', 'origin', 'exporter', 'products'];
+      for (const field of fields) {
+        hit = summary.find(row => {
+          const val = normalizeRef(row[field]);
+          return val && val.length > 3 && norm.includes(val);
+        });
+        if (hit) return hit.shipment_ref;
+      }
+      return null;
     }
     /**
      * Checks the current question first, then walks backwards through
