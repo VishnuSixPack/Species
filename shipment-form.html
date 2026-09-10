@@ -559,7 +559,7 @@ document.addEventListener('click', e=>{
   if(w && !w.contains(e.target)) $('avatarMenu')?.classList.remove('open');
 });
 function greetingTime(){ const h=new Date().getHours(); return h<12?'Good Morning':(h<18?'Good Afternoon':'Good Evening'); }
-async function handleLogout(){ if(dbClient) await dbClient.auth.signOut(); location.href='index.html'; }
+async function handleLogout(){ if(dbClient) await dbClient.auth.signOut(); location.href='login.html'; }
 function toggleAdd(){
   const c=$('addCard'), b=$('addBody'), open=b.style.display==='none';
   b.style.display=open?'block':'none';
@@ -1877,6 +1877,19 @@ async function save(){
       if(error) throw error; sid=data.id;
       EDIT_ID=sid; // so a retry does UPDATE not INSERT
     }
+    // When editing, clear old child records before re-inserting
+    if(EDIT_ID){
+      try{
+        var oldItems=await dbClient.from('shipment_items').select('id').eq('shipment_id',sid);
+        for(var oi of (oldItems.data||[])){
+          await dbClient.from('shipment_batches').delete().eq('shipment_item_id',oi.id);
+        }
+        await dbClient.from('shipment_items').delete().eq('shipment_id',sid);
+        await dbClient.from('shipment_vessels').delete().eq('shipment_id',sid);
+        await dbClient.from('shipment_legs').delete().eq('shipment_id',sid);
+      }catch(e){ console.warn('Cleanup:',e.message); }
+    }
+
     const legRows=LEGS.filter(l=>l.origin_name||l.destination_name).map((l,n)=>({
       shipment_id:sid, organisation_id:ORG_ID, leg_no:n+1,
       transport_mode:l.transport_mode||'Sea',
@@ -2022,5 +2035,3 @@ async function loadExisting(){
 </script>
 </body>
 </html>
-
-
