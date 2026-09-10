@@ -826,18 +826,22 @@ function findMentionedShipmentRef(question, summary, priorMessages) {
 /** Builds the shipment-data block appended to the system prompt for this one request. */
 async function buildShipmentContext(question, priorMessages) {
   try {
-    const summary = await fetchShipmentsSummary();
+    const summary = await fetchShipmentsSummary(30);
     if (!summary.length) {
       return '\n\nSHIPMENT DATA: This organisation has no shipment records yet.';
     }
 
-    let block = `\n\nRECENT SHIPMENTS (${summary.length} most recent, summary level):\n${JSON.stringify(summary, null, 2)}`;
+    // Compact JSON, not pretty-printed — this block is rebuilt fresh on
+    // every single turn, so the ~30% overhead from 2-space indentation
+    // was being paid again and again through a conversation for no
+    // benefit to the model.
+    let block = `\n\nRECENT SHIPMENTS (${summary.length} most recent, summary level):\n${JSON.stringify(summary)}`;
 
     const mentionedRef = findMentionedShipmentRef(question, summary, priorMessages);
     if (mentionedRef) {
       const detail = await fetchShipmentDetail(mentionedRef);
       if (detail) {
-        block += `\n\nFULL DETAIL FOR SHIPMENT ${mentionedRef} (this is the authoritative record — products, batches/lots, transport legs, vessels):\n${JSON.stringify(detail, null, 2)}`;
+        block += `\n\nFULL DETAIL FOR SHIPMENT ${mentionedRef} (this is the authoritative record — products, batches/lots, transport legs, vessels):\n${JSON.stringify(detail)}`;
       }
     }
 
@@ -992,7 +996,16 @@ async function chat(text){
     // `messages` lets a bare follow-up ("vessel name?") still resolve to
     // whichever shipment the conversation already established, instead of
     // only ever detecting a ref when it's repeated in the exact same turn.
-    const shipmentContext = await buildShipmentContext(text, messages);
+    //
+    // sendHistory caps what actually goes to Groq — a long conversation
+    // plus a fresh shipment-data block on every turn is exactly what
+    // pushed a real question past the model's context limit ("Please
+    // reduce the length of the messages or completion"), so only the
+    // most recent turns are sent; findMentionedShipmentRef still gets
+    // enough of them to resolve a same-topic follow-up correctly.
+    const HISTORY_TURNS_TO_SEND = 8;
+    const sendHistory = messages.slice(-HISTORY_TURNS_TO_SEND * 2);
+    const shipmentContext = await buildShipmentContext(text, sendHistory);
 
     const res=await fetch('https://api.groq.com/openai/v1/chat/completions',{
       method:'POST',
@@ -1000,7 +1013,7 @@ async function chat(text){
       body:JSON.stringify({
         model:'openai/gpt-oss-120b',
         max_tokens:2048,
-        messages:[{role:'system',content:SYSTEM+shipmentContext},...messages]
+        messages:[{role:'system',content:SYSTEM+shipmentContext},...sendHistory]
       })
     });
     const data=await res.json();
