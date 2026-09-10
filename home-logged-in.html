@@ -111,6 +111,15 @@
     .greeting-name{font-size:24px;font-weight:800;color:var(--text);letter-spacing:-0.5px;line-height:1.15;}
     .greeting-fact{font-size:12px;color:#9aa0b4;margin-top:7px;font-weight:400;max-width:640px;line-height:1.6;transition:opacity 0.4s;}
 
+    /* ── DEMO MODE ──
+       Toggle via the DEMO_MODE constant near the top of the script below.
+       Hides the greeting (real name) and every dashboard tile (mix of
+       real and placeholder data) for a clean shell during a live demo,
+       while leaving the topbar, sidebar and AI assistant untouched.
+       Flip DEMO_MODE back to false to restore everything instantly. */
+    body.demo-mode .greeting,
+    body.demo-mode .tiles{display:none!important;}
+
     /* ── TILES ── */
     .tiles{
       display:grid;
@@ -653,6 +662,12 @@
   }
   </script>
   <script>
+    // ── DEMO MODE ──
+    // Set to false to restore the dashboard tiles and greeting once the
+    // demo is done — this is the only line that needs to change.
+    const DEMO_MODE = true;
+    if (DEMO_MODE) document.body.classList.add('demo-mode');
+
     const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
     const SUPABASE_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
     const dbClient = window.supabase
@@ -1042,21 +1057,38 @@ RESPONSE STYLE:
     }
 
     function normalizeRef(str) { return (str || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
-    function findMentionedShipmentRef(question, summary) {
-      const qNorm = normalizeRef(question);
-      if (!qNorm) return null;
-      const hit = summary.find(row => row.shipment_ref && qNorm.includes(normalizeRef(row.shipment_ref)));
+    function findRefInText(text, summary) {
+      const norm = normalizeRef(text);
+      if (!norm) return null;
+      const hit = summary.find(row => row.shipment_ref && norm.includes(normalizeRef(row.shipment_ref)));
       return hit ? hit.shipment_ref : null;
     }
+    /**
+     * Checks the current question first, then walks backwards through
+     * recent conversation history — a bare follow-up like "vessel name"
+     * never repeats the ref itself, it relies on the conversation already
+     * having established which shipment is meant.
+     */
+    function findMentionedShipmentRef(question, summary, priorMessages) {
+      const direct = findRefInText(question, summary);
+      if (direct) return direct;
+      if (priorMessages && priorMessages.length) {
+        for (let i = priorMessages.length - 1; i >= 0; i--) {
+          const hit = findRefInText(priorMessages[i]?.content, summary);
+          if (hit) return hit;
+        }
+      }
+      return null;
+    }
 
-    async function buildShipmentContext(question) {
+    async function buildShipmentContext(question, priorMessages) {
       try {
         const summary = await fetchShipmentsSummary();
         if (!summary.length) return '\n\nSHIPMENT DATA: This organisation has no shipment records yet.';
 
         let block = `\n\nRECENT SHIPMENTS (${summary.length} most recent, summary level):\n${JSON.stringify(summary, null, 2)}`;
 
-        const mentionedRef = findMentionedShipmentRef(question, summary);
+        const mentionedRef = findMentionedShipmentRef(question, summary, priorMessages);
         if (mentionedRef) {
           const detail = await fetchShipmentDetail(mentionedRef);
           if (detail) {
@@ -1070,8 +1102,16 @@ RESPONSE STYLE:
       }
     }
 
+    // Real conversation history for the dashboard widget — previously
+    // every call to dashboardAskAI sent only the current question, with
+    // zero memory of earlier turns, so a follow-up question had nothing
+    // for findMentionedShipmentRef to fall back to in the first place.
+    let dashboardMessages = [];
+
     async function dashboardAskAI(question, productData){
-      const shipmentContext = await buildShipmentContext(question);
+      dashboardMessages.push({ role: 'user', content: question });
+
+      const shipmentContext = await buildShipmentContext(question, dashboardMessages);
 
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
@@ -1081,7 +1121,7 @@ RESPONSE STYLE:
           max_tokens: 1024,
           messages: [
             { role: 'system', content: DASHBOARD_SYSTEM + shipmentContext },
-            { role: 'user', content: question },
+            ...dashboardMessages,
           ],
         }),
       });
@@ -1099,6 +1139,7 @@ RESPONSE STYLE:
         throw new Error('Response had no message content');
       }
 
+      dashboardMessages.push({ role: 'assistant', content: reply });
       return reply;
     }
 
@@ -1110,6 +1151,15 @@ RESPONSE STYLE:
         greeting: `Hi ${firstName||''}! Ask about your risk score, flagged vessels, shipments, or anything on this dashboard.`,
       });
       window.mhAssistant.init();
+
+      // Keep dashboardMessages in sync with the widget's own "New Chat"
+      // button — otherwise it resets the visible thread while Groq keeps
+      // silently receiving the old conversation underneath.
+      const originalNewChat = window.mhAssistant.newChat.bind(window.mhAssistant);
+      window.mhAssistant.newChat = function(){
+        dashboardMessages = [];
+        originalNewChat();
+      };
     }
 
     // ── SHIPMENTS OVERVIEW ──
