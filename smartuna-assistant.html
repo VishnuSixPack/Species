@@ -492,7 +492,8 @@ RESPONSE STYLE:
           const { data: products } = await dbClient
             .from('products')
             .select('*, product_allergens(allergen_label,containment_level), species:species_id(species_name,scientific_name,afsis_3a_code)')
-            .in('id', productIds);
+            .in('id', productIds)
+            .is('deleted_at', null);
           (products || []).forEach(p => { productsById[p.id] = p; });
         } catch (e) { console.warn('[SmarTuna Assistant] Product enrichment failed:', e); }
       }
@@ -505,7 +506,7 @@ RESPONSE STYLE:
           // flow_json (jsonb) and notes_html field that could be
           // arbitrarily large and aren't needed to answer a shipment
           // question.
-          const { data: rms } = await dbClient.from('raw_materials').select('id,rm_ref,name,species_name,scientific_name,afsis_3a_code,source_type,product_form,preservation,supplier_name,origin_country,quantity_kg,net_quantity_kg,received_date,farm_name,farm_location,production_method,harvest_date,feed_type,certifications,coc_code,catch_certificate_no,iuu_checked,iuu_checked_at,status,fishery_scheme,fishery_name,fishery_ref,fao_areas,certifying_authority,unit,supplier_type,transformed,transformation_type,transformation_vessel').in('id', rmIds);
+          const { data: rms } = await dbClient.from('raw_materials').select('id,rm_ref,name,species_name,scientific_name,afsis_3a_code,source_type,product_form,preservation,supplier_name,origin_country,quantity_kg,net_quantity_kg,received_date,farm_name,farm_location,production_method,harvest_date,feed_type,certifications,coc_code,catch_certificate_no,iuu_checked,iuu_checked_at,status,fishery_scheme,fishery_name,fishery_ref,fao_areas,certifying_authority,unit,supplier_type,transformed,transformation_type,transformation_vessel').in('id', rmIds).is('deleted_at', null);
           (rms || []).forEach(r => { rawMaterialsById[r.id] = r; });
         } catch (e) { console.warn('[SmarTuna Assistant] Raw material enrichment failed:', e); }
       }
