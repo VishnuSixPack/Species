@@ -854,7 +854,7 @@ const DASHBOARD_SYSTEM=`You are SmarTuna A.I, a specialist assistant on the Smar
 
 EXPERTISE: IUU fishing (detection, flag states, PSMA, blacklists); GDST/KDEs/CTEs traceability; EU IUU Regulation catch certificates; US SIMP/FSMA 204; MSC/ASC Chain of Custody; RFMOs (WCPFC/ICCAT/IOTC/CCAMLR); AIS/VMS vessel tracking; aquaculture traceability; SRI risk scoring; ILO C188/FISH labour welfare; HACCP/BRC/ISO 22000/EU 853 food safety; species/FAO zones/gear types; general seafood industry knowledge; and this organisation's own shipment records (routes, mode, status, products, batches, vessels, dates).
 
-SHIPMENT DATA: You may be given a summary of recent shipments and/or full detail for one specific shipment, live from this organisation's database. In full detail: "product" nests on each item (species/allergens/packaging); "raw_material" on each batch, which itself nests two things — a "catch_certificates" array (the formal certificate document: species, catch area, gear, vessel, flag state, conservation refs) and a "catches" array (the actual catch event(s): vessel_id/vessel_name/imo/flag_state, fao_area, gear_type, catch_date_from/catch_date_to, landing_port_name/landing_date, transshipment detail, species_caught, and a nested "vessel_compliance" object — see COMPLIANCE REASONING below). For ANY question involving a catch date, date range, or "when was this caught" — use catch_date_from/catch_date_to on the catch event, NOT the raw material's own harvest_date, which is a different, less precise field. A raw material can have more than one catch event. "vessel_detail" nests on each shipment-level vessel entry; "origin_port"/"destination_port" on the shipment and each leg. A missing/null field means that line isn't linked in that module, not a data failure. Large shipments may show only some of their items/batches/vessels/catch_certificates for length — "item_count"/"batch_count"/"vessel_count"/"catch_certificate_count" give the true totals even when the array itself is shorter; use the count for "how many", and mention more exist beyond what's shown if directly relevant. Treat this as ground truth — never invent a ref, route, date, quantity, vessel, species, allergen, or status. If asked about something not in the data given, say so plainly rather than guessing. If only summary data was given but the question needs full detail, say so and suggest opening the shipment's page. Base totals only on records actually provided.
+SHIPMENT DATA: You may be given a summary of recent shipments, full detail for one specific shipment, or full detail for SEVERAL shipments at once under a "SHIPMENTS MATCHING THE VESSEL NAMED IN THE QUESTION" heading (when the question named a fishing or transport vessel rather than a shipment reference — resolved by tracing that vessel's catch or transport records back to whichever shipment(s) it feeds). When several shipments are given this way, treat each as a full, separate record — if asked for a total (volume, packages, weight), sum the relevant figures across ALL of them and say how many shipments that total spans, don't just answer from the first one. Live from this organisation's database. In full detail: "product" nests on each item (species/allergens/packaging); "raw_material" on each batch, which itself nests two things — a "catch_certificates" array (the formal certificate document: species, catch area, gear, vessel, flag state, conservation refs) and a "catches" array (the actual catch event(s): vessel_id/vessel_name/imo/flag_state, fao_area, gear_type, catch_date_from/catch_date_to, landing_port_name/landing_date, transshipment detail, species_caught, and a nested "vessel_compliance" object — see COMPLIANCE REASONING below). For ANY question involving a catch date, date range, or "when was this caught" — use catch_date_from/catch_date_to on the catch event, NOT the raw material's own harvest_date, which is a different, less precise field. A raw material can have more than one catch event. "vessel_detail" nests on each shipment-level vessel entry; "origin_port"/"destination_port" on the shipment and each leg. A missing/null field means that line isn't linked in that module, not a data failure. Large shipments may show only some of their items/batches/vessels/catch_certificates for length — "item_count"/"batch_count"/"vessel_count"/"catch_certificate_count" give the true totals even when the array itself is shorter; use the count for "how many", and mention more exist beyond what's shown if directly relevant. Treat this as ground truth — never invent a ref, route, date, quantity, vessel, species, allergen, or status. If asked about something not in the data given, say so plainly rather than guessing. If only summary data was given but the question needs full detail, say so and suggest opening the shipment's page. Base totals only on records actually provided.
 
 COMPLIANCE REASONING — a catch event's "vessel_compliance" object has both a CURRENT snapshot (pna_vds_active, vds_valid_from/vds_valid_until, iuu_listed, rfmo_wcpfc/rfmo_iattc/rfmo_iotc/rfmo_iccat/rfmo_ccamlr/rfmo_neafc/rfmo_nafo booleans with their own auth_start/auth_end where applicable, eu_approved, msc_cert_status) AND historical period arrays (pna_vds_history, rfmo_history, iuu_history), each entry with its own validity window.
 - The current snapshot only reflects TODAY. For any question about a vessel's status AT THE TIME of a specific catch (e.g. "did the vessel have valid VDS during the catch", "was it IUU-listed when this was caught"), do NOT use the current snapshot fields — find the entry in the relevant history array whose period actually covers the catch's catch_date_from/catch_date_to (pna_vds_history: valid_from/valid_to; rfmo_history: auth_start/auth_end; iuu_history: date_listed/delisted_date, where a null delisted_date means still listed), and answer from that.
@@ -1249,6 +1249,58 @@ RESPONSE STYLE:
     // what's being discussed. This is what "remembering" actually requires.
     let lastDiscussedShipmentRef = null;
 
+    async function findShipmentRefsByVesselName(question, priorMessages) {
+      const combined = [question, ...(priorMessages || []).map(m => m?.content || '')].join(' ');
+      const qNorm = normalizeRef(combined);
+      if (!qNorm) return [];
+      try {
+        const [catchesRes, transportRes] = await Promise.all([
+          dbClient.from('raw_material_catches').select('raw_material_id,vessel_name').then(r => r).catch(() => ({ data: [] })),
+          dbClient.from('shipment_vessels').select('shipment_id,vessel_name').then(r => r).catch(() => ({ data: [] })),
+        ]);
+        const matchedRmIds = new Set();
+        (catchesRes.data || []).forEach(c => {
+          const vNorm = normalizeRef(c.vessel_name);
+          if (vNorm && vNorm.length > 3 && qNorm.includes(vNorm)) matchedRmIds.add(c.raw_material_id);
+        });
+        const shipmentIds = new Set();
+        (transportRes.data || []).forEach(v => {
+          const vNorm = normalizeRef(v.vessel_name);
+          if (vNorm && vNorm.length > 3 && qNorm.includes(vNorm)) shipmentIds.add(v.shipment_id);
+        });
+        if (matchedRmIds.size) {
+          const { data: batches } = await dbClient.from('shipment_batches').select('shipment_id').in('raw_material_id', [...matchedRmIds]);
+          (batches || []).forEach(b => shipmentIds.add(b.shipment_id));
+        }
+        if (!shipmentIds.size) return [];
+        const { data: shipments } = await dbClient.from('shipments').select('shipment_ref').in('id', [...shipmentIds]).is('deleted_at', null);
+        return (shipments || []).map(s => s.shipment_ref).filter(Boolean);
+      } catch (e) {
+        console.warn('[SmarTuna Assistant] Vessel-name shipment lookup failed:', e);
+        return [];
+      }
+    }
+
+    function lightenShipmentDetail(detail) {
+      return {
+        shipment_ref: detail.shipment_ref, status: detail.status,
+        transport_mode: detail.transport_mode,
+        origin_name: detail.origin_name, destination_name: detail.destination_name,
+        departure_date: detail.departure_date, arrival_date: detail.arrival_date,
+        container_discharge_date: detail.container_discharge_date,
+        container_no: detail.container_no, seal_number: detail.seal_number,
+        exporter_name: detail.exporter_name, importer_name: detail.importer_name,
+        items: (detail.items || []).map(it => ({
+          product_name: it.product_name, species_name: it.species_name, brand: it.product?.brand,
+          number_of_packages: it.number_of_packages, net_weight_kg: it.net_weight_kg,
+          batch_lots: (it.batches || []).map(b => b.batch_lot).filter(Boolean),
+        })),
+        vessels: (detail.vessels || []).map(v => ({ role: v.role, vessel_name: v.vessel_name, imo: v.imo })),
+        catch_certificate_refs: (detail.catch_certificates || []).map(c => c.cc_ref).filter(Boolean),
+        eu_catch_readiness: detail.eu_catch_readiness,
+      };
+    }
+
     // Hard ceiling — regardless of WHAT causes a shipment record to be huge
     // (a large jsonb field, a rich-text notes field, many batches/products,
     // anything not anticipated by testing with small sample data), this
@@ -1260,22 +1312,7 @@ RESPONSE STYLE:
     const MAX_SHIPMENT_BLOCK_CHARS = 8000; // static prompt is now ~3.7k chars (measured), leaving real room for genuine detail before this needs to engage
     function capShipmentBlockSize(block, detail, mentionedRef) {
       if (block.length <= MAX_SHIPMENT_BLOCK_CHARS) return block;
-      const light = {
-        shipment_ref: detail.shipment_ref, status: detail.status,
-        transport_mode: detail.transport_mode,
-        origin_name: detail.origin_name, destination_name: detail.destination_name,
-        departure_date: detail.departure_date, arrival_date: detail.arrival_date,
-        container_discharge_date: detail.container_discharge_date,
-        container_no: detail.container_no, seal_number: detail.seal_number,
-        exporter_name: detail.exporter_name, importer_name: detail.importer_name,
-        items: (detail.items || []).map(it => ({
-          product_name: it.product_name, species_name: it.species_name,
-          number_of_packages: it.number_of_packages, net_weight_kg: it.net_weight_kg,
-          batch_lots: (it.batches || []).map(b => b.batch_lot).filter(Boolean),
-        })),
-        vessels: (detail.vessels || []).map(v => ({ role: v.role, vessel_name: v.vessel_name, imo: v.imo })),
-        catch_certificate_refs: (detail.catch_certificates || []).map(c => c.cc_ref).filter(Boolean),
-      };
+      const light = lightenShipmentDetail(detail);
       return `\n\nFULL DETAIL FOR SHIPMENT ${mentionedRef} (one or more fields on this record were unusually large, so this is a trimmed core summary rather than the complete record — ask about a specific named product, vessel, or batch for anything not shown here):\n${JSON.stringify(light)}`;
     }
 
@@ -1285,10 +1322,32 @@ RESPONSE STYLE:
         if (!summary.length) return '\n\nSHIPMENT DATA: This organisation has no shipment records yet.';
 
         let mentionedRef = findMentionedShipmentRef(question, summary, priorMessages);
+        let vesselMatchedRefs = [];
+        if (!mentionedRef) {
+          vesselMatchedRefs = await findShipmentRefsByVesselName(question, priorMessages);
+        }
+
         if (mentionedRef) {
           lastDiscussedShipmentRef = mentionedRef;
+        } else if (vesselMatchedRefs.length) {
+          lastDiscussedShipmentRef = vesselMatchedRefs[0];
         } else if (lastDiscussedShipmentRef) {
           mentionedRef = lastDiscussedShipmentRef;
+        }
+
+        if (vesselMatchedRefs.length) {
+          const MAX_VESSEL_MATCHES = 3;
+          const refsToFetch = vesselMatchedRefs.slice(0, MAX_VESSEL_MATCHES);
+          const details = (await Promise.all(refsToFetch.map(r => fetchShipmentDetail(r)))).filter(Boolean);
+          if (details.length) {
+            let block = `\n\nSHIPMENTS MATCHING THE VESSEL NAMED IN THE QUESTION (${details.length} found${vesselMatchedRefs.length > MAX_VESSEL_MATCHES ? `, showing first ${MAX_VESSEL_MATCHES} of ${vesselMatchedRefs.length}` : ''}):`;
+            details.forEach(d => { block += `\n\nFULL DETAIL FOR SHIPMENT ${d.shipment_ref}:\n${JSON.stringify(d)}`; });
+            if (block.length > MAX_SHIPMENT_BLOCK_CHARS) {
+              block = `\n\nSHIPMENTS MATCHING THE VESSEL NAMED IN THE QUESTION (${details.length} found, trimmed for length):`;
+              details.forEach(d => { block += `\n\n${JSON.stringify(lightenShipmentDetail(d))}`; });
+            }
+            return block;
+          }
         }
 
         if (mentionedRef) {
