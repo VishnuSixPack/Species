@@ -1247,7 +1247,21 @@ RESPONSE STYLE:
     // its reference code, so there's nothing ref-shaped for the NEXT
     // question to find even though a specific shipment is still clearly
     // what's being discussed. This is what "remembering" actually requires.
-    let lastDiscussedShipmentRef = null;
+    // Persisted to sessionStorage, same key as every SmarTuna surface —
+    // survives a reload within the tab, and navigating between surfaces
+    // (dashboard/chat/voice page) in the SAME tab shares this context too,
+    // since sessionStorage is scoped per origin+tab, not per page.
+    const LDSR_KEY = 'smartuna_last_shipment_ref';
+    let lastDiscussedShipmentRef = (function () {
+      try { return sessionStorage.getItem(LDSR_KEY) || null; } catch (e) { return null; }
+    })();
+    function setLastDiscussedShipmentRef(ref) {
+      lastDiscussedShipmentRef = ref;
+      try {
+        if (ref) sessionStorage.setItem(LDSR_KEY, ref);
+        else sessionStorage.removeItem(LDSR_KEY);
+      } catch (e) { /* sessionStorage unavailable — falls back to in-memory only */ }
+    }
 
     async function findShipmentRefsByVesselName(question, priorMessages) {
       const combined = [question, ...(priorMessages || []).map(m => m?.content || '')].join(' ');
@@ -1328,9 +1342,9 @@ RESPONSE STYLE:
         }
 
         if (mentionedRef) {
-          lastDiscussedShipmentRef = mentionedRef;
+          setLastDiscussedShipmentRef(mentionedRef);
         } else if (vesselMatchedRefs.length) {
-          lastDiscussedShipmentRef = vesselMatchedRefs[0];
+          setLastDiscussedShipmentRef(vesselMatchedRefs[0]);
         } else if (lastDiscussedShipmentRef) {
           mentionedRef = lastDiscussedShipmentRef;
         }
@@ -1451,7 +1465,7 @@ RESPONSE STYLE:
       const originalNewChat = window.mhAssistant.newChat.bind(window.mhAssistant);
       window.mhAssistant.newChat = function(){
         dashboardMessages = [];
-        lastDiscussedShipmentRef = null;
+        setLastDiscussedShipmentRef(null);
         originalNewChat();
       };
     }

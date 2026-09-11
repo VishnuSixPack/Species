@@ -1011,7 +1011,21 @@ function findMentionedShipmentRef(question, summary, priorMessages) {
 // its reference code, so there's nothing ref-shaped for the NEXT
 // question to find even though a specific shipment is still clearly
 // what's being discussed. This is what "remembering" actually requires.
-let lastDiscussedShipmentRef = null;
+// Persisted to sessionStorage — not just an in-memory variable — so a
+// page reload within the same browser tab doesn't silently drop which
+// shipment the conversation was about. Closing the tab entirely still
+// clears it, which is the right boundary: a new tab is a new session.
+const LDSR_KEY = 'smartuna_last_shipment_ref';
+let lastDiscussedShipmentRef = (function () {
+  try { return sessionStorage.getItem(LDSR_KEY) || null; } catch (e) { return null; }
+})();
+function setLastDiscussedShipmentRef(ref) {
+  lastDiscussedShipmentRef = ref;
+  try {
+    if (ref) sessionStorage.setItem(LDSR_KEY, ref);
+    else sessionStorage.removeItem(LDSR_KEY);
+  } catch (e) { /* sessionStorage unavailable — falls back to in-memory only */ }
+}
 
 /**
  * Reverse lookup: given a question that names a FISHING vessel (not a
@@ -1115,9 +1129,9 @@ async function buildShipmentContext(question, priorMessages) {
     }
 
     if (mentionedRef) {
-      lastDiscussedShipmentRef = mentionedRef;
+      setLastDiscussedShipmentRef(mentionedRef);
     } else if (vesselMatchedRefs.length) {
-      lastDiscussedShipmentRef = vesselMatchedRefs[0];
+      setLastDiscussedShipmentRef(vesselMatchedRefs[0]);
     } else if (lastDiscussedShipmentRef) {
       mentionedRef = lastDiscussedShipmentRef;
     }
@@ -1252,11 +1266,25 @@ function deleteChat(i){
   chatHistory.splice(i,1);saveHistory();renderHistory();
   if(currentChatId===i)newChat();
 }
-function loadChat(i){
+async function loadChat(i){
   const h=chatHistory[i];if(!h)return;
   currentChatId=i;
   messages=[...h.messages];
-  lastDiscussedShipmentRef=null;
+  // Re-derive from this chat's OWN history rather than blindly clearing —
+  // switching to a genuinely different chat should still lose the old
+  // shipment (correct), but re-opening the SAME earlier conversation
+  // about a shipment should not have to re-establish it from scratch.
+  try {
+    const summaryForReload = await fetchShipmentsSummary(30);
+    let derived = null;
+    for (let j = messages.length - 1; j >= 0; j--) {
+      const hit = findRefInText(messages[j]?.content, summaryForReload);
+      if (hit) { derived = hit; break; }
+    }
+    setLastDiscussedShipmentRef(derived);
+  } catch (e) {
+    setLastDiscussedShipmentRef(null);
+  }
   switchToChat();
   const el=document.getElementById('chatState');
   el.innerHTML='';
@@ -1415,7 +1443,7 @@ function addBubble(role,html){
 }
 
 function newChat(){
-  messages=[];currentChatId=null;lastDiscussedShipmentRef=null;
+  messages=[];currentChatId=null;setLastDiscussedShipmentRef(null);
   const c=document.getElementById('chatState');
   const w=document.getElementById('welcomeState');
   const bar2=document.getElementById('chatInputBar');
