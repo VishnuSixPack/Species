@@ -172,6 +172,27 @@ a{color:var(--primary)}
       padding: 4px 0 6px;
     }
     @media(max-width:600px){ .cert-detail-two-col { grid-template-columns:1fr; } }
+    
+    .detail-albums-grid { gap: 12px; }
+    .detail-album-card { border-radius:12px;overflow:hidden;border:1.5px solid var(--border);background:#fff;cursor:pointer;transition:transform .15s,box-shadow .15s; }
+    .detail-album-card:hover { transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.10); }
+    .detail-album-cover { width:100%;aspect-ratio:4/3;background:linear-gradient(135deg,#e8f0fe,#f0f4ff);overflow:hidden; }
+    .detail-album-cover img { width:100%;height:100%;object-fit:cover; }
+    .detail-album-cover-grid { display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;width:100%;height:100%;gap:2px; }
+    .detail-album-cover-grid img { width:100%;height:100%;object-fit:cover; }
+    .detail-album-info { padding:10px 12px 12px; }
+    .detail-album-name { font-size:13px;font-weight:700;color:#1a1a2e;font-family:'Poppins',sans-serif; }
+    .detail-album-count { font-size:11px;color:#9aa0b4;font-family:'Poppins',sans-serif;margin-top:2px; }
+    #detailAlbumLightbox { display:none;position:fixed;inset:0;background:rgba(10,12,30,0.92);z-index:800;flex-direction:column; }
+    #detailAlbumLightbox.open { display:flex; }
+    .lightbox-header { display:flex;align-items:center;gap:14px;padding:16px 24px;border-bottom:1px solid rgba(255,255,255,0.08); }
+    .lightbox-grid { flex:1;overflow-y:auto;padding:20px 24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px; }
+    .lightbox-img-item { aspect-ratio:1;border-radius:10px;overflow:hidden;cursor:pointer;transition:transform .15s; }
+    .lightbox-img-item:hover { transform:scale(1.03); }
+    .lightbox-img-item img { width:100%;height:100%;object-fit:cover; }
+    .lightbox-pdf-item { aspect-ratio:1;border-radius:10px;border:1.5px solid rgba(255,255,255,0.12);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;color:rgba(255,255,255,0.7);padding:8px;transition:background .15s; }
+    .lightbox-pdf-item:hover { background:rgba(255,255,255,0.06); }
+    .lightbox-pdf-item span { font-size:10px;font-family:'Poppins',sans-serif;font-weight:600;text-align:center;word-break:break-word; }
     </style>
 </head>
 <body>
@@ -306,6 +327,7 @@ function render(f, contacts, certs, grants, isAdmin){
   const customs = certs.filter(c=>c.cert_type==='Custom');
 
   $('content').innerHTML = `
+    ${f.cover_photo_url?`<div style="width:100%;height:220px;border-radius:14px;overflow:hidden;margin-bottom:20px;"><img src="${esc(f.cover_photo_url)}" style="width:100%;height:100%;object-fit:cover;" alt=""/></div>`:''}
     <div class="head">
       <div>
         <h1>${esc(f.name)}</h1>
@@ -335,7 +357,8 @@ function render(f, contacts, certs, grants, isAdmin){
       <div class="dl">
         <div><div class="term">Temperature range</div><div class="val">${temp?esc(temp):'<span class="muted">—</span>'}</div></div>
         <div><div class="term">Storage capacity</div><div class="val">${val(f.storage_capacity)}</div></div>
-        <div class="full"><div class="term">Remarks</div><div class="val">${val(f.remarks)}</div></div>
+        ${f.parent_company_name?`<div><div class="term">Parent Company</div><div class="val">${esc(f.parent_company_name)}</div></div>`:''}
+        <div class="full"><div class="term">Additional Details</div><div class="val">${val(f.additional_details||f.remarks)}</div></div>
       </div>
     </div>
 
@@ -418,6 +441,11 @@ function render(f, contacts, certs, grants, isAdmin){
         </div>`).join('') : '<div class="muted">No organisations attached yet. Use Edit → “On behalf of” to grant access.</div>'}
     </div>`:''}
 
+    ${f.gallery_items?`
+    <div class="card">
+      <h2>Gallery</h2>
+      <div id="detailAlbumsGrid" class="albums-grid detail-albums-grid"></div>
+    </div>`:''}
     <div class="card">
       <h2>Inventory</h2>
       <div class="inv-teaser">
@@ -426,6 +454,10 @@ function render(f, contacts, certs, grants, isAdmin){
       </div>
     </div>
   `;
+  // Render gallery if present
+  if (f.gallery_items) {
+    try { renderDetailAlbums(JSON.parse(f.gallery_items)); } catch(e) {}
+  }
 }
 
 /* ---- shared nav behaviour ---- */
@@ -442,6 +474,60 @@ function applyAvatar(p, email){
   const g=document.getElementById('avatarGreeting'); if(g) g.textContent=`Hello, ${first}!`;
 }
 
+
+function renderDetailAlbums(albums) {
+  const grid = document.getElementById('detailAlbumsGrid');
+  if (!grid || !albums.length) return;
+  const albumsJson = JSON.stringify(albums).replace(/'/g,"&#39;").replace(/\\/g,"\\\\").replace(/`/g,"\\`");
+  grid.innerHTML = albums.map(album => {
+    const imgs = album.items.filter(i => i.type === 'image');
+    let cover = '';
+    if (imgs.length >= 4) {
+      cover = '<div class="detail-album-cover-grid">' + imgs.slice(0,4).map(i=>'<img src="'+i.url+'" loading="lazy"/>').join('') + '</div>';
+    } else if (imgs.length > 0) {
+      cover = '<img src="'+imgs[0].url+'" style="width:100%;height:100%;object-fit:cover;"/>';
+    } else {
+      cover = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#b0b6c4;"><svg width=28 height=28 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x=2 y=7 width=20 height=14 rx=2/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg></div>';
+    }
+    const count = album.items.length;
+    return '<div class="detail-album-card" onclick="openDetailAlbum(\'' + album.id + '\')">'
+      + '<div class="detail-album-cover">' + cover + '</div>'
+      + '<div class="detail-album-info"><div class="detail-album-name">' + album.name + '</div>'
+      + '<div class="detail-album-count">' + count + ' item' + (count!==1?'s':'') + '</div></div></div>';
+  }).join('');
+  // store albums for lightbox
+  window._detailAlbums = albums;
+  // inject lightbox once
+  if (!document.getElementById('detailAlbumLightbox')) {
+    const lb = document.createElement('div');
+    lb.id = 'detailAlbumLightbox';
+    lb.innerHTML = '<div class="lightbox-header"><button onclick="closeDetailAlbum()" style="width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;"><svg width=14 height=14 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg></button><div style="font-size:15px;font-weight:700;color:#fff;" id="lbAlbumName"></div><div style="font-size:12px;color:rgba(255,255,255,0.5);margin-left:8px;" id="lbAlbumCount"></div></div><div class="lightbox-grid" id="lbGrid"></div>';
+    document.body.appendChild(lb);
+  }
+}
+
+function openDetailAlbum(albumId) {
+  const album = (window._detailAlbums||[]).find(a => a.id === albumId);
+  if (!album) return;
+  document.getElementById('lbAlbumName').textContent = album.name;
+  document.getElementById('lbAlbumCount').textContent = album.items.length + ' items';
+  document.getElementById('lbGrid').innerHTML = album.items.map(item =>
+    item.type === 'pdf'
+      ? '<div class="lightbox-pdf-item" onclick="window.open(\''+item.url+'\',\'_blank\')"><svg width=28 height=28 viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>'+item.name.replace(/\.pdf$/i,'')+'</span></div>'
+      : '<div class="lightbox-img-item" onclick="window.open(\''+item.url+'\',\'_blank\')"><img src="'+item.url+'" loading="lazy"/></div>'
+  ).join('');
+  document.getElementById('detailAlbumLightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDetailAlbum() {
+  document.getElementById('detailAlbumLightbox').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeDetailAlbum();
+});
 </script>
 </body>
 </html>
