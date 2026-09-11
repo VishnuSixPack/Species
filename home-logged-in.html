@@ -854,7 +854,7 @@ const DASHBOARD_SYSTEM=`You are SmarTuna A.I, a specialist assistant on the Smar
 
 EXPERTISE: IUU fishing (detection, flag states, PSMA, blacklists); GDST/KDEs/CTEs traceability; EU IUU Regulation catch certificates; US SIMP/FSMA 204; MSC/ASC Chain of Custody; RFMOs (WCPFC/ICCAT/IOTC/CCAMLR); AIS/VMS vessel tracking; aquaculture traceability; SRI risk scoring; ILO C188/FISH labour welfare; HACCP/BRC/ISO 22000/EU 853 food safety; species/FAO zones/gear types; general seafood industry knowledge; and this organisation's own shipment records (routes, mode, status, products, batches, vessels, dates).
 
-SHIPMENT DATA: You may be given a summary of recent shipments and/or full detail for one specific shipment, live from this organisation's database. In full detail: "product" nests on each item (species/allergens/packaging); "raw_material" on each batch; "vessel_detail" on each vessel entry; "origin_port"/"destination_port" on the shipment and each leg; a top-level "catch_certificates" array (species, catch area, gear, vessel, flag state, conservation refs — relevant for IUU questions). A missing/null field means that line isn't linked in that module, not a data failure. Treat this as ground truth — never invent a ref, route, date, quantity, vessel, species, allergen, or status. If asked about something not in the data given, say so plainly rather than guessing. If only summary data was given but the question needs full detail, say so and suggest opening the shipment's page. Base totals only on records actually provided.
+SHIPMENT DATA: You may be given a summary of recent shipments and/or full detail for one specific shipment, live from this organisation's database. In full detail: "product" nests on each item (species/allergens/packaging); "raw_material" on each batch; "vessel_detail" on each vessel entry; "origin_port"/"destination_port" on the shipment and each leg; a top-level "catch_certificates" array (species, catch area, gear, vessel, flag state, conservation refs — relevant for IUU questions). A missing/null field means that line isn't linked in that module, not a data failure. Large shipments may show only some of their items/batches/vessels/catch_certificates for length — "item_count"/"batch_count"/"vessel_count"/"catch_certificate_count" give the true totals even when the array itself is shorter; use the count for "how many", and mention more exist beyond what's shown if directly relevant. Treat this as ground truth — never invent a ref, route, date, quantity, vessel, species, allergen, or status. If asked about something not in the data given, say so plainly rather than guessing. If only summary data was given but the question needs full detail, say so and suggest opening the shipment's page. Base totals only on records actually provided.
 
 TERMINOLOGY — map terms to the real field, never give a textbook definition instead of checking the data:
 - "ETA"/"estimated arrival"/bare "arrival date" → arrival_date (an ESTIMATE, not confirmed arrival). Label it: "The shipment is expected to arrive at [destination] on [date]."
@@ -956,7 +956,12 @@ RESPONSE STYLE:
       let rawMaterialsById = {};
       if (rmIds.length) {
         try {
-          const { data: rms } = await dbClient.from('raw_materials').select('*').in('id', rmIds);
+          // Explicit column list, not select('*') — raw_materials has a
+          // flow_json (jsonb) and notes_html field that could be
+          // arbitrarily large and aren't needed to answer a shipment
+          // question; fetching them blind was a likely real contributor
+          // to oversized requests that small test data never surfaced.
+          const { data: rms } = await dbClient.from('raw_materials').select('id,rm_ref,name,species_name,scientific_name,afsis_3a_code,source_type,product_form,preservation,supplier_name,origin_country,quantity_kg,net_quantity_kg,received_date,farm_name,farm_location,production_method,harvest_date,feed_type,certifications,coc_code,catch_certificate_no,iuu_checked,iuu_checked_at,status,fishery_scheme,fishery_name,fishery_ref,fao_areas,certifying_authority,unit,supplier_type,transformed,transformation_type,transformation_vessel').in('id', rmIds);
           (rms || []).forEach(r => { rawMaterialsById[r.id] = r; });
         } catch (e) { console.warn('[SmarTuna Assistant] Raw material enrichment failed:', e); }
       }
@@ -996,28 +1001,44 @@ RESPONSE STYLE:
         });
       });
 
+      // Hard structural caps — a shipment with many products, each with
+      // many batches, several vessels and legs, can produce a full-detail
+      // payload far bigger than anything a small test case would predict.
+      // Real counts are preserved alongside the (possibly trimmed) arrays
+      // so the model always knows the true totals.
+      const cap = (arr, n) => arr.length > n ? arr.slice(0, n) : arr;
+      const MAX_ITEMS = 4, MAX_BATCHES_PER_ITEM = 2, MAX_VESSELS = 3, MAX_LEGS = 5, MAX_CC = 3;
+
       return {
         ...s,
         origin_port: portOf(s.origin_port_id),
         destination_port: portOf(s.destination_port_id),
-        items: itemsArr.map(it => ({
-          ...it,
-          product: it.product_id ? (productsById[it.product_id] || null) : null,
-          batches: byItem[it.id] || [],
-        })),
-        legs: legsArr.map(l => ({
+        item_count: itemsArr.length,
+        items: cap(itemsArr, MAX_ITEMS).map(it => {
+          const itBatches = byItem[it.id] || [];
+          return {
+            ...it,
+            product: it.product_id ? (productsById[it.product_id] || null) : null,
+            batch_count: itBatches.length,
+            batches: cap(itBatches, MAX_BATCHES_PER_ITEM),
+          };
+        }),
+        leg_count: legsArr.length,
+        legs: cap(legsArr, MAX_LEGS).map(l => ({
           ...l,
           origin_port: portOf(l.origin_port_id),
           destination_port: portOf(l.destination_port_id),
         })),
-        vessels: vesselsArr.map(v => ({
+        vessel_count: vesselsArr.length,
+        vessels: cap(vesselsArr, MAX_VESSELS).map(v => ({
           ...v,
           vessel_detail: v.vessel_id ? (vesselsById[v.vessel_id] || null) : null,
         })),
         // Catch certificates link directly to the shipment (catch_certificates.
         // shipment_id), independent of the item/batch structure — confirmed
         // from the real schema, not routed through batches at all.
-        catch_certificates: catchCertsArr,
+        catch_certificate_count: catchCertsArr.length,
+        catch_certificates: cap(catchCertsArr, MAX_CC),
       };
     }
 
@@ -1072,6 +1093,36 @@ RESPONSE STYLE:
     // what's being discussed. This is what "remembering" actually requires.
     let lastDiscussedShipmentRef = null;
 
+    // Hard ceiling — regardless of WHAT causes a shipment record to be huge
+    // (a large jsonb field, a rich-text notes field, many batches/products,
+    // anything not anticipated by testing with small sample data), this
+    // makes "the payload is too big" structurally impossible rather than
+    // something caught and trimmed after the fact each time it recurs in
+    // production. Rebuilds a small, clean summary from the SAME detail
+    // object rather than truncating raw JSON text, which could otherwise
+    // cut a string or object in half and hand the model broken JSON.
+    const MAX_SHIPMENT_BLOCK_CHARS = 5000;
+    function capShipmentBlockSize(block, detail, mentionedRef) {
+      if (block.length <= MAX_SHIPMENT_BLOCK_CHARS) return block;
+      const light = {
+        shipment_ref: detail.shipment_ref, status: detail.status,
+        transport_mode: detail.transport_mode,
+        origin_name: detail.origin_name, destination_name: detail.destination_name,
+        departure_date: detail.departure_date, arrival_date: detail.arrival_date,
+        container_discharge_date: detail.container_discharge_date,
+        container_no: detail.container_no, seal_number: detail.seal_number,
+        exporter_name: detail.exporter_name, importer_name: detail.importer_name,
+        items: (detail.items || []).map(it => ({
+          product_name: it.product_name, species_name: it.species_name,
+          number_of_packages: it.number_of_packages, net_weight_kg: it.net_weight_kg,
+          batch_lots: (it.batches || []).map(b => b.batch_lot).filter(Boolean),
+        })),
+        vessels: (detail.vessels || []).map(v => ({ role: v.role, vessel_name: v.vessel_name, imo: v.imo })),
+        catch_certificate_refs: (detail.catch_certificates || []).map(c => c.cc_ref).filter(Boolean),
+      };
+      return `\n\nFULL DETAIL FOR SHIPMENT ${mentionedRef} (one or more fields on this record were unusually large, so this is a trimmed core summary rather than the complete record — ask about a specific named product, vessel, or batch for anything not shown here):\n${JSON.stringify(light)}`;
+    }
+
     async function buildShipmentContext(question, priorMessages) {
       try {
         const summary = await fetchShipmentsSummary(30);
@@ -1099,13 +1150,21 @@ RESPONSE STYLE:
               ? `\n\nOTHER RECENT SHIPMENT REFERENCES (ask if detail on one of these is needed): ${JSON.stringify(otherRefs)}`
               : '';
             block += `\n\nFULL DETAIL FOR SHIPMENT ${mentionedRef}:\n${JSON.stringify(detail)}`;
+            block = capShipmentBlockSize(block, detail, mentionedRef);
             return block;
           }
         }
 
         // No specific shipment resolved — the broader summary is what's
-        // useful here. Compact JSON, not pretty-printed.
-        return `\n\nRECENT SHIPMENTS (${summary.length} most recent, summary level):\n${JSON.stringify(summary)}`;
+        // useful here. Compact JSON, not pretty-printed. Same hard
+        // ceiling applies if even the summary rows somehow serialise
+        // unusually large.
+        let summaryBlock = `\n\nRECENT SHIPMENTS (${summary.length} most recent, summary level):\n${JSON.stringify(summary)}`;
+        if (summaryBlock.length > MAX_SHIPMENT_BLOCK_CHARS) {
+          const fewer = summary.slice(0, 10);
+          summaryBlock = `\n\nRECENT SHIPMENTS (showing ${fewer.length} of ${summary.length} — trimmed for length, ask about a specific shipment for full detail):\n${JSON.stringify(fewer)}`;
+        }
+        return summaryBlock;
       } catch (e) {
         console.warn('[SmarTuna Assistant] Shipment context fetch failed:', e);
         return '\n\nSHIPMENT DATA: Could not be loaded for this question — answer without inventing shipment specifics, and mention the data was unavailable.';
