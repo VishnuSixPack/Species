@@ -1040,6 +1040,7 @@ function renderLegs(){
   document.querySelectorAll('[data-pp-origin]').forEach(el=>{
     const i=+el.dataset.ppOrigin;
     const cfg=LEG_MODES[LEGS[i].transport_mode]||LEG_MODES.Sea;
+    if(typeof PortPicker==='undefined') return;
     const pp=new PortPicker(el,{
       supabase:dbClient, label:cfg.origin,
       filterCountry:function(){return S.country_of_export||null;},
@@ -1052,6 +1053,7 @@ function renderLegs(){
   document.querySelectorAll('[data-pp-dest]').forEach(el=>{
     const i=+el.dataset.ppDest;
     const cfg=LEG_MODES[LEGS[i].transport_mode]||LEG_MODES.Sea;
+    if(typeof PortPicker==='undefined') return;
     const pp=new PortPicker(el,{
       supabase:dbClient, label:cfg.dest,
       filterCountry:function(){return S.destination_country||null;},
@@ -1074,6 +1076,7 @@ function renderLegs(){
     const from=vs[vi]?.vessel_name||vs[vi]?.role||'#'+(vi+1);
     const to=vs[vi+1]?.vessel_name||vs[vi+1]?.role||'#'+(vi+2);
     const tp=(l.transshipment_ports||[])[vi]||{};
+    if(typeof PortPicker==='undefined') return;
     const pp=new PortPicker(el,{
       supabase:dbClient, label:`${from} → ${to}`,
       onChange:val=>{
@@ -1380,18 +1383,7 @@ function banner(h){ $('banners').innerHTML=h?`<div class="banner">${h}</div>`:''
 /* =====================================================================
    AUTO REFERENCE
    ===================================================================== */
-async function generateRef(){
-  const y=new Date().getFullYear(), prefix=`EU-${y}-`;
-  let n=1;
-  if(dbClient){
-    try{
-      const {data}=await dbClient.from('shipments').select('shipment_ref')
-        .like('shipment_ref',prefix+'%').order('shipment_ref',{ascending:false}).limit(1);
-      if(data&&data[0]){ const m=String(data[0].shipment_ref).match(/(\d+)\s*$/); if(m) n=parseInt(m[1],10)+1; }
-    }catch(e){ console.warn('Could not read last reference:',e.message); }
-  }
-  return prefix+String(n).padStart(5,'0');
-}
+
 
 /* =====================================================================
    LOOKUPS
