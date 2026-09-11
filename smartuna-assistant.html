@@ -398,7 +398,16 @@
 
 EXPERTISE: IUU fishing (detection, flag states, PSMA, blacklists); GDST/KDEs/CTEs traceability; EU IUU Regulation catch certificates; US SIMP/FSMA 204; MSC/ASC Chain of Custody; RFMOs (WCPFC/ICCAT/IOTC/CCAMLR); AIS/VMS vessel tracking; aquaculture traceability; SRI risk scoring; ILO C188/FISH labour welfare; HACCP/BRC/ISO 22000/EU 853 food safety; species/FAO zones/gear types; general seafood industry knowledge; and this organisation's own shipment records (routes, mode, status, products, batches, vessels, dates).
 
-SHIPMENT DATA: You may be given a summary of recent shipments and/or full detail for one specific shipment, live from this organisation's database. In full detail: "product" nests on each item (species/allergens/packaging); "raw_material" on each batch; "vessel_detail" on each vessel entry; "origin_port"/"destination_port" on the shipment and each leg; a top-level "catch_certificates" array (species, catch area, gear, vessel, flag state, conservation refs — relevant for IUU questions). A missing/null field means that line isn't linked in that module, not a data failure. Large shipments may show only some of their items/batches/vessels/catch_certificates for length — "item_count"/"batch_count"/"vessel_count"/"catch_certificate_count" give the true totals even when the array itself is shorter; use the count for "how many", and mention more exist beyond what's shown if directly relevant. Treat this as ground truth — never invent a ref, route, date, quantity, vessel, species, allergen, or status. If asked about something not in the data given, say so plainly rather than guessing. If only summary data was given but the question needs full detail, say so and suggest opening the shipment's page. Base totals only on records actually provided.
+SHIPMENT DATA: You may be given a summary of recent shipments and/or full detail for one specific shipment, live from this organisation's database. In full detail: "product" nests on each item (species/allergens/packaging); "raw_material" on each batch, which itself nests two things — a "catch_certificates" array (the formal certificate document: species, catch area, gear, vessel, flag state, conservation refs) and a "catches" array (the actual catch event(s): vessel_id/vessel_name/imo/flag_state, fao_area, gear_type, catch_date_from/catch_date_to, landing_port_name/landing_date, transshipment detail, species_caught, and a nested "vessel_compliance" object — see COMPLIANCE REASONING below). For ANY question involving a catch date, date range, or "when was this caught" — use catch_date_from/catch_date_to on the catch event, NOT the raw material's own harvest_date, which is a different, less precise field. A raw material can have more than one catch event. "vessel_detail" nests on each shipment-level vessel entry; "origin_port"/"destination_port" on the shipment and each leg. A missing/null field means that line isn't linked in that module, not a data failure. Large shipments may show only some of their items/batches/vessels/catch_certificates for length — "item_count"/"batch_count"/"vessel_count"/"catch_certificate_count" give the true totals even when the array itself is shorter; use the count for "how many", and mention more exist beyond what's shown if directly relevant. Treat this as ground truth — never invent a ref, route, date, quantity, vessel, species, allergen, or status. If asked about something not in the data given, say so plainly rather than guessing. If only summary data was given but the question needs full detail, say so and suggest opening the shipment's page. Base totals only on records actually provided.
+
+COMPLIANCE REASONING — a catch event's "vessel_compliance" object has both a CURRENT snapshot (pna_vds_active, vds_valid_from/vds_valid_until, iuu_listed, rfmo_wcpfc/rfmo_iattc/rfmo_iotc/rfmo_iccat/rfmo_ccamlr/rfmo_neafc/rfmo_nafo booleans with their own auth_start/auth_end where applicable, eu_approved, msc_cert_status) AND historical period arrays (pna_vds_history, rfmo_history, iuu_history), each entry with its own validity window.
+- The current snapshot only reflects TODAY. For any question about a vessel's status AT THE TIME of a specific catch (e.g. "did the vessel have valid VDS during the catch", "was it IUU-listed when this was caught"), do NOT use the current snapshot fields — find the entry in the relevant history array whose period actually covers the catch's catch_date_from/catch_date_to (pna_vds_history: valid_from/valid_to; rfmo_history: auth_start/auth_end; iuu_history: date_listed/delisted_date, where a null delisted_date means still listed), and answer from that.
+- Always state both date ranges you're comparing — the catch period and the compliance period — so the answer is checkable, not just a bare yes/no.
+- If no history entry covers that catch period, say plainly that there's no compliance record covering that specific window, rather than falling back to the current snapshot as if it applied historically, and rather than guessing.
+- RFMO jurisdiction for a catch area not covered by an explicit boolean/history entry can be inferred from the FAO catch area using your own general knowledge (e.g. FAO 71 falls under WCPFC) — say when you're inferring rather than reading a stored value.
+- A raw material's own "iuu_checked" field (separate from vessel iuu_listed/iuu_history) is a recorded internal decision someone in this organisation made about the raw material, not a vessel-level registry check — keep these two distinct if both come up.
+
+EU CATCH READINESS — a shipment's "eu_catch_readiness" object mirrors the actual gates the EU Catch generation tool itself checks before it will produce a certificate — not a guess at what "ready" means. It has a "ready" boolean and a "checks" array, each with a check name, pass (true/false/null), and a short detail. If asked "is this shipment ready for EU Catch submission", walk through the checks that failed (pass: false) by name, using their detail — don't just give a bare yes/no. A null pass means that specific check couldn't be verified (e.g. no processing plant on file) — say so explicitly rather than treating it as a pass or a fail.
 
 TERMINOLOGY — map terms to the real field, never give a textbook definition instead of checking the data:
 - "ETA"/"estimated arrival"/bare "arrival date" → arrival_date (an ESTIMATE, not confirmed arrival). Label it: "The shipment is expected to arrive at [destination] on [date]."
@@ -460,7 +469,7 @@ RESPONSE STYLE:
 
     async function fetchShipmentDetail(shipmentRef) {
       const { data: s, error } = await dbClient
-        .from('shipments').select('*').eq('shipment_ref', shipmentRef).is('deleted_at', null).single();
+        .from('shipments').select('id,organisation_id,shipment_ref,shipment_date,shipment_type,transport_mode,status,exporter_name,exporter_org_id,country_of_export,destination_country,incoterms,origin_name,origin_port_id,transit_names,destination_name,destination_port_id,container_no,seal_number,vessel_name,voyage_no,bl_no,bl_issue_date,on_board_date,container_discharge_date,awb_no,airline,flight_no,awb_issue_date,cmr_no,vehicle_plate,trailer_plate,driver_name,transport_company,departure_date,arrival_date,processor_name,processor_org_id,processing_country,invoice_no,invoice_date,purchase_order_no,additional_notes,reefer_setpoint_c,inland_distance_km,cold_storage_days,load_type,consolidator,previous_shipment_id,previous_shipment_ref,importer_name,container_type,exporter_is_processor,deleted_at').eq('shipment_ref', shipmentRef).is('deleted_at', null).single();
       if (error || !s) return null;
 
       const [{ data: items }, { data: batches }, legsRes, vesselsRes, ccRes] = await Promise.all([
@@ -501,6 +510,59 @@ RESPONSE STYLE:
         } catch (e) { console.warn('[SmarTuna Assistant] Raw material enrichment failed:', e); }
       }
 
+      // ── Connected module: Raw Material Catch Events ──────────────────────
+      let catchesByRmId = {};
+      if (rmIds.length) {
+        try {
+          const { data: catches } = await dbClient.from('raw_material_catches').select('*').in('raw_material_id', rmIds);
+          const catchIds = (catches || []).map(c => c.id);
+          let speciesByCatchId = {};
+          if (catchIds.length) {
+            try {
+              const { data: speciesRows } = await dbClient.from('raw_material_catch_species').select('*').in('catch_event_id', catchIds);
+              (speciesRows || []).forEach(sp => {
+                (speciesByCatchId[sp.catch_event_id] || (speciesByCatchId[sp.catch_event_id] = [])).push(sp);
+              });
+            } catch (e) { console.warn('[SmarTuna Assistant] Catch species enrichment failed:', e); }
+          }
+          (catches || []).forEach(c => {
+            const withSpecies = { ...c, species_caught: speciesByCatchId[c.id] || [] };
+            (catchesByRmId[c.raw_material_id] || (catchesByRmId[c.raw_material_id] = [])).push(withSpecies);
+          });
+        } catch (e) { console.warn('[SmarTuna Assistant] Raw material catch event enrichment failed:', e); }
+      }
+
+      // ── Connected module: Vessel Compliance (PNA VDS, RFMO, IUU) ──────────
+      const catchVesselIds = [...new Set(
+        Object.values(catchesByRmId).flat().map(c => c.vessel_id).filter(Boolean)
+      )];
+      let vesselComplianceById = {};
+      if (catchVesselIds.length) {
+        try {
+          const { data: vs } = await dbClient.from('vessels').select('id,imo,mmsi,ircs,current_name,vessel_category,vessel_flag,port_of_registry,registration_number,iuu_listed,uk_approved,uk_auth_no,eu_approved,eu_approval_no,eu_publishing_date,ffa_good_standing,ffa_id,ffa_status,ffa_registration_date,ffa_registration_end,rfmo_wcpfc,wcpfc_vid,wcpfc_auth_no,wcpfc_auth_start,wcpfc_auth_end,wcpfc_auth_areas,rfmo_iattc,iattc_no,iattc_status,rfmo_iotc,rfmo_iccat,rfmo_ccamlr,rfmo_neafc,rfmo_nafo,rfmo_others,msc_fishery_participation,msc_fishery_name,msc_cert_status,pna_vds_active,vds_reg_no,vds_valid_from,vds_valid_until,pna_allocation,pna_status,fsma_vessel,fsma_ral_no,fsma_from,fsma_to').in('id', catchVesselIds);
+          const [vdsHistRes, rfmoHistRes, iuuHistRes] = await Promise.all([
+            dbClient.from('vessel_pna_vds_history').select('vessel_id,vds_no,vessel_flag,valid_from,valid_to').in('vessel_id', catchVesselIds).then(r => r).catch(() => ({ data: [] })),
+            dbClient.from('vessel_rfmo_history').select('vessel_id,rfmo_name,registration_no,auth_no,auth_start,auth_end').in('vessel_id', catchVesselIds).then(r => r).catch(() => ({ data: [] })),
+            dbClient.from('vessel_iuu_history').select('vessel_id,previously_listed,iuu_list_name,date_listed,delisted_date').in('vessel_id', catchVesselIds).then(r => r).catch(() => ({ data: [] })),
+          ]);
+          const vdsByVessel = {}, rfmoByVessel = {}, iuuByVessel = {};
+          (vdsHistRes.data || []).forEach(v => { (vdsByVessel[v.vessel_id] || (vdsByVessel[v.vessel_id] = [])).push(v); });
+          (rfmoHistRes.data || []).forEach(v => { (rfmoByVessel[v.vessel_id] || (rfmoByVessel[v.vessel_id] = [])).push(v); });
+          (iuuHistRes.data || []).forEach(v => { (iuuByVessel[v.vessel_id] || (iuuByVessel[v.vessel_id] = [])).push(v); });
+          (vs || []).forEach(v => {
+            vesselComplianceById[v.id] = {
+              ...v,
+              pna_vds_history: vdsByVessel[v.id] || [],
+              rfmo_history: rfmoByVessel[v.id] || [],
+              iuu_history: iuuByVessel[v.id] || [],
+            };
+          });
+        } catch (e) { console.warn('[SmarTuna Assistant] Vessel compliance enrichment failed:', e); }
+      }
+      Object.values(catchesByRmId).flat().forEach(c => {
+        c.vessel_compliance = c.vessel_id ? (vesselComplianceById[c.vessel_id] || null) : null;
+      });
+
       const vesselIds = [...new Set(vesselsArr.map(v => v.vessel_id).filter(Boolean))];
       let vesselsById = {};
       if (vesselIds.length) {
@@ -523,11 +585,23 @@ RESPONSE STYLE:
       }
       const portOf = id => id ? (portsById[id] || null) : null;
 
+      const ccByRawMaterialId = {};
+      catchCertsArr.forEach(cc => {
+        if (cc.raw_material_id) {
+          (ccByRawMaterialId[cc.raw_material_id] || (ccByRawMaterialId[cc.raw_material_id] = [])).push(cc);
+        }
+      });
+      const rawMaterialWithCatchInfo = rm => rm ? {
+        ...rm,
+        catch_certificates: ccByRawMaterialId[rm.id] || [],
+        catches: catchesByRmId[rm.id] || [],
+      } : null;
+
       const byItem = {};
       batchesArr.forEach(b => {
         (byItem[b.shipment_item_id] || (byItem[b.shipment_item_id] = [])).push({
           ...b,
-          raw_material: b.raw_material_id ? (rawMaterialsById[b.raw_material_id] || null) : null,
+          raw_material: b.raw_material_id ? rawMaterialWithCatchInfo(rawMaterialsById[b.raw_material_id]) : null,
         });
       });
 
@@ -538,6 +612,68 @@ RESPONSE STYLE:
       // so the model always knows the true totals.
       const cap = (arr, n) => arr.length > n ? arr.slice(0, n) : arr;
       const MAX_ITEMS = 4, MAX_BATCHES_PER_ITEM = 2, MAX_VESSELS = 3, MAX_LEGS = 5, MAX_CC = 3;
+
+      // ── EU Catch Submission Readiness ─────────────────────────────────
+      // Mirrors the ACTUAL gates in eu-catch-generation.js's run() function.
+      const EU27 = ['Austria','Belgium','Bulgaria','Croatia','Cyprus','Czechia','Denmark','Estonia',
+        'Finland','France','Germany','Greece','Hungary','Ireland','Italy','Latvia','Lithuania',
+        'Luxembourg','Malta','Netherlands','Poland','Portugal','Romania','Slovakia','Slovenia',
+        'Spain','Sweden'];
+
+      async function checkEuFacilityApproval() {
+        try {
+          let company = null;
+          if (s.processor_org_id) {
+            const { data } = await dbClient.from('companies').select('*').eq('id', s.processor_org_id).maybeSingle();
+            company = data;
+          }
+          if (!company && s.processor_name) {
+            const { data } = await dbClient.from('companies').select('*').ilike('company_name', s.processor_name).limit(1);
+            company = data && data[0];
+          }
+          if (!company) return { pass: null, detail: 'No processing plant company on file to check.' };
+
+          const { data: certs } = await dbClient.from('company_certifications').select('*').eq('company_id', company.id);
+          const isEu = r => {
+            const t = `${r.cert_type || ''} ${r.cert_name || ''}`.toLowerCase();
+            if (/\b(uk|usa|us|noaa|fsvp)\b/.test(t)) return false;
+            return /\b(eu|european union)\b/.test(t) && /(facility|establishment|approv)/.test(t);
+          };
+          const hits = (certs || []).filter(isEu);
+          if (!hits.length) return { pass: false, detail: `No EU facility approval on file for ${company.company_name || 'the processing plant'}.` };
+          const today = new Date().toISOString().slice(0, 10);
+          const live = r => !r.status || /^(active|valid|current)$/i.test(String(r.status));
+          const valid = hits.filter(r => live(r) && (!r.expiry_date || r.expiry_date >= today));
+          if (valid.length) {
+            return { pass: true, detail: `Valid EU approval ${valid[0].cert_number || ''} for ${company.company_name}${valid[0].expiry_date ? ', valid until ' + valid[0].expiry_date : ', no expiry recorded'}.` };
+          }
+          const expired = hits.find(r => r.expiry_date && r.expiry_date < today);
+          if (expired) return { pass: false, detail: `EU approval ${expired.cert_number || ''} for ${company.company_name} expired on ${expired.expiry_date}.` };
+          return { pass: false, detail: `EU approval on file for ${company.company_name} but not currently active.` };
+        } catch (e) {
+          console.warn('[SmarTuna Assistant] EU facility approval check failed:', e);
+          return { pass: null, detail: 'Could not be checked.' };
+        }
+      }
+
+      const allBatchesFlat = itemsArr.flatMap(it => byItem[it.id] || []);
+      const rawMaterialsUsed = allBatchesFlat.map(b => b.raw_material).filter(Boolean);
+      const wildCaptureRms = rawMaterialsUsed.filter(r => r.source_type === 'Wild Capture');
+      const catchFlags = [...new Set(wildCaptureRms.flatMap(r =>
+        (r.catches || []).filter(c => c.event_type === 'Catch' && c.flag_state).map(c => c.flag_state)
+      ))];
+      const approvalCheck = await checkEuFacilityApproval();
+
+      const euCatchChecks = [
+        { check: 'Destination is in the EU-27', pass: EU27.includes((s.destination_country || '').trim()), detail: s.destination_country || 'not set' },
+        { check: 'Has at least one product line', pass: itemsArr.length > 0, detail: `${itemsArr.length} item(s)` },
+        { check: 'Has at least one batch', pass: allBatchesFlat.length > 0, detail: `${allBatchesFlat.length} batch(es)` },
+        { check: 'Batches resolve to a raw material', pass: rawMaterialsUsed.length > 0, detail: `${rawMaterialsUsed.length} resolved` },
+        { check: 'At least one raw material is Wild Capture', pass: wildCaptureRms.length > 0, detail: wildCaptureRms.length ? `${wildCaptureRms.length} wild-capture` : 'all farmed, or source_type not set — catch certificates apply to wild capture only' },
+        { check: 'Has a catch event with a flag state recorded', pass: catchFlags.length > 0, detail: catchFlags.length ? catchFlags.join(', ') : 'none found' },
+        { check: 'Processing plant has a valid EU facility approval', pass: approvalCheck.pass, detail: approvalCheck.detail },
+      ];
+      const euCatchReady = euCatchChecks.slice(0, 6).every(c => c.pass === true) && approvalCheck.pass !== false;
 
       return {
         ...s,
@@ -566,6 +702,7 @@ RESPONSE STYLE:
         })),
         catch_certificate_count: catchCertsArr.length,
         catch_certificates: cap(catchCertsArr, MAX_CC),
+        eu_catch_readiness: { ready: euCatchReady, checks: euCatchChecks },
       };
     }
 
@@ -605,7 +742,7 @@ RESPONSE STYLE:
     // makes "the payload is too big" structurally impossible. Rebuilds a
     // small, clean summary from the SAME detail object rather than
     // truncating raw JSON text, which could hand the model broken JSON.
-    const MAX_SHIPMENT_BLOCK_CHARS = 5000;
+    const MAX_SHIPMENT_BLOCK_CHARS = 8000; // static prompt is now ~3.7k chars (measured), leaving real room for genuine detail before this needs to engage
     function capShipmentBlockSize(block, detail, mentionedRef) {
       if (block.length <= MAX_SHIPMENT_BLOCK_CHARS) return block;
       const light = {
