@@ -7299,6 +7299,9 @@ async function autoSave(){
   if(!prods.length&&!Object.keys(kResp).length){showToast('Nothing to save yet','info');return;}
   const payload={
     submitted_by:assessorName||'beta-user',
+    company_name:document.getElementById('assessorCompany')?.value||'',
+    assessor_role:assessorRole||'',
+    assessor_company_id:assessorCompanyId||null,
     status:'draft',
     products:prods,
     k_resp:kResp,
@@ -8500,37 +8503,112 @@ function renderContinueList(data, activeQuery){
     const statusColor=isDraft?'#1e40af':'#16a34a';
     const statusLabel=isDraft?'📝 In Progress':'✅ Submitted';
     const diff=Date.now()-new Date(d.updated_at||d.created_at).getTime();const mins=Math.floor(diff/60000);const timeAgo=mins<2?'Just now':mins<60?`${mins}m ago`:Math.floor(mins/60)<24?`${Math.floor(mins/60)}h ago`:`${Math.floor(mins/1440)}d ago`;
+    const scoreChip=(!isDraft&&d.mri_score!=null)?`<span class="cont-pill" style="background:#eff6ff;color:#1e40af;">📊 Score: ${d.mri_score} pts</span>`:'';
+    const companyChip=d.company_name?`<span class="cont-pill">🏢 ${d.company_name}</span>`:'';
+    const roleChip=d.assessor_role?`<span class="cont-pill">👤 ${d.assessor_role}</span>`:'';
     const resumeBtn=isDraft
-      ?`<button onclick="resumeDraft('${d.id}')" style="background:#1d4ed8;color:#fff;border:none;border-radius:999px;padding:8px 18px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;">Resume →</button>`
-      :`<button onclick="resumeDraft('${d.id}',true)" style="background:#1a6fdb;color:#fff;border:none;border-radius:999px;padding:8px 14px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;">📝 Questions</button>
-        <button onclick="viewSubmittedReview('${d.id}')" style="background:#16a34a;color:#fff;border:none;border-radius:999px;padding:8px 14px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin-left:6px;">📋 Review</button>`;
-    return `<div class="cont-card" style="border-color:${cardBorder};background:${cardBg};"><div style="flex:1;"><div style="font-size:13px;font-weight:700;color:#1a1a2e;margin-bottom:4px;">👤 ${d.submitted_by||'Unknown'} <span style="background:${statusColor}22;color:${statusColor};font-size:10px;font-weight:700;border-radius:5px;padding:1px 8px;margin-left:6px;">${statusLabel}</span></div><div class="cont-meta">${timeAgo}</div><div style="margin-top:6px;">${prods.length?`<span class="cont-pill">🐟 ${prods.length} product${prods.length>1?'s':''}</span>`:''} ${kdeCount?`<span class="cont-pill">📋 ${kdeCount} KDEs</span>`:''} ${isDraft?`<span class="cont-pill">📍 Stage ${(d.stage_index||0)+1}</span>`:''}</div></div><div class="cont-acts">${resumeBtn}<button class="cont-del" data-del-id="${d.id}" onclick="event.stopPropagation();confirmDelete('${d.id}',this)">🗑</button></div></div>`;
+      ?`<button onclick="resumeDraft('${d.id}')" style="background:#1d4ed8;color:#fff;border:none;border-radius:999px;padding:8px 18px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">Resume →</button>`
+      :`<button onclick="resumeDraft('${d.id}',true)" style="background:#1e40af;color:#fff;border:none;border-radius:999px;padding:8px 14px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">📝 View Answers</button>
+        <button onclick="viewSubmittedReview('${d.id}')" style="background:#16a34a;color:#fff;border:none;border-radius:999px;padding:8px 14px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin-left:6px;white-space:nowrap;">📋 Review</button>`;
+    return `<div class="cont-card" style="border-color:${cardBorder};background:${cardBg};">
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+          <span style="font-size:13px;font-weight:700;color:#1a1a2e;">${d.submitted_by||'Unknown'}</span>
+          <span style="background:${statusColor}22;color:${statusColor};font-size:10px;font-weight:700;border-radius:5px;padding:1px 8px;">${statusLabel}</span>
+        </div>
+        <div class="cont-meta" style="margin-bottom:6px;">${timeAgo}${d.company_name?' · '+d.company_name:''}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;">
+          ${prods.length?`<span class="cont-pill">🐟 ${prods.length} product${prods.length>1?'s':''}</span>`:''}
+          ${kdeCount?`<span class="cont-pill">📋 ${kdeCount} answered</span>`:''}
+          ${isDraft?`<span class="cont-pill">📍 Stage ${(d.stage_index||0)+1}</span>`:''}
+          ${scoreChip}${roleChip}
+        </div>
+      </div>
+      <div class="cont-acts">${resumeBtn}
+        <button class="cont-del" onclick="event.stopPropagation();confirmDelete('${d.id}',this)" title="Delete">🗑</button>
+      </div>
+    </div>`;
   }).join('');
 }
 async function resumeDraft(id,viewOnly){
+  const btn=document.querySelector(`[onclick="resumeDraft('${id}')"]`)||document.querySelector(`[onclick="resumeDraft('${id}',true)"]`);
+  if(btn){btn.disabled=true;btn.textContent='Loading...';}
   try{
-    const{data,error}=await db.from('beta_assessments').select('*').eq('id',id).single();if(error)throw error;
+    const{data,error}=await db.from('beta_assessments').select('*').eq('id',id).single();
+    if(error)throw error;
+
+    // ── Restore core identity ──
     draftId=id;
-    assessorName=data.submitted_by||assessorName||''; // restore assessor identity
-    products=Array.isArray(data.products)?data.products:[];kResp=data.k_resp||{};
+    assessorName=data.submitted_by||assessorName||'';
+    assessorRole=data.assessor_role||assessorRole||'';
+    assessorCompanyId=data.assessor_company_id||assessorCompanyId||null;
+
+    // ── Restore UI fields ──
+    const nameInp=document.getElementById('assessorName');
+    if(nameInp&&assessorName)nameInp.value=assessorName;
+    const coInp=document.getElementById('assessorCompany');
+    if(coInp&&data.company_name)coInp.value=data.company_name;
+
+    // ── Restore products + supply chain nodes ──
+    products=Array.isArray(data.products)?data.products:[];
+    products.forEach((p,i)=>{
+      if(!p)return;
+      fillSlot(i);
+      // Rebuild SC nodes for each product — p.chain holds the saved node array
+      if(Array.isArray(p.chain)&&p.chain.length){
+        // Nodes are already serialised in p.chain with id, type, entityName, vesselCount etc
+        // They get picked up by buildStages() directly from products[i].chain
+      }
+    });
+
+    // ── Restore KDE responses (includes all _internal keys like _catchFrom_, _selectedFisheries etc) ──
+    kResp=data.k_resp||{};
+
+    // ── Restore reviewer overrides and comments ──
     rvOverrides=data.reviewer_overrides||{};
     rvKdeComments=(data.reviewer_comments&&data.reviewer_comments.kde_comments)||{};
-    products.forEach((p,i)=>{if(p)fillSlot(i);});
-    STAGES=buildStages();kIdx=viewOnly?(STAGES.length-1):(data.stage_index||0);renderKDE();goTo('sKDE');
-    showToast(viewOnly?'Viewing submitted questions':'Assessment resumed','success');
-  }catch(e){showToast('Could not resume: '+e.message,'error');}
+
+    // ── Rebuild stages and navigate ──
+    STAGES=buildStages();
+    if(viewOnly){
+      kIdx=STAGES.length-1;
+      renderKDE();
+      goTo('sKDE');
+      showToast('Viewing submitted answers — read only','info');
+    } else {
+      kIdx=Math.min(data.stage_index||0, STAGES.length-1);
+      renderKDE();
+      goTo('sKDE');
+      showToast('✓ Assessment resumed — pick up where you left off','success');
+    }
+
+    // ── Reload dropdowns in background ──
+    loadCountries().catch(()=>{});
+    loadSpecies().catch(()=>{});
+    loadVesselModule().catch(()=>{});
+    loadPortModule().catch(()=>{});
+    loadCompanyModule().catch(()=>{});
+
+  }catch(e){
+    showToast('Could not resume: '+e.message,'error');
+    if(btn){btn.disabled=false;btn.textContent=viewOnly?'📝 Questions':'Resume →';}
+  }
 }
 async function viewSubmittedReview(id){
   try{
-    const{data,error}=await db.from('beta_assessments').select('*').eq('id',id).single();if(error)throw error;
+    const{data,error}=await db.from('beta_assessments').select('*').eq('id',id).single();
+    if(error)throw error;
     draftId=id;
     assessorName=data.submitted_by||assessorName||'';
-    products=Array.isArray(data.products)?data.products:[];kResp=data.k_resp||{};
+    assessorRole=data.assessor_role||assessorRole||'';
+    assessorCompanyId=data.assessor_company_id||assessorCompanyId||null;
+    products=Array.isArray(data.products)?data.products:[];
+    products.forEach((p,i)=>{if(p)fillSlot(i);});
+    kResp=data.k_resp||{};
     rvOverrides=data.reviewer_overrides||{};
     rvKdeComments=(data.reviewer_comments&&data.reviewer_comments.kde_comments)||{};
     STAGES=buildStages();
     goTo('sReview');buildReview();
-    // Pre-fill expert comment box if one was saved
     const expertComment=(data.reviewer_comments&&data.reviewer_comments.expert)||'';
     const ta=document.getElementById('rv-expert-comment');
     if(ta)ta.value=expertComment;
@@ -9168,6 +9246,18 @@ function addFromBucket(bucketIdx,kdeId){
 }
 document.addEventListener('click',e=>{if(e.target.id==='bucketModal')closeBucketModal();});
 
+
+// ── Unload guard — warn if assessment in progress ──
+window.addEventListener('beforeunload',function(e){
+  const inProgress=products.filter(Boolean).length>0||Object.keys(kResp).some(k=>!k.startsWith('_')&&kResp[k]?.ans);
+  const safeScreens=['sHome','sMOU','sRole','sContinue','sThankYou','sResults','sPreferences'];
+  const cur=document.querySelector('.screen.active')?.id||'';
+  if(inProgress&&!safeScreens.includes(cur)){
+    e.preventDefault();
+    e.returnValue='Your progress is auto-saved — make sure to save before leaving.';
+    return e.returnValue;
+  }
+});
 </script>
 <!-- ══ Evidence View Mini Modal ══ -->
 <div id="evViewMini" style="display:none;position:fixed;inset:0;z-index:1100;align-items:center;justify-content:center;padding:20px;">
