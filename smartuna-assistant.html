@@ -380,6 +380,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="smartuna-ai-core.js"></script>
   <script src="voice-assistant.js"></script>
   <script>
     // ── Auth (same pattern as home-logged-in.html) ──
@@ -394,530 +395,53 @@
     // point that offers the assistant. ──
     const GK='gsk_6eNQZmdzvxC68ZAoNfIX'+'WGdyb3FYWlHQjma1dCryXGXzwCF0lVsl';
 
-    const ASSISTANT_SYSTEM=`You are SmarTuna A.I, a specialist assistant on the SmarTuna platform — seafood supply chain risk and traceability.
-
-EXPERTISE: IUU fishing (detection, flag states, PSMA, blacklists); GDST/KDEs/CTEs traceability; EU IUU Regulation catch certificates; US SIMP/FSMA 204; MSC/ASC Chain of Custody; RFMOs (WCPFC/ICCAT/IOTC/CCAMLR); AIS/VMS vessel tracking; aquaculture traceability; SRI risk scoring; ILO C188/FISH labour welfare; HACCP/BRC/ISO 22000/EU 853 food safety; species/FAO zones/gear types; general seafood industry knowledge; and this organisation's own shipment records (routes, mode, status, products, batches, vessels, dates).
-
-SHIPMENT DATA: You may be given a summary of recent shipments, full detail for one specific shipment, or full detail for SEVERAL shipments at once under a "SHIPMENTS MATCHING THE VESSEL NAMED IN THE QUESTION" heading (when the question named a fishing or transport vessel rather than a shipment reference — resolved by tracing that vessel's catch or transport records back to whichever shipment(s) it feeds). When several shipments are given this way, treat each as a full, separate record — if asked for a total (volume, packages, weight), sum the relevant figures across ALL of them and say how many shipments that total spans, don't just answer from the first one. Live from this organisation's database. In full detail: "product" nests on each item (species/allergens/packaging); "raw_material" on each batch, which itself nests two things — a "catch_certificates" array (the formal certificate document: species, catch area, gear, vessel, flag state, conservation refs) and a "catches" array (the actual catch event(s): vessel_id/vessel_name/imo/flag_state, fao_area, gear_type, catch_date_from/catch_date_to, landing_port_name/landing_date, transshipment detail, species_caught, and a nested "vessel_compliance" object — see COMPLIANCE REASONING below). For ANY question involving a catch date, date range, or "when was this caught" — use catch_date_from/catch_date_to on the catch event, NOT the raw material's own harvest_date, which is a different, less precise field. A raw material can have more than one catch event. "vessel_detail" nests on each shipment-level vessel entry; "origin_port"/"destination_port" on the shipment and each leg. A missing/null field means that line isn't linked in that module, not a data failure. Large shipments may show only some of their items/batches/vessels/catch_certificates for length — "item_count"/"batch_count"/"vessel_count"/"catch_certificate_count" give the true totals even when the array itself is shorter; use the count for "how many", and mention more exist beyond what's shown if directly relevant. Treat this as ground truth — never invent a ref, route, date, quantity, vessel, species, allergen, or status. If asked about something not in the data given, say so plainly rather than guessing. If only summary data was given but the question needs full detail, say so and suggest opening the shipment's page. Base totals only on records actually provided.
-
-COMPLIANCE REASONING — a catch event's "vessel_compliance" object has both a CURRENT snapshot (pna_vds_active, vds_valid_from/vds_valid_until, iuu_listed, rfmo_wcpfc/rfmo_iattc/rfmo_iotc/rfmo_iccat/rfmo_ccamlr/rfmo_neafc/rfmo_nafo booleans with their own auth_start/auth_end where applicable, eu_approved, msc_cert_status) AND historical period arrays (pna_vds_history, rfmo_history, iuu_history), each entry with its own validity window.
-- The current snapshot only reflects TODAY. For any question about a vessel's status AT THE TIME of a specific catch (e.g. "did the vessel have valid VDS during the catch", "was it IUU-listed when this was caught"), do NOT use the current snapshot fields — find the entry in the relevant history array whose period actually covers the catch's catch_date_from/catch_date_to (pna_vds_history: valid_from/valid_to; rfmo_history: auth_start/auth_end; iuu_history: date_listed/delisted_date, where a null delisted_date means still listed), and answer from that.
-- Always state both date ranges you're comparing — the catch period and the compliance period — so the answer is checkable, not just a bare yes/no.
-- If no history entry covers that catch period, say plainly that there's no compliance record covering that specific window, rather than falling back to the current snapshot as if it applied historically, and rather than guessing.
-- RFMO jurisdiction for a catch area not covered by an explicit boolean/history entry can be inferred from the FAO catch area using your own general knowledge (e.g. FAO 71 falls under WCPFC) — say when you're inferring rather than reading a stored value.
-- A raw material's own "iuu_checked" field (separate from vessel iuu_listed/iuu_history) is a recorded internal decision someone in this organisation made about the raw material, not a vessel-level registry check — keep these two distinct if both come up.
-
-EU CATCH READINESS — a shipment's "eu_catch_readiness" object mirrors the actual gates the EU Catch generation tool itself checks before it will produce a certificate — not a guess at what "ready" means. It has a "ready" boolean and a "checks" array, each with a check name, pass (true/false/null), and a short detail. If asked "is this shipment ready for EU Catch submission", walk through the checks that failed (pass: false) by name, using their detail — don't just give a bare yes/no. A null pass means that specific check couldn't be verified (e.g. no processing plant on file) — say so explicitly rather than treating it as a pass or a fail.
-
-TERMINOLOGY — map terms to the real field, never give a textbook definition instead of checking the data:
-- "ETA"/"estimated arrival"/bare "arrival date" → arrival_date (an ESTIMATE, not confirmed arrival). Label it: "The shipment is expected to arrive at [destination] on [date]."
-- "has it arrived"/"delivered"/"discharge date" → container_discharge_date (set only once confirmed; flips status to Delivered). Label it: "The shipment actually arrived at [destination] on [date]." If both fields exist, state both, clearly labelled.
-- "ETD"/"departure"/"when did/does it leave" → departure_date (shipment-level, or a named leg's).
-- "on-board date"/"laden on board" → on_board_date.
-- "status"/"where is it"/"in transit"/"afloat"/"at sea" → status field ("afloat"/"at sea" = In-Transit specifically).
-- "what ship/vessel" → vessels array. "container" → container_no. "seal" → seal_number.
-- "left from"/"port of loading" → origin_name. "going to"/"port of discharge" → destination_name.
-- Multiple legs, none specified → assume the final destination's figure; ask only if leg dates diverge meaningfully and it's genuinely unclear which they mean.
-- Any term that could map to more than one field, where guessing wrong would matter → ask a brief clarifying question naming the specific options, rather than guessing or explaining the term generically.
-- Question implies a specific shipment ("this shipment", "it") but none resolves from the question or recent conversation → ask which shipment they mean; don't explain what data is or isn't available instead.
-
-TOPIC BOUNDARIES: Only answer seafood/supply chain/traceability/compliance/regulation/fisheries/aquaculture questions. Anything else — coding, math, creative writing, travel, sports, finance, politics, entertainment, medical, personal — decline warmly and redirect toward what you do cover; never say "cannot" or "not allowed."
-
-CONFIDENTIALITY: Decline and redirect if asked about clients, revenue, source code, internal strategy, team members, or other proprietary information.
-
-RESPONSE STYLE:
-- This response will be READ ALOUD via text-to-speech, in addition to being shown as text. Keep it concise and conversational — 2-4 sentences unless the user explicitly asks for more detail.
-- Do not use markdown formatting (no **bold**, no ## headers, no bullet lists) — write in plain spoken sentences, since markdown symbols would be read aloud literally.
-- Professional but friendly tone — you are speaking to seafood industry professionals.`;
-
-    // ── Shipment data access — identical queries/enrichment to smartuna-ai.html
-    // and home-logged-in.html, so every entry point answers consistently. ──
-    async function fetchShipmentsSummary(limit = 30) {
-      const { data: s, error } = await dbClient
-        .from('shipments')
-        .select('id,shipment_ref,shipment_date,transport_mode,status,exporter_name,origin_name,destination_name,destination_country')
-        .is('deleted_at', null)
-        .order('shipment_date', { ascending: false })
-        .limit(limit);
-      if (error || !s || !s.length) return [];
-
-      const ids = s.map(x => x.id);
-      const { data: items } = await dbClient
-        .from('shipment_items')
-        .select('shipment_id,product_name,number_of_packages,net_weight_kg')
-        .in('shipment_id', ids);
-
-      const agg = {};
-      (items || []).forEach(it => {
-        const a = agg[it.shipment_id] || (agg[it.shipment_id] = { lines: 0, pkg: 0, net: 0, names: [] });
-        a.lines++;
-        a.pkg += Number(it.number_of_packages) || 0;
-        a.net += Number(it.net_weight_kg) || 0;
-        if (it.product_name) a.names.push(it.product_name);
-      });
-
-      return s.map(x => {
-        const a = agg[x.id] || { lines: 0, pkg: 0, net: 0, names: [] };
-        return {
-          shipment_ref: x.shipment_ref, date: x.shipment_date, transport_mode: x.transport_mode,
-          status: x.status, exporter: x.exporter_name, origin: x.origin_name, destination: x.destination_name,
-          destination_country: x.destination_country, product_lines: a.lines, total_packages: a.pkg,
-          total_net_weight_kg: a.net, products: a.names.join(', '),
-        };
-      });
+    // ── SmarTuna A.I — Phase 1: tool-calling ──
+    // Everything that used to live here (fetchShipmentsSummary,
+    // fetchShipmentDetail, findMentionedShipmentRef, buildShipmentContext,
+    // sticky-ref tracking, size-safety caps) now lives ONCE in
+    // smartuna-ai-core.js as real tools Groq calls on its own.
+    //
+    // ORGANISATION_ID ASSUMPTION: passed in from profiles.company_id —
+    // never confirmed against real data as the same id space as
+    // organisation_id on shipments/raw_materials. If tool results come
+    // back empty for data that should be there, check this first.
+    let smartunaAiReady = false;
+    function initSmartunaAI(organisationId) {
+      if (!organisationId) {
+        console.warn('[SmarTuna A.I] No organisation_id available from profile — tools will rely entirely on Supabase RLS, with no client-side scoping backup.');
+      }
+      SmarTunaAI.init({ supabaseClient: dbClient, organisationId: organisationId || null, groqKey: GK });
+      smartunaAiReady = true;
     }
 
-    async function fetchShipmentDetail(shipmentRef) {
-      const { data: s, error } = await dbClient
-        .from('shipments').select('id,organisation_id,shipment_ref,shipment_date,shipment_type,transport_mode,status,exporter_name,exporter_org_id,country_of_export,destination_country,incoterms,origin_name,origin_port_id,transit_names,destination_name,destination_port_id,container_no,seal_number,vessel_name,voyage_no,bl_no,bl_issue_date,on_board_date,container_discharge_date,awb_no,airline,flight_no,awb_issue_date,cmr_no,vehicle_plate,trailer_plate,driver_name,transport_company,departure_date,arrival_date,processor_name,processor_org_id,processing_country,invoice_no,invoice_date,purchase_order_no,additional_notes,reefer_setpoint_c,inland_distance_km,cold_storage_days,load_type,consolidator,previous_shipment_id,previous_shipment_ref,importer_name,container_type,exporter_is_processor,deleted_at').eq('shipment_ref', shipmentRef).is('deleted_at', null).single();
-      if (error || !s) return null;
-
-      const [{ data: items }, { data: batches }, legsRes, vesselsRes, ccRes] = await Promise.all([
-        dbClient.from('shipment_items').select('*').eq('shipment_id', s.id).order('line_no'),
-        dbClient.from('shipment_batches').select('*').eq('shipment_id', s.id).order('line_no'),
-        dbClient.from('shipment_legs').select('*').eq('shipment_id', s.id).order('leg_no').then(r => r).catch(() => ({ data: [] })),
-        dbClient.from('shipment_vessels').select('*').eq('shipment_id', s.id).order('line_no').then(r => r).catch(() => ({ data: [] })),
-        dbClient.from('catch_certificates').select('*').eq('shipment_id', s.id).then(r => r).catch(() => ({ data: [] })),
-      ]);
-      const itemsArr = items || [];
-      const batchesArr = batches || [];
-      const legsArr = legsRes?.data || [];
-      const vesselsArr = vesselsRes?.data || [];
-      const catchCertsArr = ccRes?.data || [];
-
-      const productIds = [...new Set(itemsArr.map(it => it.product_id).filter(Boolean))];
-      let productsById = {};
-      if (productIds.length) {
-        try {
-          const { data: products } = await dbClient
-            .from('products')
-            .select('*, product_allergens(allergen_label,containment_level), species:species_id(species_name,scientific_name,afsis_3a_code)')
-            .in('id', productIds)
-            .is('deleted_at', null);
-          (products || []).forEach(p => { productsById[p.id] = p; });
-        } catch (e) { console.warn('[SmarTuna Assistant] Product enrichment failed:', e); }
-      }
-
-      const rmIds = [...new Set(batchesArr.map(b => b.raw_material_id).filter(Boolean))];
-      let rawMaterialsById = {};
-      if (rmIds.length) {
-        try {
-          // Explicit column list, not select('*') — raw_materials has a
-          // flow_json (jsonb) and notes_html field that could be
-          // arbitrarily large and aren't needed to answer a shipment
-          // question.
-          const { data: rms } = await dbClient.from('raw_materials').select('id,rm_ref,name,species_name,scientific_name,afsis_3a_code,source_type,product_form,preservation,supplier_name,origin_country,quantity_kg,net_quantity_kg,received_date,farm_name,farm_location,production_method,harvest_date,feed_type,certifications,coc_code,catch_certificate_no,iuu_checked,iuu_checked_at,status,fishery_scheme,fishery_name,fishery_ref,fao_areas,certifying_authority,unit,supplier_type,transformed,transformation_type,transformation_vessel').in('id', rmIds).is('deleted_at', null);
-          (rms || []).forEach(r => { rawMaterialsById[r.id] = r; });
-        } catch (e) { console.warn('[SmarTuna Assistant] Raw material enrichment failed:', e); }
-      }
-
-      // ── Connected module: Raw Material Catch Events ──────────────────────
-      let catchesByRmId = {};
-      if (rmIds.length) {
-        try {
-          const { data: catches } = await dbClient.from('raw_material_catches').select('*').in('raw_material_id', rmIds);
-          const catchIds = (catches || []).map(c => c.id);
-          let speciesByCatchId = {};
-          if (catchIds.length) {
-            try {
-              const { data: speciesRows } = await dbClient.from('raw_material_catch_species').select('*').in('catch_event_id', catchIds);
-              (speciesRows || []).forEach(sp => {
-                (speciesByCatchId[sp.catch_event_id] || (speciesByCatchId[sp.catch_event_id] = [])).push(sp);
-              });
-            } catch (e) { console.warn('[SmarTuna Assistant] Catch species enrichment failed:', e); }
-          }
-          (catches || []).forEach(c => {
-            const withSpecies = { ...c, species_caught: speciesByCatchId[c.id] || [] };
-            (catchesByRmId[c.raw_material_id] || (catchesByRmId[c.raw_material_id] = [])).push(withSpecies);
-          });
-        } catch (e) { console.warn('[SmarTuna Assistant] Raw material catch event enrichment failed:', e); }
-      }
-
-      // ── Connected module: Vessel Compliance (PNA VDS, RFMO, IUU) ──────────
-      const catchVesselIds = [...new Set(
-        Object.values(catchesByRmId).flat().map(c => c.vessel_id).filter(Boolean)
-      )];
-      let vesselComplianceById = {};
-      if (catchVesselIds.length) {
-        try {
-          const { data: vs } = await dbClient.from('vessels').select('id,imo,mmsi,ircs,current_name,vessel_category,vessel_flag,port_of_registry,registration_number,iuu_listed,uk_approved,uk_auth_no,eu_approved,eu_approval_no,eu_publishing_date,ffa_good_standing,ffa_id,ffa_status,ffa_registration_date,ffa_registration_end,rfmo_wcpfc,wcpfc_vid,wcpfc_auth_no,wcpfc_auth_start,wcpfc_auth_end,wcpfc_auth_areas,rfmo_iattc,iattc_no,iattc_status,rfmo_iotc,rfmo_iccat,rfmo_ccamlr,rfmo_neafc,rfmo_nafo,rfmo_others,msc_fishery_participation,msc_fishery_name,msc_cert_status,pna_vds_active,vds_reg_no,vds_valid_from,vds_valid_until,pna_allocation,pna_status,fsma_vessel,fsma_ral_no,fsma_from,fsma_to').in('id', catchVesselIds);
-          const [vdsHistRes, rfmoHistRes, iuuHistRes] = await Promise.all([
-            dbClient.from('vessel_pna_vds_history').select('vessel_id,vds_no,vessel_flag,valid_from,valid_to').in('vessel_id', catchVesselIds).then(r => r).catch(() => ({ data: [] })),
-            dbClient.from('vessel_rfmo_history').select('vessel_id,rfmo_name,registration_no,auth_no,auth_start,auth_end').in('vessel_id', catchVesselIds).then(r => r).catch(() => ({ data: [] })),
-            dbClient.from('vessel_iuu_history').select('vessel_id,previously_listed,iuu_list_name,date_listed,delisted_date').in('vessel_id', catchVesselIds).then(r => r).catch(() => ({ data: [] })),
-          ]);
-          const vdsByVessel = {}, rfmoByVessel = {}, iuuByVessel = {};
-          (vdsHistRes.data || []).forEach(v => { (vdsByVessel[v.vessel_id] || (vdsByVessel[v.vessel_id] = [])).push(v); });
-          (rfmoHistRes.data || []).forEach(v => { (rfmoByVessel[v.vessel_id] || (rfmoByVessel[v.vessel_id] = [])).push(v); });
-          (iuuHistRes.data || []).forEach(v => { (iuuByVessel[v.vessel_id] || (iuuByVessel[v.vessel_id] = [])).push(v); });
-          (vs || []).forEach(v => {
-            vesselComplianceById[v.id] = {
-              ...v,
-              pna_vds_history: vdsByVessel[v.id] || [],
-              rfmo_history: rfmoByVessel[v.id] || [],
-              iuu_history: iuuByVessel[v.id] || [],
-            };
-          });
-        } catch (e) { console.warn('[SmarTuna Assistant] Vessel compliance enrichment failed:', e); }
-      }
-      Object.values(catchesByRmId).flat().forEach(c => {
-        c.vessel_compliance = c.vessel_id ? (vesselComplianceById[c.vessel_id] || null) : null;
-      });
-
-      const vesselIds = [...new Set(vesselsArr.map(v => v.vessel_id).filter(Boolean))];
-      let vesselsById = {};
-      if (vesselIds.length) {
-        try {
-          const { data: vs } = await dbClient.from('vessels').select('*').in('id', vesselIds);
-          (vs || []).forEach(v => { vesselsById[v.id] = v; });
-        } catch (e) { console.warn('[SmarTuna Assistant] Vessel enrichment failed:', e); }
-      }
-
-      const portIds = [...new Set([
-        s.origin_port_id, s.destination_port_id,
-        ...legsArr.flatMap(l => [l.origin_port_id, l.destination_port_id]),
-      ].filter(Boolean))];
-      let portsById = {};
-      if (portIds.length) {
-        try {
-          const { data: ports } = await dbClient.from('ports').select('*').in('id', portIds);
-          (ports || []).forEach(p => { portsById[p.id] = p; });
-        } catch (e) { console.warn('[SmarTuna Assistant] Port enrichment failed:', e); }
-      }
-      const portOf = id => id ? (portsById[id] || null) : null;
-
-      const ccByRawMaterialId = {};
-      catchCertsArr.forEach(cc => {
-        if (cc.raw_material_id) {
-          (ccByRawMaterialId[cc.raw_material_id] || (ccByRawMaterialId[cc.raw_material_id] = [])).push(cc);
-        }
-      });
-      const rawMaterialWithCatchInfo = rm => rm ? {
-        ...rm,
-        catch_certificates: ccByRawMaterialId[rm.id] || [],
-        catches: catchesByRmId[rm.id] || [],
-      } : null;
-
-      const byItem = {};
-      batchesArr.forEach(b => {
-        (byItem[b.shipment_item_id] || (byItem[b.shipment_item_id] = [])).push({
-          ...b,
-          raw_material: b.raw_material_id ? rawMaterialWithCatchInfo(rawMaterialsById[b.raw_material_id]) : null,
-        });
-      });
-
-      // Hard structural caps — a shipment with many products, each with
-      // many batches, several vessels and legs, can produce a full-detail
-      // payload far bigger than anything a small test case would predict.
-      // Real counts are preserved alongside the (possibly trimmed) arrays
-      // so the model always knows the true totals.
-      const cap = (arr, n) => arr.length > n ? arr.slice(0, n) : arr;
-      const MAX_ITEMS = 4, MAX_BATCHES_PER_ITEM = 2, MAX_VESSELS = 3, MAX_LEGS = 5, MAX_CC = 3;
-
-      // ── EU Catch Submission Readiness ─────────────────────────────────
-      // Mirrors the ACTUAL gates in eu-catch-generation.js's run() function.
-      const EU27 = ['Austria','Belgium','Bulgaria','Croatia','Cyprus','Czechia','Denmark','Estonia',
-        'Finland','France','Germany','Greece','Hungary','Ireland','Italy','Latvia','Lithuania',
-        'Luxembourg','Malta','Netherlands','Poland','Portugal','Romania','Slovakia','Slovenia',
-        'Spain','Sweden'];
-
-      async function checkEuFacilityApproval() {
-        try {
-          let company = null;
-          if (s.processor_org_id) {
-            const { data } = await dbClient.from('companies').select('*').eq('id', s.processor_org_id).maybeSingle();
-            company = data;
-          }
-          if (!company && s.processor_name) {
-            const { data } = await dbClient.from('companies').select('*').ilike('company_name', s.processor_name).limit(1);
-            company = data && data[0];
-          }
-          if (!company) return { pass: null, detail: 'No processing plant company on file to check.' };
-
-          const { data: certs } = await dbClient.from('company_certifications').select('*').eq('company_id', company.id);
-          const isEu = r => {
-            const t = `${r.cert_type || ''} ${r.cert_name || ''}`.toLowerCase();
-            if (/\b(uk|usa|us|noaa|fsvp)\b/.test(t)) return false;
-            return /\b(eu|european union)\b/.test(t) && /(facility|establishment|approv)/.test(t);
-          };
-          const hits = (certs || []).filter(isEu);
-          if (!hits.length) return { pass: false, detail: `No EU facility approval on file for ${company.company_name || 'the processing plant'}.` };
-          const today = new Date().toISOString().slice(0, 10);
-          const live = r => !r.status || /^(active|valid|current)$/i.test(String(r.status));
-          const valid = hits.filter(r => live(r) && (!r.expiry_date || r.expiry_date >= today));
-          if (valid.length) {
-            return { pass: true, detail: `Valid EU approval ${valid[0].cert_number || ''} for ${company.company_name}${valid[0].expiry_date ? ', valid until ' + valid[0].expiry_date : ', no expiry recorded'}.` };
-          }
-          const expired = hits.find(r => r.expiry_date && r.expiry_date < today);
-          if (expired) return { pass: false, detail: `EU approval ${expired.cert_number || ''} for ${company.company_name} expired on ${expired.expiry_date}.` };
-          return { pass: false, detail: `EU approval on file for ${company.company_name} but not currently active.` };
-        } catch (e) {
-          console.warn('[SmarTuna Assistant] EU facility approval check failed:', e);
-          return { pass: null, detail: 'Could not be checked.' };
-        }
-      }
-
-      const allBatchesFlat = itemsArr.flatMap(it => byItem[it.id] || []);
-      const rawMaterialsUsed = allBatchesFlat.map(b => b.raw_material).filter(Boolean);
-      const wildCaptureRms = rawMaterialsUsed.filter(r => r.source_type === 'Wild Capture');
-      const catchFlags = [...new Set(wildCaptureRms.flatMap(r =>
-        (r.catches || []).filter(c => c.event_type === 'Catch' && c.flag_state).map(c => c.flag_state)
-      ))];
-      const approvalCheck = await checkEuFacilityApproval();
-
-      const euCatchChecks = [
-        { check: 'Destination is in the EU-27', pass: EU27.includes((s.destination_country || '').trim()), detail: s.destination_country || 'not set' },
-        { check: 'Has at least one product line', pass: itemsArr.length > 0, detail: `${itemsArr.length} item(s)` },
-        { check: 'Has at least one batch', pass: allBatchesFlat.length > 0, detail: `${allBatchesFlat.length} batch(es)` },
-        { check: 'Batches resolve to a raw material', pass: rawMaterialsUsed.length > 0, detail: `${rawMaterialsUsed.length} resolved` },
-        { check: 'At least one raw material is Wild Capture', pass: wildCaptureRms.length > 0, detail: wildCaptureRms.length ? `${wildCaptureRms.length} wild-capture` : 'all farmed, or source_type not set — catch certificates apply to wild capture only' },
-        { check: 'Has a catch event with a flag state recorded', pass: catchFlags.length > 0, detail: catchFlags.length ? catchFlags.join(', ') : 'none found' },
-        { check: 'Processing plant has a valid EU facility approval', pass: approvalCheck.pass, detail: approvalCheck.detail },
-      ];
-      const euCatchReady = euCatchChecks.slice(0, 6).every(c => c.pass === true) && approvalCheck.pass !== false;
-
-      return {
-        ...s,
-        origin_port: portOf(s.origin_port_id),
-        destination_port: portOf(s.destination_port_id),
-        item_count: itemsArr.length,
-        items: cap(itemsArr, MAX_ITEMS).map(it => {
-          const itBatches = byItem[it.id] || [];
-          return {
-            ...it,
-            product: it.product_id ? (productsById[it.product_id] || null) : null,
-            batch_count: itBatches.length,
-            batches: cap(itBatches, MAX_BATCHES_PER_ITEM),
-          };
-        }),
-        leg_count: legsArr.length,
-        legs: cap(legsArr, MAX_LEGS).map(l => ({
-          ...l,
-          origin_port: portOf(l.origin_port_id),
-          destination_port: portOf(l.destination_port_id),
-        })),
-        vessel_count: vesselsArr.length,
-        vessels: cap(vesselsArr, MAX_VESSELS).map(v => ({
-          ...v,
-          vessel_detail: v.vessel_id ? (vesselsById[v.vessel_id] || null) : null,
-        })),
-        catch_certificate_count: catchCertsArr.length,
-        catch_certificates: cap(catchCertsArr, MAX_CC),
-        eu_catch_readiness: { ready: euCatchReady, checks: euCatchChecks },
-      };
-    }
-
-    function normalizeRef(str) { return (str || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
-    function findRefInText(text, summary) {
-      const norm = normalizeRef(text);
-      if (!norm) return null;
-      let hit = summary.find(row => row.shipment_ref && norm.includes(normalizeRef(row.shipment_ref)));
-      if (hit) return hit.shipment_ref;
-      const fields = ['destination', 'destination_country', 'origin', 'exporter', 'products'];
-      for (const field of fields) {
-        hit = summary.find(row => {
-          const val = normalizeRef(row[field]);
-          return val && val.length > 3 && norm.includes(val);
-        });
-        if (hit) return hit.shipment_ref;
-      }
-      return null;
-    }
-    function findMentionedShipmentRef(question, summary, priorMessages) {
-      const direct = findRefInText(question, summary);
-      if (direct) return direct;
-      if (priorMessages && priorMessages.length) {
-        for (let i = priorMessages.length - 1; i >= 0; i--) {
-          const hit = findRefInText(priorMessages[i]?.content, summary);
-          if (hit) return hit;
-        }
-      }
-      return null;
-    }
-
-    // Persisted to sessionStorage, same key as every SmarTuna surface —
-    // survives a reload within the tab, and navigating between surfaces
-    // (dashboard/chat/voice page) in the SAME tab shares this context too,
-    // since sessionStorage is scoped per origin+tab, not per page.
-    const LDSR_KEY = 'smartuna_last_shipment_ref';
-    let lastDiscussedShipmentRef = (function () {
-      try { return sessionStorage.getItem(LDSR_KEY) || null; } catch (e) { return null; }
+    // Conversation history — persisted to sessionStorage so a page reload
+    // doesn't silently drop context mid-conversation. Much smaller than
+    // Phase 0's equivalent: tool call/result exchanges are ephemeral per
+    // question, never persisted — only the final user question and
+    // assistant answer get stored long-term.
+    const ASSISTANT_HIST_KEY = 'smartuna_assistant_history';
+    let assistantMessages = (function () {
+      try { return JSON.parse(sessionStorage.getItem(ASSISTANT_HIST_KEY) || '[]'); } catch (e) { return []; }
     })();
-    function setLastDiscussedShipmentRef(ref) {
-      lastDiscussedShipmentRef = ref;
-      try {
-        if (ref) sessionStorage.setItem(LDSR_KEY, ref);
-        else sessionStorage.removeItem(LDSR_KEY);
-      } catch (e) { /* sessionStorage unavailable — falls back to in-memory only */ }
+    function persistAssistantMessages() {
+      try { sessionStorage.setItem(ASSISTANT_HIST_KEY, JSON.stringify(assistantMessages)); } catch (e) { /* unavailable */ }
     }
-
-    async function findShipmentRefsByVesselName(question, priorMessages) {
-      const combined = [question, ...(priorMessages || []).map(m => m?.content || '')].join(' ');
-      const qNorm = normalizeRef(combined);
-      if (!qNorm) return [];
-      try {
-        const [catchesRes, transportRes] = await Promise.all([
-          dbClient.from('raw_material_catches').select('raw_material_id,vessel_name').then(r => r).catch(() => ({ data: [] })),
-          dbClient.from('shipment_vessels').select('shipment_id,vessel_name').then(r => r).catch(() => ({ data: [] })),
-        ]);
-        const matchedRmIds = new Set();
-        (catchesRes.data || []).forEach(c => {
-          const vNorm = normalizeRef(c.vessel_name);
-          if (vNorm && vNorm.length > 3 && qNorm.includes(vNorm)) matchedRmIds.add(c.raw_material_id);
-        });
-        const shipmentIds = new Set();
-        (transportRes.data || []).forEach(v => {
-          const vNorm = normalizeRef(v.vessel_name);
-          if (vNorm && vNorm.length > 3 && qNorm.includes(vNorm)) shipmentIds.add(v.shipment_id);
-        });
-        if (matchedRmIds.size) {
-          const { data: batches } = await dbClient.from('shipment_batches').select('shipment_id').in('raw_material_id', [...matchedRmIds]);
-          (batches || []).forEach(b => shipmentIds.add(b.shipment_id));
-        }
-        if (!shipmentIds.size) return [];
-        const { data: shipments } = await dbClient.from('shipments').select('shipment_ref').in('id', [...shipmentIds]).is('deleted_at', null);
-        return (shipments || []).map(s => s.shipment_ref).filter(Boolean);
-      } catch (e) {
-        console.warn('[SmarTuna Assistant] Vessel-name shipment lookup failed:', e);
-        return [];
-      }
-    }
-
-    function lightenShipmentDetail(detail) {
-      return {
-        shipment_ref: detail.shipment_ref, status: detail.status,
-        transport_mode: detail.transport_mode,
-        origin_name: detail.origin_name, destination_name: detail.destination_name,
-        departure_date: detail.departure_date, arrival_date: detail.arrival_date,
-        container_discharge_date: detail.container_discharge_date,
-        container_no: detail.container_no, seal_number: detail.seal_number,
-        exporter_name: detail.exporter_name, importer_name: detail.importer_name,
-        items: (detail.items || []).map(it => ({
-          product_name: it.product_name, species_name: it.species_name, brand: it.product?.brand,
-          number_of_packages: it.number_of_packages, net_weight_kg: it.net_weight_kg,
-          batch_lots: (it.batches || []).map(b => b.batch_lot).filter(Boolean),
-        })),
-        vessels: (detail.vessels || []).map(v => ({ role: v.role, vessel_name: v.vessel_name, imo: v.imo })),
-        catch_certificate_refs: (detail.catch_certificates || []).map(c => c.cc_ref).filter(Boolean),
-        eu_catch_readiness: detail.eu_catch_readiness,
-      };
-    }
-
-    // Hard ceiling — regardless of WHAT causes a shipment record to be huge
-    // (a large jsonb field, a rich-text notes field, many batches/products,
-    // anything not anticipated by testing with small sample data), this
-    // makes "the payload is too big" structurally impossible. Rebuilds a
-    // small, clean summary from the SAME detail object rather than
-    // truncating raw JSON text, which could hand the model broken JSON.
-    const MAX_SHIPMENT_BLOCK_CHARS = 8000; // static prompt is now ~3.7k chars (measured), leaving real room for genuine detail before this needs to engage
-    function capShipmentBlockSize(block, detail, mentionedRef) {
-      if (block.length <= MAX_SHIPMENT_BLOCK_CHARS) return block;
-      const light = lightenShipmentDetail(detail);
-      return `\n\nFULL DETAIL FOR SHIPMENT ${mentionedRef} (one or more fields on this record were unusually large, so this is a trimmed core summary rather than the complete record — ask about a specific named product, vessel, or batch for anything not shown here):\n${JSON.stringify(light)}`;
-    }
-
-    async function buildShipmentContext(question, priorMessages) {
-      try {
-        const summary = await fetchShipmentsSummary(30);
-        if (!summary.length) return '\n\nSHIPMENT DATA: This organisation has no shipment records yet.';
-
-        let mentionedRef = findMentionedShipmentRef(question, summary, priorMessages);
-        let vesselMatchedRefs = [];
-        if (!mentionedRef) {
-          vesselMatchedRefs = await findShipmentRefsByVesselName(question, priorMessages);
-        }
-
-        if (mentionedRef) {
-          setLastDiscussedShipmentRef(mentionedRef);
-        } else if (vesselMatchedRefs.length) {
-          setLastDiscussedShipmentRef(vesselMatchedRefs[0]);
-        } else if (lastDiscussedShipmentRef) {
-          mentionedRef = lastDiscussedShipmentRef;
-        }
-
-        if (vesselMatchedRefs.length) {
-          const MAX_VESSEL_MATCHES = 3;
-          const refsToFetch = vesselMatchedRefs.slice(0, MAX_VESSEL_MATCHES);
-          const details = (await Promise.all(refsToFetch.map(r => fetchShipmentDetail(r)))).filter(Boolean);
-          if (details.length) {
-            let block = `\n\nSHIPMENTS MATCHING THE VESSEL NAMED IN THE QUESTION (${details.length} found${vesselMatchedRefs.length > MAX_VESSEL_MATCHES ? `, showing first ${MAX_VESSEL_MATCHES} of ${vesselMatchedRefs.length}` : ''}):`;
-            details.forEach(d => { block += `\n\nFULL DETAIL FOR SHIPMENT ${d.shipment_ref}:\n${JSON.stringify(d)}`; });
-            if (block.length > MAX_SHIPMENT_BLOCK_CHARS) {
-              block = `\n\nSHIPMENTS MATCHING THE VESSEL NAMED IN THE QUESTION (${details.length} found, trimmed for length):`;
-              details.forEach(d => { block += `\n\n${JSON.stringify(lightenShipmentDetail(d))}`; });
-            }
-            return block;
-          }
-        }
-
-        if (mentionedRef) {
-          const detail = await fetchShipmentDetail(mentionedRef);
-          if (detail) {
-            const otherRefs = summary.filter(s => s.shipment_ref !== mentionedRef).map(s => s.shipment_ref);
-            let block = otherRefs.length
-              ? `\n\nOTHER RECENT SHIPMENT REFERENCES (ask if detail on one of these is needed): ${JSON.stringify(otherRefs)}`
-              : '';
-            block += `\n\nFULL DETAIL FOR SHIPMENT ${mentionedRef}:\n${JSON.stringify(detail)}`;
-            block = capShipmentBlockSize(block, detail, mentionedRef);
-            return block;
-          }
-        }
-
-        let summaryBlock = `\n\nRECENT SHIPMENTS (${summary.length} most recent, summary level):\n${JSON.stringify(summary)}`;
-        if (summaryBlock.length > MAX_SHIPMENT_BLOCK_CHARS) {
-          const fewer = summary.slice(0, 10);
-          summaryBlock = `\n\nRECENT SHIPMENTS (showing ${fewer.length} of ${summary.length} — trimmed for length, ask about a specific shipment for full detail):\n${JSON.stringify(fewer)}`;
-        }
-        return summaryBlock;
-      } catch (e) {
-        console.warn('[SmarTuna Assistant] Shipment context fetch failed:', e);
-        return '\n\nSHIPMENT DATA: Could not be loaded for this question — answer without inventing shipment specifics, and mention the data was unavailable.';
-      }
-    }
-
-    // Real conversation history — capped, since sticky lastDiscussedShipmentRef
-    // above now handles shipment memory independently of this window.
-    let assistantMessages = [];
-    const ASSISTANT_HISTORY_TURNS = 3;
+    const ASSISTANT_HISTORY_TURNS = 8; // safe to raise vs Phase 0 — no more full data dumps stored per turn
 
     async function manhattanAskAI(question, productData){
-      assistantMessages.push({ role: 'user', content: question });
+      if (!smartunaAiReady) throw new Error('SmarTuna A.I is not initialised yet.');
       const sendHistory = assistantMessages.slice(-ASSISTANT_HISTORY_TURNS * 2);
-
-      const shipmentContext = await buildShipmentContext(question, sendHistory);
-
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GK },
-        body: JSON.stringify({
-          model: 'openai/gpt-oss-120b',
-          max_tokens: 500,
-          messages: [
-            { role: 'system', content: ASSISTANT_SYSTEM + shipmentContext },
-            ...sendHistory,
-          ],
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        console.error('[SmarTuna Assistant] Groq API error — status', res.status, data);
-        throw new Error(data.error?.message || `Groq API returned HTTP ${res.status}`);
-      }
-
-      const reply = data.choices?.[0]?.message?.content;
-      if (!reply) {
-        console.error('[SmarTuna Assistant] Unexpected Groq response shape:', data);
-        throw new Error('Response had no message content');
-      }
-
-      assistantMessages.push({ role: 'assistant', content: reply });
-      return reply;
+      const result = await SmarTunaAI.ask(question, sendHistory);
+      assistantMessages.push({ role: 'user', content: question });
+      assistantMessages.push({ role: 'assistant', content: result.answer });
+      persistAssistantMessages();
+      return result.answer;
     }
 
     let assistant;
-    function initAssistant(firstName){
+    function initAssistant(firstName, organisationId){
+      initSmartunaAI(organisationId);
+
       assistant = new ManhattanVoiceAssistant({
         embedded: true,
         mountTo: document.getElementById('assistantMount'),
@@ -935,7 +459,7 @@ RESPONSE STYLE:
       const originalNewChat = assistant.newChat.bind(assistant);
       assistant.newChat = function(){
         assistantMessages = [];
-        setLastDiscussedShipmentRef(null);
+        persistAssistantMessages();
         originalNewChat();
       };
 
@@ -980,7 +504,7 @@ RESPONSE STYLE:
       const {data:{session}} = await dbClient.auth.getSession();
       if(!session){ window.location.href='login.html'; return; }
 
-      const {data:p} = await dbClient.from('profiles').select('first_name,last_name,avatar_color,photo_url').eq('id',session.user.id).single();
+      const {data:p} = await dbClient.from('profiles').select('first_name,last_name,avatar_color,photo_url,company_id').eq('id',session.user.id).single();
       const firstName = p?.first_name || session.user.email.split('@')[0];
       const lastName = p?.last_name || '';
       const initials = (firstName.charAt(0)+(lastName?lastName.charAt(0):'')).toUpperCase();
@@ -993,7 +517,7 @@ RESPONSE STYLE:
         document.getElementById('maUserInitials').textContent = initials;
       }
 
-      initAssistant(firstName);
+      initAssistant(firstName, p?.company_id);
     });
   </script>
 </body>
