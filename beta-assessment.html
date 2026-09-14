@@ -5146,6 +5146,7 @@ function renderMSCFisheryKDE(q){
       </div>
       ${kResp['_fisheryVerify_c_msc']?renderFisheryVerifyBanner():`<div style="font-size:10px;color:#9aa0b4;margin-top:6px;">Add as many fisheries as needed. Certification periods will be checked against your catch dates.</div>`}
     </div>
+    ${r._hasModuleItem&&r.ans==='pa'&&!r.gapNote?`<div style="font-size:10px;color:#1e40af;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:4px 8px;margin:4px 0 6px;">✦ Pre-filled from SmarTuna records — upload your document to confirm Available</div>`:''}
     ${r.gapNote?`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 6px;padding:6px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:10px;color:#92400e;line-height:1.4;cursor:pointer;" onclick="openEvMod('${q.id}');setTimeout(()=>switchEvTab('add'),80)">
       <span style="display:flex;align-items:center;gap:5px;"><span>⚠</span><span>${r.gapNote}</span></span>
       <span style="color:#166534;font-weight:700;white-space:nowrap;background:#f0fdf4;padding:2px 7px;border-radius:5px;border:1px solid #bbf7d0;">📄 Upload to confirm →</span>
@@ -5164,10 +5165,8 @@ function renderMSCFisheryKDE(q){
 }
 
 function renderQ(q){
-  // Special rendering for c_msc — inject fishery picker
-  if(q.id==='c_msc'){
-    return renderMSCFisheryKDE(q);
-  }
+  // Non-scoring KDEs (e.g. c_fisheries) render as their custom picker
+  if(q._nonScoring)return renderMSCFisheryKDE(q);
   // Auto-inject GLN note from company module on shipper/receiver KDEs
   if((q.id.endsWith('_lfp_shipper')||q.id.endsWith('_lfp_receiver'))&&kResp['_glnNote']){
     if(!kResp[q.id])kResp[q.id]={};
@@ -5540,6 +5539,7 @@ function getModulesForKDE(kdeId){
     'cr_name':['vessel'],'cr_imo':['vessel'],'cr_uid':['vessel'],
     'cr_flag':['vessel','country'],'cr_rfmo':['vessel'],
     'cr_eu_approval':['vessel'],'cr_iuu_check':['vessel'],
+    'cr_bol':['company'],'cr_invoice':['company'],'cr_weight':['company'],
     'cr_coc':['company'],'cr_welfare_policy':['vessel','country'],
     'cr_atsea_obs':['vessel'],'cr_atsea_hs':['vessel'],
     // Landing — Port module
@@ -6874,8 +6874,10 @@ function reuseBucketEv(stage,idx){
 }
 
 function openEvMod(id){
-  evKdeId=id;evSelType=null;evTempItems=[...(kResp[id]?.evidence||[])];
-  _evTab='stage';
+  evKdeId=id;evSelType=null;evCustomName=null;evUploadedUrl=null;
+  evTempItems=[...(kResp[id]?.evidence||[])];
+  _evModuleState={selectedModule:null,selectedItem:null,portRole:null};
+  _evTab='add';
   // reset type selection
   document.querySelectorAll('.ev-type').forEach(el=>el.classList.remove('sel'));
   // Reset input area — remove both inline style and class so CSS default (display:none) applies
@@ -7253,13 +7255,20 @@ function saveEvidence(){
   if(!evKdeId)return;
   if(!kResp[evKdeId])kResp[evKdeId]={};
 
-  // evTempItems only contains items that belong to the current KDE
-  // (routed items are never added to evTempItems)
+  // evTempItems only contains items for the current KDE (routed items never added)
   const currentKdeItems=[...evTempItems];
   kResp[evKdeId].evidence=currentKdeItems;
-
-  // Add to global bucket
   currentKdeItems.forEach(ev=>addToBucket(ev,evKdeId));
+
+  // Upgrade answer based on evidence quality
+  const hasManualDoc=currentKdeItems.some(e=>e._manual||((!e._fromModule)&&(e.type==='doc'||e.type==='cert'||e.type==='photo')));
+  const hasModuleItem=kResp[evKdeId]._hasModuleItem||currentKdeItems.some(e=>e._fromModule);
+  if(hasManualDoc){
+    kResp[evKdeId].ans='av';
+    kResp[evKdeId]._manuallyAnswered=true;
+  } else if(hasModuleItem&&kResp[evKdeId].ans==='pa'){
+    // keep Partial — module item only, no company doc yet
+  }
 
   // Re-render this KDE's card
   const safeId=evKdeId.replace(/[^a-zA-Z0-9]/g,'_');
@@ -7352,21 +7361,207 @@ function fillSkippedAsNotAvailableFor(stagesArr){
 function fillSkippedAsNotAvailable(){
   fillSkippedAsNotAvailableFor(STAGES);
 }
+// ══ SCORING ENGINE ═══════════════════════════════════════════════════
+// Simple additive risk scoring — no ratios, no percentages
+// Available = 0  |  Partial = 10 / 30 / 50 (per KDE)  |  Not Available = 50
+// Total score = sum of all KDE risk points (lower = better traceability)
+// ═════════════════════════════════════════════════════════════════════
+
+function buildMRIPayload(){
+  STAGES=buildStages();
+  const{total:riskTotal,max:riskMax}=calcScore(rvOverrides);
+
+  // Per-stage breakdown
+  const stageBreakdown=[];
+  STAGES.forEach(st=>{
+    st.instances.forEach(sub=>{
+      const qs=resolveReviewSubQs(st,sub,
+        products.some(p=>p?.markets?.some(m=>EU27.includes(m))),
+        products.some(p=>p?.markets?.includes('US')),
+        products.some(p=>p?.form==='frozen')
+      ).filter(q=>!q._nonScoring);
+      if(!qs.length)return;
+      let stRisk=0,stMax=0,avCount=0,paCount=0,unCount=0,unEvCount=0;
+      const kdeDetails=[];
+      qs.forEach(q=>{
+        const r=kResp[q.id]||{};
+        if(!r.ans)return;
+        const ov=rvOverrides[q.id];
+        const score=ov!==undefined?Number(ov):r.ans==='av'?0:r.ans==='pa'?getPartialScore(q.id):50;
+        stMax+=50;stRisk+=score;
+        if(r.ans==='av')avCount++;
+        else if(r.ans==='pa')paCount++;
+        else if(r.ans==='un')unCount++;
+        // Flag Available with no evidence
+        const hasEv=(r.evidence||[]).length>0;
+        const hasManualDoc=(r.evidence||[]).some(e=>e._manual||((!e._fromModule)&&(e.type==='doc'||e.type==='cert'||e.type==='photo')));
+        const fromModule=r._hasModuleItem;
+        if(r.ans==='av'&&!hasEv)unEvCount++;
+        kdeDetails.push({
+          id:q.id,q:q.q,ans:r.ans,score,
+          hasEvidence:hasEv,hasManualDoc,fromModule:!!fromModule,
+          overridden:ov!==undefined,note:r.note||r.unNote||'',
+          gapNote:r.gapNote||''
+        });
+      });
+      if(stMax>0){
+        stageBreakdown.push({
+          stageType:st.type,
+          instanceId:sub.inst?.id||st.type,
+          label:(sub.inst?.name||st.type)+' ('+st.type+')',
+          riskScore:stRisk,maxScore:stMax,
+          avCount,paCount,unCount,unEvCount,
+          kdeDetails
+        });
+      }
+    });
+  });
+
+  // Gap summary — categorise by urgency
+  const gaps={critical:[],high:[],medium:[]};
+  stageBreakdown.forEach(st=>{
+    st.kdeDetails.forEach(k=>{
+      if(k.ans==='un'){
+        const entry={kde:k.id,q:k.q,stage:st.stageType};
+        if(k.score===50)gaps.critical.push(entry);
+        else gaps.high.push(entry);
+      } else if(k.ans==='pa'&&!k.hasManualDoc){
+        gaps.medium.push({kde:k.id,q:k.q,stage:st.stageType,fromModule:k.fromModule});
+      } else if(k.ans==='av'&&!k.hasEvidence){
+        gaps.medium.push({kde:k.id,q:k.q,stage:st.stageType,note:'Available claimed but no evidence attached'});
+      }
+    });
+  });
+
+  // MRI Band
+  return{
+    totalScore:riskTotal,maxScore:riskMax,
+    stageBreakdown,gaps,
+    submittedAt:new Date().toISOString(),
+    assessorName:assessorName||'',
+    assessorRole:assessorRole||'',
+    companyName:document.getElementById('assessorCompany')?.value||'',
+    productCount:products.filter(Boolean).length,
+    totalKdes:stageBreakdown.reduce((s,st)=>s+st.kdeDetails.length,0),
+    answeredKdes:stageBreakdown.reduce((s,st)=>s+st.kdeDetails.filter(k=>k.ans).length,0),
+    rvOverrides
+  };
+}
+
 async function doSubmit(){
-  // Rebuild STAGES from current products to ensure we cover all questions before defaulting
   if(products.filter(Boolean).length)STAGES=buildStages();
   fillSkippedAsNotAvailable();
+
+  // Calculate MRI Score
+  const mriPayload=buildMRIPayload();
+
+  // Show loading state
+  const btn=document.querySelector('button[onclick="doSubmit()"]');
+  if(btn){btn.disabled=true;btn.textContent='Submitting...';}
+
   const nowIso=new Date().toISOString();
-  const payload={submitted_by:assessorName||'beta-user',status:'submitted',products:products.filter(Boolean),k_resp:kResp,stage_index:kIdx,updated_at:nowIso};
+  const payload={
+    submitted_by:assessorName||'beta-user',
+    company_name:mriPayload.companyName,
+    assessor_role:assessorRole||'',
+    status:'submitted',
+    products:products.filter(Boolean),
+    k_resp:kResp,
+    stage_index:kIdx,
+    mri_score:mriPayload.totalScore,
+    risk_max:mriPayload.maxScore,
+    gap_summary:mriPayload.gaps,
+    stage_breakdown:mriPayload.stageBreakdown.map(s=>({
+      stageType:s.stageType,instanceId:s.instanceId,label:s.label,
+      riskScore:s.riskScore,maxScore:s.maxScore,
+      avCount:s.avCount,paCount:s.paCount,unCount:s.unCount,unEvCount:s.unEvCount
+    })),
+    rv_overrides:rvOverrides,
+    total_kdes:mriPayload.totalKdes,
+    answered_kdes:mriPayload.answeredKdes,
+    updated_at:nowIso,
+    submitted_at:nowIso
+  };
+
   try{
-    if(draftId){const{error}=await db.from('beta_assessments').update(payload).eq('id',draftId);if(error)throw error;}
-    else{const{data,error}=await db.from('beta_assessments').insert(payload).select('id').single();if(error)throw error;if(data)draftId=data.id;}
+    if(draftId){
+      const{error}=await db.from('beta_assessments').update(payload).eq('id',draftId);
+      if(error)throw error;
+    } else {
+      const{data,error}=await db.from('beta_assessments').insert(payload).select('id').single();
+      if(error)throw error;
+      if(data)draftId=data.id;
+    }
+    // Store MRI payload for results screen
+    window._lastMRIPayload=mriPayload;
+    goTo('sThankYou');
+    renderThankYouScreen(mriPayload);
   }catch(e){
     console.error('Submit error:',e);
     showToast('⚠ Submit failed: '+e.message,'error');
-    return;
+    if(btn){btn.disabled=false;btn.textContent='Submit Assessment';}
   }
-  goTo('sThankYou');
+}
+
+function renderThankYouScreen(mri){
+  const el=document.getElementById('sThankYou');
+  if(!el)return;
+  const critCount=mri.gaps.critical.length;
+  const highCount=mri.gaps.high.length;
+  const medCount=mri.gaps.medium.length;
+  const avTotal=mri.stageBreakdown.reduce((s,st)=>s+st.avCount,0);
+  const paTotal=mri.stageBreakdown.reduce((s,st)=>s+st.paCount,0);
+  const unTotal=mri.stageBreakdown.reduce((s,st)=>s+st.unCount,0);
+  const scoreColor=mri.totalScore<=200?'#16a34a':mri.totalScore<=400?'#f59e0b':'#e63946';
+  el.innerHTML=`
+    <div style="max-width:680px;margin:0 auto;padding:40px 24px;">
+      <!-- Score card -->
+      <div style="background:#fff;border:1.5px solid #e8eaf0;border-radius:20px;padding:28px 32px;margin-bottom:24px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.07);">
+        <div style="font-size:11px;font-weight:700;color:#9aa0b4;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;">SmarTuna Risk Score</div>
+        <div style="font-size:64px;font-weight:800;color:${scoreColor};line-height:1;">${mri.totalScore}</div>
+        <div style="font-size:13px;color:#6b7280;margin-top:4px;">total risk points — lower is better</div>
+        <div style="font-size:11px;color:#9aa0b4;margin-top:6px;">Available = 0 pts · Partial = 10/30/50 pts · Not Available = 50 pts</div>
+      </div>
+
+      <!-- Stats row -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;">
+        <div style="background:#fff;border:1.5px solid #e8eaf0;border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:22px;font-weight:800;color:#16a34a;">${avTotal}</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:2px;">✅ Available</div>
+          <div style="font-size:10px;color:#9aa0b4;">0 pts each</div>
+        </div>
+        <div style="background:#fff;border:1.5px solid #e8eaf0;border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:22px;font-weight:800;color:#f59e0b;">${paTotal}</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:2px;">◑ Partial</div>
+          <div style="font-size:10px;color:#9aa0b4;">10 / 30 / 50 pts</div>
+        </div>
+        <div style="background:#fff;border:1.5px solid #e8eaf0;border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:22px;font-weight:800;color:#e63946;">${unTotal}</div>
+          <div style="font-size:11px;color:#6b7280;margin-top:2px;">✗ Not Available</div>
+          <div style="font-size:10px;color:#9aa0b4;">50 pts each</div>
+        </div>
+      </div>
+
+      <!-- Gap summary -->
+      ${critCount+highCount+medCount>0?`
+      <div style="background:#fff;border:1.5px solid #e8eaf0;border-radius:16px;padding:20px 24px;margin-bottom:24px;">
+        <div style="font-size:13px;font-weight:800;color:#1a1a2e;margin-bottom:14px;">🎯 Priority gaps to close</div>
+        ${critCount?`<div style="margin-bottom:10px;"><div style="font-size:11px;font-weight:700;color:#e63946;margin-bottom:6px;">Critical (${critCount})</div>${mri.gaps.critical.slice(0,3).map(g=>`<div style="font-size:11px;color:#4a4e69;padding:4px 0;border-bottom:1px solid #f4f6fb;">✗ ${g.q.slice(0,80)}${g.q.length>80?'…':''}</div>`).join('')}${critCount>3?`<div style="font-size:10px;color:#9aa0b4;margin-top:4px;">+${critCount-3} more critical gaps</div>`:''}</div>`:''}
+        ${highCount?`<div style="margin-bottom:10px;"><div style="font-size:11px;font-weight:700;color:#f97316;margin-bottom:6px;">High priority (${highCount})</div>${mri.gaps.high.slice(0,3).map(g=>`<div style="font-size:11px;color:#4a4e69;padding:4px 0;border-bottom:1px solid #f4f6fb;">⚠ ${g.q.slice(0,80)}${g.q.length>80?'…':''}</div>`).join('')}</div>`:''}
+        ${medCount?`<div><div style="font-size:11px;font-weight:700;color:#f59e0b;margin-bottom:6px;">Needs documentation (${medCount})</div>${mri.gaps.medium.slice(0,3).map(g=>`<div style="font-size:11px;color:#4a4e69;padding:4px 0;border-bottom:1px solid #f4f6fb;">◑ ${g.q.slice(0,80)}${g.q.length>80?'…':''}</div>`).join('')}</div>`:''}
+      </div>`:''}
+
+      <!-- What happens next -->
+      <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:16px;padding:20px 24px;margin-bottom:24px;">
+        <div style="font-size:13px;font-weight:800;color:#1e40af;margin-bottom:10px;">✦ What happens next</div>
+        <div style="font-size:12px;color:#1e40af;line-height:1.7;">
+          Our team will review your submission within <strong>48 hours</strong>. We'll verify your answers, check any evidence you've attached, and may adjust scores where documentation is convincing.<br><br>
+          You'll receive a <strong>SmarTuna Verified</strong> certificate once the review is complete. In the meantime, we've saved your full assessment and MRI score.
+        </div>
+      </div>
+
+      <div style="text-align:center;font-size:11px;color:#9aa0b4;">Assessment ID: <strong>${draftId||'—'}</strong> · Submitted ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</div>
+    </div>`;
 }
 
 // ══ REVIEW SCREEN ══
