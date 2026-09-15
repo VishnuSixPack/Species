@@ -1071,12 +1071,18 @@ function handleWorldPoints(item) {
 
 function updateResizeHandlesPosition() {
   const show = sceneMode === '2d' && selectedItemId && !dragState && !resizeState;
-  if (!show) {
+  const item = show ? items.find(i => i.id === selectedItemId) : null;
+
+  if (!show || !item) {
+    // Fix: also toggle the parent's `hidden` attribute — without this, the
+    // container stays display:none from its HTML `hidden` attribute and no
+    // amount of setting individual handle display:block can make them show.
+    resizeHandlesEl.hidden = true;
     handleElements.forEach(h => h.style.display = 'none');
     return;
   }
-  const item = items.find(i => i.id === selectedItemId);
-  if (!item) { handleElements.forEach(h => h.style.display = 'none'); return; }
+
+  resizeHandlesEl.hidden = false;
   const rect = canvas.getBoundingClientRect();
   const worldPts = handleWorldPoints(item);
   worldPts.forEach((wp, i) => {
