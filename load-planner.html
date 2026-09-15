@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>3D Load Planner — SmarTuna</title>
+
+  <!-- Fonts: Poppins (UI) + DM Sans (fallback). BITSUMIS loaded via @font-face in CSS. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" />
+
+  <link rel="stylesheet" href="load-planner.css" />
+
+  <!-- Three.js loaded as ES modules via import map (no build step) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+
+  <!-- TOP NAV placeholder. Replace with your Species.html nav shell when ready. -->
+  <header class="top-nav">
+    <div class="brand">
+      <img class="brand-logo" src="sc-blue-logo.png" alt="SmarTuna" />
+      <span class="brand-text">SmarTuna</span>
+    </div>
+    <nav class="crumb">
+      <a href="index.html">Home</a>
+      <span class="crumb-sep">/</span>
+      <span class="crumb-current">3D Load Planner</span>
+    </nav>
+    <div class="top-actions">
+      <button class="btn-soft" id="saveDraft">Save draft</button>
+      <button class="btn-solid" id="publishPlan">Publish plan</button>
+    </div>
+  </header>
+
+  <!-- Page header -->
+  <section class="page-head">
+    <div>
+      <h1>3D Load Planner <span class="tag-st">ST</span></h1>
+      <p class="sub">Design your cargo space, drop in cartons and pallets, and see it in three dimensions.</p>
+    </div>
+    <div class="status-chip">Phase 2 · Cargo builder</div>
+  </section>
+
+  <!-- Workspace: three columns -->
+  <section class="workspace">
+
+    <!-- LEFT: Cargo space configuration -->
+    <aside class="card panel-left">
+      <div class="panel-header">
+        <h2>Cargo space</h2>
+        <span class="hint">Step 1</span>
+      </div>
+
+      <div class="section-label">Transport mode</div>
+      <div class="mode-grid">
+        <button class="mode-btn active" data-mode="Sea">
+          <span class="mode-icon">▣</span>
+          <span class="mode-title">Sea</span>
+          <span class="mode-note">Container / RoRo</span>
+        </button>
+        <button class="mode-btn" data-mode="Road">
+          <span class="mode-icon">▰</span>
+          <span class="mode-title">Road</span>
+          <span class="mode-note">Truck / van</span>
+        </button>
+        <button class="mode-btn" data-mode="Air">
+          <span class="mode-icon">✈</span>
+          <span class="mode-title">Air</span>
+          <span class="mode-note">ULD / hold</span>
+        </button>
+        <button class="mode-btn" data-mode="Rail">
+          <span class="mode-icon">▤</span>
+          <span class="mode-title">Rail</span>
+          <span class="mode-note">Wagon</span>
+        </button>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="section-label">Preset</div>
+      <select class="input-preset" id="presetSelect">
+        <option value="40HC">40' High Cube — 12.03 × 2.35 × 2.69 m</option>
+        <option value="40STD">40' Standard — 12.03 × 2.35 × 2.39 m</option>
+        <option value="20STD">20' Standard — 5.90 × 2.35 × 2.39 m</option>
+        <option value="45HC">45' High Cube — 13.55 × 2.35 × 2.69 m</option>
+        <option value="Custom">Custom dimensions</option>
+      </select>
+
+      <div class="dims-grid">
+        <label class="dim-field">
+          <span>Length (m)</span>
+          <input type="number" id="dimLength" step="0.01" min="0.1" value="12.03" />
+        </label>
+        <label class="dim-field">
+          <span>Width (m)</span>
+          <input type="number" id="dimWidth" step="0.01" min="0.1" value="2.35" />
+        </label>
+        <label class="dim-field">
+          <span>Height (m)</span>
+          <input type="number" id="dimHeight" step="0.01" min="0.1" value="2.69" />
+        </label>
+      </div>
+
+      <button class="btn-primary btn-full" id="applyDimensions">Apply cargo space</button>
+
+      <div class="divider"></div>
+
+      <div class="section-label">Plan checks</div>
+      <ul class="checks">
+        <li><span class="check-icon">○</span>Stay within max payload</li>
+        <li><span class="check-icon">○</span>Load distribution balanced</li>
+        <li><span class="check-icon">○</span>Respect handling rules</li>
+        <li><span class="check-icon">○</span>Allow safe rotation</li>
+      </ul>
+    </aside>
+
+    <!-- CENTER: 3D viewport -->
+    <section class="card panel-center">
+      <div class="viewport-head">
+        <div class="scene-label">
+          <span class="scene-mode" id="sceneMode">SEA</span>
+          <span class="scene-dims" id="sceneDims">12.03 × 2.35 × 2.69 m</span>
+        </div>
+        <div class="view-pills">
+          <button class="view-pill selected" data-view="perspective">Perspective</button>
+          <button class="view-pill" data-view="top">Top</button>
+          <button class="view-pill" data-view="side">Side</button>
+        </div>
+      </div>
+
+      <div class="viewport" id="viewport">
+        <canvas id="scene-canvas"></canvas>
+        <div class="viewport-tools">
+          <button id="toggleLabels" title="Toggle carton labels" class="tool-toggle">Aa</button>
+          <button id="zoomIn" title="Zoom in">+</button>
+          <button id="zoomOut" title="Zoom out">−</button>
+          <button id="resetView" title="Reset camera">⟲</button>
+        </div>
+        <div class="viewport-hint">DRAG CARTON TO MOVE · SHIFT-DRAG OR RIGHT-DRAG TO ORBIT · SCROLL TO ZOOM</div>
+      </div>
+
+      <div class="viewport-foot">
+        <div class="stat">
+          <span class="stat-label">Volume filled</span>
+          <span class="stat-value" id="statVolume">0%</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Placed items</span>
+          <span class="stat-value" id="statItems">0</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Total weight</span>
+          <span class="stat-value" id="statWeight">0 kg</span>
+        </div>
+        <div class="stat">
+          <span class="stat-label">Plan status</span>
+          <span class="stat-value stat-ok" id="statStatus">Empty</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- RIGHT: Cargo form + list -->
+    <aside class="card panel-right">
+      <div class="panel-header">
+        <h2>Cargo</h2>
+        <span class="hint" id="cargoCountHint">Step 2</span>
+      </div>
+
+      <!-- Add cargo form -->
+      <div class="form-block">
+        <div class="form-row">
+          <label class="field">
+            <span>Label / SKU</span>
+            <input id="fLabel" type="text" placeholder="e.g. TUNA-OIL-A" />
+          </label>
+          <label class="field">
+            <span>Product</span>
+            <input id="fProduct" type="text" placeholder="e.g. Tuna in olive oil" />
+          </label>
+        </div>
+
+        <div class="form-row">
+          <label class="field field-third">
+            <span>L (cm)</span>
+            <input id="fLength" type="number" min="1" step="0.5" placeholder="60" />
+          </label>
+          <label class="field field-third">
+            <span>W (cm)</span>
+            <input id="fWidth" type="number" min="1" step="0.5" placeholder="40" />
+          </label>
+          <label class="field field-third">
+            <span>H (cm)</span>
+            <input id="fHeight" type="number" min="1" step="0.5" placeholder="35" />
+          </label>
+        </div>
+
+        <div class="form-row">
+          <label class="field">
+            <span>Weight (kg)</span>
+            <input id="fWeight" type="number" min="0" step="0.1" placeholder="12" />
+          </label>
+          <label class="field">
+            <span>Handling</span>
+            <select id="fHandling">
+              <option value="standard">Standard</option>
+              <option value="fragile">Fragile</option>
+              <option value="heavy">Heavy</option>
+              <option value="stackable">Stackable</option>
+              <option value="this_side_up">This side up</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="form-row form-row-tight">
+          <div class="qty-picker">
+            <span class="field-label">Quantity</span>
+            <div class="qty-controls">
+              <button id="fQtyMinus" type="button">−</button>
+              <span id="fQty">1</span>
+              <button id="fQtyPlus" type="button">+</button>
+            </div>
+          </div>
+          <button class="btn-primary" id="addCargo">Add to plan</button>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Placed items list -->
+      <div class="list-block">
+        <div class="section-label list-label">
+          <span>Placed items</span>
+          <span class="list-count" id="listCount">0</span>
+        </div>
+        <div class="cargo-list" id="cargoList">
+          <div class="list-empty" id="listEmpty">
+            No items yet. Add cargo above and it drops into the container.
+          </div>
+        </div>
+      </div>
+
+      <!-- Selection actions (only visible when an item is selected) -->
+      <div class="edit-strip" id="editStrip" hidden>
+        <div class="edit-strip-head">
+          Selected · <b id="editStripLabel">—</b>
+        </div>
+        <div class="edit-actions">
+          <button id="btnFocus"  title="Focus camera">Focus</button>
+          <button id="btnRotate" title="Rotate 90°">Rotate</button>
+          <button id="btnDuplicate" title="Duplicate">Duplicate</button>
+          <button id="btnDelete" title="Delete" class="danger">Delete</button>
+        </div>
+      </div>
+    </aside>
+
+  </section>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <script type="module" src="load-planner.js"></script>
+</body>
+</html>
