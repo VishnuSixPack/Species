@@ -1499,6 +1499,110 @@ function deleteSelectedTemplate() {
 }
 
 // ============================================================
+// CUSTOM SELECT — replaces native <select> so the open menu is styled
+// The hidden native <select> stays in the DOM, so every existing
+// change-handler and .value read/write keeps working unchanged.
+// ============================================================
+function enhanceSelect(selectEl) {
+  if (selectEl.dataset.enhanced === '1') return;
+  selectEl.dataset.enhanced = '1';
+
+  const proto = HTMLSelectElement.prototype;
+  const valueDescriptor = Object.getOwnPropertyDescriptor(proto, 'value');
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'custom-select';
+
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'custom-select-trigger';
+
+  const menu = document.createElement('div');
+  menu.className = 'custom-select-menu';
+  menu.hidden = true;
+
+  const syncTrigger = () => {
+    const sel = [...selectEl.options].find(o => o.value === selectEl.value);
+    trigger.textContent = sel ? sel.textContent : (selectEl.options[0]?.textContent || '');
+    menu.querySelectorAll('.custom-select-option').forEach(item => {
+      item.classList.toggle('selected', item.dataset.value === selectEl.value);
+    });
+  };
+
+  const rebuild = () => {
+    menu.innerHTML = '';
+    [...selectEl.options].forEach(opt => {
+      const item = document.createElement('div');
+      item.className = 'custom-select-option';
+      item.dataset.value = opt.value;
+      item.textContent = opt.textContent;
+      if (opt.value === selectEl.value) item.classList.add('selected');
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (selectEl.value !== opt.value) {
+          valueDescriptor.set.call(selectEl, opt.value);
+          selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        syncTrigger();
+        closeMenu();
+      });
+      menu.appendChild(item);
+    });
+    syncTrigger();
+  };
+
+  const openMenu = () => {
+    document.querySelectorAll('.custom-select.open').forEach(cs => {
+      if (cs !== wrapper) {
+        cs.classList.remove('open');
+        cs.querySelector('.custom-select-menu').hidden = true;
+      }
+    });
+    wrapper.classList.add('open');
+    menu.hidden = false;
+    const sel = menu.querySelector('.selected');
+    if (sel) sel.scrollIntoView({ block: 'nearest' });
+  };
+
+  const closeMenu = () => {
+    wrapper.classList.remove('open');
+    menu.hidden = true;
+  };
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    menu.hidden ? openMenu() : closeMenu();
+  });
+
+  // Intercept programmatic .value assignments so the UI stays in sync
+  Object.defineProperty(selectEl, 'value', {
+    get() { return valueDescriptor.get.call(this); },
+    set(v) { valueDescriptor.set.call(this, v); syncTrigger(); },
+    configurable: true
+  });
+
+  // If options change (e.g. templates dropdown rebuilt), refresh the menu
+  new MutationObserver(() => rebuild()).observe(selectEl, { childList: true });
+
+  // Slot wrapper into the DOM where the select lived
+  selectEl.parentNode.insertBefore(wrapper, selectEl);
+  wrapper.appendChild(trigger);
+  wrapper.appendChild(menu);
+  wrapper.appendChild(selectEl);
+  selectEl.style.display = 'none';
+
+  rebuild();
+}
+
+// Click outside → close all open custom-select menus
+document.addEventListener('click', () => {
+  document.querySelectorAll('.custom-select.open').forEach(cs => {
+    cs.classList.remove('open');
+    cs.querySelector('.custom-select-menu').hidden = true;
+  });
+});
+
+// ============================================================
 // SAVE / LOAD (Supabase)
 // ============================================================
 async function savePlan(status) {
@@ -1947,6 +2051,13 @@ window.addEventListener('keydown', (e) => {
   }
 
   if (e.key === 'Escape') {
+    // Close any open custom-select menu first
+    const openSel = document.querySelector('.custom-select.open');
+    if (openSel) {
+      openSel.classList.remove('open');
+      openSel.querySelector('.custom-select-menu').hidden = true;
+      return;
+    }
     if (!$('#plansModal').hidden) { $('#plansModal').hidden = true; return; }
     if (!$('#tplModal').hidden)   { $('#tplModal').hidden = true; return; }
     if (resizeState) {
@@ -2009,6 +2120,7 @@ async function boot() {
   initScene();
   loadTemplatesFromStorage();
   renderTemplateDropdown();
+  $$('select').forEach(enhanceSelect);      // replace native selects with styled ones
   updateStats();
   renderCargoList();
   renderEditStrip();
