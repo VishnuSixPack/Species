@@ -5,14 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>3D Load Planner — SmarTuna</title>
 
-  <!-- Fonts: Poppins (UI) + DM Sans (fallback). BITSUMIS loaded via @font-face in CSS. -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" />
 
   <link rel="stylesheet" href="load-planner.css" />
 
-  <!-- Three.js loaded as ES modules via import map (no build step) -->
   <script type="importmap">
   {
     "imports": {
@@ -24,7 +22,6 @@
 </head>
 <body>
 
-  <!-- TOP NAV placeholder. Replace with your Species.html nav shell when ready. -->
   <header class="top-nav">
     <div class="brand">
       <img class="brand-logo" src="sc-blue-logo.png" alt="SmarTuna" />
@@ -36,21 +33,21 @@
       <span class="crumb-current">3D Load Planner</span>
     </nav>
     <div class="top-actions">
+      <button class="btn-soft" id="btnMyPlans">My plans</button>
+      <button class="btn-soft" id="btnNewPlan">New plan</button>
       <button class="btn-soft" id="saveDraft">Save draft</button>
       <button class="btn-solid" id="publishPlan">Publish plan</button>
     </div>
   </header>
 
-  <!-- Page header -->
   <section class="page-head">
-    <div>
-      <h1>3D Load Planner <span class="tag-st">ST</span></h1>
+    <div class="page-title-block">
+      <input class="plan-name-input" id="planName" placeholder="Untitled plan" maxlength="120" />
       <p class="sub">Design your cargo space, drop in cartons and pallets, and see it in three dimensions.</p>
     </div>
-    <div class="status-chip">Phase 2 · Cargo builder</div>
+    <div class="status-chip" id="statusChip">Draft · Unsaved</div>
   </section>
 
-  <!-- Workspace: three columns -->
   <section class="workspace">
 
     <!-- LEFT: Cargo space configuration -->
@@ -123,29 +120,48 @@
       </ul>
     </aside>
 
-    <!-- CENTER: 3D viewport -->
+    <!-- CENTER: 3D/2D viewport -->
     <section class="card panel-center">
-      <div class="viewport-head">
+      <div class="viewport-head" data-scene-mode="3d">
         <div class="scene-label">
           <span class="scene-mode" id="sceneMode">SEA</span>
           <span class="scene-dims" id="sceneDims">12.03 × 2.35 × 2.69 m</span>
         </div>
-        <div class="view-pills">
+
+        <!-- 3D / 2D toggle -->
+        <div class="scene-toggle" id="sceneToggle">
+          <button class="scene-toggle-btn active" data-scene="3d" title="3D perspective view">3D</button>
+          <button class="scene-toggle-btn" data-scene="2d" title="2D orthographic view with resize handles">2D</button>
+        </div>
+
+        <!-- View pills — 3D mode -->
+        <div class="view-pills view-pills-3d">
           <button class="view-pill selected" data-view="perspective">Perspective</button>
           <button class="view-pill" data-view="top">Top</button>
           <button class="view-pill" data-view="side">Side</button>
         </div>
+
+        <!-- View pills — 2D mode -->
+        <div class="view-pills view-pills-2d" hidden>
+          <button class="view-pill selected" data-view="top">Top</button>
+          <button class="view-pill" data-view="side">Side</button>
+          <button class="view-pill" data-view="front">Front</button>
+        </div>
       </div>
 
-      <div class="viewport" id="viewport">
+      <div class="viewport" id="viewport" data-scene-mode="3d">
         <canvas id="scene-canvas"></canvas>
+
+        <!-- Resize handles overlay (2D mode only) -->
+        <div class="resize-handles" id="resizeHandles" hidden></div>
+
         <div class="viewport-tools">
           <button id="toggleLabels" title="Toggle carton labels" class="tool-toggle">Aa</button>
           <button id="zoomIn" title="Zoom in">+</button>
           <button id="zoomOut" title="Zoom out">−</button>
           <button id="resetView" title="Reset camera">⟲</button>
         </div>
-        <div class="viewport-hint">DRAG CARTON TO MOVE · SHIFT-DRAG OR RIGHT-DRAG TO ORBIT · SCROLL TO ZOOM</div>
+        <div class="viewport-hint" id="viewportHint">DRAG CARTON TO MOVE · SHIFT-DRAG OR RIGHT-DRAG TO ORBIT · SCROLL TO ZOOM</div>
       </div>
 
       <div class="viewport-foot">
@@ -175,7 +191,20 @@
         <span class="hint" id="cargoCountHint">Step 2</span>
       </div>
 
-      <!-- Add cargo form -->
+      <div class="mode-indicator" id="modeIndicator" data-mode="add">
+        <span class="mode-dot"></span>
+        <span id="modeText">Add new cargo</span>
+        <button class="mode-clear" id="modeClear" hidden title="Cancel edit">Cancel</button>
+      </div>
+
+      <div class="template-row">
+        <select id="templateSelect" class="template-select">
+          <option value="">— Load a template —</option>
+        </select>
+        <button class="tpl-btn" id="saveTemplateBtn" title="Save current form values as a template">＋ Save</button>
+        <button class="tpl-btn danger" id="deleteTemplateBtn" hidden title="Delete selected template">Delete</button>
+      </div>
+
       <div class="form-block">
         <div class="form-row">
           <label class="field">
@@ -221,7 +250,7 @@
         </div>
 
         <div class="form-row form-row-tight">
-          <div class="qty-picker">
+          <div class="qty-picker" id="qtyPicker">
             <span class="field-label">Quantity</span>
             <div class="qty-controls">
               <button id="fQtyMinus" type="button">−</button>
@@ -229,13 +258,12 @@
               <button id="fQtyPlus" type="button">+</button>
             </div>
           </div>
-          <button class="btn-primary" id="addCargo">Add to plan</button>
+          <button class="btn-primary" id="primaryFormBtn">Add to plan</button>
         </div>
       </div>
 
       <div class="divider"></div>
 
-      <!-- Placed items list -->
       <div class="list-block">
         <div class="section-label list-label">
           <span>Placed items</span>
@@ -248,7 +276,6 @@
         </div>
       </div>
 
-      <!-- Selection actions (only visible when an item is selected) -->
       <div class="edit-strip" id="editStrip" hidden>
         <div class="edit-strip-head">
           Selected · <b id="editStripLabel">—</b>
@@ -264,7 +291,44 @@
 
   </section>
 
-  <!-- Toast -->
+  <!-- My Plans modal -->
+  <div class="modal" id="plansModal" hidden>
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-content">
+      <div class="modal-head">
+        <h2>My load plans</h2>
+        <button class="modal-close" data-close-modal>✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="plans-list" id="plansList">
+          <div class="plans-empty">Loading…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Save-template modal -->
+  <div class="modal" id="tplModal" hidden>
+    <div class="modal-backdrop" data-close-tpl></div>
+    <div class="modal-content modal-small">
+      <div class="modal-head">
+        <h2>Save as template</h2>
+        <button class="modal-close" data-close-tpl>✕</button>
+      </div>
+      <div class="modal-body">
+        <label class="field" style="margin-bottom:12px;">
+          <span>Template name</span>
+          <input id="tplName" type="text" placeholder="e.g. Tuna 12×95g carton" />
+        </label>
+        <div class="tpl-preview" id="tplPreview">—</div>
+        <div class="modal-actions">
+          <button class="btn-soft" data-close-tpl>Cancel</button>
+          <button class="btn-primary" id="tplSaveConfirm">Save template</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast"></div>
 
   <script type="module" src="load-planner.js"></script>
