@@ -43,6 +43,7 @@ const GRID_CM = 5;
 const CENTER_SNAP_CM = 15;
 const TEMPLATES_KEY = 'smartuna_planner_templates_v1';
 const SCENE_MODE_KEY = 'smartuna_planner_scene_mode';
+const REALISTIC_MODE_KEY = 'smartuna_planner_realistic_mode';
 
 const HANDLE_TYPES = ['nw','n','ne','e','se','s','sw','w'];
 
@@ -92,6 +93,7 @@ let camera, controls;                   // active
 
 let containerGroup;
 let cartonGroup;
+let yardMesh;                            // concrete ground plane
 let raycaster;
 
 let cargoSpace = { length: 12.03, width: 2.35, height: 2.69 };
@@ -108,6 +110,7 @@ let dragState = null;
 let sceneMode = '3d';                   // '3d' | '2d'
 let orthoView = 'top';                  // '2d' sub-view: top | side | front
 let last3DView = 'perspective';
+let realisticMode = false;              // opt-in realistic container + yard
 
 let resizeState = null;
 let handleElements = [];                // 8 DOM elements
@@ -176,6 +179,19 @@ function initScene() {
   grid.userData.isGrid = true;
   scene.add(grid);
 
+  // Yard — concrete-like ground plane, receives shadows.
+  // Visibility toggled by updateContainerVisibility (only shown in realistic 3D).
+  yardMesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(80, 80),
+    new THREE.MeshStandardMaterial({
+      color: 0x8f8b7f, roughness: 0.95, metalness: 0.02
+    })
+  );
+  yardMesh.rotation.x = -Math.PI / 2;
+  yardMesh.position.y = -0.02;
+  yardMesh.receiveShadow = true;
+  scene.add(yardMesh);
+
   cartonGroup = new THREE.Group();
   scene.add(cartonGroup);
 
@@ -233,6 +249,26 @@ function buildContainer() {
   const L = cargoSpace.length, W = cargoSpace.width, H = cargoSpace.height;
   containerGroup = new THREE.Group();
 
+  if (realisticMode) {
+    buildRealisticContainer(L, W, H);
+  } else {
+    buildSimpleContainer(L, W, H);
+  }
+
+  scene.add(containerGroup);
+
+  perspControls.target.set(L / 2, H / 2, 0);
+  perspControls.update();
+
+  updateContainerVisibility();
+
+  items.forEach(clampItemToBounds);
+  items.forEach(refreshItemMesh);
+  updateStats();
+}
+
+// -------- Simple container (default) — clean wireframe with translucent walls --------
+function buildSimpleContainer(L, W, H) {
   const floor = new THREE.Mesh(
     new THREE.BoxGeometry(L, 0.05, W),
     new THREE.MeshStandardMaterial({ color: 0xdae2ec, roughness: 0.9, metalness: 0.05 })
@@ -276,11 +312,15 @@ function buildContainer() {
   containerGroup.add(ceil);
 
   const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(L, H, W));
-  const wire = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x1a6fdb }));
+  const wire = new THREE.LineSegments(
+    edges,
+    new THREE.LineBasicMaterial({ color: 0x1a6fdb })
+  );
   wire.position.set(L / 2, H / 2, 0);
   wire.userData.isContainerWire = true;
   containerGroup.add(wire);
 
+  // Dashed front-door line marker
   const doorPoints = [
     new THREE.Vector3(L, 0, -W / 2),
     new THREE.Vector3(L, H, -W / 2),
@@ -297,30 +337,132 @@ function buildContainer() {
   door.computeLineDistances();
   door.userData.isContainerWire = true;
   containerGroup.add(door);
-
-  scene.add(containerGroup);
-
-  perspControls.target.set(L / 2, H / 2, 0);
-  perspControls.update();
-
-  updateContainerVisibility();
-
-  items.forEach(clampItemToBounds);
-  items.forEach(refreshItemMesh);
-  updateStats();
 }
 
-// Hide translucent walls when in 2D — cleaner outline view
+// -------- Realistic container — solid corrugated walls, open doors, corner castings --------
+function buildRealisticContainer(L, W, H) {
+  const wallColor = 0x3a5878;
+  const wallMat = new THREE.MeshStandardMaterial({
+    color: wallColor, roughness: 0.65, metalness: 0.35, side: THREE.DoubleSide
+  });
+  const floorMat = new THREE.MeshStandardMaterial({
+    color: 0x6d5a3d, roughness: 0.9, metalness: 0.05
+  });
+  const darkMat = new THREE.MeshStandardMaterial({
+    color: 0x1c1c1c, roughness: 0.4, metalness: 0.6
+  });
+
+  const floor = new THREE.Mesh(new THREE.BoxGeometry(L, 0.05, W), floorMat);
+  floor.position.set(L / 2, 0.025, 0);
+  floor.receiveShadow = true;
+  floor.userData.isContainerFloor = true;
+  containerGroup.add(floor);
+
+  // Walls with outward normals for camera-based culling
+  function addWall(dims, position, outwardNormal) {
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(...dims), wallMat);
+    wall.position.copy(position);
+    wall.castShadow = true;
+    wall.receiveShadow = true;
+    wall.userData.isContainerWall = true;
+    wall.userData.outwardNormal = outwardNormal;
+    containerGroup.add(wall);
+  }
+  addWall([0.06, H, W], new THREE.Vector3(0, H / 2, 0), new THREE.Vector3(-1, 0, 0));
+  addWall([L, H, 0.06], new THREE.Vector3(L / 2, H / 2, -W / 2), new THREE.Vector3(0, 0, -1));
+  addWall([L, H, 0.06], new THREE.Vector3(L / 2, H / 2, W / 2), new THREE.Vector3(0, 0, 1));
+  addWall([L, 0.06, W], new THREE.Vector3(L / 2, H, 0), new THREE.Vector3(0, 1, 0));
+
+  // Front doors — hinged at outer corners, swung open ~108°
+  function addDoor(hingeZ, isRight) {
+    const doorGroup = new THREE.Group();
+    doorGroup.position.set(L, 0, hingeZ);
+    const panelWidth = W / 2;
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.06, H, panelWidth), wallMat);
+    panel.position.set(0, H / 2, isRight ? -panelWidth / 2 : panelWidth / 2);
+    panel.castShadow = true;
+    panel.receiveShadow = true;
+    doorGroup.add(panel);
+    doorGroup.rotation.y = isRight ? -Math.PI * 0.6 : Math.PI * 0.6;
+    doorGroup.userData.isContainerDoor = true;
+    containerGroup.add(doorGroup);
+  }
+  addDoor(-W / 2, false);
+  addDoor(W / 2, true);
+
+  // Corner castings (iconic container detail)
+  const cornerSize = 0.16;
+  const cornerPositions = [
+    [0, 0, -W / 2], [0, 0, W / 2], [L, 0, -W / 2], [L, 0, W / 2],
+    [0, H, -W / 2], [0, H, W / 2], [L, H, -W / 2], [L, H, W / 2]
+  ];
+  cornerPositions.forEach(([x, y, z]) => {
+    const c = new THREE.Mesh(
+      new THREE.BoxGeometry(cornerSize, cornerSize, cornerSize),
+      darkMat
+    );
+    c.position.set(x, y, z);
+    c.castShadow = true;
+    c.userData.isCornerCasting = true;
+    containerGroup.add(c);
+  });
+
+  // Subtle wire outline for measurement clarity
+  const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(L, H, W));
+  const wire = new THREE.LineSegments(
+    edges,
+    new THREE.LineBasicMaterial({ color: 0x1a2536, transparent: true, opacity: 0.25 })
+  );
+  wire.position.set(L / 2, H / 2, 0);
+  wire.userData.isContainerWire = true;
+  containerGroup.add(wire);
+}
+
+// Camera-based wall culling — only meaningful in realistic 3D mode (solid walls)
+const _camDir = new THREE.Vector3();
+function updateContainerCulling() {
+  if (sceneMode !== '3d' || !realisticMode || !containerGroup) return;
+  const cx = cargoSpace.length / 2;
+  const cy = cargoSpace.height / 2;
+  const dx = camera.position.x - cx;
+  const dy = camera.position.y - cy;
+  const dz = camera.position.z;
+  const len = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  if (len < 0.01) return;
+  _camDir.set(dx / len, dy / len, dz / len);
+
+  containerGroup.traverse(obj => {
+    if (!obj.userData.outwardNormal) return;
+    const n = obj.userData.outwardNormal;
+    const dot = n.x * _camDir.x + n.y * _camDir.y + n.z * _camDir.z;
+    obj.visible = dot < 0.3;
+  });
+}
+
+// Hide translucent walls when in 2D — cleaner outline view.
+// Yard/sky/fog only appear in realistic 3D mode.
 function updateContainerVisibility() {
   if (!containerGroup) return;
   const in2D = sceneMode === '2d';
   containerGroup.traverse(obj => {
-    if (obj.userData.isContainerWall) obj.visible = !in2D;
+    if (obj.userData.isContainerWall)   obj.visible = !in2D;
+    if (obj.userData.isContainerDoor)   obj.visible = !in2D;
+    if (obj.userData.isCornerCasting)   obj.visible = !in2D;
+    if (obj.userData.isContainerFloor)  obj.visible = !in2D;
   });
-  // Hide the ground grid too in 2D (grid pattern comes from CSS instead)
+  if (yardMesh) yardMesh.visible = !in2D && realisticMode;
+  // Hide the ground grid in 2D and when yard covers it
   scene.traverse(obj => {
-    if (obj.userData.isGrid) obj.visible = !in2D;
+    if (obj.userData.isGrid) obj.visible = !in2D && !realisticMode;
   });
+  // Sky/fog only in realistic 3D — otherwise CSS background shows through
+  if (!in2D && realisticMode) {
+    scene.background = new THREE.Color(0xd1dae4);
+    scene.fog = new THREE.Fog(0xd1dae4, 30, 90);
+  } else {
+    scene.background = null;
+    scene.fog = null;
+  }
 }
 
 // ============================================================
@@ -1332,6 +1474,7 @@ function positionOrthoCamera(view) {
 function animate() {
   requestAnimationFrame(animate);
   controls.update();
+  updateContainerCulling();                // hide walls between camera and interior
   updateResizeHandlesPosition();
   renderer.render(scene, camera);
 }
@@ -1600,6 +1743,49 @@ document.addEventListener('click', () => {
     cs.classList.remove('open');
     cs.querySelector('.custom-select-menu').hidden = true;
   });
+});
+
+// ============================================================
+// KEYBOARD SHORTCUTS MODAL
+// ============================================================
+function renderShortcuts() {
+  const isMac = navigator.platform.toLowerCase().includes('mac');
+  const modKey = isMac ? '⌘' : 'Ctrl';
+  const keyboard = [
+    { keys: [modKey, 'S'],  desc: 'Save draft' },
+    { keys: ['Esc'],        desc: 'Close menu · cancel drag/resize · deselect' },
+    { keys: ['Del'],        desc: 'Delete selected carton' },
+    { keys: ['R'],          desc: 'Rotate selected carton 90°' },
+    { keys: [modKey, 'D'],  desc: 'Duplicate selected carton' },
+    { keys: ['L'],          desc: 'Toggle carton labels' },
+    { keys: ['2'],          desc: 'Switch to 2D orthographic mode' },
+    { keys: ['3'],          desc: 'Switch to 3D perspective mode' },
+    { keys: ['?'],          desc: 'Show this shortcuts guide' }
+  ];
+  const mouse = [
+    { keys: ['Left-drag empty'],     desc: 'Orbit scene (3D) or pan (2D)' },
+    { keys: ['Left-drag carton'],    desc: 'Move carton along the floor' },
+    { keys: ['Shift', '+', 'drag'],  desc: 'Orbit even when over a carton' },
+    { keys: ['Right-drag'],          desc: 'Orbit (3D) or pan (2D) anywhere' },
+    { keys: ['Scroll'],              desc: 'Zoom in / out' },
+    { keys: ['Drag handles (2D)'],   desc: 'Resize the selected carton' }
+  ];
+  const rowHtml = ({ keys, desc }) => {
+    const keyEls = keys.map(k => k === '+'
+      ? '<span class="kbd-plus">+</span>'
+      : `<span class="kbd">${escapeHtml(k)}</span>`).join('');
+    return `<div class="shortcut-row"><div class="shortcut-keys">${keyEls}</div><div class="shortcut-desc">${escapeHtml(desc)}</div></div>`;
+  };
+  $('#shortcutsKeyboard').innerHTML = keyboard.map(rowHtml).join('');
+  $('#shortcutsMouse').innerHTML    = mouse.map(rowHtml).join('');
+}
+
+$('#btnShortcuts').addEventListener('click', () => {
+  renderShortcuts();
+  $('#shortcutsModal').hidden = false;
+});
+document.querySelectorAll('[data-close-shortcuts]').forEach(el => {
+  el.addEventListener('click', () => $('#shortcutsModal').hidden = true);
 });
 
 // ============================================================
@@ -1889,6 +2075,14 @@ $('#toggleLabels').addEventListener('click', () => {
   showToast(showLabels ? 'Labels <b>on</b>.' : 'Labels <b>off</b>.');
 });
 
+$('#toggleRealistic').addEventListener('click', () => {
+  realisticMode = !realisticMode;
+  $('#toggleRealistic').classList.toggle('active', realisticMode);
+  try { localStorage.setItem(REALISTIC_MODE_KEY, realisticMode ? '1' : '0'); } catch (e) {}
+  buildContainer();                              // rebuild with the new style
+  showToast(realisticMode ? 'Realistic view <b>on</b>.' : 'Realistic view <b>off</b>.');
+});
+
 $('#fQtyMinus').addEventListener('click', () => {
   if (selectedItemId) return;
   quantity = Math.max(1, quantity - 1);
@@ -1945,8 +2139,16 @@ function addNewItems() {
   updateStats();
   renderCargoList();
   showToast(`Added <b>${quantity}</b> ${quantity > 1 ? 'cartons' : 'carton'}${labelInput ? ' of ' + escapeHtml(baseLabel) : ''}.`);
+  // Full form reset — use templates for reusable carton specs
   $('#fLabel').value = '';
   $('#fProduct').value = '';
+  $('#fLength').value = '';
+  $('#fWidth').value = '';
+  $('#fHeight').value = '';
+  $('#fWeight').value = '';
+  $('#fHandling').value = 'standard';
+  $('#templateSelect').value = '';
+  $('#deleteTemplateBtn').hidden = true;
   quantity = 1;
   $('#fQty').textContent = 1;
   $('#fLabel').focus();
@@ -2058,6 +2260,7 @@ window.addEventListener('keydown', (e) => {
       openSel.querySelector('.custom-select-menu').hidden = true;
       return;
     }
+    if (!$('#shortcutsModal').hidden) { $('#shortcutsModal').hidden = true; return; }
     if (!$('#plansModal').hidden) { $('#plansModal').hidden = true; return; }
     if (!$('#tplModal').hidden)   { $('#tplModal').hidden = true; return; }
     if (resizeState) {
@@ -2102,6 +2305,8 @@ window.addEventListener('keydown', (e) => {
     $('#btnDuplicate').click();
   } else if (e.key === 'l') {
     $('#toggleLabels').click();
+  } else if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
+    $('#btnShortcuts').click();
   } else if (e.key === '2') {
     setSceneMode('2d');
   } else if (e.key === '3') {
@@ -2117,6 +2322,11 @@ window.addEventListener('beforeunload', (e) => {
 // BOOT
 // ============================================================
 async function boot() {
+  // Load preferences that affect the first render
+  try {
+    realisticMode = localStorage.getItem(REALISTIC_MODE_KEY) === '1';
+  } catch (e) {}
+
   initScene();
   loadTemplatesFromStorage();
   renderTemplateDropdown();
@@ -2126,6 +2336,9 @@ async function boot() {
   renderEditStrip();
   setEditMode(false, null);
   updateStatusChip();
+
+  // Sync toggle button state
+  $('#toggleRealistic').classList.toggle('active', realisticMode);
 
   // Restore scene mode preference
   try {
