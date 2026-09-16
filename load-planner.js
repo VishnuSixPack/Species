@@ -255,6 +255,8 @@ function buildContainer() {
     buildSimpleContainer(L, W, H);
   }
 
+  build2DBackdrops(L, W, H);                 // always add — visible only in 2D
+
   scene.add(containerGroup);
 
   perspControls.target.set(L / 2, H / 2, 0);
@@ -265,6 +267,41 @@ function buildContainer() {
   items.forEach(clampItemToBounds);
   items.forEach(refreshItemMesh);
   updateStats();
+}
+
+// Filled "blueprint" planes that give 2D views a defined silhouette
+// instead of just showing an outline.
+function build2DBackdrops(L, W, H) {
+  const mkMat = () => new THREE.MeshBasicMaterial({
+    color: 0xdae7f5, transparent: true, opacity: 0.55, side: THREE.DoubleSide,
+    depthWrite: false
+  });
+
+  // Top view backdrop — horizontal plane on the floor
+  const bpTop = new THREE.Mesh(new THREE.PlaneGeometry(L, W), mkMat());
+  bpTop.rotation.x = -Math.PI / 2;
+  bpTop.position.set(L / 2, 0.008, 0);
+  bpTop.userData.is2DBackdrop = 'top';
+  bpTop.visible = false;
+  bpTop.raycast = () => {};                  // don't intercept clicks
+  containerGroup.add(bpTop);
+
+  // Side view backdrop — vertical plane at the back (Z = -W/2 side)
+  const bpSide = new THREE.Mesh(new THREE.PlaneGeometry(L, H), mkMat());
+  bpSide.position.set(L / 2, H / 2, -W / 2 + 0.008);
+  bpSide.userData.is2DBackdrop = 'side';
+  bpSide.visible = false;
+  bpSide.raycast = () => {};
+  containerGroup.add(bpSide);
+
+  // Front view backdrop — vertical plane at the back wall (X = 0)
+  const bpFront = new THREE.Mesh(new THREE.PlaneGeometry(W, H), mkMat());
+  bpFront.rotation.y = Math.PI / 2;
+  bpFront.position.set(0.008, H / 2, 0);
+  bpFront.userData.is2DBackdrop = 'front';
+  bpFront.visible = false;
+  bpFront.raycast = () => {};
+  containerGroup.add(bpFront);
 }
 
 // -------- Simple container (default) — clean wireframe with translucent walls --------
@@ -449,6 +486,9 @@ function updateContainerVisibility() {
     if (obj.userData.isContainerDoor)   obj.visible = !in2D;
     if (obj.userData.isCornerCasting)   obj.visible = !in2D;
     if (obj.userData.isContainerFloor)  obj.visible = !in2D;
+    if (obj.userData.is2DBackdrop) {
+      obj.visible = in2D && obj.userData.is2DBackdrop === orthoView;
+    }
   });
   if (yardMesh) yardMesh.visible = !in2D && realisticMode;
   // Hide the ground grid in 2D and when yard covers it
@@ -462,6 +502,43 @@ function updateContainerVisibility() {
   } else {
     scene.background = null;
     scene.fog = null;
+  }
+}
+
+// Update the 2D dimension labels + orientation indicators
+function updateAnnotations() {
+  const ann = $('#viewport2DLabels');
+  if (sceneMode !== '2d') {
+    if (!ann.hidden) ann.hidden = true;
+    return;
+  }
+  if (ann.hidden) ann.hidden = false;
+
+  const L = cargoSpace.length, W = cargoSpace.width, H = cargoSpace.height;
+  const top   = $('#v2dTop');
+  const right = $('#v2dRight');
+  const doors = $('#v2dDoors');
+  const back  = $('#v2dBack');
+
+  if (orthoView === 'top') {
+    top.textContent   = `L · ${L.toFixed(2)} m`;
+    right.textContent = `W · ${W.toFixed(2)} m`;
+    doors.textContent = 'DOORS →';
+    back.textContent  = '← BACK';
+    doors.hidden = false;
+    back.hidden = false;
+  } else if (orthoView === 'side') {
+    top.textContent   = `L · ${L.toFixed(2)} m`;
+    right.textContent = `H · ${H.toFixed(2)} m`;
+    doors.textContent = 'DOORS →';
+    back.textContent  = '← BACK';
+    doors.hidden = false;
+    back.hidden = false;
+  } else {
+    top.textContent   = `W · ${W.toFixed(2)} m`;
+    right.textContent = `H · ${H.toFixed(2)} m`;
+    doors.hidden = true;
+    back.hidden = true;
   }
 }
 
@@ -1460,6 +1537,9 @@ function positionOrthoCamera(view) {
   orthoControls.target.copy(target);
   orthoControls.update();
 
+  // Swap backdrops to match the active view
+  updateContainerVisibility();
+
   // Update 2D pill selection
   $$('.view-pills-2d .view-pill').forEach(p =>
     p.classList.toggle('selected', p.dataset.view === view));
@@ -1476,6 +1556,7 @@ function animate() {
   controls.update();
   updateContainerCulling();                // hide walls between camera and interior
   updateResizeHandlesPosition();
+  updateAnnotations();
   renderer.render(scene, camera);
 }
 
