@@ -455,10 +455,12 @@ function buildRealisticContainer(L, W, H) {
   containerGroup.add(wire);
 }
 
-// Camera-based wall culling — only meaningful in realistic 3D mode (solid walls)
+// Camera-based wall culling — hides walls whose outward normal points
+// toward the camera, so cargo is always visible from any angle.
+// Works for both perspective and orthographic cameras.
 const _camDir = new THREE.Vector3();
 function updateContainerCulling() {
-  if (sceneMode !== '3d' || !realisticMode || !containerGroup) return;
+  if (!containerGroup || !realisticMode) return;
   const cx = cargoSpace.length / 2;
   const cy = cargoSpace.height / 2;
   const dx = camera.position.x - cx;
@@ -476,29 +478,39 @@ function updateContainerCulling() {
   });
 }
 
-// Hide translucent walls when in 2D — cleaner outline view.
-// Yard/sky/fog only appear in realistic 3D mode.
+// Container elements are hidden in simple 2D (clean wireframe look).
+// In realistic mode, walls/doors/corners/floor stay visible in both 2D and 3D;
+// updateContainerCulling then handles which walls to hide per camera angle.
 function updateContainerVisibility() {
   if (!containerGroup) return;
   const in2D = sceneMode === '2d';
+  const in2DSimple = in2D && !realisticMode;
+
   containerGroup.traverse(obj => {
-    if (obj.userData.isContainerWall)   obj.visible = !in2D;
-    if (obj.userData.isContainerDoor)   obj.visible = !in2D;
-    if (obj.userData.isCornerCasting)   obj.visible = !in2D;
-    if (obj.userData.isContainerFloor)  obj.visible = !in2D;
+    if (obj.userData.isContainerWall)   obj.visible = !in2DSimple;
+    if (obj.userData.isContainerDoor)   obj.visible = !in2DSimple;
+    if (obj.userData.isCornerCasting)   obj.visible = !in2DSimple;
+    if (obj.userData.isContainerFloor)  obj.visible = !in2DSimple;
     if (obj.userData.is2DBackdrop) {
-      obj.visible = in2D && obj.userData.is2DBackdrop === orthoView;
+      // Backdrops only in simple 2D — realistic mode uses real walls instead
+      obj.visible = in2DSimple && obj.userData.is2DBackdrop === orthoView;
     }
   });
-  if (yardMesh) yardMesh.visible = !in2D && realisticMode;
-  // Hide the ground grid in 2D and when yard covers it
+
+  // Yard visible in realistic mode (both 2D top and 3D)
+  if (yardMesh) yardMesh.visible = realisticMode;
+
+  // Ground grid only in simple 3D — CSS grid handles 2D backgrounds
   scene.traverse(obj => {
     if (obj.userData.isGrid) obj.visible = !in2D && !realisticMode;
   });
-  // Sky/fog only in realistic 3D — otherwise CSS background shows through
-  if (!in2D && realisticMode) {
+
+  // Sky background any time realistic view is on — 2D side/front need it too
+  // because the yard is a horizontal plane and disappears in those views.
+  // Fog only in 3D (ortho + fog behaves oddly).
+  if (realisticMode) {
     scene.background = new THREE.Color(0xd1dae4);
-    scene.fog = new THREE.Fog(0xd1dae4, 30, 90);
+    scene.fog = !in2D ? new THREE.Fog(0xd1dae4, 30, 90) : null;
   } else {
     scene.background = null;
     scene.fog = null;
