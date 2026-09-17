@@ -727,7 +727,7 @@
         <label style="font-size:11px;font-weight:600;color:#6b7280;display:block;margin-bottom:8px;">Your Role in the Supply Chain *</label>
         <div style="display:flex;flex-wrap:wrap;gap:8px;" id="roleSelector">
           <div class="role-opt" onclick="selRole('importer')" data-role="importer">🚢 Importer / Buyer</div>
-          <div class="role-opt" onclick="selRole('exporter')" data-role="exporter">📦 Exporter / Supplier</div>
+          <div class="role-opt" onclick="selRole('exporter')" data-role="exporter">Exporter / Supplier</div>
           <div class="role-opt" onclick="selRole('processor')" data-role="processor">🏭 Processor</div>
           <div class="role-opt" onclick="selRole('trader')" data-role="trader">🔄 Trader / Broker</div>
           <div class="role-opt" onclick="selRole('brand')" data-role="brand">🏷️ Brand / Retailer</div>
@@ -910,8 +910,8 @@
     <div style="font-size:22px;font-weight:800;color:#1a1a2e;margin-bottom:4px;">Saved Assessments</div>
     <div style="font-size:13px;color:#9aa0b4;margin-bottom:14px;">Click Resume to pick up where you left off.</div>
     <div class="cont-tabs">
-      <div class="cont-tab active" id="contTab_draft" onclick="setContTab('draft')">📝 In Progress <span class="cont-tab-count" id="contCount_draft"></span></div>
-      <div class="cont-tab" id="contTab_submitted" onclick="setContTab('submitted')">✅ Submitted <span class="cont-tab-count" id="contCount_submitted"></span></div>
+      <div class="cont-tab active" id="contTab_draft" onclick="setContTab('draft')">In Progress <span class="cont-tab-count" id="contCount_draft"></span></div>
+      <div class="cont-tab" id="contTab_submitted" onclick="setContTab('submitted')">Submitted <span class="cont-tab-count" id="contCount_submitted"></span></div>
     </div>
     <input type="text" id="contFilter" placeholder="🔍 Filter by your name..." oninput="filterContinueList(this.value)" style="width:100%;padding:10px 14px;border:1.5px solid #e0e3ed;border-radius:10px;font-family:'Poppins',sans-serif;font-size:13px;color:#1a1a2e;outline:none;margin-bottom:14px;flex-shrink:0;" onfocus="this.style.borderColor='#1d4ed8'" onblur="this.style.borderColor='#e0e3ed'"/>
     <div class="cont-list" id="cont-list">
@@ -1008,7 +1008,7 @@
     </div>
     <div class="brow" style="margin-top:0;">
       <button class="btn-ghost" onclick="closePF()">Cancel</button>
-      <button class="btn-ghost" onclick="openFullQReview()" style="border:1.5px dashed #c0c4d0;">📋 Review All Questions</button>
+      <button class="btn-ghost" onclick="openFullQReview()" style="border:1.5px dashed #c0c4d0;">Review All Questions</button>
       <button class="btn-purple" onclick="savePF()">Confirm Product</button>
     </div>
   </div>
@@ -1666,7 +1666,7 @@ function showSCCompletePopup(chainOverride){
     ]});
   }
   if(hasHatchery){
-    groups.push({icon:'🐟',title:'Hatchery Documents',color:'#fff7ed',border:'#fed7aa',items:[
+    groups.push({icon:'',title:'Hatchery Documents',color:'#fff7ed',border:'#fed7aa',items:[
       'Hatchery registration or licence',
       'Broodstock health certificate',
       'Juvenile batch and stocking records',
@@ -2127,7 +2127,7 @@ function autoDetectSpecies(desc){
       const inp=document.getElementById('pfsp');
       if(inp){
         inp.value=finalName;
-        showToast('🐟 Species auto-detected: '+finalName,'info');
+        showToast('Species auto-detected: '+finalName,'info');
       }
       break;
     }
@@ -3803,7 +3803,7 @@ async function searchCompanyPicker(q){
   } else {
     dd.innerHTML=matches.map(co=>`
       <div class="company-picker-opt" onclick="selectCompany('${co.id}')">
-        <div class="company-picker-opt-name">🏢 ${co.company_name}</div>
+        <div class="company-picker-opt-name">${co.company_name}</div>
         <div class="company-picker-opt-sub">${co.country||''}${co.gln?' · GLN: '+co.gln:''}${co.address?(' · '+co.address).slice(0,50):''}</div>
       </div>`).join('');
   }
@@ -4206,6 +4206,16 @@ function buildStages(){
   const certs=prods.map(p=>p.cert).filter(Boolean),hasMSC=certs.includes('MSC'),hasASC=certs.includes('ASC');
   const TUNA=['skipjack','yellowfin','bigeye','albacore','bluefin','longtail','tuna'];
   const hasTuna=prods.some(p=>p.species&&TUNA.some(t=>p.species.toLowerCase().includes(t)));
+  // Per-market product lists — used to tag KDEs with which product triggered them
+  const _euProds=prods.filter(p=>(p.markets||[]).some(m=>EU27.includes(m)));
+  const _usProds=prods.filter(p=>(p.markets||[]).includes('US'));
+  const _mscProds=prods.filter(p=>p.cert==='MSC');
+  const _ascProds=prods.filter(p=>p.cert==='ASC');
+  const _tunaProds=prods.filter(p=>p.species&&TUNA.some(t=>p.species.toLowerCase().includes(t)));
+  // Helper: short product label
+  const prodLabel=p=>p.description?(p.description.slice(0,35)+(p.description.length>35?'…':'')):p.species||'Product';
+  // Store on window so builders can access
+  window._KDE_PROD_CTX={euProds:_euProds,usProds:_usProds,mscProds:_mscProds,ascProds:_ascProds,tunaProds:_tunaProds,prodLabel,allProds:prods};
   // Use p.chain (topo-sorted, connected nodes only) for stage order
   // Supplement with p.scNodes to get .own property (stripped from chain)
   const allChainNodes=[];
@@ -4313,7 +4323,7 @@ function buildHarvestQs(inst,vc,hasEU,prods,own){
     {id:`${inst.id}_fv_vms`,q:`Is VMS (Vessel Monitoring System) active for ${N} fishing ${vessel}?`},
     {id:`${inst.id}_fv_ais`,q:`Is AIS tracking active and publicly verifiable for ${N} fishing ${vessel}?`},
     {id:`${inst.id}_fv_rfmo`,q:(()=>{const faoArr=Array.isArray(faoSel)?faoSel:[];const rfmos=[...new Set(faoArr.flatMap(z=>{const zone=FAO_ZONES.find(f=>f.z===z);return zone?zone.rfmo.split(' / '):[];}))];const rfmoStr=rfmos.length?` (${rfmos.join('/')})`:'';return `Is ${vc===1?'the vessel':'each vessel'} listed on a public vessel registry and the relevant RFMO register${rfmoStr} — with a verifiable hyperlink or URL?`;})()},
-    ...(hasEU?[{id:`${inst.id}_fv_eu_approval`,q:`Does ${vc===1?'the vessel':'each vessel'} hold a valid EU approved vessel listing?`}]:[]),
+    ...(hasEU?[{id:`${inst.id}_fv_eu_approval`,q:`Does ${vc===1?'the vessel':'each vessel'} hold a valid EU approved vessel listing?`,_forProducts:(window._KDE_PROD_CTX?.euProds||[]).map(window._KDE_PROD_CTX?.prodLabel||String)}]:[]),
     {id:`${inst.id}_fv_iuu_check`,q:`Has ${vc===1?'the vessel':'each vessel'} been checked against IUU vessel blacklists (RFMO, EU, PSMA)?`},
     
     {id:`${inst.id}_fv_permit`,q:(()=>{
@@ -4340,7 +4350,7 @@ function buildTransshipmentQs(inst,vc,hasEU,own){
     ...(kResp[`${inst.id}_cr_imo`]?.ans==='un'||kResp[`${inst.id}_cr_imo`]?.ans==='pa'?[{id:`${inst.id}_cr_uid`,q:`Is a unique vessel identification number (if no IMO) available for ${N} ${vessel}?`}]:[]),
     {id:`${inst.id}_cr_flag`,q:`Is the flag state of ${N} ${vessel} known and documented?`},
     {id:`${inst.id}_cr_rfmo`,q:`Is ${vc===1?'the carrier vessel':'each carrier vessel'} registered on the relevant RFMO register?`},
-    ...(hasEU?[{id:`${inst.id}_cr_eu_approval`,q:`Does ${N} ${vessel} hold a valid EU approved vessel listing?`}]:[]),
+    ...(hasEU?[{id:`${inst.id}_cr_eu_approval`,q:`Does ${N} ${vessel} hold a valid EU approved vessel listing?`,_forProducts:(window._KDE_PROD_CTX?.euProds||[]).map(window._KDE_PROD_CTX?.prodLabel||String)}]:[]),
     {id:`${inst.id}_cr_iuu_check`,q:`Has ${N} ${vessel} been checked against IUU vessel blacklists?`},
     
     {id:`${inst.id}_cr_location`,q:'Is the location of the transshipment event documented and geo-referenced?'},
@@ -4438,11 +4448,11 @@ function buildShipReceiveQs(inst,mode,transport,hasEU,hasUS,isFrozen=false){
     {id:`${inst.id}_lfp_port_discharge`,q:'Do you have the port of discharge documented?'},
     ...(mode==='export'?[
 
-      ...(hasEU?[{id:`${inst.id}_lfp_eu_health`,q:'Is an EU health certificate available for this sea shipment?'}]:[]),
+      ...(hasEU?[{id:`${inst.id}_lfp_eu_health`,q:'Is an EU health certificate available for this sea shipment?',_forProducts:(window._KDE_PROD_CTX?.euProds||[]).map(window._KDE_PROD_CTX?.prodLabel||String)}]:[]),
       ...(hasUS?[
-        {id:`${inst.id}_s_simp`,     q:'Is a SIMP (Seafood Import Monitoring Program) entry filing available for this shipment? (US-bound)'},
-        {id:`${inst.id}_s_fsma_lot`, q:'Do you assign an FSMA 204 traceability lot code and carry it at each CTE? (US-bound)'},
-        {id:`${inst.id}_lfp_fsma`,   q:'Does this shipment comply with FSMA 204 requirements? (US-bound)'},
+        {id:`${inst.id}_s_simp`,     q:'Is a SIMP (Seafood Import Monitoring Program) entry filing available for this shipment? (US-bound)',_forProducts:(window._KDE_PROD_CTX?.usProds||[]).map(window._KDE_PROD_CTX?.prodLabel||String)},
+        {id:`${inst.id}_s_fsma_lot`, q:'Do you assign an FSMA 204 traceability lot code and carry it at each CTE? (US-bound)',_forProducts:(window._KDE_PROD_CTX?.usProds||[]).map(window._KDE_PROD_CTX?.prodLabel||String)},
+        {id:`${inst.id}_lfp_fsma`,   q:'Does this shipment comply with FSMA 204 requirements? (US-bound)',_forProducts:(window._KDE_PROD_CTX?.usProds||[]).map(window._KDE_PROD_CTX?.prodLabel||String)},
       ]:[]),
     ]:[]),
   ];
@@ -4461,7 +4471,7 @@ function buildShipReceiveQs(inst,mode,transport,hasEU,hasUS,isFrozen=false){
       ...(hasEU?[{id:`${inst.id}_lfp_eu_health`,q:'Is an EU health certificate available for this air shipment?'}]:[]),
       ...(hasUS?[
         {id:`${inst.id}_s_simp`,     q:'Is a SIMP entry filing available for this air shipment? (US-bound)'},
-        {id:`${inst.id}_s_fsma_lot`, q:'Do you assign an FSMA 204 traceability lot code and carry it at each CTE? (US-bound)'},
+        {id:`${inst.id}_s_fsma_lot`, q:'Do you assign an FSMA 204 traceability lot code and carry it at each CTE? (US-bound)',_forProducts:(window._KDE_PROD_CTX?.usProds||[]).map(window._KDE_PROD_CTX?.prodLabel||String)},
         {id:`${inst.id}_lfp_fsma`,   q:'Does this air shipment comply with FSMA 204 requirements? (US-bound)'},
       ]:[]),
     ]:[]),
@@ -4640,6 +4650,15 @@ function renderKDE(){
   const frozen2=prods2.some(p=>p.form==='Frozen'||p.form==='Smoked');
 
   // ── Sticky main heading ──
+  // Build product context row for stage header
+  const _hdrProds=(window._KDE_PROD_CTX?.allProds||products.filter(Boolean));
+  const _prodRow=_hdrProds.length>0?`
+    <div style="margin-top:8px;padding:8px 12px;background:#f8f9fc;border-radius:8px;border:1px solid #e8eaf0;">
+      <div style="font-size:9px;font-weight:700;color:#9aa0b4;text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;">Products being assessed</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;">
+        ${_hdrProds.map(p=>`<span style="font-size:11px;font-weight:600;color:#1a1a2e;background:#fff;border:1px solid #e0e3ed;border-radius:5px;padding:2px 10px;">${(p.description||p.species||'—').slice(0,45)}</span>`).join('')}
+      </div>
+    </div>`:'';
   let html=`<div class="kde-sticky">
     <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:4px;">
       <div class="ksbadge">${st.i} ${st.t}</div>
@@ -4647,6 +4666,7 @@ function renderKDE(){
     </div>
     <div class="kstitle">${st.t} <span style="font-size:10px;font-weight:600;color:#9aa0b4;vertical-align:middle;margin-left:4px;">v4</span></div>
     <div class="kssub">${multiInst?`${st.instances.length} instances in your supply chain — fill each sub-section below.`:'Select the availability of each data element for your operations.'}</div>
+    ${_prodRow}
   </div>`;
 
   // ── Render only the active sub-instance ──
@@ -4814,7 +4834,7 @@ function renderKDE(){
             <div id="dp_${inst.id}_ppt" class="dp-popup"></div>
           </div>
           ${kResp['_companyForStage_'+inst.id]?
-            `<span class="shb-chip">🏢 ${kResp['_companyForStage_'+inst.id].name.slice(0,18)}</span>`
+            `<span class="shb-chip">${kResp['_companyForStage_'+inst.id].name.slice(0,18)}</span>`
           :`<span style="font-size:11px;color:#9aa0b4;font-style:italic;">Add processor via ✦ Verify in evidence</span>`
           }
         </div>
@@ -5118,8 +5138,8 @@ function setSRTransport(stKey,transport){kResp[`_srTransport_${stKey}`]=transpor
 function renderMSCFisheryKDE(q){
   if(q._nonScoring)return renderMSCFisheryKDE(q);
     const r=kResp[q.id]||{};const evs=r.evidence||[];
-  const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};
-  const evChips=evs.map(e=>`<span class="ev-chip" onclick="openEvMod('${q.id}')">${evIcons[e.type]||'📎'} ${(e.name||e.value).slice(0,22)}</span>`).join('');
+  const evIcons={cert:'CERT',url:'URL',doc:'DOC',ref:'REF',photo:'IMG',statement:'NOTE'};
+  const evChips=evs.map(e=>`<span class="ev-chip" onclick="openEvMod('${q.id}')"><span style="font-size:8px;font-weight:800;opacity:0.6;">${evIcons[e.type]||'·'}</span> ${(e.name||e.value).slice(0,22)}</span>`).join('');
   const addChip=evs.length>0?`<span class="ev-add-chip ev-add-chip-done" onclick="openEvMod('${q.id}')">✓ ${evs.length} Evidence</span>`:`<span class="ev-add-chip" onclick="openEvMod('${q.id}')">+ Add Evidence</span>`;
   const showEv=r.ans==='av'||r.ans==='pa';
   const safeId=q.id.replace(/[^a-zA-Z0-9]/g,'_');
@@ -5127,7 +5147,7 @@ function renderMSCFisheryKDE(q){
   const selectedFishery=kResp['_selectedFisheries']?.[0]||kResp['_fishery_c_msc']; // multi-fishery
   return `<div class="kq kde-card ${r.ans?'done':''}" id="kq${safeId}">
     <div style="display:flex;align-items:flex-start;gap:6px;">
-      <div class="kqtxt" style="flex:1;">${q.q}</div>
+      ${fpChips}<div class="kqtxt" style="flex:1;">${q.q}</div>
       <button class="kde-ai-btn" onclick="openAIModal('${safeQ}')" title="What does this mean?">✦ Explain</button>
     </div>
     <!-- Fishery multi-picker (for c_fisheries non-scoring KDE only) -->
@@ -5149,7 +5169,7 @@ function renderMSCFisheryKDE(q){
     ${r._hasModuleItem&&r.ans==='pa'&&!r.gapNote?`<div style="font-size:10px;color:#1e40af;background:#eff6ff;border:1px solid #bfdbfe;border-radius:5px;padding:4px 8px;margin:4px 0 6px;">✦ Pre-filled from SmarTuna records — upload your document to confirm Available</div>`:''}
     ${r.gapNote?`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 6px;padding:6px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:10px;color:#92400e;line-height:1.4;cursor:pointer;" onclick="openEvMod('${q.id}');setTimeout(()=>switchEvTab('add'),80)">
       <span style="display:flex;align-items:center;gap:5px;"><span>⚠</span><span>${r.gapNote}</span></span>
-      <span style="color:#166534;font-weight:700;white-space:nowrap;background:#f0fdf4;padding:2px 7px;border-radius:5px;border:1px solid #bbf7d0;">📄 Upload to confirm →</span>
+      <span style="color:#166534;font-weight:700;white-space:nowrap;background:#f0fdf4;padding:2px 7px;border-radius:5px;border:1px solid #bbf7d0;">Upload to confirm →</span>
     </div>`:''}
     ${r.moduleNote?`<div style="display:flex;align-items:center;gap:5px;margin:4px 0 6px;padding:4px 8px;background:#eff6ff;border-radius:6px;font-size:10px;color:#1e40af;line-height:1.4;"><span style="flex-shrink:0;">✦</span><span>${r.moduleNote}</span></div>`:''}
     <div class="kopts">
@@ -5167,6 +5187,13 @@ function renderMSCFisheryKDE(q){
 function renderQ(q){
   // Non-scoring KDEs (e.g. c_fisheries) render as their custom picker
   if(q._nonScoring)return renderMSCFisheryKDE(q);
+  // Build _forProducts chip HTML
+  const fpChips=(q._forProducts&&q._forProducts.length>0&&window._KDE_PROD_CTX?.allProds?.length>1)
+    ?'<div style="font-size:9px;color:#6b7280;margin-bottom:5px;letter-spacing:0.2px;">'
+      +'<span style="font-weight:700;color:#1e40af;text-transform:uppercase;font-size:8px;letter-spacing:.8px;margin-right:5px;">Applies to</span>'
+      +q._forProducts.map(lbl=>'<span style="background:#f4f6fb;border:1px solid #e0e3ed;border-radius:4px;padding:1px 8px;font-size:10px;font-weight:600;color:#1a1a2e;margin-right:3px;">'+lbl+'</span>').join('')
+      +'</div>'
+    :'';
   // Auto-inject GLN note from company module on shipper/receiver KDEs
   if((q.id.endsWith('_lfp_shipper')||q.id.endsWith('_lfp_receiver'))&&kResp['_glnNote']){
     if(!kResp[q.id])kResp[q.id]={};
@@ -5189,7 +5216,7 @@ function renderQ(q){
     }
   }
   const r=kResp[q.id]||{};const evs=r.evidence||[];
-  const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};
+  const evIcons={cert:'CERT',url:'URL',doc:'DOC',ref:'REF',photo:'IMG',statement:'NOTE'};
   const evChips=evs.map(e=>`<span class="ev-chip" onclick="openEvMod('${q.id}')">${evIcons[e.type]||'📎'} ${(e.name||e.value).slice(0,22)}</span>`).join('');
   const addChip=evs.length>0?`<span class="ev-add-chip ev-add-chip-done" onclick="openEvMod('${q.id}')">✓ ${evs.length} Evidence</span>`:`<span class="ev-add-chip" onclick="openEvMod('${q.id}')">+ Add Evidence</span>`;
   const showEv=r.ans==='av'||r.ans==='pa';const safeId=q.id.replace(/[^a-zA-Z0-9]/g,'_');
@@ -5197,12 +5224,12 @@ function renderQ(q){
   const safeQ=encodeURIComponent(q.q);
   return `<div class="kq kde-card ${r.ans?'done':''}" id="kq${safeId}">
     <div style="display:flex;align-items:flex-start;gap:6px;">
-      <div class="kqtxt" style="flex:1;">${q.q}</div>
+      ${fpChips}<div class="kqtxt" style="flex:1;">${q.q}</div>
       <button class="kde-ai-btn" onclick="openAIModal('${safeQ}')" title="What does this mean?">✦ Explain</button>
     </div>
     ${r.gapNote?`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 6px;padding:6px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:10px;color:#92400e;line-height:1.4;cursor:pointer;" onclick="openEvMod('${q.id}');setTimeout(()=>switchEvTab('add'),80)">
       <span style="display:flex;align-items:center;gap:5px;"><span>⚠</span><span>${r.gapNote}</span></span>
-      <span style="color:#166534;font-weight:700;white-space:nowrap;background:#f0fdf4;padding:2px 7px;border-radius:5px;border:1px solid #bbf7d0;">📄 Upload to confirm →</span>
+      <span style="color:#166534;font-weight:700;white-space:nowrap;background:#f0fdf4;padding:2px 7px;border-radius:5px;border:1px solid #bbf7d0;">Upload to confirm →</span>
     </div>`:''}
     ${r.moduleNote?`<div style="display:flex;align-items:center;gap:5px;margin:4px 0 6px;padding:4px 8px;background:#eff6ff;border-radius:6px;font-size:10px;color:#1e40af;line-height:1.4;"><span style="flex-shrink:0;">✦</span><span>${r.moduleNote}</span></div>`:''}
     <div class="kopts">
@@ -5212,7 +5239,7 @@ function renderQ(q){
     </div>
     <div class="knotebox ${r.ans==='pa'?'show':''}" id="kp${safeId}">${renderNoteArea(q.id,'pa',r.note)}</div>
     <div class="knotebox ${r.ans==='un'?'show':''}" id="kun${safeId}">${renderNoteArea(q.id,'un',r.unNote)}</div>
-    ${showEv?`<div class="ev-summary">${evChips}${addChip}<span class="ev-bucket-chip" onclick="openBucketModal('${q.id}')">📦 Bucket</span></div>`:`<div class="ev-summary" style="display:none;">${addChip}</div>`}
+    ${showEv?`<div class="ev-summary">${evChips}${addChip}<span class="ev-bucket-chip" onclick="openBucketModal('${q.id}')">Bucket</span></div>`:`<div class="ev-summary" style="display:none;">${addChip}</div>`}
   </div>`;
 }
 function setAns(id,ans){
@@ -6016,7 +6043,7 @@ function renderEvModuleItemPanel(mKey,item){
           +'</div>'
           +'<div style="display:flex;gap:6px;padding-left:28px;">'
           +'<button onclick="evModAddEvidence('+i+')" style="flex:1;padding:6px 10px;border:1.5px solid #fde68a;border-radius:7px;background:#fffbeb;color:#92400e;font-size:10px;font-weight:700;cursor:pointer;font-family:Poppins,sans-serif;line-height:1.3;">◑ In our records<br><span style="font-weight:400;font-size:9px;">Sets Partial</span></button>'
-          +'<button id="ev-ref-upload-btn" style="flex:1;padding:6px 10px;border:1.5px solid #bbf7d0;border-radius:7px;background:#f0fdf4;color:#166534;font-size:10px;font-weight:700;cursor:pointer;font-family:Poppins,sans-serif;line-height:1.3;">📄 I have this doc<br><span style="font-weight:400;font-size:9px;">Upload → Available</span></button>'
+          +'<button id="ev-ref-upload-btn" style="flex:1;padding:6px 10px;border:1.5px solid #bbf7d0;border-radius:7px;background:#f0fdf4;color:#166534;font-size:10px;font-weight:700;cursor:pointer;font-family:Poppins,sans-serif;line-height:1.3;">I have this doc<br><span style="font-weight:400;font-size:9px;">Upload → Available</span></button>'
           +'</div>'
           +'</div>');
       } else if(evSrc2==='company'){
@@ -6024,7 +6051,7 @@ function renderEvModuleItemPanel(mKey,item){
           +'<span class="ev-mod-ev-icon">📋</span>'
           +'<div style="flex:1;min-width:0;"><div class="ev-mod-ev-label">'+srcBadge+evLbl+'</div>'
           +(evSub?'<div class="ev-mod-ev-sub">'+evSub+'</div>':'')+'</div>'
-          +'<button id="ev-co-upload-btn" style="padding:6px 10px;border:1.5px solid #fed7aa;border-radius:7px;background:#fff7ed;color:#c2410c;font-size:10px;font-weight:700;cursor:pointer;font-family:Poppins,sans-serif;white-space:nowrap;">📄 Upload doc</button>'
+          +'<button id="ev-co-upload-btn" style="padding:6px 10px;border:1.5px solid #fed7aa;border-radius:7px;background:#fff7ed;color:#c2410c;font-size:10px;font-weight:700;cursor:pointer;font-family:Poppins,sans-serif;white-space:nowrap;">Upload doc</button>'
           +'</div>');
       } else {
         // Public — standard + Add
@@ -6305,7 +6332,7 @@ function buildCompanyEvItems(co,kdeId){
   };
 
   // GLN → reference (we have it; does the company actively use it in their traceability?)
-  if(co.gln)pushCo('📍','GLN: '+co.gln+' — '+co.company_name,'Global Location Number','ref',
+  if(co.gln)pushCo('','GLN: '+co.gln+' — '+co.company_name,'Global Location Number','ref',
     'GLN: '+co.gln+' — '+co.company_name,'av',['pp_geo','pp_name'],
     'GLN: '+co.gln+' — '+co.company_name+' — '+coTag,'reference');
 
@@ -6370,7 +6397,7 @@ function buildCountryEvItems(co,kdeId){
 }
 
 function renderEvStagePanel(){
-  const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};
+  const evIcons={cert:'CERT',url:'URL',doc:'DOC',ref:'REF',photo:'IMG',statement:'NOTE'};
   const currentEv=kResp[evKdeId]?.evidence||[];
   const stageEv=getAllEvidence();
   window._evCurrentList=[...currentEv];
@@ -6418,7 +6445,7 @@ function openEvViewMini(ev){
   const footer=document.getElementById('evViewMiniFooter');
   if(!modal||!title||!body)return;
 
-  const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};
+  const evIcons={cert:'CERT',url:'URL',doc:'DOC',ref:'REF',photo:'IMG',statement:'NOTE'};
   const typeNames={cert:'Certificate',url:'URL / Link',doc:'Document',ref:'Reference / ID',photo:'Photo / Image',statement:'Statement'};
   title.textContent=(evIcons[ev.type]||'📎')+' '+(typeNames[ev.type]||ev.type);
 
@@ -6749,7 +6776,7 @@ function removeFromCurrentEv(idx){
 function renderEvBucketPanel(){
   const el=document.getElementById('ev-bucket-grouped');
   if(!el)return;
-  const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};
+  const evIcons={cert:'CERT',url:'URL',doc:'DOC',ref:'REF',photo:'IMG',statement:'NOTE'};
   const stageLabel={harvest:'Harvest / Catch',onvessel:'On-Vessel Processing',transshipment:'Transshipment',landing:'Landing / Discharge',vessel_landing:'Direct Vessel Landing',processing:'Processing',aggregation:'Aggregation / Disaggregation',shipreceive:'Ship / Receive',certifications:'Certifications'};
 
   // Build from kResp directly — most reliable source of truth
@@ -7042,7 +7069,7 @@ function addEvItem(){
   showToast('Evidence added — add another or click Done','success');
 }
 function removeEvItem(i){evTempItems.splice(i,1);renderEvItems();updateEvCount();}
-function renderEvItems(){const el=document.getElementById('ev-items');if(!evTempItems.length){el.innerHTML='';return;}const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};el.innerHTML=evTempItems.map((e,i)=>`<div class="ev-item"><div class="ev-item-l"><span style="font-size:14px;">${evIcons[e.type]||'📎'}</span><span class="ev-item-txt">${e.name||e.value}</span><span class="ev-item-tag">${e.type}</span></div><button class="ev-item-del" onclick="removeEvItem(${i})">×</button></div>`).join('');}
+function renderEvItems(){const el=document.getElementById('ev-items');if(!evTempItems.length){el.innerHTML='';return;}const evIcons={cert:'CERT',url:'URL',doc:'DOC',ref:'REF',photo:'IMG',statement:'NOTE'};el.innerHTML=evTempItems.map((e,i)=>`<div class="ev-item"><div class="ev-item-l"><span style="font-size:14px;">${evIcons[e.type]||'📎'}</span><span class="ev-item-txt">${e.name||e.value}</span><span class="ev-item-tag">${e.type}</span></div><button class="ev-item-del" onclick="removeEvItem(${i})">×</button></div>`).join('');}
 function updateEvCount(){
   const n=evTempItems.length;
   document.getElementById('ev-count').textContent=n?`(${n} item${n>1?'s':''})` :'';
@@ -7276,13 +7303,13 @@ function saveEvidence(){
   if(card){
     const evSummary=card.querySelector('.ev-summary');
     if(evSummary){
-      const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};
+      const evIcons={cert:'CERT',url:'URL',doc:'DOC',ref:'REF',photo:'IMG',statement:'NOTE'};
       const evs=currentKdeItems;
       const evChips=evs.map(e=>`<span class="ev-chip" onclick="openEvMod('${evKdeId}')">${evIcons[e.type]||'📎'} ${(e.name||e.value).slice(0,22)}</span>`).join('');
       const addChip=evs.length>0
         ?`<span class="ev-add-chip ev-add-chip-done" onclick="openEvMod('${evKdeId}')">✓ ${evs.length} Evidence</span>`
         :`<span class="ev-add-chip" onclick="openEvMod('${evKdeId}')">+ Add Evidence</span>`;
-      evSummary.innerHTML=evChips+addChip+`<span class="ev-bucket-chip" onclick="openBucketModal('${evKdeId}')">📦 Bucket</span>`;
+      evSummary.innerHTML=evChips+addChip+`<span class="ev-bucket-chip" onclick="openBucketModal('${evKdeId}')">Bucket</span>`;
       evSummary.style.display='flex';
     }
     card.querySelector('.ev-no-evidence-alert')?.remove();
@@ -8017,7 +8044,7 @@ function buildCompanySummary(){
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px;">
         <div style="flex:1;">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
-            <span style="font-size:14px;">🐟</span>
+            <span style="font-size:14px;"></span>
             <span style="font-size:13px;font-weight:800;color:#1a1a2e;">${p.desc||'Unnamed Product'}</span>
             ${p.cert?`<span style="font-size:10px;font-weight:700;color:#16a34a;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:5px;padding:1px 8px;">${p.cert}</span>`:''}
             ${p.form?`<span style="font-size:10px;font-weight:600;color:#6b7280;background:#f4f6fb;border-radius:5px;padding:1px 8px;">${p.form}</span>`:''}
@@ -8501,15 +8528,15 @@ function renderContinueList(data, activeQuery){
     const cardBorder=isDraft?'#bfdbfe':'#bbf7d0';
     const cardBg=isDraft?'#fff':'#f6fef9';
     const statusColor=isDraft?'#1e40af':'#16a34a';
-    const statusLabel=isDraft?'📝 In Progress':'✅ Submitted';
+    const statusLabel=isDraft?'In Progress':'Submitted';
     const diff=Date.now()-new Date(d.updated_at||d.created_at).getTime();const mins=Math.floor(diff/60000);const timeAgo=mins<2?'Just now':mins<60?`${mins}m ago`:Math.floor(mins/60)<24?`${Math.floor(mins/60)}h ago`:`${Math.floor(mins/1440)}d ago`;
-    const scoreChip=(!isDraft&&d.mri_score!=null)?`<span class="cont-pill" style="background:#eff6ff;color:#1e40af;">📊 Score: ${d.mri_score} pts</span>`:'';
-    const companyChip=d.company_name?`<span class="cont-pill">🏢 ${d.company_name}</span>`:'';
-    const roleChip=d.assessor_role?`<span class="cont-pill">👤 ${d.assessor_role}</span>`:'';
+    const scoreChip=(!isDraft&&d.mri_score!=null)?`<span class="cont-pill" style="background:#eff6ff;color:#1e40af;">Score: ${d.mri_score} pts</span>`:'';
+    const companyChip=d.company_name?`<span class="cont-pill">${d.company_name}</span>`:'';
+    const roleChip=d.assessor_role?`<span class="cont-pill">${d.assessor_role}</span>`:'';
     const resumeBtn=isDraft
       ?`<button onclick="resumeDraft('${d.id}')" style="background:#1d4ed8;color:#fff;border:none;border-radius:999px;padding:8px 18px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">Resume →</button>`
-      :`<button onclick="resumeDraft('${d.id}',true)" style="background:#1e40af;color:#fff;border:none;border-radius:999px;padding:8px 14px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">📝 View Answers</button>
-        <button onclick="viewSubmittedReview('${d.id}')" style="background:#16a34a;color:#fff;border:none;border-radius:999px;padding:8px 14px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin-left:6px;white-space:nowrap;">📋 Review</button>`;
+      :`<button onclick="resumeDraft('${d.id}',true)" style="background:#1e40af;color:#fff;border:none;border-radius:999px;padding:8px 14px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">View Answers</button>
+        <button onclick="viewSubmittedReview('${d.id}')" style="background:#16a34a;color:#fff;border:none;border-radius:999px;padding:8px 14px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin-left:6px;white-space:nowrap;">Review</button>`;
     return `<div class="cont-card" style="border-color:${cardBorder};background:${cardBg};">
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
@@ -8518,9 +8545,9 @@ function renderContinueList(data, activeQuery){
         </div>
         <div class="cont-meta" style="margin-bottom:6px;">${timeAgo}${d.company_name?' · '+d.company_name:''}</div>
         <div style="display:flex;flex-wrap:wrap;gap:4px;">
-          ${prods.length?`<span class="cont-pill">🐟 ${prods.length} product${prods.length>1?'s':''}</span>`:''}
-          ${kdeCount?`<span class="cont-pill">📋 ${kdeCount} answered</span>`:''}
-          ${isDraft?`<span class="cont-pill">📍 Stage ${(d.stage_index||0)+1}</span>`:''}
+          ${prods.length?`<span class="cont-pill">${prods.length} product${prods.length>1?'s':''}</span>`:''}
+          ${kdeCount?`<span class="cont-pill">${kdeCount} answered</span>`:''}
+          ${isDraft?`<span class="cont-pill">Stage ${(d.stage_index||0)+1}</span>`:''}
           ${scoreChip}${roleChip}
         </div>
       </div>
@@ -9214,7 +9241,7 @@ function openBucketModal(targetKdeId){
   const existing=kResp[targetKdeId]?.evidence||[];
   const existingNames=new Set(existing.map(e=>e.name));
   const el=document.getElementById('bucketList');
-  const evIcons={cert:'🏅',url:'🔗',doc:'📄',ref:'📋',photo:'🖼️',statement:'✍️'};
+  const evIcons={cert:'CERT',url:'URL',doc:'DOC',ref:'REF',photo:'IMG',statement:'NOTE'};
   if(!bucket.length){
     el.innerHTML='<div style="padding:32px;text-align:center;color:#9aa0b4;"><div style="font-size:32px;margin-bottom:10px;">📦</div><div style="font-size:13px;">No evidence in bucket yet.</div><div style="font-size:11px;margin-top:4px;">Evidence uploaded to any KDE is saved here for reuse.</div></div>';
   } else {
