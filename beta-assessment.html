@@ -4220,6 +4220,7 @@ function buildStages(){
   // Supplement with p.scNodes to get .own property (stripped from chain)
   const allChainNodes=[];
   const seenIds=new Set();
+  const _instProductMap={}; // instId → product — for per-CTE product label
   prods.forEach(p=>{
     // Build scNodes lookup by id for .own/.vesselCount
     const scLookup={};
@@ -4240,8 +4241,12 @@ function buildStages(){
           instanceNum:cn.instanceNum||scn.instanceNum||1,
         });
       }
+      // Map this node id → product (first product wins for shared nodes)
+      if(!_instProductMap[cn.id])_instProductMap[cn.id]=p;
     });
   });
+  // Store map on window so renderKDE can access it
+  window._instProductMap=_instProductMap;
   const byType={};
   allChainNodes.forEach(cn=>{
     const t=cn.type;if(!t)return;
@@ -4650,23 +4655,19 @@ function renderKDE(){
   const frozen2=prods2.some(p=>p.form==='Frozen'||p.form==='Smoked');
 
   // ── Sticky main heading ──
-  // Build product context row for stage header
-  const _hdrProds=(window._KDE_PROD_CTX?.allProds||products.filter(Boolean));
-  const _prodRow=_hdrProds.length>0?`
-    <div style="margin-top:8px;padding:8px 12px;background:#f8f9fc;border-radius:8px;border:1px solid #e8eaf0;">
-      <div style="font-size:9px;font-weight:700;color:#9aa0b4;text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px;">Products being assessed</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;">
-        ${_hdrProds.map(p=>`<span style="font-size:11px;font-weight:600;color:#1a1a2e;background:#fff;border:1px solid #e0e3ed;border-radius:5px;padding:2px 10px;">${(p.description||p.species||'—').slice(0,45)}</span>`).join('')}
-      </div>
-    </div>`:'';
+  // Build product label for THIS specific CTE instance
+  const _instProd=sub?.inst?.id?(window._instProductMap||{})[sub.inst.id]:null;
+  const _prodTitle=_instProd
+    ?(_instProd.description||_instProd.species||'')
+    :'';
   let html=`<div class="kde-sticky">
     <div style="display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:4px;">
       <div class="ksbadge">${st.i} ${st.t}</div>
       <span class="sc-pos-badge" id="sc-pos-badge" onclick="openSCPopupActive()"><span class="dot"></span> <span id="sc-pos-label">See where you are in the supply chain</span></span>
     </div>
+    ${_prodTitle?`<div style="font-size:11px;font-weight:700;color:#1a1a2e;letter-spacing:-0.1px;margin-bottom:2px;">${_prodTitle}</div>`:''}
     <div class="kstitle">${st.t} <span style="font-size:10px;font-weight:600;color:#9aa0b4;vertical-align:middle;margin-left:4px;">v4</span></div>
     <div class="kssub">${multiInst?`${st.instances.length} instances in your supply chain — fill each sub-section below.`:'Select the availability of each data element for your operations.'}</div>
-    ${_prodRow}
   </div>`;
 
   // ── Render only the active sub-instance ──

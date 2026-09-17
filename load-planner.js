@@ -94,6 +94,8 @@ let camera, controls;                   // active
 let containerGroup;
 let cartonGroup;
 let yardMesh;                            // concrete ground plane
+let concreteTexture;                     // yard surface
+let skyTexture;                          // scene background gradient
 let raycaster;
 
 let cargoSpace = { length: 12.03, width: 2.35, height: 2.69 };
@@ -159,7 +161,7 @@ function initScene() {
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  scene.add(new THREE.AmbientLight(0xffffff, 0.75));
 
   const key = new THREE.DirectionalLight(0xffffff, 0.85);
   key.position.set(12, 18, 10);
@@ -179,12 +181,16 @@ function initScene() {
   grid.userData.isGrid = true;
   scene.add(grid);
 
-  // Yard — concrete-like ground plane, receives shadows.
-  // Visibility toggled by updateContainerVisibility (only shown in realistic 3D).
+  // Concrete + sky textures for realistic mode
+  concreteTexture = createConcreteTexture();
+  skyTexture = createSkyTexture();
+
+  // Yard — textured concrete ground, receives shadows.
   yardMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(80, 80),
     new THREE.MeshStandardMaterial({
-      color: 0x8f8b7f, roughness: 0.95, metalness: 0.02
+      map: concreteTexture, color: 0xffffff,
+      roughness: 0.95, metalness: 0.02
     })
   );
   yardMesh.rotation.x = -Math.PI / 2;
@@ -234,14 +240,97 @@ function initScene() {
 // ============================================================
 // CONTAINER
 // ============================================================
+// ============================================================
+// TEXTURE GENERATORS (canvas-drawn — no external assets)
+// ============================================================
+function createCorrugationTexture() {
+  const cnv = document.createElement('canvas');
+  cnv.width = 64; cnv.height = 256;
+  const ctx = cnv.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, cnv.width, cnv.height);
+  // 4 vertical corrugation stripes — subtle shading (peaks near base, valleys ~20% darker)
+  const stripes = 4;
+  const stripeW = cnv.width / stripes;
+  for (let i = 0; i < stripes; i++) {
+    const x = i * stripeW;
+    const grad = ctx.createLinearGradient(x, 0, x + stripeW, 0);
+    grad.addColorStop(0,   'rgba(0,0,0,0.22)');
+    grad.addColorStop(0.5, 'rgba(0,0,0,0.02)');
+    grad.addColorStop(1,   'rgba(0,0,0,0.22)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, 0, stripeW, cnv.height);
+  }
+  // Subtle structural rails top + bottom
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
+  ctx.fillRect(0, 0, cnv.width, 10);
+  ctx.fillRect(0, cnv.height - 10, cnv.width, 10);
+  const tex = new THREE.CanvasTexture(cnv);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  return tex;
+}
+
+function createConcreteTexture() {
+  const cnv = document.createElement('canvas');
+  cnv.width = 256; cnv.height = 256;
+  const ctx = cnv.getContext('2d');
+  ctx.fillStyle = '#8f8b7f';
+  ctx.fillRect(0, 0, cnv.width, cnv.height);
+  // Weathered blotches
+  for (let i = 0; i < 90; i++) {
+    const x = Math.random() * cnv.width;
+    const y = Math.random() * cnv.height;
+    const r = Math.random() * 25 + 3;
+    const alpha = Math.random() * 0.08 + 0.02;
+    const dark = Math.random() > 0.4;
+    ctx.fillStyle = dark
+      ? `rgba(60, 55, 45, ${alpha})`
+      : `rgba(190, 185, 170, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // Expansion-joint cross
+  ctx.strokeStyle = 'rgba(50, 45, 35, 0.32)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cnv.width / 2, 0);
+  ctx.lineTo(cnv.width / 2, cnv.height);
+  ctx.moveTo(0, cnv.height / 2);
+  ctx.lineTo(cnv.width, cnv.height / 2);
+  ctx.stroke();
+  const tex = new THREE.CanvasTexture(cnv);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(10, 10);
+  return tex;
+}
+
+function createSkyTexture() {
+  const cnv = document.createElement('canvas');
+  cnv.width = 2; cnv.height = 512;
+  const ctx = cnv.getContext('2d');
+  const grad = ctx.createLinearGradient(0, 0, 0, 512);
+  grad.addColorStop(0,    '#e6ecf3');
+  grad.addColorStop(0.55, '#c2ccd7');
+  grad.addColorStop(1,    '#a4aeb9');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 2, 512);
+  return new THREE.CanvasTexture(cnv);
+}
+
 function buildContainer() {
   if (containerGroup) {
     scene.remove(containerGroup);
     containerGroup.traverse((obj) => {
       if (obj.geometry) obj.geometry.dispose();
       if (obj.material) {
-        if (Array.isArray(obj.material)) obj.material.forEach(m => m.dispose());
-        else obj.material.dispose();
+        const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+        mats.forEach(m => {
+          if (m.map) m.map.dispose();
+          m.dispose();
+        });
       }
     });
   }
@@ -376,17 +465,32 @@ function buildSimpleContainer(L, W, H) {
   containerGroup.add(door);
 }
 
-// -------- Realistic container — solid corrugated walls, open doors, corner castings --------
+// -------- Realistic container — corrugated walls, open doors, corner castings --------
 function buildRealisticContainer(L, W, H) {
-  const wallColor = 0x3a5878;
-  const wallMat = new THREE.MeshStandardMaterial({
-    color: wallColor, roughness: 0.65, metalness: 0.35, side: THREE.DoubleSide
+  const wallColor = 0x4a6a8a;                     // medium container blue (was too dark before)
+
+  // Per-wall corrugated material — repeat scaled to wall length so stripe
+  // density stays consistent across different wall sizes.
+  function makeWallMat(spanMeters) {
+    const tex = createCorrugationTexture();
+    tex.repeat.set(Math.max(3, spanMeters * 4), 1);         // ~25cm per stripe
+    return new THREE.MeshStandardMaterial({
+      color: wallColor, map: tex,
+      roughness: 0.75, metalness: 0.15, side: THREE.DoubleSide
+    });
+  }
+
+  const backWallMat = makeWallMat(W);
+  const sideWallMat = makeWallMat(L);
+  const doorMat     = makeWallMat(W / 2);
+  const roofMat = new THREE.MeshStandardMaterial({
+    color: wallColor, roughness: 0.75, metalness: 0.15, side: THREE.DoubleSide
   });
   const floorMat = new THREE.MeshStandardMaterial({
-    color: 0x6d5a3d, roughness: 0.9, metalness: 0.05
+    color: 0x8b7040, roughness: 0.9, metalness: 0.05
   });
   const darkMat = new THREE.MeshStandardMaterial({
-    color: 0x1c1c1c, roughness: 0.4, metalness: 0.6
+    color: 0x0a0a0a, roughness: 0.3, metalness: 0.7
   });
 
   const floor = new THREE.Mesh(new THREE.BoxGeometry(L, 0.05, W), floorMat);
@@ -396,8 +500,8 @@ function buildRealisticContainer(L, W, H) {
   containerGroup.add(floor);
 
   // Walls with outward normals for camera-based culling
-  function addWall(dims, position, outwardNormal) {
-    const wall = new THREE.Mesh(new THREE.BoxGeometry(...dims), wallMat);
+  function addWall(dims, position, outwardNormal, mat) {
+    const wall = new THREE.Mesh(new THREE.BoxGeometry(...dims), mat);
     wall.position.copy(position);
     wall.castShadow = true;
     wall.receiveShadow = true;
@@ -405,17 +509,17 @@ function buildRealisticContainer(L, W, H) {
     wall.userData.outwardNormal = outwardNormal;
     containerGroup.add(wall);
   }
-  addWall([0.06, H, W], new THREE.Vector3(0, H / 2, 0), new THREE.Vector3(-1, 0, 0));
-  addWall([L, H, 0.06], new THREE.Vector3(L / 2, H / 2, -W / 2), new THREE.Vector3(0, 0, -1));
-  addWall([L, H, 0.06], new THREE.Vector3(L / 2, H / 2, W / 2), new THREE.Vector3(0, 0, 1));
-  addWall([L, 0.06, W], new THREE.Vector3(L / 2, H, 0), new THREE.Vector3(0, 1, 0));
+  addWall([0.06, H, W], new THREE.Vector3(0, H / 2, 0),        new THREE.Vector3(-1, 0, 0), backWallMat);
+  addWall([L, H, 0.06], new THREE.Vector3(L / 2, H / 2, -W/2), new THREE.Vector3(0, 0, -1), sideWallMat);
+  addWall([L, H, 0.06], new THREE.Vector3(L / 2, H / 2, W/2),  new THREE.Vector3(0, 0, 1),  sideWallMat);
+  addWall([L, 0.06, W], new THREE.Vector3(L / 2, H, 0),        new THREE.Vector3(0, 1, 0),  roofMat);
 
   // Front doors — hinged at outer corners, swung open ~108°
   function addDoor(hingeZ, isRight) {
     const doorGroup = new THREE.Group();
     doorGroup.position.set(L, 0, hingeZ);
     const panelWidth = W / 2;
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.06, H, panelWidth), wallMat);
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.06, H, panelWidth), doorMat);
     panel.position.set(0, H / 2, isRight ? -panelWidth / 2 : panelWidth / 2);
     panel.castShadow = true;
     panel.receiveShadow = true;
@@ -505,12 +609,12 @@ function updateContainerVisibility() {
     if (obj.userData.isGrid) obj.visible = !in2D && !realisticMode;
   });
 
-  // Sky background any time realistic view is on — 2D side/front need it too
+  // Sky-gradient background whenever realistic view is on — 2D side/front need it too
   // because the yard is a horizontal plane and disappears in those views.
   // Fog only in 3D (ortho + fog behaves oddly).
   if (realisticMode) {
-    scene.background = new THREE.Color(0xd1dae4);
-    scene.fog = !in2D ? new THREE.Fog(0xd1dae4, 30, 90) : null;
+    scene.background = skyTexture;
+    scene.fog = !in2D ? new THREE.Fog(0xa4aeb9, 30, 90) : null;
   } else {
     scene.background = null;
     scene.fog = null;
