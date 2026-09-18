@@ -108,6 +108,7 @@ let quantity = 1;
 let batchCounter = 0;
 let showLabels = false;
 let dragState = null;
+let hoveredItemId = null;               // box currently under the cursor (for label-on-hover)
 
 let sceneMode = '3d';                   // '3d' | '2d'
 let orthoView = 'top';                  // '2d' sub-view: top | side | front
@@ -825,7 +826,7 @@ function createItemMesh(item) {
   const sprite = createLabelSprite(item);
   sprite.userData.isLabel = true;
   sprite.raycast = () => {};
-  sprite.visible = showLabels;
+  sprite.visible = false;                // managed by updateLabelVisibility
   mesh.add(sprite);
 
   return mesh;
@@ -923,8 +924,21 @@ function refreshItemSprite(item) {
   const newSprite = createLabelSprite(item);
   newSprite.userData.isLabel = true;
   newSprite.raycast = () => {};
-  newSprite.visible = showLabels;
+  newSprite.visible = false;             // managed by updateLabelVisibility
   item.mesh.add(newSprite);
+  updateLabelVisibility();
+}
+
+// Show only the label of the box under the cursor (or the one being dragged).
+// Called on hover changes, selection changes, drag start/end, and label toggle.
+function updateLabelVisibility() {
+  const targetId = dragState ? dragState.itemId : hoveredItemId;
+  items.forEach(item => {
+    const sprite = item.mesh?.children.find(c => c.userData.isLabel);
+    if (sprite) {
+      sprite.visible = showLabels && item.id === targetId;
+    }
+  });
 }
 
 function addItem(spec) {
@@ -1215,6 +1229,14 @@ function attachSceneInput() {
   canvas.addEventListener('pointermove', onPointerMove);
   canvas.addEventListener('pointerup',   onPointerUp);
   canvas.addEventListener('pointercancel', onPointerUp);
+  canvas.addEventListener('pointerleave', onPointerLeave);
+}
+
+function onPointerLeave() {
+  if (hoveredItemId !== null) {
+    hoveredItemId = null;
+    updateLabelVisibility();
+  }
 }
 
 function onPointerDown(e) {
@@ -1244,9 +1266,20 @@ function onPointerDown(e) {
     moved: false,
     pointerId: e.pointerId
   };
+  updateLabelVisibility();               // show the dragged box's label
 }
 
 function onPointerMove(e) {
+  // Hover detection when idle — drives the on-hover label
+  if (!dragState && !resizeState) {
+    const hit = showLabels ? hitCarton(e) : null;
+    const newHover = hit ? hit.itemId : null;
+    if (newHover !== hoveredItemId) {
+      hoveredItemId = newHover;
+      updateLabelVisibility();
+    }
+  }
+
   if (!dragState) return;
 
   if (!dragState.activated) {
@@ -1269,10 +1302,12 @@ function onPointerMove(e) {
   const dzCm = (currentWorld.z - dragState.startWorld.z) * 100;
 
   let newXcm = dragState.origPos.x;
+  let newYcm = dragState.origPos.y;
   let newZcm = dragState.origPos.z;
+  let useSupport = true;
 
   if (sceneMode === '3d' || orthoView === 'top') {
-    // Top view: check for stacking on another carton
+    // Top view: raycast to another box's top face → stack
     updateMouseNormalized(e);
     raycaster.setFromCamera(_mouse, camera);
     const others = cartonGroup.children.filter(m => m.userData.itemId !== dragState.itemId);
@@ -1296,20 +1331,50 @@ function onPointerMove(e) {
         if (Math.abs(newZcm - support.pos_z) < CENTER_SNAP_CM) newZcm = support.pos_z;
       }
     }
-  } else if (orthoView === 'side') {
-    // Side view: drag along X only (horizontal). Z stays.
-    newXcm = snapToGrid(dragState.origPos.x + dxCm);
-    newZcm = dragState.origPos.z;
-  } else if (orthoView === 'front') {
-    // Front view: drag along Z only. X stays.
-    newXcm = dragState.origPos.x;
-    newZcm = snapToGrid(dragState.origPos.z + dzCm);
+  } else {
+    // Side + front views: raycast to see if cursor is on another box → auto-stack.
+    // Otherwise, free X/Y (side) or Y/Z (front) drag so users can position freely.
+    updateMouseNormalized(e);
+    raycaster.setFromCamera(_mouse, camera);
+    const others = cartonGroup.children.filter(m => m.userData.itemId !== dragState.itemId);
+    const hits = raycaster.intersectObjects(others, false);
+
+    let stackTarget = null;
+    if (hits.length > 0) {
+      const target = items.find(i => i.id === hits[0].object.userData.itemId);
+      if (target) {
+        // Only auto-stack if the dragged box would still fit under the ceiling
+        const spaceH = cargoSpace.height * 100;
+        const proposedTop = target.pos_y + target.height_cm / 2 + item.height_cm;
+        if (proposedTop <= spaceH) stackTarget = target;
+      }
+    }
+
+    if (stackTarget) {
+      // Snap dragged box on top of the hovered target
+      newXcm = stackTarget.pos_x;
+      newYcm = stackTarget.pos_y + stackTarget.height_cm / 2 + item.height_cm / 2;
+      newZcm = stackTarget.pos_z;
+    } else if (orthoView === 'side') {
+      newXcm = snapToGrid(dragState.origPos.x + dxCm);
+      newYcm = snapToGrid(dragState.origPos.y + dyCm);
+      newZcm = dragState.origPos.z;
+    } else {                             // front
+      newXcm = dragState.origPos.x;
+      newYcm = snapToGrid(dragState.origPos.y + dyCm);
+      newZcm = snapToGrid(dragState.origPos.z + dzCm);
+    }
+    useSupport = false;
   }
 
-  const s = findSupportHeight(item, newXcm, newZcm, item.id);
+  if (useSupport) {
+    const s = findSupportHeight(item, newXcm, newZcm, item.id);
+    item.pos_y = s.top + item.height_cm / 2;
+  } else {
+    item.pos_y = newYcm;
+  }
   item.pos_x = newXcm;
   item.pos_z = newZcm;
-  item.pos_y = s.top + item.height_cm / 2;
 
   clampItemToBounds(item);
   refreshItemMesh(item);
@@ -1328,6 +1393,7 @@ function onPointerUp(e) {
     }
     dragState = null;
     controls.enabled = true;
+    updateLabelVisibility();             // drop the drag-label back to hover
   }
 }
 
@@ -1961,7 +2027,8 @@ function renderShortcuts() {
   ];
   const mouse = [
     { keys: ['Left-drag empty'],     desc: 'Orbit scene (3D) or pan (2D)' },
-    { keys: ['Left-drag carton'],    desc: 'Move carton along the floor' },
+    { keys: ['Left-drag carton'],    desc: 'Move carton — top: X/Z · side: X/Y · front: Y/Z' },
+    { keys: ['Vertical drag (2D)'],  desc: 'Lift a box to stack it (side/front views)' },
     { keys: ['Shift', '+', 'drag'],  desc: 'Orbit even when over a carton' },
     { keys: ['Right-drag'],          desc: 'Orbit (3D) or pan (2D) anywhere' },
     { keys: ['Scroll'],              desc: 'Zoom in / out' },
@@ -2265,11 +2332,9 @@ $('#resetView').addEventListener('click', () => {
 $('#toggleLabels').addEventListener('click', () => {
   showLabels = !showLabels;
   $('#toggleLabels').classList.toggle('active', showLabels);
-  items.forEach(item => {
-    const sprite = item.mesh?.children.find(c => c.userData.isLabel);
-    if (sprite) sprite.visible = showLabels;
-  });
-  showToast(showLabels ? 'Labels <b>on</b>.' : 'Labels <b>off</b>.');
+  hoveredItemId = null;                  // clear any stale hover state
+  updateLabelVisibility();
+  showToast(showLabels ? 'Labels shown on <b>hover</b>.' : 'Labels <b>off</b>.');
 });
 
 $('#toggleRealistic').addEventListener('click', () => {
