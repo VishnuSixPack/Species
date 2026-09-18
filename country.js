@@ -223,6 +223,40 @@ async function initDetailPage() {
   }
   if (data.iuu_url) { const e = document.getElementById('iuu-url'); if (e) { e.href = data.iuu_url; e.style.display = 'inline-flex'; } }
 
+  // ── FiTI / Fisheries Transparency ──
+  const hasFiti = data.fiti_participation !== null && data.fiti_participation !== undefined;
+  const fitiCard = document.getElementById('fitiCard');
+  if (fitiCard && hasFiti) {
+    fitiCard.style.display = 'block';
+    // Participation
+    const partEl = document.getElementById('fiti-participation');
+    if (partEl) partEl.innerHTML = data.fiti_participation
+      ? '<span style="color:#0369a1;font-weight:700;">✓ Yes</span>'
+      : '<span style="color:#6b7280;">— No</span>';
+    // FIS
+    const fisEl = document.getElementById('fiti-fis');
+    if (fisEl) {
+      const fisColors = { 'Yes':'#16a34a', 'No':'#e63946', 'Planned':'#f59e0b', 'Coming Soon':'#7c3aed' };
+      const fisVal = data.fiti_fis || '—';
+      fisEl.innerHTML = `<span style="color:${fisColors[fisVal]||'#6b7280'};font-weight:700;">${fisVal}</span>`;
+    }
+    // Status
+    const statusEl = document.getElementById('fiti-status');
+    if (statusEl) {
+      const statusColors = {
+        'Compliant':'#16a34a', 'Implementing':'#0369a1',
+        'Committed':'#7c3aed', 'Target':'#f59e0b', 'Not Participating':'#9aa0b4'
+      };
+      const sv = data.fiti_status || '—';
+      statusEl.innerHTML = `<span style="color:${statusColors[sv]||'#1a1a2e'};font-weight:700;">${sv}</span>`;
+    }
+    // URL
+    if (data.fiti_url) {
+      const urlEl = document.getElementById('fiti-url');
+      if (urlEl) { urlEl.href = data.fiti_url; urlEl.style.display = 'inline-flex'; }
+    }
+  }
+
   document.getElementById('detailContent').classList.remove('hidden');
 
   // show country on map

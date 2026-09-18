@@ -223,6 +223,49 @@
       </div>
     </div>
 
+    <!-- FiTI / FISHERIES TRANSPARENCY -->
+    <div class="edit-section">
+      <div class="edit-section-header">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0369a1" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <h2 style="color:#0c4a6e;">Fisheries Transparency Initiative (FiTI)</h2>
+      </div>
+      <div class="edit-body">
+        <div class="form-group">
+          <label>FiTI Participation</label>
+          <select id="f-fiti_participation">
+            <option value="">— Not set</option>
+            <option value="true">Yes</option>
+            <option value="false">No</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Fisheries Information System (FIS)</label>
+          <select id="f-fiti_fis">
+            <option value="">— Not set</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+            <option value="Planned">Planned</option>
+            <option value="Coming Soon">Coming Soon</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>FiTI Country Status</label>
+          <select id="f-fiti_status">
+            <option value="">— Not set</option>
+            <option value="Committed">Committed</option>
+            <option value="Implementing">Implementing</option>
+            <option value="Compliant">Compliant</option>
+            <option value="Not Participating">Not Participating</option>
+            <option value="Target">Target</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label>FiTI Country URL</label>
+          <input type="text" id="f-fiti_url" placeholder="https://fiti.global/countries/..." />
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -271,7 +314,13 @@ async function loadCountry() {
   const fields = ['country','capital','alpha2','alpha3','numeric','region','subregion','languages',
     'currency_name','currency_symbol','currency_code','decimal_example','timezone_iana',
     'msi_prevalence','msi_vulnerability','msi_gov_response','msi_year','msi_url',
-    'iuu_score','iuu_year','iuu_url'];
+    'iuu_score','iuu_year','iuu_url',
+    'fiti_fis','fiti_status','fiti_url'];
+  // FiTI participation is boolean — handle separately
+  const fitiPartEl = document.getElementById('f-fiti_participation');
+  if (fitiPartEl && data.fiti_participation !== null && data.fiti_participation !== undefined) {
+    fitiPartEl.value = data.fiti_participation ? 'true' : 'false';
+  }
   fields.forEach(f => {
     const el = document.getElementById(`f-${f}`);
     if (el && data[f] !== null && data[f] !== undefined) el.value = data[f];
@@ -293,7 +342,8 @@ function setFoc(val) {
 async function saveCountry() {
   const payload = {};
   const textFields = ['country','capital','alpha2','alpha3','numeric','region','subregion','languages',
-    'currency_name','currency_symbol','currency_code','decimal_example','timezone_iana','msi_url','iuu_url'];
+    'currency_name','currency_symbol','currency_code','decimal_example','timezone_iana','msi_url','iuu_url',
+    'fiti_fis','fiti_status','fiti_url'];
   const numFields = ['msi_prevalence','msi_vulnerability','msi_gov_response','msi_year','iuu_score','iuu_year'];
 
   textFields.forEach(f => {
@@ -306,6 +356,9 @@ async function saveCountry() {
   });
   payload.tz_multiple = document.getElementById('f-tz_multiple').value === 'true';
   payload.is_foc = focValue;
+  // FiTI participation
+  const fitiPart = document.getElementById('f-fiti_participation')?.value;
+  payload.fiti_participation = fitiPart === 'true' ? true : fitiPart === 'false' ? false : null;
 
   console.log('Saving payload:', JSON.stringify(payload));
   const { data: updated, error } = await db.from('countries').update(payload).eq('id', countryId).select();
@@ -338,5 +391,3 @@ window.handleLogout = async function() { await db.auth.signOut(); window.locatio
 </script>
 </body>
 </html>
-
-
