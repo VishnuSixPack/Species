@@ -913,6 +913,30 @@ function highlightMesh(item, isSelected) {
   }
 }
 
+// Wire highlight for a box that's currently the auto-stack target during a drag
+function setStackHighlight(itemId) {
+  const item = items.find(i => i.id === itemId);
+  if (!item?.mesh) return;
+  const wire = item.mesh.children.find(c => c.userData.isEdge);
+  if (wire) {
+    wire.material.color.set(0x22c07a);   // stack-target green
+    wire.material.opacity = 1;
+  }
+}
+function restoreWireframe(itemId) {
+  const item = items.find(i => i.id === itemId);
+  if (!item?.mesh) return;
+  const wire = item.mesh.children.find(c => c.userData.isEdge);
+  if (!wire) return;
+  if (itemId === selectedItemId) {
+    wire.material.color.set(0x1a6fdb);
+    wire.material.opacity = 1;
+  } else {
+    wire.material.color.set(0x1a2536);
+    wire.material.opacity = 0.45;
+  }
+}
+
 function refreshItemSprite(item) {
   if (!item.mesh) return;
   const oldSprite = item.mesh.children.find(c => c.userData.isLabel);
@@ -1010,12 +1034,32 @@ function removeItem(id) {
 }
 
 function settleAll() {
-  const sorted = [...items].sort((a, b) => (a.pos_y - a.height_cm / 2) - (b.pos_y - b.height_cm / 2));
+  // Process bottom-up, only considering items already placed in this pass as
+  // potential supports. Without this, a stacked pair finds each other as
+  // "supports" and both end up climbing to the ceiling on every settle.
+  const sorted = [...items].sort((a, b) =>
+    (a.pos_y - a.height_cm / 2) - (b.pos_y - b.height_cm / 2)
+  );
+  const placed = [];
   for (const item of sorted) {
-    const s = findSupportHeight(item, item.pos_x, item.pos_z, item.id);
-    item.pos_y = s.top + item.height_cm / 2;
+    const rotated = item.rot_y === 90;
+    const boxL = rotated ? item.width_cm  : item.length_cm;
+    const boxW = rotated ? item.length_cm : item.width_cm;
+    const minX = item.pos_x - boxL / 2, maxX = item.pos_x + boxL / 2;
+    const minZ = item.pos_z - boxW / 2, maxZ = item.pos_z + boxW / 2;
+    const eps = 0.5;
+    let top = 0;
+    for (const other of placed) {
+      const b = itemBounds(other);
+      if (minX + eps < b.maxX && maxX - eps > b.minX &&
+          minZ + eps < b.maxZ && maxZ - eps > b.minZ) {
+        if (b.maxY > top) top = b.maxY;
+      }
+    }
+    item.pos_y = top + item.height_cm / 2;
     clampItemToBounds(item);
     refreshItemMesh(item);
+    placed.push(item);
   }
 }
 
@@ -1332,8 +1376,9 @@ function onPointerMove(e) {
       }
     }
   } else {
-    // Side + front views: raycast to see if cursor is on another box → auto-stack.
-    // Otherwise, free X/Y (side) or Y/Z (front) drag so users can position freely.
+    // Side + front views: raycast → auto-stack.
+    // Sticky: once you hover a valid target the drag "locks" onto it
+    // until you hover a different one or press Escape.
     updateMouseNormalized(e);
     raycaster.setFromCamera(_mouse, camera);
     const others = cartonGroup.children.filter(m => m.userData.itemId !== dragState.itemId);
@@ -1341,17 +1386,27 @@ function onPointerMove(e) {
 
     let stackTarget = null;
     if (hits.length > 0) {
-      const target = items.find(i => i.id === hits[0].object.userData.itemId);
-      if (target) {
-        // Only auto-stack if the dragged box would still fit under the ceiling
+      const t = items.find(i => i.id === hits[0].object.userData.itemId);
+      if (t) {
         const spaceH = cargoSpace.height * 100;
-        const proposedTop = target.pos_y + target.height_cm / 2 + item.height_cm;
-        if (proposedTop <= spaceH) stackTarget = target;
+        const proposedTop = t.pos_y + t.height_cm / 2 + item.height_cm;
+        if (proposedTop <= spaceH) stackTarget = t;
       }
     }
 
+    // Sticky bookkeeping + wire highlight
+    const prevStackId = dragState.stackTargetId;
+    if (stackTarget && stackTarget.id !== prevStackId) {
+      if (prevStackId) restoreWireframe(prevStackId);
+      setStackHighlight(stackTarget.id);
+      dragState.stackTargetId = stackTarget.id;
+    } else if (!stackTarget && prevStackId) {
+      // No new hit this frame — keep the last target so we don't fall off mid-drag
+      stackTarget = items.find(i => i.id === prevStackId) || null;
+      if (!stackTarget) dragState.stackTargetId = null;
+    }
+
     if (stackTarget) {
-      // Snap dragged box on top of the hovered target
       newXcm = stackTarget.pos_x;
       newYcm = stackTarget.pos_y + stackTarget.height_cm / 2 + item.height_cm / 2;
       newZcm = stackTarget.pos_z;
@@ -1386,6 +1441,7 @@ function onPointerUp(e) {
     if (canvas.hasPointerCapture(dragState.pointerId)) {
       canvas.releasePointerCapture(dragState.pointerId);
     }
+    if (dragState.stackTargetId) restoreWireframe(dragState.stackTargetId);
     if (dragState.moved) {
       settleAll();
       updateStats();
@@ -2547,6 +2603,7 @@ window.addEventListener('keydown', (e) => {
         item.pos_z = dragState.origPos.z;
         refreshItemMesh(item);
       }
+      if (dragState.stackTargetId) restoreWireframe(dragState.stackTargetId);
       dragState = null;
       controls.enabled = true;
       return;
