@@ -755,6 +755,8 @@ const SUPPLIER_TYPES=['Vessel owner','Vessel charterer / lessee','Fishing compan
 const TRANSFORM_TYPES=['Frozen on board','Chilled / iced on board','Gilled & gutted',
   'Headed & gutted','Filleted','Loined','Cooked','Brined','Salted','Other'];
 const PROD_METHOD=['Cage / Net Pen','Pond','Raceway','Recirculating (RAS)','Longline / Rope','Bottom Culture'];
+const EEZ_AREAS=['Albania EEZ','Algeria EEZ','American Samoa EEZ','Angola EEZ','Anguilla EEZ','Antigua and Barbuda EEZ','Argentina EEZ','Aruba EEZ','Ascension EEZ','Australia EEZ','Azerbaijan EEZ','Bahamas EEZ','Bahrain EEZ','Bangladesh EEZ','Barbados EEZ','Bassas da India EEZ','Belgium EEZ','Belize EEZ','Benin EEZ','Bermuda EEZ','Bonaire EEZ','Bosnia and Herzegovina EEZ','Brazil EEZ','British Virgin Islands EEZ','Brunei Darussalam EEZ','Bulgaria EEZ','Cabo Verde EEZ','Cambodia EEZ','Cameroon EEZ','Canada EEZ','Cayman Islands EEZ','Chagos Archipelago EEZ','Chile EEZ','China EEZ','Christmas Island EEZ','Clipperton Island EEZ','Cocos (Keeling) Islands EEZ','Colombia EEZ','Comoros EEZ','Congo EEZ','Cook Islands EEZ','Costa Rica EEZ','Côte d\'Ivoire EEZ','Croatia EEZ','Crozet EEZ','Cuba EEZ','Curaçao EEZ','Cyprus EEZ','Democratic People\'s Republic of Korea EEZ','Democratic Republic of the Congo EEZ','Denmark EEZ','Djibouti EEZ','Dominica EEZ','Dominican Republic EEZ','Ecuador EEZ','Egypt EEZ','El Salvador EEZ','Equatorial Guinea EEZ','Eritrea EEZ','Estonia EEZ','Europa Island EEZ','Falkland Islands EEZ','Faroe Islands EEZ','Fiji EEZ','Finland EEZ','France EEZ','French Guiana EEZ','French Polynesia EEZ','Gabon EEZ','Gambia EEZ','Georgia EEZ','Germany EEZ','Ghana EEZ','Gibraltar EEZ','Glorieuse Islands EEZ','Greece EEZ','Greenland EEZ','Grenada EEZ','Guadeloupe EEZ','Guam EEZ','Guatemala EEZ','Guernsey EEZ','Guinea EEZ','Guinea-Bissau EEZ','Guyana EEZ','Haiti EEZ','Heard Island and McDonald Islands EEZ','Honduras EEZ','Howland & Baker Island EEZ','Iceland EEZ','India EEZ','Indonesia EEZ','Iran EEZ','Iraq EEZ','Ireland EEZ','Israel EEZ','Italy EEZ','Jamaica EEZ','Jan Mayen EEZ','Japan EEZ','Jarvis Island EEZ','Jersey EEZ','Johnston Atoll EEZ','Jordan EEZ','Juan de Nova Island EEZ','Kazakhstan EEZ','Kenya EEZ','Kerguelen EEZ','Kiribati EEZ','Kuwait EEZ','Latvia EEZ','Lebanon EEZ','Liberia EEZ','Libya EEZ','Lithuania EEZ','Madagascar EEZ','Malaysia EEZ','Maldives EEZ','Malta EEZ','Marshall Islands EEZ','Martinique EEZ','Mauritania EEZ','Mauritius EEZ','Mayotte EEZ','Mexico EEZ','Micronesia EEZ','Monaco EEZ','Montenegro EEZ','Montserrat EEZ','Morocco EEZ','Mozambique EEZ','Myanmar EEZ','Namibia EEZ','Nauru EEZ','Navassa Island EEZ','Netherlands EEZ','New Caledonia EEZ','New Zealand EEZ','Nicaragua EEZ','Nigeria EEZ','Niue EEZ','Norfolk Island EEZ','Northern Mariana Islands EEZ','Norway EEZ','Oman EEZ','Pakistan EEZ','Palau EEZ','Palestine EEZ','Palmyra Atoll & Kingman Reef EEZ','Panama EEZ','Papua New Guinea EEZ','Peru EEZ','Philippines EEZ','Pitcairn Islands EEZ','Poland EEZ','Portugal EEZ','Puerto Rico EEZ','Qatar EEZ','Republic of Korea EEZ','Reunion EEZ','Romania EEZ','Russian Federation EEZ','Saba EEZ','Saint Barthelemy EEZ','Saint Helena EEZ','Saint Kitts and Nevis EEZ','Saint Lucia EEZ','Saint Martin EEZ','Saint Pierre and Miquelon EEZ','Saint Vincent and the Grenadines EEZ','Samoa EEZ','Sao Tome and Principe EEZ','Saudi Arabia EEZ','Senegal EEZ','Seychelles EEZ','Sierra Leone EEZ','Singapore EEZ','Sint Eustatius EEZ','Sint Maarten EEZ','Slovenia EEZ','Solomon Islands EEZ','Somalia EEZ','South Africa EEZ','South Georgia and the South Sandwich Islands EEZ','Spain EEZ','Sri Lanka EEZ','St. Paul and Amsterdam Islands EEZ','Sudan EEZ','Suriname EEZ','Svalbard EEZ','Sweden EEZ','Syria EEZ','Tanzania EEZ','Thailand EEZ','Timor-Leste EEZ','Togo EEZ','Tokelau EEZ','Tonga EEZ','Trinidad and Tobago EEZ','Tristan da Cunha EEZ','Tromelin EEZ','Tunisia EEZ','Turkey EEZ','Turkmenistan EEZ','Turks and Caicos Islands EEZ','Tuvalu EEZ','Ukraine EEZ','United Arab Emirates EEZ','United Kingdom EEZ','United States of America EEZ','Uruguay EEZ','US Virgin Islands EEZ','Vanuatu EEZ','Venezuela EEZ','Viet Nam EEZ','Wake Island EEZ','Wallis and Futuna EEZ','Yemen EEZ'];
+
 const FAO_AREAS=[
   {_label:'21',_sub:'Atlantic, Northwest'},{_label:'27',_sub:'Atlantic, Northeast'},
   {_label:'31',_sub:'Atlantic, Western Central'},{_label:'34',_sub:'Atlantic, Eastern Central'},
@@ -1070,6 +1072,30 @@ function renderFarm(){
   bindPlain();
 }
 
+function renderEezOpts(i, filter){
+  var c=CATCHES[i]; var vals=(c.catch_area_detail||'').split('; ').filter(Boolean);
+  var f=(filter||'').toLowerCase();
+  var el=document.getElementById('eez_opts_'+i); if(!el) return;
+  var filtered=EEZ_AREAS.filter(function(e){return !f || e.toLowerCase().includes(f);});
+  if(filtered.length>50) filtered=filtered.slice(0,50); // limit for perf
+  el.innerHTML=filtered.map(function(e){
+    var on=vals.includes(e);
+    return '<div class="msel-opt'+(on?' on':'')+'" data-val="'+e.replace(/"/g,'&quot;')+'" onclick="toggleEezOpt('+i+',this)">'+
+      '<span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"><polyline points="20 6 9 17 4 12"/></svg></span>'+
+      e+'</div>';
+  }).join('')+(filtered.length===0?'<div style="padding:12px;text-align:center;color:var(--muted);font-size:12px;">No matches</div>':'');
+}
+function filterEez(i,v){ renderEezOpts(i,v); }
+function toggleEezOpt(i,el){
+  el.classList.toggle('on');
+  var wrap=el.closest('.msel');
+  var vals=[...wrap.querySelectorAll('.msel-opt.on')].map(function(o){return o.dataset.val;});
+  CATCHES[i].catch_area_detail=vals.join('; ');
+  var txt=wrap.querySelector('.msel-text');
+  txt.textContent=vals.length?vals.join('; '):'Search EEZ zones…';
+  txt.classList.toggle('placeholder',!vals.length);
+}
+
 function toggleMsel(id){document.getElementById(id).classList.toggle('open');}
 document.addEventListener('click',function(e){
   document.querySelectorAll('.msel.open').forEach(function(m){if(!m.contains(e.target))m.classList.remove('open');});
@@ -1316,6 +1342,9 @@ function renderCatches(){
     return row + (EXPANDED.has(i)?detailHTML(c,i):'');
   }).join('');
 
+  // Populate EEZ dropdowns
+  CATCHES.forEach(function(c,i){ renderEezOpts(i,''); });
+
   document.querySelectorAll('[data-c]').forEach(el=>{
     el.oninput=()=>{
       const i=+el.dataset.c;
@@ -1423,7 +1452,18 @@ function detailHTML(c,i){
     html+=`<div class="cdetail-h"><span>Vessel</span></div><div class="grid">
       ${t('IMO','imo')}${t('Flag State','flag_state')}${t('Captain','captain')}
       ${t('Trip No','trip_no','Optional')}
-      ${t('Catch Area Detail','catch_area_detail','EEZ or RFMO subarea')}
+      <div style="grid-column:span 2;"><label>Catch Area Detail</label>
+          <div class="msel" id="eez_msel_${i}">
+            <div class="msel-display" onclick="toggleMsel('eez_msel_${i}')">
+              <span class="msel-text${c.catch_area_detail?' ':' placeholder'}">${c.catch_area_detail||'Search EEZ zones…'}</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="msel-drop" style="max-height:280px;">
+              <input class="ctl-in" placeholder="Type to filter…" oninput="filterEez(${i},this.value)" style="height:34px;margin-bottom:4px;font-size:12px;"/>
+              <div class="eez-opts" id="eez_opts_${i}"></div>
+            </div>
+          </div>
+          <div class="hint">EEZ or RFMO subarea</div></div>
     </div>
     ${speciesSplitHTML(c,i)}
     <div class="cdetail-h">
