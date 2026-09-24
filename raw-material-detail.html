@@ -38,7 +38,7 @@
     cursor:pointer;text-align:left;}
   .avatar-menu a:hover,.avatar-menu button:hover{background:var(--bg);color:var(--primary);}
 
-  .wrap{max-width:100%;margin:0 auto;padding:24px 48px 80px;}
+  .wrap{max-width:100%;margin:0 auto;padding:0;}
   .crumb{font-size:12px;color:var(--muted);margin-bottom:20px;}
   .crumb a{color:var(--muted);text-decoration:none;}
   .crumb a:hover{color:var(--primary);}
@@ -167,6 +167,18 @@
   .trash-btns{display:flex;gap:10px;justify-content:center;}
   .trash-confirm{background:var(--bad-fg,#e63946)!important;border-color:var(--bad-fg,#e63946)!important;color:#fff!important;padding:10px 20px;border-radius:10px;font-size:12.5px;font-weight:600;font-family:inherit;cursor:pointer;border:none;}
   .trash-confirm:hover{opacity:.9;}
+
+  .detail-layout{display:flex;gap:0;min-height:calc(100vh - 60px);}
+  .sidebar{width:250px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);padding:20px 0;position:sticky;top:57px;height:calc(100vh - 57px);overflow-y:auto;}
+  .sidebar-id{font-size:11px;color:var(--muted);padding:0 22px 14px;border-bottom:1px solid var(--border);margin-bottom:6px;}
+  .sidebar-id b{color:var(--primary);font-weight:700;font-size:12px;}
+  .nav-s{display:flex;align-items:center;gap:10px;padding:10px 22px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-left:3px solid transparent;transition:all .1s;}
+  .nav-s:hover{background:var(--hover);color:var(--text);}
+  .nav-s.on{background:var(--primary-soft);color:var(--primary);font-weight:700;border-left-color:var(--primary);}
+  .nav-s svg{width:15px;height:15px;flex-shrink:0;opacity:.7;}
+  .nav-s.on svg{opacity:1;}
+  .main-pane{flex:1;padding:24px 48px 80px;min-width:0;}
+  @media(max-width:900px){.sidebar{display:none;}.main-pane{padding:16px 20px 60px;}}
 </style>
 </head>
 <body>
@@ -191,6 +203,30 @@
 </div>
 
 <div class="wrap">
+
+<div class="detail-layout">
+  <div class="sidebar">
+    <div class="sidebar-id"><b id="sideRef">—</b><br/>Raw Material ID</div>
+    <div class="nav-s on" data-sec="all" onclick="showSec(this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Overview</div>
+    <div class="nav-s" data-sec="events" onclick="showSec(this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      Events</div>
+    <div class="nav-s" data-sec="parties" onclick="showSec(this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/></svg>
+      Parties</div>
+    <div class="nav-s" data-sec="certs" onclick="showSec(this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Certifications</div>
+    <div class="nav-s" data-sec="docs" onclick="showSec(this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Documents</div>
+    <div class="nav-s" data-sec="usage" onclick="showSec(this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5"/></svg>
+      Used In</div>
+  </div>
+  <div class="main-pane">
   <div class="crumb"><a href="home-logged-in.html">My Studio</a> / <a href="raw-material-list.html">Raw Materials</a> / <span id="crumbNow">—</span></div>
   <div class="page-head">
     <div>
@@ -207,21 +243,21 @@
   </div>
 
   <div id="alerts"></div>
-  <div class="pills" id="pills"></div>
+  <div class="pills" data-section="overview" id="pills"></div>
 
-  <div class="card">
-    <div class="card-head"><div><div class="card-title">Species</div>
+  <div class="card" data-section="overview">
+    <div class="card-head"><div><div class="card-title" data-section="overview">Species</div>
       <div class="card-sub" id="spSub">The product table of the catch certificate</div></div></div>
     <div id="spHost"></div>
   </div>
 
-  <div class="card">
-    <div class="card-head"><div><div class="card-title">Identity &amp; Supply</div></div></div>
+  <div class="card" data-section="parties">
+    <div class="card-head"><div><div class="card-title" data-section="parties">Identity &amp; Supply</div></div></div>
     <div class="grid" id="idGrid"></div>
     <div id="transformHost"></div>
   </div>
 
-  <div class="card" id="eventsCard">
+  <div class="card" data-section="events" id="eventsCard">
     <div class="card-head"><div><div class="card-title">Vessel &amp; Trip Details</div>
       <div class="card-sub" id="evSub">—</div></div></div>
     <div id="evHost"></div>
@@ -229,14 +265,14 @@
   </div>
 
   <div class="card" id="matrixCard" style="display:none;">
-    <div class="card-head"><div><div class="card-title">Catch by Vessel and Species</div>
+    <div class="card-head"><div><div class="card-title" data-section="events">Catch by Vessel and Species</div>
       <div class="card-sub">What each vessel contributed — Section 2 of a catch certificate</div></div></div>
     <div id="matrixHost"></div>
   </div>
 
-  <div class="card" id="flowCard" style="display:none;">
+  <div class="card" data-section="events" id="flowCard" style="display:none;">
     <div class="card-head" style="cursor:pointer;" onclick="toggleFlow()">
-      <div><div class="card-title">Chain Map
+      <div><div class="card-title" data-section="events">Chain Map
         <svg class="flow-caret" id="flowCaret" width="12" height="12" viewBox="0 0 24 24" fill="none"
           stroke="var(--muted)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
           style="vertical-align:middle;margin-left:6px;transition:transform .2s;">
@@ -246,8 +282,8 @@
       <svg class="flow-svg" id="flowSvg"></svg><div id="flowNodes"></div></div>
   </div>
 
-  <div class="card" id="farmCard" style="display:none;">
-    <div class="card-head"><div class="card-title">Farm &amp; Harvest</div></div>
+  <div class="card" data-section="events" id="farmCard" style="display:none;">
+    <div class="card-head"><div class="card-title" data-section="events">Farm &amp; Harvest</div></div>
     <div class="grid" id="farmGrid"></div>
   </div>
 
@@ -287,7 +323,7 @@
     </div>
   </div>
 
-  <div class="card" id="notesCard" style="display:none;">
+  <div class="card" id="notesCard" data-section="overview" style="display:none;">
     <div class="card-head"><div class="card-title">Notes</div></div>
     <div class="rt-view" id="notesHost"></div>
   </div>
@@ -357,6 +393,25 @@ async function doDelete(){
   }catch(e){
     alert('Delete failed: '+(e.message||e));
   }
+}
+
+function showSec(el){
+  var sec=el.dataset.sec;
+  document.querySelectorAll('.nav-s').forEach(function(n){n.classList.remove('on');});
+  el.classList.add('on');
+  document.querySelectorAll('.main-pane .card, .main-pane .page-head, .main-pane .pills, .main-pane .crumb').forEach(function(c){
+    var cs=c.dataset?.section||c.querySelector('[data-section]')?.dataset?.section;
+    if(sec==='all'){
+      c.style.display='';
+    }else if(cs===sec){
+      c.style.display='';
+    }else if(!cs){
+      // Items without a section tag (page-head, pills, crumb) show on overview
+      c.style.display=sec==='all'?'':'none';
+    }else{
+      c.style.display='none';
+    }
+  });
 }
 
 function goEdit(){ location.href='raw-material-form.html'+(params().get('id')?('?id='+params().get('id')):''); }
@@ -885,6 +940,8 @@ async function loadProfile(){
 
 load(); loadProfile();
 </script>
+  </div><!-- main-pane -->
+</div><!-- detail-layout -->
 <div class="trash-modal" id="trashModal" onclick="if(event.target===this)closeTrashModal()">
   <div class="trash-box">
     <div class="trash-icon">
