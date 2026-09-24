@@ -653,7 +653,8 @@ const M={}; let mSeq=0;
 function multi(values,opts,handler,ph){
   const id='m'+(++mSeq);
   M[id]={values:[...(values||[])],opts,handler,ph:ph||'Select…'};
-  return `<div class="ctl has-chev" id="${id}">
+  var disStyle=disabled?' style="opacity:.6;pointer-events:none;"':'';
+  return `<div class="ctl has-chev" id="${id}"${disStyle}>
     <div class="chips" onclick="mToggle('${id}')">${chipsHTML(id)}</div>${CHEV}
     <div class="pop"><div class="pop-list">${
       opts.map(o=>`<div class="opt" onmousedown="mToggleVal(event,'${id}','${esc(o._label)}')">
@@ -699,10 +700,11 @@ const MON=['January','February','March','April','May','June','July','August','Se
 const DOW=['Mo','Tu','We','Th','Fr','Sa','Su'];
 function dateFmt(iso){ if(!iso) return '';
   const d=new Date(iso+'T00:00:00'); return isNaN(d)?iso:d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
-function datePicker(value,handler,ph){
+function datePicker(value,handler,ph,disabled){
   const id='d'+(++dSeq), base=value?new Date(value+'T00:00:00'):new Date();
   D[id]={value:value||'',handler,y:base.getFullYear(),m:base.getMonth()};
-  return `<div class="ctl has-chev" id="${id}">
+  var disStyle=disabled?' style="opacity:.6;pointer-events:none;"':'';
+  return `<div class="ctl has-chev" id="${id}"${disStyle}>
     <input class="ctl-in" readonly value="${esc(dateFmt(value))}" placeholder="${esc(ph||'Pick a date')}" onclick="dToggle('${id}')"/>
     <svg class="chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
       stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
@@ -904,7 +906,7 @@ function renderAll(){
     wrap('Reference','req'?true:false,`<div class="ctl"><input class="ctl-in" data-h="rm_ref"
         value="${esc(S.rm_ref||'')}" placeholder="Generating…"/></div>`,
       REF_AUTO?'Generated automatically — matches the Raw Material ID on shipment lots':'Custom reference') +
-    txt('Name','name','e.g. YF loins, July trip') +
+    txt('Certificate No.','name','e.g. CC-2026-0482') +
     wrap('Status',false, picker(S.status,opt(['Draft','In-Review','Active','Discarded','Archived']),
       (v)=>{ S.status=v; onStatusChange(v); }),
       S.status==='Discarded'?'Record why in the Notes below':'');
@@ -1550,13 +1552,17 @@ function detailHTML(c,i){
       <div><label>Departure Port</label>${picker(c.departure_port_name,[],(v,row)=>{
         CATCHES[i].departure_port_name=v; if(row) CATCHES[i].departure_port_id=row._id;
       },{searchable:true,allowNew:true,source:'ports',placeholder:'Search ports…'})}</div>
-      <div><label>Departure Date</label>${c._customDates?datePicker(c.departure_date,v=>{CATCHES[i].departure_date=v;})
-        :'<div class="ctl"><input class="ctl-in" readonly value="'+(c.catch_date_from?dateFmt(c.catch_date_from):'From catch dates')+'" style="color:var(--muted);"/></div>'}</div>
+      <div><label>Departure Date</label>${datePicker(
+        c._customDates?c.departure_date:(c.catch_date_from||c.departure_date),
+        v=>{if(c._customDates){CATCHES[i].departure_date=v;}},
+        '',c._customDates?false:true)}</div>
       <div><label>Landing Port</label>${picker(c.landing_port_name,[],(v,row)=>{
         CATCHES[i].landing_port_name=v; if(row){ CATCHES[i].landing_port_id=row._id; adoptLandingCountry(row); }
       },{searchable:true,allowNew:true,source:'ports',placeholder:'Search ports…'})}</div>
-      <div><label>Landing Date</label>${c._customDates?datePicker(c.landing_date,v=>{CATCHES[i].landing_date=v;})
-        :'<div class="ctl"><input class="ctl-in" readonly value="'+(c.catch_date_to?dateFmt(c.catch_date_to):'From catch dates')+'" style="color:var(--muted);"/></div>'}</div>
+      <div><label>Landing Date</label>${datePicker(
+        c._customDates?c.landing_date:(c.catch_date_to||c.landing_date),
+        v=>{if(c._customDates){CATCHES[i].landing_date=v;}},
+        '',c._customDates?false:true)}</div>
     </div>
     <div style="margin-top:8px;">
       ${c._customDates
