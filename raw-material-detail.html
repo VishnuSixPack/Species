@@ -394,13 +394,14 @@ function showSec(el){
   document.querySelectorAll('.nav-s').forEach(function(n){n.classList.remove('on');});
   el.classList.add('on');
   document.querySelectorAll('.main-pane .card, .main-pane .page-head, .main-pane .pills, .main-pane .crumb').forEach(function(c){
+    // Skip cards hidden by logic (empty content, wrong source type)
+    if(c.classList.contains('hidden-empty')) return;
     var cs=c.dataset?.section||c.querySelector('[data-section]')?.dataset?.section;
     if(sec==='all'){
       c.style.display='';
     }else if(cs===sec){
       c.style.display='';
     }else if(!cs){
-      // Items without a section tag (page-head, pills, crumb) show on overview
       c.style.display=sec==='all'?'':'none';
     }else{
       c.style.display='none';
@@ -536,7 +537,13 @@ function render(){
   renderMatrix();
   renderFlow();
 
-  $('farmCard').style.display=(r.source_type==='Aquaculture')?'block':'none';
+  if(r.source_type!=='Aquaculture'){
+    $('farmCard').style.display='none';
+    $('farmCard').classList.add('hidden-empty');
+  }else{
+    $('farmCard').style.display='block';
+    $('farmCard').classList.remove('hidden-empty');
+  }
   if(!wild) $('farmGrid').innerHTML=cell('Farm Name',r.farm_name)+cell('Farm Location',r.farm_location)+
     cell('Production Method',r.production_method)+cell('Harvest Date',r.harvest_date,'date')+cell('Feed Type',r.feed_type);
 
