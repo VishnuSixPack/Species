@@ -422,12 +422,18 @@
   <div class="card">
     <div class="card-head" style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;">
       <div>
-        <div class="card-title">Supply</div>
-        <div class="card-sub">Who supplied it, in what form, and how much</div>
+        <div class="card-title">Parties</div>
+        <div class="card-sub">Supplier, buyer, processor — add each party involved in the chain</div>
       </div>
       <div class="seg" id="unitSeg" title="Weights are stored in kilograms either way"></div>
     </div>
-    <div class="grid" id="supGrid"></div>
+    <div style="display:flex;gap:8px;margin-bottom:18px;" id="partyButtons">
+      <button class="btn btn-sm" onclick="addParty('Supplier')">+ Add Supplier</button>
+      <button class="btn btn-sm" onclick="addParty('Buyer')">+ Add Buyer</button>
+      <button class="btn btn-sm" onclick="addParty('Processor')">+ Add Processor</button>
+    </div>
+    <div id="partiesHost"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:22px 28px;margin-top:18px;" id="supTotals"></div>
     <div id="transformHost"></div>
   </div>
 
@@ -755,7 +761,7 @@ const SUPPLIER_TYPES=['Vessel owner','Vessel charterer / lessee','Fishing compan
 const TRANSFORM_TYPES=['Frozen on board','Chilled / iced on board','Gilled & gutted',
   'Headed & gutted','Filleted','Loined','Cooked','Brined','Salted','Other'];
 const PROD_METHOD=['Cage / Net Pen','Pond','Raceway','Recirculating (RAS)','Longline / Rope','Bottom Culture'];
-const EEZ_AREAS=['Albania EEZ','Algeria EEZ','American Samoa EEZ','Angola EEZ','Anguilla EEZ','Antigua and Barbuda EEZ','Argentina EEZ','Aruba EEZ','Ascension EEZ','Australia EEZ','Azerbaijan EEZ','Bahamas EEZ','Bahrain EEZ','Bangladesh EEZ','Barbados EEZ','Bassas da India EEZ','Belgium EEZ','Belize EEZ','Benin EEZ','Bermuda EEZ','Bonaire EEZ','Bosnia and Herzegovina EEZ','Brazil EEZ','British Virgin Islands EEZ','Brunei Darussalam EEZ','Bulgaria EEZ','Cabo Verde EEZ','Cambodia EEZ','Cameroon EEZ','Canada EEZ','Cayman Islands EEZ','Chagos Archipelago EEZ','Chile EEZ','China EEZ','Christmas Island EEZ','Clipperton Island EEZ','Cocos (Keeling) Islands EEZ','Colombia EEZ','Comoros EEZ','Congo EEZ','Cook Islands EEZ','Costa Rica EEZ','Côte d\'Ivoire EEZ','Croatia EEZ','Crozet EEZ','Cuba EEZ','Curaçao EEZ','Cyprus EEZ','Democratic People\'s Republic of Korea EEZ','Democratic Republic of the Congo EEZ','Denmark EEZ','Djibouti EEZ','Dominica EEZ','Dominican Republic EEZ','Ecuador EEZ','Egypt EEZ','El Salvador EEZ','Equatorial Guinea EEZ','Eritrea EEZ','Estonia EEZ','Europa Island EEZ','Falkland Islands EEZ','Faroe Islands EEZ','Fiji EEZ','Finland EEZ','France EEZ','French Guiana EEZ','French Polynesia EEZ','Gabon EEZ','Gambia EEZ','Georgia EEZ','Germany EEZ','Ghana EEZ','Gibraltar EEZ','Glorieuse Islands EEZ','Greece EEZ','Greenland EEZ','Grenada EEZ','Guadeloupe EEZ','Guam EEZ','Guatemala EEZ','Guernsey EEZ','Guinea EEZ','Guinea-Bissau EEZ','Guyana EEZ','Haiti EEZ','Heard Island and McDonald Islands EEZ','Honduras EEZ','Howland & Baker Island EEZ','Iceland EEZ','India EEZ','Indonesia EEZ','Iran EEZ','Iraq EEZ','Ireland EEZ','Israel EEZ','Italy EEZ','Jamaica EEZ','Jan Mayen EEZ','Japan EEZ','Jarvis Island EEZ','Jersey EEZ','Johnston Atoll EEZ','Jordan EEZ','Juan de Nova Island EEZ','Kazakhstan EEZ','Kenya EEZ','Kerguelen EEZ','Kiribati EEZ','Kuwait EEZ','Latvia EEZ','Lebanon EEZ','Liberia EEZ','Libya EEZ','Lithuania EEZ','Madagascar EEZ','Malaysia EEZ','Maldives EEZ','Malta EEZ','Marshall Islands EEZ','Martinique EEZ','Mauritania EEZ','Mauritius EEZ','Mayotte EEZ','Mexico EEZ','Micronesia EEZ','Monaco EEZ','Montenegro EEZ','Montserrat EEZ','Morocco EEZ','Mozambique EEZ','Myanmar EEZ','Namibia EEZ','Nauru EEZ','Navassa Island EEZ','Netherlands EEZ','New Caledonia EEZ','New Zealand EEZ','Nicaragua EEZ','Nigeria EEZ','Niue EEZ','Norfolk Island EEZ','Northern Mariana Islands EEZ','Norway EEZ','Oman EEZ','Pakistan EEZ','Palau EEZ','Palestine EEZ','Palmyra Atoll & Kingman Reef EEZ','Panama EEZ','Papua New Guinea EEZ','Peru EEZ','Philippines EEZ','Pitcairn Islands EEZ','Poland EEZ','Portugal EEZ','Puerto Rico EEZ','Qatar EEZ','Republic of Korea EEZ','Reunion EEZ','Romania EEZ','Russian Federation EEZ','Saba EEZ','Saint Barthelemy EEZ','Saint Helena EEZ','Saint Kitts and Nevis EEZ','Saint Lucia EEZ','Saint Martin EEZ','Saint Pierre and Miquelon EEZ','Saint Vincent and the Grenadines EEZ','Samoa EEZ','Sao Tome and Principe EEZ','Saudi Arabia EEZ','Senegal EEZ','Seychelles EEZ','Sierra Leone EEZ','Singapore EEZ','Sint Eustatius EEZ','Sint Maarten EEZ','Slovenia EEZ','Solomon Islands EEZ','Somalia EEZ','South Africa EEZ','South Georgia and the South Sandwich Islands EEZ','Spain EEZ','Sri Lanka EEZ','St. Paul and Amsterdam Islands EEZ','Sudan EEZ','Suriname EEZ','Svalbard EEZ','Sweden EEZ','Syria EEZ','Tanzania EEZ','Thailand EEZ','Timor-Leste EEZ','Togo EEZ','Tokelau EEZ','Tonga EEZ','Trinidad and Tobago EEZ','Tristan da Cunha EEZ','Tromelin EEZ','Tunisia EEZ','Turkey EEZ','Turkmenistan EEZ','Turks and Caicos Islands EEZ','Tuvalu EEZ','Ukraine EEZ','United Arab Emirates EEZ','United Kingdom EEZ','United States of America EEZ','Uruguay EEZ','US Virgin Islands EEZ','Vanuatu EEZ','Venezuela EEZ','Viet Nam EEZ','Wake Island EEZ','Wallis and Futuna EEZ','Yemen EEZ'];
+const EEZ_AREAS=["Albania EEZ","Algeria EEZ","American Samoa EEZ","Angola EEZ","Anguilla EEZ","Antigua and Barbuda EEZ","Argentina EEZ","Aruba EEZ","Ascension EEZ","Australia EEZ","Azerbaijan EEZ","Bahamas EEZ","Bahrain EEZ","Bangladesh EEZ","Barbados EEZ","Bassas da India EEZ","Belgium EEZ","Belize EEZ","Benin EEZ","Bermuda EEZ","Bonaire EEZ","Bosnia and Herzegovina EEZ","Brazil EEZ","British Virgin Islands EEZ","Brunei Darussalam EEZ","Bulgaria EEZ","Cabo Verde EEZ","Cambodia EEZ","Cameroon EEZ","Canada EEZ","Cayman Islands EEZ","Chagos Archipelago EEZ","Chile EEZ","China EEZ","Christmas Island EEZ","Clipperton Island EEZ","Cocos (Keeling) Islands EEZ","Colombia EEZ","Comoros EEZ","Congo EEZ","Cook Islands EEZ","Costa Rica EEZ","Côte d'Ivoire EEZ","Croatia EEZ","Crozet EEZ","Cuba EEZ","Curaçao EEZ","Cyprus EEZ","Democratic People's Republic of Korea EEZ","Democratic Republic of the Congo EEZ","Denmark EEZ","Djibouti EEZ","Dominica EEZ","Dominican Republic EEZ","Ecuador EEZ","Egypt EEZ","El Salvador EEZ","Equatorial Guinea EEZ","Eritrea EEZ","Estonia EEZ","Europa Island EEZ","Falkland Islands EEZ","Faroe Islands EEZ","Fiji EEZ","Finland EEZ","France EEZ","French Guiana EEZ","French Polynesia EEZ","Gabon EEZ","Gambia EEZ","Georgia EEZ","Germany EEZ","Ghana EEZ","Gibraltar EEZ","Glorieuse Islands EEZ","Greece EEZ","Greenland EEZ","Grenada EEZ","Guadeloupe EEZ","Guam EEZ","Guatemala EEZ","Guernsey EEZ","Guinea EEZ","Guinea-Bissau EEZ","Guyana EEZ","Haiti EEZ","Heard Island and McDonald Islands EEZ","Honduras EEZ","Howland & Baker Island EEZ","Iceland EEZ","India EEZ","Indonesia EEZ","Iran EEZ","Iraq EEZ","Ireland EEZ","Israel EEZ","Italy EEZ","Jamaica EEZ","Jan Mayen EEZ","Japan EEZ","Jarvis Island EEZ","Jersey EEZ","Johnston Atoll EEZ","Jordan EEZ","Juan de Nova Island EEZ","Kazakhstan EEZ","Kenya EEZ","Kerguelen EEZ","Kiribati EEZ","Kuwait EEZ","Latvia EEZ","Lebanon EEZ","Liberia EEZ","Libya EEZ","Lithuania EEZ","Madagascar EEZ","Malaysia EEZ","Maldives EEZ","Malta EEZ","Marshall Islands EEZ","Martinique EEZ","Mauritania EEZ","Mauritius EEZ","Mayotte EEZ","Mexico EEZ","Micronesia EEZ","Monaco EEZ","Montenegro EEZ","Montserrat EEZ","Morocco EEZ","Mozambique EEZ","Myanmar EEZ","Namibia EEZ","Nauru EEZ","Navassa Island EEZ","Netherlands EEZ","New Caledonia EEZ","New Zealand EEZ","Nicaragua EEZ","Nigeria EEZ","Niue EEZ","Norfolk Island EEZ","Northern Mariana Islands EEZ","Norway EEZ","Oman EEZ","Pakistan EEZ","Palau EEZ","Palestine EEZ","Palmyra Atoll & Kingman Reef EEZ","Panama EEZ","Papua New Guinea EEZ","Peru EEZ","Philippines EEZ","Pitcairn Islands EEZ","Poland EEZ","Portugal EEZ","Puerto Rico EEZ","Qatar EEZ","Republic of Korea EEZ","Reunion EEZ","Romania EEZ","Russian Federation EEZ","Saba EEZ","Saint Barthelemy EEZ","Saint Helena EEZ","Saint Kitts and Nevis EEZ","Saint Lucia EEZ","Saint Martin EEZ","Saint Pierre and Miquelon EEZ","Saint Vincent and the Grenadines EEZ","Samoa EEZ","Sao Tome and Principe EEZ","Saudi Arabia EEZ","Senegal EEZ","Seychelles EEZ","Sierra Leone EEZ","Singapore EEZ","Sint Eustatius EEZ","Sint Maarten EEZ","Slovenia EEZ","Solomon Islands EEZ","Somalia EEZ","South Africa EEZ","South Georgia and the South Sandwich Islands EEZ","Spain EEZ","Sri Lanka EEZ","St. Paul and Amsterdam Islands EEZ","Sudan EEZ","Suriname EEZ","Svalbard EEZ","Sweden EEZ","Syria EEZ","Tanzania EEZ","Thailand EEZ","Timor-Leste EEZ","Togo EEZ","Tokelau EEZ","Tonga EEZ","Trinidad and Tobago EEZ","Tristan da Cunha EEZ","Tromelin EEZ","Tunisia EEZ","Turkey EEZ","Turkmenistan EEZ","Turks and Caicos Islands EEZ","Tuvalu EEZ","Ukraine EEZ","United Arab Emirates EEZ","United Kingdom EEZ","United States of America EEZ","Uruguay EEZ","US Virgin Islands EEZ","Vanuatu EEZ","Venezuela EEZ","Viet Nam EEZ","Wake Island EEZ","Wallis and Futuna EEZ","Yemen EEZ"];
 
 const FAO_AREAS=[
   {_label:'21',_sub:'Atlantic, Northwest'},{_label:'27',_sub:'Atlantic, Northeast'},
@@ -768,6 +774,56 @@ const FAO_AREAS=[
   {_label:'87',_sub:'Pacific, Southeast'},{_label:'88',_sub:'Antarctic, Pacific'}];
 
 let S={source_type:'Wild Capture',status:'Draft',certifications:[],fao_areas:[],unit:'kg'};
+let PARTIES=[];
+
+function addParty(role){
+  PARTIES.push({role:role, company_name:'', company_id:null, country:'', 
+    preservation:'', received_date:'', supplier_type:'', notes:''});
+  renderParties();
+}
+function removeParty(i){ PARTIES.splice(i,1); renderParties(); }
+
+function renderParties(){
+  var host=$('partiesHost'); if(!host) return;
+  if(!PARTIES.length){
+    host.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);font-size:12.5px;border:1px dashed var(--border);border-radius:12px;">No parties added yet. Use the buttons above to add a supplier, buyer, or processor.</div>';
+    return;
+  }
+  host.innerHTML=PARTIES.map(function(p,i){
+    var roleIcon={Supplier:'S',Buyer:'B',Processor:'P'}[p.role]||'?';
+    var roleColor={Supplier:'var(--primary-soft)',Buyer:'#ede9fe',Processor:'#fce7f3'}[p.role]||'var(--bg)';
+    var roleFg={Supplier:'var(--primary)',Buyer:'#5b21b6',Processor:'#9d174d'}[p.role]||'var(--text)';
+    return '<div style="border:1px solid var(--border);border-radius:14px;padding:20px 24px;margin-bottom:12px;">'+
+      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">'+
+        '<div style="display:flex;align-items:center;gap:10px;">'+
+          '<span style="display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:8px;background:'+roleColor+';color:'+roleFg+';font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;">'+roleIcon+' '+p.role+'</span>'+
+          '<span style="font-size:14px;font-weight:600;">'+(p.company_name||'Not selected')+'</span>'+
+        '</div>'+
+        '<button class="btn btn-sm btn-danger" onclick="removeParty('+i+')" style="padding:5px 10px;">✕</button>'+
+      '</div>'+
+      '<div class="grid">'+
+        wrap(p.role, false, picker(p.company_name,[],function(v,row){
+          PARTIES[i].company_name=v; if(row) PARTIES[i].company_id=row._id;
+          renderParties();
+        },{searchable:true,allowNew:true,source:'companies',placeholder:'Search companies…'})) +
+        (p.role==='Supplier' ? 
+          wrap('Supplier Type', false, picker(p.supplier_type,opt(SUPPLIER_TYPES),function(v){
+            PARTIES[i].supplier_type=v;
+          },{placeholder:'How they relate to the vessel'})) : '') +
+        wrap('Country', false, picker(p.country,[],function(v){
+          PARTIES[i].country=v;
+        },{searchable:true,allowNew:true,source:'countries',placeholder:'Search countries…'})) +
+        (p.role==='Supplier' ? 
+          wrap('Preservation', false, picker(p.preservation,opt(PRESERVE),function(v){
+            PARTIES[i].preservation=v;
+          })) : '') +
+        wrap('Date', false, datePicker(p.received_date,function(v){
+          PARTIES[i].received_date=v;
+        }), p.role==='Supplier'?'When did they take ownership':'Date of transaction') +
+      '</div>'+
+    '</div>';
+  }).join('');
+}
 
 /* Weights are always stored in kilograms. `unit` only changes how they
    are shown and typed, so a lot entered in MT still sums correctly
@@ -851,26 +907,17 @@ function renderAll(){
 
   renderSpecies();
 
-  $('supGrid').innerHTML =
-    wrap('Supplier', false, picker(S.supplier_name,[],setter('supplier_name',(v,row)=>{ if(row) S.supplier_org_id=row._id; }),
-      {searchable:true,allowNew:true,source:'companies',placeholder:'Search companies…'}),
-      'Who sold it — not necessarily who caught it') +
-    wrap('Supplier Type', false, picker(S.supplier_type,opt(SUPPLIER_TYPES),setter('supplier_type'),
-      {placeholder:'How they relate to the vessel'})) +
+  renderParties();
+  $('supTotals').innerHTML =
     wrap('Country of Landing', false, picker(S.origin_country,[],setter('origin_country'),
       {searchable:true,allowNew:true,source:'countries',placeholder:'Search countries…'}),
-      'Where the catch was landed — fills in from the landing port') +
+      'Where the catch was landed') +
     wrap('Preservation', false, picker(S.preservation,opt(PRESERVE),setter('preservation'))) +
     wrap(`Total Quantity (${unitLabel()})`, false,
-      `<div class="ctl"><input class="ctl-in" readonly value="${groupNum(toDisplay(speciesTotalKg))}"
-         placeholder="From the species lines"/></div>`,
+      \`<div class="ctl"><input class="ctl-in" readonly value="\${groupNum(toDisplay(speciesTotalKg))}"
+         placeholder="From the species lines"/></div>\`,
       speciesTotalKg?`Sum of ${SPECIES.filter(s=>s.species_name).length} species line(s)`
-                    :'Fills in from the species lines above') +
-    wrap('Received Date', false, datePicker(S.received_date,v=>{S.received_date=v;}),
-      'When did the supplier take ownership') +
-    wrap('Receiver / Buyer', false, picker(S.receiver_name,[],setter('receiver_name',(v,row)=>{ if(row) S.receiver_org_id=row._id; }),
-      {searchable:true,allowNew:true,source:'companies',placeholder:'Search companies…'}),
-      'Who received / purchased the raw material');
+                    :'Fills in from the species lines above');
 
   renderTransform();
 
