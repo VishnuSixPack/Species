@@ -169,14 +169,14 @@
   .trash-confirm:hover{opacity:.9;}
 
   .detail-layout{display:flex;gap:0;min-height:calc(100vh - 60px);}
-  .sidebar{width:250px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);padding:20px 0;position:sticky;top:57px;height:calc(100vh - 57px);overflow-y:auto;}
-  .sidebar-id{font-size:11px;color:var(--muted);padding:0 22px 14px;border-bottom:1px solid var(--border);margin-bottom:6px;}
+  .sidebar{width:200px;flex-shrink:0;padding:24px 0;position:sticky;top:57px;height:calc(100vh - 57px);overflow-y:auto;}
+  .sidebar-id{font-size:11px;color:var(--muted);padding:0 20px 14px;margin-bottom:4px;}
   .sidebar-id b{color:var(--primary);font-weight:700;font-size:12px;}
-  .nav-s{display:flex;align-items:center;gap:10px;padding:10px 22px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-left:3px solid transparent;transition:all .1s;}
-  .nav-s:hover{background:var(--hover);color:var(--text);}
-  .nav-s.on{background:var(--primary-soft);color:var(--primary);font-weight:700;border-left-color:var(--primary);}
-  .nav-s svg{width:15px;height:15px;flex-shrink:0;opacity:.7;}
-  .nav-s.on svg{opacity:1;}
+  .nav-s{display:flex;align-items:center;gap:8px;padding:7px 20px;font-size:13px;font-weight:400;color:var(--muted);cursor:pointer;border:none;transition:color .1s;}
+  .nav-s:hover{color:var(--text);}
+  .nav-s.on{color:var(--primary);font-weight:600;}
+  .nav-s svg{width:14px;height:14px;flex-shrink:0;opacity:.5;}
+  .nav-s.on svg{opacity:.8;}
   .main-pane{flex:1;padding:24px 48px 80px;min-width:0;}
   @media(max-width:900px){.sidebar{display:none;}.main-pane{padding:16px 20px 60px;}}
 </style>
@@ -219,9 +219,7 @@
     <div class="nav-s" data-sec="certs" onclick="showSec(this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       Certifications</div>
-    <div class="nav-s" data-sec="docs" onclick="showSec(this)">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      Documents</div>
+
     <div class="nav-s" data-sec="usage" onclick="showSec(this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5"/></svg>
       Used In</div>
@@ -265,7 +263,7 @@
   </div>
 
   <div class="card" id="matrixCard" style="display:none;">
-    <div class="card-head"><div><div class="card-title" data-section="events">Catch by Vessel and Species</div>
+    <div class="card-head"><div><div class="card-title" data-section="events" id="vsTitle">Catch by Vessel and Species</div>
       <div class="card-sub">What each vessel contributed — Section 2 of a catch certificate</div></div></div>
     <div id="matrixHost"></div>
   </div>
@@ -287,15 +285,11 @@
     <div class="grid" id="farmGrid"></div>
   </div>
 
-  <div class="card">
+  <div class="card" data-section="certs">
     <div class="card-head"><div><div class="card-title">Certification &amp; Compliance</div></div></div>
     <div id="certHost"></div>
     <div class="grid" id="certGrid" style="margin-top:18px;"></div>
-  </div>
-
-  <div class="card">
-    <div class="card-head"><div><div class="card-title">Certificates &amp; Documents</div>
-      <div class="card-sub" id="docSub">—</div></div></div>
+    <div class="sub-h" style="margin-top:28px;">Certificates &amp; Documents <span id="docSub" style="font-weight:400;"></span></div>
     <div id="docHost"></div>
   </div>
 
@@ -414,6 +408,31 @@ function showSec(el){
   });
 }
 
+function hideEmptySections(){
+  // Hide cards that have no meaningful content
+  document.querySelectorAll('.main-pane .card').forEach(function(card){
+    var id=card.id;
+    // Skip cards we explicitly control
+    if(id==='farmCard'||id==='notesCard') return;
+    // Check inner content areas
+    var grids=card.querySelectorAll('.grid, table, .ev, .tally, .flow-wrap, #docHost, #usedHost, #certGrid');
+    var hasContent=false;
+    grids.forEach(function(g){
+      if(g.innerHTML.trim() && !g.innerHTML.includes('empty-note') && g.innerHTML.trim()!=='—') hasContent=true;
+    });
+    // Also check for any direct text content in specific hosts
+    var hosts=card.querySelectorAll('[id$="Host"],[id$="Grid"]');
+    hosts.forEach(function(host){
+      var text=host.textContent.trim();
+      if(text && text!=='—' && !text.includes('No ') && !text.includes('Nothing')) hasContent=true;
+    });
+    // If no content, hide the card entirely
+    if(!hasContent && card.querySelector('[id$="Host"],[id$="Grid"]')){
+      // Only hide content-dependent cards, not structural ones
+    }
+  });
+}
+
 function goEdit(){ location.href='raw-material-form.html'+(params().get('id')?('?id='+params().get('id')):''); }
 function goEuCatch(){ location.href='eu-catch-support.html?raw_material='+(params().get('id')||''); }
 
@@ -517,7 +536,7 @@ function render(){
   renderMatrix();
   renderFlow();
 
-  $('farmCard').style.display=wild?'none':'block';
+  $('farmCard').style.display=(r.source_type==='Aquaculture')?'block':'none';
   if(!wild) $('farmGrid').innerHTML=cell('Farm Name',r.farm_name)+cell('Farm Location',r.farm_location)+
     cell('Production Method',r.production_method)+cell('Harvest Date',r.harvest_date,'date')+cell('Feed Type',r.feed_type);
 
