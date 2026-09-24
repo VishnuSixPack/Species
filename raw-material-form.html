@@ -127,6 +127,15 @@
   .dp-foot button:hover{background:var(--bg);}
   .dp-foot .clr{color:var(--muted);}
 
+  .msel{position:relative;}.msel-display{width:100%;height:36px;padding:0 10px;border:1.5px solid var(--border);border-radius:10px;font:inherit;font-size:12px;color:var(--text);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:6px;}
+  .msel-display:hover{border-color:var(--primary);}.msel.open .msel-display{border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,111,219,.1);}
+  .msel-text{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}.msel-text.placeholder{color:var(--dim);}
+  .msel-drop{position:absolute;top:calc(100% + 4px);left:0;width:100%;min-width:200px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(10,12,18,.12);z-index:999;display:none;max-height:220px;overflow-y:auto;padding:4px;}
+  .msel.open .msel-drop{display:block;}
+  .msel-opt{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:8px;cursor:pointer;font-size:12px;}
+  .msel-opt:hover{background:var(--hover);}
+  .msel-opt .check{width:15px;height:15px;border:1.5px solid var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .msel-opt.on .check{background:var(--primary);border-color:var(--primary);}.msel-opt.on .check svg{display:block;width:10px;height:10px;color:#fff;}.msel-opt .check svg{display:none;}
   .seg{display:inline-flex;background:var(--bg);border-radius:12px;padding:4px;gap:3px;}
   .seg button{display:flex;align-items:center;gap:7px;border:none;background:none;font-family:inherit;
               font-size:12.5px;font-weight:600;padding:9px 22px;border-radius:9px;cursor:pointer;color:var(--muted);}
@@ -162,7 +171,7 @@
             width:100%;text-align:center;}
   .tag-catch{background:var(--primary-soft);color:var(--primary);}
   .tag-tship{background:var(--warn-bg);color:var(--warn-fg);}
-  .tag-unload{background:var(--good-bg);color:var(--good-fg);}
+  .tag-truck{background:#f0fdf4;color:#166534;}.tag-unload{background:var(--good-bg);color:var(--good-fg);}
   .crow-dates{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
   /* Expand and remove are a matched pair — same box, same weight, so
      neither reads as an afterthought. */
@@ -828,7 +837,7 @@ function renderAll(){
     wrap('Reference','req'?true:false,`<div class="ctl"><input class="ctl-in" data-h="rm_ref"
         value="${esc(S.rm_ref||'')}" placeholder="Generating…"/></div>`,
       REF_AUTO?'Generated automatically — matches the Raw Material ID on shipment lots':'Custom reference') +
-    txt('Name (optional)','name','e.g. YF loins, July trip') +
+    txt('Name','name','e.g. YF loins, July trip') +
     wrap('Status',false, picker(S.status,opt(['Draft','In-Review','Active','Discarded','Archived']),
       (v)=>{ S.status=v; onStatusChange(v); }),
       S.status==='Discarded'?'Record why in the Notes below':'');
@@ -855,7 +864,11 @@ function renderAll(){
          placeholder="From the species lines"/></div>`,
       speciesTotalKg?`Sum of ${SPECIES.filter(s=>s.species_name).length} species line(s)`
                     :'Fills in from the species lines above') +
-    wrap('Received Date', false, datePicker(S.received_date,v=>{S.received_date=v;}));
+    wrap('Received Date', false, datePicker(S.received_date,v=>{S.received_date=v;}),
+      'When did the supplier take ownership') +
+    wrap('Receiver / Buyer', false, picker(S.receiver_name,[],setter('receiver_name',(v,row)=>{ if(row) S.receiver_org_id=row._id; }),
+      {searchable:true,allowNew:true,source:'companies',placeholder:'Search companies…'}),
+      'Who received / purchased the raw material');
 
   renderTransform();
 
@@ -1057,6 +1070,20 @@ function renderFarm(){
   bindPlain();
 }
 
+function toggleMsel(id){document.getElementById(id).classList.toggle('open');}
+document.addEventListener('click',function(e){
+  document.querySelectorAll('.msel.open').forEach(function(m){if(!m.contains(e.target))m.classList.remove('open');});
+});
+function toggleFao(i,el){
+  el.classList.toggle('on');
+  var wrap=el.closest('.msel');
+  var vals=[...wrap.querySelectorAll('.msel-opt.on')].map(function(o){return o.dataset.val;});
+  CATCHES[i].fao_area=vals.join(', ');
+  var txt=wrap.querySelector('.msel-text');
+  txt.textContent=vals.length?vals.join(', '):'Select FAO…';
+  txt.classList.toggle('placeholder',!vals.length);
+}
+
 function setSource(s){ S.source_type=s; renderAll(); }
 
 function bindPlain(){
@@ -1092,13 +1119,17 @@ const EVENT_TYPES = [
   {k:'Unloading', n:'Unloading at port', tag:'Unload', cls:'tag-unload',
    d:'Discharged at the port of landing — the end of the chain before processing.',
    ic:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M8 9l4 4 4-4"/><path d="M3 17h18"/><path d="M5 21h14"/></svg>'},
+  {k:'Truck Transport', n:'Truck transport', tag:'Truck', cls:'tag-truck',
+   d:'Moved by truck from port or transshipment point to the processing facility.',
+   ic:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 3h15v13H1z"/><path d="M16 8h4l3 5v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>'},
 ];
 const TRANSFER_TO = [
   {k:'Reefer vessel',    d:'A refrigerated carrier that takes the fish on to port.'},
   {k:'Reefer container', d:'Stuffed straight into a refrigerated container.'},
   {k:'Support vessel',   d:'Any other vessel — tender, supply or mothership.'},
+  {k:'Truck',            d:'Land transport by truck to the processing facility.'},
 ];
-const isTransfer = t => t==='Transshipment' || t==='Unloading';
+const isTransfer = t => t==='Transshipment' || t==='Unloading' || t==='Truck Transport';
 const typeMeta = t => EVENT_TYPES.find(e=>e.k===t) || EVENT_TYPES[0];
 
 const TRIP_FIELDS = ['fao_area','gear_type','catch_date_from','catch_date_to','trip_no',
