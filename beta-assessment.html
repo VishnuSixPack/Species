@@ -186,9 +186,8 @@
     .kq{background:#f9fafc;border:1px solid #e8eaf0;border-radius:12px;padding:14px 16px;margin-bottom:10px;transition:border-color 0.2s;}
     .kq.done{border-color:#c7dcf8;background:#fafcff;}
     .kqtxt{font-size:13px;font-weight:600;color:#1a1a2e;margin-bottom:10px;line-height:1.5;}
-    .kde-hint-icon{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#e8eaf0;color:#9aa0b4;font-size:9px;font-weight:700;margin-left:5px;cursor:help;vertical-align:middle;flex-shrink:0;position:relative;}
-    .kde-hint-icon::after{content:attr(title);display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;font-size:11px;font-weight:400;font-family:'Poppins',sans-serif;padding:6px 10px;border-radius:8px;white-space:nowrap;max-width:260px;white-space:normal;z-index:999;line-height:1.4;text-align:left;box-shadow:0 4px 12px rgba(0,0,0,0.2);}
-    .kde-hint-icon:hover::after{display:block;}
+    .kde-hint-icon{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:#e8eaf0;color:#9aa0b4;font-size:9px;font-weight:700;margin-left:6px;cursor:help;vertical-align:middle;flex-shrink:0;}
+    .kde-hint-tooltip{display:none;position:fixed;background:#1a1a2e;color:#fff;font-size:11px;font-weight:400;font-family:'Poppins',sans-serif;padding:8px 12px;border-radius:8px;white-space:normal;width:240px;z-index:9999;line-height:1.6;text-align:left;box-shadow:0 4px 16px rgba(0,0,0,0.25);pointer-events:none;top:0;left:0;}
     .kopts{display:flex;gap:7px;flex-wrap:wrap;}
     .kopt{display:flex;align-items:center;gap:5px;padding:7px 15px;border-radius:999px;border:1.5px solid #e0e3ed;font-size:12px;font-weight:600;color:#9aa0b4;cursor:pointer;background:#fff;transition:all 0.15s;user-select:none;}
     .kopt:hover{border-color:#1d4ed8;color:#1d4ed8;}
@@ -2860,9 +2859,23 @@ function confirmDP(instId,field){
     kResp['_catchTo_'+instId]=dateStr;
     const fromSel=_dpState[instId+'_from']?.selected;
     saveCatchPeriod(instId,fromSel?`${fromSel.getFullYear()}-${String(fromSel.getMonth()+1).padStart(2,'0')}-${String(fromSel.getDate()).padStart(2,'0')}`:'',dateStr);
+  } else if(field==='ts_from'){
+    kResp['_date_ts_from_'+instId]=dateStr;
+    saveStageDate(instId,'transshipment_from',dateStr);
+    // Update button label
+    const btn=document.getElementById('dpbtn_'+instId+'_ts_from');
+    if(btn){const dt=new Date(dateStr);const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];btn.querySelector('.dp-btn-label').textContent=dt.getDate()+' '+M[dt.getMonth()]+' '+dt.getFullYear();}
+    STAGES=buildStages();renderKDE();
+  } else if(field==='ts_to'){
+    kResp['_date_ts_to_'+instId]=dateStr;
+    saveStageDate(instId,'transshipment_to',dateStr);
+    const btn=document.getElementById('dpbtn_'+instId+'_ts_to');
+    if(btn){const dt=new Date(dateStr);const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];btn.querySelector('.dp-btn-label').textContent=dt.getDate()+' '+M[dt.getMonth()]+' '+dt.getFullYear();}
+    STAGES=buildStages();renderKDE();
   } else if(field==='ts'){
-    // Transshipment date
-    saveStageDate(instId,'transshipment',dateStr);
+    // Legacy single date — map to ts_from
+    kResp['_date_ts_from_'+instId]=dateStr;
+    saveStageDate(instId,'transshipment_from',dateStr);
   } else if(field==='ld'){
     // Landing date
     saveStageDate(instId,'landing',dateStr);
@@ -3083,9 +3096,9 @@ function autoFillCarrierKDEs(instId,v){
 // Period-aware carrier vessel verification (uses transshipment date)
 async function runCarrierVerification(instId){
   const vd=kResp['_carrierVessel_'+instId];
-  const tsDate=kResp['_date_transshipment_'+instId];
+  const tsDate=kResp['_date_ts_from_'+instId]||kResp['_date_transshipment_'+instId]; // ts_from or legacy
   if(!vd){showToast('Select a carrier vessel first','error');return;}
-  if(!tsDate){showToast('Enter the transshipment date first','error');return;}
+  if(!tsDate){showToast('Enter the Transfer Start date first','error');return;}
   const v=_vesselCache.find(x=>x.id===vd.id);
   if(!v){showToast('Carrier vessel not found in module','error');return;}
 
@@ -4814,26 +4827,45 @@ function renderKDE(){
       `:``}
             ${(st.type==='transshipment')?`
       <div class="stage-header-bar">
-        <div class="shb-row" style="gap:8px;flex-wrap:nowrap;">
-          <span class="shb-label">🔄 Transshipment</span>
-          <div style="position:relative;">
-            <button id="dpbtn_${inst.id}_ts" class="shb-date-btn ${kResp['_date_transshipment_'+inst.id]?'has-date':''}"
-              onclick="openDP('${inst.id}','ts','','')">
-              <span class="dp-btn-label">${kResp['_date_transshipment_'+inst.id]?(d=>{const dt=new Date(d);const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return dt.getDate()+' '+M[dt.getMonth()]+' '+dt.getFullYear();})(kResp['_date_transshipment_'+inst.id]):'Select date'}</span>
-              <span class="btn-cal-icon">📅</span>
-            </button>
-            <div id="dp_${inst.id}_ts" class="dp-popup"></div>
+        <div class="shb-row" style="gap:8px;flex-wrap:nowrap;align-items:center;">
+          <span class="shb-label">Transshipment</span>
+          <!-- Departure date -->
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <span style="font-size:9px;font-weight:700;color:#9aa0b4;text-transform:uppercase;letter-spacing:.5px;">Transfer Start</span>
+            <div style="position:relative;">
+              <button id="dpbtn_${inst.id}_ts_from" class="shb-date-btn ${kResp['_date_ts_from_'+inst.id]?'has-date':''}"
+                onclick="openDP('${inst.id}','ts_from','','')">
+                <span class="dp-btn-label">${kResp['_date_ts_from_'+inst.id]?(d=>{const dt=new Date(d);const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return dt.getDate()+' '+M[dt.getMonth()]+' '+dt.getFullYear();})(kResp['_date_ts_from_'+inst.id]):'Select date'}</span>
+                <span class="btn-cal-icon">📅</span>
+              </button>
+              <div id="dp_${inst.id}_ts_from" class="dp-popup"></div>
+            </div>
           </div>
+          <span class="shb-sep" style="margin-top:14px;">→</span>
+          <!-- Arrival date -->
+          <div style="display:flex;flex-direction:column;gap:2px;">
+            <span style="font-size:9px;font-weight:700;color:#9aa0b4;text-transform:uppercase;letter-spacing:.5px;">Transfer End</span>
+            <div style="position:relative;">
+              <button id="dpbtn_${inst.id}_ts_to" class="shb-date-btn ${kResp['_date_ts_to_'+inst.id]?'has-date':''}"
+                onclick="openDP('${inst.id}','ts_to','${kResp['_date_ts_from_'+inst.id]||''}','')">
+                <span class="dp-btn-label">${kResp['_date_ts_to_'+inst.id]?(d=>{const dt=new Date(d);const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return dt.getDate()+' '+M[dt.getMonth()]+' '+dt.getFullYear();})(kResp['_date_ts_to_'+inst.id]):'Select date'}</span>
+                <span class="btn-cal-icon">📅</span>
+              </button>
+              <div id="dp_${inst.id}_ts_to" class="dp-popup"></div>
+            </div>
+          </div>
+          <!-- Carrier chip -->
           ${kResp['_carrierVessel_'+inst.id]?
-            `<div class="carrier-selected-chip" style="font-size:11px;">
-              🔄 ${kResp['_carrierVessel_'+inst.id].name}
+            `<div class="carrier-selected-chip" style="font-size:11px;margin-top:14px;">
+              ${kResp['_carrierVessel_'+inst.id].name}
               <span class="carrier-selected-chip-x" onclick="clearCarrierVessel('${inst.id}')">×</span>
              </div>`
-          :`<span style="font-size:11px;color:#9aa0b4;font-style:italic;">No carrier — add via ✦ Verify in evidence</span>`
+          :`<span style="font-size:11px;color:#9aa0b4;font-style:italic;margin-top:14px;">No carrier — add via ✦ Verify in evidence</span>`
           }
-          ${kResp['_carrierVessel_'+inst.id]&&kResp['_date_transshipment_'+inst.id]?
-            `<button onclick="runCarrierVerification('${inst.id}')" class="shb-verify-btn">✦ Verify</button>`
-            :`<button disabled class="shb-verify-btn shb-verify-btn-dis">✦ Verify</button>`
+          <!-- Verify button: needs carrier + at least departure date -->
+          ${kResp['_carrierVessel_'+inst.id]&&kResp['_date_ts_from_'+inst.id]?
+            `<button onclick="runCarrierVerification('${inst.id}')" class="shb-verify-btn" style="margin-top:14px;">✦ Verify</button>`
+            :`<button disabled class="shb-verify-btn shb-verify-btn-dis" style="margin-top:14px;">✦ Verify</button>`
           }
         </div>
       </div>
@@ -5200,7 +5232,7 @@ function renderMSCFisheryKDE(q){
   const selectedFishery=kResp['_selectedFisheries']?.[0]||kResp['_fishery_c_msc']; // multi-fishery
   return `<div class="kq kde-card ${r.ans?'done':''}" id="kq${safeId}">
     <div style="display:flex;align-items:flex-start;gap:6px;">
-      ${fpChips}<div class="kqtxt" style="flex:1;" title="${q.hint||''}">${q.q}${q.hint?'<span class="kde-hint-icon" title="'+q.hint+'">?</span>':''}</div>
+      ${fpChips}<div class="kqtxt" style="flex:1;" title="${q.hint||''}">${q.q}${q.hint?'<span class="kde-hint-icon" data-hint="'+q.hint+'" onmouseenter="showKdeHint(event,this)" onmouseleave="hideKdeHint()">?</span>':''}</div>
       <button class="kde-ai-btn" onclick="openAIModal('${safeQ}')" title="What does this mean?">✦ Explain</button>
     </div>
     <!-- Fishery multi-picker (for c_fisheries non-scoring KDE only) -->
@@ -5277,7 +5309,7 @@ function renderQ(q){
   const safeQ=encodeURIComponent(q.q);
   return `<div class="kq kde-card ${r.ans?'done':''}" id="kq${safeId}">
     <div style="display:flex;align-items:flex-start;gap:6px;">
-      ${fpChips}<div class="kqtxt" style="flex:1;" title="${q.hint||''}">${q.q}${q.hint?'<span class="kde-hint-icon" title="'+q.hint+'">?</span>':''}</div>
+      ${fpChips}<div class="kqtxt" style="flex:1;" title="${q.hint||''}">${q.q}${q.hint?'<span class="kde-hint-icon" data-hint="'+q.hint+'" onmouseenter="showKdeHint(event,this)" onmouseleave="hideKdeHint()">?</span>':''}</div>
       <button class="kde-ai-btn" onclick="openAIModal('${safeQ}')" title="What does this mean?">✦ Explain</button>
     </div>
     ${r.gapNote?`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0 6px;padding:6px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:10px;color:#92400e;line-height:1.4;cursor:pointer;" onclick="openEvMod('${q.id}');setTimeout(()=>switchEvTab('add'),80)">
@@ -9394,6 +9426,37 @@ window.addEventListener('beforeunload',function(e){
 });
 
 
+// ── KDE hint tooltip ──
+(function(){
+  const tip=document.createElement('div');
+  tip.id='kde-hint-tooltip';
+  tip.className='kde-hint-tooltip';
+  document.body.appendChild(tip);
+})();
+function showKdeHint(e,el){
+  const tip=document.getElementById('kde-hint-tooltip');
+  if(!tip)return;
+  tip.textContent=el.dataset.hint||'';
+  tip.style.display='block';
+  // Position: above the icon, clamped to viewport
+  const rect=el.getBoundingClientRect();
+  const tipW=240;
+  let left=rect.left+rect.width/2-tipW/2;
+  left=Math.max(8,Math.min(left,window.innerWidth-tipW-8));
+  let top=rect.top-8;
+  tip.style.left=left+'px';
+  tip.style.top='0px'; // measure first
+  tip.style.display='block';
+  const tipH=tip.offsetHeight;
+  top=rect.top-tipH-8;
+  if(top<8)top=rect.bottom+8; // flip below if no room above
+  tip.style.top=top+'px';
+  tip.style.left=left+'px';
+}
+function hideKdeHint(){
+  const tip=document.getElementById('kde-hint-tooltip');
+  if(tip)tip.style.display='none';
+}
 // ── Stage navigation pills ──
 function renderStagePills(){
   const el=document.getElementById('kstage-pills-row');

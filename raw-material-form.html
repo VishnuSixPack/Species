@@ -1164,6 +1164,16 @@ function toggleEezOpt(i,el){
   txt.classList.toggle('placeholder',!vals.length);
 }
 
+function toggleCrowFao(i,el){
+  el.classList.toggle('on');
+  var wrap=el.closest('.msel');
+  var vals=[...wrap.querySelectorAll('.msel-opt.on')].map(function(o){return o.dataset.val;});
+  CATCHES[i].fao_area=vals.join(', ');
+  var txt=wrap.querySelector('.msel-text');
+  txt.textContent=vals.length?vals.join(', '):'FAO';
+  txt.classList.toggle('placeholder',!vals.length);
+}
+
 function toggleMsel(id){document.getElementById(id).classList.toggle('open');}
 document.addEventListener('click',function(e){
   document.querySelectorAll('.msel.open').forEach(function(m){if(!m.contains(e.target))m.classList.remove('open');});
@@ -1376,7 +1386,23 @@ function renderCatches(){
             if(row2._flag) CATCHES[i].flag_state=row2._flag; }
           renderChain();
         },{searchable:true,allowNew:true,source:'vessels',placeholder:'Search the Vessels module…'})}</div>
-        <div>${picker(c.fao_area,FAO_AREAS,v=>{CATCHES[i].fao_area=v;},{placeholder:'—'})}</div>
+        <div style="position:relative;">
+          <div class="msel" id="fao_crow_${i}">
+            <div class="msel-display" onclick="toggleMsel('fao_crow_${i}')" style="height:36px;font-size:12px;">
+              <span class="msel-text${c.fao_area?' ':' placeholder'}" style="font-size:11px;">${c.fao_area||'FAO'}</span>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+            <div class="msel-drop" style="min-width:180px;">
+              <div class="eez-opts">${FAO_AREAS.map(function(f){
+                var lbl=f._label||f;
+                var vals=(c.fao_area||'').split(', ');
+                var on=vals.includes(lbl);
+                return '<div class="msel-opt'+(on?' on':'')+'" data-val="'+lbl+'" onclick="toggleCrowFao('+i+',this)">'+
+                  '<span class="check"><svg viewBox=&quot;0 0 24 24&quot; fill=&quot;none&quot; stroke=&quot;currentColor&quot; stroke-width=&quot;3.5&quot;><polyline points=&quot;20 6 9 17 4 12&quot;/></svg></span>'+
+                  lbl+(f._sub?' — '+f._sub:'')+'</div>';
+              }).join('')}</div>
+            </div>
+          </div></div>
         <div>${picker(c.gear_type,opt(GEAR),v=>{CATCHES[i].gear_type=v;},{placeholder:'—'})}</div>
         <div class="crow-dates">${datePicker(c.catch_date_from,v=>{CATCHES[i].catch_date_from=v;},'From')}${
           datePicker(c.catch_date_to,v=>{
