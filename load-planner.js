@@ -140,6 +140,9 @@ let batchCounters = { carton: 0, pallet: 0, slipsheet: 0 };
 let currentKind = 'carton';              // which "kind" the Cargo form is adding
 let containerUnit = 'm';                 // display + input unit for cargo-space fields
 let itemUnit = 'cm';                     // display + input unit for cargo-item fields
+
+let autoPackUndo = null;                 // snapshot of positions before the last pack
+let isPacking = false;                   // blocks scene interaction during the drop animation
 let showLabels = false;
 let dragState = null;
 let hoveredItemId = null;               // box currently under the cursor (for label-on-hover)
@@ -1268,6 +1271,307 @@ function escapeHtml(str) {
 }
 
 // ============================================================
+// AUTO-PACK
+// ------------------------------------------------------------
+// Extreme-point first-fit heuristic with a back-bottom-left bias,
+// so the pack builds a full-height wall at the closed end and then
+// advances toward the doors — the way containers are really loaded.
+//
+// Constraints:
+//   · every box needs >= SUPPORT_RATIO of its base resting on something
+//   · 'heavy' sorts first (lands low), 'fragile' sorts last (lands high)
+//   · nothing may rest on a 'fragile' item
+// ============================================================
+const SUPPORT_RATIO = 0.7;
+const PACK_EPS = 0.01;
+const MAX_POINTS = 2400;
+
+function packVolume(it) { return it.length_cm * it.width_cm * it.height_cm; }
+
+function handlingRank(h) {
+  if (h === 'heavy') return 0;
+  if (h === 'fragile') return 2;
+  return 1;
+}
+
+function sortItemsForPacking(list, strategy) {
+  const arr = [...list];
+  if (strategy === 'sku') {
+    // Keep same-label items adjacent so they unload as a unit.
+    const order = new Map();
+    arr.forEach(i => {
+      if (!order.has(i.base_label)) order.set(i.base_label, order.size);
+    });
+    return arr.sort((a, b) =>
+      handlingRank(a.handling) - handlingRank(b.handling) ||
+      order.get(a.base_label) - order.get(b.base_label) ||
+      packVolume(b) - packVolume(a)
+    );
+  }
+  return arr.sort((a, b) =>
+    handlingRank(a.handling) - handlingRank(b.handling) ||
+    packVolume(b) - packVolume(a)
+  );
+}
+
+function packCollides(placed, x, y, z, dl, dh, dw) {
+  for (const r of placed) {
+    if (x + dl - PACK_EPS <= r.minX || r.minX + r.dl - PACK_EPS <= x) continue;
+    if (y + dh - PACK_EPS <= r.minY || r.minY + r.dh - PACK_EPS <= y) continue;
+    if (z + dw - PACK_EPS <= r.minZ || r.minZ + r.dw - PACK_EPS <= z) continue;
+    return true;
+  }
+  return false;
+}
+
+// Total contact area directly beneath (x,y,z) plus whether any of it is fragile
+function packSupportInfo(placed, x, y, z, dl, dw) {
+  let area = 0, onFragile = false;
+  for (const r of placed) {
+    if (Math.abs(r.minY + r.dh - y) > 0.5) continue;          // top face must meet our base
+    const ox = Math.min(x + dl, r.minX + r.dl) - Math.max(x, r.minX);
+    const oz = Math.min(z + dw, r.minZ + r.dw) - Math.max(z, r.minZ);
+    if (ox > PACK_EPS && oz > PACK_EPS) {
+      area += ox * oz;
+      if (r.handling === 'fragile') onFragile = true;
+    }
+  }
+  return { area, onFragile };
+}
+
+function prunePackPoints(points, placed) {
+  const seen = new Set();
+  const out = [];
+  for (const p of points) {
+    const key = `${p.x.toFixed(1)}|${p.y.toFixed(1)}|${p.z.toFixed(1)}`;
+    if (seen.has(key)) continue;
+    // Drop points swallowed by an already-placed box
+    let inside = false;
+    for (const r of placed) {
+      if (p.x > r.minX - PACK_EPS && p.x < r.minX + r.dl - PACK_EPS &&
+          p.y > r.minY - PACK_EPS && p.y < r.minY + r.dh - PACK_EPS &&
+          p.z > r.minZ - PACK_EPS && p.z < r.minZ + r.dw - PACK_EPS) { inside = true; break; }
+    }
+    if (inside) continue;
+    seen.add(key);
+    out.push(p);
+  }
+  out.sort((a, b) => a.x - b.x || a.y - b.y || a.z - b.z);
+  return out.length > MAX_POINTS ? out.slice(0, MAX_POINTS) : out;
+}
+
+function computeAutoPack(strategy) {
+  const L = cargoSpace.length * 100;
+  const W = cargoSpace.width  * 100;
+  const H = cargoSpace.height * 100;
+
+  const queue = sortItemsForPacking(items, strategy);
+  const placed = [];
+  const unplaced = [];
+  let points = [{ x: 0, y: 0, z: 0 }];
+
+  for (const item of queue) {
+    let hit = null;
+
+    search:
+    for (const p of points) {
+      for (const rot of [0, 90]) {
+        const dl = rot === 90 ? item.width_cm  : item.length_cm;
+        const dw = rot === 90 ? item.length_cm : item.width_cm;
+        const dh = item.height_cm;
+
+        if (p.x + dl > L + PACK_EPS) continue;
+        if (p.y + dh > H + PACK_EPS) continue;
+        if (p.z + dw > W + PACK_EPS) continue;
+        if (packCollides(placed, p.x, p.y, p.z, dl, dh, dw)) continue;
+
+        if (p.y > 0.5) {
+          const sup = packSupportInfo(placed, p.x, p.y, p.z, dl, dw);
+          if (sup.onFragile) continue;                         // never crush a fragile item
+          if (sup.area < dl * dw * SUPPORT_RATIO) continue;    // needs a stable base
+        }
+
+        hit = { p, rot, dl, dw, dh };
+        break search;
+      }
+    }
+
+    if (!hit) { unplaced.push(item); continue; }
+
+    placed.push({
+      id: item.id, handling: item.handling,
+      minX: hit.p.x, minY: hit.p.y, minZ: hit.p.z,
+      dl: hit.dl, dw: hit.dw, dh: hit.dh, rot: hit.rot
+    });
+
+    points = points.filter(q => q !== hit.p);
+    points.push({ x: hit.p.x + hit.dl, y: hit.p.y,           z: hit.p.z });
+    points.push({ x: hit.p.x,          y: hit.p.y + hit.dh,  z: hit.p.z });
+    points.push({ x: hit.p.x,          y: hit.p.y,           z: hit.p.z + hit.dw });
+    points = prunePackPoints(points, placed);
+  }
+
+  return { placed, unplaced };
+}
+
+// Fore/aft weight balance — positive means weight sits toward the doors
+function packBalance(placed) {
+  const L = cargoSpace.length * 100;
+  let totalW = 0, moment = 0;
+  for (const r of placed) {
+    const item = items.find(i => i.id === r.id);
+    const w = item?.weight_kg || 0;
+    totalW += w;
+    moment += w * (r.minX + r.dl / 2);
+  }
+  if (totalW <= 0) return 0;
+  return ((moment / totalW) - L / 2) / (L / 2) * 100;
+}
+
+// ---- drop animation ----
+function dropEase(p) {
+  if (p < 0.78) { const q = p / 0.78; return q * q; }        // gravity
+  const q = (p - 0.78) / 0.22;                                // settle bounce
+  return 1 - Math.sin(q * Math.PI) * 0.08 * (1 - q * 0.6);
+}
+
+function runAutoPackAnimation(placed, onComplete) {
+  const dropTopCm = cargoSpace.height * 100 + 140;
+  const n = placed.length;
+  const STAGGER = n > 0 ? Math.max(4, Math.min(26, 1400 / n)) : 0;
+  const FALL = 460;
+
+  const anims = [];
+  placed.forEach((pl, i) => {
+    const item = items.find(x => x.id === pl.id);
+    if (!item) return;
+    item.rot_y = pl.rot;
+    item.pos_x = pl.minX + pl.dl / 2;
+    item.pos_z = pl.minZ + pl.dw / 2;
+    const fromY = dropTopCm + item.height_cm / 2;
+    item.pos_y = fromY;
+    refreshItemMesh(item);
+    anims.push({ item, fromY, toY: pl.minY + pl.dh / 2, start: i * STAGGER });
+  });
+
+  const t0 = performance.now();
+  function tick(now) {
+    const t = now - t0;
+    let running = false;
+    for (const a of anims) {
+      const local = t - a.start;
+      if (local < 0) { running = true; continue; }
+      if (local >= FALL) { a.item.pos_y = a.toY; refreshItemMesh(a.item); continue; }
+      running = true;
+      a.item.pos_y = a.fromY + (a.toY - a.fromY) * dropEase(local / FALL);
+      refreshItemMesh(a.item);
+    }
+    if (running) requestAnimationFrame(tick);
+    else onComplete?.();
+  }
+  requestAnimationFrame(tick);
+}
+
+// ---- plan checks ----
+function setCheck(id, state, text) {
+  const li = $(id);
+  if (!li) return;
+  li.classList.remove('check-pass', 'check-fail');
+  if (state === 'pass') li.classList.add('check-pass');
+  if (state === 'fail') li.classList.add('check-fail');
+  const icon = li.querySelector('.check-icon');
+  if (icon) icon.textContent = state === 'pass' ? '✓' : state === 'fail' ? '!' : '○';
+  const label = li.querySelector('.check-text');
+  if (label && text) label.textContent = text;
+}
+
+function evaluatePlanChecks(result) {
+  const spaceVol = cargoSpace.length * cargoSpace.width * cargoSpace.height * 1000000;
+  const itemVol = items.reduce((s, i) => s + packVolume(i), 0);
+  const volPct = spaceVol > 0 ? (itemVol / spaceVol) * 100 : 0;
+  const balance = packBalance(result.placed);
+
+  setCheck('#chkVolume', volPct <= 100 ? 'pass' : 'fail',
+    `Within cargo volume — ${volPct.toFixed(1)}%`);
+  setCheck('#chkBalance', Math.abs(balance) <= 10 ? 'pass' : 'fail',
+    `Load balance — ${balance >= 0 ? '+' : ''}${balance.toFixed(1)}% ${balance >= 0 ? 'toward doors' : 'toward back'}`);
+  setCheck('#chkHandling', 'pass', 'Handling rules respected');
+  setCheck('#chkFit', result.unplaced.length === 0 ? 'pass' : 'fail',
+    result.unplaced.length === 0 ? 'All items loaded'
+                                 : `${result.unplaced.length} item${result.unplaced.length > 1 ? 's' : ''} left out`);
+}
+
+// ---- entry point ----
+function runAutoPack() {
+  if (isPacking) return;
+  if (items.length === 0) return showToast('Add some cargo before packing.');
+
+  const strategy = $('#packStrategy')?.value || 'best';
+
+  // Snapshot for undo
+  autoPackUndo = items.map(i => ({
+    id: i.id, pos_x: i.pos_x, pos_y: i.pos_y, pos_z: i.pos_z, rot_y: i.rot_y
+  }));
+
+  const result = computeAutoPack(strategy);
+
+  isPacking = true;
+  deselectAll();
+  $('#autoPackBtn').disabled = true;
+
+  runAutoPackAnimation(result.placed, () => {
+    isPacking = false;
+    $('#autoPackBtn').disabled = false;
+    $('#autoPackUndoBtn').hidden = false;
+
+    updateStats();
+    renderCargoList();
+    evaluatePlanChecks(result);
+    markDirty();
+
+    const spaceVol = cargoSpace.length * cargoSpace.width * cargoSpace.height * 1000000;
+    const itemVol = result.placed.reduce((s, r) => s + r.dl * r.dw * r.dh, 0);
+    const fill = spaceVol > 0 ? (itemVol / spaceVol) * 100 : 0;
+    const balance = packBalance(result.placed);
+
+    const box = $('#autoPackResult');
+    box.hidden = false;
+    box.innerHTML = `
+      <div class="pack-stat"><span>Loaded</span><b>${result.placed.length} / ${items.length}</b></div>
+      <div class="pack-stat"><span>Space used</span><b>${fill.toFixed(1)}%</b></div>
+      <div class="pack-stat"><span>Balance</span><b>${balance >= 0 ? '+' : ''}${balance.toFixed(1)}%</b></div>
+      ${result.unplaced.length
+        ? `<div class="pack-warn">${result.unplaced.length} item${result.unplaced.length > 1 ? 's' : ''} didn't fit and stayed put.</div>`
+        : ''}
+    `;
+
+    showToast(result.unplaced.length
+      ? `Packed <b>${result.placed.length}</b> — ${result.unplaced.length} didn't fit.`
+      : `Packed all <b>${result.placed.length}</b> items · ${fill.toFixed(1)}% used.`);
+  });
+}
+
+function undoAutoPack() {
+  if (!autoPackUndo || isPacking) return;
+  autoPackUndo.forEach(snap => {
+    const item = items.find(i => i.id === snap.id);
+    if (!item) return;
+    item.pos_x = snap.pos_x; item.pos_y = snap.pos_y; item.pos_z = snap.pos_z;
+    item.rot_y = snap.rot_y;
+    refreshItemMesh(item);
+    refreshItemSprite(item);
+  });
+  autoPackUndo = null;
+  $('#autoPackUndoBtn').hidden = true;
+  $('#autoPackResult').hidden = true;
+  ['#chkVolume', '#chkBalance', '#chkHandling', '#chkFit'].forEach(id => setCheck(id, 'idle'));
+  updateStats();
+  renderCargoList();
+  markDirty();
+  showToast('Auto-pack reverted.');
+}
+
+// ============================================================
 // CARGO KIND (carton / pallet / slipsheet) — form UI
 // ============================================================
 function setKind(kind, opts = {}) {
@@ -1431,6 +1735,7 @@ function onPointerLeave() {
 function onPointerDown(e) {
   if (e.button !== 0) return;
   if (e.shiftKey || e.altKey) return;
+  if (isPacking) return;                 // scene is animating
 
   const hit = hitCarton(e);
   if (!hit) { deselectAll(); return; }
@@ -2224,6 +2529,7 @@ function renderShortcuts() {
     { keys: ['R'],          desc: 'Rotate selected carton 90°' },
     { keys: [modKey, 'D'],  desc: 'Duplicate selected carton' },
     { keys: ['L'],          desc: 'Toggle carton labels' },
+    { keys: ['P'],          desc: 'Auto-pack the plan' },
     { keys: ['2'],          desc: 'Switch to 2D orthographic mode' },
     { keys: ['3'],          desc: 'Switch to 3D perspective mode' },
     { keys: ['?'],          desc: 'Show this shortcuts guide' }
@@ -2689,6 +2995,10 @@ $('#btnDelete').addEventListener('click', () => {
   showToast(`Deleted <b>${escapeHtml(label)}</b>.`);
 });
 
+// Auto-pack
+$('#autoPackBtn').addEventListener('click', runAutoPack);
+$('#autoPackUndoBtn').addEventListener('click', undoAutoPack);
+
 // Kind tabs (Carton / Pallet / Slipsheet)
 $$('.kind-tab').forEach(tab => tab.addEventListener('click', () => setKind(tab.dataset.kind)));
 $('#fKindPreset').addEventListener('change', e => applyKindPreset(e.target.value));
@@ -2783,6 +3093,8 @@ window.addEventListener('keydown', (e) => {
     $('#btnDuplicate').click();
   } else if (e.key === 'l') {
     $('#toggleLabels').click();
+  } else if (e.key === 'p') {
+    runAutoPack();
   } else if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
     $('#btnShortcuts').click();
   } else if (e.key === '2') {
