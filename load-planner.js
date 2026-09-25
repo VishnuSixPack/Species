@@ -24,12 +24,34 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 // Constants
 // ============================================================
 const PRESETS = {
-  '40HC':   { name: "40' High Cube",  length: 12.03, width: 2.35, height: 2.69 },
-  '40STD':  { name: "40' Standard",   length: 12.03, width: 2.35, height: 2.39 },
-  '20STD':  { name: "20' Standard",   length: 5.90,  width: 2.35, height: 2.39 },
-  '45HC':   { name: "45' High Cube",  length: 13.55, width: 2.35, height: 2.69 },
-  'Custom': { name: 'Custom',         length: 5.00,  width: 2.00, height: 2.10 }
+  '40HC':   { name: "40' High Cube",  length: 12.032, width: 2.352, height: 2.698 },
+  '40STD':  { name: "40' Standard",   length: 12.032, width: 2.352, height: 2.393 },
+  '20STD':  { name: "20' Standard",   length: 5.898,  width: 2.352, height: 2.393 },
+  '45HC':   { name: "45' High Cube",  length: 13.556, width: 2.352, height: 2.698 },
+  'Custom': { name: 'Custom',         length: 5.000,  width: 2.000, height: 2.100 }
 };
+
+// Standard pallet footprints (cm) — height ~14.5cm is typical for wooden pallets
+const PALLET_PRESETS = {
+  'eur1':   { name: 'EUR1 · 120 × 80 cm',    length: 120,   width: 80,    height: 14.5, weight: 25 },
+  'eur2':   { name: 'EUR2 · 120 × 100 cm',   length: 120,   width: 100,   height: 14.5, weight: 25 },
+  'us':     { name: 'US · 121.9 × 101.6 cm', length: 121.9, width: 101.6, height: 14.5, weight: 25 },
+  'custom': { name: 'Custom',                length: 100,   width: 80,    height: 14.5, weight: 20 }
+};
+
+// Slipsheets — flat sheets, ~2mm thick, negligible weight
+const SLIPSHEET_PRESETS = {
+  'sm':     { name: '120 × 80 cm',           length: 120,   width: 80,    height: 0.2, weight: 1 },
+  'md':     { name: '120 × 100 cm',          length: 120,   width: 100,   height: 0.2, weight: 1 },
+  'us':     { name: '121.9 × 101.6 cm',      length: 121.9, width: 101.6, height: 0.2, weight: 1 },
+  'custom': { name: 'Custom',                length: 120,   width: 80,    height: 0.2, weight: 1 }
+};
+
+const KIND_COLORS = {
+  pallet:    '#8b6f47',                     // wood brown
+  slipsheet: '#d4b78a'                      // paper tan
+};
+const KIND_LABEL_PREFIX = { carton: 'BATCH', pallet: 'PALLET', slipsheet: 'SHEET' };
 
 const MODE_LABELS = { Sea: 'SEA', Road: 'ROAD', Air: 'AIR', Rail: 'RAIL' };
 
@@ -44,6 +66,13 @@ const CENTER_SNAP_CM = 15;
 const TEMPLATES_KEY = 'smartuna_planner_templates_v1';
 const SCENE_MODE_KEY = 'smartuna_planner_scene_mode';
 const REALISTIC_MODE_KEY = 'smartuna_planner_realistic_mode';
+const UNIT_KEY = 'smartuna_planner_unit';
+
+// Length-unit conversion — everything stored internally in cm (items) or m (cargoSpace);
+// display + input in currentUnit.
+const TO_MM = { mm: 1, cm: 10, m: 1000 };
+const UNIT_DECIMALS = { mm: 0, cm: 1, m: 3 };
+const UNIT_STEPS = { mm: '1', cm: '0.1', m: '0.001' };
 
 const HANDLE_TYPES = ['nw','n','ne','e','se','s','sw','w'];
 
@@ -98,14 +127,16 @@ let concreteTexture;                     // yard surface
 let skyTexture;                          // scene background gradient
 let raycaster;
 
-let cargoSpace = { length: 12.03, width: 2.35, height: 2.69 };
+let cargoSpace = { length: 12.032, width: 2.352, height: 2.698 };
 let transportMode = 'Sea';
 let containerPreset = '40HC';
 
 let items = [];
 let selectedItemId = null;
 let quantity = 1;
-let batchCounter = 0;
+let batchCounters = { carton: 0, pallet: 0, slipsheet: 0 };
+let currentKind = 'carton';              // which "kind" the Cargo form is adding
+let currentUnit = 'cm';                  // display + input unit — cm, mm, or m
 let showLabels = false;
 let dragState = null;
 let hoveredItemId = null;               // box currently under the cursor (for label-on-hover)
@@ -786,18 +817,24 @@ function pickColorForBase(baseLabel) {
 // ============================================================
 function uid() { return 'i_' + Math.random().toString(36).slice(2, 10); }
 
-function generateBaseLabel() {
-  batchCounter += 1;
-  return `BATCH-${String(batchCounter).padStart(2, '0')}`;
+function generateBaseLabel(kind = 'carton') {
+  batchCounters[kind] = (batchCounters[kind] || 0) + 1;
+  const prefix = KIND_LABEL_PREFIX[kind] || 'BATCH';
+  return `${prefix}-${String(batchCounters[kind]).padStart(2, '0')}`;
 }
 
 function recomputeBatchCounter() {
-  let max = 0;
+  batchCounters = { carton: 0, pallet: 0, slipsheet: 0 };
+  const rx = {
+    carton:    /^BATCH-(\d+)$/,
+    pallet:    /^PALLET-(\d+)$/,
+    slipsheet: /^SHEET-(\d+)$/
+  };
   items.forEach(i => {
-    const m = /^BATCH-(\d+)$/.exec(i.base_label || '');
-    if (m) max = Math.max(max, parseInt(m[1], 10));
+    const kind = i.kind || 'carton';
+    const m = rx[kind]?.exec(i.base_label || '');
+    if (m) batchCounters[kind] = Math.max(batchCounters[kind], parseInt(m[1], 10));
   });
-  batchCounter = max;
 }
 
 function createItemMesh(item) {
@@ -970,7 +1007,7 @@ function addItem(spec) {
     id: uid(),
     label: spec.label, base_label: spec.base_label,
     product_name: spec.product_name || '',
-    kind: 'carton',
+    kind: spec.kind || 'carton',
     length_cm: Number(spec.length_cm),
     width_cm:  Number(spec.width_cm),
     height_cm: Number(spec.height_cm),
@@ -1107,11 +1144,12 @@ function populateFormFromItem(item) {
   if (!item) return;
   $('#fLabel').value    = item.base_label || '';
   $('#fProduct').value  = item.product_name || '';
-  $('#fLength').value   = item.length_cm;
-  $('#fWidth').value    = item.width_cm;
-  $('#fHeight').value   = item.height_cm;
+  $('#fLength').value   = fromCm(item.length_cm);
+  $('#fWidth').value    = fromCm(item.width_cm);
+  $('#fHeight').value   = fromCm(item.height_cm);
   $('#fWeight').value   = item.weight_kg || '';
   $('#fHandling').value = item.handling || 'standard';
+  setKind(item.kind || 'carton', { autofill: false });
 }
 
 function setEditMode(isEdit, item) {
@@ -1197,7 +1235,7 @@ function renderCargoList() {
       <span class="cargo-swatch" style="background:${i.color}"></span>
       <div class="cargo-meta">
         <b>${escapeHtml(i.label)}${i.product_name ? ' · ' + escapeHtml(i.product_name) : ''}</b>
-        <small>${i.length_cm} × ${i.width_cm} × ${i.height_cm} cm · ${i.weight_kg || 0} kg · ${i.handling}</small>
+        <small>${fromCm(i.length_cm)} × ${fromCm(i.width_cm)} × ${fromCm(i.height_cm)} ${currentUnit} · ${i.weight_kg || 0} kg · ${i.handling}</small>
       </div>
       <span class="focus-icon" title="Focus camera">⌖</span>
     </div>
@@ -1224,6 +1262,101 @@ function escapeHtml(str) {
   return String(str).replace(/[&<>"']/g, c => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   })[c]);
+}
+
+// ============================================================
+// CARGO KIND (carton / pallet / slipsheet) — form UI
+// ============================================================
+function setKind(kind, opts = {}) {
+  currentKind = kind;
+  $$('.kind-tab').forEach(t => t.classList.toggle('active', t.dataset.kind === kind));
+
+  const presetRow = $('#kindPresetRow');
+  const presetSelect = $('#fKindPreset');
+
+  if (kind === 'carton') {
+    presetRow.hidden = true;
+    return;
+  }
+  presetRow.hidden = false;
+  const presets = kind === 'pallet' ? PALLET_PRESETS : SLIPSHEET_PRESETS;
+  presetSelect.innerHTML = Object.entries(presets)
+    .map(([id, p]) => `<option value="${id}">${escapeHtml(p.name)}</option>`).join('');
+  if (opts.autofill !== false) {
+    const firstId = Object.keys(presets)[0];
+    presetSelect.value = firstId;
+    applyKindPreset(firstId);
+  }
+}
+
+function applyKindPreset(presetId) {
+  const presets = currentKind === 'pallet' ? PALLET_PRESETS
+                : currentKind === 'slipsheet' ? SLIPSHEET_PRESETS
+                : null;
+  if (!presets) return;
+  const p = presets[presetId];
+  if (!p) return;
+  $('#fLength').value = fromCm(p.length);
+  $('#fWidth').value  = fromCm(p.width);
+  $('#fHeight').value = fromCm(p.height);
+  $('#fWeight').value = p.weight;
+}
+
+// ============================================================
+// UNIT CONVERSION (cm / mm / m)
+// ============================================================
+function formatDimValue(val, unit = currentUnit) {
+  const d = UNIT_DECIMALS[unit];
+  const s = val.toFixed(d);
+  if (d === 0) return s;
+  return s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+}
+function fromCm(cm)  { return formatDimValue(cm * 10 / TO_MM[currentUnit]); }
+function fromM(m)    { return formatDimValue(m * 1000 / TO_MM[currentUnit]); }
+function toCm(val)   { return val * TO_MM[currentUnit] / 10; }
+function toM(val)    { return val * TO_MM[currentUnit] / 1000; }
+
+function updateDimLabels() {
+  $$('[data-unit-label]').forEach(el => {
+    el.textContent = `${el.dataset.unitLabel} (${currentUnit})`;
+  });
+}
+function updateFieldSteps() {
+  const step = UNIT_STEPS[currentUnit];
+  ['#dimLength', '#dimWidth', '#dimHeight',
+   '#fLength', '#fWidth', '#fHeight'].forEach(sel => {
+    const el = $(sel);
+    if (el) el.step = step;
+  });
+}
+function updateSceneDimsDisplay() {
+  $('#sceneDims').textContent =
+    `${fromM(cargoSpace.length)} × ${fromM(cargoSpace.width)} × ${fromM(cargoSpace.height)} ${currentUnit}`;
+}
+
+function setUnit(newUnit) {
+  if (newUnit === currentUnit) return;
+  const oldUnit = currentUnit;
+  // Convert every dimension input from the old unit to the new one
+  const fields = ['#dimLength', '#dimWidth', '#dimHeight',
+                  '#fLength', '#fWidth', '#fHeight'];
+  const converted = {};
+  fields.forEach(sel => {
+    const el = $(sel);
+    if (!el || el.value === '') { converted[sel] = ''; return; }
+    const val = parseFloat(el.value);
+    if (isNaN(val)) { converted[sel] = ''; return; }
+    const newVal = val * TO_MM[oldUnit] / TO_MM[newUnit];
+    converted[sel] = formatDimValue(newVal, newUnit);
+  });
+  currentUnit = newUnit;
+  fields.forEach(sel => { const el = $(sel); if (el) el.value = converted[sel]; });
+  updateDimLabels();
+  updateFieldSteps();
+  updateSceneDimsDisplay();
+  renderCargoList();
+  $$('.unit-btn').forEach(b => b.classList.toggle('active', b.dataset.unit === newUnit));
+  try { localStorage.setItem(UNIT_KEY, newUnit); } catch (e) {}
 }
 
 // ============================================================
@@ -1899,10 +2032,11 @@ function renderTemplateDropdown() {
 function applyTemplate(id) {
   const t = templates.find(x => x.id === id);
   if (!t) return;
+  if (t.kind) setKind(t.kind, { autofill: false });
   $('#fProduct').value  = t.product_name || '';
-  $('#fLength').value   = t.length_cm;
-  $('#fWidth').value    = t.width_cm;
-  $('#fHeight').value   = t.height_cm;
+  $('#fLength').value   = fromCm(t.length_cm);
+  $('#fWidth').value    = fromCm(t.width_cm);
+  $('#fHeight').value   = fromCm(t.height_cm);
   $('#fWeight').value   = t.weight_kg || '';
   $('#fHandling').value = t.handling || 'standard';
   $('#deleteTemplateBtn').hidden = false;
@@ -1918,7 +2052,7 @@ function openSaveTemplateModal() {
   const wt = parseFloat($('#fWeight').value) || 0;
   const handling = $('#fHandling').value;
   $('#tplName').value = product || '';
-  $('#tplPreview').textContent = `${L} × ${W} × ${H} cm · ${wt} kg · ${handling}` + (product ? ` · ${product}` : '');
+  $('#tplPreview').textContent = `${L} × ${W} × ${H} ${currentUnit} · ${wt} kg · ${handling}` + (product ? ` · ${product}` : '');
   $('#tplModal').hidden = false;
   setTimeout(() => $('#tplName').focus(), 50);
 }
@@ -1926,9 +2060,9 @@ function openSaveTemplateModal() {
 function saveTemplateFromForm() {
   const name = $('#tplName').value.trim();
   if (!name) return showToast('Give the template a name.');
-  const L = parseFloat($('#fLength').value);
-  const W = parseFloat($('#fWidth').value);
-  const H = parseFloat($('#fHeight').value);
+  const L = toCm(parseFloat($('#fLength').value));
+  const W = toCm(parseFloat($('#fWidth').value));
+  const H = toCm(parseFloat($('#fHeight').value));
   const wt = parseFloat($('#fWeight').value) || 0;
   const handling = $('#fHandling').value;
   const product = $('#fProduct').value.trim();
@@ -1937,6 +2071,7 @@ function saveTemplateFromForm() {
     id: 't_' + Math.random().toString(36).slice(2, 10),
     name, length_cm: L, width_cm: W, height_cm: H,
     weight_kg: wt, handling, product_name: product,
+    kind: currentKind,
     created_at: new Date().toISOString()
   };
   templates.push(tpl);
@@ -2198,11 +2333,11 @@ async function loadPlan(planId) {
     transportMode = plan.transport_mode || 'Sea';
     containerPreset = plan.container_preset || 'Custom';
 
-    $('#dimLength').value = cargoSpace.length.toFixed(2);
-    $('#dimWidth').value  = cargoSpace.width.toFixed(2);
-    $('#dimHeight').value = cargoSpace.height.toFixed(2);
+    $('#dimLength').value = fromM(cargoSpace.length);
+    $('#dimWidth').value  = fromM(cargoSpace.width);
+    $('#dimHeight').value = fromM(cargoSpace.height);
     $('#presetSelect').value = PRESETS[containerPreset] ? containerPreset : 'Custom';
-    $('#sceneDims').textContent = `${cargoSpace.length.toFixed(2)} × ${cargoSpace.width.toFixed(2)} × ${cargoSpace.height.toFixed(2)} m`;
+    updateSceneDimsDisplay();
     $('#sceneMode').textContent = MODE_LABELS[transportMode] || 'SEA';
     $$('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === transportMode));
 
@@ -2327,9 +2462,9 @@ $$('.mode-btn').forEach(btn => btn.addEventListener('click', () => {
 function applyPresetToInputs(key) {
   const p = PRESETS[key];
   if (!p) return;
-  $('#dimLength').value = p.length.toFixed(2);
-  $('#dimWidth').value  = p.width.toFixed(2);
-  $('#dimHeight').value = p.height.toFixed(2);
+  $('#dimLength').value = fromM(p.length);
+  $('#dimWidth').value  = fromM(p.width);
+  $('#dimHeight').value = fromM(p.height);
 }
 $('#presetSelect').addEventListener('change', e => {
   containerPreset = e.target.value;
@@ -2337,14 +2472,13 @@ $('#presetSelect').addEventListener('change', e => {
 });
 
 $('#applyDimensions').addEventListener('click', () => {
-  const L = parseFloat($('#dimLength').value);
-  const W = parseFloat($('#dimWidth').value);
-  const H = parseFloat($('#dimHeight').value);
-  if (!L || !W || !H || L <= 0 || W <= 0 || H <= 0) return showToast('Enter valid positive dimensions in metres.');
+  const L = toM(parseFloat($('#dimLength').value));
+  const W = toM(parseFloat($('#dimWidth').value));
+  const H = toM(parseFloat($('#dimHeight').value));
+  if (!L || !W || !H || L <= 0 || W <= 0 || H <= 0) return showToast(`Enter valid positive dimensions in ${currentUnit}.`);
   cargoSpace = { length: L, width: W, height: H };
   buildContainer();
-  const dimStr = `${L.toFixed(2)} × ${W.toFixed(2)} × ${H.toFixed(2)} m`;
-  $('#sceneDims').textContent = dimStr;
+  updateSceneDimsDisplay();
   if (sceneMode === '3d') {
     $$('.view-pills-3d .view-pill').forEach(p => p.classList.toggle('selected', p.dataset.view === 'perspective'));
     setView('perspective');
@@ -2352,7 +2486,7 @@ $('#applyDimensions').addEventListener('click', () => {
     positionOrthoCamera(orthoView);
   }
   markDirty();
-  showToast(`<b>Cargo space</b> updated to ${dimStr}.`);
+  showToast(`<b>Cargo space</b> updated to ${fromM(L)} × ${fromM(W)} × ${fromM(H)} ${currentUnit}.`);
 });
 
 $('#planName').addEventListener('input', () => markDirty());
@@ -2423,11 +2557,12 @@ function readFormValues() {
   return {
     labelInput:   $('#fLabel').value.trim(),
     productInput: $('#fProduct').value.trim(),
-    L:  parseFloat($('#fLength').value),
-    W:  parseFloat($('#fWidth').value),
-    H:  parseFloat($('#fHeight').value),
+    L:  toCm(parseFloat($('#fLength').value)),
+    W:  toCm(parseFloat($('#fWidth').value)),
+    H:  toCm(parseFloat($('#fHeight').value)),
     wt: parseFloat($('#fWeight').value) || 0,
-    handling: $('#fHandling').value
+    handling: $('#fHandling').value,
+    kind: currentKind
   };
 }
 
@@ -2440,24 +2575,25 @@ function validateFormDims(L, W, H) {
 }
 
 function addNewItems() {
-  const { labelInput, productInput, L, W, H, wt, handling } = readFormValues();
+  const { labelInput, productInput, L, W, H, wt, handling, kind } = readFormValues();
   if (!validateFormDims(L, W, H)) return;
-  const baseLabel = labelInput || generateBaseLabel();
-  const color = pickColorForBase(baseLabel);
+  const baseLabel = labelInput || generateBaseLabel(kind);
+  const color = kind === 'carton' ? pickColorForBase(baseLabel) : KIND_COLORS[kind];
   let last;
   for (let n = 0; n < quantity; n++) {
     const suffix = quantity > 1 ? `-${String(n + 1).padStart(2, '0')}` : '';
     last = addItem({
       label: baseLabel + suffix, base_label: baseLabel,
       product_name: productInput,
+      kind,
       length_cm: L, width_cm: W, height_cm: H,
       weight_kg: wt, handling, color
     });
   }
   updateStats();
   renderCargoList();
-  showToast(`Added <b>${quantity}</b> ${quantity > 1 ? 'cartons' : 'carton'}${labelInput ? ' of ' + escapeHtml(baseLabel) : ''}.`);
-  // Full form reset — use templates for reusable carton specs
+  showToast(`Added <b>${quantity}</b> ${quantity > 1 ? 'items' : 'item'}${labelInput ? ' of ' + escapeHtml(baseLabel) : ''}.`);
+  // Full form reset — use templates for reusable specs
   $('#fLabel').value = '';
   $('#fProduct').value = '';
   $('#fLength').value = '';
@@ -2467,6 +2603,7 @@ function addNewItems() {
   $('#fHandling').value = 'standard';
   $('#templateSelect').value = '';
   $('#deleteTemplateBtn').hidden = true;
+  setKind('carton');                     // back to Carton for the next add
   quantity = 1;
   $('#fQty').textContent = 1;
   $('#fLabel').focus();
@@ -2539,6 +2676,13 @@ $('#btnDelete').addEventListener('click', () => {
   deselectAll();
   showToast(`Deleted <b>${escapeHtml(label)}</b>.`);
 });
+
+// Kind tabs (Carton / Pallet / Slipsheet)
+$$('.kind-tab').forEach(tab => tab.addEventListener('click', () => setKind(tab.dataset.kind)));
+$('#fKindPreset').addEventListener('change', e => applyKindPreset(e.target.value));
+
+// Unit switcher (cm / mm / m)
+$$('.unit-btn').forEach(btn => btn.addEventListener('click', () => setUnit(btn.dataset.unit)));
 
 // Templates
 $('#templateSelect').addEventListener('change', e => {
@@ -2645,6 +2789,10 @@ async function boot() {
   try {
     realisticMode = localStorage.getItem(REALISTIC_MODE_KEY) === '1';
   } catch (e) {}
+  try {
+    const savedUnit = localStorage.getItem(UNIT_KEY);
+    if (savedUnit && ['mm', 'cm', 'm'].includes(savedUnit)) currentUnit = savedUnit;
+  } catch (e) {}
 
   initScene();
   loadTemplatesFromStorage();
@@ -2658,6 +2806,21 @@ async function boot() {
 
   // Sync toggle button state
   $('#toggleRealistic').classList.toggle('active', realisticMode);
+
+  // Apply unit to labels/steps/scene header. HTML defaults for cargo space
+  // are in m and for cargo form are in cm — convert if the saved unit differs.
+  if (currentUnit !== 'm') {
+    ['#dimLength', '#dimWidth', '#dimHeight'].forEach(sel => {
+      const el = $(sel);
+      if (!el || el.value === '') return;
+      const v = parseFloat(el.value);
+      if (!isNaN(v)) el.value = formatDimValue(v * TO_MM.m / TO_MM[currentUnit]);
+    });
+  }
+  updateDimLabels();
+  updateFieldSteps();
+  updateSceneDimsDisplay();
+  $$('.unit-btn').forEach(b => b.classList.toggle('active', b.dataset.unit === currentUnit));
 
   // Restore scene mode preference
   try {
