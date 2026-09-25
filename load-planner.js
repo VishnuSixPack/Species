@@ -39,17 +39,18 @@ const PALLET_PRESETS = {
   'custom': { name: 'Custom',                length: 100,   width: 80,    height: 14.5, weight: 20 }
 };
 
-// Slipsheets — flat sheets, ~2mm thick, negligible weight
+// Slipsheets — flat sheets. Real ones are ~2mm, but at container scale that's
+// invisible on screen; using 1cm as the display default keeps them recognisable.
 const SLIPSHEET_PRESETS = {
-  'sm':     { name: '120 × 80 cm',           length: 120,   width: 80,    height: 0.2, weight: 1 },
-  'md':     { name: '120 × 100 cm',          length: 120,   width: 100,   height: 0.2, weight: 1 },
-  'us':     { name: '121.9 × 101.6 cm',      length: 121.9, width: 101.6, height: 0.2, weight: 1 },
-  'custom': { name: 'Custom',                length: 120,   width: 80,    height: 0.2, weight: 1 }
+  'sm':     { name: '120 × 80 cm',           length: 120,   width: 80,    height: 1, weight: 1 },
+  'md':     { name: '120 × 100 cm',          length: 120,   width: 100,   height: 1, weight: 1 },
+  'us':     { name: '121.9 × 101.6 cm',      length: 121.9, width: 101.6, height: 1, weight: 1 },
+  'custom': { name: 'Custom',                length: 120,   width: 80,    height: 1, weight: 1 }
 };
 
 const KIND_COLORS = {
   pallet:    '#8b6f47',                     // wood brown
-  slipsheet: '#d4b78a'                      // paper tan
+  slipsheet: '#e8e0d0'                      // cream — distinct from wood floor
 };
 const KIND_LABEL_PREFIX = { carton: 'BATCH', pallet: 'PALLET', slipsheet: 'SHEET' };
 
@@ -66,10 +67,11 @@ const CENTER_SNAP_CM = 15;
 const TEMPLATES_KEY = 'smartuna_planner_templates_v1';
 const SCENE_MODE_KEY = 'smartuna_planner_scene_mode';
 const REALISTIC_MODE_KEY = 'smartuna_planner_realistic_mode';
-const UNIT_KEY = 'smartuna_planner_unit';
+const CONTAINER_UNIT_KEY = 'smartuna_planner_container_unit';
+const ITEM_UNIT_KEY = 'smartuna_planner_item_unit';
 
 // Length-unit conversion — everything stored internally in cm (items) or m (cargoSpace);
-// display + input in currentUnit.
+// display + input use each section's own selected unit.
 const TO_MM = { mm: 1, cm: 10, m: 1000 };
 const UNIT_DECIMALS = { mm: 0, cm: 1, m: 3 };
 const UNIT_STEPS = { mm: '1', cm: '0.1', m: '0.001' };
@@ -136,7 +138,8 @@ let selectedItemId = null;
 let quantity = 1;
 let batchCounters = { carton: 0, pallet: 0, slipsheet: 0 };
 let currentKind = 'carton';              // which "kind" the Cargo form is adding
-let currentUnit = 'cm';                  // display + input unit — cm, mm, or m
+let containerUnit = 'm';                 // display + input unit for cargo-space fields
+let itemUnit = 'cm';                     // display + input unit for cargo-item fields
 let showLabels = false;
 let dragState = null;
 let hoveredItemId = null;               // box currently under the cursor (for label-on-hover)
@@ -226,7 +229,7 @@ function initScene() {
     })
   );
   yardMesh.rotation.x = -Math.PI / 2;
-  yardMesh.position.y = -0.02;
+  yardMesh.position.y = -0.055;            // just below the container-floor bottom
   yardMesh.receiveShadow = true;
   scene.add(yardMesh);
 
@@ -431,7 +434,7 @@ function buildSimpleContainer(L, W, H) {
     new THREE.BoxGeometry(L, 0.05, W),
     new THREE.MeshStandardMaterial({ color: 0xdae2ec, roughness: 0.9, metalness: 0.05 })
   );
-  floor.position.set(L / 2, 0.025, 0);
+  floor.position.set(L / 2, -0.025, 0);    // top of floor at world Y=0
   floor.receiveShadow = true;
   floor.userData.isContainerFloor = true;
   containerGroup.add(floor);
@@ -526,7 +529,7 @@ function buildRealisticContainer(L, W, H) {
   });
 
   const floor = new THREE.Mesh(new THREE.BoxGeometry(L, 0.05, W), floorMat);
-  floor.position.set(L / 2, 0.025, 0);
+  floor.position.set(L / 2, -0.025, 0);    // top of floor at world Y=0
   floor.receiveShadow = true;
   floor.userData.isContainerFloor = true;
   containerGroup.add(floor);
@@ -1235,7 +1238,7 @@ function renderCargoList() {
       <span class="cargo-swatch" style="background:${i.color}"></span>
       <div class="cargo-meta">
         <b>${escapeHtml(i.label)}${i.product_name ? ' · ' + escapeHtml(i.product_name) : ''}</b>
-        <small>${fromCm(i.length_cm)} × ${fromCm(i.width_cm)} × ${fromCm(i.height_cm)} ${currentUnit} · ${i.weight_kg || 0} kg · ${i.handling}</small>
+        <small>${fromCm(i.length_cm)} × ${fromCm(i.width_cm)} × ${fromCm(i.height_cm)} ${itemUnit} · ${i.weight_kg || 0} kg · ${i.handling}</small>
       </div>
       <span class="focus-icon" title="Focus camera">⌖</span>
     </div>
@@ -1303,61 +1306,70 @@ function applyKindPreset(presetId) {
 }
 
 // ============================================================
-// UNIT CONVERSION (cm / mm / m)
+// UNIT CONVERSION (cm / mm / m) — split per section
 // ============================================================
-function formatDimValue(val, unit = currentUnit) {
+function formatDimValue(val, unit) {
   const d = UNIT_DECIMALS[unit];
   const s = val.toFixed(d);
   if (d === 0) return s;
   return s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
 }
-function fromCm(cm)  { return formatDimValue(cm * 10 / TO_MM[currentUnit]); }
-function fromM(m)    { return formatDimValue(m * 1000 / TO_MM[currentUnit]); }
-function toCm(val)   { return val * TO_MM[currentUnit] / 10; }
-function toM(val)    { return val * TO_MM[currentUnit] / 1000; }
+// Item helpers use itemUnit; container helpers use containerUnit.
+function fromCm(cm)  { return formatDimValue(cm * 10 / TO_MM[itemUnit], itemUnit); }
+function fromM(m)    { return formatDimValue(m * 1000 / TO_MM[containerUnit], containerUnit); }
+function toCm(val)   { return val * TO_MM[itemUnit] / 10; }
+function toM(val)    { return val * TO_MM[containerUnit] / 1000; }
 
 function updateDimLabels() {
   $$('[data-unit-label]').forEach(el => {
-    el.textContent = `${el.dataset.unitLabel} (${currentUnit})`;
+    const scope = el.dataset.unitScope || 'item';
+    const unit  = scope === 'container' ? containerUnit : itemUnit;
+    el.textContent = `${el.dataset.unitLabel} (${unit})`;
   });
 }
 function updateFieldSteps() {
-  const step = UNIT_STEPS[currentUnit];
-  ['#dimLength', '#dimWidth', '#dimHeight',
-   '#fLength', '#fWidth', '#fHeight'].forEach(sel => {
-    const el = $(sel);
-    if (el) el.step = step;
-  });
+  const cStep = UNIT_STEPS[containerUnit];
+  const iStep = UNIT_STEPS[itemUnit];
+  ['#dimLength', '#dimWidth', '#dimHeight'].forEach(sel => { const el = $(sel); if (el) el.step = cStep; });
+  ['#fLength',   '#fWidth',   '#fHeight'  ].forEach(sel => { const el = $(sel); if (el) el.step = iStep; });
 }
 function updateSceneDimsDisplay() {
   $('#sceneDims').textContent =
-    `${fromM(cargoSpace.length)} × ${fromM(cargoSpace.width)} × ${fromM(cargoSpace.height)} ${currentUnit}`;
+    `${fromM(cargoSpace.length)} × ${fromM(cargoSpace.width)} × ${fromM(cargoSpace.height)} ${containerUnit}`;
 }
 
-function setUnit(newUnit) {
-  if (newUnit === currentUnit) return;
-  const oldUnit = currentUnit;
-  // Convert every dimension input from the old unit to the new one
-  const fields = ['#dimLength', '#dimWidth', '#dimHeight',
-                  '#fLength', '#fWidth', '#fHeight'];
-  const converted = {};
+// Generic setter used by both switchers
+function setSectionUnit({ scope, newUnit }) {
+  const isContainer = scope === 'container';
+  const oldUnit = isContainer ? containerUnit : itemUnit;
+  if (newUnit === oldUnit) return;
+
+  const fields = isContainer
+    ? ['#dimLength', '#dimWidth', '#dimHeight']
+    : ['#fLength',   '#fWidth',   '#fHeight'  ];
+
   fields.forEach(sel => {
     const el = $(sel);
-    if (!el || el.value === '') { converted[sel] = ''; return; }
+    if (!el || el.value === '') return;
     const val = parseFloat(el.value);
-    if (isNaN(val)) { converted[sel] = ''; return; }
-    const newVal = val * TO_MM[oldUnit] / TO_MM[newUnit];
-    converted[sel] = formatDimValue(newVal, newUnit);
+    if (!isNaN(val)) el.value = formatDimValue(val * TO_MM[oldUnit] / TO_MM[newUnit], newUnit);
   });
-  currentUnit = newUnit;
-  fields.forEach(sel => { const el = $(sel); if (el) el.value = converted[sel]; });
+
+  if (isContainer) containerUnit = newUnit;
+  else             itemUnit      = newUnit;
+
   updateDimLabels();
   updateFieldSteps();
-  updateSceneDimsDisplay();
-  renderCargoList();
-  $$('.unit-btn').forEach(b => b.classList.toggle('active', b.dataset.unit === newUnit));
-  try { localStorage.setItem(UNIT_KEY, newUnit); } catch (e) {}
+  if (isContainer) updateSceneDimsDisplay();
+  else             renderCargoList();
+
+  $$(`.unit-mini[data-unit-target="${scope}"] .unit-btn`).forEach(b =>
+    b.classList.toggle('active', b.dataset.unit === newUnit));
+
+  try { localStorage.setItem(isContainer ? CONTAINER_UNIT_KEY : ITEM_UNIT_KEY, newUnit); } catch (e) {}
 }
+function setContainerUnit(u) { setSectionUnit({ scope: 'container', newUnit: u }); }
+function setItemUnit(u)      { setSectionUnit({ scope: 'item',      newUnit: u }); }
 
 // ============================================================
 // SCENE INPUT — drag / select
@@ -2052,7 +2064,7 @@ function openSaveTemplateModal() {
   const wt = parseFloat($('#fWeight').value) || 0;
   const handling = $('#fHandling').value;
   $('#tplName').value = product || '';
-  $('#tplPreview').textContent = `${L} × ${W} × ${H} ${currentUnit} · ${wt} kg · ${handling}` + (product ? ` · ${product}` : '');
+  $('#tplPreview').textContent = `${L} × ${W} × ${H} ${itemUnit} · ${wt} kg · ${handling}` + (product ? ` · ${product}` : '');
   $('#tplModal').hidden = false;
   setTimeout(() => $('#tplName').focus(), 50);
 }
@@ -2475,7 +2487,7 @@ $('#applyDimensions').addEventListener('click', () => {
   const L = toM(parseFloat($('#dimLength').value));
   const W = toM(parseFloat($('#dimWidth').value));
   const H = toM(parseFloat($('#dimHeight').value));
-  if (!L || !W || !H || L <= 0 || W <= 0 || H <= 0) return showToast(`Enter valid positive dimensions in ${currentUnit}.`);
+  if (!L || !W || !H || L <= 0 || W <= 0 || H <= 0) return showToast(`Enter valid positive dimensions in ${containerUnit}.`);
   cargoSpace = { length: L, width: W, height: H };
   buildContainer();
   updateSceneDimsDisplay();
@@ -2486,7 +2498,7 @@ $('#applyDimensions').addEventListener('click', () => {
     positionOrthoCamera(orthoView);
   }
   markDirty();
-  showToast(`<b>Cargo space</b> updated to ${fromM(L)} × ${fromM(W)} × ${fromM(H)} ${currentUnit}.`);
+  showToast(`<b>Cargo space</b> updated to ${fromM(L)} × ${fromM(W)} × ${fromM(H)} ${containerUnit}.`);
 });
 
 $('#planName').addEventListener('input', () => markDirty());
@@ -2681,8 +2693,11 @@ $('#btnDelete').addEventListener('click', () => {
 $$('.kind-tab').forEach(tab => tab.addEventListener('click', () => setKind(tab.dataset.kind)));
 $('#fKindPreset').addEventListener('change', e => applyKindPreset(e.target.value));
 
-// Unit switcher (cm / mm / m)
-$$('.unit-btn').forEach(btn => btn.addEventListener('click', () => setUnit(btn.dataset.unit)));
+// Per-section unit switchers (container in cargo-space panel, item in cargo form)
+$$('.unit-mini[data-unit-target="container"] .unit-btn').forEach(btn =>
+  btn.addEventListener('click', () => setContainerUnit(btn.dataset.unit)));
+$$('.unit-mini[data-unit-target="item"] .unit-btn').forEach(btn =>
+  btn.addEventListener('click', () => setItemUnit(btn.dataset.unit)));
 
 // Templates
 $('#templateSelect').addEventListener('change', e => {
@@ -2782,6 +2797,59 @@ window.addEventListener('beforeunload', (e) => {
 });
 
 // ============================================================
+// SLIDING INDICATORS — moves the pill between segmented options
+// ============================================================
+function initSegmentedIndicators() {
+  const SELECTOR = '.view-pills, .scene-toggle, .kind-tabs, .unit-mini';
+  const getContainers = () => document.querySelectorAll(SELECTOR);
+
+  const update = (container) => {
+    const active = container.querySelector('.active, .selected');
+    if (!active) {
+      container.style.setProperty('--indicator-w', '0px');
+      return;
+    }
+    const cRect = container.getBoundingClientRect();
+    if (cRect.width === 0) return;                      // hidden — keep last known state
+    const aRect = active.getBoundingClientRect();
+    container.style.setProperty('--indicator-x', `${aRect.left - cRect.left}px`);
+    container.style.setProperty('--indicator-w', `${aRect.width}px`);
+  };
+  const updateAll = () => getContainers().forEach(update);
+
+  // Initial position — suppress the boot animation
+  requestAnimationFrame(() => {
+    document.body.classList.add('no-segment-anim');
+    updateAll();
+    requestAnimationFrame(() => document.body.classList.remove('no-segment-anim'));
+  });
+
+  // Class changes on buttons + hidden changes on containers → reposition the pill
+  const observer = new MutationObserver(mutations => {
+    const affected = new Set();
+    mutations.forEach(m => {
+      let el = m.target;
+      while (el && el.matches && !el.matches(SELECTOR)) el = el.parentElement;
+      if (el && el.matches) affected.add(el);
+    });
+    affected.forEach(update);
+  });
+  getContainers().forEach(container => {
+    container.querySelectorAll('button').forEach(btn => {
+      observer.observe(btn, { attributes: true, attributeFilter: ['class'] });
+    });
+    observer.observe(container, { attributes: true, attributeFilter: ['hidden'] });
+  });
+
+  // Reposition on window resize (debounced)
+  let resizeTimer;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(updateAll, 80);
+  });
+}
+
+// ============================================================
 // BOOT
 // ============================================================
 async function boot() {
@@ -2790,8 +2858,10 @@ async function boot() {
     realisticMode = localStorage.getItem(REALISTIC_MODE_KEY) === '1';
   } catch (e) {}
   try {
-    const savedUnit = localStorage.getItem(UNIT_KEY);
-    if (savedUnit && ['mm', 'cm', 'm'].includes(savedUnit)) currentUnit = savedUnit;
+    const savedC = localStorage.getItem(CONTAINER_UNIT_KEY);
+    if (savedC && ['mm', 'cm', 'm'].includes(savedC)) containerUnit = savedC;
+    const savedI = localStorage.getItem(ITEM_UNIT_KEY);
+    if (savedI && ['mm', 'cm', 'm'].includes(savedI)) itemUnit = savedI;
   } catch (e) {}
 
   initScene();
@@ -2807,20 +2877,24 @@ async function boot() {
   // Sync toggle button state
   $('#toggleRealistic').classList.toggle('active', realisticMode);
 
-  // Apply unit to labels/steps/scene header. HTML defaults for cargo space
-  // are in m and for cargo form are in cm — convert if the saved unit differs.
-  if (currentUnit !== 'm') {
+  // Apply units to labels/steps/scene header. HTML defaults for cargo space are
+  // in m — convert if the saved container unit differs. Item fields are empty
+  // at boot so no conversion is needed for them.
+  if (containerUnit !== 'm') {
     ['#dimLength', '#dimWidth', '#dimHeight'].forEach(sel => {
       const el = $(sel);
       if (!el || el.value === '') return;
       const v = parseFloat(el.value);
-      if (!isNaN(v)) el.value = formatDimValue(v * TO_MM.m / TO_MM[currentUnit]);
+      if (!isNaN(v)) el.value = formatDimValue(v * TO_MM.m / TO_MM[containerUnit], containerUnit);
     });
   }
   updateDimLabels();
   updateFieldSteps();
   updateSceneDimsDisplay();
-  $$('.unit-btn').forEach(b => b.classList.toggle('active', b.dataset.unit === currentUnit));
+  $$('.unit-mini[data-unit-target="container"] .unit-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.unit === containerUnit));
+  $$('.unit-mini[data-unit-target="item"] .unit-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.unit === itemUnit));
 
   // Restore scene mode preference
   try {
@@ -2833,6 +2907,8 @@ async function boot() {
 
   const planIdFromUrl = new URLSearchParams(window.location.search).get('plan');
   if (planIdFromUrl) await loadPlan(planIdFromUrl);
+
+  initSegmentedIndicators();                 // start the sliding pill for toggles
 
   requestAnimationFrame(onResize);
   setTimeout(onResize, 200);
