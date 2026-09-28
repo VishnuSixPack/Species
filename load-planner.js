@@ -1020,7 +1020,8 @@ function addItem(spec) {
     weight_kg: Number(spec.weight_kg) || 0,
     handling:  spec.handling || 'standard',
     color:     spec.color,
-    rot_y: 0, pos_x: 0, pos_y: 0, pos_z: 0, mesh: null
+    rot_y: 0, pos_x: 0, pos_y: 0, pos_z: 0, mesh: null,
+    contents: spec.contents ? spec.contents.map(c => ({ ...c })) : null
   };
   item.mesh = createItemMesh(item);
   cartonGroup.add(item.mesh);
@@ -1050,7 +1051,8 @@ function restoreItem(spec) {
     pos_x:     Number(spec.pos_x) || 0,
     pos_y:     Number(spec.pos_y) || 0,
     pos_z:     Number(spec.pos_z) || 0,
-    mesh: null
+    mesh: null,
+    contents: spec.contents ? spec.contents.map(c => ({ ...c })) : null
   };
   item.mesh = createItemMesh(item);
   cartonGroup.add(item.mesh);
@@ -1236,16 +1238,20 @@ function renderCargoList() {
     list.innerHTML = '<div class="list-empty">No items yet. Add cargo above and it drops into the container.</div>';
     return;
   }
-  list.innerHTML = items.map(i => `
+  list.innerHTML = items.map(i => {
+    const units = i.contents?.reduce((s, c) => s + (c.quantity || 0), 0) || 0;
+    const lots = (i.contents || []).map(c => c.batch_lot).filter(Boolean);
+    return `
     <div class="cargo-row ${i.id === selectedItemId ? 'selected' : ''}" data-id="${i.id}">
       <span class="cargo-swatch" style="background:${i.color}"></span>
       <div class="cargo-meta">
         <b>${escapeHtml(i.label)}${i.product_name ? ' · ' + escapeHtml(i.product_name) : ''}</b>
         <small>${fromCm(i.length_cm)} × ${fromCm(i.width_cm)} × ${fromCm(i.height_cm)} ${itemUnit} · ${i.weight_kg || 0} kg · ${i.handling}</small>
+        ${units ? `<small class="cargo-contents">${units} units${lots.length ? ' · ' + lots.map(escapeHtml).join(', ') : ''}</small>` : ''}
       </div>
       <span class="focus-icon" title="Focus camera">⌖</span>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
   list.querySelectorAll('.cargo-row').forEach(row => {
     row.addEventListener('click', (e) => {
       const id = row.dataset.id;
@@ -1569,6 +1575,524 @@ function undoAutoPack() {
   renderCargoList();
   markDirty();
   showToast('Auto-pack reverted.');
+}
+
+// ============================================================
+// CARTON BUILDER (BETA)
+// ------------------------------------------------------------
+// A carton is defined by its CONTENTS rather than by outer dimensions.
+// Each content group carries its own product, batch lot, medium, unit
+// geometry and a cols x rows x layers arrangement. Groups stack bottom
+// to top; the carton's outer size and weight are derived from them.
+//
+// Everything here is additive — the simple Cargo form is untouched.
+// ============================================================
+const CARTON_SPECS_KEY = 'smartuna_planner_carton_specs_v1';
+const GROUP_COLORS = ['#1a6fdb', '#38b47a', '#f4a11c', '#8b5cf6', '#ec4899', '#14b8a6'];
+
+let cartonSpecs = [];
+let builderQty = 1;
+let builder = null;                      // working spec
+let bPreview = null;                     // { renderer, scene, camera, controls, group, raf }
+
+function newGroup(index = 0) {
+  return {
+    id: 'g_' + Math.random().toString(36).slice(2, 8),
+    product_name: '',
+    batch_lot: '',
+    medium: '',
+    shape: 'cylinder',                   // 'cylinder' | 'box'
+    unit_d_mm: 73,                       // diameter — cylinder
+    unit_l_mm: 73,                       // footprint — box
+    unit_w_mm: 73,
+    unit_h_mm: 43,
+    unit_weight_g: 95,
+    cols: 4, rows: 3, layers: 4,
+    color: GROUP_COLORS[index % GROUP_COLORS.length]
+  };
+}
+
+function newBuilderSpec() {
+  return {
+    name: '',
+    wall_mm: 3,
+    gap_mm: 2,
+    tare_kg: 0.4,
+    groups: [newGroup(0)]
+  };
+}
+
+// Footprint of one unit in mm (cylinders occupy their bounding square)
+function groupUnitFootprint(g) {
+  return g.shape === 'cylinder'
+    ? { l: g.unit_d_mm, w: g.unit_d_mm }
+    : { l: g.unit_l_mm, w: g.unit_w_mm };
+}
+
+function groupUnitCount(g) {
+  return Math.max(0, g.cols) * Math.max(0, g.rows) * Math.max(0, g.layers);
+}
+
+// Derive carton outer dimensions (cm) and weight (kg) from the spec
+function computeCarton(spec) {
+  const gap = spec.gap_mm || 0;
+  const wall = spec.wall_mm || 0;
+
+  let innerL = 0, innerW = 0, innerH = 0;
+  let unitTotal = 0, contentKg = 0;
+
+  spec.groups.forEach(g => {
+    const fp = groupUnitFootprint(g);
+    const gl = g.cols * fp.l + Math.max(0, g.cols - 1) * gap;
+    const gw = g.rows * fp.w + Math.max(0, g.rows - 1) * gap;
+    const gh = g.layers * g.unit_h_mm + Math.max(0, g.layers - 1) * gap;
+    innerL = Math.max(innerL, gl);
+    innerW = Math.max(innerW, gw);
+    innerH += gh;
+    const n = groupUnitCount(g);
+    unitTotal += n;
+    contentKg += n * (g.unit_weight_g || 0) / 1000;
+  });
+
+  // Gap between stacked groups
+  if (spec.groups.length > 1) innerH += gap * (spec.groups.length - 1);
+
+  const outerL_mm = innerL + wall * 2;
+  const outerW_mm = innerW + wall * 2;
+  const outerH_mm = innerH + wall * 2;
+
+  return {
+    length_cm: outerL_mm / 10,
+    width_cm:  outerW_mm / 10,
+    height_cm: outerH_mm / 10,
+    inner: { l: innerL, w: innerW, h: innerH },
+    weight_kg: contentKg + (spec.tare_kg || 0),
+    content_kg: contentKg,
+    units: unitTotal
+  };
+}
+
+// Factorise a target unit count into a compact cols x rows x layers
+function suggestArrangement(g, target) {
+  if (!target || target < 1) return null;
+  const fp = groupUnitFootprint(g);
+  let best = null;
+  for (let layers = 1; layers <= target; layers++) {
+    if (target % layers !== 0) continue;
+    const perLayer = target / layers;
+    for (let cols = 1; cols <= perLayer; cols++) {
+      if (perLayer % cols !== 0) continue;
+      const rows = perLayer / cols;
+      const L = cols * fp.l, W = rows * fp.w, H = layers * g.unit_h_mm;
+      // Prefer a compact, slightly oblong footprint that isn't a tall tower
+      const ratio = Math.max(L, W) / Math.min(L, W);
+      const score = ratio * 1.0 + Math.abs(H - Math.max(L, W) * 0.7) / 100;
+      if (!best || score < best.score) best = { cols, rows, layers, score };
+    }
+  }
+  return best;
+}
+
+// ---- rendering the group cards ----
+function renderBuilderGroups() {
+  const wrap = $('#bGroups');
+  wrap.innerHTML = builder.groups.map((g, idx) => {
+    const n = groupUnitCount(g);
+    const isCyl = g.shape === 'cylinder';
+    return `
+    <div class="bgroup" data-gid="${g.id}">
+      <div class="bgroup-head">
+        <span class="bgroup-swatch" style="background:${g.color}"></span>
+        Group ${idx + 1}
+        <span class="bgroup-count">${n} unit${n === 1 ? '' : 's'}</span>
+        ${builder.groups.length > 1 ? `<button type="button" class="bgroup-remove" data-remove="${g.id}">Remove</button>` : ''}
+      </div>
+
+      <div class="form-row">
+        <label class="field">
+          <span>Product</span>
+          <input data-f="product_name" type="text" value="${escapeHtml(g.product_name)}" placeholder="Tuna in olive oil" />
+        </label>
+        <label class="field">
+          <span>Batch / lot</span>
+          <input data-f="batch_lot" type="text" value="${escapeHtml(g.batch_lot)}" placeholder="LOT-TH-26014" />
+        </label>
+      </div>
+
+      <div class="form-row">
+        <label class="field">
+          <span>Medium</span>
+          <input data-f="medium" type="text" value="${escapeHtml(g.medium)}" placeholder="Olive oil" />
+        </label>
+        <div class="field">
+          <span>Unit shape</span>
+          <div class="shape-toggle">
+            <button type="button" class="shape-btn ${isCyl ? 'active' : ''}" data-shape="cylinder">Can</button>
+            <button type="button" class="shape-btn ${!isCyl ? 'active' : ''}" data-shape="box">Box</button>
+          </div>
+        </div>
+      </div>
+
+      ${isCyl ? `
+      <div class="form-row-3">
+        <label class="field">
+          <span>Ø (mm)</span>
+          <input data-f="unit_d_mm" type="number" min="1" step="0.5" value="${g.unit_d_mm}" />
+        </label>
+        <label class="field">
+          <span>Height (mm)</span>
+          <input data-f="unit_h_mm" type="number" min="1" step="0.5" value="${g.unit_h_mm}" />
+        </label>
+        <label class="field">
+          <span>Weight (g)</span>
+          <input data-f="unit_weight_g" type="number" min="0" step="1" value="${g.unit_weight_g}" />
+        </label>
+      </div>` : `
+      <div class="form-row-4">
+        <label class="field">
+          <span>L (mm)</span>
+          <input data-f="unit_l_mm" type="number" min="1" step="0.5" value="${g.unit_l_mm}" />
+        </label>
+        <label class="field">
+          <span>W (mm)</span>
+          <input data-f="unit_w_mm" type="number" min="1" step="0.5" value="${g.unit_w_mm}" />
+        </label>
+        <label class="field">
+          <span>H (mm)</span>
+          <input data-f="unit_h_mm" type="number" min="1" step="0.5" value="${g.unit_h_mm}" />
+        </label>
+        <label class="field">
+          <span>Wt (g)</span>
+          <input data-f="unit_weight_g" type="number" min="0" step="1" value="${g.unit_weight_g}" />
+        </label>
+      </div>`}
+
+      <div class="form-row-3">
+        <label class="field">
+          <span>Across L</span>
+          <input data-f="cols" type="number" min="1" step="1" value="${g.cols}" />
+        </label>
+        <label class="field">
+          <span>Across W</span>
+          <input data-f="rows" type="number" min="1" step="1" value="${g.rows}" />
+        </label>
+        <label class="field">
+          <span>Layers</span>
+          <input data-f="layers" type="number" min="1" step="1" value="${g.layers}" />
+        </label>
+      </div>
+
+      <div class="bsuggest">
+        <label class="field">
+          <span>Target units — let the builder arrange them</span>
+          <input data-f="__target" type="number" min="1" step="1" placeholder="e.g. 48" />
+        </label>
+        <button type="button" data-suggest="${g.id}">Arrange</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Field edits
+  wrap.querySelectorAll('.bgroup').forEach(card => {
+    const gid = card.dataset.gid;
+    const g = builder.groups.find(x => x.id === gid);
+    card.querySelectorAll('input[data-f]').forEach(input => {
+      input.addEventListener('input', () => {
+        const f = input.dataset.f;
+        if (f === '__target') return;
+        g[f] = input.type === 'number' ? (parseFloat(input.value) || 0) : input.value;
+        // Keep a cylinder's footprint square
+        if (f === 'unit_d_mm') { g.unit_l_mm = g.unit_d_mm; g.unit_w_mm = g.unit_d_mm; }
+        updateBuilderComputed();
+        rebuildBuilderPreview();
+        const badge = card.querySelector('.bgroup-count');
+        const n = groupUnitCount(g);
+        if (badge) badge.textContent = `${n} unit${n === 1 ? '' : 's'}`;
+      });
+    });
+    card.querySelectorAll('.shape-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        g.shape = btn.dataset.shape;
+        if (g.shape === 'cylinder') { g.unit_l_mm = g.unit_d_mm; g.unit_w_mm = g.unit_d_mm; }
+        renderBuilderGroups();
+        updateBuilderComputed();
+        rebuildBuilderPreview();
+      });
+    });
+    const sug = card.querySelector('[data-suggest]');
+    if (sug) sug.addEventListener('click', () => {
+      const target = parseInt(card.querySelector('[data-f="__target"]').value, 10);
+      const arr = suggestArrangement(g, target);
+      if (!arr) return showToast('Enter a target unit count first.');
+      g.cols = arr.cols; g.rows = arr.rows; g.layers = arr.layers;
+      renderBuilderGroups();
+      updateBuilderComputed();
+      rebuildBuilderPreview();
+      showToast(`Arranged as <b>${arr.cols} × ${arr.rows} × ${arr.layers}</b>.`);
+    });
+    const rm = card.querySelector('[data-remove]');
+    if (rm) rm.addEventListener('click', () => {
+      builder.groups = builder.groups.filter(x => x.id !== gid);
+      renderBuilderGroups();
+      updateBuilderComputed();
+      rebuildBuilderPreview();
+    });
+  });
+}
+
+function updateBuilderComputed() {
+  const c = computeCarton(builder);
+  const box = $('#bComputed');
+  const fitsL = c.length_cm <= cargoSpace.length * 100;
+  const fitsW = c.width_cm  <= cargoSpace.width  * 100;
+  const fitsH = c.height_cm <= cargoSpace.height * 100;
+  const fits = fitsL && fitsW && fitsH;
+
+  box.innerHTML = `
+    <div class="bcomp-row bcomp-hero">
+      <span>Outer size</span>
+      <b>${fromCm(c.length_cm)} × ${fromCm(c.width_cm)} × ${fromCm(c.height_cm)} ${itemUnit}</b>
+    </div>
+    <div class="bcomp-row"><span>Units inside</span><b>${c.units}</b></div>
+    <div class="bcomp-row"><span>Content weight</span><b>${c.content_kg.toFixed(2)} kg</b></div>
+    <div class="bcomp-row"><span>Gross weight</span><b>${c.weight_kg.toFixed(2)} kg</b></div>
+    <div class="bcomp-row"><span>Batch groups</span><b>${builder.groups.length}</b></div>
+    ${fits ? '' : '<div class="bcomp-warn">Carton is larger than the current cargo space.</div>'}
+  `;
+}
+
+// ---- 3D preview ----
+function initBuilderPreview() {
+  if (bPreview) return;
+  const canvas = $('#builderCanvas');
+  const scene = new THREE.Scene();
+  scene.background = null;
+
+  const camera = new THREE.PerspectiveCamera(42, 1, 0.01, 100);
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+  const key = new THREE.DirectionalLight(0xffffff, 0.7);
+  key.position.set(1.2, 2, 1.5);
+  scene.add(key);
+  const fill = new THREE.DirectionalLight(0xd6e4f5, 0.3);
+  fill.position.set(-1, 0.6, -1.2);
+  scene.add(fill);
+
+  const controls = new OrbitControls(camera, canvas);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.1;
+  controls.enablePan = false;
+
+  const group = new THREE.Group();
+  scene.add(group);
+
+  bPreview = { renderer, scene, camera, controls, group, raf: null };
+}
+
+function disposeBuilderGroup() {
+  if (!bPreview) return;
+  const g = bPreview.group;
+  while (g.children.length) {
+    const child = g.children[0];
+    g.remove(child);
+    child.traverse?.(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) {
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        mats.forEach(m => m.dispose());
+      }
+    });
+  }
+}
+
+function rebuildBuilderPreview() {
+  if (!bPreview) return;
+  disposeBuilderGroup();
+
+  const c = computeCarton(builder);
+  const S = 0.001;                                    // mm → preview metres
+  const wall = builder.wall_mm || 0;
+  const gap = builder.gap_mm || 0;
+  const outerL = c.length_cm * 10 * S;
+  const outerW = c.width_cm  * 10 * S;
+  const outerH = c.height_cm * 10 * S;
+
+  // Translucent carton shell
+  const shell = new THREE.Mesh(
+    new THREE.BoxGeometry(outerL, outerH, outerW),
+    new THREE.MeshStandardMaterial({
+      color: 0xc9a227, roughness: 0.9, metalness: 0.02,
+      transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false
+    })
+  );
+  bPreview.group.add(shell);
+
+  const edges = new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(outerL, outerH, outerW)),
+    new THREE.LineBasicMaterial({ color: 0x8a6d1f, transparent: true, opacity: 0.55 })
+  );
+  bPreview.group.add(edges);
+
+  // Units, group by group, stacking upward from the inner floor
+  let yCursor = -outerH / 2 + wall * S;
+  builder.groups.forEach(g => {
+    const fp = groupUnitFootprint(g);
+    const mat = new THREE.MeshStandardMaterial({
+      color: g.color, roughness: 0.55, metalness: 0.15
+    });
+    const geo = g.shape === 'cylinder'
+      ? new THREE.CylinderGeometry(g.unit_d_mm / 2 * S, g.unit_d_mm / 2 * S, g.unit_h_mm * S, 20)
+      : new THREE.BoxGeometry(g.unit_l_mm * S, g.unit_h_mm * S, g.unit_w_mm * S);
+
+    const spanL = (g.cols * fp.l + Math.max(0, g.cols - 1) * gap) * S;
+    const spanW = (g.rows * fp.w + Math.max(0, g.rows - 1) * gap) * S;
+    const startX = -spanL / 2 + fp.l * S / 2;
+    const startZ = -spanW / 2 + fp.w * S / 2;
+
+    const count = g.cols * g.rows * g.layers;
+    if (count > 0 && count <= 4000) {
+      const mesh = new THREE.InstancedMesh(geo, mat, count);
+      const m = new THREE.Matrix4();
+      let i = 0;
+      for (let ly = 0; ly < g.layers; ly++) {
+        const y = yCursor + g.unit_h_mm * S / 2 + ly * (g.unit_h_mm + gap) * S;
+        for (let cx = 0; cx < g.cols; cx++) {
+          for (let rz = 0; rz < g.rows; rz++) {
+            m.makeTranslation(
+              startX + cx * (fp.l + gap) * S,
+              y,
+              startZ + rz * (fp.w + gap) * S
+            );
+            mesh.setMatrixAt(i++, m);
+          }
+        }
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+      bPreview.group.add(mesh);
+    } else {
+      geo.dispose(); mat.dispose();
+    }
+
+    yCursor += (g.layers * g.unit_h_mm + Math.max(0, g.layers - 1) * gap + gap) * S;
+  });
+
+  // Frame the camera on the carton
+  const radius = Math.max(outerL, outerW, outerH);
+  bPreview.camera.position.set(radius * 1.5, radius * 1.15, radius * 1.7);
+  bPreview.camera.lookAt(0, 0, 0);
+  bPreview.controls.target.set(0, 0, 0);
+  bPreview.controls.minDistance = radius * 0.7;
+  bPreview.controls.maxDistance = radius * 6;
+  bPreview.controls.update();
+}
+
+function resizeBuilderPreview() {
+  if (!bPreview) return;
+  const wrap = $('.builder-canvas-wrap');
+  const r = wrap.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  bPreview.camera.aspect = r.width / r.height;
+  bPreview.camera.updateProjectionMatrix();
+  bPreview.renderer.setSize(r.width, r.height);
+}
+
+function startBuilderLoop() {
+  if (!bPreview || bPreview.raf) return;
+  const loop = () => {
+    bPreview.controls.update();
+    bPreview.renderer.render(bPreview.scene, bPreview.camera);
+    bPreview.raf = requestAnimationFrame(loop);
+  };
+  bPreview.raf = requestAnimationFrame(loop);
+}
+function stopBuilderLoop() {
+  if (bPreview?.raf) { cancelAnimationFrame(bPreview.raf); bPreview.raf = null; }
+}
+
+// ---- saved carton specs ----
+function loadCartonSpecs() {
+  try { cartonSpecs = JSON.parse(localStorage.getItem(CARTON_SPECS_KEY)) || []; }
+  catch (e) { cartonSpecs = []; }
+}
+function persistCartonSpecs() {
+  try { localStorage.setItem(CARTON_SPECS_KEY, JSON.stringify(cartonSpecs)); } catch (e) {}
+}
+function renderCartonSpecDropdown() {
+  const sel = $('#bSpecSelect');
+  sel.innerHTML = '<option value="">— Load a saved carton —</option>' +
+    cartonSpecs.map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
+  $('#bDeleteSpec').hidden = true;
+}
+
+// ---- open / close ----
+function openBuilder() {
+  if (!builder) builder = newBuilderSpec();
+  $('#bName').value = builder.name;
+  $('#bWall').value = builder.wall_mm;
+  $('#bGap').value  = builder.gap_mm;
+  $('#bTare').value = builder.tare_kg;
+  renderBuilderGroups();
+  renderCartonSpecDropdown();
+  $('#builderModal').hidden = false;
+
+  initBuilderPreview();
+  requestAnimationFrame(() => {
+    resizeBuilderPreview();
+    rebuildBuilderPreview();
+    updateBuilderComputed();
+    startBuilderLoop();
+  });
+}
+
+function closeBuilder() {
+  $('#builderModal').hidden = true;
+  stopBuilderLoop();
+}
+
+// ---- push the built carton into the plan ----
+function addBuiltCartonToPlan() {
+  const c = computeCarton(builder);
+  if (c.units === 0) return showToast('Add some contents first.');
+  if (c.length_cm > cargoSpace.length * 100 ||
+      c.width_cm  > cargoSpace.width  * 100 ||
+      c.height_cm > cargoSpace.height * 100) {
+    return showToast('Carton is larger than the cargo space.');
+  }
+
+  const baseLabel = ($('#bName').value.trim()) || generateBaseLabel('carton');
+  const productName = builder.groups[0]?.product_name || '';
+  const color = pickColorForBase(baseLabel);
+
+  const contents = builder.groups.map(g => ({
+    product_name: g.product_name || productName,
+    batch_lot: g.batch_lot || null,
+    medium: g.medium || null,
+    quantity: groupUnitCount(g)
+  }));
+
+  for (let n = 0; n < builderQty; n++) {
+    const suffix = builderQty > 1 ? `-${String(n + 1).padStart(2, '0')}` : '';
+    const item = addItem({
+      label: baseLabel + suffix,
+      base_label: baseLabel,
+      product_name: productName,
+      kind: 'carton',
+      length_cm: Number(c.length_cm.toFixed(2)),
+      width_cm:  Number(c.width_cm.toFixed(2)),
+      height_cm: Number(c.height_cm.toFixed(2)),
+      weight_kg: Number(c.weight_kg.toFixed(3)),
+      handling: 'standard',
+      color
+    });
+    item.contents = contents.map(x => ({ ...x }));
+  }
+
+  updateStats();
+  renderCargoList();
+  closeBuilder();
+  showToast(`Added <b>${builderQty}</b> × ${escapeHtml(baseLabel)} — ${c.units * builderQty} units.`);
 }
 
 // ============================================================
@@ -2611,8 +3135,30 @@ async function savePlan(status) {
         pos_x: i.pos_x, pos_y: i.pos_y, pos_z: i.pos_z, rot_y: i.rot_y,
         handling: i.handling
       }));
-      const { error: iErr } = await supabase.from('load_plan_items').insert(itemsPayload);
+      const { data: insertedItems, error: iErr } = await supabase
+        .from('load_plan_items').insert(itemsPayload).select('id');
       if (iErr) throw iErr;
+
+      // Carton-builder contents — rows come back in insert order, so we can
+      // zip them against the local items to get each new row's id.
+      if (insertedItems && insertedItems.length === items.length) {
+        const contentsPayload = [];
+        items.forEach((it, idx) => {
+          if (!it.contents || !it.contents.length) return;
+          it.contents.forEach(c => contentsPayload.push({
+            load_plan_item_id: insertedItems[idx].id,
+            product_name: c.product_name || null,
+            batch_lot: c.batch_lot || null,
+            medium: c.medium || null,
+            quantity: c.quantity || 0
+          }));
+        });
+        if (contentsPayload.length) {
+          const { error: cErr } = await supabase
+            .from('load_plan_item_contents').insert(contentsPayload);
+          if (cErr) console.warn('Contents save failed:', cErr);
+        }
+      }
     }
 
     planStatus = planRow.status;
@@ -2637,6 +3183,23 @@ async function loadPlan(planId) {
 
     const { data: dbItems, error: iErr } = await supabase.from('load_plan_items').select('*').eq('load_plan_id', planId).order('created_at');
     if (iErr) throw iErr;
+
+    // Carton-builder contents for these items, grouped by item id
+    const contentsByItem = {};
+    if (dbItems && dbItems.length) {
+      const { data: dbContents } = await supabase
+        .from('load_plan_item_contents')
+        .select('*')
+        .in('load_plan_item_id', dbItems.map(i => i.id));
+      (dbContents || []).forEach(c => {
+        (contentsByItem[c.load_plan_item_id] ||= []).push({
+          product_name: c.product_name,
+          batch_lot: c.batch_lot,
+          medium: c.medium,
+          quantity: c.quantity
+        });
+      });
+    }
 
     clearScene();
     currentPlanId = plan.id;
@@ -2671,7 +3234,8 @@ async function loadPlan(planId) {
         weight_kg: it.weight_kg, handling: it.handling,
         color: it.color || CARGO_COLORS[0],
         rot_y: it.rot_y || 0,
-        pos_x: it.pos_x, pos_y: it.pos_y, pos_z: it.pos_z
+        pos_x: it.pos_x, pos_y: it.pos_y, pos_z: it.pos_z,
+        contents: contentsByItem[it.id] || null
       });
     });
 
@@ -2995,6 +3559,85 @@ $('#btnDelete').addEventListener('click', () => {
   showToast(`Deleted <b>${escapeHtml(label)}</b>.`);
 });
 
+// ---- Carton builder (BETA) ----
+$('#openBuilder').addEventListener('click', openBuilder);
+document.querySelectorAll('[data-close-builder]').forEach(el =>
+  el.addEventListener('click', closeBuilder));
+
+['#bWall', '#bGap', '#bTare', '#bName'].forEach(sel => {
+  $(sel).addEventListener('input', () => {
+    builder.name    = $('#bName').value;
+    builder.wall_mm = parseFloat($('#bWall').value) || 0;
+    builder.gap_mm  = parseFloat($('#bGap').value)  || 0;
+    builder.tare_kg = parseFloat($('#bTare').value) || 0;
+    updateBuilderComputed();
+    rebuildBuilderPreview();
+  });
+});
+
+$('#bAddGroup').addEventListener('click', () => {
+  builder.groups.push(newGroup(builder.groups.length));
+  renderBuilderGroups();
+  updateBuilderComputed();
+  rebuildBuilderPreview();
+});
+
+$('#bQtyMinus').addEventListener('click', () => {
+  builderQty = Math.max(1, builderQty - 1);
+  $('#bQty').textContent = builderQty;
+});
+$('#bQtyPlus').addEventListener('click', () => {
+  builderQty = Math.min(500, builderQty + 1);
+  $('#bQty').textContent = builderQty;
+});
+
+$('#bAddToPlan').addEventListener('click', addBuiltCartonToPlan);
+
+$('#bSaveSpec').addEventListener('click', () => {
+  const name = $('#bName').value.trim();
+  if (!name) { $('#bName').focus(); return showToast('Give the carton a name first.'); }
+  const spec = JSON.parse(JSON.stringify(builder));
+  spec.id = 's_' + Math.random().toString(36).slice(2, 10);
+  spec.name = name;
+  cartonSpecs.push(spec);
+  persistCartonSpecs();
+  renderCartonSpecDropdown();
+  $('#bSpecSelect').value = spec.id;
+  $('#bDeleteSpec').hidden = false;
+  showToast(`Carton <b>${escapeHtml(name)}</b> saved.`);
+});
+
+$('#bSpecSelect').addEventListener('change', e => {
+  const id = e.target.value;
+  if (!id) { $('#bDeleteSpec').hidden = true; return; }
+  const spec = cartonSpecs.find(s => s.id === id);
+  if (!spec) return;
+  builder = JSON.parse(JSON.stringify(spec));
+  $('#bName').value = builder.name;
+  $('#bWall').value = builder.wall_mm;
+  $('#bGap').value  = builder.gap_mm;
+  $('#bTare').value = builder.tare_kg;
+  renderBuilderGroups();
+  updateBuilderComputed();
+  rebuildBuilderPreview();
+  $('#bDeleteSpec').hidden = false;
+  showToast(`Loaded <b>${escapeHtml(spec.name)}</b>.`);
+});
+
+$('#bDeleteSpec').addEventListener('click', () => {
+  const id = $('#bSpecSelect').value;
+  const spec = cartonSpecs.find(s => s.id === id);
+  if (!spec || !confirm(`Delete carton "${spec.name}"?`)) return;
+  cartonSpecs = cartonSpecs.filter(s => s.id !== id);
+  persistCartonSpecs();
+  renderCartonSpecDropdown();
+  showToast('Carton deleted.');
+});
+
+window.addEventListener('resize', () => {
+  if (!$('#builderModal').hidden) resizeBuilderPreview();
+});
+
 // Auto-pack
 $('#autoPackBtn').addEventListener('click', runAutoPack);
 $('#autoPackUndoBtn').addEventListener('click', undoAutoPack);
@@ -3047,6 +3690,7 @@ window.addEventListener('keydown', (e) => {
       openSel.querySelector('.custom-select-menu').hidden = true;
       return;
     }
+    if (!$('#builderModal').hidden) { closeBuilder(); return; }
     if (!$('#shortcutsModal').hidden) { $('#shortcutsModal').hidden = true; return; }
     if (!$('#plansModal').hidden) { $('#plansModal').hidden = true; return; }
     if (!$('#tplModal').hidden)   { $('#tplModal').hidden = true; return; }
@@ -3179,6 +3823,8 @@ async function boot() {
   initScene();
   loadTemplatesFromStorage();
   renderTemplateDropdown();
+  loadCartonSpecs();
+  builder = newBuilderSpec();
   $$('select').forEach(enhanceSelect);      // replace native selects with styled ones
   updateStats();
   renderCargoList();
