@@ -424,13 +424,30 @@
       <div class="builder-body">
         <!-- LEFT: spec -->
         <div class="builder-form">
+          <div class="builder-hierarchy">
+            <span class="bh-step">Unit</span><span class="bh-arrow">›</span>
+            <span class="bh-step">Tray</span><span class="bh-arrow">›</span>
+            <span class="bh-step" id="bhPallet">Pallet</span><span class="bh-arrow">›</span>
+            <span class="bh-step bh-end">Container</span>
+          </div>
+
+          <label class="field">
+            <span>Name / SKU</span>
+            <input id="bName" type="text" placeholder="e.g. JW-CHUNK-400G" />
+          </label>
+
           <div class="builder-section">
-            <div class="builder-section-head">Carton</div>
-            <label class="field">
-              <span>Name / SKU</span>
-              <input id="bName" type="text" placeholder="e.g. TUNA-OO-48" />
-            </label>
-            <div class="form-row form-row-3">
+            <div class="builder-section-head">
+              Contents
+              <span class="builder-hint">Groups stack bottom to top</span>
+            </div>
+            <div id="bGroups"></div>
+            <button type="button" class="btn-soft btn-full" id="bAddGroup">＋ Add batch group</button>
+          </div>
+
+          <div class="builder-section">
+            <div class="builder-section-head">Tray / sell unit</div>
+            <div class="form-row-3">
               <label class="field">
                 <span>Wall (mm)</span>
                 <input id="bWall" type="number" min="0" step="0.5" value="3" />
@@ -448,16 +465,97 @@
 
           <div class="builder-section">
             <div class="builder-section-head">
-              Contents
-              <span class="builder-hint">Groups stack bottom to top</span>
+              Pallet
+              <label class="switch">
+                <input type="checkbox" id="bPalletOn" />
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+                <span class="switch-label">Stack onto a pallet</span>
+              </label>
             </div>
-            <div id="bGroups"></div>
-            <button type="button" class="btn-soft btn-full" id="bAddGroup">＋ Add batch group</button>
+
+            <div id="bPalletFields" hidden>
+              <div class="form-row">
+                <label class="field">
+                  <span>Pallet</span>
+                  <select id="bPalletPreset">
+                    <option value="eur1">EUR1 · 120 × 80 cm</option>
+                    <option value="eur2">EUR2 · 120 × 100 cm</option>
+                    <option value="us">US · 121.9 × 101.6 cm</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span>Pattern</span>
+                  <select id="bPalletPattern">
+                    <option value="block">Block — same every layer</option>
+                    <option value="interlock">Interlocked — alternating</option>
+                  </select>
+                </label>
+              </div>
+
+              <div class="form-row-4">
+                <label class="field">
+                  <span>Deck L (cm)</span>
+                  <input id="bPalletL" type="number" min="1" step="0.1" value="120" />
+                </label>
+                <label class="field">
+                  <span>Deck W (cm)</span>
+                  <input id="bPalletW" type="number" min="1" step="0.1" value="80" />
+                </label>
+                <label class="field">
+                  <span>Deck H (cm)</span>
+                  <input id="bPalletH" type="number" min="0" step="0.1" value="14.5" />
+                </label>
+                <label class="field">
+                  <span>Deck kg</span>
+                  <input id="bPalletKg" type="number" min="0" step="0.1" value="25" />
+                </label>
+              </div>
+
+              <div class="form-row-3">
+                <label class="field">
+                  <span>Max height (cm)</span>
+                  <input id="bPalletMaxH" type="number" min="10" step="1" value="180" />
+                </label>
+                <label class="field">
+                  <span>Overhang (mm)</span>
+                  <input id="bPalletOver" type="number" min="0" step="1" value="0" />
+                </label>
+                <label class="field">
+                  <span>Layers</span>
+                  <input id="bPalletLayers" type="number" min="1" step="1" value="0" />
+                </label>
+              </div>
+
+              <div class="pallet-fit" id="bPalletFit"></div>
+
+              <div class="builder-section-head" style="margin-top:10px;">Pallet label</div>
+              <div class="form-row-3">
+                <label class="field">
+                  <span>Batch code</span>
+                  <input id="bPalletBatch" type="text" placeholder="B2DE1" />
+                </label>
+                <label class="field">
+                  <span>Order no.</span>
+                  <input id="bPalletOrder" type="text" placeholder="1654205" />
+                </label>
+                <label class="field">
+                  <span>Packer</span>
+                  <input id="bPalletPacker" type="text" placeholder="MMP" />
+                </label>
+              </div>
+            </div>
           </div>
         </div>
 
         <!-- RIGHT: preview + computed -->
         <div class="builder-preview">
+          <div class="builder-preview-head">
+            <div class="view-pills" id="bPreviewPills">
+              <button class="view-pill selected" data-preview="carton">Tray</button>
+              <button class="view-pill" data-preview="pallet">Pallet</button>
+            </div>
+          </div>
           <div class="builder-canvas-wrap">
             <canvas id="builderCanvas"></canvas>
             <div class="builder-canvas-hint">DRAG TO ORBIT · SCROLL TO ZOOM</div>

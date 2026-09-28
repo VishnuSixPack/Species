@@ -1121,7 +1121,7 @@ function clearScene() {
   });
   items = [];
   selectedItemId = null;
-  batchCounter = 0;
+  batchCounters = { carton: 0, pallet: 0, slipsheet: 0 };
 }
 
 // ============================================================
@@ -1240,14 +1240,18 @@ function renderCargoList() {
   }
   list.innerHTML = items.map(i => {
     const units = i.contents?.reduce((s, c) => s + (c.quantity || 0), 0) || 0;
-    const lots = (i.contents || []).map(c => c.batch_lot).filter(Boolean);
+    const lots = [...new Set((i.contents || []).map(c => c.batch_lot).filter(Boolean))];
+    const pm = i.pallet_meta;
+    const extra = pm
+      ? `${pm.trays} sell units · ${units} units${lots.length ? ' · ' + lots.map(escapeHtml).join(', ') : ''}${pm.order_no ? ' · #' + escapeHtml(pm.order_no) : ''}`
+      : (units ? `${units} units${lots.length ? ' · ' + lots.map(escapeHtml).join(', ') : ''}` : '');
     return `
     <div class="cargo-row ${i.id === selectedItemId ? 'selected' : ''}" data-id="${i.id}">
       <span class="cargo-swatch" style="background:${i.color}"></span>
       <div class="cargo-meta">
         <b>${escapeHtml(i.label)}${i.product_name ? ' · ' + escapeHtml(i.product_name) : ''}</b>
         <small>${fromCm(i.length_cm)} × ${fromCm(i.width_cm)} × ${fromCm(i.height_cm)} ${itemUnit} · ${i.weight_kg || 0} kg · ${i.handling}</small>
-        ${units ? `<small class="cargo-contents">${units} units${lots.length ? ' · ' + lots.map(escapeHtml).join(', ') : ''}</small>` : ''}
+        ${extra ? `<small class="cargo-contents">${extra}</small>` : ''}
       </div>
       <span class="focus-icon" title="Focus camera">⌖</span>
     </div>`;
@@ -1618,9 +1622,22 @@ function newBuilderSpec() {
     wall_mm: 3,
     gap_mm: 2,
     tare_kg: 0.4,
-    groups: [newGroup(0)]
+    groups: [newGroup(0)],
+    pallet: {
+      enabled: false,
+      preset: 'eur1',
+      length_cm: 120, width_cm: 80,
+      deck_h_cm: 14.5, deck_kg: 25,
+      max_h_cm: 180,
+      overhang_mm: 0,
+      layers: 0,                         // 0 = auto from max height
+      pattern: 'block',
+      batch_code: '', order_no: '', packer: ''
+    }
   };
 }
+
+let builderPreviewMode = 'carton';       // 'carton' | 'pallet'
 
 // Footprint of one unit in mm (cylinders occupy their bounding square)
 function groupUnitFootprint(g) {
@@ -1669,6 +1686,109 @@ function computeCarton(spec) {
     weight_kg: contentKg + (spec.tare_kg || 0),
     content_kg: contentKg,
     units: unitTotal
+  };
+}
+
+// ---- pallet layout ----
+// Lay trays across a pallet deck, trying pure orientations and two-zone
+// splits, and keep whichever pattern fits the most trays per layer.
+function gridLayout(cols, rows, w, d, offX, offZ, rot) {
+  const out = [];
+  for (let i = 0; i < cols; i++)
+    for (let j = 0; j < rows; j++)
+      out.push({ x: offX + i * w, z: offZ + j * d, w, d, rot });
+  return out;
+}
+
+function computePalletLayout(tL, tW, pL, pW) {
+  if (tL <= 0 || tW <= 0 || pL <= 0 || pW <= 0) return [];
+  const EPS = 0.001;
+  const cands = [];
+
+  const aCols = Math.floor((pL + EPS) / tL), aRows = Math.floor((pW + EPS) / tW);
+  if (aCols > 0 && aRows > 0) cands.push(gridLayout(aCols, aRows, tL, tW, 0, 0, 0));
+
+  const bCols = Math.floor((pL + EPS) / tW), bRows = Math.floor((pW + EPS) / tL);
+  if (bCols > 0 && bRows > 0) cands.push(gridLayout(bCols, bRows, tW, tL, 0, 0, 90));
+
+  // Main block of A, remaining strip filled with B — across the width
+  for (let rows = 1; rows <= aRows; rows++) {
+    const remW = pW - rows * tW;
+    const sCols = Math.floor((pL + EPS) / tW), sRows = Math.floor((remW + EPS) / tL);
+    if (aCols > 0 && sCols > 0 && sRows > 0) {
+      cands.push([
+        ...gridLayout(aCols, rows, tL, tW, 0, 0, 0),
+        ...gridLayout(sCols, sRows, tW, tL, 0, rows * tW, 90)
+      ]);
+    }
+  }
+  // ...and along the length
+  for (let cols = 1; cols <= aCols; cols++) {
+    const remL = pL - cols * tL;
+    const sCols = Math.floor((remL + EPS) / tW), sRows = Math.floor((pW + EPS) / tL);
+    if (aRows > 0 && sCols > 0 && sRows > 0) {
+      cands.push([
+        ...gridLayout(cols, aRows, tL, tW, 0, 0, 0),
+        ...gridLayout(sCols, sRows, tW, tL, cols * tL, 0, 90)
+      ]);
+    }
+  }
+
+  return cands.reduce((best, c) => (!best || c.length > best.length) ? c : best, null) || [];
+}
+
+function computePallet(spec, carton) {
+  const p = spec.pallet;
+  const over = (p.overhang_mm || 0) / 10;            // mm → cm, per side
+  const deckL = p.length_cm, deckW = p.width_cm;
+  const usableL = deckL + over * 2;
+  const usableW = deckW + over * 2;
+
+  const layoutBest = computePalletLayout(carton.length_cm, carton.width_cm, usableL, usableW);
+
+  // Interlocking alternates orientation, so capacity falls to the weaker pattern
+  const pureA = (() => {
+    const c = Math.floor(usableL / carton.length_cm), r = Math.floor(usableW / carton.width_cm);
+    return (c > 0 && r > 0) ? gridLayout(c, r, carton.length_cm, carton.width_cm, 0, 0, 0) : [];
+  })();
+  const pureB = (() => {
+    const c = Math.floor(usableL / carton.width_cm), r = Math.floor(usableW / carton.length_cm);
+    return (c > 0 && r > 0) ? gridLayout(c, r, carton.width_cm, carton.length_cm, 0, 0, 90) : [];
+  })();
+
+  let layouts, perLayer;
+  if (p.pattern === 'interlock' && pureA.length && pureB.length) {
+    perLayer = Math.min(pureA.length, pureB.length);
+    layouts = [pureA.slice(0, perLayer), pureB.slice(0, perLayer)];
+  } else {
+    perLayer = layoutBest.length;
+    layouts = [layoutBest];
+  }
+
+  const maxLayers = carton.height_cm > 0
+    ? Math.max(0, Math.floor((p.max_h_cm - p.deck_h_cm) / carton.height_cm))
+    : 0;
+  const layers = p.layers > 0 ? Math.min(p.layers, Math.max(maxLayers, 1)) : maxLayers;
+
+  const trays = perLayer * layers;
+  const totalH = p.deck_h_cm + layers * carton.height_cm;
+  const weight = p.deck_kg + trays * carton.weight_kg;
+
+  // Actual footprint the trays really use, including overhang
+  let extentL = 0, extentW = 0;
+  (layouts[0] || []).forEach(t => {
+    extentL = Math.max(extentL, t.x + t.w);
+    extentW = Math.max(extentW, t.z + t.d);
+  });
+
+  return {
+    layouts, perLayer, layers, maxLayers, trays,
+    length_cm: Math.max(deckL, extentL),
+    width_cm:  Math.max(deckW, extentW),
+    height_cm: totalH,
+    weight_kg: weight,
+    units: trays * carton.units,
+    overhangs: extentL > deckL + 0.01 || extentW > deckW + 0.01
   };
 }
 
@@ -1842,23 +1962,97 @@ function renderBuilderGroups() {
 
 function updateBuilderComputed() {
   const c = computeCarton(builder);
+  const on = builder.pallet.enabled;
+  const p = on ? computePallet(builder, c) : null;
   const box = $('#bComputed');
-  const fitsL = c.length_cm <= cargoSpace.length * 100;
-  const fitsW = c.width_cm  <= cargoSpace.width  * 100;
-  const fitsH = c.height_cm <= cargoSpace.height * 100;
-  const fits = fitsL && fitsW && fitsH;
+
+  // What actually goes in the container — the pallet if stacking, else the tray
+  const ship = on
+    ? { l: p.length_cm, w: p.width_cm, h: p.height_cm }
+    : { l: c.length_cm, w: c.width_cm, h: c.height_cm };
+  const fits = ship.l <= cargoSpace.length * 100 &&
+               ship.w <= cargoSpace.width  * 100 &&
+               ship.h <= cargoSpace.height * 100;
 
   box.innerHTML = `
     <div class="bcomp-row bcomp-hero">
-      <span>Outer size</span>
-      <b>${fromCm(c.length_cm)} × ${fromCm(c.width_cm)} × ${fromCm(c.height_cm)} ${itemUnit}</b>
+      <span>${on ? 'Pallet size' : 'Tray size'}</span>
+      <b>${fromCm(ship.l)} × ${fromCm(ship.w)} × ${fromCm(ship.h)} ${itemUnit}</b>
     </div>
-    <div class="bcomp-row"><span>Units inside</span><b>${c.units}</b></div>
-    <div class="bcomp-row"><span>Content weight</span><b>${c.content_kg.toFixed(2)} kg</b></div>
-    <div class="bcomp-row"><span>Gross weight</span><b>${c.weight_kg.toFixed(2)} kg</b></div>
-    <div class="bcomp-row"><span>Batch groups</span><b>${builder.groups.length}</b></div>
-    ${fits ? '' : '<div class="bcomp-warn">Carton is larger than the current cargo space.</div>'}
+    ${on ? `
+      <div class="bcomp-row"><span>Sell units</span><b>${p.trays}</b></div>
+      <div class="bcomp-row"><span>Total units</span><b>${p.units}</b></div>
+      <div class="bcomp-row"><span>Gross weight</span><b>${p.weight_kg.toFixed(1)} kg</b></div>
+      <div class="bcomp-row"><span>Per tray</span><b>${c.units} units · ${c.weight_kg.toFixed(2)} kg</b></div>
+    ` : `
+      <div class="bcomp-row"><span>Units inside</span><b>${c.units}</b></div>
+      <div class="bcomp-row"><span>Content weight</span><b>${c.content_kg.toFixed(2)} kg</b></div>
+      <div class="bcomp-row"><span>Gross weight</span><b>${c.weight_kg.toFixed(2)} kg</b></div>
+      <div class="bcomp-row"><span>Batch groups</span><b>${builder.groups.length}</b></div>
+    `}
+    ${fits ? '' : `<div class="bcomp-warn">${on ? 'Pallet' : 'Tray'} is larger than the current cargo space.</div>`}
   `;
+
+  updatePalletFit(c, p);
+  updateHierarchyState();
+}
+
+function updatePalletFit(c, p) {
+  const box = $('#bPalletFit');
+  if (!box) return;
+  if (!builder.pallet.enabled) { box.innerHTML = ''; return; }
+  if (!p || p.perLayer === 0) {
+    box.innerHTML = `<div class="pf-warn">Tray is too large for this pallet deck.</div>`;
+    return;
+  }
+  const pat = builder.pallet.pattern === 'interlock' ? 'interlocked' : 'block';
+  box.innerHTML = `
+    <div>${p.perLayer} per layer × ${p.layers} layer${p.layers === 1 ? '' : 's'} = <b>${p.trays}</b> sell units</div>
+    <div>${pat} pattern · max ${p.maxLayers} layer${p.maxLayers === 1 ? '' : 's'} under ${fromCm(builder.pallet.max_h_cm)} ${itemUnit}</div>
+    ${p.overhangs ? `<div class="pf-warn">Trays overhang the deck.</div>` : ''}
+  `;
+}
+
+function updateHierarchyState() {
+  const el = $('#bhPallet');
+  if (!el) return;
+  el.classList.toggle('bh-muted', !builder.pallet.enabled);
+  el.classList.toggle('bh-active', builder.pallet.enabled);
+}
+
+function renderPalletFields() {
+  const p = builder.pallet;
+  $('#bPalletOn').checked = p.enabled;
+  $('#bPalletFields').hidden = !p.enabled;
+  $('#bPalletPreset').value  = p.preset;
+  $('#bPalletPattern').value = p.pattern;
+  $('#bPalletL').value       = p.length_cm;
+  $('#bPalletW').value       = p.width_cm;
+  $('#bPalletH').value       = p.deck_h_cm;
+  $('#bPalletKg').value      = p.deck_kg;
+  $('#bPalletMaxH').value    = p.max_h_cm;
+  $('#bPalletOver').value    = p.overhang_mm;
+  $('#bPalletLayers').value  = p.layers || '';
+  $('#bPalletBatch').value   = p.batch_code;
+  $('#bPalletOrder').value   = p.order_no;
+  $('#bPalletPacker').value  = p.packer;
+}
+
+function readPalletFields() {
+  const p = builder.pallet;
+  p.enabled     = $('#bPalletOn').checked;
+  p.preset      = $('#bPalletPreset').value;
+  p.pattern     = $('#bPalletPattern').value;
+  p.length_cm   = parseFloat($('#bPalletL').value) || 0;
+  p.width_cm    = parseFloat($('#bPalletW').value) || 0;
+  p.deck_h_cm   = parseFloat($('#bPalletH').value) || 0;
+  p.deck_kg     = parseFloat($('#bPalletKg').value) || 0;
+  p.max_h_cm    = parseFloat($('#bPalletMaxH').value) || 0;
+  p.overhang_mm = parseFloat($('#bPalletOver').value) || 0;
+  p.layers      = parseInt($('#bPalletLayers').value, 10) || 0;
+  p.batch_code  = $('#bPalletBatch').value;
+  p.order_no    = $('#bPalletOrder').value;
+  p.packer      = $('#bPalletPacker').value;
 }
 
 // ---- 3D preview ----
@@ -1910,7 +2104,87 @@ function disposeBuilderGroup() {
 function rebuildBuilderPreview() {
   if (!bPreview) return;
   disposeBuilderGroup();
+  if (builderPreviewMode === 'pallet' && builder.pallet.enabled) buildPalletPreview();
+  else buildCartonPreview();
+}
 
+function frameBuilderCamera(radius) {
+  bPreview.camera.position.set(radius * 1.5, radius * 1.15, radius * 1.7);
+  bPreview.camera.lookAt(0, 0, 0);
+  bPreview.controls.target.set(0, 0, 0);
+  bPreview.controls.minDistance = radius * 0.6;
+  bPreview.controls.maxDistance = radius * 6;
+  bPreview.controls.update();
+}
+
+function buildPalletPreview() {
+  const c = computeCarton(builder);
+  const p = computePallet(builder, c);
+  const S = 0.01;                                     // cm → preview metres
+  const deckL = builder.pallet.length_cm * S;
+  const deckW = builder.pallet.width_cm * S;
+  const deckH = builder.pallet.deck_h_cm * S;
+  const totalH = p.height_cm * S;
+
+  // Pallet deck
+  const deck = new THREE.Mesh(
+    new THREE.BoxGeometry(deckL, deckH, deckW),
+    new THREE.MeshStandardMaterial({ color: 0x8b6f47, roughness: 0.92, metalness: 0.03 })
+  );
+  deck.position.set(0, -totalH / 2 + deckH / 2, 0);
+  bPreview.group.add(deck);
+
+  if (p.trays > 0) {
+    const trayColor = builder.groups[0]?.color || '#1a6fdb';
+    const mat = new THREE.MeshStandardMaterial({
+      color: trayColor, roughness: 0.6, metalness: 0.1
+    });
+    const geo = new THREE.BoxGeometry(1, 1, 1);        // scaled per instance
+    const mesh = new THREE.InstancedMesh(geo, mat, p.trays);
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const scl = new THREE.Vector3();
+    const pos = new THREE.Vector3();
+    let i = 0;
+
+    for (let layer = 0; layer < p.layers; layer++) {
+      const layout = p.layouts[layer % p.layouts.length];
+      const y = -totalH / 2 + deckH + (layer + 0.5) * c.height_cm * S;
+      layout.forEach(t => {
+        if (i >= p.trays) return;
+        pos.set(
+          (t.x + t.w / 2) * S - deckL / 2,
+          y,
+          (t.z + t.d / 2) * S - deckW / 2
+        );
+        scl.set(t.w * S * 0.98, c.height_cm * S * 0.98, t.d * S * 0.98);
+        m.compose(pos, q, scl);
+        mesh.setMatrixAt(i++, m);
+      });
+    }
+    mesh.count = i;
+    mesh.instanceMatrix.needsUpdate = true;
+    bPreview.group.add(mesh);
+  }
+
+  // Stretch-wrap shell over the stack
+  if (p.layers > 0) {
+    const wrapH = p.layers * c.height_cm * S;
+    const wrap = new THREE.Mesh(
+      new THREE.BoxGeometry(Math.max(deckL, p.length_cm * S) * 1.02, wrapH, Math.max(deckW, p.width_cm * S) * 1.02),
+      new THREE.MeshStandardMaterial({
+        color: 0xbfe0ea, roughness: 0.25, metalness: 0.1,
+        transparent: true, opacity: 0.13, side: THREE.DoubleSide, depthWrite: false
+      })
+    );
+    wrap.position.set(0, -totalH / 2 + deckH + wrapH / 2, 0);
+    bPreview.group.add(wrap);
+  }
+
+  frameBuilderCamera(Math.max(deckL, deckW, totalH));
+}
+
+function buildCartonPreview() {
   const c = computeCarton(builder);
   const S = 0.001;                                    // mm → preview metres
   const wall = builder.wall_mm || 0;
@@ -1978,14 +2252,7 @@ function rebuildBuilderPreview() {
     yCursor += (g.layers * g.unit_h_mm + Math.max(0, g.layers - 1) * gap + gap) * S;
   });
 
-  // Frame the camera on the carton
-  const radius = Math.max(outerL, outerW, outerH);
-  bPreview.camera.position.set(radius * 1.5, radius * 1.15, radius * 1.7);
-  bPreview.camera.lookAt(0, 0, 0);
-  bPreview.controls.target.set(0, 0, 0);
-  bPreview.controls.minDistance = radius * 0.7;
-  bPreview.controls.maxDistance = radius * 6;
-  bPreview.controls.update();
+  frameBuilderCamera(Math.max(outerL, outerW, outerH));
 }
 
 function resizeBuilderPreview() {
@@ -2034,7 +2301,11 @@ function openBuilder() {
   $('#bGap').value  = builder.gap_mm;
   $('#bTare').value = builder.tare_kg;
   renderBuilderGroups();
+  renderPalletFields();
   renderCartonSpecDropdown();
+  if (!builder.pallet.enabled) builderPreviewMode = 'carton';
+  $$('#bPreviewPills .view-pill').forEach(b =>
+    b.classList.toggle('selected', b.dataset.preview === builderPreviewMode));
   $('#builderModal').hidden = false;
 
   initBuilderPreview();
@@ -2043,6 +2314,7 @@ function openBuilder() {
     rebuildBuilderPreview();
     updateBuilderComputed();
     startBuilderLoop();
+    refreshSegments();
   });
 }
 
@@ -2055,21 +2327,36 @@ function closeBuilder() {
 function addBuiltCartonToPlan() {
   const c = computeCarton(builder);
   if (c.units === 0) return showToast('Add some contents first.');
-  if (c.length_cm > cargoSpace.length * 100 ||
-      c.width_cm  > cargoSpace.width  * 100 ||
-      c.height_cm > cargoSpace.height * 100) {
-    return showToast('Carton is larger than the cargo space.');
+
+  const onPallet = builder.pallet.enabled;
+  const p = onPallet ? computePallet(builder, c) : null;
+
+  if (onPallet && p.trays === 0) {
+    return showToast('No trays fit on this pallet — check the deck size and max height.');
   }
 
-  const baseLabel = ($('#bName').value.trim()) || generateBaseLabel('carton');
+  const ship = onPallet
+    ? { l: p.length_cm, w: p.width_cm, h: p.height_cm, kg: p.weight_kg, units: p.units }
+    : { l: c.length_cm, w: c.width_cm, h: c.height_cm, kg: c.weight_kg, units: c.units };
+
+  if (ship.l > cargoSpace.length * 100 ||
+      ship.w > cargoSpace.width  * 100 ||
+      ship.h > cargoSpace.height * 100) {
+    return showToast(`${onPallet ? 'Pallet' : 'Tray'} is larger than the cargo space.`);
+  }
+
+  const baseLabel = ($('#bName').value.trim()) || generateBaseLabel(onPallet ? 'pallet' : 'carton');
   const productName = builder.groups[0]?.product_name || '';
   const color = pickColorForBase(baseLabel);
+  const palletLot = builder.pallet.batch_code.trim();
 
+  // Per-unit contents, multiplied up by the tray count when palletised
+  const multiplier = onPallet ? p.trays : 1;
   const contents = builder.groups.map(g => ({
     product_name: g.product_name || productName,
-    batch_lot: g.batch_lot || null,
+    batch_lot: (g.batch_lot.trim() || palletLot) || null,
     medium: g.medium || null,
-    quantity: groupUnitCount(g)
+    quantity: groupUnitCount(g) * multiplier
   }));
 
   for (let n = 0; n < builderQty; n++) {
@@ -2078,21 +2365,31 @@ function addBuiltCartonToPlan() {
       label: baseLabel + suffix,
       base_label: baseLabel,
       product_name: productName,
-      kind: 'carton',
-      length_cm: Number(c.length_cm.toFixed(2)),
-      width_cm:  Number(c.width_cm.toFixed(2)),
-      height_cm: Number(c.height_cm.toFixed(2)),
-      weight_kg: Number(c.weight_kg.toFixed(3)),
+      kind: onPallet ? 'pallet' : 'carton',
+      length_cm: Number(ship.l.toFixed(2)),
+      width_cm:  Number(ship.w.toFixed(2)),
+      height_cm: Number(ship.h.toFixed(2)),
+      weight_kg: Number(ship.kg.toFixed(3)),
       handling: 'standard',
       color
     });
     item.contents = contents.map(x => ({ ...x }));
+    if (onPallet) {
+      item.pallet_meta = {
+        batch_code: palletLot,
+        order_no: builder.pallet.order_no.trim(),
+        packer: builder.pallet.packer.trim(),
+        trays: p.trays, per_layer: p.perLayer, layers: p.layers
+      };
+    }
   }
 
   updateStats();
   renderCargoList();
   closeBuilder();
-  showToast(`Added <b>${builderQty}</b> × ${escapeHtml(baseLabel)} — ${c.units * builderQty} units.`);
+  showToast(onPallet
+    ? `Added <b>${builderQty}</b> pallet${builderQty > 1 ? 's' : ''} — ${p.trays} sell units, ${ship.units * builderQty} units.`
+    : `Added <b>${builderQty}</b> × ${escapeHtml(baseLabel)} — ${c.units * builderQty} units.`);
 }
 
 // ============================================================
@@ -3575,6 +3872,58 @@ document.querySelectorAll('[data-close-builder]').forEach(el =>
   });
 });
 
+// Pallet section
+const PALLET_FIELD_IDS = ['#bPalletOn', '#bPalletPattern', '#bPalletL', '#bPalletW',
+  '#bPalletH', '#bPalletKg', '#bPalletMaxH', '#bPalletOver', '#bPalletLayers',
+  '#bPalletBatch', '#bPalletOrder', '#bPalletPacker'];
+
+function onPalletFieldChange() {
+  readPalletFields();
+  $('#bPalletFields').hidden = !builder.pallet.enabled;
+  if (!builder.pallet.enabled && builderPreviewMode === 'pallet') setBuilderPreviewMode('carton');
+  updateBuilderComputed();
+  rebuildBuilderPreview();
+}
+
+PALLET_FIELD_IDS.forEach(sel => {
+  const el = $(sel);
+  if (!el) return;
+  el.addEventListener('input', onPalletFieldChange);
+  el.addEventListener('change', onPalletFieldChange);
+});
+
+$('#bPalletPreset').addEventListener('change', e => {
+  const preset = PALLET_PRESETS[e.target.value];
+  builder.pallet.preset = e.target.value;
+  if (preset && e.target.value !== 'custom') {
+    builder.pallet.length_cm = preset.length;
+    builder.pallet.width_cm  = preset.width;
+    builder.pallet.deck_h_cm = preset.height;
+    builder.pallet.deck_kg   = preset.weight;
+    $('#bPalletL').value  = preset.length;
+    $('#bPalletW').value  = preset.width;
+    $('#bPalletH').value  = preset.height;
+    $('#bPalletKg').value = preset.weight;
+  }
+  updateBuilderComputed();
+  rebuildBuilderPreview();
+});
+
+function setBuilderPreviewMode(mode) {
+  builderPreviewMode = mode;
+  $$('#bPreviewPills .view-pill').forEach(b =>
+    b.classList.toggle('selected', b.dataset.preview === mode));
+  refreshSegments();
+  rebuildBuilderPreview();
+}
+
+$$('#bPreviewPills .view-pill').forEach(pill => pill.addEventListener('click', () => {
+  if (pill.dataset.preview === 'pallet' && !builder.pallet.enabled) {
+    return showToast('Turn on <b>Stack onto a pallet</b> first.');
+  }
+  setBuilderPreviewMode(pill.dataset.preview);
+}));
+
 $('#bAddGroup').addEventListener('click', () => {
   builder.groups.push(newGroup(builder.groups.length));
   renderBuilderGroups();
@@ -3613,11 +3962,13 @@ $('#bSpecSelect').addEventListener('change', e => {
   const spec = cartonSpecs.find(s => s.id === id);
   if (!spec) return;
   builder = JSON.parse(JSON.stringify(spec));
+  if (!builder.pallet) builder.pallet = newBuilderSpec().pallet;   // specs saved before pallets
   $('#bName').value = builder.name;
   $('#bWall').value = builder.wall_mm;
   $('#bGap').value  = builder.gap_mm;
   $('#bTare').value = builder.tare_kg;
   renderBuilderGroups();
+  renderPalletFields();
   updateBuilderComputed();
   rebuildBuilderPreview();
   $('#bDeleteSpec').hidden = false;
@@ -3755,6 +4106,8 @@ window.addEventListener('beforeunload', (e) => {
 // ============================================================
 // SLIDING INDICATORS — moves the pill between segmented options
 // ============================================================
+let refreshSegments = () => {};
+
 function initSegmentedIndicators() {
   const SELECTOR = '.view-pills, .scene-toggle, .kind-tabs, .unit-mini';
   const getContainers = () => document.querySelectorAll(SELECTOR);
@@ -3772,6 +4125,7 @@ function initSegmentedIndicators() {
     container.style.setProperty('--indicator-w', `${aRect.width}px`);
   };
   const updateAll = () => getContainers().forEach(update);
+  refreshSegments = updateAll;
 
   // Initial position — suppress the boot animation
   requestAnimationFrame(() => {
