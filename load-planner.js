@@ -54,6 +54,16 @@ const KIND_COLORS = {
 };
 const KIND_LABEL_PREFIX = { carton: 'BATCH', pallet: 'PALLET', slipsheet: 'SHEET' };
 
+// Render shapes. Packing always uses the bounding box, so these affect
+// display only — a cylinder still occupies its L x W x H envelope.
+const SHAPES = {
+  box:      { label: 'Box',      round: false },
+  cylinder: { label: 'Cylinder', round: true  },
+  tube:     { label: 'Tube',     round: true  },
+  sack:     { label: 'Sack',     round: true  }
+};
+const SHAPE_KEYS = Object.keys(SHAPES);
+
 const MODE_LABELS = { Sea: 'SEA', Road: 'ROAD', Air: 'AIR', Rail: 'RAIL' };
 
 const CARGO_COLORS = [
@@ -138,6 +148,7 @@ let selectedItemId = null;
 let quantity = 1;
 let batchCounters = { carton: 0, pallet: 0, slipsheet: 0 };
 let currentKind = 'carton';              // which "kind" the Cargo form is adding
+let currentShape = 'box';                // render shape for new cargo
 let containerUnit = 'm';                 // display + input unit for cargo-space fields
 let itemUnit = 'cm';                     // display + input unit for cargo-item fields
 
@@ -864,28 +875,58 @@ function recomputeBatchCounter() {
   });
 }
 
-function createItemMesh(item) {
+// Build the display geometry for an item in its current orientation.
+// Round shapes take their axis from the item's height_cm dimension, so
+// flipping a drum lays it on its side the way a real one would.
+function buildItemGeometry(item) {
   const e = itemExtent(item);
-  const displayL = e.l / 100;
-  const displayW = e.w / 100;
-  const displayH = e.h / 100;
+  const l = e.l / 100, h = e.h / 100, w = e.w / 100;
+  const shape = item.shape || 'box';
 
-  const geo = new THREE.BoxGeometry(displayL, displayH, displayW);
+  if (shape === 'box') return new THREE.BoxGeometry(l, h, w);
+
+  let geo;
+  if (shape === 'sack') {
+    geo = new THREE.SphereGeometry(0.5, 20, 14);
+  } else if (shape === 'tube') {
+    geo = new THREE.CylinderGeometry(0.5, 0.5, 1, 28, 1, true);   // open-ended
+  } else {
+    geo = new THREE.CylinderGeometry(0.5, 0.5, 1, 28);
+  }
+
+  if (shape !== 'sack') {
+    // Unit geometry has its axis along Y — turn it to match the world axis
+    // that height_cm currently occupies, then scale into the bounding box.
+    const o = ORIENTATIONS[item.rot_y] || ORIENTATIONS[0];
+    if (o.x === 'height_cm')      geo.rotateZ(Math.PI / 2);
+    else if (o.z === 'height_cm') geo.rotateX(Math.PI / 2);
+  }
+  geo.scale(l, h, w);
+  return geo;
+}
+
+function createItemMesh(item) {
+  const isRound = SHAPES[item.shape || 'box']?.round;
+
+  const geo = buildItemGeometry(item);
   const mat = new THREE.MeshStandardMaterial({
-    color: item.color, roughness: 0.75, metalness: 0.05
+    color: item.color, roughness: 0.75, metalness: 0.05,
+    side: item.shape === 'tube' ? THREE.DoubleSide : THREE.FrontSide
   });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   mesh.userData.itemId = item.id;
 
-  const edgeGeo = new THREE.EdgesGeometry(geo);
-  const wire = new THREE.LineSegments(edgeGeo, new THREE.LineBasicMaterial({
-    color: 0x1a2536, transparent: true, opacity: 0.45
-  }));
-  wire.userData.isEdge = true;
-  wire.raycast = () => {};
-  mesh.add(wire);
+  // Only boxes get an edge cage — on a 28-segment cylinder it reads as noise.
+  if (!isRound) {
+    const wire = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({
+      color: 0x1a2536, transparent: true, opacity: 0.45
+    }));
+    wire.userData.isEdge = true;
+    wire.raycast = () => {};
+    mesh.add(wire);
+  }
 
   const sprite = createLabelSprite(item);
   sprite.userData.isLabel = true;
@@ -943,11 +984,18 @@ function truncate(s, max) {
 function refreshItemMesh(item) {
   if (!item.mesh) return;
   const e = itemExtent(item);
-  const displayL = e.l / 100;
-  const displayW = e.w / 100;
-  const displayH = e.h / 100;
+  const isRound = SHAPES[item.shape || 'box']?.round;
+  const hasWire = !!item.mesh.children.find(c => c.userData.isEdge);
+
+  // Switching between a box and a round shape changes which children the mesh
+  // needs, so rebuild the whole thing rather than patching it.
+  if (isRound === hasWire) {
+    rebuildItemMesh(item);
+    return;
+  }
+
   item.mesh.geometry.dispose();
-  item.mesh.geometry = new THREE.BoxGeometry(displayL, displayH, displayW);
+  item.mesh.geometry = buildItemGeometry(item);
   const wire = item.mesh.children.find(c => c.userData.isEdge);
   if (wire) {
     wire.geometry.dispose();
@@ -962,22 +1010,45 @@ function refreshItemMesh(item) {
   );
 }
 
+// Swap in a fresh mesh, preserving selection highlight
+function rebuildItemMesh(item) {
+  const wasSelected = item.id === selectedItemId;
+  if (item.mesh) {
+    cartonGroup.remove(item.mesh);
+    item.mesh.geometry.dispose();
+    item.mesh.material.dispose();
+    item.mesh.children.forEach(c => {
+      if (c.geometry) c.geometry.dispose();
+      if (c.material) { c.material.map?.dispose(); c.material.dispose(); }
+    });
+  }
+  item.mesh = createItemMesh(item);
+  cartonGroup.add(item.mesh);
+  item.mesh.position.set(
+    item.pos_x / 100,
+    item.pos_y / 100,
+    item.pos_z / 100 - cargoSpace.width / 2
+  );
+  if (wasSelected) highlightMesh(item, true);
+  updateLabelVisibility();
+}
+
 function highlightMesh(item, isSelected) {
   if (!item?.mesh) return;
   const mat = item.mesh.material;
   const wire = item.mesh.children.find(c => c.userData.isEdge);
+  if (!mat.emissive) mat.emissive = new THREE.Color(0x000000);
   if (isSelected) {
-    if (!mat.emissive) mat.emissive = new THREE.Color(0x000000);
     mat.emissive.set(0x1a6fdb);
-    mat.emissiveIntensity = 0.25;
+    mat.emissiveIntensity = wire ? 0.25 : 0.45;   // round shapes lean on glow
     if (wire) { wire.material.color.set(0x1a6fdb); wire.material.opacity = 1; }
   } else {
-    if (mat.emissive) mat.emissiveIntensity = 0;
+    mat.emissiveIntensity = 0;
     if (wire) { wire.material.color.set(0x1a2536); wire.material.opacity = 0.45; }
   }
 }
 
-// Wire highlight for a box that's currently the auto-stack target during a drag
+// Highlight for a box that's the auto-stack target during a drag
 function setStackHighlight(itemId) {
   const item = items.find(i => i.id === itemId);
   if (!item?.mesh) return;
@@ -985,13 +1056,18 @@ function setStackHighlight(itemId) {
   if (wire) {
     wire.material.color.set(0x22c07a);   // stack-target green
     wire.material.opacity = 1;
+  } else {
+    const mat = item.mesh.material;
+    if (!mat.emissive) mat.emissive = new THREE.Color(0x000000);
+    mat.emissive.set(0x22c07a);
+    mat.emissiveIntensity = 0.45;
   }
 }
 function restoreWireframe(itemId) {
   const item = items.find(i => i.id === itemId);
   if (!item?.mesh) return;
   const wire = item.mesh.children.find(c => c.userData.isEdge);
-  if (!wire) return;
+  if (!wire) { highlightMesh(item, itemId === selectedItemId); return; }
   if (itemId === selectedItemId) {
     wire.material.color.set(0x1a6fdb);
     wire.material.opacity = 1;
@@ -1041,6 +1117,7 @@ function addItem(spec) {
     weight_kg: Number(spec.weight_kg) || 0,
     handling:  spec.handling || 'standard',
     color:     spec.color,
+    shape:     spec.shape || 'box',
     rot_y: 0, pos_x: 0, pos_y: 0, pos_z: 0, mesh: null,
     contents: spec.contents ? spec.contents.map(c => ({ ...c })) : null
   };
@@ -1068,6 +1145,7 @@ function restoreItem(spec) {
     weight_kg: Number(spec.weight_kg) || 0,
     handling:  spec.handling || 'standard',
     color:     spec.color,
+    shape:     SHAPES[spec.shape] ? spec.shape : 'box',
     rot_y:     normaliseOrient(spec.rot_y),
     pos_x:     Number(spec.pos_x) || 0,
     pos_y:     Number(spec.pos_y) || 0,
@@ -1177,6 +1255,7 @@ function populateFormFromItem(item) {
   $('#fWeight').value   = item.weight_kg || '';
   $('#fHandling').value = item.handling || 'standard';
   setKind(item.kind || 'carton', { autofill: false });
+  setShape(item.shape || 'box', { mirror: false });
 }
 
 function setEditMode(isEdit, item) {
@@ -1293,6 +1372,10 @@ function renderEditStrip() {
   $('#editStripLabel').textContent = item.label;
   const orientEl = $('#editStripOrient');
   if (orientEl) orientEl.textContent = ORIENT_NAMES[item.rot_y] || 'Upright';
+  const sw = $('#editSwatch');
+  if (sw) sw.style.background = item.color;
+  const sh = $('#editStripShape');
+  if (sh) sh.textContent = SHAPES[item.shape || 'box'].label;
 }
 
 function escapeHtml(str) {
@@ -3483,7 +3566,7 @@ async function savePlan(status) {
         product_name: i.product_name || null,
         kind: i.kind || 'carton',
         length_cm: i.length_cm, width_cm: i.width_cm, height_cm: i.height_cm,
-        weight_kg: i.weight_kg, color: i.color,
+        weight_kg: i.weight_kg, color: i.color, shape: i.shape || 'box',
         pos_x: i.pos_x, pos_y: i.pos_y, pos_z: i.pos_z, rot_y: i.rot_y,
         handling: i.handling
       }));
@@ -3585,6 +3668,7 @@ async function loadPlan(planId) {
         length_cm: it.length_cm, width_cm: it.width_cm, height_cm: it.height_cm,
         weight_kg: it.weight_kg, handling: it.handling,
         color: it.color || CARGO_COLORS[0],
+        shape: it.shape || 'box',
         rot_y: it.rot_y || 0,
         pos_x: it.pos_x, pos_y: it.pos_y, pos_z: it.pos_z,
         contents: contentsByItem[it.id] || null
@@ -3796,8 +3880,22 @@ function readFormValues() {
     H:  toCm(parseFloat($('#fHeight').value)),
     wt: parseFloat($('#fWeight').value) || 0,
     handling: $('#fHandling').value,
-    kind: currentKind
+    kind: currentKind,
+    shape: currentShape
   };
+}
+
+// Shape picker — round shapes mirror W to L so the diameter stays square
+function setShape(shape, opts = {}) {
+  currentShape = SHAPES[shape] ? shape : 'box';
+  $$('.shape-pick-btn').forEach(b => b.classList.toggle('active', b.dataset.shape === currentShape));
+  const hint = $('#shapeHint');
+  if (hint) hint.textContent = SHAPES[currentShape].round ? 'L is the diameter' : '';
+  if (opts.mirror !== false && SHAPES[currentShape].round) {
+    const l = parseFloat($('#fLength').value);
+    if (!isNaN(l)) $('#fWidth').value = $('#fLength').value;
+  }
+  refreshSegments();
 }
 
 function validateFormDims(L, W, H) {
@@ -3809,7 +3907,7 @@ function validateFormDims(L, W, H) {
 }
 
 function addNewItems() {
-  const { labelInput, productInput, L, W, H, wt, handling, kind } = readFormValues();
+  const { labelInput, productInput, L, W, H, wt, handling, kind, shape } = readFormValues();
   if (!validateFormDims(L, W, H)) return;
   const baseLabel = labelInput || generateBaseLabel(kind);
   const color = kind === 'carton' ? pickColorForBase(baseLabel) : KIND_COLORS[kind];
@@ -3819,7 +3917,7 @@ function addNewItems() {
     last = addItem({
       label: baseLabel + suffix, base_label: baseLabel,
       product_name: productInput,
-      kind,
+      kind, shape,
       length_cm: L, width_cm: W, height_cm: H,
       weight_kg: wt, handling, color
     });
@@ -3838,6 +3936,7 @@ function addNewItems() {
   $('#templateSelect').value = '';
   $('#deleteTemplateBtn').hidden = true;
   setKind('carton');                     // back to Carton for the next add
+  setShape('box', { mirror: false });
   quantity = 1;
   $('#fQty').textContent = 1;
   $('#fLabel').focus();
@@ -3846,8 +3945,9 @@ function addNewItems() {
 function updateSelectedItem() {
   const item = items.find(i => i.id === selectedItemId);
   if (!item) return;
-  const { labelInput, productInput, L, W, H, wt, handling } = readFormValues();
+  const { labelInput, productInput, L, W, H, wt, handling, shape } = readFormValues();
   if (!validateFormDims(L, W, H)) return;
+  const shapeChanged = (item.shape || 'box') !== shape;
   if (labelInput && labelInput !== item.base_label) {
     item.base_label = labelInput;
     item.label = labelInput;
@@ -3857,6 +3957,8 @@ function updateSelectedItem() {
   item.product_name = productInput;
   item.length_cm = L; item.width_cm = W; item.height_cm = H;
   item.weight_kg = wt; item.handling = handling;
+  item.shape = shape;
+  if (shapeChanged) rebuildItemMesh(item);
   item.mesh.material.color.set(item.color);
   clampItemToBounds(item);
   refreshItemMesh(item);
@@ -3905,6 +4007,7 @@ $('#btnDuplicate').addEventListener('click', () => {
   const clone = addItem({
     label: item.base_label + '·copy', base_label: item.base_label,
     product_name: item.product_name,
+    kind: item.kind, shape: item.shape,
     length_cm: item.length_cm, width_cm: item.width_cm, height_cm: item.height_cm,
     weight_kg: item.weight_kg, handling: item.handling, color: item.color
   });
@@ -4059,6 +4162,67 @@ window.addEventListener('resize', () => {
   if (!$('#builderModal').hidden) resizeBuilderPreview();
 });
 
+// ============================================================
+// COLOUR PICKER — recolours every item sharing the selected SKU
+// ============================================================
+function applyColorToSelection(hex) {
+  const item = items.find(i => i.id === selectedItemId);
+  if (!item) return;
+  const base = item.base_label;
+  const group = items.filter(i => i.base_label === base);
+  group.forEach(i => {
+    i.color = hex;
+    if (i.mesh) i.mesh.material.color.set(hex);
+    refreshItemSprite(i);
+  });
+  renderCargoList();
+  renderEditStrip();
+  markDirty();
+  showToast(group.length > 1
+    ? `Recoloured <b>${group.length}</b> items in ${escapeHtml(base)}.`
+    : `Recoloured <b>${escapeHtml(item.label)}</b>.`);
+}
+
+function renderColorGrid() {
+  const grid = $('#colorGrid');
+  const item = items.find(i => i.id === selectedItemId);
+  grid.innerHTML = CARGO_COLORS.map(c => `
+    <button type="button" class="color-dot ${item && item.color.toLowerCase() === c.toLowerCase() ? 'active' : ''}"
+            style="background:${c}" data-color="${c}" title="${c}"></button>
+  `).join('');
+  grid.querySelectorAll('.color-dot').forEach(dot => {
+    dot.addEventListener('click', () => {
+      applyColorToSelection(dot.dataset.color);
+      closeColorPop();
+    });
+  });
+  if (item) $('#colorCustom').value = item.color;
+}
+
+function openColorPop() {
+  if (!selectedItemId) return;
+  renderColorGrid();
+  $('#colorPop').hidden = false;
+}
+function closeColorPop() { $('#colorPop').hidden = true; }
+
+$('#editSwatch').addEventListener('click', e => {
+  e.stopPropagation();
+  $('#colorPop').hidden ? openColorPop() : closeColorPop();
+});
+$('#colorPop').addEventListener('click', e => e.stopPropagation());
+$('#colorCustom').addEventListener('input', e => applyColorToSelection(e.target.value));
+document.addEventListener('click', () => closeColorPop());
+
+// Shape picker
+$$('.shape-pick-btn').forEach(btn =>
+  btn.addEventListener('click', () => setShape(btn.dataset.shape)));
+
+// Keep the diameter square while a round shape is selected
+$('#fLength').addEventListener('input', () => {
+  if (SHAPES[currentShape].round) $('#fWidth').value = $('#fLength').value;
+});
+
 // Auto-pack
 $('#autoPackBtn').addEventListener('click', runAutoPack);
 $('#autoPackUndoBtn').addEventListener('click', undoAutoPack);
@@ -4181,7 +4345,7 @@ window.addEventListener('beforeunload', (e) => {
 let refreshSegments = () => {};
 
 function initSegmentedIndicators() {
-  const SELECTOR = '.view-pills, .scene-toggle, .kind-tabs, .unit-mini';
+  const SELECTOR = '.view-pills, .scene-toggle, .kind-tabs, .unit-mini, .shape-pick';
   const getContainers = () => document.querySelectorAll(SELECTOR);
 
   const update = (container) => {
