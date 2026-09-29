@@ -699,14 +699,38 @@ function updateAnnotations() {
 // ============================================================
 // GEOMETRY HELPERS
 // ============================================================
+// A box has six distinct resting orientations: three choices of which
+// dimension points up, each with two yaw positions. `rot_y` stores that
+// index (0-5). Legacy plans stored 0 or 90 for yaw only, so 90 maps to 1.
+const ORIENTATIONS = [
+  { x: 'length_cm', y: 'height_cm', z: 'width_cm'  },   // 0 upright
+  { x: 'width_cm',  y: 'height_cm', z: 'length_cm' },   // 1 upright, yawed
+  { x: 'length_cm', y: 'width_cm',  z: 'height_cm' },   // 2 on side
+  { x: 'height_cm', y: 'width_cm',  z: 'length_cm' },   // 3 on side, yawed
+  { x: 'width_cm',  y: 'length_cm', z: 'height_cm' },   // 4 on end
+  { x: 'height_cm', y: 'length_cm', z: 'width_cm'  }    // 5 on end, yawed
+];
+const ORIENT_NAMES = ['Upright', 'Upright', 'On side', 'On side', 'On end', 'On end'];
+
+function normaliseOrient(raw) {
+  const n = Number(raw);
+  if (n === 90) return 1;                      // legacy yaw value
+  return (Number.isInteger(n) && n >= 0 && n <= 5) ? n : 0;
+}
+
+// World-axis extents (cm) for an item in a given orientation
+function extentFor(item, orientIdx) {
+  const o = ORIENTATIONS[orientIdx] || ORIENTATIONS[0];
+  return { l: item[o.x], h: item[o.y], w: item[o.z] };
+}
+function itemExtent(item) { return extentFor(item, item.rot_y); }
+
 function itemBounds(item) {
-  const rotated = item.rot_y === 90;
-  const boxL = rotated ? item.width_cm  : item.length_cm;
-  const boxW = rotated ? item.length_cm : item.width_cm;
+  const e = itemExtent(item);
   return {
-    minX: item.pos_x - boxL / 2, maxX: item.pos_x + boxL / 2,
-    minY: item.pos_y - item.height_cm / 2, maxY: item.pos_y + item.height_cm / 2,
-    minZ: item.pos_z - boxW / 2, maxZ: item.pos_z + boxW / 2
+    minX: item.pos_x - e.l / 2, maxX: item.pos_x + e.l / 2,
+    minY: item.pos_y - e.h / 2, maxY: item.pos_y + e.h / 2,
+    minZ: item.pos_z - e.w / 2, maxZ: item.pos_z + e.w / 2
   };
 }
 
@@ -723,11 +747,9 @@ function collidesWithAny(test, excludeId) {
 }
 
 function findSupportHeight(item, atX, atZ, excludeId) {
-  const rotated = item.rot_y === 90;
-  const boxL = rotated ? item.width_cm  : item.length_cm;
-  const boxW = rotated ? item.length_cm : item.width_cm;
-  const minX = atX - boxL / 2, maxX = atX + boxL / 2;
-  const minZ = atZ - boxW / 2, maxZ = atZ + boxW / 2;
+  const e = itemExtent(item);
+  const minX = atX - e.l / 2, maxX = atX + e.l / 2;
+  const minZ = atZ - e.w / 2, maxZ = atZ + e.w / 2;
   const eps = 0.5;
   let top = 0, supportId = null;
   for (const other of items) {
@@ -745,10 +767,10 @@ function clampItemToBounds(item) {
   const L = cargoSpace.length * 100;
   const W = cargoSpace.width  * 100;
   const H = cargoSpace.height * 100;
-  const rotated = item.rot_y === 90;
-  const halfL = (rotated ? item.width_cm  : item.length_cm) / 2;
-  const halfW = (rotated ? item.length_cm : item.width_cm ) / 2;
-  const halfH = item.height_cm / 2;
+  const rotatedE = itemExtent(item);
+  const halfL = rotatedE.l / 2;
+  const halfW = rotatedE.w / 2;
+  const halfH = rotatedE.h / 2;
   item.pos_x = Math.max(halfL, Math.min(L - halfL, item.pos_x));
   item.pos_z = Math.max(halfW, Math.min(W - halfW, item.pos_z));
   item.pos_y = Math.max(halfH, Math.min(H - halfH, item.pos_y));
@@ -763,12 +785,11 @@ function findFreeSlot(item) {
   const L = cargoSpace.length * 100;
   const W = cargoSpace.width  * 100;
   const H = cargoSpace.height * 100;
-  const rotated = item.rot_y === 90;
-  const boxL = rotated ? item.width_cm  : item.length_cm;
-  const boxW = rotated ? item.length_cm : item.width_cm;
-  const halfH = item.height_cm / 2;
+  const e = itemExtent(item);
+  const boxL = e.l, boxW = e.w;
+  const halfH = e.h / 2;
 
-  if (boxL > L || boxW > W || item.height_cm > H) {
+  if (boxL > L || boxW > W || e.h > H) {
     return { pos_x: boxL / 2, pos_y: halfH, pos_z: boxW / 2 };
   }
 
@@ -788,11 +809,11 @@ function findFreeSlot(item) {
 
   const candidates = items
     .filter(o => o.id !== item.id)
-    .sort((a, b) => (a.pos_y + a.height_cm / 2) - (b.pos_y + b.height_cm / 2));
+    .sort((a, b) => (a.pos_y + itemExtent(a).h / 2) - (b.pos_y + itemExtent(b).h / 2));
 
   for (const other of candidates) {
-    const supportTop = other.pos_y + other.height_cm / 2;
-    if (supportTop + item.height_cm > H) continue;
+    const supportTop = other.pos_y + itemExtent(other).h / 2;
+    if (supportTop + e.h > H) continue;
     const test = {
       pos_x: other.pos_x, pos_y: supportTop + halfH, pos_z: other.pos_z,
       length_cm: item.length_cm, width_cm: item.width_cm,
@@ -844,10 +865,10 @@ function recomputeBatchCounter() {
 }
 
 function createItemMesh(item) {
-  const rotated = item.rot_y === 90;
-  const displayL = (rotated ? item.width_cm  : item.length_cm) / 100;
-  const displayW = (rotated ? item.length_cm : item.width_cm ) / 100;
-  const displayH = item.height_cm / 100;
+  const e = itemExtent(item);
+  const displayL = e.l / 100;
+  const displayW = e.w / 100;
+  const displayH = e.h / 100;
 
   const geo = new THREE.BoxGeometry(displayL, displayH, displayW);
   const mat = new THREE.MeshStandardMaterial({
@@ -910,7 +931,7 @@ function createLabelSprite(item) {
   const sprite = new THREE.Sprite(mat);
   const baseW = Math.min(1.4, Math.max(0.7, item.length_cm / 100 * 1.1));
   sprite.scale.set(baseW, baseW * (height / width), 1);
-  sprite.position.set(0, item.height_cm / 200 + 0.18, 0);
+  sprite.position.set(0, itemExtent(item).h / 200 + 0.18, 0);
   return sprite;
 }
 
@@ -921,10 +942,10 @@ function truncate(s, max) {
 
 function refreshItemMesh(item) {
   if (!item.mesh) return;
-  const rotated = item.rot_y === 90;
-  const displayL = (rotated ? item.width_cm  : item.length_cm) / 100;
-  const displayW = (rotated ? item.length_cm : item.width_cm ) / 100;
-  const displayH = item.height_cm / 100;
+  const e = itemExtent(item);
+  const displayL = e.l / 100;
+  const displayW = e.w / 100;
+  const displayH = e.h / 100;
   item.mesh.geometry.dispose();
   item.mesh.geometry = new THREE.BoxGeometry(displayL, displayH, displayW);
   const wire = item.mesh.children.find(c => c.userData.isEdge);
@@ -933,7 +954,7 @@ function refreshItemMesh(item) {
     wire.geometry = new THREE.EdgesGeometry(item.mesh.geometry);
   }
   const sprite = item.mesh.children.find(c => c.userData.isLabel);
-  if (sprite) sprite.position.y = item.height_cm / 200 + 0.18;
+  if (sprite) sprite.position.y = e.h / 200 + 0.18;
   item.mesh.position.set(
     item.pos_x / 100,
     item.pos_y / 100,
@@ -1047,7 +1068,7 @@ function restoreItem(spec) {
     weight_kg: Number(spec.weight_kg) || 0,
     handling:  spec.handling || 'standard',
     color:     spec.color,
-    rot_y:     Number(spec.rot_y) || 0,
+    rot_y:     normaliseOrient(spec.rot_y),
     pos_x:     Number(spec.pos_x) || 0,
     pos_y:     Number(spec.pos_y) || 0,
     pos_z:     Number(spec.pos_z) || 0,
@@ -1083,15 +1104,13 @@ function settleAll() {
   // potential supports. Without this, a stacked pair finds each other as
   // "supports" and both end up climbing to the ceiling on every settle.
   const sorted = [...items].sort((a, b) =>
-    (a.pos_y - a.height_cm / 2) - (b.pos_y - b.height_cm / 2)
+    (a.pos_y - itemExtent(a).h / 2) - (b.pos_y - itemExtent(b).h / 2)
   );
   const placed = [];
   for (const item of sorted) {
-    const rotated = item.rot_y === 90;
-    const boxL = rotated ? item.width_cm  : item.length_cm;
-    const boxW = rotated ? item.length_cm : item.width_cm;
-    const minX = item.pos_x - boxL / 2, maxX = item.pos_x + boxL / 2;
-    const minZ = item.pos_z - boxW / 2, maxZ = item.pos_z + boxW / 2;
+    const e = itemExtent(item);
+    const minX = item.pos_x - e.l / 2, maxX = item.pos_x + e.l / 2;
+    const minZ = item.pos_z - e.w / 2, maxZ = item.pos_z + e.w / 2;
     const eps = 0.5;
     let top = 0;
     for (const other of placed) {
@@ -1101,7 +1120,7 @@ function settleAll() {
         if (b.maxY > top) top = b.maxY;
       }
     }
-    item.pos_y = top + item.height_cm / 2;
+    item.pos_y = top + e.h / 2;
     clampItemToBounds(item);
     refreshItemMesh(item);
     placed.push(item);
@@ -1272,6 +1291,8 @@ function renderEditStrip() {
   if (!item) { strip.hidden = true; return; }
   strip.hidden = false;
   $('#editStripLabel').textContent = item.label;
+  const orientEl = $('#editStripOrient');
+  if (orientEl) orientEl.textContent = ORIENT_NAMES[item.rot_y] || 'Upright';
 }
 
 function escapeHtml(str) {
@@ -1382,13 +1403,14 @@ function computeAutoPack(strategy) {
 
   for (const item of queue) {
     let hit = null;
+    // 'This side up' may only yaw; everything else can rest on any face.
+    const allowed = item.handling === 'this_side_up' ? [0, 1] : [0, 1, 2, 3, 4, 5];
 
     search:
     for (const p of points) {
-      for (const rot of [0, 90]) {
-        const dl = rot === 90 ? item.width_cm  : item.length_cm;
-        const dw = rot === 90 ? item.length_cm : item.width_cm;
-        const dh = item.height_cm;
+      for (const oi of allowed) {
+        const ext = extentFor(item, oi);
+        const dl = ext.l, dw = ext.w, dh = ext.h;
 
         if (p.x + dl > L + PACK_EPS) continue;
         if (p.y + dh > H + PACK_EPS) continue;
@@ -1401,7 +1423,7 @@ function computeAutoPack(strategy) {
           if (sup.area < dl * dw * SUPPORT_RATIO) continue;    // needs a stable base
         }
 
-        hit = { p, rot, dl, dw, dh };
+        hit = { p, rot: oi, dl, dw, dh };
         break search;
       }
     }
@@ -1964,37 +1986,80 @@ function updateBuilderComputed() {
   const c = computeCarton(builder);
   const on = builder.pallet.enabled;
   const p = on ? computePallet(builder, c) : null;
-  const box = $('#bComputed');
 
-  // What actually goes in the container — the pallet if stacking, else the tray
-  const ship = on
-    ? { l: p.length_cm, w: p.width_cm, h: p.height_cm }
-    : { l: c.length_cm, w: c.width_cm, h: c.height_cm };
+  // Step 1 -> 2 connector
+  $('#bFlow1').textContent = c.units
+    ? `${c.units} can${c.units === 1 ? '' : 's'} per tray`
+    : 'packed into a tray';
+
+  // Step 2 output
+  const trayOut = $('#bTrayOut');
+  if (c.units === 0) {
+    trayOut.className = 'bstep-out bstep-out-idle';
+    trayOut.textContent = 'Add contents above to size the tray';
+  } else {
+    trayOut.className = 'bstep-out';
+    trayOut.innerHTML = `<b>${c.units}</b> units · <b>${fromCm(c.length_cm)} × ${fromCm(c.width_cm)} × ${fromCm(c.height_cm)} ${itemUnit}</b> · <b>${c.weight_kg.toFixed(2)} kg</b>`;
+  }
+
+  // Step 2 -> 3 connector
+  $('#bFlow2').textContent = on && p?.perLayer
+    ? `${p.perLayer} trays per layer`
+    : 'stacked on a pallet';
+
+  // Step 3 output
+  const palletOut = $('#bPalletOut');
+  $('#bPalletStep').classList.toggle('bstep-off', !on);
+  if (!on) {
+    palletOut.className = 'bstep-out bstep-out-idle';
+    palletOut.innerHTML = 'Skipped — trays load loose into the container';
+  } else if (!p || p.trays === 0) {
+    palletOut.className = 'bstep-out bstep-out-warn';
+    palletOut.textContent = 'No trays fit — check the deck size and max height';
+  } else {
+    palletOut.className = 'bstep-out';
+    palletOut.innerHTML = `<b>${p.trays}</b> sell units · <b>${fromCm(p.length_cm)} × ${fromCm(p.width_cm)} × ${fromCm(p.height_cm)} ${itemUnit}</b> · <b>${p.weight_kg.toFixed(1)} kg</b>`;
+  }
+
+  // Final step — what actually goes into the container
+  const ship = on && p?.trays
+    ? { l: p.length_cm, w: p.width_cm, h: p.height_cm, kg: p.weight_kg, units: p.units, what: 'pallet' }
+    : { l: c.length_cm, w: c.width_cm, h: c.height_cm, kg: c.weight_kg, units: c.units, what: 'tray' };
   const fits = ship.l <= cargoSpace.length * 100 &&
                ship.w <= cargoSpace.width  * 100 &&
                ship.h <= cargoSpace.height * 100;
 
-  box.innerHTML = `
+  $('#bContainerSub').textContent = `one ${ship.what}`;
+  const contOut = $('#bContainerOut');
+  if (ship.units === 0) {
+    contOut.className = 'bstep-out bstep-out-idle';
+    contOut.textContent = 'Nothing to load yet';
+  } else if (!fits) {
+    contOut.className = 'bstep-out bstep-out-warn';
+    contOut.innerHTML = `This ${ship.what} is larger than the cargo space`;
+  } else {
+    contOut.className = 'bstep-out bstep-out-ok';
+    contOut.innerHTML = `Each ${ship.what} carries <b>${ship.units}</b> units at <b>${ship.kg.toFixed(1)} kg</b>`;
+  }
+
+  // Right-hand summary panel
+  $('#bComputed').innerHTML = `
     <div class="bcomp-row bcomp-hero">
-      <span>${on ? 'Pallet size' : 'Tray size'}</span>
+      <span>${on && p?.trays ? 'Pallet size' : 'Tray size'}</span>
       <b>${fromCm(ship.l)} × ${fromCm(ship.w)} × ${fromCm(ship.h)} ${itemUnit}</b>
     </div>
-    ${on ? `
+    ${on && p?.trays ? `
       <div class="bcomp-row"><span>Sell units</span><b>${p.trays}</b></div>
-      <div class="bcomp-row"><span>Total units</span><b>${p.units}</b></div>
-      <div class="bcomp-row"><span>Gross weight</span><b>${p.weight_kg.toFixed(1)} kg</b></div>
       <div class="bcomp-row"><span>Per tray</span><b>${c.units} units · ${c.weight_kg.toFixed(2)} kg</b></div>
     ` : `
-      <div class="bcomp-row"><span>Units inside</span><b>${c.units}</b></div>
       <div class="bcomp-row"><span>Content weight</span><b>${c.content_kg.toFixed(2)} kg</b></div>
-      <div class="bcomp-row"><span>Gross weight</span><b>${c.weight_kg.toFixed(2)} kg</b></div>
       <div class="bcomp-row"><span>Batch groups</span><b>${builder.groups.length}</b></div>
     `}
-    ${fits ? '' : `<div class="bcomp-warn">${on ? 'Pallet' : 'Tray'} is larger than the current cargo space.</div>`}
+    <div class="bcomp-row"><span>Total units</span><b>${ship.units}</b></div>
+    <div class="bcomp-row"><span>Gross weight</span><b>${ship.kg.toFixed(1)} kg</b></div>
   `;
 
   updatePalletFit(c, p);
-  updateHierarchyState();
 }
 
 function updatePalletFit(c, p) {
@@ -2011,13 +2076,6 @@ function updatePalletFit(c, p) {
     <div>${pat} pattern · max ${p.maxLayers} layer${p.maxLayers === 1 ? '' : 's'} under ${fromCm(builder.pallet.max_h_cm)} ${itemUnit}</div>
     ${p.overhangs ? `<div class="pf-warn">Trays overhang the deck.</div>` : ''}
   `;
-}
-
-function updateHierarchyState() {
-  const el = $('#bhPallet');
-  if (!el) return;
-  el.classList.toggle('bh-muted', !builder.pallet.enabled);
-  el.classList.toggle('bh-active', builder.pallet.enabled);
 }
 
 function renderPalletFields() {
@@ -2660,7 +2718,7 @@ function onPointerMove(e) {
       const t = items.find(i => i.id === hits[0].object.userData.itemId);
       if (t) {
         const spaceH = cargoSpace.height * 100;
-        const proposedTop = t.pos_y + t.height_cm / 2 + item.height_cm;
+        const proposedTop = t.pos_y + itemExtent(t).h / 2 + itemExtent(item).h;
         if (proposedTop <= spaceH) stackTarget = t;
       }
     }
@@ -2679,7 +2737,7 @@ function onPointerMove(e) {
 
     if (stackTarget) {
       newXcm = stackTarget.pos_x;
-      newYcm = stackTarget.pos_y + stackTarget.height_cm / 2 + item.height_cm / 2;
+      newYcm = stackTarget.pos_y + itemExtent(stackTarget).h / 2 + itemExtent(item).h / 2;
       newZcm = stackTarget.pos_z;
     } else if (orthoView === 'side') {
       newXcm = snapToGrid(dragState.origPos.x + dxCm);
@@ -2695,7 +2753,7 @@ function onPointerMove(e) {
 
   if (useSupport) {
     const s = findSupportHeight(item, newXcm, newZcm, item.id);
-    item.pos_y = s.top + item.height_cm / 2;
+    item.pos_y = s.top + itemExtent(item).h / 2;
   } else {
     item.pos_y = newYcm;
   }
@@ -2912,13 +2970,9 @@ function applyResize(item, orig, edges, worldDelta) {
     const { axis, side } = edge;
 
     // Which size property to update (axis + rotation aware)
-    let sizeProp;
-    if (axis === 'y') sizeProp = 'height_cm';
-    else {
-      const rotated = orig.rot_y === 90 || item.rot_y === 90;  // rot doesn't change during resize
-      if (axis === 'x') sizeProp = rotated ? 'width_cm' : 'length_cm';
-      else              sizeProp = rotated ? 'length_cm' : 'width_cm';
-    }
+    // Which stored dimension currently lies along this world axis
+    const o = ORIENTATIONS[item.rot_y] || ORIENTATIONS[0];
+    const sizeProp = o[axis];
     const posProp = 'pos_' + axis;
 
     const origSize = orig[sizeProp];
@@ -3347,7 +3401,8 @@ function renderShortcuts() {
     { keys: [modKey, 'S'],  desc: 'Save draft' },
     { keys: ['Esc'],        desc: 'Close menu · cancel drag/resize · deselect' },
     { keys: ['Del'],        desc: 'Delete selected carton' },
-    { keys: ['R'],          desc: 'Rotate selected carton 90°' },
+    { keys: ['R'],          desc: 'Rotate selected item 90°' },
+    { keys: ['F'],          desc: 'Flip selected item onto another face' },
     { keys: [modKey, 'D'],  desc: 'Duplicate selected carton' },
     { keys: ['L'],          desc: 'Toggle carton labels' },
     { keys: ['P'],          desc: 'Auto-pack the plan' },
@@ -3816,17 +3871,32 @@ function updateSelectedItem() {
 
 $('#btnFocus').addEventListener('click', () => { if (selectedItemId) focusOnItem(selectedItemId); });
 
-$('#btnRotate').addEventListener('click', () => {
+function reorientSelected(nextOrient, verb) {
   const item = items.find(i => i.id === selectedItemId);
   if (!item) return;
-  item.rot_y = item.rot_y === 90 ? 0 : 90;
+  item.rot_y = nextOrient;
   clampItemToBounds(item);
   refreshItemMesh(item);
   refreshItemSprite(item);
   settleAll();
   updateStats();
+  renderEditStrip();
   markDirty();
-  showToast(`<b>${escapeHtml(item.label)}</b> rotated 90°.`);
+  showToast(`<b>${escapeHtml(item.label)}</b> ${verb} — ${ORIENT_NAMES[item.rot_y].toLowerCase()}.`);
+}
+
+// Rotate = yaw within the current resting face (0<->1, 2<->3, 4<->5)
+$('#btnRotate').addEventListener('click', () => {
+  const item = items.find(i => i.id === selectedItemId);
+  if (!item) return;
+  reorientSelected(item.rot_y ^ 1, 'rotated 90°');
+});
+
+// Flip = change which dimension points up, keeping the yaw (0->2->4->0)
+$('#btnFlip').addEventListener('click', () => {
+  const item = items.find(i => i.id === selectedItemId);
+  if (!item) return;
+  reorientSelected((item.rot_y + 2) % 6, 'flipped');
 });
 
 $('#btnDuplicate').addEventListener('click', () => {
@@ -4083,6 +4153,8 @@ window.addEventListener('keydown', (e) => {
     $('#btnDelete').click();
   } else if (e.key === 'r' && selectedItemId) {
     $('#btnRotate').click();
+  } else if (e.key === 'f' && selectedItemId) {
+    $('#btnFlip').click();
   } else if (e.key === 'd' && selectedItemId && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
     $('#btnDuplicate').click();

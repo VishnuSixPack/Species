@@ -341,11 +341,13 @@
       <div class="edit-strip" id="editStrip" hidden>
         <div class="edit-strip-head">
           Selected · <b id="editStripLabel">—</b>
+          <span class="edit-strip-orient" id="editStripOrient">Upright</span>
         </div>
         <div class="edit-actions">
           <button id="btnFocus"  title="Focus camera">Focus</button>
-          <button id="btnRotate" title="Rotate 90°">Rotate</button>
-          <button id="btnDuplicate" title="Duplicate">Duplicate</button>
+          <button id="btnRotate" title="Rotate 90° (R)">Rotate</button>
+          <button id="btnFlip"   title="Flip onto another face (F)">Flip</button>
+          <button id="btnDuplicate" title="Duplicate">Copy</button>
           <button id="btnDelete" title="Delete" class="danger">Delete</button>
         </div>
       </div>
@@ -424,29 +426,36 @@
       <div class="builder-body">
         <!-- LEFT: spec -->
         <div class="builder-form">
-          <div class="builder-hierarchy">
-            <span class="bh-step">Unit</span><span class="bh-arrow">›</span>
-            <span class="bh-step">Tray</span><span class="bh-arrow">›</span>
-            <span class="bh-step" id="bhPallet">Pallet</span><span class="bh-arrow">›</span>
-            <span class="bh-step bh-end">Container</span>
-          </div>
-
           <label class="field">
             <span>Name / SKU</span>
             <input id="bName" type="text" placeholder="e.g. JW-CHUNK-400G" />
           </label>
 
-          <div class="builder-section">
-            <div class="builder-section-head">
-              Contents
-              <span class="builder-hint">Groups stack bottom to top</span>
+          <!-- ① what goes in -->
+          <div class="bstep">
+            <div class="bstep-head">
+              <span class="bstep-num">1</span>
+              <span class="bstep-title">Cans</span>
+              <span class="bstep-sub">what's inside</span>
             </div>
             <div id="bGroups"></div>
-            <button type="button" class="btn-soft btn-full" id="bAddGroup">＋ Add batch group</button>
+            <button type="button" class="btn-soft btn-full" id="bAddGroup">＋ Add another batch</button>
           </div>
 
-          <div class="builder-section">
-            <div class="builder-section-head">Tray / sell unit</div>
+          <div class="bflow">
+            <span class="bflow-arrow">↓</span>
+            <span id="bFlow1">packed into a tray</span>
+            <span class="bflow-line"></span>
+          </div>
+
+          <!-- ② the tray -->
+          <div class="bstep">
+            <div class="bstep-head">
+              <span class="bstep-num">2</span>
+              <span class="bstep-title">Tray</span>
+              <span class="bstep-sub">the sell unit</span>
+            </div>
+            <div class="bstep-out" id="bTrayOut">—</div>
             <div class="form-row-3">
               <label class="field">
                 <span>Wall (mm)</span>
@@ -463,15 +472,25 @@
             </div>
           </div>
 
-          <div class="builder-section">
-            <div class="builder-section-head">
-              Pallet
-              <label class="switch">
-                <input type="checkbox" id="bPalletOn" />
-                <span class="switch-track"><span class="switch-thumb"></span></span>
-                <span class="switch-label">Stack onto a pallet</span>
-              </label>
+          <div class="bflow">
+            <span class="bflow-arrow">↓</span>
+            <span id="bFlow2">stacked on a pallet</span>
+            <span class="bflow-line"></span>
+            <label class="switch">
+              <input type="checkbox" id="bPalletOn" />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+              <span class="switch-label">Use a pallet</span>
+            </label>
+          </div>
+
+          <!-- ③ the pallet -->
+          <div class="bstep" id="bPalletStep">
+            <div class="bstep-head">
+              <span class="bstep-num">3</span>
+              <span class="bstep-title">Pallet</span>
+              <span class="bstep-sub">how trays stack</span>
             </div>
+            <div class="bstep-out" id="bPalletOut">Turn on <b>Use a pallet</b> to stack trays</div>
 
             <div id="bPalletFields" hidden>
               <div class="form-row">
@@ -523,13 +542,13 @@
                 </label>
                 <label class="field">
                   <span>Layers</span>
-                  <input id="bPalletLayers" type="number" min="1" step="1" value="0" />
+                  <input id="bPalletLayers" type="number" min="1" step="1" placeholder="auto" />
                 </label>
               </div>
 
               <div class="pallet-fit" id="bPalletFit"></div>
 
-              <div class="builder-section-head" style="margin-top:10px;">Pallet label</div>
+              <div class="bstep-sublabel">Pallet label</div>
               <div class="form-row-3">
                 <label class="field">
                   <span>Batch code</span>
@@ -545,6 +564,21 @@
                 </label>
               </div>
             </div>
+          </div>
+
+          <div class="bflow">
+            <span class="bflow-arrow">↓</span>
+            <span>loaded into the container</span>
+            <span class="bflow-line"></span>
+          </div>
+
+          <div class="bstep bstep-final" id="bContainerStep">
+            <div class="bstep-head">
+              <span class="bstep-num bstep-num-end">✓</span>
+              <span class="bstep-title">Container</span>
+              <span class="bstep-sub" id="bContainerSub">—</span>
+            </div>
+            <div class="bstep-out" id="bContainerOut">—</div>
           </div>
         </div>
 
