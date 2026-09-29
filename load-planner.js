@@ -1261,20 +1261,20 @@ function populateFormFromItem(item) {
 function setEditMode(isEdit, item) {
   const indicator  = $('#modeIndicator');
   const modeText   = $('#modeText');
-  const modeClear  = $('#modeClear');
   const primaryBtn = $('#primaryFormBtn');
   const qtyPicker  = $('#qtyPicker');
   if (isEdit && item) {
-    indicator.dataset.mode = 'edit';
+    indicator.hidden = false;
     modeText.textContent = `Editing: ${item.label}`;
-    modeClear.hidden = false;
     primaryBtn.textContent = 'Save changes';
     primaryBtn.classList.add('editing');
     qtyPicker.classList.add('disabled');
+    // Surface the options block if this item isn't a plain box carton
+    if ((item.kind && item.kind !== 'carton') || (item.shape && item.shape !== 'box')) {
+      setOptionsOpen(true);
+    }
   } else {
-    indicator.dataset.mode = 'add';
-    modeText.textContent = 'Add new cargo';
-    modeClear.hidden = true;
+    indicator.hidden = true;             // the "Add" tab already says what mode we're in
     primaryBtn.textContent = 'Add to plan';
     primaryBtn.classList.remove('editing');
     qtyPicker.classList.remove('disabled');
@@ -1304,8 +1304,6 @@ function updateStats() {
     items.length === 0 ? 'Empty' :
     volPct > 100       ? 'Over capacity' :
     volPct > 90        ? 'Near full' : 'OK';
-
-  $('#cargoCountHint').textContent = items.length === 0 ? 'Step 2' : `${items.length} placed`;
 }
 
 function markDirty() { isDirty = true; updateStatusChip(); }
@@ -1331,18 +1329,21 @@ function updateStatusChip() {
 // ============================================================
 function renderCargoList() {
   const list = $('#cargoList');
-  $('#listCount').textContent = items.length;
+  $('#tabItemsCount').textContent = items.length;
   if (items.length === 0) {
-    list.innerHTML = '<div class="list-empty">No items yet. Add cargo above and it drops into the container.</div>';
+    list.innerHTML = '<div class="list-empty">No items yet. Add cargo in the <b>Add</b> tab and it drops into the container.</div>';
     return;
   }
   list.innerHTML = items.map(i => {
     const units = i.contents?.reduce((s, c) => s + (c.quantity || 0), 0) || 0;
     const lots = [...new Set((i.contents || []).map(c => c.batch_lot).filter(Boolean))];
     const pm = i.pallet_meta;
+    const t = i.terms || TERM_DEFAULTS;
+    const unitWord = pluralise(t.product || 'unit', units).toLowerCase();
+    const packWord = pm ? pluralise(t.primary || 'pack', pm.trays).toLowerCase() : '';
     const extra = pm
-      ? `${pm.trays} sell units · ${units} units${lots.length ? ' · ' + lots.map(escapeHtml).join(', ') : ''}${pm.order_no ? ' · #' + escapeHtml(pm.order_no) : ''}`
-      : (units ? `${units} units${lots.length ? ' · ' + lots.map(escapeHtml).join(', ') : ''}` : '');
+      ? `${pm.trays} ${escapeHtml(packWord)} · ${units} ${escapeHtml(unitWord)}${lots.length ? ' · ' + lots.map(escapeHtml).join(', ') : ''}${pm.order_no ? ' · #' + escapeHtml(pm.order_no) : ''}`
+      : (units ? `${units} ${escapeHtml(unitWord)}${lots.length ? ' · ' + lots.map(escapeHtml).join(', ') : ''}` : '');
     return `
     <div class="cargo-row ${i.id === selectedItemId ? 'selected' : ''}" data-id="${i.id}">
       <span class="cargo-swatch" style="background:${i.color}"></span>
@@ -1699,6 +1700,31 @@ function undoAutoPack() {
 const CARTON_SPECS_KEY = 'smartuna_planner_carton_specs_v1';
 const GROUP_COLORS = ['#1a6fdb', '#38b47a', '#f4a11c', '#8b5cf6', '#ec4899', '#14b8a6'];
 
+// The builder describes three packaging levels. What each level is actually
+// called depends on the product — cans in trays on pallets, or loins in
+// interleaved blocks in master cartons — so the user names them.
+const TERM_DEFAULTS = { product: 'Unit', primary: 'Pack', secondary: 'Pallet' };
+const TERM_SUGGESTIONS = {
+  product:   ['Can', 'Pouch', 'Jar', 'Bottle', 'Loin', 'Fillet', 'Steak', 'Block', 'Bag', 'Brick'],
+  primary:   ['Tray', 'Carton', 'Master carton', 'Case', 'Box', 'Shrink pack', 'Bag', 'Vacuum pack'],
+  secondary: ['Pallet', 'Slipsheet', 'Cage', 'Crate', 'Bin', 'Dolly']
+};
+
+function pluralise(word, n) {
+  const w = String(word || '').trim();
+  if (!w || n === 1) return w;
+  if (/[^aeiou]y$/i.test(w)) return w.slice(0, -1) + 'ies';
+  if (/(s|x|z|ch|sh)$/i.test(w)) return w + 'es';
+  return w + 's';
+}
+
+// term('product', 12) -> "Cans"   term('primary', 1, true) -> "tray"
+function term(level, n = 1, lower = false) {
+  const raw = (builder?.terms?.[level] || '').trim() || TERM_DEFAULTS[level];
+  const out = pluralise(raw, n);
+  return lower ? out.toLowerCase() : out;
+}
+
 let cartonSpecs = [];
 let builderQty = 1;
 let builder = null;                      // working spec
@@ -1724,6 +1750,7 @@ function newGroup(index = 0) {
 function newBuilderSpec() {
   return {
     name: '',
+    terms: { product: 'Can', primary: 'Tray', secondary: 'Pallet' },
     wall_mm: 3,
     gap_mm: 2,
     tare_kg: 0.4,
@@ -1929,7 +1956,7 @@ function renderBuilderGroups() {
       <div class="bgroup-head">
         <span class="bgroup-swatch" style="background:${g.color}"></span>
         Group ${idx + 1}
-        <span class="bgroup-count">${n} unit${n === 1 ? '' : 's'}</span>
+        <span class="bgroup-count">${n} ${escapeHtml(term('product', n, true))}</span>
         ${builder.groups.length > 1 ? `<button type="button" class="bgroup-remove" data-remove="${g.id}">Remove</button>` : ''}
       </div>
 
@@ -1950,9 +1977,9 @@ function renderBuilderGroups() {
           <input data-f="medium" type="text" value="${escapeHtml(g.medium)}" placeholder="Olive oil" />
         </label>
         <div class="field">
-          <span>Unit shape</span>
+          <span>${escapeHtml(term('product'))} shape</span>
           <div class="shape-toggle">
-            <button type="button" class="shape-btn ${isCyl ? 'active' : ''}" data-shape="cylinder">Can</button>
+            <button type="button" class="shape-btn ${isCyl ? 'active' : ''}" data-shape="cylinder">Round</button>
             <button type="button" class="shape-btn ${!isCyl ? 'active' : ''}" data-shape="box">Box</button>
           </div>
         </div>
@@ -2009,7 +2036,7 @@ function renderBuilderGroups() {
 
       <div class="bsuggest">
         <label class="field">
-          <span>Target units — let the builder arrange them</span>
+          <span>Target ${escapeHtml(term('product', 2, true))} per ${escapeHtml(term('primary', 1, true))}</span>
           <input data-f="__target" type="number" min="1" step="1" placeholder="e.g. 48" />
         </label>
         <button type="button" data-suggest="${g.id}">Arrange</button>
@@ -2032,7 +2059,7 @@ function renderBuilderGroups() {
         rebuildBuilderPreview();
         const badge = card.querySelector('.bgroup-count');
         const n = groupUnitCount(g);
-        if (badge) badge.textContent = `${n} unit${n === 1 ? '' : 's'}`;
+        if (badge) badge.textContent = `${n} ${term('product', n, true)}`;
       });
     });
     card.querySelectorAll('.shape-btn').forEach(btn => {
@@ -2070,44 +2097,47 @@ function updateBuilderComputed() {
   const on = builder.pallet.enabled;
   const p = on ? computePallet(builder, c) : null;
 
+  const PRIM = term('primary', 1, true);
+  const SEC  = term('secondary', 1, true);
+
   // Step 1 -> 2 connector
   $('#bFlow1').textContent = c.units
-    ? `${c.units} can${c.units === 1 ? '' : 's'} per tray`
-    : 'packed into a tray';
+    ? `${c.units} ${term('product', c.units, true)} per ${PRIM}`
+    : `packed into a ${PRIM}`;
 
   // Step 2 output
   const trayOut = $('#bTrayOut');
   if (c.units === 0) {
     trayOut.className = 'bstep-out bstep-out-idle';
-    trayOut.textContent = 'Add contents above to size the tray';
+    trayOut.textContent = `Add contents above to size the ${PRIM}`;
   } else {
     trayOut.className = 'bstep-out';
-    trayOut.innerHTML = `<b>${c.units}</b> units · <b>${fromCm(c.length_cm)} × ${fromCm(c.width_cm)} × ${fromCm(c.height_cm)} ${itemUnit}</b> · <b>${c.weight_kg.toFixed(2)} kg</b>`;
+    trayOut.innerHTML = `<b>${c.units}</b> ${escapeHtml(term('product', c.units, true))} · <b>${fromCm(c.length_cm)} × ${fromCm(c.width_cm)} × ${fromCm(c.height_cm)} ${itemUnit}</b> · <b>${c.weight_kg.toFixed(2)} kg</b>`;
   }
 
   // Step 2 -> 3 connector
   $('#bFlow2').textContent = on && p?.perLayer
-    ? `${p.perLayer} trays per layer`
-    : 'stacked on a pallet';
+    ? `${p.perLayer} ${term('primary', p.perLayer, true)} per layer`
+    : `stacked on a ${SEC}`;
 
   // Step 3 output
   const palletOut = $('#bPalletOut');
   $('#bPalletStep').classList.toggle('bstep-off', !on);
   if (!on) {
     palletOut.className = 'bstep-out bstep-out-idle';
-    palletOut.innerHTML = 'Skipped — trays load loose into the container';
+    palletOut.innerHTML = `Skipped — ${escapeHtml(term('primary', 2, true))} load loose into the container`;
   } else if (!p || p.trays === 0) {
     palletOut.className = 'bstep-out bstep-out-warn';
-    palletOut.textContent = 'No trays fit — check the deck size and max height';
+    palletOut.textContent = `No ${term('primary', 2, true)} fit — check the base size and max height`;
   } else {
     palletOut.className = 'bstep-out';
-    palletOut.innerHTML = `<b>${p.trays}</b> sell units · <b>${fromCm(p.length_cm)} × ${fromCm(p.width_cm)} × ${fromCm(p.height_cm)} ${itemUnit}</b> · <b>${p.weight_kg.toFixed(1)} kg</b>`;
+    palletOut.innerHTML = `<b>${p.trays}</b> ${escapeHtml(term('primary', p.trays, true))} · <b>${fromCm(p.length_cm)} × ${fromCm(p.width_cm)} × ${fromCm(p.height_cm)} ${itemUnit}</b> · <b>${p.weight_kg.toFixed(1)} kg</b>`;
   }
 
   // Final step — what actually goes into the container
   const ship = on && p?.trays
-    ? { l: p.length_cm, w: p.width_cm, h: p.height_cm, kg: p.weight_kg, units: p.units, what: 'pallet' }
-    : { l: c.length_cm, w: c.width_cm, h: c.height_cm, kg: c.weight_kg, units: c.units, what: 'tray' };
+    ? { l: p.length_cm, w: p.width_cm, h: p.height_cm, kg: p.weight_kg, units: p.units, what: SEC }
+    : { l: c.length_cm, w: c.width_cm, h: c.height_cm, kg: c.weight_kg, units: c.units, what: PRIM };
   const fits = ship.l <= cargoSpace.length * 100 &&
                ship.w <= cargoSpace.width  * 100 &&
                ship.h <= cargoSpace.height * 100;
@@ -2119,26 +2149,26 @@ function updateBuilderComputed() {
     contOut.textContent = 'Nothing to load yet';
   } else if (!fits) {
     contOut.className = 'bstep-out bstep-out-warn';
-    contOut.innerHTML = `This ${ship.what} is larger than the cargo space`;
+    contOut.innerHTML = `This ${escapeHtml(ship.what)} is larger than the cargo space`;
   } else {
     contOut.className = 'bstep-out bstep-out-ok';
-    contOut.innerHTML = `Each ${ship.what} carries <b>${ship.units}</b> units at <b>${ship.kg.toFixed(1)} kg</b>`;
+    contOut.innerHTML = `Each ${escapeHtml(ship.what)} carries <b>${ship.units}</b> ${escapeHtml(term('product', ship.units, true))} at <b>${ship.kg.toFixed(1)} kg</b>`;
   }
 
   // Right-hand summary panel
   $('#bComputed').innerHTML = `
     <div class="bcomp-row bcomp-hero">
-      <span>${on && p?.trays ? 'Pallet size' : 'Tray size'}</span>
+      <span>${escapeHtml(term(on && p?.trays ? 'secondary' : 'primary'))} size</span>
       <b>${fromCm(ship.l)} × ${fromCm(ship.w)} × ${fromCm(ship.h)} ${itemUnit}</b>
     </div>
     ${on && p?.trays ? `
-      <div class="bcomp-row"><span>Sell units</span><b>${p.trays}</b></div>
-      <div class="bcomp-row"><span>Per tray</span><b>${c.units} units · ${c.weight_kg.toFixed(2)} kg</b></div>
+      <div class="bcomp-row"><span>${escapeHtml(term('primary', 2))}</span><b>${p.trays}</b></div>
+      <div class="bcomp-row"><span>Per ${escapeHtml(PRIM)}</span><b>${c.units} ${escapeHtml(term('product', c.units, true))} · ${c.weight_kg.toFixed(2)} kg</b></div>
     ` : `
       <div class="bcomp-row"><span>Content weight</span><b>${c.content_kg.toFixed(2)} kg</b></div>
       <div class="bcomp-row"><span>Batch groups</span><b>${builder.groups.length}</b></div>
     `}
-    <div class="bcomp-row"><span>Total units</span><b>${ship.units}</b></div>
+    <div class="bcomp-row"><span>Total ${escapeHtml(term('product', 2, true))}</span><b>${ship.units}</b></div>
     <div class="bcomp-row"><span>Gross weight</span><b>${ship.kg.toFixed(1)} kg</b></div>
   `;
 
@@ -2150,15 +2180,98 @@ function updatePalletFit(c, p) {
   if (!box) return;
   if (!builder.pallet.enabled) { box.innerHTML = ''; return; }
   if (!p || p.perLayer === 0) {
-    box.innerHTML = `<div class="pf-warn">Tray is too large for this pallet deck.</div>`;
+    box.innerHTML = `<div class="pf-warn">${escapeHtml(term('primary'))} is too large for this ${escapeHtml(term('secondary', 1, true))} base.</div>`;
     return;
   }
   const pat = builder.pallet.pattern === 'interlock' ? 'interlocked' : 'block';
   box.innerHTML = `
-    <div>${p.perLayer} per layer × ${p.layers} layer${p.layers === 1 ? '' : 's'} = <b>${p.trays}</b> sell units</div>
+    <div>${p.perLayer} per layer × ${p.layers} layer${p.layers === 1 ? '' : 's'} = <b>${p.trays}</b> ${escapeHtml(term('primary', p.trays, true))}</div>
     <div>${pat} pattern · max ${p.maxLayers} layer${p.maxLayers === 1 ? '' : 's'} under ${fromCm(builder.pallet.max_h_cm)} ${itemUnit}</div>
-    ${p.overhangs ? `<div class="pf-warn">Trays overhang the deck.</div>` : ''}
+    ${p.overhangs ? `<div class="pf-warn">${escapeHtml(term('primary', 2))} overhang the base.</div>` : ''}
   `;
+}
+
+function renderTermInputs() {
+  $('#bTermProduct').value   = builder.terms.product;
+  $('#bTermPrimary').value   = builder.terms.primary;
+  $('#bTermSecondary').value = builder.terms.secondary;
+  $('#bPreviewPrimary').textContent   = term('primary');
+  $('#bPreviewSecondary').textContent = term('secondary');
+  refreshSegments();                   // pill widths changed
+}
+
+// Typeable input with a styled suggestion list. The native <datalist> popup is
+// drawn by the browser and can't be themed, so this replaces it.
+function initTermCombo(input) {
+  const combo = input.closest('.combo');
+  const menu  = combo.querySelector('.combo-menu');
+  const level = combo.dataset.term;
+  let cursor = -1;
+
+  const options = () => [...menu.querySelectorAll('.combo-option')];
+
+  const paint = () => {
+    options().forEach((o, i) => o.classList.toggle('active', i === cursor));
+    const active = options()[cursor];
+    if (active) active.scrollIntoView({ block: 'nearest' });
+  };
+
+  const render = () => {
+    const q = input.value.trim().toLowerCase();
+    const list = TERM_SUGGESTIONS[level].filter(t => !q || t.toLowerCase().includes(q));
+    cursor = -1;
+    if (!list.length) { menu.innerHTML = ''; menu.hidden = true; return; }
+    menu.innerHTML = list
+      .map(t => `<div class="combo-option" data-v="${escapeHtml(t)}">${escapeHtml(t)}</div>`)
+      .join('');
+    options().forEach(o => {
+      // mousedown fires before blur, so the click isn't lost to the menu closing
+      o.addEventListener('mousedown', e => {
+        e.preventDefault();
+        input.value = o.dataset.v;
+        onTermChange();
+        close();
+      });
+    });
+  };
+
+  const open  = () => { render(); if (menu.innerHTML) menu.hidden = false; };
+  const close = () => { menu.hidden = true; cursor = -1; };
+
+  input.addEventListener('focus', open);
+  input.addEventListener('input', () => { onTermChange(); open(); });
+  input.addEventListener('blur', () => setTimeout(close, 120));
+  input.addEventListener('keydown', e => {
+    const opts = options();
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (menu.hidden) { open(); return; }
+      cursor = Math.min(cursor + 1, opts.length - 1); paint();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      cursor = Math.max(cursor - 1, 0); paint();
+    } else if (e.key === 'Enter') {
+      if (!menu.hidden && opts[cursor]) {
+        e.preventDefault();
+        input.value = opts[cursor].dataset.v;
+        onTermChange();
+      }
+      close();
+    } else if (e.key === 'Escape') {
+      if (!menu.hidden) { e.stopPropagation(); close(); }   // don't close the modal too
+    }
+  });
+}
+
+function onTermChange() {
+  builder.terms.product   = $('#bTermProduct').value;
+  builder.terms.primary   = $('#bTermPrimary').value;
+  builder.terms.secondary = $('#bTermSecondary').value;
+  $('#bPreviewPrimary').textContent   = term('primary');
+  $('#bPreviewSecondary').textContent = term('secondary');
+  refreshSegments();
+  renderBuilderGroups();               // group cards carry term-dependent labels
+  updateBuilderComputed();
 }
 
 function renderPalletFields() {
@@ -2437,10 +2550,12 @@ function renderCartonSpecDropdown() {
 // ---- open / close ----
 function openBuilder() {
   if (!builder) builder = newBuilderSpec();
+  if (!builder.terms) builder.terms = { ...newBuilderSpec().terms };
   $('#bName').value = builder.name;
   $('#bWall').value = builder.wall_mm;
   $('#bGap').value  = builder.gap_mm;
   $('#bTare').value = builder.tare_kg;
+  renderTermInputs();
   renderBuilderGroups();
   renderPalletFields();
   renderCartonSpecDropdown();
@@ -2471,9 +2586,11 @@ function addBuiltCartonToPlan() {
 
   const onPallet = builder.pallet.enabled;
   const p = onPallet ? computePallet(builder, c) : null;
+  const PRIM = term('primary', 1, true);
+  const SEC  = term('secondary', 1, true);
 
   if (onPallet && p.trays === 0) {
-    return showToast('No trays fit on this pallet — check the deck size and max height.');
+    return showToast(`No ${term('primary', 2, true)} fit on this ${SEC} — check the base size and max height.`);
   }
 
   const ship = onPallet
@@ -2483,7 +2600,7 @@ function addBuiltCartonToPlan() {
   if (ship.l > cargoSpace.length * 100 ||
       ship.w > cargoSpace.width  * 100 ||
       ship.h > cargoSpace.height * 100) {
-    return showToast(`${onPallet ? 'Pallet' : 'Tray'} is larger than the cargo space.`);
+    return showToast(`${onPallet ? term('secondary') : term('primary')} is larger than the cargo space.`);
   }
 
   const baseLabel = ($('#bName').value.trim()) || generateBaseLabel(onPallet ? 'pallet' : 'carton');
@@ -2515,6 +2632,7 @@ function addBuiltCartonToPlan() {
       color
     });
     item.contents = contents.map(x => ({ ...x }));
+    item.terms = { ...builder.terms };
     if (onPallet) {
       item.pallet_meta = {
         batch_code: palletLot,
@@ -2529,9 +2647,43 @@ function addBuiltCartonToPlan() {
   renderCargoList();
   closeBuilder();
   showToast(onPallet
-    ? `Added <b>${builderQty}</b> pallet${builderQty > 1 ? 's' : ''} — ${p.trays} sell units, ${ship.units * builderQty} units.`
-    : `Added <b>${builderQty}</b> × ${escapeHtml(baseLabel)} — ${c.units * builderQty} units.`);
+    ? `Added <b>${builderQty}</b> ${escapeHtml(term('secondary', builderQty, true))} — ${p.trays} ${escapeHtml(term('primary', p.trays, true))}, ${ship.units * builderQty} ${escapeHtml(term('product', 2, true))}.`
+    : `Added <b>${builderQty}</b> × ${escapeHtml(baseLabel)} — ${c.units * builderQty} ${escapeHtml(term('product', 2, true))}.`);
 }
+
+// ============================================================
+// RIGHT PANEL — Add / Items tabs and collapsible options
+// ============================================================
+function setPanelTab(pane) {
+  $$('.panel-tab').forEach(b => b.classList.toggle('active', b.dataset.pane === pane));
+  $('#paneAdd').hidden   = pane !== 'add';
+  $('#paneItems').hidden = pane !== 'items';
+  refreshSegments();
+}
+
+function updateOptionsSummary() {
+  const kindLabel = { carton: 'Carton', pallet: 'Pallet', slipsheet: 'Slipsheet' }[currentKind] || 'Carton';
+  const bits = [kindLabel, SHAPES[currentShape].label];
+  const tpl = $('#templateSelect');
+  if (tpl?.value) {
+    const opt = tpl.options[tpl.selectedIndex];
+    if (opt) bits.push(opt.textContent);
+  }
+  $('#optSummary').textContent = bits.join(' · ');
+}
+
+function setOptionsOpen(open) {
+  $('#optBody').hidden = !open;
+  $('#optToggle').classList.toggle('open', open);
+  $('#optToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
+  if (open) refreshSegments();           // kind tabs and shape picker just became measurable
+}
+
+$$('.panel-tab').forEach(btn =>
+  btn.addEventListener('click', () => setPanelTab(btn.dataset.pane)));
+
+$('#optToggle').addEventListener('click', () =>
+  setOptionsOpen($('#optBody').hidden));
 
 // ============================================================
 // CARGO KIND (carton / pallet / slipsheet) — form UI
@@ -2545,6 +2697,7 @@ function setKind(kind, opts = {}) {
 
   if (kind === 'carton') {
     presetRow.hidden = true;
+    updateOptionsSummary();
     return;
   }
   presetRow.hidden = false;
@@ -2556,6 +2709,7 @@ function setKind(kind, opts = {}) {
     presetSelect.value = firstId;
     applyKindPreset(firstId);
   }
+  updateOptionsSummary();
 }
 
 function applyKindPreset(presetId) {
@@ -3895,6 +4049,7 @@ function setShape(shape, opts = {}) {
     const l = parseFloat($('#fLength').value);
     if (!isNaN(l)) $('#fWidth').value = $('#fLength').value;
   }
+  updateOptionsSummary();
   refreshSegments();
 }
 
@@ -4045,6 +4200,10 @@ document.querySelectorAll('[data-close-builder]').forEach(el =>
   });
 });
 
+// Packaging-level names — typeable with a styled suggestion list
+['#bTermProduct', '#bTermPrimary', '#bTermSecondary'].forEach(sel =>
+  initTermCombo($(sel)));
+
 // Pallet section
 const PALLET_FIELD_IDS = ['#bPalletOn', '#bPalletPattern', '#bPalletL', '#bPalletW',
   '#bPalletH', '#bPalletKg', '#bPalletMaxH', '#bPalletOver', '#bPalletLayers',
@@ -4092,7 +4251,7 @@ function setBuilderPreviewMode(mode) {
 
 $$('#bPreviewPills .view-pill').forEach(pill => pill.addEventListener('click', () => {
   if (pill.dataset.preview === 'pallet' && !builder.pallet.enabled) {
-    return showToast('Turn on <b>Stack onto a pallet</b> first.');
+    return showToast(`Turn on the <b>${escapeHtml(term('secondary', 1, true))}</b> switch first.`);
   }
   setBuilderPreviewMode(pill.dataset.preview);
 }));
@@ -4136,10 +4295,12 @@ $('#bSpecSelect').addEventListener('change', e => {
   if (!spec) return;
   builder = JSON.parse(JSON.stringify(spec));
   if (!builder.pallet) builder.pallet = newBuilderSpec().pallet;   // specs saved before pallets
+  if (!builder.terms)  builder.terms  = newBuilderSpec().terms;    // ...and before named levels
   $('#bName').value = builder.name;
   $('#bWall').value = builder.wall_mm;
   $('#bGap').value  = builder.gap_mm;
   $('#bTare').value = builder.tare_kg;
+  renderTermInputs();
   renderBuilderGroups();
   renderPalletFields();
   updateBuilderComputed();
@@ -4240,8 +4401,9 @@ $$('.unit-mini[data-unit-target="item"] .unit-btn').forEach(btn =>
 // Templates
 $('#templateSelect').addEventListener('change', e => {
   const id = e.target.value;
-  if (!id) { $('#deleteTemplateBtn').hidden = true; return; }
+  if (!id) { $('#deleteTemplateBtn').hidden = true; updateOptionsSummary(); return; }
   applyTemplate(id);
+  updateOptionsSummary();
 });
 $('#saveTemplateBtn').addEventListener('click', openSaveTemplateModal);
 $('#deleteTemplateBtn').addEventListener('click', deleteSelectedTemplate);
@@ -4345,7 +4507,7 @@ window.addEventListener('beforeunload', (e) => {
 let refreshSegments = () => {};
 
 function initSegmentedIndicators() {
-  const SELECTOR = '.view-pills, .scene-toggle, .kind-tabs, .unit-mini, .shape-pick';
+  const SELECTOR = '.view-pills, .scene-toggle, .kind-tabs, .unit-mini, .shape-pick, .panel-tabs';
   const getContainers = () => document.querySelectorAll(SELECTOR);
 
   const update = (container) => {
@@ -4420,6 +4582,7 @@ async function boot() {
   renderCargoList();
   renderEditStrip();
   setEditMode(false, null);
+  updateOptionsSummary();
   updateStatusChip();
 
   // Sync toggle button state
