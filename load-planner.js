@@ -74,9 +74,11 @@ const CARGO_COLORS = [
 
 const GRID_CM = 5;
 const CENTER_SNAP_CM = 15;
+const EDGE_SNAP_CM = 4;                  // magnetic range for flush faces
 const TEMPLATES_KEY = 'smartuna_planner_templates_v1';
 const SCENE_MODE_KEY = 'smartuna_planner_scene_mode';
 const REALISTIC_MODE_KEY = 'smartuna_planner_realistic_mode';
+const DIMS_MODE_KEY = 'smartuna_planner_dims_mode';
 const CONTAINER_UNIT_KEY = 'smartuna_planner_container_unit';
 const ITEM_UNIT_KEY = 'smartuna_planner_item_unit';
 
@@ -135,6 +137,7 @@ let camera, controls;                   // active
 let containerGroup;
 let cartonGroup;
 let yardMesh;                            // concrete ground plane
+let measureGroup = null;                 // measurement grid lines
 let concreteTexture;                     // yard surface
 let skyTexture;                          // scene background gradient
 let raycaster;
@@ -162,6 +165,7 @@ let sceneMode = '3d';                   // '3d' | '2d'
 let orthoView = 'top';                  // '2d' sub-view: top | side | front
 let last3DView = 'perspective';
 let realisticMode = false;              // opt-in realistic container + yard
+let showDims = false;                   // opt-in dimension guides
 
 let resizeState = null;
 let handleElements = [];                // 8 DOM elements
@@ -282,6 +286,7 @@ function initScene() {
 
   buildContainer();
   createResizeHandles();
+  initDimOverlay();
   attachSceneInput();
   animate();
 }
@@ -396,6 +401,7 @@ function buildContainer() {
   build2DBackdrops(L, W, H);                 // always add — visible only in 2D
 
   scene.add(containerGroup);
+  buildMeasureGrid();
 
   perspControls.target.set(L / 2, H / 2, 0);
   perspControls.update();
@@ -788,6 +794,89 @@ function clampItemToBounds(item) {
 }
 
 function snapToGrid(cm) { return Math.round(cm / GRID_CM) * GRID_CM; }
+
+// ---- magnetic edge snapping ----
+// Grid snapping moves the box CENTRE, so two boxes whose half-widths aren't
+// multiples of the grid can never sit flush. These pull faces together when
+// they come close, which is what "push them against each other" actually means.
+
+// Nearest edge along one axis that `v` should snap to, if any is close enough.
+function snapEdgeValue(v, axis, excludeId, spaceMax) {
+  let best = null;
+  const consider = t => {
+    const d = Math.abs(t - v);
+    if (d <= EDGE_SNAP_CM && (!best || d < best.d)) best = { t, d };
+  };
+  consider(0);
+  consider(spaceMax);
+  for (const o of items) {
+    if (o.id === excludeId) continue;
+    const b = itemBounds(o);
+    if (axis === 'x')      { consider(b.minX); consider(b.maxX); }
+    else if (axis === 'y') { consider(b.minY); consider(b.maxY); }
+    else                   { consider(b.minZ); consider(b.maxZ); }
+  }
+  return best ? best.t : v;
+}
+
+// Nudge a proposed position so the box sits flush with, or aligned to, a
+// neighbour. Only boxes sharing the perpendicular lane are considered, so a
+// crate on the far side of the container doesn't tug the one you're dragging.
+function applyEdgeSnap(item, xCm, zCm) {
+  const e = itemExtent(item);
+  const halfL = e.l / 2, halfW = e.w / 2;
+  const L = cargoSpace.length * 100;
+  const W = cargoSpace.width * 100;
+  const overlaps = (aMin, aMax, bMin, bMax) => aMin < bMax - 0.5 && aMax > bMin + 0.5;
+
+  let x = xCm, z = zCm;
+
+  // X — snap against neighbours sharing this Z lane
+  {
+    const zMin = z - halfW, zMax = z + halfW;
+    let best = null;
+    const push = d => {
+      const dist = Math.abs(d);
+      if (dist <= EDGE_SNAP_CM && (!best || dist < best.dist)) best = { d, dist };
+    };
+    push(0 - (x - halfL));
+    push(L - (x + halfL));
+    for (const o of items) {
+      if (o.id === item.id) continue;
+      const b = itemBounds(o);
+      if (!overlaps(zMin, zMax, b.minZ, b.maxZ)) continue;
+      push(b.minX - (x + halfL));      // our right face meets their left
+      push(b.maxX - (x - halfL));      // our left face meets their right
+      push(b.minX - (x - halfL));      // left faces aligned
+      push(b.maxX - (x + halfL));      // right faces aligned
+    }
+    if (best) x += best.d;
+  }
+
+  // Z — snap against neighbours sharing this X lane
+  {
+    const xMin = x - halfL, xMax = x + halfL;
+    let best = null;
+    const push = d => {
+      const dist = Math.abs(d);
+      if (dist <= EDGE_SNAP_CM && (!best || dist < best.dist)) best = { d, dist };
+    };
+    push(0 - (z - halfW));
+    push(W - (z + halfW));
+    for (const o of items) {
+      if (o.id === item.id) continue;
+      const b = itemBounds(o);
+      if (!overlaps(xMin, xMax, b.minX, b.maxX)) continue;
+      push(b.minZ - (z + halfW));
+      push(b.maxZ - (z - halfW));
+      push(b.minZ - (z - halfW));
+      push(b.maxZ - (z + halfW));
+    }
+    if (best) z += best.d;
+  }
+
+  return { x, z };
+}
 
 // ============================================================
 // AUTO-PLACEMENT
@@ -1705,14 +1794,33 @@ const GROUP_COLORS = ['#1a6fdb', '#38b47a', '#f4a11c', '#8b5cf6', '#ec4899', '#1
 // interleaved blocks in master cartons — so the user names them.
 const TERM_DEFAULTS = { product: 'Unit', primary: 'Pack', secondary: 'Pallet' };
 const TERM_SUGGESTIONS = {
-  product:   ['Can', 'Pouch', 'Jar', 'Bottle', 'Loin', 'Fillet', 'Steak', 'Block', 'Bag', 'Brick'],
-  primary:   ['Tray', 'Carton', 'Master carton', 'Case', 'Box', 'Shrink pack', 'Bag', 'Vacuum pack'],
-  secondary: ['Pallet', 'Slipsheet', 'Cage', 'Crate', 'Bin', 'Dolly']
+  product: [
+    'Can', 'Tin', 'Pouch', 'Jar', 'Bottle', 'Tub', 'Cup',
+    'Loin', 'Fillet', 'Steak', 'Portion', 'Saku block', 'Brick', 'Slab', 'Whole fish',
+    'Bag', 'Sachet', 'Vacuum pack', 'Skin pack', 'Piece', 'Unit'
+  ],
+  primary: [
+    'Tray', 'Carton', 'Master carton', 'Inner carton', 'Case', 'Box', 'Shipper',
+    'Shrink pack', 'Multipack', 'Bundle', 'Interleaved block', 'Layer pack',
+    'Bag', 'Sack', 'Polybag', 'Crate', 'Tote'
+  ],
+  secondary: [
+    'Pallet', 'Euro pallet', 'Half pallet', 'Slipsheet', 'Skid',
+    'Cage', 'Roll cage', 'Crate', 'Bin', 'Gaylord', 'Stillage', 'Dolly', 'IBC'
+  ]
 };
+
+// Nouns that don't change in the plural. Common in seafood, where a user is
+// as likely to type "Whole fish" or "Tuna" as they are "Can".
+const INVARIANT_PLURALS = new Set([
+  'fish', 'whole fish', 'tuna', 'salmon', 'cod', 'shrimp', 'squid',
+  'mackerel', 'trout', 'herring', 'swordfish', 'bass', 'perch'
+]);
 
 function pluralise(word, n) {
   const w = String(word || '').trim();
   if (!w || n === 1) return w;
+  if (INVARIANT_PLURALS.has(w.toLowerCase())) return w;
   if (/[^aeiou]y$/i.test(w)) return w.slice(0, -1) + 'ies';
   if (/(s|x|z|ch|sh)$/i.test(w)) return w + 'es';
   return w + 's';
@@ -2994,6 +3102,18 @@ function onPointerMove(e) {
   } else {
     item.pos_y = newYcm;
   }
+
+  // Pull faces flush with neighbours unless the user is holding Ctrl/Cmd
+  if (!(e.ctrlKey || e.metaKey)) {
+    const snapped = applyEdgeSnap(item, newXcm, newZcm);
+    newXcm = snapped.x;
+    newZcm = snapped.z;
+    if (useSupport) {
+      const s2 = findSupportHeight(item, newXcm, newZcm, item.id);
+      item.pos_y = s2.top + itemExtent(item).h / 2;
+    }
+  }
+
   item.pos_x = newXcm;
   item.pos_z = newZcm;
 
@@ -3219,11 +3339,14 @@ function applyResize(item, orig, edges, worldDelta) {
     const delta = worldDelta[axis];
 
     let newMin, newMax;
+    const spaceMax = axis === 'x' ? cargoSpace.length * 100
+                   : axis === 'y' ? cargoSpace.height * 100
+                   : cargoSpace.width * 100;
     if (side === 'max') {
-      newMax = snapToGrid(origMax + delta);
+      newMax = snapEdgeValue(snapToGrid(origMax + delta), axis, item.id, spaceMax);
       newMin = origMin;
     } else {
-      newMin = snapToGrid(origMin + delta);
+      newMin = snapEdgeValue(snapToGrid(origMin + delta), axis, item.id, spaceMax);
       newMax = origMax;
     }
 
@@ -3234,9 +3357,6 @@ function applyResize(item, orig, edges, worldDelta) {
     else                newMin = newMax - newSize;
 
     // Clamp to container
-    const spaceMax = axis === 'x' ? cargoSpace.length * 100
-                   : axis === 'y' ? cargoSpace.height * 100
-                   : cargoSpace.width * 100;
     if (newMin < 0) { newMin = 0; newMax = newMin + newSize; }
     if (newMax > spaceMax) { newMax = spaceMax; newMin = newMax - newSize; if (newMin < 0) newMin = 0; }
 
@@ -3246,6 +3366,256 @@ function applyResize(item, orig, edges, worldDelta) {
     item[sizeProp] = finalSize;
     item[posProp] = finalCenter;
   }
+}
+
+// ============================================================
+// MEASUREMENT GRID
+// ------------------------------------------------------------
+// Reference lines ruled across the cargo space, like a camera's
+// framing grid but to scale, so you can read where anything sits
+// rather than only how big the container is.
+// ============================================================
+function niceStep(raw) {
+  const opts = [0.05, 0.1, 0.2, 0.25, 0.5, 1, 2, 2.5, 5, 10];
+  return opts.find(s => s >= raw) ?? 10;
+}
+
+let gridTicks = { step: 0.5, majorEvery: 2, x: [], z: [], y: [] };
+
+function buildMeasureGrid() {
+  if (measureGroup) {
+    scene.remove(measureGroup);
+    measureGroup.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) o.material.dispose();
+    });
+  }
+  measureGroup = new THREE.Group();
+
+  const L = cargoSpace.length, W = cargoSpace.width, H = cargoSpace.height;
+  const step = Math.max(0.25, niceStep(L / 28));
+  const majorEvery = Math.max(2, Math.round(1 / step));
+  const EPS = 1e-6;
+
+  // Rule out to the span, then close on the exact edge so the grid doesn't
+  // stop short of the container wall.
+  const ticksFor = span => {
+    const out = [];
+    for (let v = 0; v <= span + EPS; v += step) out.push(v);
+    const last = out[out.length - 1];
+    if (span - last > step * 0.15) out.push(span);
+    return out;
+  };
+  const xs = ticksFor(L), zs = ticksFor(W), ys = ticksFor(H);
+  gridTicks = { step, majorEvery, x: xs, z: zs, y: ys };
+
+  const minor = [], major = [];
+  const bucket = i => (i % majorEvery === 0 ? major : minor);
+
+  // Floor plane — length x width
+  const fy = 0.004;
+  xs.forEach((x, i) => bucket(i).push(
+    new THREE.Vector3(x, fy, -W / 2), new THREE.Vector3(x, fy, W / 2)));
+  zs.forEach((z, i) => bucket(i).push(
+    new THREE.Vector3(0, fy, z - W / 2), new THREE.Vector3(L, fy, z - W / 2)));
+
+  // Far side wall — length x height (read in Side view)
+  const sz = -W / 2 + 0.004;
+  xs.forEach((x, i) => bucket(i).push(
+    new THREE.Vector3(x, 0, sz), new THREE.Vector3(x, H, sz)));
+  ys.forEach((y, i) => bucket(i).push(
+    new THREE.Vector3(0, y, sz), new THREE.Vector3(L, y, sz)));
+
+  // Back wall — width x height (read in Front view)
+  const bx = 0.004;
+  zs.forEach((z, i) => bucket(i).push(
+    new THREE.Vector3(bx, 0, z - W / 2), new THREE.Vector3(bx, H, z - W / 2)));
+  ys.forEach((y, i) => bucket(i).push(
+    new THREE.Vector3(bx, y, -W / 2), new THREE.Vector3(bx, y, W / 2)));
+
+  const mk = (pts, color, opacity) => {
+    const g = new THREE.BufferGeometry().setFromPoints(pts);
+    const m = new THREE.LineBasicMaterial({ color, transparent: true, opacity });
+    return new THREE.LineSegments(g, m);
+  };
+  if (minor.length) measureGroup.add(mk(minor, 0x1a6fdb, 0.16));
+  if (major.length) measureGroup.add(mk(major, 0x1a6fdb, 0.42));
+
+  measureGroup.visible = showDims;
+  scene.add(measureGroup);
+}
+
+// ============================================================
+// DIMENSION GUIDES
+// ------------------------------------------------------------
+// An SVG overlay rather than in-scene sprites, so the numbers stay crisp at
+// any zoom and use the app's own typography. World points are projected to
+// screen each frame, exactly as the resize handles are.
+// ============================================================
+const DIM_KEYS = ['cL', 'cW', 'cH', 'iL', 'iW', 'iH'];
+const SVG_NS = 'http://www.w3.org/2000/svg';
+let dimOverlay = null;
+const _dimV = new THREE.Vector3();
+
+function initDimOverlay() {
+  const svg = $('#dimOverlay');
+  const parts = {};
+  DIM_KEYS.forEach(key => {
+    const g = document.createElementNS(SVG_NS, 'g');
+    g.setAttribute('class', `dim-group ${key[0] === 'c' ? 'dim-container' : 'dim-item'}`);
+    const line = document.createElementNS(SVG_NS, 'line');
+    const t1   = document.createElementNS(SVG_NS, 'line');
+    const t2   = document.createElementNS(SVG_NS, 'line');
+    const bg   = document.createElementNS(SVG_NS, 'rect');
+    const text = document.createElementNS(SVG_NS, 'text');
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('dominant-baseline', 'central');
+    g.append(line, t1, t2, bg, text);
+    svg.appendChild(g);
+    parts[key] = { g, line, t1, t2, bg, text };
+  });
+  dimOverlay = { svg, parts };
+}
+
+function projectToScreen(x, y, z, rect) {
+  _dimV.set(x, y, z).project(camera);
+  return {
+    x: (_dimV.x * 0.5 + 0.5) * rect.width,
+    y: (-_dimV.y * 0.5 + 0.5) * rect.height,
+    behind: _dimV.z > 1
+  };
+}
+
+function setDimLine(key, a, b, label) {
+  const p = dimOverlay.parts[key];
+  // Hide when off-camera or too short on screen to read
+  if (!a || !b || a.behind || b.behind) { p.g.style.display = 'none'; return; }
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 34) { p.g.style.display = 'none'; return; }
+  p.g.style.display = '';
+
+  p.line.setAttribute('x1', a.x); p.line.setAttribute('y1', a.y);
+  p.line.setAttribute('x2', b.x); p.line.setAttribute('y2', b.y);
+
+  // End ticks, perpendicular to the run
+  const nx = (-dy / len) * 5, ny = (dx / len) * 5;
+  p.t1.setAttribute('x1', a.x - nx); p.t1.setAttribute('y1', a.y - ny);
+  p.t1.setAttribute('x2', a.x + nx); p.t1.setAttribute('y2', a.y + ny);
+  p.t2.setAttribute('x1', b.x - nx); p.t2.setAttribute('y1', b.y - ny);
+  p.t2.setAttribute('x2', b.x + nx); p.t2.setAttribute('y2', b.y + ny);
+
+  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+  p.text.textContent = label;
+  p.text.setAttribute('x', mx);
+  p.text.setAttribute('y', my);
+
+  // Estimate the label box rather than calling getBBox every frame
+  const w = label.length * 5.9 + 12, h = 16;
+  p.bg.setAttribute('x', mx - w / 2); p.bg.setAttribute('y', my - h / 2);
+  p.bg.setAttribute('width', w);      p.bg.setAttribute('height', h);
+}
+
+// ---- ruler labels along the grid (pooled, count varies with grid density) ----
+let rulerPool = [];
+
+function getRuler(i) {
+  if (rulerPool[i]) return rulerPool[i];
+  const g = document.createElementNS(SVG_NS, 'g');
+  g.setAttribute('class', 'dim-group dim-ruler');
+  const bg = document.createElementNS(SVG_NS, 'rect');
+  const text = document.createElementNS(SVG_NS, 'text');
+  text.setAttribute('text-anchor', 'middle');
+  text.setAttribute('dominant-baseline', 'central');
+  g.append(bg, text);
+  $('#dimOverlay').appendChild(g);
+  const obj = { g, bg, text };
+  rulerPool[i] = obj;
+  return obj;
+}
+
+function setRuler(i, pt, label) {
+  const r = getRuler(i);
+  if (!pt || pt.behind) { r.g.style.display = 'none'; return; }
+  r.g.style.display = '';
+  r.text.textContent = label;
+  r.text.setAttribute('x', pt.x);
+  r.text.setAttribute('y', pt.y);
+  const w = label.length * 5.4 + 9, h = 14;
+  r.bg.setAttribute('x', pt.x - w / 2); r.bg.setAttribute('y', pt.y - h / 2);
+  r.bg.setAttribute('width', w);        r.bg.setAttribute('height', h);
+}
+
+// Mark the major grid lines with their distance from the back wall / near side
+function drawRulers(rect) {
+  const L = cargoSpace.length, W = cargoSpace.width;
+  const P = (x, y, z) => projectToScreen(x, y, z, rect);
+  const { majorEvery, x: xs, z: zs, y: ys } = gridTicks;
+  const cu = containerUnit;
+  let n = 0;
+
+  const along = (ticks, fn) => {
+    ticks.forEach((v, i) => {
+      if (i === 0 || i % majorEvery !== 0) return;      // majors only, skip zero
+      setRuler(n++, fn(v), `${fromM(v)} ${cu}`);
+    });
+  };
+
+  if (sceneMode === '2d' && orthoView === 'front') {
+    along(zs, z => P(0.02, 0, z - W / 2 - 0.16));
+    along(ys, y => P(0.02, y, W / 2 + 0.16));
+  } else if (sceneMode === '2d' && orthoView === 'side') {
+    along(xs, x => P(x, -0.16, -W / 2 + 0.02));
+    along(ys, y => P(L + 0.16, y, -W / 2 + 0.02));
+  } else {
+    along(xs, x => P(x, 0, W / 2 + 0.16));             // length, along the near edge
+    along(zs, z => P(L + 0.16, 0, z - W / 2));         // width, along the door end
+  }
+
+  for (let i = n; i < rulerPool.length; i++) rulerPool[i].g.style.display = 'none';
+}
+
+function updateDimOverlay() {
+  const svg = $('#dimOverlay');
+  if (measureGroup) measureGroup.visible = showDims;
+  if (!showDims) { if (!svg.hidden) svg.hidden = true; return; }
+  if (!dimOverlay) return;
+  if (svg.hidden) svg.hidden = false;
+
+  const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  svg.setAttribute('width', rect.width);
+  svg.setAttribute('height', rect.height);
+
+  drawRulers(rect);
+
+  const L = cargoSpace.length, W = cargoSpace.width, H = cargoSpace.height;
+  const off = 0.28;                                  // stand the guides off the box
+  const P = (x, y, z) => projectToScreen(x, y, z, rect);
+  const cu = containerUnit;
+
+  setDimLine('cL', P(0, 0, W / 2 + off), P(L, 0, W / 2 + off), `${fromM(L)} ${cu}`);
+  setDimLine('cW', P(L + off, 0, -W / 2), P(L + off, 0, W / 2), `${fromM(W)} ${cu}`);
+  setDimLine('cH', P(L + off, 0, W / 2 + off), P(L + off, H, W / 2 + off), `${fromM(H)} ${cu}`);
+
+  const item = items.find(i => i.id === selectedItemId);
+  if (!item) {
+    ['iL', 'iW', 'iH'].forEach(k => dimOverlay.parts[k].g.style.display = 'none');
+    return;
+  }
+
+  const b = itemBounds(item);
+  const shift = W / 2;
+  const x0 = b.minX / 100, x1 = b.maxX / 100;
+  const y0 = b.minY / 100, y1 = b.maxY / 100;
+  const z0 = b.minZ / 100 - shift, z1 = b.maxZ / 100 - shift;
+  const e = itemExtent(item);
+  const io = 0.07;
+  const iu = itemUnit;
+
+  setDimLine('iL', P(x0, y1 + io, z1 + io), P(x1, y1 + io, z1 + io), `${fromCm(e.l)} ${iu}`);
+  setDimLine('iW', P(x1 + io, y1 + io, z0), P(x1 + io, y1 + io, z1), `${fromCm(e.w)} ${iu}`);
+  setDimLine('iH', P(x1 + io, y0, z1 + io),  P(x1 + io, y1, z1 + io), `${fromCm(e.h)} ${iu}`);
 }
 
 // ============================================================
@@ -3356,6 +3726,7 @@ function animate() {
   controls.update();
   updateContainerCulling();                // hide walls between camera and interior
   updateResizeHandlesPosition();
+  updateDimOverlay();
   updateAnnotations();
   renderer.render(scene, camera);
 }
@@ -3642,6 +4013,7 @@ function renderShortcuts() {
     { keys: ['F'],          desc: 'Flip selected item onto another face' },
     { keys: [modKey, 'D'],  desc: 'Duplicate selected carton' },
     { keys: ['L'],          desc: 'Toggle carton labels' },
+    { keys: ['G'],          desc: 'Toggle dimension guides' },
     { keys: ['P'],          desc: 'Auto-pack the plan' },
     { keys: ['2'],          desc: 'Switch to 2D orthographic mode' },
     { keys: ['3'],          desc: 'Switch to 3D perspective mode' },
@@ -3654,7 +4026,8 @@ function renderShortcuts() {
     { keys: ['Shift', '+', 'drag'],  desc: 'Orbit even when over a carton' },
     { keys: ['Right-drag'],          desc: 'Orbit (3D) or pan (2D) anywhere' },
     { keys: ['Scroll'],              desc: 'Zoom in / out' },
-    { keys: ['Drag handles (2D)'],   desc: 'Resize the selected carton' }
+    { keys: ['Drag handles (2D)'],   desc: 'Resize the selected carton' },
+    { keys: [modKey, '+', 'drag'],   desc: 'Move freely — turns off grid and edge snapping' }
   ];
   const rowHtml = ({ keys, desc }) => {
     const keyEls = keys.map(k => k === '+'
@@ -3997,6 +4370,13 @@ $('#toggleLabels').addEventListener('click', () => {
   hoveredItemId = null;                  // clear any stale hover state
   updateLabelVisibility();
   showToast(showLabels ? 'Labels shown on <b>hover</b>.' : 'Labels <b>off</b>.');
+});
+
+$('#toggleDims').addEventListener('click', () => {
+  showDims = !showDims;
+  $('#toggleDims').classList.toggle('active', showDims);
+  try { localStorage.setItem(DIMS_MODE_KEY, showDims ? '1' : '0'); } catch (e) {}
+  showToast(showDims ? 'Dimension guides <b>on</b>.' : 'Dimension guides <b>off</b>.');
 });
 
 $('#toggleRealistic').addEventListener('click', () => {
@@ -4486,6 +4866,8 @@ window.addEventListener('keydown', (e) => {
     $('#btnDuplicate').click();
   } else if (e.key === 'l') {
     $('#toggleLabels').click();
+  } else if (e.key === 'g') {
+    $('#toggleDims').click();
   } else if (e.key === 'p') {
     runAutoPack();
   } else if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
@@ -4564,6 +4946,7 @@ async function boot() {
   // Load preferences that affect the first render
   try {
     realisticMode = localStorage.getItem(REALISTIC_MODE_KEY) === '1';
+    showDims = localStorage.getItem(DIMS_MODE_KEY) === '1';
   } catch (e) {}
   try {
     const savedC = localStorage.getItem(CONTAINER_UNIT_KEY);
@@ -4587,6 +4970,7 @@ async function boot() {
 
   // Sync toggle button state
   $('#toggleRealistic').classList.toggle('active', realisticMode);
+  $('#toggleDims').classList.toggle('active', showDims);
 
   // Apply units to labels/steps/scene header. HTML defaults for cargo space are
   // in m — convert if the saved container unit differs. Item fields are empty
