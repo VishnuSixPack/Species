@@ -75,10 +75,21 @@ const CARGO_COLORS = [
 const GRID_CM = 5;
 const CENTER_SNAP_CM = 15;
 const EDGE_SNAP_CM = 4;                  // magnetic range for flush faces
+
+// Rough bearing capacity by packaging type, in kg per cm² of footprint.
+// A 60x40 corrugated carton works out around 190 kg, which is the right
+// order for double-wall board; pallets take far more, slipsheets less.
+const BEARING_KG_PER_CM2 = { carton: 0.08, pallet: 0.5, slipsheet: 0.06 };
+const MIN_SUPPORT_RATIO = 0.6;           // below this, a box is liable to tip
+const CONTACT_EPS_CM = 1.0;              // faces this close count as touching
 const TEMPLATES_KEY = 'smartuna_planner_templates_v1';
 const SCENE_MODE_KEY = 'smartuna_planner_scene_mode';
 const REALISTIC_MODE_KEY = 'smartuna_planner_realistic_mode';
 const DIMS_MODE_KEY = 'smartuna_planner_dims_mode';
+const GRID_STEP_KEY = 'smartuna_planner_grid_step';
+
+// Selectable grid spacings, in metres. 'auto' sizes them to the container.
+const GRID_STEP_OPTIONS = [0.1, 0.25, 0.5, 1, 2];
 const CONTAINER_UNIT_KEY = 'smartuna_planner_container_unit';
 const ITEM_UNIT_KEY = 'smartuna_planner_item_unit';
 
@@ -166,6 +177,7 @@ let orthoView = 'top';                  // '2d' sub-view: top | side | front
 let last3DView = 'perspective';
 let realisticMode = false;              // opt-in realistic container + yard
 let showDims = false;                   // opt-in dimension guides
+let gridStepPref = 'auto';              // 'auto' or a spacing in metres
 
 let resizeState = null;
 let handleElements = [];                // 8 DOM elements
@@ -1371,6 +1383,112 @@ function setEditMode(isEdit, item) {
 }
 
 // ============================================================
+// STABILITY
+// ------------------------------------------------------------
+// Works out what each item is resting on, pushes the weight above it down
+// through the stack, and flags anything that would crush, tip or float.
+// Nothing here blocks the user — it only warns.
+// ============================================================
+function bearingCapacity(item) {
+  const e = itemExtent(item);
+  const rate = BEARING_KG_PER_CM2[item.kind] ?? BEARING_KG_PER_CM2.carton;
+  return e.l * e.w * rate;
+}
+
+function evaluateStability() {
+  items.forEach(i => { i.issues = []; });
+  if (items.length === 0) return;
+
+  // Who rests on whom, and over how much contact area
+  const supportsOf = new Map();
+  for (const item of items) {
+    const b = itemBounds(item);
+    if (b.minY < 0.5) { supportsOf.set(item.id, null); continue; }   // on the floor
+    const list = [];
+    for (const other of items) {
+      if (other.id === item.id) continue;
+      const ob = itemBounds(other);
+      if (Math.abs(ob.maxY - b.minY) > CONTACT_EPS_CM) continue;
+      const ox = Math.min(b.maxX, ob.maxX) - Math.max(b.minX, ob.minX);
+      const oz = Math.min(b.maxZ, ob.maxZ) - Math.max(b.minZ, ob.minZ);
+      if (ox > 0.1 && oz > 0.1) list.push({ id: other.id, area: ox * oz });
+    }
+    supportsOf.set(item.id, list);
+  }
+
+  // Push weight down the stack, highest first, split by contact area
+  const carried = new Map(items.map(i => [i.id, 0]));
+  const topDown = [...items].sort((a, b) => b.pos_y - a.pos_y);
+  for (const item of topDown) {
+    const sup = supportsOf.get(item.id);
+    if (!sup || !sup.length) continue;
+    const total = sup.reduce((s, x) => s + x.area, 0);
+    if (total <= 0) continue;
+    const passing = (item.weight_kg || 0) + carried.get(item.id);
+    sup.forEach(s => carried.set(s.id, carried.get(s.id) + passing * (s.area / total)));
+  }
+
+  for (const item of items) {
+    const e = itemExtent(item);
+    const footprint = e.l * e.w;
+    const sup = supportsOf.get(item.id);
+    const load = carried.get(item.id) || 0;
+
+    // Floating or poorly supported
+    if (sup !== null) {
+      if (!sup.length) {
+        item.issues.push({ level: 'danger', text: 'Floating with nothing underneath' });
+      } else {
+        const area = sup.reduce((s, x) => s + x.area, 0);
+        const ratio = footprint > 0 ? area / footprint : 1;
+        if (ratio < MIN_SUPPORT_RATIO) {
+          item.issues.push({
+            level: ratio < 0.3 ? 'danger' : 'warn',
+            text: `Only ${Math.round(ratio * 100)}% of its base is supported — tipping risk`
+          });
+        }
+      }
+    }
+
+    // Crushing
+    if (load > 0.05) {
+      const cap = bearingCapacity(item);
+      if (load > cap) {
+        item.issues.push({
+          level: 'danger',
+          text: `Carrying ${load.toFixed(1)} kg against roughly ${cap.toFixed(0)} kg capacity — likely to crush`
+        });
+      } else if (load > cap * 0.8) {
+        item.issues.push({
+          level: 'warn',
+          text: `Carrying ${load.toFixed(1)} kg, close to its ${cap.toFixed(0)} kg capacity`
+        });
+      }
+      if (item.handling === 'fragile') {
+        item.issues.push({ level: 'warn', text: `Marked fragile with ${load.toFixed(1)} kg stacked on it` });
+      }
+    }
+
+    // Orientation rule
+    if (item.handling === 'this_side_up' && item.rot_y > 1) {
+      item.issues.push({ level: 'warn', text: 'Marked this side up but resting on another face' });
+    }
+
+    item.issueLevel = item.issues.some(x => x.level === 'danger') ? 'danger'
+                    : item.issues.length ? 'warn' : null;
+  }
+}
+
+function issueCounts() {
+  let danger = 0, warn = 0;
+  items.forEach(i => {
+    if (i.issueLevel === 'danger') danger++;
+    else if (i.issueLevel === 'warn') warn++;
+  });
+  return { danger, warn, total: danger + warn };
+}
+
+// ============================================================
 // STATS + STATUS CHIP
 // ============================================================
 function updateStats() {
@@ -1383,16 +1501,19 @@ function updateStats() {
   $('#statItems').textContent  = `${items.length}`;
   $('#statWeight').textContent = `${weight.toFixed(1)} kg`;
 
+  evaluateStability();
+  const iss = issueCounts();
+
   const statusEl = $('#statStatus');
-  statusEl.className = 'stat-value ' + (
-    items.length === 0 ? 'stat-ok' :
-    volPct > 100       ? 'stat-danger' :
-    volPct > 90        ? 'stat-warn' : 'stat-ok'
-  );
-  statusEl.textContent =
-    items.length === 0 ? 'Empty' :
-    volPct > 100       ? 'Over capacity' :
-    volPct > 90        ? 'Near full' : 'OK';
+  let cls, txt;
+  if (items.length === 0)      { cls = 'stat-ok';     txt = 'Empty'; }
+  else if (iss.danger)         { cls = 'stat-danger'; txt = `⚠ ${iss.danger} unsafe`; }
+  else if (volPct > 100)       { cls = 'stat-danger'; txt = 'Over capacity'; }
+  else if (iss.warn)           { cls = 'stat-warn';   txt = `⚠ ${iss.warn} to check`; }
+  else if (volPct > 90)        { cls = 'stat-warn';   txt = 'Near full'; }
+  else                         { cls = 'stat-ok';     txt = 'OK'; }
+  statusEl.className = 'stat-value ' + cls;
+  statusEl.textContent = txt;
 }
 
 function markDirty() { isDirty = true; updateStatusChip(); }
@@ -1441,6 +1562,7 @@ function renderCargoList() {
         <small>${fromCm(i.length_cm)} × ${fromCm(i.width_cm)} × ${fromCm(i.height_cm)} ${itemUnit} · ${i.weight_kg || 0} kg · ${i.handling}</small>
         ${extra ? `<small class="cargo-contents">${extra}</small>` : ''}
       </div>
+      ${i.issueLevel ? `<span class="row-warn lvl-${i.issueLevel}" title="${escapeHtml(i.issues.map(x => x.text).join(' · '))}">!</span>` : ''}
       <span class="focus-icon" title="Focus camera">⌖</span>
     </div>`;
   }).join('');
@@ -1466,6 +1588,19 @@ function renderEditStrip() {
   if (sw) sw.style.background = item.color;
   const sh = $('#editStripShape');
   if (sh) sh.textContent = SHAPES[item.shape || 'box'].label;
+
+  const box = $('#editIssues');
+  if (box) {
+    if (!item.issues?.length) {
+      box.hidden = true;
+      box.innerHTML = '';
+    } else {
+      box.hidden = false;
+      box.innerHTML = item.issues
+        .map(x => `<div class="edit-issue lvl-${x.level}"><span>!</span>${escapeHtml(x.text)}</div>`)
+        .join('');
+    }
+  }
 }
 
 function escapeHtml(str) {
@@ -2888,7 +3023,7 @@ function setSectionUnit({ scope, newUnit }) {
 
   updateDimLabels();
   updateFieldSteps();
-  if (isContainer) updateSceneDimsDisplay();
+  if (isContainer) { updateSceneDimsDisplay(); renderGridOptions(); }
   else             renderCargoList();
 
   $$(`.unit-mini[data-unit-target="${scope}"] .unit-btn`).forEach(b =>
@@ -2956,10 +3091,20 @@ function onPointerLeave() {
   }
 }
 
+let shiftPick = null;                    // tracks a shift-click that isn't an orbit drag
+
 function onPointerDown(e) {
   if (e.button !== 0) return;
-  if (e.shiftKey || e.altKey) return;
   if (isPacking) return;                 // scene is animating
+
+  // Shift lets OrbitControls run, so a shift-click only counts as a
+  // measurement pick if the pointer barely moves before release.
+  if (e.shiftKey) {
+    const hit = hitCarton(e);
+    shiftPick = hit ? { itemId: hit.itemId, x: e.clientX, y: e.clientY } : null;
+    return;
+  }
+  if (e.altKey) return;
 
   const hit = hitCarton(e);
   if (!hit) { deselectAll(); return; }
@@ -3123,6 +3268,12 @@ function onPointerMove(e) {
 }
 
 function onPointerUp(e) {
+  if (shiftPick) {
+    const moved = Math.abs(e.clientX - shiftPick.x) > 4 || Math.abs(e.clientY - shiftPick.y) > 4;
+    if (!moved) setMeasureTarget(shiftPick.itemId);
+    shiftPick = null;
+  }
+
   if (dragState) {
     if (canvas.hasPointerCapture(dragState.pointerId)) {
       canvas.releasePointerCapture(dragState.pointerId);
@@ -3393,8 +3544,11 @@ function buildMeasureGrid() {
   measureGroup = new THREE.Group();
 
   const L = cargoSpace.length, W = cargoSpace.width, H = cargoSpace.height;
-  const step = Math.max(0.25, niceStep(L / 28));
-  const majorEvery = Math.max(2, Math.round(1 / step));
+  const step = gridStepPref === 'auto'
+    ? Math.max(0.25, niceStep(L / 28))
+    : Number(gridStepPref);
+  // At 1 m or coarser every line is worth labelling; finer grids get majors
+  const majorEvery = step >= 1 ? 1 : Math.max(2, Math.round(1 / step));
   const EPS = 1e-6;
 
   // Rule out to the span, then close on the exact edge so the grid doesn't
@@ -3443,6 +3597,22 @@ function buildMeasureGrid() {
 
   measureGroup.visible = showDims;
   scene.add(measureGroup);
+}
+
+// Options are physical spacings, labelled in whatever unit the container uses
+function renderGridOptions() {
+  const sel = $('#gridStep');
+  if (!sel) return;
+  sel.innerHTML = '<option value="auto">Auto</option>' +
+    GRID_STEP_OPTIONS.map(m =>
+      `<option value="${m}">${fromM(m)} ${containerUnit}</option>`).join('');
+  sel.value = String(gridStepPref);
+}
+
+function setGridStep(pref) {
+  gridStepPref = pref === 'auto' ? 'auto' : Number(pref);
+  try { localStorage.setItem(GRID_STEP_KEY, String(gridStepPref)); } catch (e) {}
+  buildMeasureGrid();
 }
 
 // ============================================================
@@ -3577,7 +3747,9 @@ function drawRulers(rect) {
 
 function updateDimOverlay() {
   const svg = $('#dimOverlay');
+  const ctrl = $('#gridControl');
   if (measureGroup) measureGroup.visible = showDims;
+  if (ctrl.hidden === showDims) ctrl.hidden = !showDims;
   if (!showDims) { if (!svg.hidden) svg.hidden = true; return; }
   if (!dimOverlay) return;
   if (svg.hidden) svg.hidden = false;
@@ -3616,6 +3788,196 @@ function updateDimOverlay() {
   setDimLine('iL', P(x0, y1 + io, z1 + io), P(x1, y1 + io, z1 + io), `${fromCm(e.l)} ${iu}`);
   setDimLine('iW', P(x1 + io, y1 + io, z0), P(x1 + io, y1 + io, z1), `${fromCm(e.w)} ${iu}`);
   setDimLine('iH', P(x1 + io, y0, z1 + io),  P(x1 + io, y1, z1 + io), `${fromCm(e.h)} ${iu}`);
+}
+
+// ============================================================
+// LIVE OVERLAY — warning markers and pair measurement
+// ============================================================
+let warnPool = [];
+let measurePool = [];
+let measureIds = [];                     // up to two item ids being compared
+
+function getWarnMarker(i) {
+  if (warnPool[i]) return warnPool[i];
+  const g = document.createElementNS(SVG_NS, 'g');
+  g.setAttribute('class', 'warn-marker');
+  const tri = document.createElementNS(SVG_NS, 'polygon');
+  const text = document.createElementNS(SVG_NS, 'text');
+  text.textContent = '!';
+  g.append(tri, text);
+  $('#liveOverlay').appendChild(g);
+  const obj = { g, tri, text };
+  warnPool[i] = obj;
+  return obj;
+}
+
+function drawWarnMarkers(rect) {
+  let n = 0;
+  for (const item of items) {
+    if (!item.issueLevel) continue;
+    const e = itemExtent(item);
+    const p = projectToScreen(
+      item.pos_x / 100,
+      (item.pos_y + e.h / 2) / 100 + 0.12,
+      item.pos_z / 100 - cargoSpace.width / 2,
+      rect
+    );
+    const m = getWarnMarker(n++);
+    if (p.behind) { m.g.style.display = 'none'; continue; }
+    m.g.style.display = '';
+    m.g.setAttribute('class', `warn-marker lvl-${item.issueLevel}`);
+    const s = 9;
+    m.tri.setAttribute('points',
+      `${p.x},${p.y - s} ${p.x + s},${p.y + s * 0.75} ${p.x - s},${p.y + s * 0.75}`);
+    m.text.setAttribute('x', p.x);
+    m.text.setAttribute('y', p.y + s * 0.3);
+  }
+  for (let i = n; i < warnPool.length; i++) warnPool[i].g.style.display = 'none';
+}
+
+// Clear gap between two boxes on each axis — zero means they touch or overlap
+function gapBetween(a, b) {
+  const A = itemBounds(a), B = itemBounds(b);
+  const axis = (aMin, aMax, bMin, bMax) =>
+    Math.max(0, Math.max(aMin - bMax, bMin - aMax));
+  return {
+    x: axis(A.minX, A.maxX, B.minX, B.maxX),
+    y: axis(A.minY, A.maxY, B.minY, B.maxY),
+    z: axis(A.minZ, A.maxZ, B.minZ, B.maxZ),
+    A, B
+  };
+}
+
+function getMeasureLine(i) {
+  if (measurePool[i]) return measurePool[i];
+  const g = document.createElementNS(SVG_NS, 'g');
+  g.setAttribute('class', 'measure-line');
+  const line = document.createElementNS(SVG_NS, 'line');
+  const t1 = document.createElementNS(SVG_NS, 'line');
+  const t2 = document.createElementNS(SVG_NS, 'line');
+  const bg = document.createElementNS(SVG_NS, 'rect');
+  const text = document.createElementNS(SVG_NS, 'text');
+  g.append(line, t1, t2, bg, text);
+  $('#liveOverlay').appendChild(g);
+  const obj = { g, line, t1, t2, bg, text };
+  measurePool[i] = obj;
+  return obj;
+}
+
+function setMeasureLine(i, a, b, label) {
+  const m = getMeasureLine(i);
+  if (!a || !b || a.behind || b.behind) { m.g.style.display = 'none'; return; }
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const len = Math.hypot(dx, dy);
+  if (len < 12) { m.g.style.display = 'none'; return; }
+  m.g.style.display = '';
+  m.line.setAttribute('x1', a.x); m.line.setAttribute('y1', a.y);
+  m.line.setAttribute('x2', b.x); m.line.setAttribute('y2', b.y);
+  const nx = (-dy / len) * 5, ny = (dx / len) * 5;
+  m.t1.setAttribute('x1', a.x - nx); m.t1.setAttribute('y1', a.y - ny);
+  m.t1.setAttribute('x2', a.x + nx); m.t1.setAttribute('y2', a.y + ny);
+  m.t2.setAttribute('x1', b.x - nx); m.t2.setAttribute('y1', b.y - ny);
+  m.t2.setAttribute('x2', b.x + nx); m.t2.setAttribute('y2', b.y + ny);
+  const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+  m.text.textContent = label;
+  m.text.setAttribute('x', mx); m.text.setAttribute('y', my);
+  const w = label.length * 5.9 + 12, h = 16;
+  m.bg.setAttribute('x', mx - w / 2); m.bg.setAttribute('y', my - h / 2);
+  m.bg.setAttribute('width', w);      m.bg.setAttribute('height', h);
+}
+
+function drawMeasurement(rect) {
+  const [ia, ib] = measureIds.map(id => items.find(i => i.id === id));
+  const panel = $('#measureReadout');
+  if (!ia || !ib) {
+    if (!panel.hidden) panel.hidden = true;
+    measurePool.forEach(m => m.g.style.display = 'none');
+    return;
+  }
+  panel.hidden = false;
+
+  const g = gapBetween(ia, ib);
+  const shift = cargoSpace.width / 2;
+  const P = (x, y, z) => projectToScreen(x / 100, y / 100, z / 100 - shift, rect);
+  const mid = (lo, hi) => (lo + hi) / 2;
+  let n = 0;
+
+  // One dimension line per axis that actually has a gap, drawn between the
+  // two facing surfaces at the middle of where the boxes overlap.
+  if (g.x > 0.05) {
+    const left = g.A.maxX <= g.B.minX ? g.A : g.B;
+    const right = left === g.A ? g.B : g.A;
+    const y = mid(Math.max(g.A.minY, g.B.minY), Math.min(g.A.maxY, g.B.maxY)) ||
+              mid(g.A.minY, g.A.maxY);
+    const z = mid(Math.max(g.A.minZ, g.B.minZ), Math.min(g.A.maxZ, g.B.maxZ)) ||
+              mid(g.A.minZ, g.A.maxZ);
+    setMeasureLine(n++, P(left.maxX, y, z), P(right.minX, y, z), `${fromCm(g.x)} ${itemUnit}`);
+  }
+  if (g.z > 0.05) {
+    const near = g.A.maxZ <= g.B.minZ ? g.A : g.B;
+    const far = near === g.A ? g.B : g.A;
+    const x = mid(Math.max(g.A.minX, g.B.minX), Math.min(g.A.maxX, g.B.maxX)) ||
+              mid(g.A.minX, g.A.maxX);
+    const y = mid(Math.max(g.A.minY, g.B.minY), Math.min(g.A.maxY, g.B.maxY)) ||
+              mid(g.A.minY, g.A.maxY);
+    setMeasureLine(n++, P(x, y, near.maxZ), P(x, y, far.minZ), `${fromCm(g.z)} ${itemUnit}`);
+  }
+  if (g.y > 0.05) {
+    const low = g.A.maxY <= g.B.minY ? g.A : g.B;
+    const high = low === g.A ? g.B : g.A;
+    const x = mid(Math.max(g.A.minX, g.B.minX), Math.min(g.A.maxX, g.B.maxX)) ||
+              mid(g.A.minX, g.A.maxX);
+    const z = mid(Math.max(g.A.minZ, g.B.minZ), Math.min(g.A.maxZ, g.B.maxZ)) ||
+              mid(g.A.minZ, g.A.maxZ);
+    setMeasureLine(n++, P(x, low.maxY, z), P(x, high.minY, z), `${fromCm(g.y)} ${itemUnit}`);
+  }
+  for (let i = n; i < measurePool.length; i++) measurePool[i].g.style.display = 'none';
+
+  // Readout panel
+  $('#measurePair').textContent = `${ia.label}  ↔  ${ib.label}`;
+  const row = (name, v) => {
+    const touching = v < 0.05;
+    return `<div class="measure-row ${touching ? 'touching' : ''}">
+      <span>${name}</span><b>${touching ? 'flush' : fromCm(v) + ' ' + itemUnit}</b></div>`;
+  };
+  const centreDist = Math.hypot(ia.pos_x - ib.pos_x, ia.pos_y - ib.pos_y, ia.pos_z - ib.pos_z);
+  $('#measureRows').innerHTML =
+    row('Along length', g.x) +
+    row('Across width', g.z) +
+    row('Vertical', g.y) +
+    `<div class="measure-row"><span>Centre to centre</span><b>${fromCm(centreDist)} ${itemUnit}</b></div>`;
+}
+
+function updateLiveOverlay() {
+  const svg = $('#liveOverlay');
+  const rect = canvas.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
+  svg.setAttribute('width', rect.width);
+  svg.setAttribute('height', rect.height);
+  drawWarnMarkers(rect);
+  drawMeasurement(rect);
+}
+
+function clearMeasurement() {
+  measureIds = [];
+  $('#measureReadout').hidden = true;
+  measurePool.forEach(m => m.g.style.display = 'none');
+}
+
+// Shift-click builds the pair: the selected item is the anchor, the clicked
+// one is the other end. Shift-clicking a third replaces the far end.
+function setMeasureTarget(itemId) {
+  const anchor = selectedItemId && selectedItemId !== itemId
+    ? selectedItemId
+    : (measureIds[0] && measureIds[0] !== itemId ? measureIds[0] : null);
+  if (!anchor) {
+    showToast('Select a carton first, then shift-click another to measure.');
+    return;
+  }
+  measureIds = [anchor, itemId];
+  const a = items.find(i => i.id === anchor);
+  const b = items.find(i => i.id === itemId);
+  if (a && b) showToast(`Measuring <b>${escapeHtml(a.label)}</b> to <b>${escapeHtml(b.label)}</b>.`);
 }
 
 // ============================================================
@@ -3727,6 +4089,7 @@ function animate() {
   updateContainerCulling();                // hide walls between camera and interior
   updateResizeHandlesPosition();
   updateDimOverlay();
+  updateLiveOverlay();
   updateAnnotations();
   renderer.render(scene, camera);
 }
@@ -4023,6 +4386,7 @@ function renderShortcuts() {
     { keys: ['Left-drag empty'],     desc: 'Orbit scene (3D) or pan (2D)' },
     { keys: ['Left-drag carton'],    desc: 'Move carton — top: X/Z · side: X/Y · front: Y/Z' },
     { keys: ['Vertical drag (2D)'],  desc: 'Lift a box to stack it (side/front views)' },
+    { keys: ['Shift', '+', 'click'], desc: 'Measure the gap to the selected carton' },
     { keys: ['Shift', '+', 'drag'],  desc: 'Orbit even when over a carton' },
     { keys: ['Right-drag'],          desc: 'Orbit (3D) or pan (2D) anywhere' },
     { keys: ['Scroll'],              desc: 'Zoom in / out' },
@@ -4371,6 +4735,9 @@ $('#toggleLabels').addEventListener('click', () => {
   updateLabelVisibility();
   showToast(showLabels ? 'Labels shown on <b>hover</b>.' : 'Labels <b>off</b>.');
 });
+
+$('#gridStep').addEventListener('change', e => setGridStep(e.target.value));
+$('#measureClose').addEventListener('click', clearMeasurement);
 
 $('#toggleDims').addEventListener('click', () => {
   showDims = !showDims;
@@ -4848,6 +5215,7 @@ window.addEventListener('keydown', (e) => {
       controls.enabled = true;
       return;
     }
+    if (measureIds.length) { clearMeasurement(); return; }
     deselectAll();
     return;
   }
@@ -4947,6 +5315,8 @@ async function boot() {
   try {
     realisticMode = localStorage.getItem(REALISTIC_MODE_KEY) === '1';
     showDims = localStorage.getItem(DIMS_MODE_KEY) === '1';
+    const gs = localStorage.getItem(GRID_STEP_KEY);
+    if (gs) gridStepPref = gs === 'auto' ? 'auto' : (Number(gs) || 'auto');
   } catch (e) {}
   try {
     const savedC = localStorage.getItem(CONTAINER_UNIT_KEY);
@@ -4960,6 +5330,7 @@ async function boot() {
   renderTemplateDropdown();
   loadCartonSpecs();
   builder = newBuilderSpec();
+  renderGridOptions();                      // before enhanceSelect picks it up
   $$('select').forEach(enhanceSelect);      // replace native selects with styled ones
   updateStats();
   renderCargoList();
