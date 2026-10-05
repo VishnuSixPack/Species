@@ -72,14 +72,21 @@ const CARGO_COLORS = [
   '#f97316', '#84cc16', '#6366f1', '#d946ef'
 ];
 
-const GRID_CM = 5;
+const GRID_CM = 5;                       // default move step
 const CENTER_SNAP_CM = 15;
-const EDGE_SNAP_CM = 4;                  // magnetic range for flush faces
+const MIN_SIZE_CM = 0.5;                 // smallest a box can be resized to
+const LANE_TOL_CM = 2;                   // boxes this close still count as neighbours
+const SNAP_STEP_KEY = 'smartuna_planner_snap_step';
 
-// Rough bearing capacity by packaging type, in kg per cm² of footprint.
-// A 60x40 corrugated carton works out around 190 kg, which is the right
-// order for double-wall board; pallets take far more, slipsheets less.
-const BEARING_KG_PER_CM2 = { carton: 0.08, pallet: 0.5, slipsheet: 0.06 };
+// Selectable move precision, in cm. 0 means free positioning.
+const SNAP_STEP_OPTIONS = [0, 0.1, 0.5, 1, 2.5, 5, 10];
+
+// Corrugated board strength scales with box PERIMETER, not footprint area
+// (McKee). Roughly 2 kgf of box compression per cm of perimeter for typical
+// board; divide by a transit safety factor for sustained stacking, since BCT
+// is a short-term dry figure and real loads sit for weeks in humidity.
+const BCT_KGF_PER_CM = { carton: 2.0, pallet: 12, slipsheet: 1.5 };
+const STACK_SAFETY_FACTOR = 6;
 const MIN_SUPPORT_RATIO = 0.6;           // below this, a box is liable to tip
 const CONTACT_EPS_CM = 1.0;              // faces this close count as touching
 const TEMPLATES_KEY = 'smartuna_planner_templates_v1';
@@ -178,6 +185,7 @@ let last3DView = 'perspective';
 let realisticMode = false;              // opt-in realistic container + yard
 let showDims = false;                   // opt-in dimension guides
 let gridStepPref = 'auto';              // 'auto' or a spacing in metres
+let moveStep = GRID_CM;                 // cm; 0 = free positioning
 
 let resizeState = null;
 let handleElements = [];                // 8 DOM elements
@@ -805,7 +813,19 @@ function clampItemToBounds(item) {
   item.pos_y = Math.max(halfH, Math.min(H - halfH, item.pos_y));
 }
 
-function snapToGrid(cm) { return Math.round(cm / GRID_CM) * GRID_CM; }
+function snapToGrid(cm) {
+  if (!moveStep) return cm;              // free positioning
+  return Math.round(cm / moveStep) * moveStep;
+}
+
+// The magnets must never be coarser than the step the user chose, or they
+// would drag a carefully placed millimetre position back out again.
+function edgeSnapRange() {
+  return moveStep ? Math.min(4, Math.max(0.5, moveStep * 2)) : 0.5;
+}
+function centerSnapRange() {
+  return moveStep ? Math.min(CENTER_SNAP_CM, Math.max(1, moveStep * 3)) : 1;
+}
 
 // ---- magnetic edge snapping ----
 // Grid snapping moves the box CENTRE, so two boxes whose half-widths aren't
@@ -817,7 +837,7 @@ function snapEdgeValue(v, axis, excludeId, spaceMax) {
   let best = null;
   const consider = t => {
     const d = Math.abs(t - v);
-    if (d <= EDGE_SNAP_CM && (!best || d < best.d)) best = { t, d };
+    if (d <= edgeSnapRange() && (!best || d < best.d)) best = { t, d };
   };
   consider(0);
   consider(spaceMax);
@@ -839,7 +859,12 @@ function applyEdgeSnap(item, xCm, zCm) {
   const halfL = e.l / 2, halfW = e.w / 2;
   const L = cargoSpace.length * 100;
   const W = cargoSpace.width * 100;
-  const overlaps = (aMin, aMax, bMin, bMax) => aMin < bMax - 0.5 && aMax > bMin + 0.5;
+  const range = edgeSnapRange();
+  // Boxes that merely touch on the other axis are still neighbours — without
+  // this tolerance, two cartons sitting flush end-to-end can never be pushed
+  // together across their width.
+  const inLane = (aMin, aMax, bMin, bMax) =>
+    aMin < bMax + LANE_TOL_CM && aMax > bMin - LANE_TOL_CM;
 
   let x = xCm, z = zCm;
 
@@ -849,14 +874,14 @@ function applyEdgeSnap(item, xCm, zCm) {
     let best = null;
     const push = d => {
       const dist = Math.abs(d);
-      if (dist <= EDGE_SNAP_CM && (!best || dist < best.dist)) best = { d, dist };
+      if (dist <= range && (!best || dist < best.dist)) best = { d, dist };
     };
     push(0 - (x - halfL));
     push(L - (x + halfL));
     for (const o of items) {
       if (o.id === item.id) continue;
       const b = itemBounds(o);
-      if (!overlaps(zMin, zMax, b.minZ, b.maxZ)) continue;
+      if (!inLane(zMin, zMax, b.minZ, b.maxZ)) continue;
       push(b.minX - (x + halfL));      // our right face meets their left
       push(b.maxX - (x - halfL));      // our left face meets their right
       push(b.minX - (x - halfL));      // left faces aligned
@@ -871,14 +896,14 @@ function applyEdgeSnap(item, xCm, zCm) {
     let best = null;
     const push = d => {
       const dist = Math.abs(d);
-      if (dist <= EDGE_SNAP_CM && (!best || dist < best.dist)) best = { d, dist };
+      if (dist <= range && (!best || dist < best.dist)) best = { d, dist };
     };
     push(0 - (z - halfW));
     push(W - (z + halfW));
     for (const o of items) {
       if (o.id === item.id) continue;
       const b = itemBounds(o);
-      if (!overlaps(xMin, xMax, b.minX, b.maxX)) continue;
+      if (!inLane(xMin, xMax, b.minX, b.maxX)) continue;
       push(b.minZ - (z + halfW));
       push(b.maxZ - (z - halfW));
       push(b.minZ - (z - halfW));
@@ -1219,6 +1244,7 @@ function addItem(spec) {
     handling:  spec.handling || 'standard',
     color:     spec.color,
     shape:     spec.shape || 'box',
+    max_stack_kg: spec.max_stack_kg ?? null,
     rot_y: 0, pos_x: 0, pos_y: 0, pos_z: 0, mesh: null,
     contents: spec.contents ? spec.contents.map(c => ({ ...c })) : null
   };
@@ -1247,6 +1273,7 @@ function restoreItem(spec) {
     handling:  spec.handling || 'standard',
     color:     spec.color,
     shape:     SHAPES[spec.shape] ? spec.shape : 'box',
+    max_stack_kg: spec.max_stack_kg ?? null,
     rot_y:     normaliseOrient(spec.rot_y),
     pos_x:     Number(spec.pos_x) || 0,
     pos_y:     Number(spec.pos_y) || 0,
@@ -1355,6 +1382,7 @@ function populateFormFromItem(item) {
   $('#fHeight').value   = fromCm(item.height_cm);
   $('#fWeight').value   = item.weight_kg || '';
   $('#fHandling').value = item.handling || 'standard';
+  $('#fMaxStack').value = item.max_stack_kg ?? '';
   setKind(item.kind || 'carton', { autofill: false });
   setShape(item.shape || 'box', { mirror: false });
 }
@@ -1390,9 +1418,11 @@ function setEditMode(isEdit, item) {
 // Nothing here blocks the user — it only warns.
 // ============================================================
 function bearingCapacity(item) {
+  if (item.max_stack_kg > 0) return Number(item.max_stack_kg);   // user's own figure
   const e = itemExtent(item);
-  const rate = BEARING_KG_PER_CM2[item.kind] ?? BEARING_KG_PER_CM2.carton;
-  return e.l * e.w * rate;
+  const perimeter = 2 * (e.l + e.w);
+  const k = BCT_KGF_PER_CM[item.kind] ?? BCT_KGF_PER_CM.carton;
+  return perimeter * k / STACK_SAFETY_FACTOR;
 }
 
 function evaluateStability() {
@@ -1434,6 +1464,11 @@ function evaluateStability() {
     const sup = supportsOf.get(item.id);
     const load = carried.get(item.id) || 0;
 
+    // Kept on the item so the panel can show the numbers even when all is well
+    item.carried_kg = load;
+    item.capacity_kg = bearingCapacity(item);
+    item.capacity_is_default = !(item.max_stack_kg > 0);
+
     // Floating or poorly supported
     if (sup !== null) {
       if (!sup.length) {
@@ -1452,7 +1487,7 @@ function evaluateStability() {
 
     // Crushing
     if (load > 0.05) {
-      const cap = bearingCapacity(item);
+      const cap = item.capacity_kg;
       if (load > cap) {
         item.issues.push({
           level: 'danger',
@@ -1588,6 +1623,22 @@ function renderEditStrip() {
   if (sw) sw.style.background = item.color;
   const sh = $('#editStripShape');
   if (sh) sh.textContent = SHAPES[item.shape || 'box'].label;
+
+  // Bearing readout — shown even when nothing is wrong, so the check is visible
+  const bear = $('#editBearing');
+  if (bear) {
+    const cap = item.capacity_kg || bearingCapacity(item);
+    const load = item.carried_kg || 0;
+    const pct = cap > 0 ? load / cap : 0;
+    bear.hidden = false;
+    $('#bearingVal').textContent = `${load.toFixed(1)} / ${cap.toFixed(0)} kg`;
+    const fill = $('#bearingFill');
+    fill.style.width = `${Math.min(100, pct * 100).toFixed(1)}%`;
+    fill.className = pct > 1 ? 'lvl-danger' : pct > 0.7 ? 'lvl-warn' : '';
+    $('#bearingNote').textContent = item.capacity_is_default === false
+      ? 'Capacity set manually'
+      : `Estimated from a ${Math.round(2 * (itemExtent(item).l + itemExtent(item).w))} cm perimeter — set Max stack load if you know the real figure`;
+  }
 
   const box = $('#editIssues');
   if (box) {
@@ -3024,7 +3075,7 @@ function setSectionUnit({ scope, newUnit }) {
   updateDimLabels();
   updateFieldSteps();
   if (isContainer) { updateSceneDimsDisplay(); renderGridOptions(); }
-  else             renderCargoList();
+  else             { renderCargoList(); renderSnapOptions(); }
 
   $$(`.unit-mini[data-unit-target="${scope}"] .unit-btn`).forEach(b =>
     b.classList.toggle('active', b.dataset.unit === newUnit));
@@ -3170,28 +3221,22 @@ function onPointerMove(e) {
   let useSupport = true;
 
   if (sceneMode === '3d' || orthoView === 'top') {
-    // Top view: raycast to another box's top face → stack
-    updateMouseNormalized(e);
-    raycaster.setFromCamera(_mouse, camera);
-    const others = cartonGroup.children.filter(m => m.userData.itemId !== dragState.itemId);
-    const boxHits = raycaster.intersectObjects(others, false);
-    const topHit = boxHits.find(h => h.face && h.face.normal.y > 0.7);
-    let hoverSupportId = null;
-    if (topHit) {
-      newXcm = topHit.point.x * 100;
-      newZcm = (topHit.point.z + cargoSpace.width / 2) * 100;
-      hoverSupportId = topHit.object.userData.itemId;
-    } else {
-      newXcm = dragState.origPos.x + dxCm;
-      newZcm = dragState.origPos.z + dzCm;
-    }
-    newXcm = snapToGrid(newXcm);
-    newZcm = snapToGrid(newZcm);
-    if (hoverSupportId) {
-      const support = items.find(i => i.id === hoverSupportId);
-      if (support) {
-        if (Math.abs(newXcm - support.pos_x) < CENTER_SNAP_CM) newXcm = support.pos_x;
-        if (Math.abs(newZcm - support.pos_z) < CENTER_SNAP_CM) newZcm = support.pos_z;
+    // Follow the pointer. Stacking is handled by findSupportHeight below —
+    // a box rides up automatically once its footprint covers another. Driving
+    // the position from a raycast instead made a box leap onto its neighbour
+    // the instant the cursor crossed that neighbour's top face, which stopped
+    // you ever nudging two boxes flush.
+    newXcm = snapToGrid(dragState.origPos.x + dxCm);
+    newZcm = snapToGrid(dragState.origPos.z + dzCm);
+
+    // Line a stack up with whatever it has actually landed on
+    const sup = findSupportHeight(item, newXcm, newZcm, item.id);
+    if (sup.supportId) {
+      const base = items.find(i => i.id === sup.supportId);
+      const r = centerSnapRange();
+      if (base) {
+        if (Math.abs(newXcm - base.pos_x) < r) newXcm = base.pos_x;
+        if (Math.abs(newZcm - base.pos_z) < r) newZcm = base.pos_z;
       }
     }
   } else {
@@ -3502,7 +3547,7 @@ function applyResize(item, orig, edges, worldDelta) {
     }
 
     let newSize = newMax - newMin;
-    if (newSize < GRID_CM) newSize = GRID_CM;
+    if (newSize < MIN_SIZE_CM) newSize = MIN_SIZE_CM;
     // Fix drift if we clamped size — keep the fixed edge
     if (side === 'max') newMax = newMin + newSize;
     else                newMin = newMax - newSize;
@@ -3597,6 +3642,26 @@ function buildMeasureGrid() {
 
   measureGroup.visible = showDims;
   scene.add(measureGroup);
+}
+
+// Move precision, labelled in whatever unit cartons use
+function renderSnapOptions() {
+  const sel = $('#snapStep');
+  if (!sel) return;
+  sel.innerHTML = SNAP_STEP_OPTIONS.map(cm =>
+    cm === 0
+      ? '<option value="0">Free</option>'
+      : `<option value="${cm}">${fromCm(cm)} ${itemUnit}</option>`
+  ).join('');
+  sel.value = String(moveStep);
+}
+
+function setSnapStep(cm) {
+  moveStep = Number(cm) || 0;
+  try { localStorage.setItem(SNAP_STEP_KEY, String(moveStep)); } catch (e) {}
+  showToast(moveStep
+    ? `Cartons move in <b>${fromCm(moveStep)} ${itemUnit}</b> steps.`
+    : 'Cartons move <b>freely</b>.');
 }
 
 // Options are physical spacings, labelled in whatever unit the container uses
@@ -4458,6 +4523,7 @@ async function savePlan(status) {
         kind: i.kind || 'carton',
         length_cm: i.length_cm, width_cm: i.width_cm, height_cm: i.height_cm,
         weight_kg: i.weight_kg, color: i.color, shape: i.shape || 'box',
+        max_stack_kg: i.max_stack_kg ?? null,
         pos_x: i.pos_x, pos_y: i.pos_y, pos_z: i.pos_z, rot_y: i.rot_y,
         handling: i.handling
       }));
@@ -4560,6 +4626,7 @@ async function loadPlan(planId) {
         weight_kg: it.weight_kg, handling: it.handling,
         color: it.color || CARGO_COLORS[0],
         shape: it.shape || 'box',
+        max_stack_kg: it.max_stack_kg ?? null,
         rot_y: it.rot_y || 0,
         pos_x: it.pos_x, pos_y: it.pos_y, pos_z: it.pos_z,
         contents: contentsByItem[it.id] || null
@@ -4737,6 +4804,7 @@ $('#toggleLabels').addEventListener('click', () => {
 });
 
 $('#gridStep').addEventListener('change', e => setGridStep(e.target.value));
+$('#snapStep').addEventListener('change', e => setSnapStep(e.target.value));
 $('#measureClose').addEventListener('click', clearMeasurement);
 
 $('#toggleDims').addEventListener('click', () => {
@@ -4782,7 +4850,8 @@ function readFormValues() {
     wt: parseFloat($('#fWeight').value) || 0,
     handling: $('#fHandling').value,
     kind: currentKind,
-    shape: currentShape
+    shape: currentShape,
+    maxStack: parseFloat($('#fMaxStack').value) || null
   };
 }
 
@@ -4809,7 +4878,7 @@ function validateFormDims(L, W, H) {
 }
 
 function addNewItems() {
-  const { labelInput, productInput, L, W, H, wt, handling, kind, shape } = readFormValues();
+  const { labelInput, productInput, L, W, H, wt, handling, kind, shape, maxStack } = readFormValues();
   if (!validateFormDims(L, W, H)) return;
   const baseLabel = labelInput || generateBaseLabel(kind);
   const color = kind === 'carton' ? pickColorForBase(baseLabel) : KIND_COLORS[kind];
@@ -4819,7 +4888,7 @@ function addNewItems() {
     last = addItem({
       label: baseLabel + suffix, base_label: baseLabel,
       product_name: productInput,
-      kind, shape,
+      kind, shape, max_stack_kg: maxStack,
       length_cm: L, width_cm: W, height_cm: H,
       weight_kg: wt, handling, color
     });
@@ -4835,6 +4904,7 @@ function addNewItems() {
   $('#fHeight').value = '';
   $('#fWeight').value = '';
   $('#fHandling').value = 'standard';
+  $('#fMaxStack').value = '';
   $('#templateSelect').value = '';
   $('#deleteTemplateBtn').hidden = true;
   setKind('carton');                     // back to Carton for the next add
@@ -4847,7 +4917,7 @@ function addNewItems() {
 function updateSelectedItem() {
   const item = items.find(i => i.id === selectedItemId);
   if (!item) return;
-  const { labelInput, productInput, L, W, H, wt, handling, shape } = readFormValues();
+  const { labelInput, productInput, L, W, H, wt, handling, shape, maxStack } = readFormValues();
   if (!validateFormDims(L, W, H)) return;
   const shapeChanged = (item.shape || 'box') !== shape;
   if (labelInput && labelInput !== item.base_label) {
@@ -4860,6 +4930,7 @@ function updateSelectedItem() {
   item.length_cm = L; item.width_cm = W; item.height_cm = H;
   item.weight_kg = wt; item.handling = handling;
   item.shape = shape;
+  item.max_stack_kg = maxStack;
   if (shapeChanged) rebuildItemMesh(item);
   item.mesh.material.color.set(item.color);
   clampItemToBounds(item);
@@ -4909,7 +4980,7 @@ $('#btnDuplicate').addEventListener('click', () => {
   const clone = addItem({
     label: item.base_label + '·copy', base_label: item.base_label,
     product_name: item.product_name,
-    kind: item.kind, shape: item.shape,
+    kind: item.kind, shape: item.shape, max_stack_kg: item.max_stack_kg,
     length_cm: item.length_cm, width_cm: item.width_cm, height_cm: item.height_cm,
     weight_kg: item.weight_kg, handling: item.handling, color: item.color
   });
@@ -5317,6 +5388,8 @@ async function boot() {
     showDims = localStorage.getItem(DIMS_MODE_KEY) === '1';
     const gs = localStorage.getItem(GRID_STEP_KEY);
     if (gs) gridStepPref = gs === 'auto' ? 'auto' : (Number(gs) || 'auto');
+    const ss = localStorage.getItem(SNAP_STEP_KEY);
+    if (ss !== null && SNAP_STEP_OPTIONS.includes(Number(ss))) moveStep = Number(ss);
   } catch (e) {}
   try {
     const savedC = localStorage.getItem(CONTAINER_UNIT_KEY);
@@ -5330,7 +5403,8 @@ async function boot() {
   renderTemplateDropdown();
   loadCartonSpecs();
   builder = newBuilderSpec();
-  renderGridOptions();                      // before enhanceSelect picks it up
+  renderGridOptions();                      // before enhanceSelect picks them up
+  renderSnapOptions();
   $$('select').forEach(enhanceSelect);      // replace native selects with styled ones
   updateStats();
   renderCargoList();
