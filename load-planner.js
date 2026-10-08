@@ -4479,6 +4479,44 @@ document.querySelectorAll('[data-close-shortcuts]').forEach(el => {
 // ============================================================
 // SAVE / LOAD (Supabase)
 // ============================================================
+// Columns added by later migrations. If a database hasn't had them applied,
+// PostgREST rejects the whole insert — so we detect that and retry without
+// them rather than failing the save outright.
+const OPTIONAL_ITEM_COLS = ['shape', 'max_stack_kg'];
+
+function buildItemsPayload(planId, skip = []) {
+  return items.map(i => {
+    const row = {
+      load_plan_id: planId,
+      label: i.label, base_label: i.base_label,
+      product_name: i.product_name || null,
+      kind: i.kind || 'carton',
+      length_cm: i.length_cm, width_cm: i.width_cm, height_cm: i.height_cm,
+      weight_kg: i.weight_kg, color: i.color,
+      pos_x: i.pos_x, pos_y: i.pos_y, pos_z: i.pos_z, rot_y: i.rot_y,
+      handling: i.handling
+    };
+    if (!skip.includes('shape'))        row.shape = i.shape || 'box';
+    if (!skip.includes('max_stack_kg')) row.max_stack_kg = i.max_stack_kg ?? null;
+    return row;
+  });
+}
+
+// Which optional column, if any, this error is complaining about
+function missingColumnFrom(err, candidates) {
+  const text = `${err?.message || ''} ${err?.details || ''} ${err?.hint || ''}`;
+  if (!/column|schema cache/i.test(text)) return null;
+  return candidates.find(col => new RegExp(`\\b${col}\\b`).test(text)) || null;
+}
+
+// Supabase errors put the useful part in code/details/hint, not just message
+function describeError(err) {
+  if (!err) return 'unknown error';
+  const bits = [err.message, err.details, err.hint].filter(Boolean);
+  const text = bits.join(' · ') || 'unknown error';
+  return err.code ? `${text} [${err.code}]` : text;
+}
+
 async function savePlan(status) {
   const name = $('#planName').value.trim();
   if (!name) { $('#planName').focus(); return showToast('Give the plan a name first.'); }
@@ -4502,12 +4540,18 @@ async function savePlan(status) {
   showToast('Saving…');
   try {
     let planRow;
+    let oldItemIds = [];
+
     if (currentPlanId) {
       const { data, error } = await supabase.from('load_plans').update(planPayload).eq('id', currentPlanId).select().single();
       if (error) throw error;
       planRow = data;
-      const { error: delErr } = await supabase.from('load_plan_items').delete().eq('load_plan_id', currentPlanId);
-      if (delErr) throw delErr;
+      // Note which rows the old version owns, but don't remove them yet —
+      // see below.
+      const { data: existing, error: exErr } = await supabase
+        .from('load_plan_items').select('id').eq('load_plan_id', currentPlanId);
+      if (exErr) throw exErr;
+      oldItemIds = (existing || []).map(r => r.id);
     } else {
       const { data, error } = await supabase.from('load_plans').insert(planPayload).select().single();
       if (error) throw error;
@@ -4515,21 +4559,28 @@ async function savePlan(status) {
       currentPlanId = planRow.id;
     }
 
+    let insertedItems = [];
     if (items.length > 0) {
-      const itemsPayload = items.map(i => ({
-        load_plan_id: currentPlanId,
-        label: i.label, base_label: i.base_label,
-        product_name: i.product_name || null,
-        kind: i.kind || 'carton',
-        length_cm: i.length_cm, width_cm: i.width_cm, height_cm: i.height_cm,
-        weight_kg: i.weight_kg, color: i.color, shape: i.shape || 'box',
-        max_stack_kg: i.max_stack_kg ?? null,
-        pos_x: i.pos_x, pos_y: i.pos_y, pos_z: i.pos_z, rot_y: i.rot_y,
-        handling: i.handling
-      }));
-      const { data: insertedItems, error: iErr } = await supabase
-        .from('load_plan_items').insert(itemsPayload).select('id');
+      // Retry without any column the database doesn't have, so a planner
+      // running ahead of its migrations still saves.
+      const skip = [];
+      let iErr = null;
+      for (let attempt = 0; attempt <= OPTIONAL_ITEM_COLS.length; attempt++) {
+        const res = await supabase
+          .from('load_plan_items')
+          .insert(buildItemsPayload(currentPlanId, skip))
+          .select('id');
+        if (!res.error) { insertedItems = res.data || []; iErr = null; break; }
+        iErr = res.error;
+        const missing = missingColumnFrom(res.error, OPTIONAL_ITEM_COLS.filter(c => !skip.includes(c)));
+        if (!missing) break;
+        skip.push(missing);
+        console.warn(`load_plan_items has no "${missing}" column — saving without it. Run the matching migration to keep this data.`);
+      }
       if (iErr) throw iErr;
+      if (skip.length) {
+        showToast(`Saved, but <b>${skip.join(', ')}</b> not stored — run the pending migration.`);
+      }
 
       // Carton-builder contents — rows come back in insert order, so we can
       // zip them against the local items to get each new row's id.
@@ -4553,6 +4604,15 @@ async function savePlan(status) {
       }
     }
 
+    // Only now that the new rows are safely in does the old version go.
+    // Deleting first meant a failed insert left the plan empty in the
+    // database with no way back.
+    if (oldItemIds.length) {
+      const { error: delErr } = await supabase
+        .from('load_plan_items').delete().in('id', oldItemIds);
+      if (delErr) throw delErr;
+    }
+
     planStatus = planRow.status;
     markClean();
 
@@ -4562,8 +4622,11 @@ async function savePlan(status) {
 
     showToast(`Plan <b>${escapeHtml(name)}</b> ${status === 'published' ? 'published' : 'saved'}.`);
   } catch (err) {
-    console.error('Save failed:', err);
-    showToast(`Save failed: ${err.message || 'unknown error'}`);
+    // Log the fields individually — a bare object logs as "Object" in Chrome
+    console.error('Save failed:', describeError(err), {
+      message: err?.message, code: err?.code, details: err?.details, hint: err?.hint
+    });
+    showToast(`Save failed: ${escapeHtml(describeError(err))}`);
   }
 }
 
