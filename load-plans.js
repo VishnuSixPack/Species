@@ -28,6 +28,7 @@ let statusFilter = 'all';
 let sortBy = 'updated';
 let searchTerm = '';
 let openMenuId = null;
+let compareIds = [];                     // up to two plans staged for comparison
 
 // ============================================================
 // HELPERS
@@ -177,6 +178,8 @@ function planCard(p) {
        <div class="menu-wrap">
          <button class="act act-more" data-act="menu" data-id="${p.id}" title="More">⋯</button>
          <div class="menu" id="menu-${p.id}" hidden>
+           <button data-act="compare" data-id="${p.id}">${
+             compareIds.includes(p.id) ? 'Remove from compare' : 'Select to compare'}</button>
            <button data-act="duplicate" data-id="${p.id}">Duplicate</button>
            ${status === 'published'
              ? `<button data-act="unpublish" data-id="${p.id}">Revert to draft</button>`
@@ -232,6 +235,52 @@ function render() {
     ? list.map(planCard).join('')
     : `<div class="state-msg">${emptyMessage()}</div>`;
   openMenuId = null;
+  renderCompareBar();
+}
+
+// ============================================================
+// COMPARE STAGING
+// ============================================================
+function toggleCompare(id) {
+  const at = compareIds.indexOf(id);
+  if (at >= 0) compareIds.splice(at, 1);
+  else {
+    if (compareIds.length >= 2) compareIds.shift();   // keep the two most recent
+    compareIds.push(id);
+  }
+  render();
+}
+
+function renderCompareBar() {
+  let bar = $('#compareBar');
+  if (!compareIds.length) { bar?.remove(); return; }
+
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'compareBar';
+    bar.className = 'compare-bar';
+    document.body.appendChild(bar);
+    bar.addEventListener('click', e => {
+      const act = e.target.closest('[data-cbar]')?.dataset.cbar;
+      if (act === 'clear') { compareIds = []; render(); }
+      if (act === 'go') {
+        const [a, b] = compareIds;
+        window.location.href = `load-compare.html?a=${encodeURIComponent(a)}${b ? `&b=${encodeURIComponent(b)}` : ''}`;
+      }
+    });
+  }
+
+  const names = compareIds
+    .map(id => plans.find(p => p.id === id)?.name || 'Plan')
+    .map(n => `<span class="cbar-chip">${escapeHtml(n)}</span>`).join('');
+
+  bar.innerHTML = `
+    <span class="cbar-count">${compareIds.length} of 2</span>
+    ${names}
+    <button class="cbar-btn" data-cbar="clear">Clear</button>
+    <button class="cbar-btn cbar-go" data-cbar="go" ${compareIds.length < 2 ? 'disabled' : ''}>
+      ${compareIds.length < 2 ? 'Pick one more' : 'Compare →'}
+    </button>`;
 }
 
 // ============================================================
@@ -360,6 +409,7 @@ $('#plansGrid').addEventListener('click', e => {
 
   switch (act) {
     case 'menu':      toggleMenu(id); break;
+    case 'compare':   toggleCompare(id); break;
     case 'duplicate': duplicatePlan(id); break;
     case 'publish':   setStatus(id, 'published', 'published'); break;
     case 'unpublish': setStatus(id, 'draft', 'reverted to draft'); break;
