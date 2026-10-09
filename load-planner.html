@@ -245,28 +245,18 @@
       </div>
     </section>
 
-    <!-- RIGHT: Cargo form + list -->
+    <!-- RIGHT: Cargo -->
     <aside class="card panel-right">
-      <div class="panel-header">
-        <h2>Cargo</h2>
-      </div>
-
       <div class="panel-tabs" id="panelTabs">
-        <button type="button" class="panel-tab active" data-pane="add">Add</button>
+        <button type="button" class="panel-tab active" data-pane="add">Add cargo</button>
         <button type="button" class="panel-tab" data-pane="items">
           Items <span class="tab-count" id="tabItemsCount">0</span>
         </button>
       </div>
 
-      <!-- ADD PANE -->
+      <!-- ADD -->
       <div class="pane" id="paneAdd">
-        <div class="mode-indicator" id="modeIndicator" data-mode="add" hidden>
-          <span class="mode-dot"></span>
-          <span id="modeText">Add new cargo</span>
-          <button class="mode-clear" id="modeClear" title="Cancel edit">Cancel</button>
-        </div>
-
-        <div class="form-block">
+        <div class="pane-body">
           <button type="button" class="builder-launch" id="openBuilder">
             <span class="builder-launch-icon">⊞</span>
             <span class="builder-launch-text">Carton builder</span>
@@ -286,124 +276,62 @@
               <button type="button" class="kind-tab" data-kind="slipsheet">Slipsheet</button>
             </div>
 
-            <div class="shape-row">
-              <div class="shape-row-head">
-                <span>Shape</span>
-                <span class="shape-hint" id="shapeHint"></span>
-              </div>
+            <div class="shape-row" id="shapeRow">
               <div class="shape-pick" id="shapePick">
                 <button type="button" class="shape-pick-btn active" data-shape="box">Box</button>
                 <button type="button" class="shape-pick-btn" data-shape="cylinder">Cylinder</button>
                 <button type="button" class="shape-pick-btn" data-shape="tube">Tube</button>
                 <button type="button" class="shape-pick-btn" data-shape="sack">Sack</button>
               </div>
+              <div class="shape-hint" id="shapeHint"></div>
             </div>
 
-            <div class="form-row kind-preset-row" id="kindPresetRow" hidden>
-              <label class="field" style="grid-column: 1 / -1;">
-                <span>Preset</span>
-                <select id="fKindPreset"></select>
-              </label>
-            </div>
-
-            <div class="form-row">
-              <label class="field" style="grid-column: 1 / -1;">
-                <span>Max stack load (kg)</span>
-                <input id="fMaxStack" type="number" min="0" step="1" placeholder="auto from box size" />
-              </label>
-            </div>
+            <label class="field kind-preset-row" id="kindPresetRow" hidden>
+              <span>Preset</span>
+              <select id="fKindPreset"></select>
+            </label>
 
             <div class="template-row">
               <select id="templateSelect" class="template-select">
                 <option value="">— Load a template —</option>
               </select>
-              <button class="tpl-btn" id="saveTemplateBtn" title="Save current form values as a template">＋ Save</button>
+              <button class="tpl-btn" id="saveTemplateBtn" title="Save these values as a template">Save</button>
               <button class="tpl-btn danger" id="deleteTemplateBtn" hidden title="Delete selected template">Delete</button>
             </div>
           </div>
 
-          <div class="form-row">
-            <label class="field">
-              <span>Label / SKU</span>
-              <input id="fLabel" type="text" placeholder="e.g. TUNA-OIL-A" />
-            </label>
-            <label class="field">
-              <span>Product</span>
-              <input id="fProduct" type="text" placeholder="e.g. Tuna in olive oil" />
-            </label>
-          </div>
+          <!-- shared field set — moves into the inspector on selection -->
+          <div id="addFieldSlot"></div>
+        </div>
 
-          <div class="form-dim-header">
-            <span>Dimensions</span>
-            <div class="unit-mini" data-unit-target="item">
-              <button type="button" class="unit-btn" data-unit="mm">mm</button>
-              <button type="button" class="unit-btn active" data-unit="cm">cm</button>
-              <button type="button" class="unit-btn" data-unit="m">m</button>
+        <div class="pane-foot">
+          <div class="qty-picker" id="qtyPicker">
+            <span class="field-label">Qty</span>
+            <div class="qty-controls">
+              <button id="fQtyMinus" type="button">−</button>
+              <span id="fQty">1</span>
+              <button id="fQtyPlus" type="button">+</button>
             </div>
           </div>
-          <div class="form-row">
-            <label class="field field-third">
-              <span data-unit-label="L" data-unit-scope="item">L (cm)</span>
-              <input id="fLength" type="number" min="0" step="0.1" placeholder="60" />
-            </label>
-            <label class="field field-third">
-              <span data-unit-label="W" data-unit-scope="item">W (cm)</span>
-              <input id="fWidth" type="number" min="0" step="0.1" placeholder="40" />
-            </label>
-            <label class="field field-third">
-              <span data-unit-label="H" data-unit-scope="item">H (cm)</span>
-              <input id="fHeight" type="number" min="0" step="0.1" placeholder="35" />
-            </label>
-          </div>
-
-          <div class="form-row">
-            <label class="field">
-              <span>Weight (kg)</span>
-              <input id="fWeight" type="number" min="0" step="0.1" placeholder="12" />
-            </label>
-            <label class="field">
-              <span>Handling</span>
-              <select id="fHandling">
-                <option value="standard">Standard</option>
-                <option value="fragile">Fragile</option>
-                <option value="heavy">Heavy</option>
-                <option value="stackable">Stackable</option>
-                <option value="this_side_up">This side up</option>
-              </select>
-            </label>
-          </div>
-
-          <div class="form-row form-row-tight">
-            <div class="qty-picker" id="qtyPicker">
-              <span class="field-label">Quantity</span>
-              <div class="qty-controls">
-                <button id="fQtyMinus" type="button">−</button>
-                <span id="fQty">1</span>
-                <button id="fQtyPlus" type="button">+</button>
-              </div>
-            </div>
-            <button class="btn-primary" id="primaryFormBtn">Add to plan</button>
-          </div>
+          <button class="btn-primary" id="primaryFormBtn">Add to plan</button>
         </div>
       </div>
 
-      <!-- ITEMS PANE -->
+      <!-- ITEMS -->
       <div class="pane" id="paneItems" hidden>
         <div class="cargo-list" id="cargoList">
           <div class="list-empty" id="listEmpty">
-            No items yet. Add cargo in the <b>Add</b> tab and it drops into the container.
+            Nothing loaded yet. Add cargo and it drops into the container.
           </div>
         </div>
       </div>
 
-      <!-- Selection actions — pinned, visible from either tab -->
-      <div class="edit-strip" id="editStrip" hidden>
-        <div class="edit-strip-head">
+      <!-- INSPECTOR — replaces the tabs while an item is selected -->
+      <div class="pane" id="paneInspect" hidden>
+        <div class="insp-head">
+          <button type="button" class="insp-back" id="inspectBack" title="Back to cargo (Esc)">‹</button>
           <button type="button" class="edit-swatch" id="editSwatch" title="Change colour"></button>
-          <b id="editStripLabel">—</b>
-          <span class="edit-strip-chip" id="editStripShape">Box</span>
-          <span class="edit-strip-chip" id="editStripOrient">Upright</span>
-
+          <b class="insp-label" id="editStripLabel">—</b>
           <div class="color-pop" id="colorPop" hidden>
             <div class="color-grid" id="colorGrid"></div>
             <label class="color-custom">
@@ -412,22 +340,96 @@
             </label>
           </div>
         </div>
-        <div class="bearing" id="editBearing" hidden>
-          <div class="bearing-head">
-            <span>Weight on top</span>
-            <b id="bearingVal">—</b>
+
+        <div class="insp-chips">
+          <span class="edit-strip-chip" id="editStripShape">Box</span>
+          <span class="edit-strip-chip" id="editStripOrient">Upright</span>
+        </div>
+
+        <div class="pane-body">
+          <!-- what's inside, for cartons made in the builder -->
+          <div class="insp-contents" id="inspContents" hidden></div>
+
+          <!-- shared field set lands here -->
+          <div id="inspectFieldSlot"></div>
+
+          <div class="bearing" id="editBearing" hidden>
+            <div class="bearing-head">
+              <span>Weight on top</span>
+              <b id="bearingVal">—</b>
+            </div>
+            <div class="bearing-bar"><span id="bearingFill"></span></div>
+            <div class="bearing-note" id="bearingNote"></div>
           </div>
-          <div class="bearing-bar"><span id="bearingFill"></span></div>
-          <div class="bearing-note" id="bearingNote"></div>
+
+          <div class="edit-issues" id="editIssues" hidden></div>
+
+          <div class="edit-actions">
+            <button id="btnFocus"  title="Focus camera">Focus</button>
+            <button id="btnRotate" title="Rotate 90° (R)">Rotate</button>
+            <button id="btnFlip"   title="Flip onto another face (F)">Flip</button>
+            <button id="btnDuplicate" title="Duplicate">Copy</button>
+            <button id="btnDelete" title="Delete" class="danger">Delete</button>
+          </div>
         </div>
-        <div class="edit-issues" id="editIssues" hidden></div>
-        <div class="edit-actions">
-          <button id="btnFocus"  title="Focus camera">Focus</button>
-          <button id="btnRotate" title="Rotate 90° (R)">Rotate</button>
-          <button id="btnFlip"   title="Flip onto another face (F)">Flip</button>
-          <button id="btnDuplicate" title="Duplicate">Copy</button>
-          <button id="btnDelete" title="Delete" class="danger">Delete</button>
+
+        <div class="pane-foot">
+          <button class="btn-primary btn-full" id="inspectSave">Save changes</button>
         </div>
+      </div>
+
+      <!-- The one field set, shared by Add and the inspector -->
+      <div id="cargoFields">
+        <div class="form-row">
+          <label class="field">
+            <span>Label / SKU</span>
+            <input id="fLabel" type="text" placeholder="TUNA-OIL-A" />
+          </label>
+          <label class="field">
+            <span>Product</span>
+            <input id="fProduct" type="text" placeholder="Tuna in olive oil" />
+          </label>
+        </div>
+
+        <div class="size-row">
+          <div class="size-head">
+            <span>Size</span>
+            <div class="unit-mini" data-unit-target="item">
+              <button type="button" class="unit-btn" data-unit="mm">mm</button>
+              <button type="button" class="unit-btn active" data-unit="cm">cm</button>
+              <button type="button" class="unit-btn" data-unit="m">m</button>
+            </div>
+          </div>
+          <div class="size-trio">
+            <input id="fLength" type="number" min="0" step="0.1" placeholder="L" aria-label="Length" />
+            <span class="size-x">×</span>
+            <input id="fWidth"  type="number" min="0" step="0.1" placeholder="W" aria-label="Width" />
+            <span class="size-x">×</span>
+            <input id="fHeight" type="number" min="0" step="0.1" placeholder="H" aria-label="Height" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label class="field">
+            <span>Weight (kg)</span>
+            <input id="fWeight" type="number" min="0" step="0.1" placeholder="12" />
+          </label>
+          <label class="field">
+            <span>Handling</span>
+            <select id="fHandling">
+              <option value="standard">Standard</option>
+              <option value="fragile">Fragile</option>
+              <option value="heavy">Heavy</option>
+              <option value="stackable">Stackable</option>
+              <option value="this_side_up">This side up</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="field field-subtle">
+          <span>Max stack load (kg)</span>
+          <input id="fMaxStack" type="number" min="0" step="1" placeholder="auto from box size" />
+        </label>
       </div>
     </aside>
 
@@ -498,6 +500,14 @@
     <div class="modal-content modal-wide">
       <div class="modal-head">
         <h2>Carton builder <span class="beta-badge">BETA</span></h2>
+        <div class="builder-unit">
+          <span class="builder-unit-label">Units</span>
+          <div class="unit-mini" data-unit-target="builder">
+            <button type="button" class="unit-btn active" data-bunit="mm">mm</button>
+            <button type="button" class="unit-btn" data-bunit="cm">cm</button>
+            <button type="button" class="unit-btn" data-bunit="m">m</button>
+          </div>
+        </div>
         <button class="modal-close" data-close-builder>✕</button>
       </div>
 
@@ -544,11 +554,11 @@
             <div class="bstep-out" id="bTrayOut">—</div>
             <div class="form-row-3">
               <label class="field">
-                <span>Wall (mm)</span>
+                <span data-bunit-label="Wall">Wall (mm)</span>
                 <input id="bWall" type="number" min="0" step="0.5" value="3" />
               </label>
               <label class="field">
-                <span>Gap (mm)</span>
+                <span data-bunit-label="Gap">Gap (mm)</span>
                 <input id="bGap" type="number" min="0" step="0.5" value="2" />
               </label>
               <label class="field">
@@ -604,15 +614,15 @@
 
               <div class="form-row-4">
                 <label class="field">
-                  <span>Base L (cm)</span>
+                  <span data-bunit-label="Base L">Base L (cm)</span>
                   <input id="bPalletL" type="number" min="1" step="0.1" value="120" />
                 </label>
                 <label class="field">
-                  <span>Base W (cm)</span>
+                  <span data-bunit-label="Base W">Base W (cm)</span>
                   <input id="bPalletW" type="number" min="1" step="0.1" value="80" />
                 </label>
                 <label class="field">
-                  <span>Base H (cm)</span>
+                  <span data-bunit-label="Base H">Base H (cm)</span>
                   <input id="bPalletH" type="number" min="0" step="0.1" value="14.5" />
                 </label>
                 <label class="field">
@@ -623,11 +633,11 @@
 
               <div class="form-row-3">
                 <label class="field">
-                  <span>Max height (cm)</span>
+                  <span data-bunit-label="Max height">Max height (cm)</span>
                   <input id="bPalletMaxH" type="number" min="10" step="1" value="180" />
                 </label>
                 <label class="field">
-                  <span>Overhang (mm)</span>
+                  <span data-bunit-label="Overhang">Overhang (mm)</span>
                   <input id="bPalletOver" type="number" min="0" step="1" value="0" />
                 </label>
                 <label class="field">

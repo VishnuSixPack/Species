@@ -54,6 +54,12 @@ const KIND_COLORS = {
 };
 const KIND_LABEL_PREFIX = { carton: 'BATCH', pallet: 'PALLET', slipsheet: 'SHEET' };
 
+// Only cartons may be round; everything else is a box whatever was stored.
+function normaliseShape(kind, shape) {
+  const s = SHAPES[shape] ? shape : 'box';
+  return (kind && kind !== 'carton') ? 'box' : s;
+}
+
 // Render shapes. Packing always uses the bounding box, so these affect
 // display only — a cylinder still occupies its L x W x H envelope.
 const SHAPES = {
@@ -1243,7 +1249,7 @@ function addItem(spec) {
     weight_kg: Number(spec.weight_kg) || 0,
     handling:  spec.handling || 'standard',
     color:     spec.color,
-    shape:     spec.shape || 'box',
+    shape:     normaliseShape(spec.kind, spec.shape),
     max_stack_kg: spec.max_stack_kg ?? null,
     rot_y: 0, pos_x: 0, pos_y: 0, pos_z: 0, mesh: null,
     contents: spec.contents ? spec.contents.map(c => ({ ...c })) : null
@@ -1272,7 +1278,7 @@ function restoreItem(spec) {
     weight_kg: Number(spec.weight_kg) || 0,
     handling:  spec.handling || 'standard',
     color:     spec.color,
-    shape:     SHAPES[spec.shape] ? spec.shape : 'box',
+    shape:     normaliseShape(spec.kind, spec.shape),
     max_stack_kg: spec.max_stack_kg ?? null,
     rot_y:     normaliseOrient(spec.rot_y),
     pos_x:     Number(spec.pos_x) || 0,
@@ -1387,27 +1393,32 @@ function populateFormFromItem(item) {
   setShape(item.shape || 'box', { mirror: false });
 }
 
+// Selecting an item swaps the whole panel over to an inspector rather than
+// populating the Add form and stacking a second editor underneath it. The
+// field set is one set of DOM nodes that physically moves between the two,
+// so every existing handler and id keeps working.
 function setEditMode(isEdit, item) {
-  const indicator  = $('#modeIndicator');
-  const modeText   = $('#modeText');
-  const primaryBtn = $('#primaryFormBtn');
-  const qtyPicker  = $('#qtyPicker');
+  const fields  = $('#cargoFields');
+  const inspect = $('#paneInspect');
+  const tabs    = $('#panelTabs');
+
   if (isEdit && item) {
-    indicator.hidden = false;
-    modeText.textContent = `Editing: ${item.label}`;
-    primaryBtn.textContent = 'Save changes';
-    primaryBtn.classList.add('editing');
-    qtyPicker.classList.add('disabled');
+    $('#inspectFieldSlot').appendChild(fields);
+    $('#paneAdd').hidden = true;
+    $('#paneItems').hidden = true;
+    inspect.hidden = false;
+    tabs.hidden = true;
     // Surface the options block if this item isn't a plain box carton
     if ((item.kind && item.kind !== 'carton') || (item.shape && item.shape !== 'box')) {
       setOptionsOpen(true);
     }
   } else {
-    indicator.hidden = true;             // the "Add" tab already says what mode we're in
-    primaryBtn.textContent = 'Add to plan';
-    primaryBtn.classList.remove('editing');
-    qtyPicker.classList.remove('disabled');
+    $('#addFieldSlot').appendChild(fields);
+    inspect.hidden = true;
+    tabs.hidden = false;
+    setPanelTab(lastPanelTab);
   }
+  refreshSegments();
 }
 
 // ============================================================
@@ -1594,7 +1605,8 @@ function renderCargoList() {
       <span class="cargo-swatch" style="background:${i.color}"></span>
       <div class="cargo-meta">
         <b>${escapeHtml(i.label)}${i.product_name ? ' · ' + escapeHtml(i.product_name) : ''}</b>
-        <small>${fromCm(i.length_cm)} × ${fromCm(i.width_cm)} × ${fromCm(i.height_cm)} ${itemUnit} · ${i.weight_kg || 0} kg · ${i.handling}</small>
+        <small>${fromCm(i.length_cm)} × ${fromCm(i.width_cm)} × ${fromCm(i.height_cm)} ${itemUnit} · ${i.weight_kg || 0} kg${
+          (i.shape && i.shape !== 'box') ? ` · <span class="row-shape">${escapeHtml(SHAPES[i.shape].label)}</span>` : ''}</small>
         ${extra ? `<small class="cargo-contents">${extra}</small>` : ''}
       </div>
       ${i.issueLevel ? `<span class="row-warn lvl-${i.issueLevel}" title="${escapeHtml(i.issues.map(x => x.text).join(' · '))}">!</span>` : ''}
@@ -1612,10 +1624,8 @@ function renderCargoList() {
 }
 
 function renderEditStrip() {
-  const strip = $('#editStrip');
   const item = items.find(i => i.id === selectedItemId);
-  if (!item) { strip.hidden = true; return; }
-  strip.hidden = false;
+  if (!item) return;                     // setEditMode handles hiding the pane
   $('#editStripLabel').textContent = item.label;
   const orientEl = $('#editStripOrient');
   if (orientEl) orientEl.textContent = ORIENT_NAMES[item.rot_y] || 'Upright';
@@ -1623,6 +1633,40 @@ function renderEditStrip() {
   if (sw) sw.style.background = item.color;
   const sh = $('#editStripShape');
   if (sh) sh.textContent = SHAPES[item.shape || 'box'].label;
+
+  // What's inside, when the carton came from the builder. The plan renders
+  // every item as a plain box for performance — a container of builder
+  // cartons would be tens of thousands of meshes — so this is where the
+  // contents stay visible.
+  const cbox = $('#inspContents');
+  if (cbox) {
+    const contents = item.contents || [];
+    if (!contents.length) {
+      cbox.hidden = true;
+      cbox.innerHTML = '';
+    } else {
+      cbox.hidden = false;
+      const total = contents.reduce((s, c) => s + (c.quantity || 0), 0);
+      const pm = item.pallet_meta;
+      const t = item.terms || TERM_DEFAULTS;
+      const unitWord = pluralise(t.product || 'unit', total).toLowerCase();
+      cbox.innerHTML = `
+        <div class="ic-head"><span>Inside</span><b>${total} ${escapeHtml(unitWord)}</b></div>
+        ${contents.map(c => `
+          <div class="ic-row">
+            <div>
+              <b>${escapeHtml(c.product_name || 'Unnamed')}</b>
+              ${c.batch_lot ? `<span class="ic-lot">${escapeHtml(c.batch_lot)}</span>` : ''}
+            </div>
+            <span class="ic-qty">${c.quantity || 0}</span>
+          </div>`).join('')}
+        ${pm ? `<div class="ic-note">${pm.trays} ${escapeHtml(pluralise(t.primary || 'pack', pm.trays).toLowerCase())}` +
+               ` \u00b7 ${pm.per_layer} per layer \u00d7 ${pm.layers} layers` +
+               `${pm.order_no ? ` \u00b7 order ${escapeHtml(pm.order_no)}` : ''}` +
+               `${pm.packer ? ` \u00b7 packed by ${escapeHtml(pm.packer)}` : ''}</div>` : ''}
+      `;
+    }
+  }
 
   // Bearing readout — shown even when nothing is wrong, so the check is visible
   const bear = $('#editBearing');
@@ -1973,6 +2017,7 @@ function undoAutoPack() {
 // Everything here is additive — the simple Cargo form is untouched.
 // ============================================================
 const CARTON_SPECS_KEY = 'smartuna_planner_carton_specs_v1';
+const BUILDER_UNIT_KEY = 'smartuna_planner_builder_unit';
 const GROUP_COLORS = ['#1a6fdb', '#38b47a', '#f4a11c', '#8b5cf6', '#ec4899', '#14b8a6'];
 
 // The builder describes three packaging levels. What each level is actually
@@ -2021,6 +2066,25 @@ function term(level, n = 1, lower = false) {
 
 let cartonSpecs = [];
 let builderQty = 1;
+let builderUnit = 'mm';                  // units for every length field in the builder
+
+// The spec stores small geometry in mm and pallet decks in cm, whatever the
+// user is typing in. These convert between the two.
+//
+// Builder values need finer display precision than the planner's: a can is
+// 73.5 mm, and at the planner's 3 decimals that would round to 0.073 m and
+// read back as 73. These give 0.1 mm resolution in every unit.
+const B_DECIMALS = { mm: 1, cm: 2, m: 4 };
+const B_STEPS    = { mm: '0.1', cm: '0.01', m: '0.0001' };
+function bFormat(v, unit) {
+  const s = (Number(v) || 0).toFixed(B_DECIMALS[unit]);
+  return s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+}
+function bFromMm(mm) { return bFormat((Number(mm) || 0) / TO_MM[builderUnit], builderUnit); }
+function bToMm(v)    { return (parseFloat(v) || 0) * TO_MM[builderUnit]; }
+function bFromCm(cm) { return bFromMm((Number(cm) || 0) * 10); }
+function bToCm(v)    { return bToMm(v) / 10; }
+const bUnit = () => builderUnit;
 let builder = null;                      // working spec
 let bPreview = null;                     // { renderer, scene, camera, controls, group, raf }
 
@@ -2282,12 +2346,12 @@ function renderBuilderGroups() {
       ${isCyl ? `
       <div class="form-row-3">
         <label class="field">
-          <span>Ø (mm)</span>
-          <input data-f="unit_d_mm" type="number" min="1" step="0.5" value="${g.unit_d_mm}" />
+          <span>Ø (${bUnit()})</span>
+          <input data-f="unit_d_mm" data-len type="number" min="0" step="${B_STEPS[bUnit()]}" value="${bFromMm(g.unit_d_mm)}" />
         </label>
         <label class="field">
-          <span>Height (mm)</span>
-          <input data-f="unit_h_mm" type="number" min="1" step="0.5" value="${g.unit_h_mm}" />
+          <span>Height (${bUnit()})</span>
+          <input data-f="unit_h_mm" data-len type="number" min="0" step="${B_STEPS[bUnit()]}" value="${bFromMm(g.unit_h_mm)}" />
         </label>
         <label class="field">
           <span>Weight (g)</span>
@@ -2296,16 +2360,16 @@ function renderBuilderGroups() {
       </div>` : `
       <div class="form-row-4">
         <label class="field">
-          <span>L (mm)</span>
-          <input data-f="unit_l_mm" type="number" min="1" step="0.5" value="${g.unit_l_mm}" />
+          <span>L (${bUnit()})</span>
+          <input data-f="unit_l_mm" data-len type="number" min="0" step="${B_STEPS[bUnit()]}" value="${bFromMm(g.unit_l_mm)}" />
         </label>
         <label class="field">
-          <span>W (mm)</span>
-          <input data-f="unit_w_mm" type="number" min="1" step="0.5" value="${g.unit_w_mm}" />
+          <span>W (${bUnit()})</span>
+          <input data-f="unit_w_mm" data-len type="number" min="0" step="${B_STEPS[bUnit()]}" value="${bFromMm(g.unit_w_mm)}" />
         </label>
         <label class="field">
-          <span>H (mm)</span>
-          <input data-f="unit_h_mm" type="number" min="1" step="0.5" value="${g.unit_h_mm}" />
+          <span>H (${bUnit()})</span>
+          <input data-f="unit_h_mm" data-len type="number" min="0" step="${B_STEPS[bUnit()]}" value="${bFromMm(g.unit_h_mm)}" />
         </label>
         <label class="field">
           <span>Wt (g)</span>
@@ -2346,7 +2410,9 @@ function renderBuilderGroups() {
       input.addEventListener('input', () => {
         const f = input.dataset.f;
         if (f === '__target') return;
-        g[f] = input.type === 'number' ? (parseFloat(input.value) || 0) : input.value;
+        g[f] = input.dataset.len !== undefined
+          ? bToMm(input.value)                       // length field, stored in mm
+          : (input.type === 'number' ? (parseFloat(input.value) || 0) : input.value);
         // Keep a cylinder's footprint square
         if (f === 'unit_d_mm') { g.unit_l_mm = g.unit_d_mm; g.unit_w_mm = g.unit_d_mm; }
         updateBuilderComputed();
@@ -2485,6 +2551,41 @@ function updatePalletFit(c, p) {
   `;
 }
 
+// Static builder fields carry their unit in the label; the group cards are
+// re-rendered so they pick it up on their own.
+function refreshBuilderUnitUI() {
+  $$('[data-bunit-label]').forEach(el => {
+    el.textContent = `${el.dataset.bunitLabel} (${builderUnit})`;
+  });
+  const step = B_STEPS[builderUnit];
+  ['#bWall', '#bGap', '#bPalletL', '#bPalletW', '#bPalletH', '#bPalletMaxH', '#bPalletOver']
+    .forEach(sel => { const el = $(sel); if (el) el.step = step; });
+  $$('.unit-mini[data-unit-target="builder"] .unit-btn')
+    .forEach(b => b.classList.toggle('active', b.dataset.bunit === builderUnit));
+}
+
+function setBuilderUnit(unit) {
+  if (unit === builderUnit || !TO_MM[unit]) return;
+  builderUnit = unit;
+  try { localStorage.setItem(BUILDER_UNIT_KEY, unit); } catch (e) {}
+  // Repaint every field from the stored spec rather than converting the
+  // text in place, so rounding never compounds across switches.
+  writeBuilderFields();
+  renderBuilderGroups();
+  refreshBuilderUnitUI();
+  updateBuilderComputed();
+  refreshSegments();
+}
+
+// Push the working spec into the static inputs
+function writeBuilderFields() {
+  $('#bName').value = builder.name;
+  $('#bWall').value = bFromMm(builder.wall_mm);
+  $('#bGap').value  = bFromMm(builder.gap_mm);
+  $('#bTare').value = builder.tare_kg;
+  renderPalletFields();
+}
+
 function renderTermInputs() {
   $('#bTermProduct').value   = builder.terms.product;
   $('#bTermPrimary').value   = builder.terms.primary;
@@ -2574,12 +2675,12 @@ function renderPalletFields() {
   $('#bPalletFields').hidden = !p.enabled;
   $('#bPalletPreset').value  = p.preset;
   $('#bPalletPattern').value = p.pattern;
-  $('#bPalletL').value       = p.length_cm;
-  $('#bPalletW').value       = p.width_cm;
-  $('#bPalletH').value       = p.deck_h_cm;
+  $('#bPalletL').value       = bFromCm(p.length_cm);
+  $('#bPalletW').value       = bFromCm(p.width_cm);
+  $('#bPalletH').value       = bFromCm(p.deck_h_cm);
   $('#bPalletKg').value      = p.deck_kg;
-  $('#bPalletMaxH').value    = p.max_h_cm;
-  $('#bPalletOver').value    = p.overhang_mm;
+  $('#bPalletMaxH').value    = bFromCm(p.max_h_cm);
+  $('#bPalletOver').value    = bFromMm(p.overhang_mm);
   $('#bPalletLayers').value  = p.layers || '';
   $('#bPalletBatch').value   = p.batch_code;
   $('#bPalletOrder').value   = p.order_no;
@@ -2591,12 +2692,12 @@ function readPalletFields() {
   p.enabled     = $('#bPalletOn').checked;
   p.preset      = $('#bPalletPreset').value;
   p.pattern     = $('#bPalletPattern').value;
-  p.length_cm   = parseFloat($('#bPalletL').value) || 0;
-  p.width_cm    = parseFloat($('#bPalletW').value) || 0;
-  p.deck_h_cm   = parseFloat($('#bPalletH').value) || 0;
+  p.length_cm   = bToCm($('#bPalletL').value);
+  p.width_cm    = bToCm($('#bPalletW').value);
+  p.deck_h_cm   = bToCm($('#bPalletH').value);
   p.deck_kg     = parseFloat($('#bPalletKg').value) || 0;
-  p.max_h_cm    = parseFloat($('#bPalletMaxH').value) || 0;
-  p.overhang_mm = parseFloat($('#bPalletOver').value) || 0;
+  p.max_h_cm    = bToCm($('#bPalletMaxH').value);
+  p.overhang_mm = bToMm($('#bPalletOver').value);
   p.layers      = parseInt($('#bPalletLayers').value, 10) || 0;
   p.batch_code  = $('#bPalletBatch').value;
   p.order_no    = $('#bPalletOrder').value;
@@ -2845,13 +2946,10 @@ function renderCartonSpecDropdown() {
 function openBuilder() {
   if (!builder) builder = newBuilderSpec();
   if (!builder.terms) builder.terms = { ...newBuilderSpec().terms };
-  $('#bName').value = builder.name;
-  $('#bWall').value = builder.wall_mm;
-  $('#bGap').value  = builder.gap_mm;
-  $('#bTare').value = builder.tare_kg;
+  writeBuilderFields();
+  refreshBuilderUnitUI();
   renderTermInputs();
   renderBuilderGroups();
-  renderPalletFields();
   renderCartonSpecDropdown();
   if (!builder.pallet.enabled) builderPreviewMode = 'carton';
   $$('#bPreviewPills .view-pill').forEach(b =>
@@ -2899,7 +2997,14 @@ function addBuiltCartonToPlan() {
 
   const baseLabel = ($('#bName').value.trim()) || generateBaseLabel(onPallet ? 'pallet' : 'carton');
   const productName = builder.groups[0]?.product_name || '';
-  const color = pickColorForBase(baseLabel);
+
+  // Keep the plan visually continuous with the preview: reuse an existing
+  // SKU's colour if there is one, else take the colour of the batch group
+  // that contributes the most units.
+  const twin = items.find(i => i.base_label === baseLabel);
+  const dominant = builder.groups.reduce(
+    (best, g) => (!best || groupUnitCount(g) > groupUnitCount(best)) ? g : best, null);
+  const color = twin ? twin.color : (dominant?.color || pickColorForBase(baseLabel));
   const palletLot = builder.pallet.batch_code.trim();
 
   // Per-unit contents, multiplied up by the tray count when palletised
@@ -2948,7 +3053,10 @@ function addBuiltCartonToPlan() {
 // ============================================================
 // RIGHT PANEL — Add / Items tabs and collapsible options
 // ============================================================
+let lastPanelTab = 'add';                // restored when the inspector closes
+
 function setPanelTab(pane) {
+  lastPanelTab = pane;
   $$('.panel-tab').forEach(b => b.classList.toggle('active', b.dataset.pane === pane));
   $('#paneAdd').hidden   = pane !== 'add';
   $('#paneItems').hidden = pane !== 'items';
@@ -2969,6 +3077,7 @@ function updateOptionsSummary() {
 function setOptionsOpen(open) {
   $('#optBody').hidden = !open;
   $('#optToggle').classList.toggle('open', open);
+  $('#paneAdd').classList.toggle('opt-open', open);
   $('#optToggle').setAttribute('aria-expanded', open ? 'true' : 'false');
   if (open) refreshSegments();           // kind tabs and shape picker just became measurable
 }
@@ -2988,6 +3097,13 @@ function setKind(kind, opts = {}) {
 
   const presetRow = $('#kindPresetRow');
   const presetSelect = $('#fKindPreset');
+
+  // Only cartons can be round — a pallet deck or a slipsheet is a rectangle.
+  // Without this, picking Cylinder for a carton and then switching kind left
+  // a round slipsheet behind.
+  const canBeRound = kind === 'carton';
+  $('#shapeRow').hidden = !canBeRound;
+  if (!canBeRound && currentShape !== 'box') setShape('box', { mirror: false });
 
   if (kind === 'carton') {
     presetRow.hidden = true;
@@ -4896,12 +5012,10 @@ $('#fQtyPlus').addEventListener('click', () => {
   $('#fQty').textContent = quantity;
 });
 
-$('#modeClear').addEventListener('click', () => deselectAll());
 
-$('#primaryFormBtn').addEventListener('click', () => {
-  if (selectedItemId) updateSelectedItem();
-  else addNewItems();
-});
+$('#primaryFormBtn').addEventListener('click', addNewItems);
+$('#inspectSave').addEventListener('click', updateSelectedItem);
+$('#inspectBack').addEventListener('click', () => deselectAll());
 
 function readFormValues() {
   return {
@@ -4992,7 +5106,7 @@ function updateSelectedItem() {
   item.product_name = productInput;
   item.length_cm = L; item.width_cm = W; item.height_cm = H;
   item.weight_kg = wt; item.handling = handling;
-  item.shape = shape;
+  item.shape = normaliseShape(item.kind, shape);
   item.max_stack_kg = maxStack;
   if (shapeChanged) rebuildItemMesh(item);
   item.mesh.material.color.set(item.color);
@@ -5073,13 +5187,17 @@ document.querySelectorAll('[data-close-builder]').forEach(el =>
 ['#bWall', '#bGap', '#bTare', '#bName'].forEach(sel => {
   $(sel).addEventListener('input', () => {
     builder.name    = $('#bName').value;
-    builder.wall_mm = parseFloat($('#bWall').value) || 0;
-    builder.gap_mm  = parseFloat($('#bGap').value)  || 0;
+    builder.wall_mm = bToMm($('#bWall').value);
+    builder.gap_mm  = bToMm($('#bGap').value);
     builder.tare_kg = parseFloat($('#bTare').value) || 0;
     updateBuilderComputed();
     rebuildBuilderPreview();
   });
 });
+
+// Builder unit switcher
+$$('.unit-mini[data-unit-target="builder"] .unit-btn').forEach(btn =>
+  btn.addEventListener('click', () => setBuilderUnit(btn.dataset.bunit)));
 
 // Packaging-level names — typeable with a styled suggestion list
 ['#bTermProduct', '#bTermPrimary', '#bTermSecondary'].forEach(sel =>
@@ -5113,9 +5231,9 @@ $('#bPalletPreset').addEventListener('change', e => {
     builder.pallet.width_cm  = preset.width;
     builder.pallet.deck_h_cm = preset.height;
     builder.pallet.deck_kg   = preset.weight;
-    $('#bPalletL').value  = preset.length;
-    $('#bPalletW').value  = preset.width;
-    $('#bPalletH').value  = preset.height;
+    $('#bPalletL').value  = bFromCm(preset.length);
+    $('#bPalletW').value  = bFromCm(preset.width);
+    $('#bPalletH').value  = bFromCm(preset.height);
     $('#bPalletKg').value = preset.weight;
   }
   updateBuilderComputed();
@@ -5177,13 +5295,9 @@ $('#bSpecSelect').addEventListener('change', e => {
   builder = JSON.parse(JSON.stringify(spec));
   if (!builder.pallet) builder.pallet = newBuilderSpec().pallet;   // specs saved before pallets
   if (!builder.terms)  builder.terms  = newBuilderSpec().terms;    // ...and before named levels
-  $('#bName').value = builder.name;
-  $('#bWall').value = builder.wall_mm;
-  $('#bGap').value  = builder.gap_mm;
-  $('#bTare').value = builder.tare_kg;
+  writeBuilderFields();
   renderTermInputs();
   renderBuilderGroups();
-  renderPalletFields();
   updateBuilderComputed();
   rebuildBuilderPreview();
   $('#bDeleteSpec').hidden = false;
@@ -5391,7 +5505,7 @@ window.addEventListener('beforeunload', (e) => {
 let refreshSegments = () => {};
 
 function initSegmentedIndicators() {
-  const SELECTOR = '.view-pills, .scene-toggle, .kind-tabs, .unit-mini, .shape-pick, .panel-tabs';
+  const SELECTOR = '.view-pills, .scene-toggle, .kind-tabs, .unit-mini, .shape-pick, .panel-tabs, .shape-toggle';
   const getContainers = () => document.querySelectorAll(SELECTOR);
 
   const update = (container) => {
@@ -5453,6 +5567,8 @@ async function boot() {
     if (gs) gridStepPref = gs === 'auto' ? 'auto' : (Number(gs) || 'auto');
     const ss = localStorage.getItem(SNAP_STEP_KEY);
     if (ss !== null && SNAP_STEP_OPTIONS.includes(Number(ss))) moveStep = Number(ss);
+    const bu = localStorage.getItem(BUILDER_UNIT_KEY);
+    if (bu && TO_MM[bu]) builderUnit = bu;
   } catch (e) {}
   try {
     const savedC = localStorage.getItem(CONTAINER_UNIT_KEY);
