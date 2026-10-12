@@ -2018,12 +2018,33 @@ function undoAutoPack() {
 // ============================================================
 const CARTON_SPECS_KEY = 'smartuna_planner_carton_specs_v1';
 const BUILDER_UNIT_KEY = 'smartuna_planner_builder_unit';
+const BATCH_CODES_KEY  = 'smartuna_planner_batch_codes';
 const GROUP_COLORS = ['#1a6fdb', '#38b47a', '#f4a11c', '#8b5cf6', '#ec4899', '#14b8a6'];
 
-// The builder describes three packaging levels. What each level is actually
-// called depends on the product — cans in trays on pallets, or loins in
-// interleaved blocks in master cartons — so the user names them.
-const TERM_DEFAULTS = { product: 'Unit', primary: 'Pack', secondary: 'Pallet' };
+// The builder describes four packaging levels, the middle one optional:
+//
+//   product    the thing itself in its own pack       a can
+//   primary    the pack that holds the products       a tray of 12 cans
+//   outer      an optional box that holds the packs   a carton of 4 trays
+//   secondary  the base the whole lot stacks onto     a pallet
+//
+// What each level is called depends on the product — cans in trays in cartons
+// on pallets, or loins in interleaved blocks in master cartons — so the user
+// names them and every heading follows their word.
+//
+// The keys 'primary' and 'secondary' predate the 'outer' level and are kept so
+// saved specs and saved plan items keep loading. Read them by role, not by
+// name: 'secondary' is the base, not the second level.
+const TERM_DEFAULTS = { product: 'Unit', primary: 'Pack', outer: 'Carton', secondary: 'Pallet' };
+
+// Printed under each step heading, so no heading relies on jargon.
+const TERM_ROLES = {
+  product:   'Level 1 · what you are shipping, in its own pack. Measure one of these.',
+  primary:   'Level 2 · the pack the products go into. Sized from the products, or to a size you already have.',
+  outer:     'Level 3 · optional. A bigger box holding several level-2 packs. Skip it if the packs ship as they are.',
+  secondary: 'Level 4 · the base the whole lot stacks onto.'
+};
+
 const TERM_SUGGESTIONS = {
   product: [
     'Can', 'Tin', 'Pouch', 'Jar', 'Bottle', 'Tub', 'Cup',
@@ -2031,9 +2052,13 @@ const TERM_SUGGESTIONS = {
     'Bag', 'Sachet', 'Vacuum pack', 'Skin pack', 'Piece', 'Unit'
   ],
   primary: [
-    'Tray', 'Carton', 'Master carton', 'Inner carton', 'Case', 'Box', 'Shipper',
-    'Shrink pack', 'Multipack', 'Bundle', 'Interleaved block', 'Layer pack',
+    'Tray', 'Inner carton', 'Shrink pack', 'Multipack', 'Bundle', 'Sleeve',
+    'Case', 'Box', 'Interleaved block', 'Layer pack',
     'Bag', 'Sack', 'Polybag', 'Crate', 'Tote'
+  ],
+  outer: [
+    'Carton', 'Master carton', 'Outer carton', 'Shipper', 'Case',
+    'Export carton', 'Combo bin', 'Crate', 'Box'
   ],
   secondary: [
     'Pallet', 'Euro pallet', 'Half pallet', 'Slipsheet', 'Skid',
@@ -2047,6 +2072,8 @@ const INVARIANT_PLURALS = new Set([
   'fish', 'whole fish', 'tuna', 'salmon', 'cod', 'shrimp', 'squid',
   'mackerel', 'trout', 'herring', 'swordfish', 'bass', 'perch'
 ]);
+
+const capitalise = s => String(s || '').charAt(0).toUpperCase() + String(s || '').slice(1);
 
 function pluralise(word, n) {
   const w = String(word || '').trim();
@@ -2067,6 +2094,51 @@ function term(level, n = 1, lower = false) {
 let cartonSpecs = [];
 let builderQty = 1;
 let builderUnit = 'mm';                  // units for every length field in the builder
+let batchCodes = [];                     // codes used before, most recent first
+
+// Targeting a lot later only works if the same code is written the same way
+// every time. Trim and collapse whitespace, and if it matches a code already
+// in use apart from case, adopt that code's spelling.
+function normaliseBatchCode(raw) {
+  const s = String(raw || '').trim().replace(/\s+/g, ' ');
+  if (!s) return '';
+  const known = knownBatchCodes().find(c => c.toLowerCase() === s.toLowerCase());
+  return known || s;
+}
+
+function loadBatchCodes() {
+  try { batchCodes = JSON.parse(localStorage.getItem(BATCH_CODES_KEY)) || []; }
+  catch (e) { batchCodes = []; }
+}
+
+function rememberBatchCode(code) {
+  const s = String(code || '').trim().replace(/\s+/g, ' ');
+  if (!s) return;
+  batchCodes = [s, ...batchCodes.filter(c => c.toLowerCase() !== s.toLowerCase())].slice(0, 300);
+  try { localStorage.setItem(BATCH_CODES_KEY, JSON.stringify(batchCodes)); } catch (e) {}
+}
+
+// Everything we could offer: codes typed before, codes already in this plan,
+// and codes inside saved carton specs.
+function knownBatchCodes() {
+  const seen = new Map();                // lowercase -> canonical spelling
+  const add = c => {
+    const s = String(c || '').trim();
+    if (s && !seen.has(s.toLowerCase())) seen.set(s.toLowerCase(), s);
+  };
+  batchCodes.forEach(add);
+  items.forEach(i => (i.contents || []).forEach(c => add(c.batch_lot)));
+  items.forEach(i => add(i.pallet_meta?.batch_code));
+  cartonSpecs.forEach(s => {
+    (s.groups || []).forEach(g => add(g.batch_lot));
+    add(s.pallet?.batch_code);
+  });
+  if (builder) {
+    (builder.groups || []).forEach(g => add(g.batch_lot));
+    add(builder.pallet?.batch_code);
+  }
+  return [...seen.values()];
+}
 
 // The spec stores small geometry in mm and pallet decks in cm, whatever the
 // user is typing in. These convert between the two.
@@ -2101,20 +2173,45 @@ function newGroup(index = 0) {
     unit_h_mm: 43,
     unit_weight_g: 95,
     cols: 4, rows: 3, layers: 4,
+    orient: 'upright',                   // how the product sits: upright | side | end
+    inverted: false,                     // packed upside down
+    align_l: 'center',                   // where the block sits in the pack,
+    align_w: 'center',                   // across the length and the width
     color: GROUP_COLORS[index % GROUP_COLORS.length]
+  };
+}
+
+// The optional level-3 box. Holds a grid of level-2 packs.
+function newOuter() {
+  return {
+    enabled: false,
+    sizing: 'contents',                  // 'contents' = size it around the packs
+                                         // 'fixed'    = known box, fit packs into it
+    fixed_l_mm: 580, fixed_w_mm: 380, fixed_h_mm: 320,
+    cols: 2, rows: 2, layers: 1,         // packs across L, across W, stacked high
+    wall_mm: 4, gap_mm: 0, tare_kg: 0.55,
+    open_top: false,
+    wrap: { enabled: false, thickness_mm: 0.1, weight_g: 25 }
   };
 }
 
 function newBuilderSpec() {
   return {
     name: '',
-    terms: { product: 'Can', primary: 'Tray', secondary: 'Pallet' },
+    terms: { product: 'Can', primary: 'Tray', outer: 'Carton', secondary: 'Pallet' },
     wall_mm: 3,
     gap_mm: 2,
     tare_kg: 0.4,
+    sizing: 'contents',                  // 'contents' = size the tray from what's in it
+                                         // 'fixed'    = tray is a known size, fit units into it
+    fixed_l_mm: 400, fixed_w_mm: 300, fixed_h_mm: 150,
+    open_top: false,                     // no lid: contents may stand above the rim
+    wrap: { enabled: false, thickness_mm: 0.1, weight_g: 15 },
     groups: [newGroup(0)],
+    outer: newOuter(),
     pallet: {
       enabled: false,
+      base_type: 'pallet',               // pallet | slipsheet | none
       preset: 'eur1',
       length_cm: 120, width_cm: 80,
       deck_h_cm: 14.5, deck_kg: 25,
@@ -2127,13 +2224,93 @@ function newBuilderSpec() {
   };
 }
 
-let builderPreviewMode = 'carton';       // 'carton' | 'pallet'
+let builderPreviewMode = 'carton';       // 'carton' | 'outer' | 'pallet'
 
-// Footprint of one unit in mm (cylinders occupy their bounding square)
-function groupUnitFootprint(g) {
+// Bring a spec written by an older build up to the current shape. Called on
+// every load so one place covers every past version.
+function normaliseSpec(spec) {
+  const fresh = newBuilderSpec();
+  if (!spec.pallet) spec.pallet = fresh.pallet;              // before pallets
+  if (!spec.terms)  spec.terms  = { ...fresh.terms };        // before named levels
+  if (!spec.terms.outer) spec.terms.outer = TERM_DEFAULTS.outer;
+  if (!spec.sizing) {                                        // before fixed sizing
+    spec.sizing = 'contents';
+    spec.fixed_l_mm = fresh.fixed_l_mm;
+    spec.fixed_w_mm = fresh.fixed_w_mm;
+    spec.fixed_h_mm = fresh.fixed_h_mm;
+  }
+  if (!spec.wrap) spec.wrap = { ...fresh.wrap };
+  if (!spec.outer) spec.outer = newOuter();                  // before the outer level
+  if (!spec.outer.wrap) spec.outer.wrap = { ...newOuter().wrap };
+  if (!spec.pallet.base_type) spec.pallet.base_type = 'pallet';
+  (spec.groups || []).forEach(g => {                         // before move / flip
+    if (!g.orient) g.orient = 'upright';
+    if (typeof g.inverted !== 'boolean') g.inverted = false;
+    if (!g.align_l) g.align_l = 'center';
+    if (!g.align_w) g.align_w = 'center';
+  });
+  return spec;
+}
+
+// ---- how a product sits ----
+// 'upright' is the product as measured. 'side' tips it over so what was its
+// height runs along the pack's length. 'end' stands it on one end. A round
+// product has no distinct end, so it only offers upright and side.
+const ORIENT_LABELS = { upright: 'Upright', side: 'On its side', end: 'On its end' };
+const orientOptions = g => g.shape === 'cylinder'
+  ? ['upright', 'side']
+  : ['upright', 'side', 'end'];
+
+// Where a group's block sits in the pack, in words rather than CSS keywords
+const ALIGN_L_NAMES = { start: 'Left', center: 'Centred', end: 'Right' };
+const ALIGN_W_NAMES = { start: 'Front', center: 'Middle', end: 'Back' };
+
+// One line for the collapsed "Adjust how they sit" summary
+function arrangeSummary(g) {
+  const bits = [ORIENT_LABELS[g.orient] || ORIENT_LABELS.upright];
+  if (g.inverted) bits.push('upside down');
+  if (g.align_l !== 'center' || g.align_w !== 'center') {
+    bits.push(`${ALIGN_W_NAMES[g.align_w].toLowerCase()} ${ALIGN_L_NAMES[g.align_l].toLowerCase()}`);
+  }
+  return bits.join(' · ');
+}
+
+// The product as measured, before any tipping
+function groupNaturalDims(g) {
   return g.shape === 'cylinder'
-    ? { l: g.unit_d_mm, w: g.unit_d_mm }
-    : { l: g.unit_l_mm, w: g.unit_w_mm };
+    ? { l: g.unit_d_mm, w: g.unit_d_mm, h: g.unit_h_mm }
+    : { l: g.unit_l_mm, w: g.unit_w_mm, h: g.unit_h_mm };
+}
+
+// The space one product takes up once it is sitting the way the user chose.
+// 'side' tips it away from you, so its height ends up across the width.
+// 'end' stands it up, so its length ends up vertical — meaningless for a
+// round product, which has no distinct end, so that falls back to upright.
+function groupUnitDims(g) {
+  const n = groupNaturalDims(g);
+  const o = (g.shape === 'cylinder' && g.orient === 'end') ? 'upright' : g.orient;
+  switch (o) {
+    case 'side': return { l: n.l, w: n.h, h: n.w };
+    case 'end':  return { l: n.h, w: n.w, h: n.l };
+    default:     return n;
+  }
+}
+
+// Footprint of one unit in mm (a round product occupies its bounding square)
+function groupUnitFootprint(g) {
+  const d = groupUnitDims(g);
+  return { l: d.l, w: d.w };
+}
+
+// Height of one unit in mm, as it is sitting
+const groupUnitHeight = g => groupUnitDims(g).h;
+
+// Where a block of width `span` sits inside a cavity of width `inner`
+function alignOffset(mode, span, inner) {
+  const free = Math.max(0, inner - span);
+  if (mode === 'start') return 0;
+  if (mode === 'end')   return free;
+  return free / 2;
 }
 
 function groupUnitCount(g) {
@@ -2142,41 +2319,149 @@ function groupUnitCount(g) {
 
 // Derive carton outer dimensions (cm) and weight (kg) from the spec
 function computeCarton(spec) {
-  const gap = spec.gap_mm || 0;
+  const gap  = spec.gap_mm  || 0;
   const wall = spec.wall_mm || 0;
+  const fixed = spec.sizing === 'fixed';
 
-  let innerL = 0, innerW = 0, innerH = 0;
+  let usedL = 0, usedW = 0, usedH = 0;   // what the contents actually occupy
   let unitTotal = 0, contentKg = 0;
+  const fit = [];                        // effective cols/rows/layers per group
 
   spec.groups.forEach(g => {
     const fp = groupUnitFootprint(g);
-    const gl = g.cols * fp.l + Math.max(0, g.cols - 1) * gap;
-    const gw = g.rows * fp.w + Math.max(0, g.rows - 1) * gap;
-    const gh = g.layers * g.unit_h_mm + Math.max(0, g.layers - 1) * gap;
-    innerL = Math.max(innerL, gl);
-    innerW = Math.max(innerW, gw);
-    innerH += gh;
-    const n = groupUnitCount(g);
+    const uh = groupUnitHeight(g);
+    // A fixed tray dictates how many fit across; the user still chooses layers.
+    const cols = fixed ? Math.max(0, Math.floor((spec.fixed_l_mm + gap) / (fp.l + gap))) : g.cols;
+    const rows = fixed ? Math.max(0, Math.floor((spec.fixed_w_mm + gap) / (fp.w + gap))) : g.rows;
+    const layers = Math.max(0, g.layers);
+
+    usedL = Math.max(usedL, cols * fp.l + Math.max(0, cols - 1) * gap);
+    usedW = Math.max(usedW, rows * fp.w + Math.max(0, rows - 1) * gap);
+    usedH += layers * uh + Math.max(0, layers - 1) * gap;
+
+    const n = cols * rows * layers;
     unitTotal += n;
     contentKg += n * (g.unit_weight_g || 0) / 1000;
+    fit.push({ id: g.id, cols, rows, layers, n });
   });
 
-  // Gap between stacked groups
-  if (spec.groups.length > 1) innerH += gap * (spec.groups.length - 1);
+  if (spec.groups.length > 1) usedH += gap * (spec.groups.length - 1);
 
-  const outerL_mm = innerL + wall * 2;
-  const outerW_mm = innerW + wall * 2;
-  const outerH_mm = innerH + wall * 2;
+  // Inner cavity: the contents in contents-mode, the stated tray in fixed mode
+  const innerL = fixed ? spec.fixed_l_mm : usedL;
+  const innerW = fixed ? spec.fixed_w_mm : usedW;
+  const innerH = fixed ? spec.fixed_h_mm : usedH;
+
+  // An open tray has a floor but no lid, and contents can stand proud of the rim
+  let outerL = innerL + wall * 2;
+  let outerW = innerW + wall * 2;
+  let outerH = spec.open_top
+    ? Math.max(innerH, usedH) + wall
+    : innerH + wall * 2;
+
+  let wrapKg = 0;
+  if (spec.wrap?.enabled) {
+    const t = Math.max(0, spec.wrap.thickness_mm || 0);
+    outerL += t * 2; outerW += t * 2; outerH += t * 2;
+    wrapKg = (spec.wrap.weight_g || 0) / 1000;
+  }
+
+  const headroom = fixed ? spec.fixed_h_mm - usedH : 0;
+  const footFree = fixed
+    ? { l: spec.fixed_l_mm - usedL, w: spec.fixed_w_mm - usedW }
+    : { l: 0, w: 0 };
 
   return {
-    length_cm: outerL_mm / 10,
-    width_cm:  outerW_mm / 10,
-    height_cm: outerH_mm / 10,
+    length_cm: outerL / 10,
+    width_cm:  outerW / 10,
+    height_cm: outerH / 10,
     inner: { l: innerL, w: innerW, h: innerH },
-    weight_kg: contentKg + (spec.tare_kg || 0),
+    used:  { l: usedL,  w: usedW,  h: usedH },
+    fit, headroom_mm: headroom, free_mm: footFree,
+    overflows: fixed && (usedH > spec.fixed_h_mm + 0.01 ||
+                         usedL > spec.fixed_l_mm + 0.01 ||
+                         usedW > spec.fixed_w_mm + 0.01),
+    weight_kg: contentKg + (spec.tare_kg || 0) + wrapKg,
     content_kg: contentKg,
+    wrap_kg: wrapKg,
     units: unitTotal
   };
+}
+
+// Effective per-group counts, which differ from the typed cols/rows in fixed mode
+function groupFit(spec, groupId) {
+  const c = computeCarton(spec);
+  return c.fit.find(f => f.id === groupId) || { cols: 0, rows: 0, layers: 0, n: 0 };
+}
+
+// ---- the optional level-3 box ----
+// Takes the finished level-2 pack and fits a grid of them into a bigger box.
+// Same two sizing directions as the pack: build the box around the packs, or
+// state the box and see how many packs land in it.
+function computeOuter(spec, pack) {
+  const o = spec.outer;
+  const gap  = o.gap_mm  || 0;
+  const wall = o.wall_mm || 0;
+  const fixed = o.sizing === 'fixed';
+
+  const pL = pack.length_cm * 10, pW = pack.width_cm * 10, pH = pack.height_cm * 10;
+  const can = pL > 0 && pW > 0 && pH > 0;
+
+  const fitAcross = (span, size) =>
+    can ? Math.max(0, Math.floor((span + gap) / (size + gap))) : 0;
+
+  const cols   = fixed ? fitAcross(o.fixed_l_mm, pL) : Math.max(0, o.cols);
+  const rows   = fixed ? fitAcross(o.fixed_w_mm, pW) : Math.max(0, o.rows);
+  const layers = fixed ? fitAcross(o.fixed_h_mm, pH) : Math.max(0, o.layers);
+
+  const usedL = cols   * pL + Math.max(0, cols   - 1) * gap;
+  const usedW = rows   * pW + Math.max(0, rows   - 1) * gap;
+  const usedH = layers * pH + Math.max(0, layers - 1) * gap;
+
+  const innerL = fixed ? o.fixed_l_mm : usedL;
+  const innerW = fixed ? o.fixed_w_mm : usedW;
+  const innerH = fixed ? o.fixed_h_mm : usedH;
+
+  let outerL = innerL + wall * 2;
+  let outerW = innerW + wall * 2;
+  let outerH = o.open_top ? Math.max(innerH, usedH) + wall : innerH + wall * 2;
+
+  let wrapKg = 0;
+  if (o.wrap?.enabled) {
+    const t = Math.max(0, o.wrap.thickness_mm || 0);
+    outerL += t * 2; outerW += t * 2; outerH += t * 2;
+    wrapKg = (o.wrap.weight_g || 0) / 1000;
+  }
+
+  const packs = cols * rows * layers;
+  return {
+    length_cm: outerL / 10,
+    width_cm:  outerW / 10,
+    height_cm: outerH / 10,
+    inner: { l: innerL, w: innerW, h: innerH },
+    used:  { l: usedL,  w: usedW,  h: usedH },
+    grid: { cols, rows, layers },
+    packs,
+    units: packs * pack.units,
+    weight_kg: packs * pack.weight_kg + (o.tare_kg || 0) + wrapKg,
+    wrap_kg: wrapKg,
+    headroom_mm: fixed ? o.fixed_h_mm - usedH : 0,
+    free_mm: fixed
+      ? { l: o.fixed_l_mm - usedL, w: o.fixed_w_mm - usedW }
+      : { l: 0, w: 0 },
+    overflows: !fixed && false,
+    fit: pack.fit
+  };
+}
+
+// The thing that actually gets stacked or loaded: the outer box when there is
+// one, otherwise the pack itself. Everything downstream reads this, so the
+// pallet and the container never need to know how many levels are in play.
+function computeShip(spec) {
+  const pack = computeCarton(spec);
+  if (!spec.outer?.enabled) return { ...pack, level: 'primary', pack, packs: 1 };
+  const out = computeOuter(spec, pack);
+  return { ...out, level: 'outer', pack };
 }
 
 // ---- pallet layout ----
@@ -2229,6 +2514,7 @@ function computePalletLayout(tL, tW, pL, pW) {
 
 function computePallet(spec, carton) {
   const p = spec.pallet;
+  const baseType = p.base_type || 'pallet';
   const over = (p.overhang_mm || 0) / 10;            // mm → cm, per side
   const deckL = p.length_cm, deckW = p.width_cm;
   const usableL = deckL + over * 2;
@@ -2286,6 +2572,7 @@ function computePallet(spec, carton) {
 function suggestArrangement(g, target) {
   if (!target || target < 1) return null;
   const fp = groupUnitFootprint(g);
+  const uh = groupUnitHeight(g);
   let best = null;
   for (let layers = 1; layers <= target; layers++) {
     if (target % layers !== 0) continue;
@@ -2293,7 +2580,7 @@ function suggestArrangement(g, target) {
     for (let cols = 1; cols <= perLayer; cols++) {
       if (perLayer % cols !== 0) continue;
       const rows = perLayer / cols;
-      const L = cols * fp.l, W = rows * fp.w, H = layers * g.unit_h_mm;
+      const L = cols * fp.l, W = rows * fp.w, H = layers * uh;
       // Prefer a compact, slightly oblong footprint that isn't a tall tower
       const ratio = Math.max(L, W) / Math.min(L, W);
       const score = ratio * 1.0 + Math.abs(H - Math.max(L, W) * 0.7) / 100;
@@ -2306,9 +2593,19 @@ function suggestArrangement(g, target) {
 // ---- rendering the group cards ----
 function renderBuilderGroups() {
   const wrap = $('#bGroups');
+  const fixedMode = builder.sizing === 'fixed';
+  const packed = computeCarton(builder);
+  const fitAll = packed.fit;
   wrap.innerHTML = builder.groups.map((g, idx) => {
-    const n = groupUnitCount(g);
+    const gf = fitAll.find(f => f.id === g.id) || { cols: g.cols, rows: g.rows, layers: g.layers, n: 0 };
+    const n = fixedMode ? gf.n : groupUnitCount(g);
     const isCyl = g.shape === 'cylinder';
+    // Moving the block only shows up when its footprint is smaller than the
+    // cavity — a fixed pack with room left, or a narrower group beside a wider one.
+    const fp = groupUnitFootprint(g);
+    const spanL = gf.cols * fp.l + Math.max(0, gf.cols - 1) * (builder.gap_mm || 0);
+    const spanW = gf.rows * fp.w + Math.max(0, gf.rows - 1) * (builder.gap_mm || 0);
+    const hasSpare = packed.inner.l - spanL > 0.5 || packed.inner.w - spanW > 0.5;
     return `
     <div class="bgroup" data-gid="${g.id}">
       <div class="bgroup-head">
@@ -2323,10 +2620,14 @@ function renderBuilderGroups() {
           <span>Product</span>
           <input data-f="product_name" type="text" value="${escapeHtml(g.product_name)}" placeholder="Tuna in olive oil" />
         </label>
-        <label class="field">
+        <div class="field">
           <span>Batch / lot</span>
-          <input data-f="batch_lot" type="text" value="${escapeHtml(g.batch_lot)}" placeholder="LOT-TH-26014" />
-        </label>
+          <div class="combo combo-batch">
+            <input data-f="batch_lot" data-batch type="text" autocomplete="off"
+                   value="${escapeHtml(g.batch_lot)}" placeholder="B2DE1" />
+            <div class="combo-menu" hidden></div>
+          </div>
+        </div>
       </div>
 
       <div class="form-row">
@@ -2379,12 +2680,14 @@ function renderBuilderGroups() {
 
       <div class="form-row-3">
         <label class="field">
-          <span>Across L</span>
-          <input data-f="cols" type="number" min="1" step="1" value="${g.cols}" />
+          <span>Across L${fixedMode ? ' \u00b7 auto' : ''}</span>
+          <input data-f="cols" type="number" min="1" step="1"
+                 value="${fixedMode ? gf.cols : g.cols}" ${fixedMode ? 'disabled' : ''} />
         </label>
         <label class="field">
-          <span>Across W</span>
-          <input data-f="rows" type="number" min="1" step="1" value="${g.rows}" />
+          <span>Across W${fixedMode ? ' \u00b7 auto' : ''}</span>
+          <input data-f="rows" type="number" min="1" step="1"
+                 value="${fixedMode ? gf.rows : g.rows}" ${fixedMode ? 'disabled' : ''} />
         </label>
         <label class="field">
           <span>Layers</span>
@@ -2392,13 +2695,47 @@ function renderBuilderGroups() {
         </label>
       </div>
 
-      <div class="bsuggest">
+      <div class="bsuggest" ${fixedMode ? 'hidden' : ''}>
         <label class="field">
           <span>Target ${escapeHtml(term('product', 2, true))} per ${escapeHtml(term('primary', 1, true))}</span>
           <input data-f="__target" type="number" min="1" step="1" placeholder="e.g. 48" />
         </label>
         <button type="button" data-suggest="${g.id}">Arrange</button>
       </div>
+
+      <details class="barrange" ${g.orient !== 'upright' || g.inverted ||
+                                  g.align_l !== 'center' || g.align_w !== 'center' ? 'open' : ''}>
+        <summary>Adjust how they sit <span class="barrange-now">${escapeHtml(arrangeSummary(g))}</span></summary>
+        <div class="barrange-body">
+          <div class="barrange-col">
+            <span class="barrange-label">Which way up</span>
+            <div class="orient-toggle">
+              ${orientOptions(g).map(o => `
+                <button type="button" class="orient-btn ${g.orient === o ? 'active' : ''}"
+                        data-orient="${o}">${ORIENT_LABELS[o]}</button>`).join('')}
+            </div>
+            <label class="switch switch-sm">
+              <input type="checkbox" data-flip ${g.inverted ? 'checked' : ''} />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+              <span class="switch-label">Upside down</span>
+            </label>
+            <span class="barrange-dims">One ${escapeHtml(term('product', 1, true))} takes
+              <b>${bFromMm(groupUnitDims(g).l)} × ${bFromMm(groupUnitDims(g).w)} × ${bFromMm(groupUnitDims(g).h)} ${bUnit()}</b></span>
+          </div>
+
+          <div class="barrange-col">
+            <span class="barrange-label">Where in the ${escapeHtml(term('primary', 1, true))}</span>
+            <div class="align-pad" role="group" aria-label="Position in the pack">
+              ${['start', 'center', 'end'].map(w => ['start', 'center', 'end'].map(l => `
+                <button type="button" class="align-cell ${g.align_l === l && g.align_w === w ? 'active' : ''}"
+                        data-align-l="${l}" data-align-w="${w}"
+                        title="${ALIGN_W_NAMES[w]}, ${ALIGN_L_NAMES[l]}"></button>`).join('')).join('')}
+            </div>
+            <span class="barrange-dims">${escapeHtml(ALIGN_W_NAMES[g.align_w])}, ${escapeHtml(ALIGN_L_NAMES[g.align_l].toLowerCase())}${
+              hasSpare ? '' : ' · no spare room to move into yet'}</span>
+          </div>
+        </div>
+      </details>
     </div>`;
   }).join('');
 
@@ -2418,19 +2755,55 @@ function renderBuilderGroups() {
         updateBuilderComputed();
         rebuildBuilderPreview();
         const badge = card.querySelector('.bgroup-count');
-        const n = groupUnitCount(g);
+        const n = builder.sizing === 'fixed'
+          ? groupFit(builder, g.id).n
+          : groupUnitCount(g);
         if (badge) badge.textContent = `${n} ${term('product', n, true)}`;
       });
     });
     card.querySelectorAll('.shape-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         g.shape = btn.dataset.shape;
-        if (g.shape === 'cylinder') { g.unit_l_mm = g.unit_d_mm; g.unit_w_mm = g.unit_d_mm; }
+        if (g.shape === 'cylinder') {
+          g.unit_l_mm = g.unit_d_mm; g.unit_w_mm = g.unit_d_mm;
+          // A round product has no distinct end to stand on
+          if (g.orient === 'end') g.orient = 'upright';
+        }
         renderBuilderGroups();
         updateBuilderComputed();
         rebuildBuilderPreview();
       });
     });
+
+    // ---- adjust how they sit ----
+    const reArrange = () => {
+      renderBuilderGroups();
+      updateBuilderComputed();
+      rebuildBuilderPreview();
+      // Keep the panel the user was working in open
+      const reopened = $('#bGroups').querySelector(`.bgroup[data-gid="${gid}"] .barrange`);
+      if (reopened) reopened.open = true;
+    };
+    card.querySelectorAll('.orient-btn').forEach(btn => {
+      btn.addEventListener('click', () => { g.orient = btn.dataset.orient; reArrange(); });
+    });
+    const flip = card.querySelector('input[data-flip]');
+    if (flip) flip.addEventListener('change', () => { g.inverted = flip.checked; reArrange(); });
+    card.querySelectorAll('.align-cell').forEach(cell => {
+      cell.addEventListener('click', () => {
+        g.align_l = cell.dataset.alignL;
+        g.align_w = cell.dataset.alignW;
+        reArrange();
+      });
+    });
+    const lotInput = card.querySelector('input[data-batch]');
+    if (lotInput) {
+      initTermCombo(lotInput, knownBatchCodes, () => {
+        g.batch_lot = lotInput.value;
+        updateBuilderComputed();
+      });
+    }
+
     const sug = card.querySelector('[data-suggest]');
     if (sug) sug.addEventListener('click', () => {
       const target = parseInt(card.querySelector('[data-f="__target"]').value, 10);
@@ -2450,15 +2823,26 @@ function renderBuilderGroups() {
       rebuildBuilderPreview();
     });
   });
+
+  $('#bAddCopyHint').textContent = builder.groups.length
+    ? `Same ${term('product', 1, true)}, same size, blank batch code`
+    : 'Same product and size, blank batch code';
+  refreshSegments();                     // the cards carry segmented controls
 }
 
 function updateBuilderComputed() {
-  const c = computeCarton(builder);
+  const c = computeCarton(builder);                  // the level-2 pack
+  const outerOn = !!builder.outer?.enabled;
+  const o = outerOn ? computeOuter(builder, c) : null;
+  const ship = outerOn ? o : c;                      // what the base stacks
   const on = builder.pallet.enabled;
-  const p = on ? computePallet(builder, c) : null;
+  const p = on ? computePallet(builder, ship) : null;
 
   const PRIM = term('primary', 1, true);
+  const OUT  = term('outer', 1, true);
   const SEC  = term('secondary', 1, true);
+
+  renderStepHeads();
 
   // Step 1 -> 2 connector
   $('#bFlow1').textContent = c.units
@@ -2476,79 +2860,180 @@ function updateBuilderComputed() {
   }
 
   // Step 2 -> 3 connector
-  $('#bFlow2').textContent = on && p?.perLayer
-    ? `${p.perLayer} ${term('primary', p.perLayer, true)} per layer`
+  $('#bFlow2').textContent = outerOn
+    ? (o.packs ? `${o.packs} ${term('primary', o.packs, true)} per ${OUT}` : `packed into a ${OUT}`)
+    : `no ${OUT} — the ${PRIM} ships as it is`;
+
+  // Step 3 output — the optional outer box
+  const outerOut = $('#bOuterOut');
+  $('#bOuterStep').classList.toggle('bstep-off', !outerOn);
+  if (!outerOn) {
+    outerOut.className = 'bstep-out bstep-out-idle';
+    outerOut.innerHTML = `Skipped — the ${escapeHtml(PRIM)} goes straight onto the ${escapeHtml(SEC)}`;
+  } else if (!o.packs) {
+    outerOut.className = 'bstep-out bstep-out-warn';
+    outerOut.textContent = `No ${term('primary', 2, true)} fit in this ${OUT} — it is smaller than one ${PRIM}`;
+  } else {
+    outerOut.className = 'bstep-out';
+    outerOut.innerHTML = `<b>${o.packs}</b> ${escapeHtml(term('primary', o.packs, true))} ` +
+      `(${o.grid.cols} × ${o.grid.rows}${o.grid.layers > 1 ? ` × ${o.grid.layers} high` : ''}) · ` +
+      `<b>${o.units}</b> ${escapeHtml(term('product', o.units, true))} · ` +
+      `<b>${fromCm(o.length_cm)} × ${fromCm(o.width_cm)} × ${fromCm(o.height_cm)} ${itemUnit}</b> · ` +
+      `<b>${o.weight_kg.toFixed(2)} kg</b>`;
+  }
+
+  // Step 4 -> base connector
+  const STACKED = outerOn ? 'outer' : 'primary';
+  $('#bFlow3').textContent = on && p?.perLayer
+    ? `${p.perLayer} ${term(STACKED, p.perLayer, true)} per layer`
     : `stacked on a ${SEC}`;
 
-  // Step 3 output
+  // Step 4 output
   const palletOut = $('#bPalletOut');
   $('#bPalletStep').classList.toggle('bstep-off', !on);
   if (!on) {
     palletOut.className = 'bstep-out bstep-out-idle';
-    palletOut.innerHTML = `Skipped — ${escapeHtml(term('primary', 2, true))} load loose into the container`;
+    palletOut.innerHTML = `Skipped — ${escapeHtml(term(STACKED, 2, true))} load loose into the container`;
   } else if (!p || p.trays === 0) {
     palletOut.className = 'bstep-out bstep-out-warn';
-    palletOut.textContent = `No ${term('primary', 2, true)} fit — check the base size and max height`;
+    palletOut.textContent = `No ${term(STACKED, 2, true)} fit — check the base size and max height`;
   } else {
     palletOut.className = 'bstep-out';
-    palletOut.innerHTML = `<b>${p.trays}</b> ${escapeHtml(term('primary', p.trays, true))} · <b>${fromCm(p.length_cm)} × ${fromCm(p.width_cm)} × ${fromCm(p.height_cm)} ${itemUnit}</b> · <b>${p.weight_kg.toFixed(1)} kg</b>`;
+    palletOut.innerHTML = `<b>${p.trays}</b> ${escapeHtml(term(STACKED, p.trays, true))} · <b>${fromCm(p.length_cm)} × ${fromCm(p.width_cm)} × ${fromCm(p.height_cm)} ${itemUnit}</b> · <b>${p.weight_kg.toFixed(1)} kg</b>`;
   }
 
   // Final step — what actually goes into the container
-  const ship = on && p?.trays
+  const load = on && p?.trays
     ? { l: p.length_cm, w: p.width_cm, h: p.height_cm, kg: p.weight_kg, units: p.units, what: SEC }
-    : { l: c.length_cm, w: c.width_cm, h: c.height_cm, kg: c.weight_kg, units: c.units, what: PRIM };
-  const fits = ship.l <= cargoSpace.length * 100 &&
-               ship.w <= cargoSpace.width  * 100 &&
-               ship.h <= cargoSpace.height * 100;
+    : { l: ship.length_cm, w: ship.width_cm, h: ship.height_cm, kg: ship.weight_kg, units: ship.units,
+        what: outerOn ? OUT : PRIM };
+  const fits = load.l <= cargoSpace.length * 100 &&
+               load.w <= cargoSpace.width  * 100 &&
+               load.h <= cargoSpace.height * 100;
 
-  $('#bContainerSub').textContent = `one ${ship.what}`;
+  $('#bContainerSub').textContent = `one ${load.what}`;
   const contOut = $('#bContainerOut');
-  if (ship.units === 0) {
+  if (load.units === 0) {
     contOut.className = 'bstep-out bstep-out-idle';
     contOut.textContent = 'Nothing to load yet';
   } else if (!fits) {
     contOut.className = 'bstep-out bstep-out-warn';
-    contOut.innerHTML = `This ${escapeHtml(ship.what)} is larger than the cargo space`;
+    contOut.innerHTML = `This ${escapeHtml(load.what)} is larger than the cargo space`;
   } else {
     contOut.className = 'bstep-out bstep-out-ok';
-    contOut.innerHTML = `Each ${escapeHtml(ship.what)} carries <b>${ship.units}</b> ${escapeHtml(term('product', ship.units, true))} at <b>${ship.kg.toFixed(1)} kg</b>`;
+    contOut.innerHTML = `Each ${escapeHtml(load.what)} carries <b>${load.units}</b> ${escapeHtml(term('product', load.units, true))} at <b>${load.kg.toFixed(1)} kg</b>`;
   }
 
-  // Right-hand summary panel
+  // Right-hand summary panel — one row per level that is actually in play
   $('#bComputed').innerHTML = `
     <div class="bcomp-row bcomp-hero">
-      <span>${escapeHtml(term(on && p?.trays ? 'secondary' : 'primary'))} size</span>
-      <b>${fromCm(ship.l)} × ${fromCm(ship.w)} × ${fromCm(ship.h)} ${itemUnit}</b>
+      <span>${escapeHtml(load.what)} size</span>
+      <b>${fromCm(load.l)} × ${fromCm(load.w)} × ${fromCm(load.h)} ${itemUnit}</b>
     </div>
+    <div class="bcomp-row"><span>Per ${escapeHtml(PRIM)}</span><b>${c.units} ${escapeHtml(term('product', c.units, true))} · ${c.weight_kg.toFixed(2)} kg</b></div>
+    ${outerOn ? `
+      <div class="bcomp-row"><span>Per ${escapeHtml(OUT)}</span><b>${o.packs} ${escapeHtml(term('primary', o.packs, true))} · ${o.units} ${escapeHtml(term('product', o.units, true))} · ${o.weight_kg.toFixed(2)} kg</b></div>
+    ` : ''}
     ${on && p?.trays ? `
-      <div class="bcomp-row"><span>${escapeHtml(term('primary', 2))}</span><b>${p.trays}</b></div>
-      <div class="bcomp-row"><span>Per ${escapeHtml(PRIM)}</span><b>${c.units} ${escapeHtml(term('product', c.units, true))} · ${c.weight_kg.toFixed(2)} kg</b></div>
+      <div class="bcomp-row"><span>Per ${escapeHtml(SEC)}</span><b>${p.trays} ${escapeHtml(term(STACKED, p.trays, true))} · ${p.layers} layer${p.layers === 1 ? '' : 's'}</b></div>
     ` : `
-      <div class="bcomp-row"><span>Content weight</span><b>${c.content_kg.toFixed(2)} kg</b></div>
       <div class="bcomp-row"><span>Batch groups</span><b>${builder.groups.length}</b></div>
     `}
-    <div class="bcomp-row"><span>Total ${escapeHtml(term('product', 2, true))}</span><b>${ship.units}</b></div>
-    <div class="bcomp-row"><span>Gross weight</span><b>${ship.kg.toFixed(1)} kg</b></div>
+    <div class="bcomp-row"><span>Total ${escapeHtml(term('product', 2, true))}</span><b>${load.units}</b></div>
+    <div class="bcomp-row"><span>Gross weight</span><b>${load.kg.toFixed(1)} kg</b></div>
   `;
 
-  updatePalletFit(c, p);
+  updateFitNote(c);
+  updateOuterFitNote(c, o);
+  updatePalletFit(ship, p, STACKED);
 }
 
-function updatePalletFit(c, p) {
+// The outer box in fixed mode: what landed in it and what is left over
+function updateOuterFitNote(c, o) {
+  const el = $('#bOuterFitNote');
+  if (!el) return;
+  const on = !!builder.outer?.enabled;
+  if (!on || builder.outer.sizing !== 'fixed' || !o) {
+    el.hidden = true; el.innerHTML = ''; return;
+  }
+  el.hidden = false;
+  const PRIM = term('primary', 1, true);
+  if (!o.packs) {
+    el.className = 'bfit-note warn';
+    el.innerHTML = `Nothing fits — one ${escapeHtml(PRIM)} is ` +
+      `<b>${fromCm(c.length_cm)} × ${fromCm(c.width_cm)} × ${fromCm(c.height_cm)} ${itemUnit}</b>, ` +
+      `bigger than the box you have described.`;
+    return;
+  }
+  el.className = 'bfit-note';
+  el.innerHTML = `Fits <b>${o.grid.cols} × ${o.grid.rows}</b> per layer × <b>${o.grid.layers}</b> ` +
+    `layer${o.grid.layers === 1 ? '' : 's'} = <b>${o.packs}</b> ${escapeHtml(term('primary', o.packs, true))} · ` +
+    `<b>${bFromMm(o.headroom_mm)} ${bUnit()}</b> head space, ` +
+    `<b>${bFromMm(o.free_mm.l)} × ${bFromMm(o.free_mm.w)} ${bUnit()}</b> spare on the floor.`;
+}
+
+// In fixed mode, say plainly what fits and what is left over
+function updateFitNote(c) {
+  const el = $('#bFitNote');
+  if (!el) return;
+  if (builder.sizing !== 'fixed') { el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  const u = term('product', 2, true);
+  const perLayer = c.fit.reduce((s, f) => s + f.cols * f.rows, 0);
+  if (c.units === 0) {
+    el.className = 'bfit-note warn';
+    el.innerHTML = `Nothing fits \u2014 the ${escapeHtml(term('product', 1, true))} is larger than this tray.`;
+    return;
+  }
+  el.className = 'bfit-note' + (c.overflows ? ' warn' : '');
+  el.innerHTML = c.overflows
+    ? `Contents exceed the tray by <b>${bFromMm(Math.abs(c.headroom_mm))} ${bUnit()}</b> \u2014 reduce layers or make the tray taller.`
+    : `Fits <b>${perLayer}</b> per layer \u00b7 <b>${c.units}</b> ${escapeHtml(u)} total \u00b7 ` +
+      `<b>${bFromMm(c.headroom_mm)} ${bUnit()}</b> head space, ` +
+      `<b>${bFromMm(c.free_mm.l)} \u00d7 ${bFromMm(c.free_mm.w)} ${bUnit()}</b> spare on the floor.`;
+}
+
+function updatePalletFit(ship, p, stacked = 'primary') {
   const box = $('#bPalletFit');
   if (!box) return;
   if (!builder.pallet.enabled) { box.innerHTML = ''; return; }
   if (!p || p.perLayer === 0) {
-    box.innerHTML = `<div class="pf-warn">${escapeHtml(term('primary'))} is too large for this ${escapeHtml(term('secondary', 1, true))} base.</div>`;
+    box.innerHTML = `<div class="pf-warn">${escapeHtml(term(stacked))} is too large for this ${escapeHtml(term('secondary', 1, true))} base.</div>`;
     return;
   }
   const pat = builder.pallet.pattern === 'interlock' ? 'interlocked' : 'block';
   box.innerHTML = `
-    <div>${p.perLayer} per layer × ${p.layers} layer${p.layers === 1 ? '' : 's'} = <b>${p.trays}</b> ${escapeHtml(term('primary', p.trays, true))}</div>
+    <div>${p.perLayer} per layer × ${p.layers} layer${p.layers === 1 ? '' : 's'} = <b>${p.trays}</b> ${escapeHtml(term(stacked, p.trays, true))}</div>
     <div>${pat} pattern · max ${p.maxLayers} layer${p.maxLayers === 1 ? '' : 's'} under ${fromCm(builder.pallet.max_h_cm)} ${itemUnit}</div>
-    ${p.overhangs ? `<div class="pf-warn">${escapeHtml(term('primary', 2))} overhang the base.</div>` : ''}
+    ${p.overhangs ? `<div class="pf-warn">${escapeHtml(term(stacked, 2))} overhang the base.</div>` : ''}
   `;
+}
+
+// ---- headings ----
+// Every step is titled with whatever the user calls that level, so no heading
+// depends on knowing what "primary packaging" means. The number comes from the
+// levels actually in play, so skipping the outer box renumbers the base.
+function renderStepHeads() {
+  const outerOn = !!builder.outer?.enabled;
+  const nums = { product: 1, primary: 2, outer: 3, secondary: outerOn ? 4 : 3 };
+  ['product', 'primary', 'outer', 'secondary'].forEach(level => {
+    const title = document.querySelector(`[data-step-title="${level}"]`);
+    const num   = document.querySelector(`[data-step-num="${level}"]`);
+    const role  = document.querySelector(`[data-step-role="${level}"]`);
+    if (title) title.textContent = term(level);
+    if (num)   num.textContent = nums[level];
+    if (role)  role.textContent = TERM_ROLES[level];
+  });
+
+  // Why the two sizing choices exist, in the user's own words
+  const why = $('#bSizeWhy');
+  if (why) {
+    why.textContent = builder.sizing === 'fixed'
+      ? `You have a ${term('primary', 1, true)} of a known size — type its inside measurements and ` +
+        `we work out how many ${term('product', 2, true).toLowerCase()} land in it.`
+      : `We build the ${term('primary', 1, true)} around the arrangement below — ` +
+        `change the counts and it resizes.`;
+  }
 }
 
 // Static builder fields carry their unit in the label; the group cards are
@@ -2558,7 +3043,8 @@ function refreshBuilderUnitUI() {
     el.textContent = `${el.dataset.bunitLabel} (${builderUnit})`;
   });
   const step = B_STEPS[builderUnit];
-  ['#bWall', '#bGap', '#bPalletL', '#bPalletW', '#bPalletH', '#bPalletMaxH', '#bPalletOver']
+  ['#bWall', '#bGap', '#bPalletL', '#bPalletW', '#bPalletH', '#bPalletMaxH', '#bPalletOver',
+   '#bOuterWall', '#bOuterGap', '#bOuterFixL', '#bOuterFixW', '#bOuterFixH']
     .forEach(sel => { const el = $(sel); if (el) el.step = step; });
   $$('.unit-mini[data-unit-target="builder"] .unit-btn')
     .forEach(b => b.classList.toggle('active', b.dataset.bunit === builderUnit));
@@ -2579,28 +3065,124 @@ function setBuilderUnit(unit) {
 
 // Push the working spec into the static inputs
 function writeBuilderFields() {
-  $('#bName').value = builder.name;
-  $('#bWall').value = bFromMm(builder.wall_mm);
-  $('#bGap').value  = bFromMm(builder.gap_mm);
-  $('#bTare').value = builder.tare_kg;
+  $('#bName').value   = builder.name;
+  $('#bWall').value   = bFromMm(builder.wall_mm);
+  $('#bGap').value    = bFromMm(builder.gap_mm);
+  $('#bTare').value   = builder.tare_kg;
+  $('#bFixedL').value = bFromMm(builder.fixed_l_mm);
+  $('#bFixedW').value = bFromMm(builder.fixed_w_mm);
+  $('#bFixedH').value = bFromMm(builder.fixed_h_mm);
+  $('#bWrapT').value  = bFromMm(builder.wrap.thickness_mm);
+  $('#bWrapKg').value = builder.wrap.weight_g;
+  $('#bOpenTop').checked = !!builder.open_top;
+  $('#bWrapOn').checked  = !!builder.wrap.enabled;
+  writeOuterFields();
+  renderSizingMode();
   renderPalletFields();
+}
+
+function writeOuterFields() {
+  const o = builder.outer;
+  $('#bOuterOn').checked      = !!o.enabled;
+  $('#bOuterFixL').value      = bFromMm(o.fixed_l_mm);
+  $('#bOuterFixW').value      = bFromMm(o.fixed_w_mm);
+  $('#bOuterFixH').value      = bFromMm(o.fixed_h_mm);
+  $('#bOuterCols').value      = o.cols;
+  $('#bOuterRows').value      = o.rows;
+  $('#bOuterLayers').value    = o.layers;
+  $('#bOuterWall').value      = bFromMm(o.wall_mm);
+  $('#bOuterGap').value       = bFromMm(o.gap_mm);
+  $('#bOuterTare').value      = o.tare_kg;
+  $('#bOuterOpenTop').checked = !!o.open_top;
+  $('#bOuterWrapOn').checked  = !!o.wrap.enabled;
+  $('#bOuterWrapT').value     = bFromMm(o.wrap.thickness_mm);
+  $('#bOuterWrapKg').value    = o.wrap.weight_g;
+  renderOuterFields();
+}
+
+// Which outer rows are live, and labels that name the level being counted
+function renderOuterFields() {
+  const o = builder.outer;
+  const fixed = o.sizing === 'fixed';
+  $('#bOuterFields').hidden      = !o.enabled;
+  $('#bOuterFixedRow').hidden    = !fixed;
+  $('#bOuterGridRow').hidden     = fixed;      // in fixed mode the grid is worked out
+  $('#bOuterWrapRow').hidden     = !o.wrap.enabled;
+  $$('#bOuterSizeMode .size-mode-btn').forEach(b =>
+    b.classList.toggle('active', (b.dataset.osizing === 'fixed') === fixed));
+
+  const PRIM = term('primary', 2, true);
+  $('#bOuterColsLabel').textContent   = `${capitalise(PRIM)} across the length`;
+  $('#bOuterRowsLabel').textContent   = `${capitalise(PRIM)} across the width`;
+  $('#bOuterLayersLabel').textContent = `${capitalise(PRIM)} stacked high`;
+
+  const pill = $('#bPreviewOuter');
+  if (pill) { pill.hidden = !o.enabled; pill.textContent = term('outer'); }
+  refreshSegments();
+}
+
+// Which sizing mode is live, and which extra rows it needs
+function renderSizingMode() {
+  const fixed = builder.sizing === 'fixed';
+  $$('.size-mode-btn').forEach(b => b.classList.toggle('active', (b.dataset.sizing === 'fixed') === fixed));
+  $('#bFixedRow').hidden = !fixed;
+  $('#bWrapRow').hidden  = !builder.wrap.enabled;
+  $$('.base-type-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.base === (builder.pallet.base_type || 'pallet')));
+  refreshSegments();
+}
+
+function readTrayFields() {
+  builder.sizing     = builder.sizing || 'contents';
+  builder.fixed_l_mm = bToMm($('#bFixedL').value);
+  builder.fixed_w_mm = bToMm($('#bFixedW').value);
+  builder.fixed_h_mm = bToMm($('#bFixedH').value);
+  builder.open_top   = $('#bOpenTop').checked;
+  builder.wrap.enabled      = $('#bWrapOn').checked;
+  builder.wrap.thickness_mm = bToMm($('#bWrapT').value);
+  builder.wrap.weight_g     = parseFloat($('#bWrapKg').value) || 0;
+  $('#bWrapRow').hidden = !builder.wrap.enabled;
+}
+
+function readOuterFields() {
+  const o = builder.outer;
+  o.enabled    = $('#bOuterOn').checked;
+  o.sizing     = o.sizing || 'contents';
+  o.fixed_l_mm = bToMm($('#bOuterFixL').value);
+  o.fixed_w_mm = bToMm($('#bOuterFixW').value);
+  o.fixed_h_mm = bToMm($('#bOuterFixH').value);
+  o.cols       = Math.max(1, parseInt($('#bOuterCols').value, 10)   || 1);
+  o.rows       = Math.max(1, parseInt($('#bOuterRows').value, 10)   || 1);
+  o.layers     = Math.max(1, parseInt($('#bOuterLayers').value, 10) || 1);
+  o.wall_mm    = bToMm($('#bOuterWall').value);
+  o.gap_mm     = bToMm($('#bOuterGap').value);
+  o.tare_kg    = parseFloat($('#bOuterTare').value) || 0;
+  o.open_top   = $('#bOuterOpenTop').checked;
+  o.wrap.enabled      = $('#bOuterWrapOn').checked;
+  o.wrap.thickness_mm = bToMm($('#bOuterWrapT').value);
+  o.wrap.weight_g     = parseFloat($('#bOuterWrapKg').value) || 0;
 }
 
 function renderTermInputs() {
   $('#bTermProduct').value   = builder.terms.product;
   $('#bTermPrimary').value   = builder.terms.primary;
+  $('#bTermOuter').value     = builder.terms.outer || TERM_DEFAULTS.outer;
   $('#bTermSecondary').value = builder.terms.secondary;
   $('#bPreviewPrimary').textContent   = term('primary');
+  $('#bPreviewOuter').textContent     = term('outer');
   $('#bPreviewSecondary').textContent = term('secondary');
+  renderStepHeads();
   refreshSegments();                   // pill widths changed
 }
 
 // Typeable input with a styled suggestion list. The native <datalist> popup is
 // drawn by the browser and can't be themed, so this replaces it.
-function initTermCombo(input) {
+function initTermCombo(input, getList, onPick) {
   const combo = input.closest('.combo');
   const menu  = combo.querySelector('.combo-menu');
   const level = combo.dataset.term;
+  const list  = getList || (() => TERM_SUGGESTIONS[level] || []);
+  const after = onPick || onTermChange;
   let cursor = -1;
 
   const options = () => [...menu.querySelectorAll('.combo-option')];
@@ -2613,10 +3195,10 @@ function initTermCombo(input) {
 
   const render = () => {
     const q = input.value.trim().toLowerCase();
-    const list = TERM_SUGGESTIONS[level].filter(t => !q || t.toLowerCase().includes(q));
+    const list_ = list().filter(t => !q || t.toLowerCase().includes(q));
     cursor = -1;
-    if (!list.length) { menu.innerHTML = ''; menu.hidden = true; return; }
-    menu.innerHTML = list
+    if (!list_.length) { menu.innerHTML = ''; menu.hidden = true; return; }
+    menu.innerHTML = list_
       .map(t => `<div class="combo-option" data-v="${escapeHtml(t)}">${escapeHtml(t)}</div>`)
       .join('');
     options().forEach(o => {
@@ -2624,7 +3206,7 @@ function initTermCombo(input) {
       o.addEventListener('mousedown', e => {
         e.preventDefault();
         input.value = o.dataset.v;
-        onTermChange();
+        after();
         close();
       });
     });
@@ -2634,7 +3216,7 @@ function initTermCombo(input) {
   const close = () => { menu.hidden = true; cursor = -1; };
 
   input.addEventListener('focus', open);
-  input.addEventListener('input', () => { onTermChange(); open(); });
+  input.addEventListener('input', () => { after(); open(); });
   input.addEventListener('blur', () => setTimeout(close, 120));
   input.addEventListener('keydown', e => {
     const opts = options();
@@ -2649,7 +3231,7 @@ function initTermCombo(input) {
       if (!menu.hidden && opts[cursor]) {
         e.preventDefault();
         input.value = opts[cursor].dataset.v;
-        onTermChange();
+        after();
       }
       close();
     } else if (e.key === 'Escape') {
@@ -2661,10 +3243,13 @@ function initTermCombo(input) {
 function onTermChange() {
   builder.terms.product   = $('#bTermProduct').value;
   builder.terms.primary   = $('#bTermPrimary').value;
+  builder.terms.outer     = $('#bTermOuter').value;
   builder.terms.secondary = $('#bTermSecondary').value;
   $('#bPreviewPrimary').textContent   = term('primary');
+  $('#bPreviewOuter').textContent     = term('outer');
   $('#bPreviewSecondary').textContent = term('secondary');
   refreshSegments();
+  renderOuterFields();                 // its field labels name the level being counted
   renderBuilderGroups();               // group cards carry term-dependent labels
   updateBuilderComputed();
 }
@@ -2754,6 +3339,7 @@ function rebuildBuilderPreview() {
   if (!bPreview) return;
   disposeBuilderGroup();
   if (builderPreviewMode === 'pallet' && builder.pallet.enabled) buildPalletPreview();
+  else if (builderPreviewMode === 'outer' && builder.outer?.enabled) buildOuterPreview();
   else buildCartonPreview();
 }
 
@@ -2767,7 +3353,7 @@ function frameBuilderCamera(radius) {
 }
 
 function buildPalletPreview() {
-  const c = computeCarton(builder);
+  const c = computeShip(builder);                     // the outer box if there is one
   const p = computePallet(builder, c);
   const S = 0.01;                                     // cm → preview metres
   const deckL = builder.pallet.length_cm * S;
@@ -2858,36 +3444,46 @@ function buildCartonPreview() {
   );
   bPreview.group.add(edges);
 
-  // Units, group by group, stacking upward from the inner floor
+  // Units, group by group, stacking upward from the inner floor. Each group
+  // sits where its position pad says, inside the cavity.
+  const innerL = c.inner.l, innerW = c.inner.w;
   let yCursor = -outerH / 2 + wall * S;
   builder.groups.forEach(g => {
     const fp = groupUnitFootprint(g);
+    const uh = groupUnitHeight(g);
+    const gf = groupFit(builder, g.id);
+    const cols = gf.cols, rows = gf.rows, layers = Math.max(0, g.layers);
     const mat = new THREE.MeshStandardMaterial({
       color: g.color, roughness: 0.55, metalness: 0.15
     });
+    // Geometry is always built in the product's own measured axes; the
+    // instance rotation is what tips it over.
+    const nat = groupNaturalDims(g);
     const geo = g.shape === 'cylinder'
-      ? new THREE.CylinderGeometry(g.unit_d_mm / 2 * S, g.unit_d_mm / 2 * S, g.unit_h_mm * S, 20)
-      : new THREE.BoxGeometry(g.unit_l_mm * S, g.unit_h_mm * S, g.unit_w_mm * S);
+      ? new THREE.CylinderGeometry(g.unit_d_mm / 2 * S, g.unit_d_mm / 2 * S, nat.h * S, 20)
+      : new THREE.BoxGeometry(nat.l * S, nat.h * S, nat.w * S);
 
-    const spanL = (g.cols * fp.l + Math.max(0, g.cols - 1) * gap) * S;
-    const spanW = (g.rows * fp.w + Math.max(0, g.rows - 1) * gap) * S;
-    const startX = -spanL / 2 + fp.l * S / 2;
-    const startZ = -spanW / 2 + fp.w * S / 2;
+    const spanL = cols * fp.l + Math.max(0, cols - 1) * gap;
+    const spanW = rows * fp.w + Math.max(0, rows - 1) * gap;
+    const offL = alignOffset(g.align_l, spanL, innerL);
+    const offW = alignOffset(g.align_w, spanW, innerW);
+    const startX = (-innerL / 2 + offL + fp.l / 2) * S;
+    const startZ = (-innerW / 2 + offW + fp.w / 2) * S;
 
-    const count = g.cols * g.rows * g.layers;
+    const count = cols * rows * layers;
     if (count > 0 && count <= 4000) {
       const mesh = new THREE.InstancedMesh(geo, mat, count);
       const m = new THREE.Matrix4();
+      const q = unitQuaternion(g);
+      const one = new THREE.Vector3(1, 1, 1);
+      const pos = new THREE.Vector3();
       let i = 0;
-      for (let ly = 0; ly < g.layers; ly++) {
-        const y = yCursor + g.unit_h_mm * S / 2 + ly * (g.unit_h_mm + gap) * S;
-        for (let cx = 0; cx < g.cols; cx++) {
-          for (let rz = 0; rz < g.rows; rz++) {
-            m.makeTranslation(
-              startX + cx * (fp.l + gap) * S,
-              y,
-              startZ + rz * (fp.w + gap) * S
-            );
+      for (let ly = 0; ly < layers; ly++) {
+        const y = yCursor + (uh / 2 + ly * (uh + gap)) * S;
+        for (let cx = 0; cx < cols; cx++) {
+          for (let rz = 0; rz < rows; rz++) {
+            pos.set(startX + cx * (fp.l + gap) * S, y, startZ + rz * (fp.w + gap) * S);
+            m.compose(pos, q, one);
             mesh.setMatrixAt(i++, m);
           }
         }
@@ -2898,8 +3494,94 @@ function buildCartonPreview() {
       geo.dispose(); mat.dispose();
     }
 
-    yCursor += (g.layers * g.unit_h_mm + Math.max(0, g.layers - 1) * gap + gap) * S;
+    yCursor += (layers * uh + Math.max(0, layers - 1) * gap + gap) * S;
   });
+
+  frameBuilderCamera(Math.max(outerL, outerW, outerH));
+}
+
+// The rotation that puts a product the way the user asked for. Geometry is
+// authored upright, so these must match groupUnitDims exactly or the preview
+// shows one thing while the maths reserves space for another:
+//   side -> quarter turn about X, height ends up across the width (Z)
+//   end  -> quarter turn about Z, length ends up vertical
+function unitQuaternion(g) {
+  const e = new THREE.Euler(0, 0, 0);
+  const orient = (g.shape === 'cylinder' && g.orient === 'end') ? 'upright' : g.orient;
+  if (orient === 'side') e.set(Math.PI / 2, 0, 0);
+  else if (orient === 'end') e.set(0, 0, Math.PI / 2);
+  const q = new THREE.Quaternion().setFromEuler(e);
+  if (g.inverted) {
+    // Turn it over about whichever axis is still horizontal
+    const axis = orient === 'end'
+      ? new THREE.Vector3(0, 0, 1)
+      : new THREE.Vector3(1, 0, 0);
+    q.multiply(new THREE.Quaternion().setFromAxisAngle(axis, Math.PI));
+  }
+  return q;
+}
+
+// The optional level-3 box, with the level-2 packs laid out inside it
+function buildOuterPreview() {
+  const c = computeCarton(builder);
+  const o = computeOuter(builder, c);
+  const S = 0.001;                                    // mm → preview metres
+  const wall = builder.outer.wall_mm || 0;
+  const gap  = builder.outer.gap_mm  || 0;
+  const outerL = o.length_cm * 10 * S;
+  const outerW = o.width_cm  * 10 * S;
+  const outerH = o.height_cm * 10 * S;
+
+  const shell = new THREE.Mesh(
+    new THREE.BoxGeometry(outerL, outerH, outerW),
+    new THREE.MeshStandardMaterial({
+      color: 0xb98c2a, roughness: 0.9, metalness: 0.02,
+      transparent: true, opacity: 0.14, side: THREE.DoubleSide, depthWrite: false
+    })
+  );
+  bPreview.group.add(shell);
+
+  bPreview.group.add(new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(outerL, outerH, outerW)),
+    new THREE.LineBasicMaterial({ color: 0x7a5f18, transparent: true, opacity: 0.6 })
+  ));
+
+  const packL = c.length_cm * 10, packW = c.width_cm * 10, packH = c.height_cm * 10;
+  const count = o.packs;
+  if (count > 0 && count <= 4000 && packL > 0) {
+    const mat = new THREE.MeshStandardMaterial({
+      color: builder.groups[0]?.color || '#1a6fdb', roughness: 0.6, metalness: 0.12
+    });
+    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), mat, count);
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const scl = new THREE.Vector3(packL * S * 0.985, packH * S * 0.985, packW * S * 0.985);
+    const pos = new THREE.Vector3();
+
+    const spanL = o.grid.cols   * packL + Math.max(0, o.grid.cols   - 1) * gap;
+    const spanW = o.grid.rows   * packW + Math.max(0, o.grid.rows   - 1) * gap;
+    const startX = (-o.inner.l / 2 + (o.inner.l - spanL) / 2 + packL / 2) * S;
+    const startZ = (-o.inner.w / 2 + (o.inner.w - spanW) / 2 + packW / 2) * S;
+    const floorY = -outerH / 2 + wall * S;
+
+    let i = 0;
+    for (let ly = 0; ly < o.grid.layers; ly++) {
+      for (let cx = 0; cx < o.grid.cols; cx++) {
+        for (let rz = 0; rz < o.grid.rows; rz++) {
+          pos.set(
+            startX + cx * (packL + gap) * S,
+            floorY + (packH / 2 + ly * (packH + gap)) * S,
+            startZ + rz * (packW + gap) * S
+          );
+          m.compose(pos, q, scl);
+          mesh.setMatrixAt(i++, m);
+        }
+      }
+    }
+    mesh.count = i;
+    mesh.instanceMatrix.needsUpdate = true;
+    bPreview.group.add(mesh);
+  }
 
   frameBuilderCamera(Math.max(outerL, outerW, outerH));
 }
@@ -2945,13 +3627,15 @@ function renderCartonSpecDropdown() {
 // ---- open / close ----
 function openBuilder() {
   if (!builder) builder = newBuilderSpec();
-  if (!builder.terms) builder.terms = { ...newBuilderSpec().terms };
+  normaliseSpec(builder);
   writeBuilderFields();
   refreshBuilderUnitUI();
   renderTermInputs();
   renderBuilderGroups();
   renderCartonSpecDropdown();
-  if (!builder.pallet.enabled) builderPreviewMode = 'carton';
+  $('#bHelp').hidden = true;
+  if (builderPreviewMode === 'pallet' && !builder.pallet.enabled) builderPreviewMode = 'carton';
+  if (builderPreviewMode === 'outer'  && !builder.outer.enabled)  builderPreviewMode = 'carton';
   $$('#bPreviewPills .view-pill').forEach(b =>
     b.classList.toggle('selected', b.dataset.preview === builderPreviewMode));
   $('#builderModal').hidden = false;
@@ -2968,6 +3652,9 @@ function openBuilder() {
 
 function closeBuilder() {
   $('#builderModal').hidden = true;
+  $('#bHelp').hidden = true;
+  closeHint();
+  closeAddMenu();
   stopBuilderLoop();
 }
 
@@ -2976,23 +3663,31 @@ function addBuiltCartonToPlan() {
   const c = computeCarton(builder);
   if (c.units === 0) return showToast('Add some contents first.');
 
+  const outerOn = !!builder.outer?.enabled;
+  const shipUnit = computeShip(builder);              // the outer box, or the pack
   const onPallet = builder.pallet.enabled;
-  const p = onPallet ? computePallet(builder, c) : null;
+  const p = onPallet ? computePallet(builder, shipUnit) : null;
   const PRIM = term('primary', 1, true);
+  const OUT  = term('outer', 1, true);
   const SEC  = term('secondary', 1, true);
+  const STACKED = outerOn ? 'outer' : 'primary';
 
+  if (outerOn && shipUnit.packs === 0) {
+    return showToast(`No ${term('primary', 2, true)} fit in this ${OUT} — check its size.`);
+  }
   if (onPallet && p.trays === 0) {
-    return showToast(`No ${term('primary', 2, true)} fit on this ${SEC} — check the base size and max height.`);
+    return showToast(`No ${term(STACKED, 2, true)} fit on this ${SEC} — check the base size and max height.`);
   }
 
   const ship = onPallet
     ? { l: p.length_cm, w: p.width_cm, h: p.height_cm, kg: p.weight_kg, units: p.units }
-    : { l: c.length_cm, w: c.width_cm, h: c.height_cm, kg: c.weight_kg, units: c.units };
+    : { l: shipUnit.length_cm, w: shipUnit.width_cm, h: shipUnit.height_cm,
+        kg: shipUnit.weight_kg, units: shipUnit.units };
 
   if (ship.l > cargoSpace.length * 100 ||
       ship.w > cargoSpace.width  * 100 ||
       ship.h > cargoSpace.height * 100) {
-    return showToast(`${onPallet ? term('secondary') : term('primary')} is larger than the cargo space.`);
+    return showToast(`${onPallet ? term('secondary') : term(STACKED)} is larger than the cargo space.`);
   }
 
   const baseLabel = ($('#bName').value.trim()) || generateBaseLabel(onPallet ? 'pallet' : 'carton');
@@ -3005,16 +3700,20 @@ function addBuiltCartonToPlan() {
   const dominant = builder.groups.reduce(
     (best, g) => (!best || groupUnitCount(g) > groupUnitCount(best)) ? g : best, null);
   const color = twin ? twin.color : (dominant?.color || pickColorForBase(baseLabel));
-  const palletLot = builder.pallet.batch_code.trim();
+  const palletLot = normaliseBatchCode(builder.pallet.batch_code);
 
-  // Per-unit contents, multiplied up by the tray count when palletised
-  const multiplier = onPallet ? p.trays : 1;
+  // Per-pack contents, multiplied up through every level that is in play:
+  // packs per outer box, then outer boxes per pallet.
+  const multiplier = (outerOn ? shipUnit.packs : 1) * (onPallet ? p.trays : 1);
   const contents = builder.groups.map(g => ({
     product_name: g.product_name || productName,
-    batch_lot: (g.batch_lot.trim() || palletLot) || null,
+    batch_lot: (normaliseBatchCode(g.batch_lot) || palletLot) || null,
     medium: g.medium || null,
-    quantity: groupUnitCount(g) * multiplier
+    quantity: (builder.sizing === 'fixed' ? groupFit(builder, g.id).n : groupUnitCount(g)) * multiplier
   }));
+  // Remember every code so the next carton can reuse the same spelling
+  contents.forEach(c => rememberBatchCode(c.batch_lot));
+  rememberBatchCode(palletLot);
 
   for (let n = 0; n < builderQty; n++) {
     const suffix = builderQty > 1 ? `-${String(n + 1).padStart(2, '0')}` : '';
@@ -4635,7 +5334,7 @@ function describeError(err) {
 
 async function savePlan(status) {
   const name = $('#planName').value.trim();
-  if (!name) { $('#planName').focus(); return showToast('Give the plan a name first.'); }
+  if (!name) { $('#planName').focus(); showToast('Give the plan a name first.'); return false; }
   const spaceVol = cargoSpace.length * cargoSpace.width * cargoSpace.height * 1000000;
   const itemVol  = items.reduce((s, i) => s + i.length_cm * i.width_cm * i.height_cm, 0);
   const volPct   = spaceVol > 0 ? (itemVol / spaceVol) * 100 : 0;
@@ -4737,12 +5436,14 @@ async function savePlan(status) {
     window.history.replaceState({}, '', url);
 
     showToast(`Plan <b>${escapeHtml(name)}</b> ${status === 'published' ? 'published' : 'saved'}.`);
+    return true;
   } catch (err) {
     // Log the fields individually — a bare object logs as "Object" in Chrome
     console.error('Save failed:', describeError(err), {
       message: err?.message, code: err?.code, details: err?.details, hint: err?.hint
     });
     showToast(`Save failed: ${escapeHtml(describeError(err))}`);
+    return false;
   }
 }
 
@@ -5190,18 +5891,243 @@ document.querySelectorAll('[data-close-builder]').forEach(el =>
     builder.wall_mm = bToMm($('#bWall').value);
     builder.gap_mm  = bToMm($('#bGap').value);
     builder.tare_kg = parseFloat($('#bTare').value) || 0;
+    readTrayFields();
+    renderBuilderGroups();
     updateBuilderComputed();
     rebuildBuilderPreview();
   });
 });
+
+// Tray sizing mode
+$$('.size-mode-btn').forEach(btn => btn.addEventListener('click', () => {
+  builder.sizing = btn.dataset.sizing;
+  renderSizingMode();
+  renderBuilderGroups();                 // fixed mode takes cols/rows out of the user's hands
+  updateBuilderComputed();
+  rebuildBuilderPreview();
+}));
+
+// Base under the trays
+$$('.base-type-btn').forEach(btn => btn.addEventListener('click', () => {
+  builder.pallet.base_type = btn.dataset.base;
+  if (btn.dataset.base === 'slipsheet') {
+    // A slipsheet is a sheet, not a deck: no meaningful height or weight
+    builder.pallet.deck_h_cm = 0.2;
+    builder.pallet.deck_kg   = 0.5;
+  } else if (btn.dataset.base === 'none') {
+    builder.pallet.deck_h_cm = 0;
+    builder.pallet.deck_kg   = 0;
+  } else if (builder.pallet.deck_h_cm < 1) {
+    const p = PALLET_PRESETS[builder.pallet.preset] || PALLET_PRESETS.eur1;
+    builder.pallet.deck_h_cm = p.height;
+    builder.pallet.deck_kg   = p.weight;
+  }
+  renderPalletFields();
+  renderSizingMode();
+  updateBuilderComputed();
+  rebuildBuilderPreview();
+}));
+
+['#bFixedL', '#bFixedW', '#bFixedH', '#bOpenTop', '#bWrapOn', '#bWrapT', '#bWrapKg'].forEach(sel =>
+  $(sel).addEventListener('input', () => {
+    readTrayFields();
+    renderBuilderGroups();
+    updateBuilderComputed();
+    rebuildBuilderPreview();
+  }));
+
+// Pallet batch code — same registry as the group codes
+initTermCombo($('#bPalletBatch'), knownBatchCodes, onPalletFieldChange);
 
 // Builder unit switcher
 $$('.unit-mini[data-unit-target="builder"] .unit-btn').forEach(btn =>
   btn.addEventListener('click', () => setBuilderUnit(btn.dataset.bunit)));
 
 // Packaging-level names — typeable with a styled suggestion list
-['#bTermProduct', '#bTermPrimary', '#bTermSecondary'].forEach(sel =>
+['#bTermProduct', '#bTermPrimary', '#bTermOuter', '#bTermSecondary'].forEach(sel =>
   initTermCombo($(sel)));
+
+// ============================================================
+// PLAIN-ENGLISH GUIDE — every word on the builder, explained
+// ============================================================
+
+// Short answers for the little ? buttons next to the fiddly fields
+const FIELD_HINTS = {
+  wall: 'How thick the board or plastic of the box itself is. Added to all four sides, so a 3 mm wall makes the box 6 mm wider than its contents. Leave it at 0 if you are measuring the outside already.',
+  gap: 'Breathing room left between neighbouring products, and between the products and the wall. Set it to 0 for a tight pack.',
+  tare: 'The weight of the empty box, with no product in it. Printed on the carton spec sheet, or just weigh one. We add it to the content weight to get the gross weight.',
+  film: 'How thick the shrink-wrap film is. It adds a fraction of a millimetre to every side, and its own weight to the total.'
+};
+
+function buildHelpBody() {
+  const P   = term('product', 1, true);
+  const Ps  = term('product', 2, true);
+  const PR  = term('primary', 1, true);
+  const PRs = term('primary', 2, true);
+  const O   = term('outer', 1, true);
+  const S   = term('secondary', 1, true);
+  const e   = escapeHtml;
+
+  return `
+    <p class="bhelp-lede">This screen builds one shipping unit from the inside out. Four levels,
+      and you only use the ones you need. Every heading is named after <em>your</em> word for it —
+      change the word in the heading and the whole screen follows.</p>
+
+    <div class="bhelp-chain">
+      <div class="bhelp-level">
+        <span class="bhelp-num">1</span>
+        <div>
+          <b>${e(capitalise(P))}</b> <span class="bhelp-tag">primary packaging</span>
+          <p>The thing you are shipping, in whatever touches the food — the can, the pouch,
+            the vacuum bag. Measure one of these. One ${e(P)} holds one portion of product.</p>
+        </div>
+      </div>
+      <div class="bhelp-level">
+        <span class="bhelp-num">2</span>
+        <div>
+          <b>${e(capitalise(PR))}</b> <span class="bhelp-tag">inner / secondary packaging</span>
+          <p>The pack the ${e(Ps)} go into — a tray, a shrink pack, an inner carton.
+            You say how many go across the length, across the width, and how many layers high.</p>
+        </div>
+      </div>
+      <div class="bhelp-level">
+        <span class="bhelp-num">3</span>
+        <div>
+          <b>${e(capitalise(O))}</b> <span class="bhelp-tag">outer packaging · optional</span>
+          <p>A bigger box that holds several ${e(PRs)}. Switch it off if your ${e(PR)}
+            goes straight onto the ${e(S)}.</p>
+        </div>
+      </div>
+      <div class="bhelp-level">
+        <span class="bhelp-num">4</span>
+        <div>
+          <b>${e(capitalise(S))}</b> <span class="bhelp-tag">tertiary / transport packaging</span>
+          <p>The base the whole lot stacks onto, and the unit that gets loaded into the
+            container. Switch it off to load the boxes in loose.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="bhelp-worked">
+      <h4>Your canned-tuna example, level by level</h4>
+      <table>
+        <tr><td>1</td><td>One can</td><td>Ø 73 mm × 43 mm high, 95 g</td></tr>
+        <tr><td>2</td><td>Tray of 12</td><td>3 across × 2 deep × 2 layers = 12 cans</td></tr>
+        <tr><td>3</td><td>Carton of 4 trays</td><td>2 × 2 × 1 = 4 trays = <b>48 cans</b></td></tr>
+        <tr><td>4</td><td>Pallet</td><td>as many cartons as fit under your height limit</td></tr>
+      </table>
+      <p class="bhelp-note">That is the diagram you drew. Levels 1, 2 and 4 are always there;
+        level 3 is the one you switch on to get from 12 per tray to 48 per carton.</p>
+    </div>
+
+    <h4>The two ways to size a box</h4>
+    <dl class="bhelp-dl">
+      <dt>Work out the size for me</dt>
+      <dd>You describe the arrangement, we build the box around it. Use this when the box is
+        made to fit the product.</dd>
+      <dt>I know the size</dt>
+      <dd>You type the inside measurements of a box you already buy, and we work out how many
+        fit in it and how much room is left over. Use this when the box is fixed.</dd>
+    </dl>
+
+    <h4>Every other field</h4>
+    <dl class="bhelp-dl">
+      <dt>Wall</dt><dd>${e(FIELD_HINTS.wall)}</dd>
+      <dt>Gap</dt><dd>${e(FIELD_HINTS.gap)}</dd>
+      <dt>Tare</dt><dd>${e(FIELD_HINTS.tare)}</dd>
+      <dt>No lid (open tray)</dt>
+      <dd>An open tray has a floor and sides but no top, so the contents may stand above the
+        rim. We stop adding a lid's thickness to the height.</dd>
+      <dt>Shrink wrap</dt>
+      <dd>Film pulled tight over the finished box. Adds the film thickness to every side and
+        the film weight to the total.</dd>
+      <dt>Batch / lot</dt>
+      <dd>The code that identifies which production run these ${e(Ps)} came from. One box can
+        hold several batches — add a group per batch. Type a code once and it is offered back
+        to you everywhere else, so the same lot is always spelled the same way and can be
+        found again later.</dd>
+      <dt>Which way up</dt>
+      <dd>Upright is the product as you measured it. <em>On its side</em> tips it over so its
+        height runs along the box's length — a lying-down can. <em>On its end</em> stands a box
+        product on one end. The footprint and the stack height change to match.</dd>
+      <dt>Upside down</dt>
+      <dd>The product is packed inverted. It does not change the space it takes, but it is
+        recorded so the carton can be marked up correctly.</dd>
+      <dt>Where in the ${e(PR)}</dt>
+      <dd>The nine-square pad moves this group's block around inside the pack. It only has an
+        effect when there is spare room — a fixed-size pack with space left, or a narrow group
+        sitting beside a wider one.</dd>
+      <dt>Pattern (block / interlocked)</dt>
+      <dd>Block stacks every layer identically — simple and stable when the boxes are square
+        to each other. Interlocked turns alternate layers so the seams do not line up, which
+        binds the stack together but usually fits fewer per layer.</dd>
+      <dt>Overhang</dt>
+      <dd>How far the boxes are allowed to stick out past the edge of the base, per side.
+        Carriers often refuse overhang, so 0 is the safe answer.</dd>
+      <dt>Max height</dt>
+      <dd>The tallest the finished ${e(S)} may be, base included. We fit as many layers as
+        will go under it.</dd>
+    </dl>`;
+}
+
+function openHelp() {
+  $('#bHelpBody').innerHTML = buildHelpBody();
+  $('#bHelp').hidden = false;
+  $('#bHelpBody').scrollTop = 0;
+}
+
+$('#bHelpOpen').addEventListener('click', openHelp);
+$('#bHelpClose').addEventListener('click', () => { $('#bHelp').hidden = true; });
+
+// Little ? buttons — one short answer, anchored to the field
+let hintPop = null;
+function closeHint() { if (hintPop) { hintPop.remove(); hintPop = null; } }
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.bhint');
+  if (!btn) { if (!e.target.closest('.bhint-pop')) closeHint(); return; }
+  e.preventDefault();
+  const was = hintPop?.dataset.for === btn.dataset.hint;
+  closeHint();
+  if (was) return;
+  const pop = document.createElement('div');
+  pop.className = 'bhint-pop';
+  pop.dataset.for = btn.dataset.hint;
+  pop.textContent = FIELD_HINTS[btn.dataset.hint] || '';
+  document.body.appendChild(pop);
+  const r = btn.getBoundingClientRect();
+  pop.style.left = `${Math.max(12, Math.min(r.left - 110, window.innerWidth - pop.offsetWidth - 12))}px`;
+  pop.style.top  = `${r.bottom + 8}px`;
+  hintPop = pop;
+});
+
+// ---- the optional outer box ----
+const OUTER_FIELD_IDS = ['#bOuterOn', '#bOuterFixL', '#bOuterFixW', '#bOuterFixH',
+  '#bOuterCols', '#bOuterRows', '#bOuterLayers', '#bOuterWall', '#bOuterGap',
+  '#bOuterTare', '#bOuterOpenTop', '#bOuterWrapOn', '#bOuterWrapT', '#bOuterWrapKg'];
+
+function onOuterFieldChange() {
+  readOuterFields();
+  renderOuterFields();
+  // Dropping the level can't leave the preview showing it
+  if (!builder.outer.enabled && builderPreviewMode === 'outer') setBuilderPreviewMode('carton');
+  updateBuilderComputed();
+  rebuildBuilderPreview();
+}
+
+OUTER_FIELD_IDS.forEach(sel => {
+  const el = $(sel);
+  if (!el) return;
+  el.addEventListener('input', onOuterFieldChange);
+  el.addEventListener('change', onOuterFieldChange);
+});
+
+$$('#bOuterSizeMode .size-mode-btn').forEach(btn => btn.addEventListener('click', () => {
+  builder.outer.sizing = btn.dataset.osizing;
+  renderOuterFields();
+  updateBuilderComputed();
+  rebuildBuilderPreview();
+}));
 
 // Pallet section
 const PALLET_FIELD_IDS = ['#bPalletOn', '#bPalletPattern', '#bPalletL', '#bPalletW',
@@ -5249,17 +6175,69 @@ function setBuilderPreviewMode(mode) {
 }
 
 $$('#bPreviewPills .view-pill').forEach(pill => pill.addEventListener('click', () => {
-  if (pill.dataset.preview === 'pallet' && !builder.pallet.enabled) {
+  const want = pill.dataset.preview;
+  if (want === 'pallet' && !builder.pallet.enabled) {
     return showToast(`Turn on the <b>${escapeHtml(term('secondary', 1, true))}</b> switch first.`);
   }
-  setBuilderPreviewMode(pill.dataset.preview);
+  if (want === 'outer' && !builder.outer?.enabled) {
+    return showToast(`Turn on the <b>${escapeHtml(term('outer', 1, true))}</b> switch first.`);
+  }
+  setBuilderPreviewMode(want);
 }));
 
+// Adding a group is nearly always one of two things: the same product under a
+// different batch code, or a genuinely different product. Ask which, rather
+// than guessing and making the user retype four measurements.
+function closeAddMenu() {
+  $('#bAddMenu').hidden = true;
+  $('#bAddGroup').classList.remove('is-open');
+}
+
 $('#bAddGroup').addEventListener('click', () => {
-  builder.groups.push(newGroup(builder.groups.length));
+  // With nothing to copy yet there is no choice to make
+  if (!builder.groups.length) return addGroup('blank');
+  const menu = $('#bAddMenu');
+  menu.hidden = !menu.hidden;
+  $('#bAddGroup').classList.toggle('is-open', !menu.hidden);
+});
+
+$$('#bAddMenu [data-add]').forEach(btn => btn.addEventListener('click', () => {
+  const how = btn.dataset.add;
+  closeAddMenu();
+  if (how !== 'cancel') addGroup(how);
+}));
+
+function addGroup(how) {
+  const idx = builder.groups.length;
+  let g;
+  if (how === 'copy' && builder.groups[0]) {
+    // Everything about the product carries over; the batch code deliberately
+    // does not, because that is the one thing that has to differ.
+    g = JSON.parse(JSON.stringify(builder.groups[0]));
+    g.id = 'g_' + Math.random().toString(36).slice(2, 8);
+    g.batch_lot = '';
+    g.color = GROUP_COLORS[idx % GROUP_COLORS.length];
+  } else {
+    g = newGroup(idx);
+  }
+  builder.groups.push(g);
   renderBuilderGroups();
   updateBuilderComputed();
   rebuildBuilderPreview();
+
+  // Put the cursor straight on the field that has to be filled in
+  const card = $('#bGroups').querySelector(`.bgroup[data-gid="${g.id}"]`);
+  const focusOn = card?.querySelector(how === 'copy' ? 'input[data-batch]' : 'input[data-f="product_name"]');
+  if (focusOn) { focusOn.focus(); focusOn.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+  if (how === 'copy') {
+    showToast(`Copied group 1 — give this ${escapeHtml(term('product', 1, true))} its own batch code.`);
+  }
+}
+
+// Clicking anywhere else puts the chooser away
+document.addEventListener('click', e => {
+  if ($('#bAddMenu').hidden) return;
+  if (!e.target.closest('.badd')) closeAddMenu();
 });
 
 $('#bQtyMinus').addEventListener('click', () => {
@@ -5292,9 +6270,7 @@ $('#bSpecSelect').addEventListener('change', e => {
   if (!id) { $('#bDeleteSpec').hidden = true; return; }
   const spec = cartonSpecs.find(s => s.id === id);
   if (!spec) return;
-  builder = JSON.parse(JSON.stringify(spec));
-  if (!builder.pallet) builder.pallet = newBuilderSpec().pallet;   // specs saved before pallets
-  if (!builder.terms)  builder.terms  = newBuilderSpec().terms;    // ...and before named levels
+  builder = normaliseSpec(JSON.parse(JSON.stringify(spec)));
   writeBuilderFields();
   renderTermInputs();
   renderBuilderGroups();
@@ -5432,6 +6408,7 @@ window.addEventListener('keydown', (e) => {
       openSel.querySelector('.custom-select-menu').hidden = true;
       return;
     }
+    if (!$('#exitModal').hidden) { closeExitDialog(); return; }
     if (!$('#builderModal').hidden) { closeBuilder(); return; }
     if (!$('#shortcutsModal').hidden) { $('#shortcutsModal').hidden = true; return; }
     if (!$('#plansModal').hidden) { $('#plansModal').hidden = true; return; }
@@ -5495,6 +6472,63 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+// ============================================================
+// LEAVING THE PLANNER
+// ------------------------------------------------------------
+// Any link marked data-guarded checks for unsaved work first and
+// offers to save, discard, or stay.
+// ============================================================
+let pendingExitHref = null;
+
+function openExitDialog(href) {
+  pendingExitHref = href;
+  const named = $('#planName').value.trim();
+  $('#exitMsg').innerHTML = named
+    ? `<b>${escapeHtml(named)}</b> has unsaved changes.`
+    : 'This plan has unsaved changes and has not been named yet.';
+  $('#exitModal').hidden = false;
+}
+
+function closeExitDialog() {
+  $('#exitModal').hidden = true;
+  pendingExitHref = null;
+}
+
+function leaveNow(href) {
+  isDirty = false;                       // stop beforeunload double-prompting
+  window.location.href = href;
+}
+
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('a[data-guarded]');
+  if (!link) return;
+  if (!isDirty) return;                  // nothing to lose — follow the link
+  e.preventDefault();
+  openExitDialog(link.getAttribute('href'));
+});
+
+$('#exitModal').addEventListener('click', async (e) => {
+  const act = e.target.closest('[data-exit]')?.dataset.exit;
+  if (!act) return;
+  const href = pendingExitHref;
+
+  if (act === 'cancel')  { closeExitDialog(); return; }
+  if (act === 'discard') { closeExitDialog(); leaveNow(href); return; }
+
+  if (act === 'save') {
+    const btn = e.target.closest('[data-exit="save"]');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    const ok = await savePlan(planStatus === 'published' ? 'published' : 'draft');
+    btn.disabled = false;
+    btn.textContent = 'Save and leave';
+    // Only leave if it actually saved — otherwise the dialog stays open
+    // with the error toast visible behind it.
+    if (ok) { closeExitDialog(); leaveNow(href); }
+    else    { closeExitDialog(); }
+  }
+});
+
 window.addEventListener('beforeunload', (e) => {
   if (isDirty) { e.preventDefault(); e.returnValue = ''; }
 });
@@ -5505,7 +6539,7 @@ window.addEventListener('beforeunload', (e) => {
 let refreshSegments = () => {};
 
 function initSegmentedIndicators() {
-  const SELECTOR = '.view-pills, .scene-toggle, .kind-tabs, .unit-mini, .shape-pick, .panel-tabs, .shape-toggle';
+  const SELECTOR = '.view-pills, .scene-toggle, .kind-tabs, .unit-mini, .shape-pick, .panel-tabs, .shape-toggle, .size-mode, .base-type, .orient-toggle';
   const getContainers = () => document.querySelectorAll(SELECTOR);
 
   const update = (container) => {
@@ -5581,6 +6615,7 @@ async function boot() {
   loadTemplatesFromStorage();
   renderTemplateDropdown();
   loadCartonSpecs();
+  loadBatchCodes();
   builder = newBuilderSpec();
   renderGridOptions();                      // before enhanceSelect picks them up
   renderSnapOptions();

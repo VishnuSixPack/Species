@@ -27,15 +27,16 @@
       <img class="brand-logo" src="sc-blue-logo.png" alt="SmarTuna" />
       <span class="brand-text">SmarTuna</span>
     </div>
+    <a class="btn-back" href="home-logged-in.html" data-guarded title="Back to home">
+      <span class="btn-back-arrow">‹</span> Home
+    </a>
     <nav class="crumb">
-      <a href="index.html">Home</a>
-      <span class="crumb-sep">/</span>
       <span class="crumb-current">3D Load Planner</span>
     </nav>
     <div class="top-actions">
       <button class="btn-soft" id="btnShortcuts" title="Keyboard shortcuts (?)">?</button>
       <button class="btn-soft" id="btnMyPlans">My plans</button>
-      <a class="btn-soft" href="load-plans.html" title="Full overview of every plan">Overview</a>
+      <a class="btn-soft" href="load-plans.html" data-guarded title="Full overview of every plan">Overview</a>
       <button class="btn-soft" id="btnNewPlan">New plan</button>
       <button class="btn-soft" id="saveDraft">Save draft</button>
       <button class="btn-solid" id="publishPlan">Publish plan</button>
@@ -500,6 +501,8 @@
     <div class="modal-content modal-wide">
       <div class="modal-head">
         <h2>Carton builder <span class="beta-badge">BETA</span></h2>
+        <button type="button" class="bhelp-launch" id="bHelpOpen"
+                title="Plain-English guide to every word on this screen">? What do these mean</button>
         <div class="builder-unit">
           <span class="builder-unit-label">Units</span>
           <div class="unit-mini" data-unit-target="builder">
@@ -511,6 +514,15 @@
         <button class="modal-close" data-close-builder>✕</button>
       </div>
 
+      <!-- Plain-English guide, slides over the form column -->
+      <div class="bhelp" id="bHelp" hidden>
+        <div class="bhelp-head">
+          <h3>What all of this means</h3>
+          <button type="button" class="bhelp-close" id="bHelpClose">✕ Close</button>
+        </div>
+        <div class="bhelp-body" id="bHelpBody"></div>
+      </div>
+
       <div class="builder-body">
         <!-- LEFT: spec -->
         <div class="builder-form">
@@ -520,18 +532,33 @@
           </label>
 
           <!-- ① what goes in -->
-          <div class="bstep">
+          <div class="bstep" id="bProductStep">
             <div class="bstep-head">
-              <span class="bstep-num">1</span>
-              <span class="bstep-title">Product</span>
+              <span class="bstep-num" data-step-num="product">1</span>
+              <span class="bstep-title" data-step-title="product">Can</span>
               <div class="combo" data-term="product">
                 <input class="bstep-term" id="bTermProduct" placeholder="Can"
-                       maxlength="24" autocomplete="off" title="What is one unit called?" />
+                       maxlength="24" autocomplete="off" title="Rename this level" />
                 <div class="combo-menu" hidden></div>
               </div>
             </div>
+            <p class="bstep-role" data-step-role="product"></p>
             <div id="bGroups"></div>
-            <button type="button" class="btn-soft btn-full" id="bAddGroup">＋ Add another product or batch</button>
+
+            <div class="badd">
+              <button type="button" class="btn-soft btn-full" id="bAddGroup">＋ Add another product or batch</button>
+              <div class="badd-menu" id="bAddMenu" hidden>
+                <button type="button" class="badd-opt" data-add="copy">
+                  <b>Duplicate group 1</b>
+                  <small id="bAddCopyHint">Same product and size, blank batch code</small>
+                </button>
+                <button type="button" class="badd-opt" data-add="blank">
+                  <b>Start a blank one</b>
+                  <small>A different product, measured from scratch</small>
+                </button>
+                <button type="button" class="badd-cancel" data-add="cancel">Cancel</button>
+              </div>
+            </div>
           </div>
 
           <div class="bflow">
@@ -540,30 +567,82 @@
             <span class="bflow-line"></span>
           </div>
 
-          <!-- ② the primary pack -->
-          <div class="bstep">
+          <!-- ② the pack that holds the products -->
+          <div class="bstep" id="bPrimaryStep">
             <div class="bstep-head">
-              <span class="bstep-num">2</span>
-              <span class="bstep-title">Primary packaging</span>
+              <span class="bstep-num" data-step-num="primary">2</span>
+              <span class="bstep-title" data-step-title="primary">Tray</span>
               <div class="combo" data-term="primary">
                 <input class="bstep-term" id="bTermPrimary" placeholder="Tray"
-                       maxlength="24" autocomplete="off" title="What holds the products?" />
+                       maxlength="24" autocomplete="off" title="Rename this level" />
                 <div class="combo-menu" hidden></div>
               </div>
             </div>
+            <p class="bstep-role" data-step-role="primary"></p>
             <div class="bstep-out" id="bTrayOut">—</div>
+
+            <div class="size-mode" id="bSizeMode">
+              <button type="button" class="size-mode-btn active" data-sizing="contents">Work out the size for me</button>
+              <button type="button" class="size-mode-btn" data-sizing="fixed">I know the size</button>
+            </div>
+            <p class="bstep-why" id="bSizeWhy"></p>
+
+            <div class="form-row-3" id="bFixedRow" hidden>
+              <label class="field">
+                <span data-bunit-label="Inner L">Inner L (mm)</span>
+                <input id="bFixedL" type="number" min="1" step="0.1" value="400" />
+              </label>
+              <label class="field">
+                <span data-bunit-label="Inner W">Inner W (mm)</span>
+                <input id="bFixedW" type="number" min="1" step="0.1" value="300" />
+              </label>
+              <label class="field">
+                <span data-bunit-label="Inner H">Inner H (mm)</span>
+                <input id="bFixedH" type="number" min="1" step="0.1" value="150" />
+              </label>
+            </div>
+            <div class="bfit-note" id="bFitNote"></div>
+
             <div class="form-row-3">
               <label class="field">
                 <span data-bunit-label="Wall">Wall (mm)</span>
+                <button type="button" class="bhint" data-hint="wall">?</button>
                 <input id="bWall" type="number" min="0" step="0.5" value="3" />
               </label>
               <label class="field">
                 <span data-bunit-label="Gap">Gap (mm)</span>
+                <button type="button" class="bhint" data-hint="gap">?</button>
                 <input id="bGap" type="number" min="0" step="0.5" value="2" />
               </label>
               <label class="field">
                 <span>Tare (kg)</span>
+                <button type="button" class="bhint" data-hint="tare">?</button>
                 <input id="bTare" type="number" min="0" step="0.01" value="0.4" />
+              </label>
+            </div>
+
+            <div class="bopt-row">
+              <label class="switch">
+                <input type="checkbox" id="bOpenTop" />
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+                <span class="switch-label">No lid (open tray)</span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" id="bWrapOn" />
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+                <span class="switch-label">Shrink wrap</span>
+              </label>
+            </div>
+
+            <div class="form-row" id="bWrapRow" hidden>
+              <label class="field">
+                <span data-bunit-label="Film">Film (mm)</span>
+                <button type="button" class="bhint" data-hint="film">?</button>
+                <input id="bWrapT" type="number" min="0" step="0.01" value="0.1" />
+              </label>
+              <label class="field">
+                <span>Film weight (g)</span>
+                <input id="bWrapKg" type="number" min="0" step="1" value="15" />
               </label>
             </div>
           </div>
@@ -573,26 +652,140 @@
             <span id="bFlow2">stacked on a base</span>
             <span class="bflow-line"></span>
             <label class="switch">
+              <input type="checkbox" id="bOuterOn" />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+              <span class="switch-label">Use one</span>
+            </label>
+          </div>
+
+          <!-- ③ the optional outer box that holds the packs -->
+          <div class="bstep bstep-off" id="bOuterStep">
+            <div class="bstep-head">
+              <span class="bstep-num" data-step-num="outer">3</span>
+              <span class="bstep-title" data-step-title="outer">Carton</span>
+              <div class="combo" data-term="outer">
+                <input class="bstep-term" id="bTermOuter" placeholder="Carton"
+                       maxlength="24" autocomplete="off" title="Rename this level" />
+                <div class="combo-menu" hidden></div>
+              </div>
+            </div>
+            <p class="bstep-role" data-step-role="outer"></p>
+            <div class="bstep-out bstep-out-idle" id="bOuterOut">Skipped — not every product needs one</div>
+
+            <div id="bOuterFields" hidden>
+              <div class="size-mode" id="bOuterSizeMode">
+                <button type="button" class="size-mode-btn active" data-osizing="contents">Work out the size for me</button>
+                <button type="button" class="size-mode-btn" data-osizing="fixed">I know the size</button>
+              </div>
+
+              <div class="form-row-3" id="bOuterFixedRow" hidden>
+                <label class="field">
+                  <span data-bunit-label="Inside L">Inside L (mm)</span>
+                  <input id="bOuterFixL" type="number" min="1" step="0.1" value="580" />
+                </label>
+                <label class="field">
+                  <span data-bunit-label="Inside W">Inside W (mm)</span>
+                  <input id="bOuterFixW" type="number" min="1" step="0.1" value="380" />
+                </label>
+                <label class="field">
+                  <span data-bunit-label="Inside H">Inside H (mm)</span>
+                  <input id="bOuterFixH" type="number" min="1" step="0.1" value="320" />
+                </label>
+              </div>
+
+              <div class="form-row-3" id="bOuterGridRow">
+                <label class="field">
+                  <span id="bOuterColsLabel">Across the length</span>
+                  <input id="bOuterCols" type="number" min="1" step="1" value="2" />
+                </label>
+                <label class="field">
+                  <span id="bOuterRowsLabel">Across the width</span>
+                  <input id="bOuterRows" type="number" min="1" step="1" value="2" />
+                </label>
+                <label class="field">
+                  <span id="bOuterLayersLabel">Stacked high</span>
+                  <input id="bOuterLayers" type="number" min="1" step="1" value="1" />
+                </label>
+              </div>
+              <div class="bfit-note" id="bOuterFitNote"></div>
+
+              <div class="form-row-3">
+                <label class="field">
+                  <span data-bunit-label="Wall">Wall (mm)</span>
+                  <button type="button" class="bhint" data-hint="wall">?</button>
+                  <input id="bOuterWall" type="number" min="0" step="0.5" value="4" />
+                </label>
+                <label class="field">
+                  <span data-bunit-label="Gap">Gap (mm)</span>
+                  <button type="button" class="bhint" data-hint="gap">?</button>
+                  <input id="bOuterGap" type="number" min="0" step="0.5" value="0" />
+                </label>
+                <label class="field">
+                  <span>Tare (kg)</span>
+                  <button type="button" class="bhint" data-hint="tare">?</button>
+                  <input id="bOuterTare" type="number" min="0" step="0.01" value="0.55" />
+                </label>
+              </div>
+
+              <div class="bopt-row">
+                <label class="switch">
+                  <input type="checkbox" id="bOuterOpenTop" />
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                  <span class="switch-label">No lid (open tray)</span>
+                </label>
+                <label class="switch">
+                  <input type="checkbox" id="bOuterWrapOn" />
+                  <span class="switch-track"><span class="switch-thumb"></span></span>
+                  <span class="switch-label">Shrink wrap</span>
+                </label>
+              </div>
+
+              <div class="form-row" id="bOuterWrapRow" hidden>
+                <label class="field">
+                  <span data-bunit-label="Film">Film (mm)</span>
+                  <button type="button" class="bhint" data-hint="film">?</button>
+                  <input id="bOuterWrapT" type="number" min="0" step="0.01" value="0.1" />
+                </label>
+                <label class="field">
+                  <span>Film weight (g)</span>
+                  <input id="bOuterWrapKg" type="number" min="0" step="1" value="25" />
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="bflow">
+            <span class="bflow-arrow">↓</span>
+            <span id="bFlow3">stacked on a base</span>
+            <span class="bflow-line"></span>
+            <label class="switch">
               <input type="checkbox" id="bPalletOn" />
               <span class="switch-track"><span class="switch-thumb"></span></span>
               <span class="switch-label">Use one</span>
             </label>
           </div>
 
-          <!-- ③ the unit load -->
+          <!-- ④ the unit load -->
           <div class="bstep" id="bPalletStep">
             <div class="bstep-head">
-              <span class="bstep-num">3</span>
-              <span class="bstep-title">Secondary packaging</span>
+              <span class="bstep-num" data-step-num="secondary">4</span>
+              <span class="bstep-title" data-step-title="secondary">Pallet</span>
               <div class="combo" data-term="secondary">
                 <input class="bstep-term" id="bTermSecondary" placeholder="Pallet"
-                       maxlength="24" autocomplete="off" title="What do the packs stack onto?" />
+                       maxlength="24" autocomplete="off" title="Rename this level" />
                 <div class="combo-menu" hidden></div>
               </div>
             </div>
+            <p class="bstep-role" data-step-role="secondary"></p>
             <div class="bstep-out" id="bPalletOut">Turn on the switch above to stack</div>
 
             <div id="bPalletFields" hidden>
+              <div class="base-type" id="bBaseType">
+                <button type="button" class="base-type-btn active" data-base="pallet">Pallet</button>
+                <button type="button" class="base-type-btn" data-base="slipsheet">Slipsheet</button>
+                <button type="button" class="base-type-btn" data-base="none">No base</button>
+              </div>
+
               <div class="form-row">
                 <label class="field">
                   <span>Base preset</span>
@@ -650,10 +843,13 @@
 
               <div class="bstep-sublabel">Load label</div>
               <div class="form-row-3">
-                <label class="field">
+                <div class="field">
                   <span>Batch code</span>
-                  <input id="bPalletBatch" type="text" placeholder="B2DE1" />
-                </label>
+                  <div class="combo combo-batch">
+                    <input id="bPalletBatch" type="text" autocomplete="off" placeholder="B2DE1" />
+                    <div class="combo-menu" hidden></div>
+                  </div>
+                </div>
                 <label class="field">
                   <span>Order no.</span>
                   <input id="bPalletOrder" type="text" placeholder="1654205" />
@@ -687,6 +883,7 @@
           <div class="builder-preview-head">
             <div class="view-pills" id="bPreviewPills">
               <button class="view-pill selected" data-preview="carton" id="bPreviewPrimary">Tray</button>
+              <button class="view-pill" data-preview="outer" id="bPreviewOuter" hidden>Carton</button>
               <button class="view-pill" data-preview="pallet" id="bPreviewSecondary">Pallet</button>
             </div>
           </div>
@@ -716,6 +913,27 @@
             </div>
           </div>
           <button class="btn-primary" id="bAddToPlan">Add to plan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leave-with-unsaved-changes dialog -->
+  <div class="modal" id="exitModal" hidden>
+    <div class="modal-backdrop" data-exit="cancel"></div>
+    <div class="modal-content modal-small">
+      <div class="modal-head">
+        <h2>Leave without saving?</h2>
+        <button class="modal-close" data-exit="cancel">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="exit-msg" id="exitMsg">
+          You have unsaved changes to this plan.
+        </p>
+        <div class="exit-actions">
+          <button class="btn-soft" data-exit="cancel">Stay here</button>
+          <button class="btn-soft exit-discard" data-exit="discard">Discard changes</button>
+          <button class="btn-primary" data-exit="save">Save and leave</button>
         </div>
       </div>
     </div>
