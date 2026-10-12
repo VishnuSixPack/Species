@@ -2,6 +2,12 @@
    SmarTuna · 3D Load Planner (ST)
    ============================================================ */
 
+/* Any rule that sets `display` beats the browser's own [hidden] rule, so a
+   row with `display: grid` stays on screen however many times the JS sets
+   .hidden = true. Every such case had to be patched one selector at a time;
+   this settles it for every element, present and future. */
+[hidden] { display: none !important; }
+
 @font-face {
   font-family: 'BITSUMIS';
   src: url('BITSUMIS.TTF') format('truetype');
@@ -1575,6 +1581,64 @@ button { cursor: pointer; }
   margin: -4px 0 0;
   font-size: 10px; line-height: 1.45; color: var(--muted); font-weight: 500;
 }
+
+/* an unnamed level asks a question instead of showing a word nobody chose */
+.bstep-title.bstep-unnamed {
+  color: var(--muted); font-weight: 600; font-style: italic;
+  cursor: pointer; border-bottom: 1px dashed #c6d0db;
+}
+.bstep-title.bstep-unnamed:hover { color: var(--primary); border-bottom-color: var(--primary); }
+
+/* one pack per group, or everything in one */
+.group-mode {
+  position: relative;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1px;
+  padding: 2px;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border-soft);
+  border-radius: 9px;
+}
+.group-mode[hidden] { display: none; }
+.group-mode::before {
+  content: ''; position: absolute;
+  top: 2px; bottom: 2px; left: 0;
+  width: var(--indicator-w, 0px);
+  transform: translateX(var(--indicator-x, 0px));
+  background: linear-gradient(180deg, rgba(255,255,255,1), rgba(246,249,253,1));
+  border-radius: 7px;
+  box-shadow: 0 1px 4px rgba(20, 40, 70, 0.12);
+  transition: transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1),
+              width 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+.group-mode-btn {
+  position: relative; z-index: 1;
+  border: 0; background: transparent; color: var(--muted);
+  font-family: inherit; font-size: 10px; font-weight: 700;
+  padding: 7px 8px; border-radius: 7px; cursor: pointer;
+  transition: color 0.2s var(--ease);
+}
+.group-mode-btn:hover { color: var(--ink); }
+.group-mode-btn.active { color: var(--primary); }
+
+/* a pack per line in the step readout */
+.bpack-head { margin-bottom: 5px; }
+.bpack-line {
+  display: flex; align-items: center; gap: 6px;
+  padding: 2px 0;
+  font-size: 10px; color: var(--muted);
+}
+.bpack-dot {
+  width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+.bpack-split {
+  display: flex; flex-wrap: wrap; gap: 4px 12px;
+  margin-top: 6px; padding-top: 6px;
+  border-top: 1px solid var(--line);
+  font-size: 10px; color: var(--muted);
+}
+.bpack-split span { display: inline-flex; align-items: center; gap: 5px; }
 
 /* ---- plain-English guide ---- */
 .bhelp-launch {

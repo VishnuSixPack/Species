@@ -2035,7 +2035,18 @@ const GROUP_COLORS = ['#1a6fdb', '#38b47a', '#f4a11c', '#8b5cf6', '#ec4899', '#1
 // The keys 'primary' and 'secondary' predate the 'outer' level and are kept so
 // saved specs and saved plan items keep loading. Read them by role, not by
 // name: 'secondary' is the base, not the second level.
-const TERM_DEFAULTS = { product: 'Unit', primary: 'Pack', outer: 'Carton', secondary: 'Pallet' };
+// Only ever used as a stand-in in prose until the user names a level. They are
+// deliberately generic: nothing here should suggest the builder expects cans,
+// trays and pallets rather than whatever the user actually ships.
+const TERM_DEFAULTS = { product: 'Unit', primary: 'Pack', outer: 'Outer box', secondary: 'Base' };
+
+// Shown as the heading until the user has named that level
+const TERM_UNNAMED = {
+  product:   'What are you shipping?',
+  primary:   'What do they go into?',
+  outer:     'What holds those?',
+  secondary: 'What does it all stack on?'
+};
 
 // Printed under each step heading, so no heading relies on jargon.
 const TERM_ROLES = {
@@ -2085,11 +2096,15 @@ function pluralise(word, n) {
 }
 
 // term('product', 12) -> "Cans"   term('primary', 1, true) -> "tray"
+// Falls back to a generic stand-in while a level is still unnamed.
 function term(level, n = 1, lower = false) {
   const raw = (builder?.terms?.[level] || '').trim() || TERM_DEFAULTS[level];
   const out = pluralise(raw, n);
   return lower ? out.toLowerCase() : out;
 }
+
+// Has the user actually named this level, or are we still standing in for them?
+const isNamed = level => !!String(builder?.terms?.[level] || '').trim();
 
 let cartonSpecs = [];
 let builderQty = 1;
@@ -2189,7 +2204,7 @@ function newOuter() {
                                          // 'fixed'    = known box, fit packs into it
     fixed_l_mm: 580, fixed_w_mm: 380, fixed_h_mm: 320,
     cols: 2, rows: 2, layers: 1,         // packs across L, across W, stacked high
-    wall_mm: 4, gap_mm: 0, tare_kg: 0.55,
+    wall_mm: 4, gap_mm: 0, layer_gap_mm: 0, tare_kg: 0.55,
     open_top: false,
     wrap: { enabled: false, thickness_mm: 0.1, weight_g: 25 }
   };
@@ -2198,7 +2213,20 @@ function newOuter() {
 function newBuilderSpec() {
   return {
     name: '',
-    terms: { product: 'Can', primary: 'Tray', outer: 'Carton', secondary: 'Pallet' },
+    // Left blank on purpose. What these levels are called depends entirely on
+    // the product, so the user picks from the suggestion list rather than
+    // finding "Tray" and "Pallet" already filled in for them.
+    terms: { product: '', primary: '', outer: '', secondary: '' },
+    // Every level above the product is opt-in, so the builder opens on the
+    // bare product and the user adds one layer at a time.
+    pack_enabled: false,
+    group_mode: 'separate',              // 'separate' = a pack per group
+                                         // 'shared'   = every group in one pack
+    // Spacing belongs to the products, not the box, so it applies with or
+    // without a pack. Side-to-side and layer-to-layer are different things:
+    // cans sit shoulder to shoulder with a little air, but stack directly on
+    // each other unless there is a layer pad between them.
+    layer_gap_mm: 0,
     wall_mm: 3,
     gap_mm: 2,
     tare_kg: 0.4,
@@ -2232,7 +2260,15 @@ function normaliseSpec(spec) {
   const fresh = newBuilderSpec();
   if (!spec.pallet) spec.pallet = fresh.pallet;              // before pallets
   if (!spec.terms)  spec.terms  = { ...fresh.terms };        // before named levels
-  if (!spec.terms.outer) spec.terms.outer = TERM_DEFAULTS.outer;
+  if (spec.terms.outer === undefined) spec.terms.outer = '';
+  if (!spec.group_mode) spec.group_mode = 'separate';        // before separate packs
+  // Specs saved before the pack level could be switched off always had one
+  if (spec.pack_enabled === undefined) spec.pack_enabled = true;
+  // One gap used to do both jobs, so keep those specs the height they were
+  if (spec.layer_gap_mm === undefined) spec.layer_gap_mm = spec.gap_mm || 0;
+  if (spec.outer && spec.outer.layer_gap_mm === undefined) {
+    spec.outer.layer_gap_mm = spec.outer.gap_mm || 0;
+  }
   if (!spec.sizing) {                                        // before fixed sizing
     spec.sizing = 'contents';
     spec.fixed_l_mm = fresh.fixed_l_mm;
@@ -2318,36 +2354,78 @@ function groupUnitCount(g) {
 }
 
 // Derive carton outer dimensions (cm) and weight (kg) from the spec
-function computeCarton(spec) {
-  const gap  = spec.gap_mm  || 0;
-  const wall = spec.wall_mm || 0;
-  const fixed = spec.sizing === 'fixed';
+// Is there a pack around the products at all, or do they ship as they are?
+const hasPack = spec => spec.pack_enabled !== false;
 
-  let usedL = 0, usedW = 0, usedH = 0;   // what the contents actually occupy
-  let unitTotal = 0, contentKg = 0;
-  const fit = [];                        // effective cols/rows/layers per group
+// Does each group get a pack of its own, or do they all share one?
+// One group is one pack either way, and with no pack there is nothing to
+// share, so the groups are inherently separate.
+const isSeparate = spec =>
+  (spec.groups?.length || 0) > 1 &&
+  (!hasPack(spec) || (spec.group_mode || 'separate') === 'separate');
 
-  spec.groups.forEach(g => {
-    const fp = groupUnitFootprint(g);
-    const uh = groupUnitHeight(g);
-    // A fixed tray dictates how many fit across; the user still chooses layers.
-    const cols = fixed ? Math.max(0, Math.floor((spec.fixed_l_mm + gap) / (fp.l + gap))) : g.cols;
-    const rows = fixed ? Math.max(0, Math.floor((spec.fixed_w_mm + gap) / (fp.w + gap))) : g.rows;
-    const layers = Math.max(0, g.layers);
-
-    usedL = Math.max(usedL, cols * fp.l + Math.max(0, cols - 1) * gap);
-    usedW = Math.max(usedW, rows * fp.w + Math.max(0, rows - 1) * gap);
-    usedH += layers * uh + Math.max(0, layers - 1) * gap;
-
-    const n = cols * rows * layers;
-    unitTotal += n;
-    contentKg += n * (g.unit_weight_g || 0) / 1000;
-    fit.push({ id: g.id, cols, rows, layers, n });
+// Deal n shipping units out across the packs, round-robin, and total up what
+// they carry. Two batches across three cartons is two of one and one of the
+// other — never one and a half of each.
+function tallyPacks(packs, n) {
+  const list = packs && packs.length ? packs : [];
+  const alloc = list.map(() => 0);
+  const count = Math.max(0, Math.floor(n));
+  for (let i = 0; i < count && list.length; i++) alloc[i % list.length]++;
+  let units = 0, weight_kg = 0;
+  list.forEach((p, i) => {
+    units     += alloc[i] * (p.units || 0);
+    weight_kg += alloc[i] * (p.weight_kg || 0);
   });
+  return { alloc, units, weight_kg };
+}
 
-  if (spec.groups.length > 1) usedH += gap * (spec.groups.length - 1);
+// The block of product one group forms: how many fit, and the space it takes.
+// `gap` separates neighbours side to side; `lgap` separates one layer from
+// the next, which is a layer pad rather than air and is usually zero.
+function groupBlock(spec, g, gap, lgap, fixed) {
+  const fp = groupUnitFootprint(g);
+  const uh = groupUnitHeight(g);
+  // A fixed pack dictates how many fit across; the user still chooses layers.
+  const cols = fixed ? Math.max(0, Math.floor((spec.fixed_l_mm + gap) / (fp.l + gap))) : Math.max(0, g.cols);
+  const rows = fixed ? Math.max(0, Math.floor((spec.fixed_w_mm + gap) / (fp.w + gap))) : Math.max(0, g.rows);
+  const layers = Math.max(0, g.layers);
+  const n = cols * rows * layers;
+  return {
+    id: g.id, group: g, cols, rows, layers, n,
+    fp, uh,
+    l: cols * fp.l + Math.max(0, cols - 1) * gap,
+    w: rows * fp.w + Math.max(0, rows - 1) * gap,
+    h: layers * uh + Math.max(0, layers - 1) * lgap,
+    kg: n * (g.unit_weight_g || 0) / 1000
+  };
+}
 
-  // Inner cavity: the contents in contents-mode, the stated tray in fixed mode
+function computeCarton(spec) {
+  // With no pack there is no board, no tare and no film — just the products
+  // standing in their arrangement. Gaps between products still apply, since
+  // those are about the products, not the box.
+  const pack = hasPack(spec);
+  const gap  = spec.gap_mm || 0;                     // side to side
+  const lgap = spec.layer_gap_mm || 0;               // layer to layer
+  const wall = pack ? (spec.wall_mm || 0) : 0;
+  const fixed = pack && spec.sizing === 'fixed';
+  const wrapOn = pack && !!spec.wrap?.enabled;
+  const separate = isSeparate(spec);
+
+  const blocks = (spec.groups || []).map(g => groupBlock(spec, g, gap, lgap, fixed));
+  const maxOf = pick => blocks.length ? Math.max(...blocks.map(pick)) : 0;
+
+  // What the contents occupy inside ONE pack. Separate packs are all built to
+  // the same outside size so they interchange in the carton and on the pallet,
+  // so that size comes from the largest group.
+  const usedL = maxOf(b => b.l);
+  const usedW = maxOf(b => b.w);
+  const usedH = separate
+    ? maxOf(b => b.h)
+    : blocks.reduce((s, b) => s + b.h, 0) + lgap * Math.max(0, blocks.length - 1);
+
+  // Inner cavity: the contents in contents-mode, the stated pack in fixed mode
   const innerL = fixed ? spec.fixed_l_mm : usedL;
   const innerW = fixed ? spec.fixed_w_mm : usedW;
   const innerH = fixed ? spec.fixed_h_mm : usedH;
@@ -2355,21 +2433,41 @@ function computeCarton(spec) {
   // An open tray has a floor but no lid, and contents can stand proud of the rim
   let outerL = innerL + wall * 2;
   let outerW = innerW + wall * 2;
-  let outerH = spec.open_top
+  let outerH = (spec.open_top || !pack)
     ? Math.max(innerH, usedH) + wall
     : innerH + wall * 2;
 
   let wrapKg = 0;
-  if (spec.wrap?.enabled) {
+  if (wrapOn) {
     const t = Math.max(0, spec.wrap.thickness_mm || 0);
     outerL += t * 2; outerW += t * 2; outerH += t * 2;
     wrapKg = (spec.wrap.weight_g || 0) / 1000;
   }
 
-  const headroom = fixed ? spec.fixed_h_mm - usedH : 0;
-  const footFree = fixed
-    ? { l: spec.fixed_l_mm - usedL, w: spec.fixed_w_mm - usedW }
-    : { l: 0, w: 0 };
+  const tare = (pack ? (spec.tare_kg || 0) : 0) + wrapKg;
+
+  // One entry per actual pack. Separate mode gives a pack per group; shared
+  // mode gives a single pack holding every group.
+  const packs = separate
+    ? blocks.map(b => ({
+        id: b.id, group_ids: [b.id], color: b.group.color,
+        batch_lot: b.group.batch_lot || '',
+        units: b.n, content_kg: b.kg, weight_kg: b.kg + tare,
+        blocks: [b]
+      }))
+    : [{
+        id: 'all', group_ids: blocks.map(b => b.id),
+        color: blocks[0]?.group.color || '#1a6fdb',
+        batch_lot: blocks.length === 1 ? (blocks[0].group.batch_lot || '') : '',
+        units: blocks.reduce((s, b) => s + b.n, 0),
+        content_kg: blocks.reduce((s, b) => s + b.kg, 0),
+        weight_kg: blocks.reduce((s, b) => s + b.kg, 0) + tare,
+        blocks
+      }];
+
+  // Headline figures describe ONE pack. With packs of differing weight the
+  // fullest one is quoted, so every fit and crush check stays conservative.
+  const lead = packs.reduce((a, b) => (!a || b.weight_kg > a.weight_kg) ? b : a, null);
 
   return {
     length_cm: outerL / 10,
@@ -2377,14 +2475,22 @@ function computeCarton(spec) {
     height_cm: outerH / 10,
     inner: { l: innerL, w: innerW, h: innerH },
     used:  { l: usedL,  w: usedW,  h: usedH },
-    fit, headroom_mm: headroom, free_mm: footFree,
+    separate, packs, blocks,
+    boxed: pack,                         // is there actually a box around it
+    pack_count: packs.length,
+    fit: blocks.map(b => ({ id: b.id, cols: b.cols, rows: b.rows, layers: b.layers, n: b.n })),
+    headroom_mm: fixed ? spec.fixed_h_mm - usedH : 0,
+    free_mm: fixed
+      ? { l: spec.fixed_l_mm - usedL, w: spec.fixed_w_mm - usedW }
+      : { l: 0, w: 0 },
     overflows: fixed && (usedH > spec.fixed_h_mm + 0.01 ||
                          usedL > spec.fixed_l_mm + 0.01 ||
                          usedW > spec.fixed_w_mm + 0.01),
-    weight_kg: contentKg + (spec.tare_kg || 0) + wrapKg,
-    content_kg: contentKg,
-    wrap_kg: wrapKg,
-    units: unitTotal
+    weight_kg: lead ? lead.weight_kg : tare,
+    content_kg: lead ? lead.content_kg : 0,
+    units: lead ? lead.units : 0,
+    total_units: packs.reduce((s, p) => s + p.units, 0),
+    wrap_kg: wrapKg
   };
 }
 
@@ -2400,23 +2506,24 @@ function groupFit(spec, groupId) {
 // state the box and see how many packs land in it.
 function computeOuter(spec, pack) {
   const o = spec.outer;
-  const gap  = o.gap_mm  || 0;
+  const gap  = o.gap_mm || 0;                        // side to side
+  const lgap = o.layer_gap_mm || 0;                  // layer to layer
   const wall = o.wall_mm || 0;
   const fixed = o.sizing === 'fixed';
 
   const pL = pack.length_cm * 10, pW = pack.width_cm * 10, pH = pack.height_cm * 10;
   const can = pL > 0 && pW > 0 && pH > 0;
 
-  const fitAcross = (span, size) =>
-    can ? Math.max(0, Math.floor((span + gap) / (size + gap))) : 0;
+  const fitAcross = (span, size, g) =>
+    can ? Math.max(0, Math.floor((span + g) / (size + g))) : 0;
 
-  const cols   = fixed ? fitAcross(o.fixed_l_mm, pL) : Math.max(0, o.cols);
-  const rows   = fixed ? fitAcross(o.fixed_w_mm, pW) : Math.max(0, o.rows);
-  const layers = fixed ? fitAcross(o.fixed_h_mm, pH) : Math.max(0, o.layers);
+  const cols   = fixed ? fitAcross(o.fixed_l_mm, pL, gap)  : Math.max(0, o.cols);
+  const rows   = fixed ? fitAcross(o.fixed_w_mm, pW, gap)  : Math.max(0, o.rows);
+  const layers = fixed ? fitAcross(o.fixed_h_mm, pH, lgap) : Math.max(0, o.layers);
 
   const usedL = cols   * pL + Math.max(0, cols   - 1) * gap;
   const usedW = rows   * pW + Math.max(0, rows   - 1) * gap;
-  const usedH = layers * pH + Math.max(0, layers - 1) * gap;
+  const usedH = layers * pH + Math.max(0, layers - 1) * lgap;
 
   const innerL = fixed ? o.fixed_l_mm : usedL;
   const innerW = fixed ? o.fixed_w_mm : usedW;
@@ -2433,7 +2540,12 @@ function computeOuter(spec, pack) {
     wrapKg = (o.wrap.weight_g || 0) / 1000;
   }
 
-  const packs = cols * rows * layers;
+  // Slots are dealt out across the packs, so a carton of two batches really
+  // holds some of each rather than a multiple of an averaged pack.
+  const slots = cols * rows * layers;
+  const t = tallyPacks(pack.packs, slots);
+  const tare = (o.tare_kg || 0) + wrapKg;
+
   return {
     length_cm: outerL / 10,
     width_cm:  outerW / 10,
@@ -2441,9 +2553,14 @@ function computeOuter(spec, pack) {
     inner: { l: innerL, w: innerW, h: innerH },
     used:  { l: usedL,  w: usedW,  h: usedH },
     grid: { cols, rows, layers },
-    packs,
-    units: packs * pack.units,
-    weight_kg: packs * pack.weight_kg + (o.tare_kg || 0) + wrapKg,
+    slots,                               // how many level-2 packs this box holds
+    alloc: t.alloc,                      // how many of each pack landed in here
+    pack_list: pack.packs,
+    // One filled outer box is itself a single shipping unit from here on
+    packs_out: [{ id: 'outer', color: pack.packs[0]?.color || '#1a6fdb',
+                  units: t.units, weight_kg: t.weight_kg + tare }],
+    units: t.units,
+    weight_kg: t.weight_kg + tare,
     wrap_kg: wrapKg,
     headroom_mm: fixed ? o.fixed_h_mm - usedH : 0,
     free_mm: fixed
@@ -2459,18 +2576,27 @@ function computeOuter(spec, pack) {
 // pallet and the container never need to know how many levels are in play.
 function computeShip(spec) {
   const pack = computeCarton(spec);
-  if (!spec.outer?.enabled) return { ...pack, level: 'primary', pack, packs: 1 };
+  if (!spec.outer?.enabled) {
+    return { ...pack, level: 'primary', pack, pack_count: pack.packs.length };
+  }
   const out = computeOuter(spec, pack);
-  return { ...out, level: 'outer', pack };
+  // Downstream only ever asks "what does one of these carry", so present the
+  // filled outer box under the same `packs` name the pack result uses.
+  return { ...out, level: 'outer', pack, packs: out.packs_out, pack_count: 1 };
 }
 
 // ---- pallet layout ----
 // Lay trays across a pallet deck, trying pure orientations and two-zone
 // splits, and keep whichever pattern fits the most trays per layer.
 function gridLayout(cols, rows, w, d, offX, offZ, rot) {
+  // A zero-sized item divides into a deck Infinity times. Every caller should
+  // catch that first, but this is the function that would actually hang, so
+  // it refuses the impossible rather than trusting them.
+  if (!Number.isFinite(cols) || !Number.isFinite(rows) || cols < 1 || rows < 1) return [];
   const out = [];
-  for (let i = 0; i < cols; i++)
-    for (let j = 0; j < rows; j++)
+  const maxC = Math.min(cols, 2000), maxR = Math.min(rows, 2000);
+  for (let i = 0; i < maxC; i++)
+    for (let j = 0; j < maxR; j++)
       out.push({ x: offX + i * w, z: offZ + j * d, w, d, rot });
   return out;
 }
@@ -2520,14 +2646,23 @@ function computePallet(spec, carton) {
   const usableL = deckL + over * 2;
   const usableW = deckW + over * 2;
 
-  const layoutBest = computePalletLayout(carton.length_cm, carton.width_cm, usableL, usableW);
+  // A pack with no contents and no box has zero size. Dividing the deck by
+  // that gives Infinity, and laying out Infinity of anything never returns,
+  // so bail out before the arithmetic rather than after it.
+  const sized = carton.length_cm > 0 && carton.width_cm > 0 && carton.height_cm > 0;
+
+  const layoutBest = sized
+    ? computePalletLayout(carton.length_cm, carton.width_cm, usableL, usableW)
+    : [];
 
   // Interlocking alternates orientation, so capacity falls to the weaker pattern
   const pureA = (() => {
+    if (!sized) return [];
     const c = Math.floor(usableL / carton.length_cm), r = Math.floor(usableW / carton.width_cm);
     return (c > 0 && r > 0) ? gridLayout(c, r, carton.length_cm, carton.width_cm, 0, 0, 0) : [];
   })();
   const pureB = (() => {
+    if (!sized) return [];
     const c = Math.floor(usableL / carton.width_cm), r = Math.floor(usableW / carton.length_cm);
     return (c > 0 && r > 0) ? gridLayout(c, r, carton.width_cm, carton.length_cm, 0, 0, 90) : [];
   })();
@@ -2548,7 +2683,10 @@ function computePallet(spec, carton) {
 
   const trays = perLayer * layers;
   const totalH = p.deck_h_cm + layers * carton.height_cm;
-  const weight = p.deck_kg + trays * carton.weight_kg;
+  // Same round-robin as the outer box: a pallet of mixed packs carries what
+  // those actual packs weigh, not a count times an averaged pack.
+  const tally = tallyPacks(carton.packs || [{ units: carton.units, weight_kg: carton.weight_kg }], trays);
+  const weight = p.deck_kg + tally.weight_kg;
 
   // Actual footprint the trays really use, including overhang
   let extentL = 0, extentW = 0;
@@ -2563,7 +2701,8 @@ function computePallet(spec, carton) {
     width_cm:  Math.max(deckW, extentW),
     height_cm: totalH,
     weight_kg: weight,
-    units: trays * carton.units,
+    units: tally.units,
+    alloc: tally.alloc,                  // how many of each pack ended up on here
     overhangs: extentL > deckL + 0.01 || extentW > deckW + 0.01
   };
 }
@@ -2833,8 +2972,10 @@ function renderBuilderGroups() {
 function updateBuilderComputed() {
   const c = computeCarton(builder);                  // the level-2 pack
   const outerOn = !!builder.outer?.enabled;
-  const o = outerOn ? computeOuter(builder, c) : null;
-  const ship = outerOn ? o : c;                      // what the base stacks
+  // computeShip gives the base a uniform `packs` list whichever level it is
+  // stacking, so the pallet maths never has to know how many levels are on.
+  const ship = computeShip(builder);
+  const o = outerOn ? ship : null;
   const on = builder.pallet.enabled;
   const p = on ? computePallet(builder, ship) : null;
 
@@ -2844,24 +2985,56 @@ function updateBuilderComputed() {
 
   renderStepHeads();
 
-  // Step 1 -> 2 connector
-  $('#bFlow1').textContent = c.units
-    ? `${c.units} ${term('product', c.units, true)} per ${PRIM}`
-    : `packed into a ${PRIM}`;
+  const packOn = c.boxed;
+  renderGroupMode(c);
 
-  // Step 2 output
+  // Step 1 -> 2 connector
+  const counts = [...new Set(c.packs.map(p => p.units))];
+  $('#bFlow1').textContent = !packOn
+    ? `no ${PRIM} — the ${term('product', 2, true)} go in as they are`
+    : !c.total_units
+      ? `packed into a ${PRIM}`
+      : c.separate
+        ? (counts.length === 1
+            ? `${c.packs.length} separate ${term('primary', c.packs.length, true)}, ${counts[0]} ${term('product', counts[0], true)} in each`
+            : `${c.packs.length} separate ${term('primary', c.packs.length, true)}, ${c.total_units} ${term('product', c.total_units, true)} in all`)
+        : `${c.units} ${term('product', c.units, true)} per ${PRIM}`;
+
+  // Step 2 output — one line per pack when the groups are kept apart
   const trayOut = $('#bTrayOut');
-  if (c.units === 0) {
+  $('#bPrimaryStep').classList.toggle('bstep-off', !packOn);
+  $('#bPrimaryFields').hidden = !packOn;
+  const size = `${fromCm(c.length_cm)} × ${fromCm(c.width_cm)} × ${fromCm(c.height_cm)} ${itemUnit}`;
+  if (!packOn) {
+    trayOut.className = 'bstep-out bstep-out-idle';
+    trayOut.innerHTML = c.total_units
+      ? `Skipped — <b>${c.total_units}</b> ${escapeHtml(term('product', c.total_units, true))} ` +
+        `standing in a <b>${size}</b> block`
+      : 'Skipped — nothing around the products yet';
+  } else if (!c.total_units) {
     trayOut.className = 'bstep-out bstep-out-idle';
     trayOut.textContent = `Add contents above to size the ${PRIM}`;
+  } else if (c.separate) {
+    trayOut.className = 'bstep-out';
+    trayOut.innerHTML =
+      `<div class="bpack-head"><b>${c.packs.length}</b> ${escapeHtml(term('primary', c.packs.length, true))}, ` +
+      `each <b>${size}</b></div>` +
+      c.packs.map((pk, i) => `
+        <div class="bpack-line">
+          <span class="bpack-dot" style="background:${pk.color}"></span>
+          ${escapeHtml(packName(pk, i))}
+          <b>${pk.units}</b> ${escapeHtml(term('product', pk.units, true))}
+          · <b>${pk.weight_kg.toFixed(2)} kg</b>
+        </div>`).join('');
   } else {
     trayOut.className = 'bstep-out';
-    trayOut.innerHTML = `<b>${c.units}</b> ${escapeHtml(term('product', c.units, true))} · <b>${fromCm(c.length_cm)} × ${fromCm(c.width_cm)} × ${fromCm(c.height_cm)} ${itemUnit}</b> · <b>${c.weight_kg.toFixed(2)} kg</b>`;
+    trayOut.innerHTML = `<b>${c.units}</b> ${escapeHtml(term('product', c.units, true))} ` +
+      `in one ${escapeHtml(PRIM)} · <b>${size}</b> · <b>${c.weight_kg.toFixed(2)} kg</b>`;
   }
 
   // Step 2 -> 3 connector
   $('#bFlow2').textContent = outerOn
-    ? (o.packs ? `${o.packs} ${term('primary', o.packs, true)} per ${OUT}` : `packed into a ${OUT}`)
+    ? (o.slots ? `${o.slots} ${term('primary', o.slots, true)} per ${OUT}` : `packed into a ${OUT}`)
     : `no ${OUT} — the ${PRIM} ships as it is`;
 
   // Step 3 output — the optional outer box
@@ -2870,16 +3043,19 @@ function updateBuilderComputed() {
   if (!outerOn) {
     outerOut.className = 'bstep-out bstep-out-idle';
     outerOut.innerHTML = `Skipped — the ${escapeHtml(PRIM)} goes straight onto the ${escapeHtml(SEC)}`;
-  } else if (!o.packs) {
+  } else if (!o.slots) {
     outerOut.className = 'bstep-out bstep-out-warn';
     outerOut.textContent = `No ${term('primary', 2, true)} fit in this ${OUT} — it is smaller than one ${PRIM}`;
   } else {
     outerOut.className = 'bstep-out';
-    outerOut.innerHTML = `<b>${o.packs}</b> ${escapeHtml(term('primary', o.packs, true))} ` +
+    outerOut.innerHTML = `<b>${o.slots}</b> ${escapeHtml(term('primary', o.slots, true))} ` +
       `(${o.grid.cols} × ${o.grid.rows}${o.grid.layers > 1 ? ` × ${o.grid.layers} high` : ''}) · ` +
       `<b>${o.units}</b> ${escapeHtml(term('product', o.units, true))} · ` +
       `<b>${fromCm(o.length_cm)} × ${fromCm(o.width_cm)} × ${fromCm(o.height_cm)} ${itemUnit}</b> · ` +
-      `<b>${o.weight_kg.toFixed(2)} kg</b>`;
+      `<b>${o.weight_kg.toFixed(2)} kg</b>` +
+      (c.separate ? `<div class="bpack-split">${c.packs.map((pk, i) =>
+        `<span><span class="bpack-dot" style="background:${pk.color}"></span>${o.alloc[i]} × ${escapeHtml(packName(pk, i))}</span>`
+      ).join('')}</div>` : '');
   }
 
   // Step 4 -> base connector
@@ -2902,16 +3078,25 @@ function updateBuilderComputed() {
     palletOut.innerHTML = `<b>${p.trays}</b> ${escapeHtml(term(STACKED, p.trays, true))} · <b>${fromCm(p.length_cm)} × ${fromCm(p.width_cm)} × ${fromCm(p.height_cm)} ${itemUnit}</b> · <b>${p.weight_kg.toFixed(1)} kg</b>`;
   }
 
-  // Final step — what actually goes into the container
+  // Final step — what actually goes into the container. With separate packs
+  // and nothing above them, each pack is its own item in the plan, so the
+  // figures below cover the whole set rather than pretending it is one box.
+  const loose = !on && !outerOn && c.separate;
   const load = on && p?.trays
-    ? { l: p.length_cm, w: p.width_cm, h: p.height_cm, kg: p.weight_kg, units: p.units, what: SEC }
-    : { l: ship.length_cm, w: ship.width_cm, h: ship.height_cm, kg: ship.weight_kg, units: ship.units,
-        what: outerOn ? OUT : PRIM };
+    ? { l: p.length_cm, w: p.width_cm, h: p.height_cm, kg: p.weight_kg,
+        units: p.units, what: SEC, pieces: 1 }
+    : { l: ship.length_cm, w: ship.width_cm, h: ship.height_cm,
+        kg: loose ? c.packs.reduce((s, pk) => s + pk.weight_kg, 0) : ship.weight_kg,
+        units: loose ? c.total_units : ship.units,
+        what: outerOn ? OUT : (packOn ? PRIM : `${term('product', 2, true)} block`),
+        pieces: loose ? c.packs.length : 1 };
   const fits = load.l <= cargoSpace.length * 100 &&
                load.w <= cargoSpace.width  * 100 &&
                load.h <= cargoSpace.height * 100;
 
-  $('#bContainerSub').textContent = `one ${load.what}`;
+  $('#bContainerSub').textContent = load.pieces > 1
+    ? `${load.pieces} ${term('primary', load.pieces, true)}`
+    : `one ${load.what}`;
   const contOut = $('#bContainerOut');
   if (load.units === 0) {
     contOut.className = 'bstep-out bstep-out-idle';
@@ -2921,18 +3106,23 @@ function updateBuilderComputed() {
     contOut.innerHTML = `This ${escapeHtml(load.what)} is larger than the cargo space`;
   } else {
     contOut.className = 'bstep-out bstep-out-ok';
-    contOut.innerHTML = `Each ${escapeHtml(load.what)} carries <b>${load.units}</b> ${escapeHtml(term('product', load.units, true))} at <b>${load.kg.toFixed(1)} kg</b>`;
+    contOut.innerHTML = load.pieces > 1
+      ? `<b>${load.pieces}</b> separate ${escapeHtml(term('primary', load.pieces, true))} carrying <b>${load.units}</b> ${escapeHtml(term('product', load.units, true))} between them, <b>${load.kg.toFixed(1)} kg</b> in all`
+      : `Each ${escapeHtml(load.what)} carries <b>${load.units}</b> ${escapeHtml(term('product', load.units, true))} at <b>${load.kg.toFixed(1)} kg</b>`;
   }
 
   // Right-hand summary panel — one row per level that is actually in play
+  const perPack = c.separate
+    ? `${c.packs.length} × ${c.total_units} ${escapeHtml(term('product', c.total_units, true))} in all`
+    : `${c.units} ${escapeHtml(term('product', c.units, true))} · ${c.weight_kg.toFixed(2)} kg`;
   $('#bComputed').innerHTML = `
     <div class="bcomp-row bcomp-hero">
       <span>${escapeHtml(load.what)} size</span>
       <b>${fromCm(load.l)} × ${fromCm(load.w)} × ${fromCm(load.h)} ${itemUnit}</b>
     </div>
-    <div class="bcomp-row"><span>Per ${escapeHtml(PRIM)}</span><b>${c.units} ${escapeHtml(term('product', c.units, true))} · ${c.weight_kg.toFixed(2)} kg</b></div>
+    <div class="bcomp-row"><span>${c.separate ? escapeHtml(capitalise(term('primary', 2, true))) : 'Per ' + escapeHtml(PRIM)}</span><b>${perPack}</b></div>
     ${outerOn ? `
-      <div class="bcomp-row"><span>Per ${escapeHtml(OUT)}</span><b>${o.packs} ${escapeHtml(term('primary', o.packs, true))} · ${o.units} ${escapeHtml(term('product', o.units, true))} · ${o.weight_kg.toFixed(2)} kg</b></div>
+      <div class="bcomp-row"><span>Per ${escapeHtml(OUT)}</span><b>${o.slots} ${escapeHtml(term('primary', o.slots, true))} · ${o.units} ${escapeHtml(term('product', o.units, true))} · ${o.weight_kg.toFixed(2)} kg</b></div>
     ` : ''}
     ${on && p?.trays ? `
       <div class="bcomp-row"><span>Per ${escapeHtml(SEC)}</span><b>${p.trays} ${escapeHtml(term(STACKED, p.trays, true))} · ${p.layers} layer${p.layers === 1 ? '' : 's'}</b></div>
@@ -2958,7 +3148,7 @@ function updateOuterFitNote(c, o) {
   }
   el.hidden = false;
   const PRIM = term('primary', 1, true);
-  if (!o.packs) {
+  if (!o.slots) {
     el.className = 'bfit-note warn';
     el.innerHTML = `Nothing fits — one ${escapeHtml(PRIM)} is ` +
       `<b>${fromCm(c.length_cm)} × ${fromCm(c.width_cm)} × ${fromCm(c.height_cm)} ${itemUnit}</b>, ` +
@@ -2967,7 +3157,7 @@ function updateOuterFitNote(c, o) {
   }
   el.className = 'bfit-note';
   el.innerHTML = `Fits <b>${o.grid.cols} × ${o.grid.rows}</b> per layer × <b>${o.grid.layers}</b> ` +
-    `layer${o.grid.layers === 1 ? '' : 's'} = <b>${o.packs}</b> ${escapeHtml(term('primary', o.packs, true))} · ` +
+    `layer${o.grid.layers === 1 ? '' : 's'} = <b>${o.slots}</b> ${escapeHtml(term('primary', o.slots, true))} · ` +
     `<b>${bFromMm(o.headroom_mm)} ${bUnit()}</b> head space, ` +
     `<b>${bFromMm(o.free_mm.l)} × ${bFromMm(o.free_mm.w)} ${bUnit()}</b> spare on the floor.`;
 }
@@ -2979,8 +3169,12 @@ function updateFitNote(c) {
   if (builder.sizing !== 'fixed') { el.hidden = true; el.innerHTML = ''; return; }
   el.hidden = false;
   const u = term('product', 2, true);
-  const perLayer = c.fit.reduce((s, f) => s + f.cols * f.rows, 0);
-  if (c.units === 0) {
+  // Per layer in ONE pack: separate packs each hold one group, so summing
+  // across every group would describe a pack that does not exist.
+  const perLayer = c.separate
+    ? Math.max(0, ...c.fit.map(f => f.cols * f.rows))
+    : c.fit.reduce((s, f) => s + f.cols * f.rows, 0);
+  if (!c.total_units) {
     el.className = 'bfit-note warn';
     el.innerHTML = `Nothing fits \u2014 the ${escapeHtml(term('product', 1, true))} is larger than this tray.`;
     return;
@@ -2988,7 +3182,8 @@ function updateFitNote(c) {
   el.className = 'bfit-note' + (c.overflows ? ' warn' : '');
   el.innerHTML = c.overflows
     ? `Contents exceed the tray by <b>${bFromMm(Math.abs(c.headroom_mm))} ${bUnit()}</b> \u2014 reduce layers or make the tray taller.`
-    : `Fits <b>${perLayer}</b> per layer \u00b7 <b>${c.units}</b> ${escapeHtml(u)} total \u00b7 ` +
+    : `Fits <b>${perLayer}</b> per layer \u00b7 <b>${c.units}</b> ${escapeHtml(u)} ` +
+      `${c.separate ? 'per ' + escapeHtml(term('primary', 1, true)) : 'total'} \u00b7 ` +
       `<b>${bFromMm(c.headroom_mm)} ${bUnit()}</b> head space, ` +
       `<b>${bFromMm(c.free_mm.l)} \u00d7 ${bFromMm(c.free_mm.w)} ${bUnit()}</b> spare on the floor.`;
 }
@@ -3009,18 +3204,71 @@ function updatePalletFit(ship, p, stacked = 'primary') {
   `;
 }
 
+// How a pack is referred to in the readouts: its batch code if it has one,
+// else the product name, else just the group number.
+function packName(pack, index) {
+  const g = builder.groups.find(x => x.id === pack.id);
+  return (g?.batch_lot || '').trim()
+      || (g?.product_name || '').trim()
+      || `Group ${index + 1}`;
+}
+
+// One pack per group, or everything in one? Only a question once there is
+// more than one group, so the control stays hidden until then.
+function renderGroupMode(c) {
+  const row  = $('#bGroupMode');
+  const why  = $('#bGroupModeWhy');
+  // Only a question when there is both more than one group and a box to
+  // share — with no pack there is nothing for them to be inside together.
+  const many = builder.groups.length > 1 && hasPack(builder);
+  row.hidden = !many;
+  why.hidden = !many;
+  if (!many) return;
+
+  const sep = (builder.group_mode || 'separate') === 'separate';
+  $$('#bGroupMode .group-mode-btn').forEach(b =>
+    b.classList.toggle('active', (b.dataset.gmode === 'separate') === sep));
+  const PRIM = term('primary', 1, true);
+  why.textContent = sep
+    ? `Every group gets a ${PRIM} of its own, all the same size so they interchange. ` +
+      `Batches stay apart and can be traced separately.`
+    : `All ${builder.groups.length} groups go into one ${PRIM}, stacked in the order listed, ` +
+      `with a divider between them. Use this for a genuinely mixed ${PRIM}.`;
+  // the buttons name the level too, so neither option is abstract
+  const btns = $$('#bGroupMode .group-mode-btn');
+  btns[0].textContent = `One ${PRIM} each`;
+  btns[1].textContent = `All in one ${PRIM}`;
+  refreshSegments();
+}
+
 // ---- headings ----
 // Every step is titled with whatever the user calls that level, so no heading
 // depends on knowing what "primary packaging" means. The number comes from the
 // levels actually in play, so skipping the outer box renumbers the base.
 function renderStepHeads() {
-  const outerOn = !!builder.outer?.enabled;
-  const nums = { product: 1, primary: 2, outer: 3, secondary: outerOn ? 4 : 3 };
+  // Numbers count only the levels actually switched on, so turning one off
+  // renumbers the rest instead of leaving a gap.
+  const live = {
+    product: true,
+    primary: hasPack(builder),
+    outer: !!builder.outer?.enabled,
+    secondary: !!builder.pallet?.enabled
+  };
+  const nums = {};
+  let seq = 0;
+  ['product', 'primary', 'outer', 'secondary'].forEach(level => {
+    nums[level] = live[level] ? ++seq : seq + 1;
+  });
+
   ['product', 'primary', 'outer', 'secondary'].forEach(level => {
     const title = document.querySelector(`[data-step-title="${level}"]`);
     const num   = document.querySelector(`[data-step-num="${level}"]`);
     const role  = document.querySelector(`[data-step-role="${level}"]`);
-    if (title) title.textContent = term(level);
+    const named = isNamed(level);
+    if (title) {
+      title.textContent = named ? term(level) : TERM_UNNAMED[level];
+      title.classList.toggle('bstep-unnamed', !named);
+    }
     if (num)   num.textContent = nums[level];
     if (role)  role.textContent = TERM_ROLES[level];
   });
@@ -3043,8 +3291,9 @@ function refreshBuilderUnitUI() {
     el.textContent = `${el.dataset.bunitLabel} (${builderUnit})`;
   });
   const step = B_STEPS[builderUnit];
-  ['#bWall', '#bGap', '#bPalletL', '#bPalletW', '#bPalletH', '#bPalletMaxH', '#bPalletOver',
-   '#bOuterWall', '#bOuterGap', '#bOuterFixL', '#bOuterFixW', '#bOuterFixH']
+  ['#bWall', '#bGap', '#bLayerGap', '#bPalletL', '#bPalletW', '#bPalletH', '#bPalletMaxH',
+   '#bPalletOver', '#bOuterWall', '#bOuterGap', '#bOuterLayerGap',
+   '#bOuterFixL', '#bOuterFixW', '#bOuterFixH']
     .forEach(sel => { const el = $(sel); if (el) el.step = step; });
   $$('.unit-mini[data-unit-target="builder"] .unit-btn')
     .forEach(b => b.classList.toggle('active', b.dataset.bunit === builderUnit));
@@ -3066,9 +3315,10 @@ function setBuilderUnit(unit) {
 // Push the working spec into the static inputs
 function writeBuilderFields() {
   $('#bName').value   = builder.name;
-  $('#bWall').value   = bFromMm(builder.wall_mm);
-  $('#bGap').value    = bFromMm(builder.gap_mm);
-  $('#bTare').value   = builder.tare_kg;
+  $('#bWall').value     = bFromMm(builder.wall_mm);
+  $('#bGap').value      = bFromMm(builder.gap_mm);
+  $('#bLayerGap').value = bFromMm(builder.layer_gap_mm);
+  $('#bTare').value     = builder.tare_kg;
   $('#bFixedL').value = bFromMm(builder.fixed_l_mm);
   $('#bFixedW').value = bFromMm(builder.fixed_w_mm);
   $('#bFixedH').value = bFromMm(builder.fixed_h_mm);
@@ -3076,6 +3326,8 @@ function writeBuilderFields() {
   $('#bWrapKg').value = builder.wrap.weight_g;
   $('#bOpenTop').checked = !!builder.open_top;
   $('#bWrapOn').checked  = !!builder.wrap.enabled;
+  $('#bPackOn').checked  = hasPack(builder);
+  $('#bPrimaryFields').hidden = !hasPack(builder);
   writeOuterFields();
   renderSizingMode();
   renderPalletFields();
@@ -3092,6 +3344,7 @@ function writeOuterFields() {
   $('#bOuterLayers').value    = o.layers;
   $('#bOuterWall').value      = bFromMm(o.wall_mm);
   $('#bOuterGap').value       = bFromMm(o.gap_mm);
+  $('#bOuterLayerGap').value  = bFromMm(o.layer_gap_mm);
   $('#bOuterTare').value      = o.tare_kg;
   $('#bOuterOpenTop').checked = !!o.open_top;
   $('#bOuterWrapOn').checked  = !!o.wrap.enabled;
@@ -3123,8 +3376,12 @@ function renderOuterFields() {
 
 // Which sizing mode is live, and which extra rows it needs
 function renderSizingMode() {
+  renderPreviewPills();
   const fixed = builder.sizing === 'fixed';
-  $$('.size-mode-btn').forEach(b => b.classList.toggle('active', (b.dataset.sizing === 'fixed') === fixed));
+  // Scoped to this step: the outer box has its own pair of buttons, and an
+  // unscoped query would light both of them up from the pack's setting.
+  $$('#bSizeMode .size-mode-btn').forEach(b =>
+    b.classList.toggle('active', (b.dataset.sizing === 'fixed') === fixed));
   $('#bFixedRow').hidden = !fixed;
   $('#bWrapRow').hidden  = !builder.wrap.enabled;
   $$('.base-type-btn').forEach(b =>
@@ -3133,6 +3390,7 @@ function renderSizingMode() {
 }
 
 function readTrayFields() {
+  builder.pack_enabled = $('#bPackOn').checked;
   builder.sizing     = builder.sizing || 'contents';
   builder.fixed_l_mm = bToMm($('#bFixedL').value);
   builder.fixed_w_mm = bToMm($('#bFixedW').value);
@@ -3154,9 +3412,10 @@ function readOuterFields() {
   o.cols       = Math.max(1, parseInt($('#bOuterCols').value, 10)   || 1);
   o.rows       = Math.max(1, parseInt($('#bOuterRows').value, 10)   || 1);
   o.layers     = Math.max(1, parseInt($('#bOuterLayers').value, 10) || 1);
-  o.wall_mm    = bToMm($('#bOuterWall').value);
-  o.gap_mm     = bToMm($('#bOuterGap').value);
-  o.tare_kg    = parseFloat($('#bOuterTare').value) || 0;
+  o.wall_mm      = bToMm($('#bOuterWall').value);
+  o.gap_mm       = bToMm($('#bOuterGap').value);
+  o.layer_gap_mm = bToMm($('#bOuterLayerGap').value);
+  o.tare_kg      = parseFloat($('#bOuterTare').value) || 0;
   o.open_top   = $('#bOuterOpenTop').checked;
   o.wrap.enabled      = $('#bOuterWrapOn').checked;
   o.wrap.thickness_mm = bToMm($('#bOuterWrapT').value);
@@ -3168,11 +3427,18 @@ function renderTermInputs() {
   $('#bTermPrimary').value   = builder.terms.primary;
   $('#bTermOuter').value     = builder.terms.outer || TERM_DEFAULTS.outer;
   $('#bTermSecondary').value = builder.terms.secondary;
-  $('#bPreviewPrimary').textContent   = term('primary');
-  $('#bPreviewOuter').textContent     = term('outer');
-  $('#bPreviewSecondary').textContent = term('secondary');
+  renderPreviewPills();
   renderStepHeads();
   refreshSegments();                   // pill widths changed
+}
+
+// The first pill shows whichever thing it is actually drawing: the pack when
+// there is one, otherwise the bare products.
+function renderPreviewPills() {
+  $('#bPreviewPrimary').textContent =
+    hasPack(builder) ? term('primary') : term('product', 2);
+  $('#bPreviewOuter').textContent     = term('outer');
+  $('#bPreviewSecondary').textContent = term('secondary');
 }
 
 // Typeable input with a styled suggestion list. The native <datalist> popup is
@@ -3245,9 +3511,7 @@ function onTermChange() {
   builder.terms.primary   = $('#bTermPrimary').value;
   builder.terms.outer     = $('#bTermOuter').value;
   builder.terms.secondary = $('#bTermSecondary').value;
-  $('#bPreviewPrimary').textContent   = term('primary');
-  $('#bPreviewOuter').textContent     = term('outer');
-  $('#bPreviewSecondary').textContent = term('secondary');
+  renderPreviewPills();
   refreshSegments();
   renderOuterFields();                 // its field labels name the level being counted
   renderBuilderGroups();               // group cards carry term-dependent labels
@@ -3370,36 +3634,46 @@ function buildPalletPreview() {
   bPreview.group.add(deck);
 
   if (p.trays > 0) {
-    const trayColor = builder.groups[0]?.color || '#1a6fdb';
-    const mat = new THREE.MeshStandardMaterial({
-      color: trayColor, roughness: 0.6, metalness: 0.1
-    });
-    const geo = new THREE.BoxGeometry(1, 1, 1);        // scaled per instance
-    const mesh = new THREE.InstancedMesh(geo, mat, p.trays);
-    const m = new THREE.Matrix4();
-    const q = new THREE.Quaternion();
-    const scl = new THREE.Vector3();
-    const pos = new THREE.Vector3();
-    let i = 0;
-
+    // Collect every position, then colour them in the same round-robin order
+    // the maths dealt the packs out in, so a mixed-batch pallet looks mixed.
+    const slots = [];
     for (let layer = 0; layer < p.layers; layer++) {
       const layout = p.layouts[layer % p.layouts.length];
       const y = -totalH / 2 + deckH + (layer + 0.5) * c.height_cm * S;
       layout.forEach(t => {
-        if (i >= p.trays) return;
-        pos.set(
-          (t.x + t.w / 2) * S - deckL / 2,
-          y,
-          (t.z + t.d / 2) * S - deckW / 2
-        );
-        scl.set(t.w * S * 0.98, c.height_cm * S * 0.98, t.d * S * 0.98);
-        m.compose(pos, q, scl);
-        mesh.setMatrixAt(i++, m);
+        if (slots.length >= p.trays) return;
+        slots.push({
+          x: (t.x + t.w / 2) * S - deckL / 2, y,
+          z: (t.z + t.d / 2) * S - deckW / 2,
+          w: t.w * S * 0.98, d: t.d * S * 0.98
+        });
       });
     }
-    mesh.count = i;
-    mesh.instanceMatrix.needsUpdate = true;
-    bPreview.group.add(mesh);
+
+    const list = (c.packs && c.packs.length) ? c.packs : [{ color: builder.groups[0]?.color || '#1a6fdb' }];
+    const byPack = list.map(() => []);
+    slots.forEach((s, i) => byPack[i % list.length].push(s));
+
+    byPack.forEach((group, pi) => {
+      if (!group.length) return;
+      const mesh = new THREE.InstancedMesh(
+        new THREE.BoxGeometry(1, 1, 1),
+        new THREE.MeshStandardMaterial({ color: list[pi].color, roughness: 0.6, metalness: 0.1 }),
+        group.length
+      );
+      const m = new THREE.Matrix4();
+      const q = new THREE.Quaternion();
+      const scl = new THREE.Vector3();
+      const pos = new THREE.Vector3();
+      group.forEach((s, i) => {
+        pos.set(s.x, s.y, s.z);
+        scl.set(s.w, c.height_cm * S * 0.98, s.d);
+        m.compose(pos, q, scl);
+        mesh.setMatrixAt(i, m);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      bPreview.group.add(mesh);
+    });
   }
 
   // Stretch-wrap shell over the stack
@@ -3419,40 +3693,90 @@ function buildPalletPreview() {
   frameBuilderCamera(Math.max(deckL, deckW, totalH));
 }
 
-function buildCartonPreview() {
-  const c = computeCarton(builder);
-  const S = 0.001;                                    // mm → preview metres
-  const wall = builder.wall_mm || 0;
-  const gap = builder.gap_mm || 0;
+// Board colours for the pack itself, so a tray reads as a tray
+const BOARD = 0xc2a06a;
+const BOARD_DARK = 0x8a6d3f;
+
+// One pack, drawn at the origin: a real floor, real side walls, the products
+// standing in it, a lid if it is closed, and film if it is wrapped. Returns a
+// THREE.Group the caller can position.
+function buildPackGroup(c, blocks, S) {
+  const g3 = new THREE.Group();
+  const boxed = c.boxed;                              // is there a pack at all
+  const wall = boxed ? (builder.wall_mm || 0) : 0;
+  const gap  = builder.gap_mm || 0;                   // side to side
+  const lgap = builder.layer_gap_mm || 0;             // layer to layer
+  const open = !!builder.open_top;
   const outerL = c.length_cm * 10 * S;
   const outerW = c.width_cm  * 10 * S;
   const outerH = c.height_cm * 10 * S;
-
-  // Translucent carton shell
-  const shell = new THREE.Mesh(
-    new THREE.BoxGeometry(outerL, outerH, outerW),
-    new THREE.MeshStandardMaterial({
-      color: 0xc9a227, roughness: 0.9, metalness: 0.02,
-      transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false
-    })
-  );
-  bPreview.group.add(shell);
-
-  const edges = new THREE.LineSegments(
-    new THREE.EdgesGeometry(new THREE.BoxGeometry(outerL, outerH, outerW)),
-    new THREE.LineBasicMaterial({ color: 0x8a6d1f, transparent: true, opacity: 0.55 })
-  );
-  bPreview.group.add(edges);
-
-  // Units, group by group, stacking upward from the inner floor. Each group
-  // sits where its position pad says, inside the cavity.
   const innerL = c.inner.l, innerW = c.inner.w;
-  let yCursor = -outerH / 2 + wall * S;
-  builder.groups.forEach(g => {
-    const fp = groupUnitFootprint(g);
-    const uh = groupUnitHeight(g);
-    const gf = groupFit(builder, g.id);
-    const cols = gf.cols, rows = gf.rows, layers = Math.max(0, g.layers);
+  const wallT = boxed ? Math.max(wall, 1.2) * S : 0;  // never thinner than a hairline
+
+  const boardMat = () => new THREE.MeshStandardMaterial({
+    color: BOARD, roughness: 0.95, metalness: 0.01
+  });
+
+  if (boxed) {
+    // Floor — the thing that was missing: a tray you can actually see
+    const floor = new THREE.Mesh(new THREE.BoxGeometry(outerL, wallT, outerW), boardMat());
+    floor.position.y = -outerH / 2 + wallT / 2;
+    g3.add(floor);
+
+    // Side walls. An open tray gets a low lip like the photo; a closed box
+    // gets full-height walls, with the two nearest the camera left translucent
+    // so the contents stay visible.
+    const contentH = Math.max(c.used.h, 1) * S;
+    const lip = open
+      ? Math.max(Math.min(contentH * 0.35, contentH), 6 * S)
+      : outerH - wallT;
+    const wallY = -outerH / 2 + wallT + lip / 2;
+    const ghost = () => new THREE.MeshStandardMaterial({
+      color: BOARD, roughness: 0.95, metalness: 0.01,
+      transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false
+    });
+    const addWall = (w, h, d, x, z, solid) => {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), solid ? boardMat() : ghost());
+      m.position.set(x, wallY, z);
+      g3.add(m);
+    };
+    // far and left walls solid, near and right see-through, so you can look in
+    addWall(outerL, lip, wallT, 0, -outerW / 2 + wallT / 2, true);
+    addWall(outerL, lip, wallT, 0,  outerW / 2 - wallT / 2, false);
+    addWall(wallT, lip, outerW, -outerL / 2 + wallT / 2, 0, true);
+    addWall(wallT, lip, outerW,  outerL / 2 - wallT / 2, 0, false);
+
+    if (!open) {                                      // lid
+      const lid = new THREE.Mesh(new THREE.BoxGeometry(outerL, wallT, outerW), ghost());
+      lid.position.y = outerH / 2 - wallT / 2;
+      g3.add(lid);
+    }
+
+    g3.add(new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxGeometry(outerL, outerH, outerW)),
+      new THREE.LineBasicMaterial({ color: BOARD_DARK, transparent: true, opacity: 0.6 })
+    ));
+  }
+
+  // Contents, block by block, stacking up from the floor
+  let yCursor = -outerH / 2 + wallT;
+  blocks.forEach((b, bi) => {
+    const g = b.group;
+    const { fp, uh, cols, rows, layers } = b;
+
+    // A divider pad between stacked groups sharing one pack — the layer card
+    // that really does sit between them. Not needed when each group has its
+    // own pack, or when there is no pack, because then there is nothing to
+    // divide.
+    if (boxed && bi > 0 && lgap > 0) {
+      const pad = new THREE.Mesh(
+        new THREE.BoxGeometry(innerL * S, Math.max(lgap * 0.5, 0.8) * S, innerW * S),
+        new THREE.MeshStandardMaterial({ color: BOARD, roughness: 0.95, metalness: 0.01 })
+      );
+      pad.position.y = yCursor - lgap * S / 2;
+      g3.add(pad);
+    }
+
     const mat = new THREE.MeshStandardMaterial({
       color: g.color, roughness: 0.55, metalness: 0.15
     });
@@ -3465,10 +3789,8 @@ function buildCartonPreview() {
 
     const spanL = cols * fp.l + Math.max(0, cols - 1) * gap;
     const spanW = rows * fp.w + Math.max(0, rows - 1) * gap;
-    const offL = alignOffset(g.align_l, spanL, innerL);
-    const offW = alignOffset(g.align_w, spanW, innerW);
-    const startX = (-innerL / 2 + offL + fp.l / 2) * S;
-    const startZ = (-innerW / 2 + offW + fp.w / 2) * S;
+    const startX = (-innerL / 2 + alignOffset(g.align_l, spanL, innerL) + fp.l / 2) * S;
+    const startZ = (-innerW / 2 + alignOffset(g.align_w, spanW, innerW) + fp.w / 2) * S;
 
     const count = cols * rows * layers;
     if (count > 0 && count <= 4000) {
@@ -3479,7 +3801,7 @@ function buildCartonPreview() {
       const pos = new THREE.Vector3();
       let i = 0;
       for (let ly = 0; ly < layers; ly++) {
-        const y = yCursor + (uh / 2 + ly * (uh + gap)) * S;
+        const y = yCursor + (uh / 2 + ly * (uh + lgap)) * S;
         for (let cx = 0; cx < cols; cx++) {
           for (let rz = 0; rz < rows; rz++) {
             pos.set(startX + cx * (fp.l + gap) * S, y, startZ + rz * (fp.w + gap) * S);
@@ -3489,15 +3811,47 @@ function buildCartonPreview() {
         }
       }
       mesh.instanceMatrix.needsUpdate = true;
-      bPreview.group.add(mesh);
+      g3.add(mesh);
     } else {
       geo.dispose(); mat.dispose();
     }
 
-    yCursor += (layers * uh + Math.max(0, layers - 1) * gap + gap) * S;
+    yCursor += (layers * uh + Math.max(0, layers - 1) * lgap + lgap) * S;
   });
 
-  frameBuilderCamera(Math.max(outerL, outerW, outerH));
+  // Shrink wrap over the finished pack
+  if (boxed && builder.wrap?.enabled) {
+    const film = new THREE.Mesh(
+      new THREE.BoxGeometry(outerL * 1.012, outerH * 1.012, outerW * 1.012),
+      new THREE.MeshStandardMaterial({
+        color: 0xbfe0ea, roughness: 0.2, metalness: 0.1,
+        transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false
+      })
+    );
+    g3.add(film);
+  }
+
+  return g3;
+}
+
+function buildCartonPreview() {
+  const c = computeCarton(builder);
+  const S = 0.001;                                    // mm → preview metres
+  const outerL = c.length_cm * 10 * S;
+  const outerW = c.width_cm  * 10 * S;
+  const outerH = c.height_cm * 10 * S;
+
+  // Separate packs are drawn side by side with a visible space between them,
+  // because the whole point is that they are not one box.
+  const spacing = outerL * 1.18;
+  const n = c.packs.length;
+  c.packs.forEach((pk, i) => {
+    const g3 = buildPackGroup(c, pk.blocks, S);
+    g3.position.x = (i - (n - 1) / 2) * spacing;
+    bPreview.group.add(g3);
+  });
+
+  frameBuilderCamera(Math.max(outerL * Math.max(1, n * 1.18), outerW, outerH));
 }
 
 // The rotation that puts a product the way the user asked for. Geometry is
@@ -3527,7 +3881,8 @@ function buildOuterPreview() {
   const o = computeOuter(builder, c);
   const S = 0.001;                                    // mm → preview metres
   const wall = builder.outer.wall_mm || 0;
-  const gap  = builder.outer.gap_mm  || 0;
+  const gap  = builder.outer.gap_mm || 0;             // side to side
+  const lgap = builder.outer.layer_gap_mm || 0;       // layer to layer
   const outerL = o.length_cm * 10 * S;
   const outerW = o.width_cm  * 10 * S;
   const outerH = o.height_cm * 10 * S;
@@ -3547,40 +3902,60 @@ function buildOuterPreview() {
   ));
 
   const packL = c.length_cm * 10, packW = c.width_cm * 10, packH = c.height_cm * 10;
-  const count = o.packs;
+  const count = o.slots;
   if (count > 0 && count <= 4000 && packL > 0) {
-    const mat = new THREE.MeshStandardMaterial({
-      color: builder.groups[0]?.color || '#1a6fdb', roughness: 0.6, metalness: 0.12
-    });
-    const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), mat, count);
-    const m = new THREE.Matrix4();
-    const q = new THREE.Quaternion();
-    const scl = new THREE.Vector3(packL * S * 0.985, packH * S * 0.985, packW * S * 0.985);
-    const pos = new THREE.Vector3();
-
-    const spanL = o.grid.cols   * packL + Math.max(0, o.grid.cols   - 1) * gap;
-    const spanW = o.grid.rows   * packW + Math.max(0, o.grid.rows   - 1) * gap;
+    const spanL = o.grid.cols * packL + Math.max(0, o.grid.cols - 1) * gap;
+    const spanW = o.grid.rows * packW + Math.max(0, o.grid.rows - 1) * gap;
     const startX = (-o.inner.l / 2 + (o.inner.l - spanL) / 2 + packL / 2) * S;
     const startZ = (-o.inner.w / 2 + (o.inner.w - spanW) / 2 + packW / 2) * S;
     const floorY = -outerH / 2 + wall * S;
 
-    let i = 0;
-    for (let ly = 0; ly < o.grid.layers; ly++) {
-      for (let cx = 0; cx < o.grid.cols; cx++) {
-        for (let rz = 0; rz < o.grid.rows; rz++) {
-          pos.set(
+    // Work out every slot first, then hand them to the packs in the same
+    // round-robin order the maths used, so the colours in here match the
+    // batch split printed underneath.
+    const slots = [];
+    for (let ly = 0; ly < o.grid.layers; ly++)
+      for (let cx = 0; cx < o.grid.cols; cx++)
+        for (let rz = 0; rz < o.grid.rows; rz++)
+          slots.push([
             startX + cx * (packL + gap) * S,
-            floorY + (packH / 2 + ly * (packH + gap)) * S,
+            floorY + (packH / 2 + ly * (packH + lgap)) * S,
             startZ + rz * (packW + gap) * S
-          );
-          m.compose(pos, q, scl);
-          mesh.setMatrixAt(i++, m);
-        }
-      }
-    }
-    mesh.count = i;
-    mesh.instanceMatrix.needsUpdate = true;
-    bPreview.group.add(mesh);
+          ]);
+
+    const list = c.packs.length ? c.packs : [{ color: '#1a6fdb' }];
+    const byPack = list.map(() => []);
+    slots.forEach((s, i) => byPack[i % list.length].push(s));
+
+    const scl = new THREE.Vector3(packL * S * 0.985, packH * S * 0.985, packW * S * 0.985);
+    byPack.forEach((group, pi) => {
+      if (!group.length) return;
+      const mesh = new THREE.InstancedMesh(
+        new THREE.BoxGeometry(1, 1, 1),
+        new THREE.MeshStandardMaterial({ color: list[pi].color, roughness: 0.6, metalness: 0.12 }),
+        group.length
+      );
+      const m = new THREE.Matrix4();
+      const q = new THREE.Quaternion();
+      const pos = new THREE.Vector3();
+      group.forEach((s, i) => {
+        pos.set(s[0], s[1], s[2]);
+        m.compose(pos, q, scl);
+        mesh.setMatrixAt(i, m);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      bPreview.group.add(mesh);
+    });
+  }
+
+  if (builder.outer.wrap?.enabled) {
+    bPreview.group.add(new THREE.Mesh(
+      new THREE.BoxGeometry(outerL * 1.012, outerH * 1.012, outerW * 1.012),
+      new THREE.MeshStandardMaterial({
+        color: 0xbfe0ea, roughness: 0.2, metalness: 0.1,
+        transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false
+      })
+    ));
   }
 
   frameBuilderCamera(Math.max(outerL, outerW, outerH));
@@ -3661,18 +4036,17 @@ function closeBuilder() {
 // ---- push the built carton into the plan ----
 function addBuiltCartonToPlan() {
   const c = computeCarton(builder);
-  if (c.units === 0) return showToast('Add some contents first.');
+  if (!c.total_units) return showToast('Add some contents first.');
 
   const outerOn = !!builder.outer?.enabled;
   const shipUnit = computeShip(builder);              // the outer box, or the pack
   const onPallet = builder.pallet.enabled;
   const p = onPallet ? computePallet(builder, shipUnit) : null;
-  const PRIM = term('primary', 1, true);
   const OUT  = term('outer', 1, true);
   const SEC  = term('secondary', 1, true);
   const STACKED = outerOn ? 'outer' : 'primary';
 
-  if (outerOn && shipUnit.packs === 0) {
+  if (outerOn && shipUnit.slots === 0) {
     return showToast(`No ${term('primary', 2, true)} fit in this ${OUT} — check its size.`);
   }
   if (onPallet && p.trays === 0) {
@@ -3691,62 +4065,112 @@ function addBuiltCartonToPlan() {
   }
 
   const baseLabel = ($('#bName').value.trim()) || generateBaseLabel(onPallet ? 'pallet' : 'carton');
-  const productName = builder.groups[0]?.product_name || '';
-
-  // Keep the plan visually continuous with the preview: reuse an existing
-  // SKU's colour if there is one, else take the colour of the batch group
-  // that contributes the most units.
-  const twin = items.find(i => i.base_label === baseLabel);
-  const dominant = builder.groups.reduce(
-    (best, g) => (!best || groupUnitCount(g) > groupUnitCount(best)) ? g : best, null);
-  const color = twin ? twin.color : (dominant?.color || pickColorForBase(baseLabel));
   const palletLot = normaliseBatchCode(builder.pallet.batch_code);
+  const kind = onPallet ? 'pallet' : 'carton';
 
-  // Per-pack contents, multiplied up through every level that is in play:
-  // packs per outer box, then outer boxes per pallet.
-  const multiplier = (outerOn ? shipUnit.packs : 1) * (onPallet ? p.trays : 1);
-  const contents = builder.groups.map(g => ({
-    product_name: g.product_name || productName,
-    batch_lot: (normaliseBatchCode(g.batch_lot) || palletLot) || null,
-    medium: g.medium || null,
-    quantity: (builder.sizing === 'fixed' ? groupFit(builder, g.id).n : groupUnitCount(g)) * multiplier
-  }));
-  // Remember every code so the next carton can reuse the same spelling
-  contents.forEach(c => rememberBatchCode(c.batch_lot));
-  rememberBatchCode(palletLot);
+  // Separate packs with nothing stacked above them really are separate
+  // pieces of cargo, so each one becomes its own item carrying only its own
+  // batch. Anything above them merges the packs into one piece, so that gets
+  // a single item listing every batch inside it.
+  const loose = !onPallet && !outerOn && c.separate;
 
-  for (let n = 0; n < builderQty; n++) {
-    const suffix = builderQty > 1 ? `-${String(n + 1).padStart(2, '0')}` : '';
-    const item = addItem({
-      label: baseLabel + suffix,
-      base_label: baseLabel,
-      product_name: productName,
-      kind: onPallet ? 'pallet' : 'carton',
-      length_cm: Number(ship.l.toFixed(2)),
-      width_cm:  Number(ship.w.toFixed(2)),
-      height_cm: Number(ship.h.toFixed(2)),
-      weight_kg: Number(ship.kg.toFixed(3)),
-      handling: 'standard',
-      color
+  // How many of each pack end up inside one finished piece
+  const perPiece = loose
+    ? c.packs.map(() => 1)
+    : outerOn
+      ? shipUnit.alloc.map(n => n * (onPallet ? p.trays : 1))
+      : tallyPacks(c.packs, onPallet ? p.trays : 1).alloc;
+
+  const contentsFor = packIdxs => {
+    const rows = [];
+    packIdxs.forEach(pi => {
+      c.packs[pi].blocks.forEach(b => {
+        const lot = normaliseBatchCode(b.group.batch_lot) || palletLot || null;
+        const qty = b.n * perPiece[pi];
+        if (!qty) return;
+        // One row per batch, even when the same batch appears in two packs
+        const same = rows.find(r => r.batch_lot === lot &&
+                                    r.product_name === (b.group.product_name || ''));
+        if (same) same.quantity += qty;
+        else rows.push({
+          product_name: b.group.product_name || '',
+          batch_lot: lot,
+          medium: b.group.medium || null,
+          quantity: qty
+        });
+      });
     });
-    item.contents = contents.map(x => ({ ...x }));
-    item.terms = { ...builder.terms };
-    if (onPallet) {
-      item.pallet_meta = {
-        batch_code: palletLot,
-        order_no: builder.pallet.order_no.trim(),
-        packer: builder.pallet.packer.trim(),
-        trays: p.trays, per_layer: p.perLayer, layers: p.layers
-      };
+    return rows;
+  };
+
+  // One piece per pack when loose, otherwise a single piece holding them all
+  const pieces = loose
+    ? c.packs.map((pk, i) => ({
+        idxs: [i], color: pk.color,
+        suffix: '-' + (packName(pk, i).replace(/\s+/g, '').slice(0, 10) || (i + 1)),
+        productName: builder.groups.find(g => g.id === pk.id)?.product_name || ''
+      }))
+    : [{
+        idxs: c.packs.map((_, i) => i),
+        color: null,
+        suffix: '',
+        productName: builder.groups[0]?.product_name || ''
+      }];
+
+  let added = 0;
+  pieces.forEach(piece => {
+    const contents = contentsFor(piece.idxs);
+    contents.forEach(r => rememberBatchCode(r.batch_lot));
+
+    // Keep the plan visually continuous with the preview: reuse an existing
+    // SKU's colour if there is one, else the pack's own colour, else the
+    // colour of the batch group contributing the most units.
+    const label = baseLabel + piece.suffix;
+    const twin = items.find(i => i.base_label === label);
+    const dominant = builder.groups.reduce(
+      (best, g) => (!best || groupUnitCount(g) > groupUnitCount(best)) ? g : best, null);
+    const color = twin ? twin.color
+      : (piece.color || dominant?.color || pickColorForBase(label));
+
+    for (let n = 0; n < builderQty; n++) {
+      const suffix = builderQty > 1 ? `-${String(n + 1).padStart(2, '0')}` : '';
+      const item = addItem({
+        label: label + suffix,
+        base_label: label,
+        product_name: piece.productName,
+        kind,
+        length_cm: Number(ship.l.toFixed(2)),
+        width_cm:  Number(ship.w.toFixed(2)),
+        height_cm: Number(ship.h.toFixed(2)),
+        weight_kg: Number((loose ? c.packs[piece.idxs[0]].weight_kg : ship.kg).toFixed(3)),
+        handling: 'standard',
+        color
+      });
+      item.contents = contents.map(x => ({ ...x }));
+      item.terms = { ...builder.terms };
+      if (onPallet) {
+        item.pallet_meta = {
+          batch_code: palletLot,
+          order_no: builder.pallet.order_no.trim(),
+          packer: builder.pallet.packer.trim(),
+          trays: p.trays, per_layer: p.perLayer, layers: p.layers
+        };
+      }
+      added++;
     }
-  }
+  });
+  rememberBatchCode(palletLot);
 
   updateStats();
   renderCargoList();
   closeBuilder();
+  const totalUnits = pieces.reduce((s, piece) =>
+    s + contentsFor(piece.idxs).reduce((t, r) => t + r.quantity, 0), 0) * builderQty;
   showToast(onPallet
-    ? `Added <b>${builderQty}</b> ${escapeHtml(term('secondary', builderQty, true))} — ${p.trays} ${escapeHtml(term('primary', p.trays, true))}, ${ship.units * builderQty} ${escapeHtml(term('product', 2, true))}.`
-    : `Added <b>${builderQty}</b> × ${escapeHtml(baseLabel)} — ${c.units * builderQty} ${escapeHtml(term('product', 2, true))}.`);
+    ? `Added <b>${added}</b> ${escapeHtml(term('secondary', added, true))} — ${p.trays} ${escapeHtml(term(STACKED, p.trays, true))}, ${totalUnits} ${escapeHtml(term('product', totalUnits, true))}.`
+    : loose
+      ? `Added <b>${added}</b> separate ${escapeHtml(term('primary', added, true))} — ${totalUnits} ${escapeHtml(term('product', totalUnits, true))}, batches kept apart.`
+      : `Added <b>${added}</b> × ${escapeHtml(baseLabel)} — ${totalUnits} ${escapeHtml(term('product', totalUnits, true))}.`);
 }
 
 // ============================================================
@@ -5885,12 +6309,13 @@ $('#openBuilder').addEventListener('click', openBuilder);
 document.querySelectorAll('[data-close-builder]').forEach(el =>
   el.addEventListener('click', closeBuilder));
 
-['#bWall', '#bGap', '#bTare', '#bName'].forEach(sel => {
+['#bWall', '#bGap', '#bLayerGap', '#bTare', '#bName'].forEach(sel => {
   $(sel).addEventListener('input', () => {
-    builder.name    = $('#bName').value;
-    builder.wall_mm = bToMm($('#bWall').value);
-    builder.gap_mm  = bToMm($('#bGap').value);
-    builder.tare_kg = parseFloat($('#bTare').value) || 0;
+    builder.name         = $('#bName').value;
+    builder.wall_mm      = bToMm($('#bWall').value);
+    builder.gap_mm       = bToMm($('#bGap').value);
+    builder.layer_gap_mm = bToMm($('#bLayerGap').value);
+    builder.tare_kg      = parseFloat($('#bTare').value) || 0;
     readTrayFields();
     renderBuilderGroups();
     updateBuilderComputed();
@@ -5899,13 +6324,29 @@ document.querySelectorAll('[data-close-builder]').forEach(el =>
 });
 
 // Tray sizing mode
-$$('.size-mode-btn').forEach(btn => btn.addEventListener('click', () => {
+$$('#bSizeMode .size-mode-btn').forEach(btn => btn.addEventListener('click', () => {
   builder.sizing = btn.dataset.sizing;
   renderSizingMode();
   renderBuilderGroups();                 // fixed mode takes cols/rows out of the user's hands
   updateBuilderComputed();
   rebuildBuilderPreview();
 }));
+
+// A pack per group, or everything in one pack
+$$('#bGroupMode .group-mode-btn').forEach(btn => btn.addEventListener('click', () => {
+  builder.group_mode = btn.dataset.gmode;
+  renderBuilderGroups();
+  updateBuilderComputed();
+  rebuildBuilderPreview();
+}));
+
+// Clicking an unnamed heading is the same as reaching for its name box
+document.addEventListener('click', e => {
+  const title = e.target.closest('.bstep-unnamed');
+  if (!title) return;
+  const input = title.parentElement?.querySelector('.bstep-term');
+  if (input) { input.focus(); input.dispatchEvent(new Event('focus')); }
+});
 
 // Base under the trays
 $$('.base-type-btn').forEach(btn => btn.addEventListener('click', () => {
@@ -5928,13 +6369,24 @@ $$('.base-type-btn').forEach(btn => btn.addEventListener('click', () => {
   rebuildBuilderPreview();
 }));
 
-['#bFixedL', '#bFixedW', '#bFixedH', '#bOpenTop', '#bWrapOn', '#bWrapT', '#bWrapKg'].forEach(sel =>
+['#bFixedL', '#bFixedW', '#bFixedH', '#bOpenTop', '#bWrapOn', '#bWrapT', '#bWrapKg',
+ '#bPackOn'].forEach(sel =>
   $(sel).addEventListener('input', () => {
     readTrayFields();
+    $('#bPrimaryFields').hidden = !hasPack(builder);
+    renderSizingMode();
     renderBuilderGroups();
     updateBuilderComputed();
     rebuildBuilderPreview();
   }));
+$('#bPackOn').addEventListener('change', () => {
+  readTrayFields();
+  $('#bPrimaryFields').hidden = !hasPack(builder);
+  renderSizingMode();
+  renderBuilderGroups();
+  updateBuilderComputed();
+  rebuildBuilderPreview();
+});
 
 // Pallet batch code — same registry as the group codes
 initTermCombo($('#bPalletBatch'), knownBatchCodes, onPalletFieldChange);
@@ -5954,7 +6406,8 @@ $$('.unit-mini[data-unit-target="builder"] .unit-btn').forEach(btn =>
 // Short answers for the little ? buttons next to the fiddly fields
 const FIELD_HINTS = {
   wall: 'How thick the board or plastic of the box itself is. Added to all four sides, so a 3 mm wall makes the box 6 mm wider than its contents. Leave it at 0 if you are measuring the outside already.',
-  gap: 'Breathing room left between neighbouring products, and between the products and the wall. Set it to 0 for a tight pack.',
+  gap: 'Air left between neighbours standing side by side. Set it to 0 for a tight pack where everything touches.',
+  layergap: 'Space between one layer and the layer above it — the thickness of a layer pad, card or sheet. Set it to 0 and each layer sits directly on the one below, which is normal for cans and jars.',
   tare: 'The weight of the empty box, with no product in it. Printed on the carton spec sheet, or just weigh one. We add it to the content weight to get the gross weight.',
   film: 'How thick the shrink-wrap film is. It adds a fraction of a millimetre to every side, and its own weight to the total.'
 };
@@ -5969,8 +6422,10 @@ function buildHelpBody() {
   const e   = escapeHtml;
 
   return `
-    <p class="bhelp-lede">This screen builds one shipping unit from the inside out. Four levels,
-      and you only use the ones you need. Every heading is named after <em>your</em> word for it —
+    <p class="bhelp-lede">This screen builds one shipping unit from the inside out. It starts
+      with nothing but the product, and <em>every level above that is a switch you turn on</em>
+      — add the pack, then the outer box, then the base, one at a time, and watch the preview
+      change. Skip any you do not use. Every heading is named after <em>your</em> word for it:
       change the word in the heading and the whole screen follows.</p>
 
     <div class="bhelp-chain">
@@ -6033,7 +6488,12 @@ function buildHelpBody() {
     <h4>Every other field</h4>
     <dl class="bhelp-dl">
       <dt>Wall</dt><dd>${e(FIELD_HINTS.wall)}</dd>
-      <dt>Gap</dt><dd>${e(FIELD_HINTS.gap)}</dd>
+      <dt>Side to side</dt><dd>${e(FIELD_HINTS.gap)}</dd>
+      <dt>Between layers</dt><dd>${e(FIELD_HINTS.layergap)} These two are separate on purpose:
+        ${e(Ps)} usually need a little air beside each other but stack directly on top of each
+        other, so a single gap setting would put a space under every layer that is not really
+        there. Both live with the product rather than with the ${e(PR)}, because the spacing
+        is the same whether or not anything is wrapped around them.</dd>
       <dt>Tare</dt><dd>${e(FIELD_HINTS.tare)}</dd>
       <dt>No lid (open tray)</dt>
       <dd>An open tray has a floor and sides but no top, so the contents may stand above the
@@ -6042,10 +6502,17 @@ function buildHelpBody() {
       <dd>Film pulled tight over the finished box. Adds the film thickness to every side and
         the film weight to the total.</dd>
       <dt>Batch / lot</dt>
-      <dd>The code that identifies which production run these ${e(Ps)} came from. One box can
-        hold several batches — add a group per batch. Type a code once and it is offered back
-        to you everywhere else, so the same lot is always spelled the same way and can be
-        found again later.</dd>
+      <dd>The code that identifies which production run these ${e(Ps)} came from. Add a group
+        per batch. Type a code once and it is offered back to you everywhere else, so the same
+        lot is always spelled the same way and can be found again later.</dd>
+      <dt>One ${e(PR)} each / All in one ${e(PR)}</dt>
+      <dd><em>One ${e(PR)} each</em> gives every group a ${e(PR)} of its own — same outside
+        size, so they interchange — and keeps the batches physically apart. That is the normal
+        case: four trays in a carton, each tray one batch. <em>All in one</em> stacks every
+        group inside a single ${e(PR)} with a divider pad between them, for a genuinely mixed
+        pack. When the levels above hold fewer ${e(PRs)} than you have groups, the ${e(PRs)}
+        are dealt out in turn, so three slots across two batches is two of one and one of the
+        other.</dd>
       <dt>Which way up</dt>
       <dd>Upright is the product as you measured it. <em>On its side</em> tips it over so its
         height runs along the box's length — a lying-down can. <em>On its end</em> stands a box
@@ -6104,7 +6571,8 @@ document.addEventListener('click', e => {
 // ---- the optional outer box ----
 const OUTER_FIELD_IDS = ['#bOuterOn', '#bOuterFixL', '#bOuterFixW', '#bOuterFixH',
   '#bOuterCols', '#bOuterRows', '#bOuterLayers', '#bOuterWall', '#bOuterGap',
-  '#bOuterTare', '#bOuterOpenTop', '#bOuterWrapOn', '#bOuterWrapT', '#bOuterWrapKg'];
+  '#bOuterLayerGap', '#bOuterTare', '#bOuterOpenTop', '#bOuterWrapOn',
+  '#bOuterWrapT', '#bOuterWrapKg'];
 
 function onOuterFieldChange() {
   readOuterFields();
@@ -6539,7 +7007,7 @@ window.addEventListener('beforeunload', (e) => {
 let refreshSegments = () => {};
 
 function initSegmentedIndicators() {
-  const SELECTOR = '.view-pills, .scene-toggle, .kind-tabs, .unit-mini, .shape-pick, .panel-tabs, .shape-toggle, .size-mode, .base-type, .orient-toggle';
+  const SELECTOR = '.view-pills, .scene-toggle, .kind-tabs, .unit-mini, .shape-pick, .panel-tabs, .shape-toggle, .size-mode, .base-type, .orient-toggle, .group-mode';
   const getContainers = () => document.querySelectorAll(SELECTOR);
 
   const update = (container) => {

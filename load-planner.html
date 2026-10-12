@@ -537,8 +537,8 @@
               <span class="bstep-num" data-step-num="product">1</span>
               <span class="bstep-title" data-step-title="product">Can</span>
               <div class="combo" data-term="product">
-                <input class="bstep-term" id="bTermProduct" placeholder="Can"
-                       maxlength="24" autocomplete="off" title="Rename this level" />
+                <input class="bstep-term" id="bTermProduct" placeholder="Can, pouch, loin…"
+                       maxlength="24" autocomplete="off" title="Name this level" />
                 <div class="combo-menu" hidden></div>
               </div>
             </div>
@@ -559,33 +559,62 @@
                 <button type="button" class="badd-cancel" data-add="cancel">Cancel</button>
               </div>
             </div>
+
+            <!-- Spacing lives with the product, not the pack: it applies
+                 whether or not anything is wrapped around them. -->
+            <div class="bstep-sublabel">Spacing between the products</div>
+            <div class="form-row">
+              <label class="field">
+                <span data-bunit-label="Side to side">Side to side (mm)</span>
+                <button type="button" class="bhint" data-hint="gap">?</button>
+                <input id="bGap" type="number" min="0" step="0.5" value="2" />
+              </label>
+              <label class="field">
+                <span data-bunit-label="Between layers">Between layers (mm)</span>
+                <button type="button" class="bhint" data-hint="layergap">?</button>
+                <input id="bLayerGap" type="number" min="0" step="0.5" value="0" />
+              </label>
+            </div>
           </div>
 
           <div class="bflow">
             <span class="bflow-arrow">↓</span>
             <span id="bFlow1">packed into a pack</span>
             <span class="bflow-line"></span>
+            <label class="switch">
+              <input type="checkbox" id="bPackOn" />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+              <span class="switch-label">Use one</span>
+            </label>
           </div>
 
-          <!-- ② the pack that holds the products -->
-          <div class="bstep" id="bPrimaryStep">
+          <!-- ② the pack that holds the products — optional, like every
+               level above it, so the builder starts with the bare product -->
+          <div class="bstep bstep-off" id="bPrimaryStep">
             <div class="bstep-head">
               <span class="bstep-num" data-step-num="primary">2</span>
               <span class="bstep-title" data-step-title="primary">Tray</span>
               <div class="combo" data-term="primary">
-                <input class="bstep-term" id="bTermPrimary" placeholder="Tray"
-                       maxlength="24" autocomplete="off" title="Rename this level" />
+                <input class="bstep-term" id="bTermPrimary" placeholder="Tray, case, bag…"
+                       maxlength="24" autocomplete="off" title="Name this level" />
                 <div class="combo-menu" hidden></div>
               </div>
             </div>
             <p class="bstep-role" data-step-role="primary"></p>
-            <div class="bstep-out" id="bTrayOut">—</div>
+            <div class="bstep-out bstep-out-idle" id="bTrayOut">Skipped — nothing around the products yet</div>
 
+            <div id="bPrimaryFields" hidden>
             <div class="size-mode" id="bSizeMode">
               <button type="button" class="size-mode-btn active" data-sizing="contents">Work out the size for me</button>
               <button type="button" class="size-mode-btn" data-sizing="fixed">I know the size</button>
             </div>
             <p class="bstep-why" id="bSizeWhy"></p>
+
+            <div class="group-mode" id="bGroupMode" hidden>
+              <button type="button" class="group-mode-btn active" data-gmode="separate">One each</button>
+              <button type="button" class="group-mode-btn" data-gmode="shared">All in one</button>
+            </div>
+            <p class="bstep-why" id="bGroupModeWhy" hidden></p>
 
             <div class="form-row-3" id="bFixedRow" hidden>
               <label class="field">
@@ -603,16 +632,11 @@
             </div>
             <div class="bfit-note" id="bFitNote"></div>
 
-            <div class="form-row-3">
+            <div class="form-row">
               <label class="field">
                 <span data-bunit-label="Wall">Wall (mm)</span>
                 <button type="button" class="bhint" data-hint="wall">?</button>
                 <input id="bWall" type="number" min="0" step="0.5" value="3" />
-              </label>
-              <label class="field">
-                <span data-bunit-label="Gap">Gap (mm)</span>
-                <button type="button" class="bhint" data-hint="gap">?</button>
-                <input id="bGap" type="number" min="0" step="0.5" value="2" />
               </label>
               <label class="field">
                 <span>Tare (kg)</span>
@@ -645,6 +669,7 @@
                 <input id="bWrapKg" type="number" min="0" step="1" value="15" />
               </label>
             </div>
+            </div><!-- /bPrimaryFields -->
           </div>
 
           <div class="bflow">
@@ -664,8 +689,8 @@
               <span class="bstep-num" data-step-num="outer">3</span>
               <span class="bstep-title" data-step-title="outer">Carton</span>
               <div class="combo" data-term="outer">
-                <input class="bstep-term" id="bTermOuter" placeholder="Carton"
-                       maxlength="24" autocomplete="off" title="Rename this level" />
+                <input class="bstep-term" id="bTermOuter" placeholder="Carton, shipper…"
+                       maxlength="24" autocomplete="off" title="Name this level" />
                 <div class="combo-menu" hidden></div>
               </div>
             </div>
@@ -709,16 +734,21 @@
               </div>
               <div class="bfit-note" id="bOuterFitNote"></div>
 
-              <div class="form-row-3">
+              <div class="form-row-4">
                 <label class="field">
                   <span data-bunit-label="Wall">Wall (mm)</span>
                   <button type="button" class="bhint" data-hint="wall">?</button>
                   <input id="bOuterWall" type="number" min="0" step="0.5" value="4" />
                 </label>
                 <label class="field">
-                  <span data-bunit-label="Gap">Gap (mm)</span>
+                  <span data-bunit-label="Side gap">Side gap (mm)</span>
                   <button type="button" class="bhint" data-hint="gap">?</button>
                   <input id="bOuterGap" type="number" min="0" step="0.5" value="0" />
+                </label>
+                <label class="field">
+                  <span data-bunit-label="Layer gap">Layer gap (mm)</span>
+                  <button type="button" class="bhint" data-hint="layergap">?</button>
+                  <input id="bOuterLayerGap" type="number" min="0" step="0.5" value="0" />
                 </label>
                 <label class="field">
                   <span>Tare (kg)</span>
@@ -771,8 +801,8 @@
               <span class="bstep-num" data-step-num="secondary">4</span>
               <span class="bstep-title" data-step-title="secondary">Pallet</span>
               <div class="combo" data-term="secondary">
-                <input class="bstep-term" id="bTermSecondary" placeholder="Pallet"
-                       maxlength="24" autocomplete="off" title="Rename this level" />
+                <input class="bstep-term" id="bTermSecondary" placeholder="Pallet, slipsheet…"
+                       maxlength="24" autocomplete="off" title="Name this level" />
                 <div class="combo-menu" hidden></div>
               </div>
             </div>
