@@ -762,9 +762,71 @@ const BASIS = {
 const PAL = ['--p0', '--p1', '--p2', '--p3', '--p4', '--p5', '--p6', '--p7', '--p8', '--p9'];
 const stageOf = (id) => STAGES.find((s) => s.id === id);
 
+const prefersReduced = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* Slide a glass highlight under the active button. `from` lets a re-rendered control animate from where it used to be. */
+function slideThumb(thumb, active, from) {
+  if (!thumb) return;
+  if (!active) { thumb.style.opacity = '0'; return; }
+  const x = active.offsetLeft, w = active.offsetWidth;
+  const jump = (px, pw) => { thumb.style.transition = 'none'; thumb.style.setProperty('--x', px + 'px'); thumb.style.width = pw + 'px'; void thumb.offsetWidth; thumb.style.transition = ''; };
+  if (!thumb.dataset.ready || prefersReduced()) { jump(x, w); }
+  else {
+    if (from) jump(from.x, from.w);
+    const prevX = parseFloat(thumb.style.getPropertyValue('--x')) || 0;
+    thumb.style.setProperty('--x', x + 'px'); thumb.style.width = w + 'px';
+    if (Math.abs(prevX - x) > 2) {
+      thumb.style.setProperty('--sx', '1.07'); thumb.style.setProperty('--sy', '.9');
+      clearTimeout(thumb._sq); thumb._sq = setTimeout(() => { thumb.style.setProperty('--sx', '1'); thumb.style.setProperty('--sy', '1'); }, 170);
+    }
+  }
+  thumb.dataset.ready = '1'; thumb.style.opacity = '1';
+}
+function captureThumbs() {
+  const m = {};
+  $$('.seg[data-key]').forEach((s) => { const on = $('button.on', s); if (on) m[s.dataset.key] = { x: on.offsetLeft, w: on.offsetWidth }; });
+  return m;
+}
+function placeSegs(root, prev = {}) {
+  $$('.seg[data-key]', root).forEach((s) => slideThumb($('.thumb', s), $('button.on', s), prev[s.dataset.key]));
+}
+
 function renderRail() {
-  $('#rail').innerHTML = STAGES.map((s) => `<button type="button" class="tab" role="tab" data-go="${s.id}" aria-selected="${UI.view === 'stage' && UI.stage === s.id}"><span class="tl">${esc(s.tab)}</span><span class="share"><i data-share="${s.id}"></i></span></button>`).join('');
+  const rail = $('#rail');
+  if (!rail.dataset.built) {
+    rail.innerHTML = '<i class="gl-ind" aria-hidden="true"></i>' + STAGES.map((s) => `<button type="button" class="tab" role="tab" data-go="${s.id}"><span class="tl">${esc(s.tab)}</span><span class="share"><i data-share="${s.id}"></i></span></button>`).join('');
+    rail.dataset.built = '1';
+  }
+  $$('.tab', rail).forEach((b) => b.setAttribute('aria-selected', String(UI.view === 'stage' && UI.stage === b.dataset.go)));
+  const act = $('.tab[aria-selected="true"]', rail);
+  slideThumb($('.gl-ind', rail), act);
+  if (act) {
+    const wrap = rail.parentElement, left = act.offsetLeft - (wrap.clientWidth - act.offsetWidth) / 2;
+    wrap.scrollTo({ left: Math.max(0, left), behavior: prefersReduced() ? 'auto' : 'smooth' });
+  }
   updateRail();
+}
+function refitRail() { const t = $('#rail .gl-ind'); if (t) { t.dataset.ready = ''; renderRail(); } }
+
+/* ---- theme ---- */
+const THEME_KEY = 'aq-theme';
+const currentTheme = () => (document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+function syncThemeButton() {
+  const b = $('#theme'); if (!b) return;
+  const dark = currentTheme() === 'dark';
+  b.setAttribute('aria-checked', String(dark)); b.title = dark ? 'Switch to light mode' : 'Switch to dark mode';
+}
+function initTheme() {
+  let t = null; try { t = localStorage.getItem(THEME_KEY); } catch (e) { /* storage unavailable */ }
+  const root = document.documentElement;
+  root.dataset.theme = (t === 'dark' || t === 'light') ? t : (root.dataset.theme === 'dark' ? 'dark' : 'light');
+  syncThemeButton();
+}
+function setTheme(next) {
+  const root = document.documentElement;
+  try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* storage unavailable */ }
+  if (!prefersReduced()) { root.classList.add('theming'); setTimeout(() => root.classList.remove('theming'), 560); }
+  root.dataset.theme = next; syncThemeButton();
 }
 function updateRail() {
   const sum = R.sum || 1;
@@ -773,11 +835,12 @@ function updateRail() {
 function updateBadge() { const el = $('#badge'); if (el) el.textContent = fmt(R.headline); }
 
 function segHTML(items, cur, attr) {
-  return `<div class="seg" role="group">${items.map(([v, l]) => `<button type="button" class="${v === cur ? 'on' : ''}" aria-pressed="${v === cur}" data-mode="${attr}:${v}">${esc(l)}</button>`).join('')}</div>`;
+  return `<div class="seg" role="group" data-key="${attr}"><i class="thumb" aria-hidden="true"></i>${items.map(([v, l]) => `<button type="button" class="${v === cur ? 'on' : ''}" aria-pressed="${v === cur}" data-mode="${attr}:${v}">${esc(l)}</button>`).join('')}</div>`;
 }
 
 function renderStage() {
   UI.view = 'stage';
+  const prevThumbs = captureThumbs();
   const st = stageOf(UI.stage), host = $('#stage');
   const cur = st.modeKey === 'feedType' ? S.feedType : st.modeKey ? S[st.modeKey].mode : null;
   let sub = '';
@@ -795,7 +858,7 @@ function renderStage() {
       <div class="bmid"><div class="stack" data-bar="stack" role="img" aria-label="Breakdown of this stage"></div><div class="legend" data-bar="legend"></div></div>
       <div class="bk r"><span class="bl">Emission per 1KG <em data-bar="basis"></em></span><div class="bv"><b data-bar="perkg">0</b><i>kg CO₂e</i></div></div>
     </footer>`;
-  renderRail(); updateBars();
+  placeSegs(host, prevThumbs); renderRail(); updateBars();
 }
 
 function updateBars() {
@@ -836,7 +899,7 @@ function init() {
   $('#app').innerHTML = `
     <header class="top">
       <button type="button" class="round" id="back" aria-label="Back">${ic('back')}</button>
-      <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 11V6a2 2 0 0 1 2-2h5M21 4h5a2 2 0 0 1 2 2v5M28 21v5a2 2 0 0 1-2 2h-5M11 28H6a2 2 0 0 1-2-2v-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M9 17c3-4 6-4 9 0-3 4-6 4-9 0Zm9 0 4-3v6z" fill="currentColor"/></svg><span><b>SMARTUNA</b> CONCEPT</span></div>
+      <div class="brand" id="brand"><img src="sc-blue-logo.png" alt="" width="40" height="34"><svg class="bm" viewBox="0 0 32 32" aria-hidden="true"><path d="M4 11V6a2 2 0 0 1 2-2h5M21 4h5a2 2 0 0 1 2 2v5M28 21v5a2 2 0 0 1-2 2h-5M11 28H6a2 2 0 0 1-2-2v-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M9 17c3-4 6-4 9 0-3 4-6 4-9 0Zm9 0 4-3v6z" fill="currentColor"/></svg><span class="bt"><b>SMARTUNA</b><i>CONCEPT</i></span></div>
       <div class="badge" aria-live="polite">
         <span class="bi">${ic('leaf')}</span>
         <div class="bg"><span class="bl">Total carbon footprint</span><div class="bv"><b id="badge">0</b><i>kgCO₂e</i></div></div>
@@ -844,6 +907,7 @@ function init() {
         <div class="bg"><span class="bl">Basis</span><span class="bb">Emission per kg of harvested fish</span></div>
       </div>
       <div class="acts">
+        <button type="button" class="themetoggle" id="theme" role="switch" aria-checked="false" aria-label="Dark mode"><span class="tt-sky"><i class="tt-stars"></i><i class="tt-cloud"></i></span><span class="tt-thumb"><svg class="tt-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg class="tt-moon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7Z"/></svg></span></button>
         <button type="button" class="btn ghost" id="sd">${ic('db')}<span>Source Data</span></button>
         <button type="button" class="btn solid" id="save">${ic('save')}<span>Review &amp; Save</span></button>
         <button type="button" class="btn solid alt" id="rep"><span>Report</span>${ic('chart')}</button>
@@ -852,6 +916,11 @@ function init() {
     <nav class="rail-wrap" aria-label="Stages"><div class="rail" id="rail" role="tablist"></div></nav>
     <main class="card" id="stage"></main>
     <p class="foot">Aquaculture production · GDST-aligned stages · Figures are estimates built from the factors in Source Data.</p>`;
+  { const lg = $('#brand img'); if (lg) lg.addEventListener('error', () => $('#brand').classList.add('nologo')); }
+  initTheme();
+  $('#theme').addEventListener('click', () => setTheme(currentTheme() === 'dark' ? 'light' : 'dark'));
+  window.addEventListener('resize', refitRail);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(refitRail);
   bindEvents($('#stage'));
   document.addEventListener('click', (e) => {
     const g = e.target.closest('[data-go]'); if (g) { go(g.dataset.go); return; }
@@ -961,13 +1030,15 @@ function cellHTML(c) {
 
 function renderModalBody() {
   CALCS = [];
+  const prevSub = captureThumbs();
   const tab = UI.sdTab, sub = UI.sdSub[tab];
   const v = SDV[tab](sub);
-  const subs = v.subs ? `<div class="seg sm">${v.subs.map(([id, l]) => `<button type="button" class="${(sub || v.subs[0][0]) === id ? 'on' : ''}" data-sub="${id}">${esc(l)}</button>`).join('')}</div>` : '';
+  const subs = v.subs ? `<div class="seg sm" data-key="sdsub"><i class="thumb" aria-hidden="true"></i>${v.subs.map(([id, l]) => `<button type="button" class="${(sub || v.subs[0][0]) === id ? 'on' : ''}" data-sub="${id}">${esc(l)}</button>`).join('')}</div>` : '';
   const cards = v.cards.map((c) => `<section class="sdcard ${c.wide ? 'wide' : ''}"><h4>${esc(c.head)}</h4><div class="sdb">${c.sub ? `<p class="csub">${esc(c.sub)}</p>` : ''}
     ${c.table ? `<div class="sdt"><div class="sdth">${c.table.cols.map((x) => `<span>${esc(x)}</span>`).join('')}</div>${c.table.rows.map((r) => `<div class="sdtr">${r.map(cellHTML).join('')}</div>`).join('')}</div>` : ''}
     ${c.rows.map(rowHTML).join('')}</div></section>`).join('');
   $('#sdbody').innerHTML = `${subs}<div class="sdgrid">${cards}</div>${v.note ? `<p class="sdnote">${esc(v.note)}</p>` : ''}`;
+  placeSegs($('#sdbody'), prevSub);
 }
 
 function updateModalComputed() {
@@ -996,4 +1067,154 @@ function openModal() {
 function renderStageOutputsOnly() { /* FCR edits change inputs on the stage behind the modal */ if (UI.view === 'stage') { const a = document.activeElement; renderStage(); a?.focus?.(); } }
 function closeModal() { UI.modal = false; const m = $('#modal'); if (m) { m.hidden = true; m.innerHTML = ''; } if (UI.view === 'stage') renderStage(); $('#sd')?.focus(); }
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && UI.modal) closeModal(); });
+/* Custom dropdown: enhances every <select> in place. The native select stays in the DOM (hidden) as the
+   source of truth, so all existing change handlers (data-p / data-m / data-qu / chip-add) keep working. */
+const DD = (() => {
+  const CHK = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 8.4l3 3 6-6.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const CHV = '<svg class="dd-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 6l4.5 4.5L12.5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const SRCH = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  let menu = null, cur = null, active = -1, typed = '', typedT = 0;
+
+  const optsOf = (sel) => [...sel.options].map((o, i) => ({ i, v: o.value, t: o.textContent, ph: o.value === '' }));
+  const labelOf = (sel) => { const o = sel.options[sel.selectedIndex]; return o ? o.textContent : ''; };
+
+  function sync(btn, sel) {
+    const o = sel.options[sel.selectedIndex];
+    const isPh = !o || o.value === '';
+    btn.querySelector('.dd-val').textContent = btn.classList.contains('dd-add') ? '+ Add' : (labelOf(sel) || ' ');
+    btn.classList.toggle('dd-ph', isPh && !btn.classList.contains('dd-add'));
+    btn.disabled = sel.disabled || (btn.classList.contains('dd-add') && sel.options.length < 2);
+  }
+
+  function enhance(sel) {
+    if (sel.dataset.dd) return; sel.dataset.dd = '1';
+    const add = sel.classList.contains('chip-add');
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'dd-btn' + (add ? ' dd-add' : '');
+    btn.setAttribute('aria-haspopup', 'listbox'); btn.setAttribute('aria-expanded', 'false');
+    const lbl = sel.getAttribute('aria-label'); if (lbl) btn.setAttribute('aria-label', lbl);
+    if (sel.id) btn.dataset.for = sel.id;
+    btn.innerHTML = '<span class="dd-val"></span>' + (add ? '' : CHV);
+    sel.classList.add('dd-native'); sel.tabIndex = -1; sel.setAttribute('aria-hidden', 'true');
+    sel.insertAdjacentElement('afterend', btn);
+    sync(btn, sel);
+    sel.addEventListener('change', () => sync(btn, sel));
+  }
+  const scan = (root) => (root || document).querySelectorAll('select:not([data-dd])').forEach(enhance);
+
+  /* ---- menu ---- */
+  function build(sel, btn) {
+    const list = optsOf(sel).filter((o) => !(btn.classList.contains('dd-add') && o.ph));
+    const searchable = list.length > 9;
+    const m = document.createElement('div');
+    m.className = 'dd-menu'; m.setAttribute('role', 'presentation');
+    m.innerHTML = (searchable ? `<div class="dd-search">${SRCH}<input type="text" placeholder="Search…" aria-label="Filter options" autocomplete="off" spellcheck="false"></div>` : '')
+      + `<div class="dd-list" role="listbox" tabindex="-1">${list.map((o) => `<div class="dd-opt${o.ph ? ' ph' : ''}" role="option" data-i="${o.i}" aria-selected="${o.i === sel.selectedIndex && !btn.classList.contains('dd-add')}"><span>${esc(o.t || '—')}</span><i class="dd-chk">${CHK}</i></div>`).join('')}<div class="dd-empty" hidden>No matches</div></div>`;
+    return m;
+  }
+  const visible = () => [...menu.querySelectorAll('.dd-opt')].filter((o) => !o.hidden);
+  function setActive(el, scroll = true) {
+    menu.querySelectorAll('.dd-opt.act').forEach((o) => o.classList.remove('act'));
+    if (!el) { active = -1; return; }
+    el.classList.add('act'); active = +el.dataset.i;
+    if (scroll) el.scrollIntoView({ block: 'nearest' });
+  }
+  function place() {
+    if (!menu || !cur) return;
+    const r = cur.btn.getBoundingClientRect(), vw = innerWidth, vh = innerHeight;
+    const w = Math.min(Math.max(r.width, cur.btn.classList.contains('dd-add') ? 190 : 150), vw - 16);
+    let left = Math.min(Math.max(8, r.left), vw - w - 8);
+    menu.style.width = w + 'px'; menu.style.left = left + 'px';
+    const list = menu.querySelector('.dd-list'); list.style.maxHeight = '';
+    const need = Math.min(menu.scrollHeight, 340), below = vh - r.bottom - 12, above = r.top - 12;
+    const up = below < Math.min(need, 220) && above > below;
+    const room = Math.max(120, (up ? above : below));
+    list.style.maxHeight = Math.min(300, room - (menu.querySelector('.dd-search') ? 52 : 14)) + 'px';
+    menu.classList.toggle('up', up);
+    if (up) { menu.style.top = 'auto'; menu.style.bottom = (vh - r.top + 6) + 'px'; }
+    else { menu.style.bottom = 'auto'; menu.style.top = (r.bottom + 6) + 'px'; }
+    menu.style.setProperty('--ox', Math.min(Math.max(r.left + 22 - left, 14), w - 14) + 'px');
+  }
+  function open(btn) {
+    const sel = btn.previousElementSibling; if (!sel || sel.tagName !== 'SELECT' || btn.disabled) return;
+    if (cur) close(false);
+    cur = { sel, btn }; menu = build(sel, btn); document.body.appendChild(menu);
+    btn.setAttribute('aria-expanded', 'true'); btn.classList.add('open');
+    place();
+    requestAnimationFrame(() => menu && menu.classList.add('in-view'));
+    const sOpt = menu.querySelector('.dd-opt[aria-selected="true"]') || visible()[0];
+    setActive(sOpt);
+    const inp = menu.querySelector('.dd-search input');
+    if (inp) { inp.focus({ preventScroll: true }); inp.addEventListener('input', () => filter(inp.value)); } else menu.querySelector('.dd-list').focus({ preventScroll: true });
+  }
+  function filter(q) {
+    q = q.trim().toLowerCase(); let n = 0;
+    menu.querySelectorAll('.dd-opt').forEach((o) => { const hit = !q || o.textContent.toLowerCase().includes(q); o.hidden = !hit; if (hit) n++; });
+    menu.querySelector('.dd-empty').hidden = n > 0;
+    setActive(visible()[0] || null); place();
+  }
+  function close(refocus = true) {
+    if (!menu) return;
+    const m = menu, { btn } = cur; menu = null; cur = null; active = -1;
+    btn.setAttribute('aria-expanded', 'false'); btn.classList.remove('open');
+    m.classList.remove('in-view'); m.classList.add('out');
+    setTimeout(() => m.remove(), 150);
+    if (refocus) btn.focus({ preventScroll: true });
+  }
+  function choose(i) {
+    if (!cur) return; const { sel } = cur;
+    if (sel.selectedIndex !== +i || cur.btn.classList.contains('dd-add')) {
+      sel.selectedIndex = +i; sel.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    close(true);
+  }
+  function move(dir) {
+    const v = visible(); if (!v.length) return;
+    const k = v.findIndex((o) => +o.dataset.i === active);
+    setActive(v[dir === 'first' ? 0 : dir === 'last' ? v.length - 1 : Math.min(v.length - 1, Math.max(0, k + dir))]);
+  }
+
+  /* ---- events (delegated, one set for the whole page) ---- */
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest && e.target.closest('.dd-btn');
+    if (btn) { e.preventDefault(); (cur && cur.btn === btn) ? close(false) : open(btn); return; }
+    const lab = e.target.closest && e.target.closest('label[for]');
+    if (lab) { const b = document.querySelector(`.dd-btn[data-for="${CSS.escape(lab.getAttribute('for'))}"]`); if (b) { e.preventDefault(); b.focus(); return; } }
+    const opt = e.target.closest && e.target.closest('.dd-opt');
+    if (opt && menu && menu.contains(opt)) { choose(opt.dataset.i); return; }
+    if (menu && !menu.contains(e.target)) close(false);
+  });
+  document.addEventListener('mousemove', (e) => { const o = e.target.closest && e.target.closest('.dd-opt'); if (o && menu && menu.contains(o) && +o.dataset.i !== active) setActive(o, false); });
+  document.addEventListener('keydown', (e) => {
+    const btn = e.target.closest && e.target.closest('.dd-btn');
+    if (!menu) {
+      if (btn && ['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) { e.preventDefault(); open(btn); }
+      return;
+    }
+    const inSearch = e.target.matches && e.target.matches('.dd-search input');
+    switch (e.key) {
+      case 'Escape': e.preventDefault(); e.stopPropagation(); close(true); break;
+      case 'Tab': close(false); break;
+      case 'ArrowDown': e.preventDefault(); move(1); break;
+      case 'ArrowUp': e.preventDefault(); move(-1); break;
+      case 'Home': if (!inSearch) { e.preventDefault(); move('first'); } break;
+      case 'End': if (!inSearch) { e.preventDefault(); move('last'); } break;
+      case 'Enter': e.preventDefault(); if (active >= 0) choose(active); break;
+      case ' ': if (!inSearch) { e.preventDefault(); if (active >= 0) choose(active); } break;
+      default:
+        if (!inSearch && e.key.length === 1 && !e.metaKey && !e.ctrlKey) {
+          clearTimeout(typedT); typed += e.key.toLowerCase(); typedT = setTimeout(() => (typed = ''), 600);
+          const hit = visible().find((o) => o.textContent.trim().toLowerCase().startsWith(typed)); if (hit) setActive(hit);
+        }
+    }
+  }, true);
+  addEventListener('resize', () => close(false));
+  addEventListener('scroll', (e) => { if (menu && !menu.contains(e.target)) place(); }, true);
+
+  /* enhance anything rendered now or later (stages, modal) */
+  let queued = false;
+  new MutationObserver(() => { if (queued) return; queued = true; queueMicrotask(() => { queued = false; scan(); }); })
+    .observe(document.body, { childList: true, subtree: true });
+  return { scan, close };
+})();
 init();
