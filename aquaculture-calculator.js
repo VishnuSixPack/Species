@@ -1051,13 +1051,17 @@ function openModal() {
   if (!m) { m = document.createElement('div'); m.id = 'modal'; document.body.appendChild(m); }
   m.innerHTML = `<div class="scrim" data-close="1"></div><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="sdt">
     <header><div><h3 id="sdt">Source Data</h3><p>The factors behind every figure in this view. Change a value and every stage recalculates.</p></div><button type="button" class="round" data-close="1" aria-label="Close">${ic('x')}</button></header>
-    <div class="sdtabs" role="tablist">${STAGES.map((s) => `<button type="button" role="tab" class="${s.id === UI.sdTab ? 'on' : ''}" data-sdtab="${s.id}">${esc(s.tab.replace('Aggregation / Disaggregation', 'Aggr / Disaggr'))}</button>`).join('')}</div>
+    <div class="sdtabs" role="tablist"><i class="gl-ind" aria-hidden="true"></i>${STAGES.map((s) => `<button type="button" role="tab" class="${s.id === UI.sdTab ? 'on' : ''}" data-sdtab="${s.id}">${esc(s.tab.replace('Aggregation / Disaggregation', 'Aggr / Disaggr'))}</button>`).join('')}</div>
     <div class="sdbody" id="sdbody"></div>
     <footer><p>Values are shown without forcing two-decimal precision. Figures come from several third-party sources and the original values may use different decimal formats.</p><div><button type="button" class="btn ghost" id="sdreset">Reset all factors</button><button type="button" class="btn solid" data-close="1">Close</button></div></footer></div>`;
   m.hidden = false; renderModalBody();
+  const tabsEl = $('.sdtabs', m);
+  const sdPlace = (smooth) => { const on = $('button.on', tabsEl); slideThumb($('.gl-ind', tabsEl), on); if (on) tabsEl.scrollTo({ left: Math.max(0, on.offsetLeft - (tabsEl.clientWidth - on.offsetWidth) / 2), behavior: smooth && !prefersReduced() ? 'smooth' : 'auto' }); };
+  sdPlace(false);
+  tabsEl.addEventListener('wheel', (e) => { if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && tabsEl.scrollWidth > tabsEl.clientWidth) { tabsEl.scrollLeft += e.deltaY; e.preventDefault(); } }, { passive: false });
   m.onclick = (e) => {
     if (e.target.closest('[data-close]')) return closeModal();
-    const t = e.target.closest('[data-sdtab]'); if (t) { UI.sdTab = t.dataset.sdtab; $$('[data-sdtab]', m).forEach((b) => b.classList.toggle('on', b === t)); renderModalBody(); }
+    const t = e.target.closest('[data-sdtab]'); if (t) { UI.sdTab = t.dataset.sdtab; $$('[data-sdtab]', m).forEach((b) => b.classList.toggle('on', b === t)); sdPlace(true); renderModalBody(); }
     const s = e.target.closest('[data-sub]'); if (s) { UI.sdSub[UI.sdTab] = s.dataset.sub; renderModalBody(); }
     if (e.target.closest('#sdreset')) { const f = Calc.defaultSD(); Object.keys(f).forEach((k) => { SD[k] = f[k]; }); S.fcr.bait = 15; S.fcr.pellet = 5; renderModalBody(); refresh(); toast('Factors reset to their defaults.'); }
   };
