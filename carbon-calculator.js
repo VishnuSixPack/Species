@@ -4739,7 +4739,9 @@ document.getElementById('app').addEventListener('click', (e)=>{
   }
   else if(action==='proceed-landing'){
     const production = selVal('landing-production', 'Wild Capture').value || 'Wild Capture';
-    if(production !== 'Wild Capture'){
+    if(production === 'Aquaculture'){
+      window.location.href = 'aquaculture-calculator.html';
+    } else if(production !== 'Wild Capture'){
       showToast(`${production} is still in progress — check back soon.`);
     } else if(state.calcMode === 'manual'){
       startFreshCalculation();
