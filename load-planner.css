@@ -72,6 +72,13 @@
      leftover once the shell hits its cap and centres itself. The padding is
      inside the capped box, so it has to be added rather than max'd against. */
   --shell-gutter: calc(max(0px, (100% - var(--shell-max)) / 2) + var(--shell-pad));
+
+  /* The two side columns. Kept deliberately tighter than the space available
+     so the 3D viewport — the part people actually manipulate — takes the
+     lion's share of any extra width. */
+  --col-left:  clamp(260px, 15vw, 305px);
+  --col-right: clamp(320px, 20vw, 385px);
+  --col-rail:  46px;                 /* the left panel once it is collapsed */
 }
 
 * { box-sizing: border-box; }
@@ -274,20 +281,74 @@ button { cursor: pointer; }
      screen. The clamps keep them readable at both ends: never narrower than
      they were, never so wide the controls look stranded. */
   grid-template-columns:
-    clamp(280px, 18vw, 365px)
+    var(--col-left)
     minmax(0, 1fr)
-    clamp(330px, 23vw, 450px);
+    var(--col-right);
   gap: 16px;
   padding: 0 var(--shell-pad) 28px;
   max-width: var(--shell-max); margin: 0 auto; align-items: stretch;
 }
+/* Cargo space is a step-one panel: once the container is chosen it mostly
+   sits there, so it folds down to a rail and hands its width to the viewport. */
+.workspace.left-collapsed { grid-template-columns: var(--col-rail) minmax(0, 1fr) var(--col-right); }
+.workspace.left-collapsed .panel-left > :not(.panel-rail) { display: none; }
+.workspace.left-collapsed .panel-left { overflow: hidden; }
+
 .card { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; }
+
+.panel-collapse {
+  width: 24px; height: 24px; padding: 0; margin-left: 8px;
+  display: grid; place-items: center;
+  border: 1px solid var(--glass-border-soft);
+  background: var(--glass-bg);
+  border-radius: 7px;
+  font-family: inherit; font-size: 15px; line-height: 1; color: var(--muted);
+  cursor: pointer; transition: all 0.2s var(--ease);
+}
+.panel-collapse:hover {
+  color: var(--primary); border-color: rgba(26, 111, 219, 0.4);
+  background: var(--primary-soft);
+}
+
+/* The rail only exists while collapsed */
+.panel-rail { display: none; }
+.left-collapsed .panel-rail {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  width: 100%; height: 100%; padding: 14px 0;
+  border: 0; background: transparent;
+  cursor: pointer; transition: background 0.2s var(--ease);
+}
+.left-collapsed .panel-rail:hover { background: var(--primary-soft); }
+.panel-rail-icon {
+  width: 24px; height: 24px; flex-shrink: 0;
+  display: grid; place-items: center;
+  border: 1px solid var(--glass-border-soft);
+  background: var(--glass-bg);
+  border-radius: 7px;
+  font-size: 15px; line-height: 1; color: var(--muted);
+}
+.panel-rail:hover .panel-rail-icon { color: var(--primary); border-color: rgba(26, 111, 219, 0.4); }
+.panel-rail-text {
+  writing-mode: vertical-rl;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--muted);
+  white-space: nowrap;
+}
+.panel-rail-sum {
+  writing-mode: vertical-rl;
+  font-size: 10px; font-weight: 600; color: var(--primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  min-height: 0;
+}
 
 .panel-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px 18px 12px;
 }
 .panel-header h2 { margin: 0; font-size: 15px; font-weight: 700; color: var(--ink); }
+/* Pushes the step hint and the collapse button together on the right, rather
+   than space-between spreading three children across the row. */
+.panel-header .hint { margin-left: auto; }
 .panel-header .hint {
   font-size: 10px; color: var(--muted);
   text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700;
@@ -2252,15 +2313,24 @@ button { cursor: pointer; }
 /* Below the clamp minimums there is no spare width to share out, so the
    columns go back to fixed sizes and the gutter tightens. */
 @media (max-width: 1280px) {
-  :root { --shell-pad: 18px; }
-  .workspace { grid-template-columns: 260px minmax(0, 1fr) 300px; gap: 12px; }
+  :root {
+    --shell-pad: 18px;
+    --col-left: 250px;
+    --col-right: 300px;
+  }
+  .workspace { gap: 12px; }
   .viewport-head { gap: 8px; }
   .scene-toggle-btn { padding: 6px 12px; }
   .view-pill { padding: 5px 10px; font-size: 11px; }
 }
 
 @media (max-width: 1100px) {
-  .workspace { grid-template-columns: 1fr; }
+  /* Stacked: there is no side column to collapse into, so the rail goes away
+     and the panel comes back whatever its stored state. */
+  .workspace, .workspace.left-collapsed { grid-template-columns: 1fr; }
+  .workspace.left-collapsed .panel-left > :not(.panel-rail) { display: revert; }
+  .left-collapsed .panel-rail { display: none; }
+  .panel-collapse { display: none; }
   .panel-center { min-height: 520px; }
   .cargo-list { max-height: 220px; }
 }

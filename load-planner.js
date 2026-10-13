@@ -4289,6 +4289,9 @@ function updateFieldSteps() {
 function updateSceneDimsDisplay() {
   $('#sceneDims').textContent =
     `${fromM(cargoSpace.length)} × ${fromM(cargoSpace.width)} × ${fromM(cargoSpace.height)} ${containerUnit}`;
+  // The collapsed rail shows the same thing, so one call keeps both honest
+  // whichever route changed the container — preset, units, or loading a plan.
+  updateRailSummary();
 }
 
 // Generic setter used by both switchers
@@ -5398,6 +5401,63 @@ function animate() {
   renderer.render(scene, camera);
 }
 
+// ============================================================
+// LEFT PANEL COLLAPSE — cargo space is a step-one panel, so once the
+// container is chosen it folds to a rail and gives its width to the viewport
+// ============================================================
+const LEFT_COLLAPSED_KEY = 'smartuna_planner_left_collapsed';
+const LEFT_PINNED_KEY    = 'smartuna_planner_left_pinned';
+
+let leftCollapsed = false;
+// Set once the user reopens the panel by hand. After that we never fold it
+// for them again — they have said they want it.
+let leftPinned = false;
+
+function setLeftCollapsed(on, remember = true) {
+  leftCollapsed = !!on;
+  document.querySelector('.workspace').classList.toggle('left-collapsed', leftCollapsed);
+  const btn = $('#panelLeftCollapse');
+  if (btn) btn.title = leftCollapsed ? 'Show cargo space (Alt+1)' : 'Hide this panel (Alt+1)';
+  if (remember) { try { localStorage.setItem(LEFT_COLLAPSED_KEY, leftCollapsed ? '1' : '0'); } catch (e) {} }
+  // The viewport just changed width; the renderer has to be told.
+  requestAnimationFrame(onResize);
+}
+
+function toggleLeftPanel() {
+  if (leftCollapsed) {                 // reopening by hand pins it open
+    leftPinned = true;
+    try { localStorage.setItem(LEFT_PINNED_KEY, '1'); } catch (e) {}
+  }
+  setLeftCollapsed(!leftCollapsed);
+}
+
+// Fold it after the cargo space is applied, but only the first time and only
+// if the user has never reopened it themselves.
+function autoCollapseLeftPanel() {
+  if (leftCollapsed || leftPinned || window.innerWidth <= 1100) return false;
+  setLeftCollapsed(true);
+  return true;
+}
+
+// The rail has room for one line: what the container actually is.
+function updateRailSummary() {
+  const el = $('#railSummary');
+  if (!el || typeof cargoSpace === 'undefined') return;
+  el.textContent = `${fromM(cargoSpace.length)} × ${fromM(cargoSpace.width)} × ${fromM(cargoSpace.height)} ${containerUnit}`;
+}
+
+function initLeftPanel() {
+  try {
+    leftPinned    = localStorage.getItem(LEFT_PINNED_KEY) === '1';
+    leftCollapsed = localStorage.getItem(LEFT_COLLAPSED_KEY) === '1';
+  } catch (e) {}
+  if (window.innerWidth <= 1100) leftCollapsed = false;
+  setLeftCollapsed(leftCollapsed, false);
+  updateRailSummary();
+  $('#panelLeftCollapse').addEventListener('click', toggleLeftPanel);
+  $('#panelLeftRail').addEventListener('click', toggleLeftPanel);
+}
+
 function onResize() {
   const rect = viewport.getBoundingClientRect();
   if (!rect.width || !rect.height) return;
@@ -5684,6 +5744,7 @@ function renderShortcuts() {
     { keys: ['P'],          desc: 'Auto-pack the plan' },
     { keys: ['2'],          desc: 'Switch to 2D orthographic mode' },
     { keys: ['3'],          desc: 'Switch to 3D perspective mode' },
+    { keys: ['Alt', '+', '1'], desc: 'Hide or show the cargo space panel' },
     { keys: ['?'],          desc: 'Show this shortcuts guide' }
   ];
   const mouse = [
@@ -6066,7 +6127,10 @@ $('#applyDimensions').addEventListener('click', () => {
     positionOrthoCamera(orthoView);
   }
   markDirty();
-  showToast(`<b>Cargo space</b> updated to ${fromM(L)} × ${fromM(W)} × ${fromM(H)} ${containerUnit}.`);
+  updateRailSummary();
+  const tucked = autoCollapseLeftPanel();
+  showToast(`<b>Cargo space</b> updated to ${fromM(L)} × ${fromM(W)} × ${fromM(H)} ${containerUnit}.` +
+    (tucked ? ' Panel tucked away — click the rail to bring it back.' : ''));
 });
 
 $('#planName').addEventListener('input', () => markDirty());
@@ -6868,6 +6932,13 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
+  // Alt+1 folds the cargo-space panel away and back
+  if (e.altKey && e.key === '1') {
+    e.preventDefault();
+    toggleLeftPanel();
+    return;
+  }
+
   if (e.key === 'Escape') {
     // Close any open custom-select menu first
     const openSel = document.querySelector('.custom-select.open');
@@ -7094,6 +7165,7 @@ async function boot() {
   setEditMode(false, null);
   updateOptionsSummary();
   updateStatusChip();
+  initLeftPanel();
 
   // Sync toggle button state
   $('#toggleRealistic').classList.toggle('active', realisticMode);
