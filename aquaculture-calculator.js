@@ -1224,4 +1224,149 @@ const DD = (() => {
     .observe(document.body, { childList: true, subtree: true });
   return { scan, close };
 })();
+/* Custom date picker. The native <input type="date"> stays in the DOM (hidden) as the source of truth, so the existing
+   input/change handlers (data-m) keep working. Values are ISO yyyy-mm-dd. */
+const DP = (() => {
+  const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const MS = MON.map((m) => m.slice(0, 3));
+  const WD = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+  const I = {
+    cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="3"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>',
+    prev: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5L5.5 8l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    next: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    chev: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  };
+  const p2 = (n) => String(n).padStart(2, '0');
+  const iso = (y, m, d) => `${y}-${p2(m + 1)}-${p2(d)}`;
+  const parse = (s) => { const r = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); return r ? { y: +r[1], m: +r[2] - 1, d: +r[3] } : null; };
+  const show = (s) => { const p = parse(s); return p ? `${p.d} ${MS[p.m]} ${p.y}` : ''; };
+  const todayP = () => { const t = new Date(); return { y: t.getFullYear(), m: t.getMonth(), d: t.getDate() }; };
+  const norm = (y, m, d) => { const t = new Date(y, m, d); return { y: t.getFullYear(), m: t.getMonth(), d: t.getDate() }; };
+
+  let pop = null, cur = null, view = 'days', vy = 0, vm = 0, fd = null;
+
+  function sync(btn, inp) {
+    const t = show(inp.value), v = btn.querySelector('.dp-val');
+    const label = t || 'Select date';
+    if (v.textContent !== label) v.textContent = label;
+    btn.classList.toggle('dp-ph', !t); btn.disabled = inp.disabled;
+  }
+  function enhance(inp) {
+    if (inp.dataset.dp) return; inp.dataset.dp = '1';
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'dp-btn'; btn.setAttribute('aria-haspopup', 'dialog'); btn.setAttribute('aria-expanded', 'false');
+    const al = inp.getAttribute('aria-label'); if (al) btn.setAttribute('aria-label', al);
+    if (inp.id) btn.dataset.for = inp.id;
+    btn.innerHTML = `<span class="dp-val"></span><i class="dp-ic">${I.cal}</i>`;
+    inp.classList.add('dp-native'); inp.tabIndex = -1; inp.setAttribute('aria-hidden', 'true');
+    inp.insertAdjacentElement('afterend', btn); sync(btn, inp);
+    inp.addEventListener('change', () => sync(btn, inp));
+  }
+  const scan = (root) => (root || document).querySelectorAll('input[type="date"]:not([data-dp])').forEach(enhance);
+
+  /* ---- rendering ---- */
+  function render(dir) {
+    const sel = parse(cur.inp.value), t = todayP();
+    let head, body;
+    if (view === 'days') {
+      head = `<button type="button" class="dp-nav" data-nav="-1" aria-label="Previous month">${I.prev}</button><button type="button" class="dp-title" data-view="months" aria-live="polite">${MON[vm]} ${vy}<i>${I.chev}</i></button><button type="button" class="dp-nav" data-nav="1" aria-label="Next month">${I.next}</button>`;
+      const first = (new Date(vy, vm, 1).getDay() + 6) % 7, cells = [];
+      for (let k = 0; k < 42; k++) {
+        const c = norm(vy, vm, 1 - first + k), id = iso(c.y, c.m, c.d);
+        const cls = ['dp-day', c.m !== vm ? 'out' : '', (c.y === t.y && c.m === t.m && c.d === t.d) ? 'today' : '', (sel && sel.y === c.y && sel.m === c.m && sel.d === c.d) ? 'sel' : '', (fd && fd.y === c.y && fd.m === c.m && fd.d === c.d) ? 'fd' : ''].filter(Boolean).join(' ');
+        cells.push(`<button type="button" class="${cls}" data-d="${id}" tabindex="-1" aria-label="${c.d} ${MON[c.m]} ${c.y}"${cls.includes('sel') ? ' aria-pressed="true"' : ''}>${c.d}</button>`);
+      }
+      body = `<div class="dp-wd">${WD.map((w) => `<span>${w}</span>`).join('')}</div><div class="dp-grid dp-days">${cells.join('')}</div>`;
+    } else if (view === 'months') {
+      head = `<button type="button" class="dp-nav" data-nav="-12" aria-label="Previous year">${I.prev}</button><button type="button" class="dp-title" data-view="years">${vy}<i>${I.chev}</i></button><button type="button" class="dp-nav" data-nav="12" aria-label="Next year">${I.next}</button>`;
+      body = `<div class="dp-grid dp-pick">${MS.map((m, i) => `<button type="button" class="dp-cell${i === vm ? ' cur' : ''}${(sel && sel.y === vy && sel.m === i) ? ' sel' : ''}" data-mo="${i}">${m}</button>`).join('')}</div>`;
+    } else {
+      const s0 = vy - 5;
+      head = `<button type="button" class="dp-nav" data-nav="-144" aria-label="Previous years">${I.prev}</button><span class="dp-title static">${s0} – ${s0 + 11}</span><button type="button" class="dp-nav" data-nav="144" aria-label="Next years">${I.next}</button>`;
+      body = `<div class="dp-grid dp-pick">${Array.from({ length: 12 }, (_, i) => s0 + i).map((y) => `<button type="button" class="dp-cell${y === vy ? ' cur' : ''}${(sel && sel.y === y) ? ' sel' : ''}${y === t.y ? ' today' : ''}" data-yr="${y}">${y}</button>`).join('')}</div>`;
+    }
+    pop.innerHTML = `<div class="dp-head">${head}</div>${body}<div class="dp-foot"><button type="button" class="dp-link" data-today="1">Today</button><button type="button" class="dp-link mute" data-clear="1"${cur.inp.value ? '' : ' disabled'}>Clear</button></div>`;
+    const g = pop.querySelector('.dp-grid'); if (g && dir) g.classList.add(dir > 0 ? 'sl-r' : 'sl-l');
+  }
+  const focusDay = () => { const d = pop && pop.querySelector('.dp-day.fd'); if (d) d.focus({ preventScroll: true }); };
+
+  function place() {
+    if (!pop || !cur) return;
+    const r = cur.btn.getBoundingClientRect(), vw = innerWidth, vh = innerHeight;
+    const w = Math.min(304, vw - 16), left = Math.min(Math.max(8, r.left), vw - w - 8);
+    pop.style.width = w + 'px'; pop.style.left = left + 'px';
+    const h = pop.offsetHeight, below = vh - r.bottom - 10, above = r.top - 10;
+    const up = below < h && above > below;
+    pop.classList.toggle('up', up);
+    if (up) { pop.style.top = 'auto'; pop.style.bottom = (vh - r.top + 6) + 'px'; } else { pop.style.bottom = 'auto'; pop.style.top = Math.max(8, r.bottom + 6) + 'px'; }
+    pop.style.setProperty('--ox', Math.min(Math.max(r.left + 24 - left, 16), w - 16) + 'px');
+  }
+  function open(btn) {
+    const inp = btn.previousElementSibling; if (!inp || inp.tagName !== 'INPUT' || btn.disabled) return;
+    if (cur) close(false);
+    cur = { inp, btn };
+    const s = parse(inp.value) || todayP(); vy = s.y; vm = s.m; fd = s; view = 'days';
+    pop = document.createElement('div'); pop.className = 'dp-pop'; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', 'Choose date');
+    document.body.appendChild(pop); render(0); place();
+    btn.setAttribute('aria-expanded', 'true'); btn.classList.add('open');
+    requestAnimationFrame(() => pop && pop.classList.add('in-view'));
+    focusDay();
+  }
+  function close(refocus = true) {
+    if (!pop) return;
+    const el = pop, { btn } = cur; pop = null; cur = null;
+    btn.setAttribute('aria-expanded', 'false'); btn.classList.remove('open');
+    el.classList.remove('in-view'); el.classList.add('out'); setTimeout(() => el.remove(), 150);
+    if (refocus) btn.focus({ preventScroll: true });
+  }
+  function commit(v) {
+    const { inp } = cur;
+    if (inp.value !== v) { inp.value = v; inp.dispatchEvent(new Event('input', { bubbles: true })); inp.dispatchEvent(new Event('change', { bubbles: true })); }
+    close(true);
+  }
+  function shiftMonth(n, dir) { const t = norm(vy, vm + n, 1); vy = t.y; vm = t.m; render(dir); place(); }
+
+  /* ---- events ---- */
+  document.addEventListener('click', (e) => {
+    const t = e.target; if (!t.closest) return;
+    const btn = t.closest('.dp-btn');
+    if (btn) { e.preventDefault(); (cur && cur.btn === btn) ? close(false) : open(btn); return; }
+    const lab = t.closest('label[for]');
+    if (lab) { const b = document.querySelector(`.dp-btn[data-for="${CSS.escape(lab.getAttribute('for'))}"]`); if (b) { e.preventDefault(); b.focus(); return; } }
+    if (!pop) return;
+    if (!pop.contains(t)) { close(false); return; }
+    const q = (s) => t.closest(s);
+    let el;
+    if ((el = q('[data-d]'))) return commit(el.dataset.d);
+    if ((el = q('[data-nav]'))) {
+      const n = +el.dataset.nav;
+      if (view === 'days') shiftMonth(n, n), focusDay(); else { vy += n / 12; render(n); place(); }
+      return;
+    }
+    if ((el = q('[data-view]'))) { view = el.dataset.view; render(0); place(); return; }
+    if ((el = q('[data-mo]'))) { vm = +el.dataset.mo; view = 'days'; fd = norm(vy, vm, Math.min(fd ? fd.d : 1, 28)); render(0); place(); focusDay(); return; }
+    if ((el = q('[data-yr]'))) { vy = +el.dataset.yr; view = 'months'; render(0); place(); return; }
+    if (q('[data-today]')) { const n = todayP(); return commit(iso(n.y, n.m, n.d)); }
+    if (q('[data-clear]')) return commit('');
+  });
+  document.addEventListener('keydown', (e) => {
+    if (!pop) { const b = e.target.closest && e.target.closest('.dp-btn'); if (b && ['ArrowDown', 'Enter', ' '].includes(e.key)) { e.preventDefault(); open(b); } return; }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); if (view !== 'days') { view = 'days'; render(0); place(); focusDay(); } else close(true); return; }
+    if (view !== 'days' || !fd) return;
+    const mv = { ArrowLeft: [0, -1], ArrowRight: [0, 1], ArrowUp: [0, -7], ArrowDown: [0, 7] }[e.key];
+    let n = null;
+    if (mv) n = norm(fd.y, fd.m, fd.d + mv[1]);
+    else if (e.key === 'PageUp' || e.key === 'PageDown') { const k = (e.key === 'PageUp' ? -1 : 1) * (e.shiftKey ? 12 : 1); const t = norm(fd.y, fd.m + k, 1); n = norm(t.y, t.m, Math.min(fd.d, new Date(t.y, t.m + 1, 0).getDate())); }
+    else if (e.key === 'Home') n = norm(fd.y, fd.m, fd.d - ((new Date(fd.y, fd.m, fd.d).getDay() + 6) % 7));
+    else if (e.key === 'End') n = norm(fd.y, fd.m, fd.d + (6 - (new Date(fd.y, fd.m, fd.d).getDay() + 6) % 7));
+    if (!n) return;
+    e.preventDefault(); const dir = (n.y * 12 + n.m) - (vy * 12 + vm); fd = n; vy = n.y; vm = n.m; render(dir); focusDay();
+  }, true);
+  addEventListener('resize', () => close(false));
+  addEventListener('scroll', (e) => { if (pop && !pop.contains(e.target)) place(); }, true);
+
+  let queued = false;
+  new MutationObserver(() => { if (queued) return; queued = true; queueMicrotask(() => { queued = false; scan(); }); }).observe(document.body, { childList: true, subtree: true });
+  return { scan, close };
+})();
 init();
