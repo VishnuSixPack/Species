@@ -852,12 +852,15 @@ function renderStage() {
   const cols = st.cols();
   host.innerHTML = `
     <div class="stage-head"><div><h2>${esc(st.title)}</h2><p class="desc">${esc(st.desc)}</p></div>${sub}</div>
-    <div class="cols c${cols.length}">${cols.map((c) => `<div class="col">${c.map((sec) => sectionHTML(st.id, sec)).join('')}</div>`).join('')}</div>
-    <footer class="bar">
+    <div class="barwrap">
+<section class="bar" aria-label="Stage result">
       <div class="bk"><span class="bl">Total emission</span><div class="bv"><b data-bar="total">0</b><i>kg CO₂e</i></div></div>
       <div class="bmid"><div class="stack" data-bar="stack" role="img" aria-label="Breakdown of this stage"></div><div class="legend" data-bar="legend"></div></div>
       <div class="bk r"><span class="bl">Emission per 1KG <em data-bar="basis"></em></span><div class="bv"><b data-bar="perkg">0</b><i>kg CO₂e</i></div></div>
-    </footer>`;
+    </section>
+    </div>
+    <div class="cols c${cols.length}">${cols.map((c) => `<div class="col">${c.map((sec) => sectionHTML(st.id, sec)).join('')}</div>`).join('')}</div>
+`;
   placeSegs(host, prevThumbs); renderRail(); updateBars();
 }
 
