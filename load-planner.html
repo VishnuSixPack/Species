@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" type="image/png" href="sc-blue-logo.png" />
+  <link rel="apple-touch-icon" href="sc-blue-logo.png" />
   <title>3D Load Planner — SmarTuna</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -229,9 +231,20 @@
           <button id="toggleDims" title="Dimension guides (G)" class="tool-toggle">↔</button>
           <button id="toggleRealistic" title="Realistic view — container + yard" class="tool-toggle">🚢</button>
           <button id="toggleLabels" title="Toggle carton labels" class="tool-toggle">Aa</button>
+          <button id="toggleContents" title="Show what is inside each carton (C)" class="tool-toggle">⊞</button>
           <button id="zoomIn" title="Zoom in">+</button>
           <button id="zoomOut" title="Zoom out">−</button>
           <button id="resetView" title="Reset camera">⟲</button>
+        </div>
+        <!-- Appears once more than one item is picked, so a part load can be
+             weighed without adding up the rows by hand. -->
+        <div class="sel-summary" id="selSummary" hidden>
+          <span class="sel-count" id="selCount">0 items</span>
+          <span class="sel-stat"><b id="selWeight">0 kg</b><small>weight</small></span>
+          <span class="sel-stat"><b id="selVolume">0 m³</b><small>volume</small></span>
+          <span class="sel-stat"><b id="selUnits">0</b><small id="selUnitsLabel">units</small></span>
+          <button type="button" id="selFocus" title="Frame the selection">Focus</button>
+          <button type="button" id="selClear" title="Clear selection (Esc)">Clear</button>
         </div>
         <div class="viewport-hint" id="viewportHint">DRAG CARTON TO MOVE · SHIFT-DRAG OR RIGHT-DRAG TO ORBIT · SCROLL TO ZOOM</div>
       </div>
@@ -374,6 +387,42 @@
           </div>
 
           <div class="edit-issues" id="editIssues" hidden></div>
+
+          <!-- Dragging into a tight gap is fiddly; this moves by an exact step. -->
+          <div class="nudge" id="nudgeBlock">
+            <div class="nudge-head">
+              <span>Nudge</span>
+              <label class="nudge-step">
+                <select id="nudgeStep" title="How far each press moves it">
+                  <option value="0.5">0.5 cm</option>
+                  <option value="1">1 cm</option>
+                  <option value="2.5">2.5 cm</option>
+                  <option value="5" selected>5 cm</option>
+                  <option value="10">10 cm</option>
+                  <option value="25">25 cm</option>
+                </select>
+              </label>
+            </div>
+            <div class="nudge-body">
+              <div class="nudge-pad" role="group" aria-label="Move on the floor">
+                <span></span>
+                <button type="button" data-nudge="z-1" title="Back (↑)">↑</button>
+                <span></span>
+                <button type="button" data-nudge="x-1" title="Left (←)">←</button>
+                <span class="nudge-hub">⊹</span>
+                <button type="button" data-nudge="x1"  title="Right (→)">→</button>
+                <span></span>
+                <button type="button" data-nudge="z1"  title="Front (↓)">↓</button>
+                <span></span>
+              </div>
+              <div class="nudge-lift" role="group" aria-label="Move up and down">
+                <button type="button" data-nudge="y1"  title="Up (Shift+↑)">↑</button>
+                <span class="nudge-lift-label">Lift</span>
+                <button type="button" data-nudge="y-1" title="Down (Shift+↓)">↓</button>
+              </div>
+            </div>
+            <div class="nudge-pos" id="nudgePos"></div>
+          </div>
 
           <div class="edit-actions">
             <button id="btnFocus"  title="Focus camera">Focus</button>
@@ -536,6 +585,9 @@
       <div class="builder-body">
         <!-- LEFT: spec -->
         <div class="builder-form">
+          <!-- Anything built and added recently, offered back as one click -->
+          <div class="brecent" id="bRecent" hidden></div>
+
           <label class="field">
             <span>Name / SKU</span>
             <input id="bName" type="text" placeholder="e.g. JW-CHUNK-400G" />
@@ -708,6 +760,18 @@
             <div class="bstep-out bstep-out-idle" id="bOuterOut">Skipped — not every product needs one</div>
 
             <div id="bOuterFields" hidden>
+              <!-- Not everything that holds packs is a box. A wrapped stack
+                   is a box with no walls and no lid, which is hard to guess. -->
+              <div class="bshape-row">
+                <span class="bshape-label">It is a</span>
+                <div class="bshape-pick" id="bOuterShape">
+                  <button type="button" class="bshape-btn active" data-oshape="box">Box with walls</button>
+                  <button type="button" class="bshape-btn" data-oshape="bundle">Shrink-wrapped stack</button>
+                  <button type="button" class="bshape-btn" data-oshape="tray">Open tray</button>
+                </div>
+              </div>
+              <p class="bstep-why" id="bOuterShapeWhy"></p>
+
               <div class="size-mode" id="bOuterSizeMode">
                 <button type="button" class="size-mode-btn active" data-osizing="contents">Work out the size for me</button>
                 <button type="button" class="size-mode-btn" data-osizing="fixed">I know the size</button>

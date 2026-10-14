@@ -754,6 +754,36 @@ out('trans.yieldKg', () => fmt(curTrans().yieldKg));
 out('stor.elec', () => fmt((R.stages.storage.events[UI.ev.storage] || { total: 0 }).total));
 out('disp.sea', () => fmt(R.stages.dispatch.sea));
 out('disp.air', () => fmt(R.stages.dispatch.air));
+/* Supply chain of GDST Critical Tracking Events (CTEs).
+   Demo chain for now. Later this config is produced by the chain-builder step before the calculator opens:
+   the user picks the CTEs, their order (repeats allowed) and the sub-CTEs (stages) under each one.
+   A CTE with skipped:true is left out of the totals. `stages` lists stage ids from STAGES. */
+const CHAIN = [
+  { id: 'hatchery', name: 'Hatchery', stages: ['juvenile', 'towing'] },
+  { id: 'feedmill', name: 'Feed mill', stages: ['feed'], optional: true },
+  { id: 'farm', name: 'Farm', stages: ['farming', 'harvest'] },
+  { id: 'ship-in', name: 'Ship/Receive', stages: ['landing'] },
+  { id: 'agg', name: 'Aggregation / Disaggregation', stages: ['agg'], optional: true },
+  { id: 'processor', name: 'Processor', stages: ['trans', 'storage'] },
+  { id: 'ship-out', name: 'Ship/Receive', stages: ['dispatch'] }
+];
+const cteIndex = (stageId = UI.stage) => Math.max(0, CHAIN.findIndex((c) => c.stages.includes(stageId)));
+
+function renderChain() {
+  const host = $('#cnodes'); if (!host) return;
+  const cur = cteIndex(), inStage = UI.view === 'stage';
+  host.innerHTML = CHAIN.map((c, i) => {
+    const on = inStage && i === cur;
+    const state = on ? 'on' : (i < cur ? 'past' : '');
+    const lines = c.stages.map((id) => stageOf(id).tab).filter((t) => t !== c.name);
+    return `<button type="button" class="cn ${state}${c.optional ? ' opt' : ''}${c.skipped ? ' skip' : ''}" data-go="${c.stages[0]}"${on ? ' aria-current="step"' : ''}>
+      <span class="cr"><i class="cl${i === 0 ? ' none' : (i <= cur ? ' done' : '')}"></i><b class="cd">${i + 1}</b><i class="cl${i === CHAIN.length - 1 ? ' none' : (i < cur ? ' done' : '')}"></i></span>
+      <span class="cname">${esc(c.name)}</span><span class="csub">${lines.map(esc).join('<br>')}</span></button>`;
+  }).join('');
+  const lab = $('#cteLabel'); if (lab) lab.textContent = 'Stages in ' + CHAIN[cur].name;
+  const act = $('.cn.on', host);
+  if (act && host.scrollWidth > host.clientWidth) host.scrollTo({ left: Math.max(0, act.offsetLeft - (host.clientWidth - act.offsetWidth) / 2), behavior: prefersReduced() ? 'auto' : 'smooth' });
+}
 /* Rendering: rail, stage card, bottom bar, badge, report, init */
 const BASIS = {
   juvenile: 'juvenile weight', towing: 'juveniles towed', feed: 'feed', farming: 'net biomass gain', harvest: 'harvested fish',
@@ -792,10 +822,11 @@ function placeSegs(root, prev = {}) {
 }
 
 function renderRail() {
-  const rail = $('#rail');
-  if (!rail.dataset.built) {
-    rail.innerHTML = '<i class="gl-ind" aria-hidden="true"></i>' + STAGES.map((s) => `<button type="button" class="tab" role="tab" data-go="${s.id}"><span class="tl">${esc(s.tab)}</span><span class="share"><i data-share="${s.id}"></i></span></button>`).join('');
-    rail.dataset.built = '1';
+  renderChain();
+  const rail = $('#rail'), cte = CHAIN[cteIndex()];
+  if (rail.dataset.built !== cte.id) {
+    rail.innerHTML = '<i class="gl-ind" aria-hidden="true"></i>' + cte.stages.map((id) => { const s = stageOf(id); return `<button type="button" class="tab" role="tab" data-go="${s.id}"><span class="tl">${esc(s.tab)}</span><span class="share"><i data-share="${s.id}"></i></span></button>`; }).join('');
+    rail.dataset.built = cte.id;
   }
   $$('.tab', rail).forEach((b) => b.setAttribute('aria-selected', String(UI.view === 'stage' && UI.stage === b.dataset.go)));
   const act = $('.tab[aria-selected="true"]', rail);
@@ -916,7 +947,11 @@ function init() {
         <button type="button" class="btn solid alt" id="rep"><span>Report</span>${ic('chart')}</button>
       </div>
     </header>
-    <nav class="rail-wrap" aria-label="Stages"><div class="rail" id="rail" role="tablist"></div></nav>
+    <section class="ctepanel" aria-label="Supply chain">
+      <div class="chain-top"><span class="ceyebrow">Supply chain path</span><span class="cnote">GDST critical tracking events</span><span class="cleg"><i></i>optional in some chains</span></div>
+      <div class="cnodes" id="cnodes"></div>
+      <div class="chain-stages"><span class="ccur" id="cteLabel"></span><nav class="rail-wrap" aria-label="Stages"><div class="rail" id="rail" role="tablist"></div></nav></div>
+    </section>
     <main class="card" id="stage"></main>
     <p class="foot">Aquaculture production · GDST-aligned stages · Figures are estimates built from the factors in Source Data.</p>`;
   { const lg = $('#brand img'); if (lg) lg.addEventListener('error', () => $('#brand').classList.add('nologo')); }

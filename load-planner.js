@@ -99,6 +99,8 @@ const TEMPLATES_KEY = 'smartuna_planner_templates_v1';
 const SCENE_MODE_KEY = 'smartuna_planner_scene_mode';
 const REALISTIC_MODE_KEY = 'smartuna_planner_realistic_mode';
 const DIMS_MODE_KEY = 'smartuna_planner_dims_mode';
+const NUDGE_STEP_KEY = 'smartuna_planner_nudge_step';
+const SHOW_CONTENTS_KEY = 'smartuna_planner_show_contents';
 const GRID_STEP_KEY = 'smartuna_planner_grid_step';
 
 // Selectable grid spacings, in metres. 'auto' sizes them to the container.
@@ -1037,6 +1039,149 @@ function buildItemGeometry(item) {
   return geo;
 }
 
+// ============================================================
+// CARTON CONTENTS — a carton built in the builder knows exactly what is in
+// it, so the plan can show the cans rather than a brown box.
+// ============================================================
+
+// Rotations that put a pack's own axes (length→X, height→Y, width→Z) onto the
+// world axes for each of the six orientations. These must agree with the
+// ORIENTATIONS table exactly or the contents will point the wrong way inside
+// their own carton; there is a test that checks every one against itemExtent.
+const CONTENT_EULER = [
+  [0, 0, 0],                               // 0 upright
+  [0, Math.PI / 2, 0],                     // 1 upright, yawed
+  [Math.PI / 2, 0, 0],                     // 2 on side
+  [Math.PI / 2, Math.PI / 2, 0],           // 3 on side, yawed  (Y applied after X)
+  [Math.PI / 2, 0, Math.PI / 2],           // 4 on end          (Z applied after X)
+  [0, 0, Math.PI / 2]                      // 5 on end, yawed
+];
+
+function contentQuaternion(rot_y) {
+  const [x, y, z] = CONTENT_EULER[normaliseOrient(rot_y)] || CONTENT_EULER[0];
+  const q = new THREE.Quaternion();
+  // Each entry is a sequence of quarter turns applied in order X, then Y, then Z
+  if (x) q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), x));
+  if (y) q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), y));
+  if (z) q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), z));
+  return q;
+}
+
+let showContents = true;                 // viewport toggle
+// Drawing every can of every carton can run to tens of thousands of meshes.
+// Past this many the plan falls back to plain boxes and says why.
+const MAX_CONTENT_UNITS = 12000;
+let contentsBudgetHit = false;
+
+// How many unit meshes an item would contribute
+function itemContentCount(item) {
+  const b = ensureBuild(item);
+  return b ? b.cells.length : 0;
+}
+
+// Build the little meshes that sit inside one carton. Positions come out of
+// the builder's own maths, in the pack's local axes and in centimetres.
+function buildContentsGroup(item) {
+  const b = ensureBuild(item);
+  if (!b || !b.cells.length) return null;
+
+  const g = new THREE.Group();
+  g.userData.isContents = true;
+  g.raycast = () => {};
+  g.quaternion.copy(contentQuaternion(item.rot_y));
+
+  // One instanced mesh per group, so colour per batch costs nothing extra
+  const byGroup = new Map();
+  b.cells.forEach(c => {
+    if (!byGroup.has(c.g)) byGroup.set(c.g, []);
+    byGroup.get(c.g).push(c);
+  });
+
+  byGroup.forEach((cells, gi) => {
+    const grp = b.groups[gi];
+    if (!grp) return;
+    const S = 0.01;                                   // cm → world metres
+    const geo = grp.round
+      ? new THREE.CylinderGeometry(grp.d / 2 * S, grp.d / 2 * S, grp.h * S, 16)
+      : new THREE.BoxGeometry(grp.l * S, grp.h * S, grp.w * S);
+    const mat = new THREE.MeshStandardMaterial({
+      color: grp.color, roughness: 0.55, metalness: 0.12
+    });
+    const mesh = new THREE.InstancedMesh(geo, mat, cells.length);
+    mesh.raycast = () => {};
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion().setFromEuler(
+      new THREE.Euler(...(grp.euler || [0, 0, 0])));
+    const one = new THREE.Vector3(1, 1, 1);
+    const pos = new THREE.Vector3();
+    cells.forEach((c, i) => {
+      pos.set(c.x * S, c.y * S, c.z * S);
+      m.compose(pos, q, one);
+      mesh.setMatrixAt(i, m);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    g.add(mesh);
+  });
+
+  return g;
+}
+
+function removeContentsGroup(item) {
+  if (!item.mesh) return;
+  const old = item.mesh.children.find(c => c.userData.isContents);
+  if (!old) return;
+  item.mesh.remove(old);
+  old.traverse(o => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) o.material.dispose();
+  });
+}
+
+// Add or drop the contents of one carton, and make its shell see-through
+// while they are showing so the contents are actually visible.
+function applyContents(item, budget) {
+  if (!item.mesh) return 0;
+  removeContentsGroup(item);
+  const count = itemContentCount(item);
+  const want = showContents && count > 0;
+
+  if (!want || count > budget.left) {
+    item.mesh.material.transparent = false;
+    item.mesh.material.opacity = 1;
+    item.mesh.material.needsUpdate = true;
+    return 0;
+  }
+  const grp = buildContentsGroup(item);
+  if (grp) item.mesh.add(grp);
+  item.mesh.material.transparent = true;
+  item.mesh.material.opacity = 0.22;
+  item.mesh.material.depthWrite = false;
+  item.mesh.material.needsUpdate = true;
+  budget.left -= count;
+  return count;
+}
+
+function refreshAllContents() {
+  const budget = { left: MAX_CONTENT_UNITS };
+  const wanted = items.reduce((s, i) => s + itemContentCount(i), 0);
+  items.forEach(i => applyContents(i, budget));
+  contentsBudgetHit = showContents && wanted > MAX_CONTENT_UNITS;
+  const btn = $('#toggleContents');
+  if (btn) btn.classList.toggle('active', showContents);
+  updateContentsHint(wanted);
+}
+
+function updateContentsHint(wanted) {
+  const el = $('#viewportHint');
+  if (!el) return;
+  el.classList.toggle('hint-warn', contentsBudgetHit);
+  if (contentsBudgetHit) {
+    el.textContent = `TOO MANY UNITS TO DRAW (${wanted.toLocaleString()}) — SHOWING PLAIN CARTONS`;
+  } else {
+    el.textContent = 'DRAG CARTON TO MOVE · SHIFT-DRAG OR RIGHT-DRAG TO ORBIT · SCROLL TO ZOOM';
+  }
+}
+
 function createItemMesh(item) {
   const isRound = SHAPES[item.shape || 'box']?.round;
 
@@ -1135,6 +1280,10 @@ function refreshItemMesh(item) {
   }
   const sprite = item.mesh.children.find(c => c.userData.isLabel);
   if (sprite) sprite.position.y = e.h / 200 + 0.18;
+  // Contents are drawn in the pack's own axes, so turning the carton has to
+  // turn what is inside it by the same amount.
+  const inner = item.mesh.children.find(c => c.userData.isContents);
+  if (inner) inner.quaternion.copy(contentQuaternion(item.rot_y));
   item.mesh.position.set(
     item.pos_x / 100,
     item.pos_y / 100,
@@ -1162,6 +1311,9 @@ function rebuildItemMesh(item) {
     item.pos_z / 100 - cargoSpace.width / 2
   );
   if (wasSelected) highlightMesh(item, true);
+  // A fresh mesh has no contents yet; put them back unless the plan has
+  // already given up on drawing them.
+  if (!contentsBudgetHit) applyContents(item, { left: MAX_CONTENT_UNITS });
   updateLabelVisibility();
 }
 
@@ -1252,7 +1404,11 @@ function addItem(spec) {
     shape:     normaliseShape(spec.kind, spec.shape),
     max_stack_kg: spec.max_stack_kg ?? null,
     rot_y: 0, pos_x: 0, pos_y: 0, pos_z: 0, mesh: null,
-    contents: spec.contents ? spec.contents.map(c => ({ ...c })) : null
+    contents: spec.contents ? spec.contents.map(c => ({ ...c })) : null,
+    // What the carton builder made this from, so the plan can draw the real
+    // contents. Small enough to store; the unit positions are derived.
+    build_ref: spec.build_ref || null,
+    build: undefined
   };
   item.mesh = createItemMesh(item);
   cartonGroup.add(item.mesh);
@@ -1285,7 +1441,9 @@ function restoreItem(spec) {
     pos_y:     Number(spec.pos_y) || 0,
     pos_z:     Number(spec.pos_z) || 0,
     mesh: null,
-    contents: spec.contents ? spec.contents.map(c => ({ ...c })) : null
+    contents: spec.contents ? spec.contents.map(c => ({ ...c })) : null,
+    build_ref: spec.build_ref || spec.build_spec || null,
+    build: undefined
   };
   item.mesh = createItemMesh(item);
   cartonGroup.add(item.mesh);
@@ -1308,6 +1466,10 @@ function removeItem(id) {
   });
   items.splice(idx, 1);
   if (selectedItemId === id) selectedItemId = null;
+  // A deleted item must not keep contributing to the selection total
+  multiSelect.delete(id);
+  if (lastListClickId === id) lastListClickId = null;
+  renderSelectionSummary();
   markDirty();
 }
 
@@ -1352,31 +1514,212 @@ function clearScene() {
   });
   items = [];
   selectedItemId = null;
+  multiSelect.clear();
+  lastListClickId = null;
+  contentsBudgetHit = false;
+  renderSelectionSummary();
   batchCounters = { carton: 0, pallet: 0, slipsheet: 0 };
 }
 
 // ============================================================
 // SELECTION
 // ============================================================
-function selectItem(id) {
+// ============================================================
+// SELECTION — one item drives the inspector, but any number can be marked
+// so a part load can be weighed without adding the rows up by hand.
+// ============================================================
+const multiSelect = new Set();          // ids marked alongside the inspector one
+let lastListClickId = null;             // anchor for shift-range picking
+
+// Everything currently counted: the inspector item plus anything marked
+function selectionIds() {
+  const ids = new Set(multiSelect);
+  if (selectedItemId) ids.add(selectedItemId);
+  return ids;
+}
+
+function isSelected(id) { return id === selectedItemId || multiSelect.has(id); }
+
+// `keepList` leaves the items list on screen instead of swapping in the
+// inspector. Building a selection means clicking several rows in a row, and
+// the inspector hides the very list being clicked.
+function selectItem(id, { keepList = false } = {}) {
   const prev = items.find(i => i.id === selectedItemId);
   highlightMesh(prev, false);
   selectedItemId = id;
   const item = items.find(i => i.id === id);
   highlightMesh(item, true);
   populateFormFromItem(item);
-  setEditMode(true, item);
+  if (!keepList) setEditMode(true, item);
   renderCargoList();
   renderEditStrip();
+  updateNudgeReadout();
+  renderSelectionSummary();
+}
+
+// Ctrl/Cmd-click: add or remove one item from the marked set
+function toggleInSelection(id, keepList = true) {
+  if (id === selectedItemId) {
+    // Unpicking the inspector item hands the lead to another marked one
+    const next = [...multiSelect][0] || null;
+    if (next) multiSelect.delete(next);
+    highlightMesh(items.find(i => i.id === id), false);
+    if (next) selectItem(next, { keepList }); else deselectAll();
+    refreshMultiHighlights();
+    renderCargoList();
+    renderSelectionSummary();
+    return;
+  }
+  if (multiSelect.has(id)) multiSelect.delete(id);
+  else multiSelect.add(id);
+  if (!selectedItemId && multiSelect.size) {
+    const first = [...multiSelect][0];
+    multiSelect.delete(first);
+    selectItem(first, { keepList });
+    return;
+  }
+  refreshMultiHighlights();
+  renderCargoList();
+  renderSelectionSummary();
+}
+
+// Shift-click in the list: everything between the anchor and here
+function selectRangeTo(id) {
+  const order = items.map(i => i.id);
+  const a = order.indexOf(lastListClickId ?? selectedItemId);
+  const b = order.indexOf(id);
+  if (a < 0 || b < 0) return selectItem(id);
+  const [lo, hi] = a < b ? [a, b] : [b, a];
+  multiSelect.clear();
+  for (let i = lo; i <= hi; i++) multiSelect.add(order[i]);
+  const lead = order[b];
+  multiSelect.delete(lead);
+  selectItem(lead, { keepList: true });
+  refreshMultiHighlights();
+  renderCargoList();
+  renderSelectionSummary();
+}
+
+function selectAllItems() {
+  if (!items.length) return;
+  multiSelect.clear();
+  items.forEach(i => multiSelect.add(i.id));
+  const lead = items[0].id;
+  multiSelect.delete(lead);
+  selectItem(lead, { keepList: true });
+  setPanelTab('items');                  // show what was just picked
+  refreshMultiHighlights();
+  renderCargoList();
+  renderSelectionSummary();
+}
+
+function refreshMultiHighlights() {
+  items.forEach(i => {
+    if (!i.mesh) return;
+    const marked = multiSelect.has(i.id);
+    i.mesh.userData.multi = marked;
+    // Marked-but-not-inspected items get a softer emissive than the lead
+    if (i.id !== selectedItemId) {
+      i.mesh.material.emissive?.set(marked ? 0x1a6fdb : 0x000000);
+      i.mesh.material.emissiveIntensity = marked ? 0.35 : 0;
+    }
+  });
+}
+
+// What the marked items add up to
+function selectionTotals() {
+  const ids = selectionIds();
+  const picked = items.filter(i => ids.has(i.id));
+  let weight = 0, volume_cm3 = 0, units = 0;
+  const lots = new Set();
+  picked.forEach(i => {
+    weight += Number(i.weight_kg) || 0;
+    volume_cm3 += i.length_cm * i.width_cm * i.height_cm;
+    (i.contents || []).forEach(c => {
+      units += Number(c.quantity) || 0;
+      if (c.batch_lot) lots.add(c.batch_lot);
+    });
+  });
+  return { count: picked.length, weight, volume_m3: volume_cm3 / 1e6, units, lots: [...lots], picked };
+}
+
+function renderSelectionSummary() {
+  const bar = $('#selSummary');
+  if (!bar) return;
+  const t = selectionTotals();
+  // One item is what the inspector is for; the bar earns its place from two up.
+  // The figures are written either way, so nothing stale is left behind it.
+  bar.hidden = t.count < 2;
+  $('#selCount').textContent  = `${t.count} items`;
+  $('#selWeight').textContent = `${t.weight.toFixed(1)} kg`;
+  $('#selVolume').textContent = `${t.volume_m3.toFixed(3)} m³`;
+  $('#selUnits').textContent  = t.units ? String(t.units) : '—';
+  $('#selUnitsLabel').textContent = t.lots.length
+    ? `units · ${t.lots.length} batch${t.lots.length === 1 ? '' : 'es'}`
+    : 'units inside';
 }
 
 function deselectAll() {
   const prev = items.find(i => i.id === selectedItemId);
   highlightMesh(prev, false);
   selectedItemId = null;
+  multiSelect.clear();
+  refreshMultiHighlights();
   setEditMode(false, null);
   renderCargoList();
   renderEditStrip();
+  renderSelectionSummary();
+}
+
+// ============================================================
+// NUDGE — move the selected item by an exact step. Dragging a carton into a
+// gap a few centimetres wide is a test of mouse control, not of planning.
+// ============================================================
+let nudgeStepCm = 5;
+
+// Which way is which, in centimetres of world space
+const NUDGE_AXIS = { x: 'pos_x', y: 'pos_y', z: 'pos_z' };
+
+function nudgeSelected(axis, dir, step = nudgeStepCm) {
+  const item = items.find(i => i.id === selectedItemId);
+  if (!item) return false;
+  const key = NUDGE_AXIS[axis];
+  if (!key) return false;
+
+  const before = item[key];
+  item[key] = before + dir * step;
+  clampItemToBounds(item);
+
+  // Hard against a wall: say so rather than silently doing nothing
+  if (Math.abs(item[key] - before) < 0.001) {
+    showToast(`Already against the ${axis === 'y' ? (dir > 0 ? 'roof' : 'floor') : 'wall'}.`);
+    return false;
+  }
+
+  refreshItemMesh(item);
+  evaluateStability();
+  renderCargoList();
+  updateStats();
+  updateNudgeReadout();
+  updateDimOverlay?.();
+  if (sceneMode === '2d') updateResizeHandlesPosition?.();
+  markDirty();
+  return true;
+}
+
+// Where the item currently sits, so a nudge has a frame of reference
+function updateNudgeReadout() {
+  const el = $('#nudgePos');
+  if (!el) return;
+  const item = items.find(i => i.id === selectedItemId);
+  if (!item) { el.textContent = ''; return; }
+  const e = itemExtent(item);
+  // Measured from the back-left-floor corner of the cargo space, which is
+  // what a loading plan actually refers to.
+  el.innerHTML =
+    `From the corner: <b>${fromCm(item.pos_x - e.l / 2)}</b> × ` +
+    `<b>${fromCm(item.pos_z - e.w / 2)}</b> · ` +
+    `<b>${fromCm(item.pos_y - e.h / 2)}</b> up`;
 }
 
 function populateFormFromItem(item) {
@@ -1601,7 +1944,10 @@ function renderCargoList() {
       ? `${pm.trays} ${escapeHtml(packWord)} · ${units} ${escapeHtml(unitWord)}${lots.length ? ' · ' + lots.map(escapeHtml).join(', ') : ''}${pm.order_no ? ' · #' + escapeHtml(pm.order_no) : ''}`
       : (units ? `${units} ${escapeHtml(unitWord)}${lots.length ? ' · ' + lots.map(escapeHtml).join(', ') : ''}` : '');
     return `
-    <div class="cargo-row ${i.id === selectedItemId ? 'selected' : ''}" data-id="${i.id}">
+    <div class="cargo-row ${i.id === selectedItemId ? 'selected' : ''}${multiSelect.has(i.id) ? ' marked' : ''}" data-id="${i.id}">
+      <button type="button" class="cargo-pick${isSelected(i.id) ? ' on' : ''}" data-pick="${i.id}"
+              title="Count this one in the selection total"
+              aria-pressed="${isSelected(i.id)}">✓</button>
       <span class="cargo-swatch" style="background:${i.color}"></span>
       <div class="cargo-meta">
         <b>${escapeHtml(i.label)}${i.product_name ? ' · ' + escapeHtml(i.product_name) : ''}</b>
@@ -1617,8 +1963,23 @@ function renderCargoList() {
     row.addEventListener('click', (e) => {
       const id = row.dataset.id;
       if (e.target.classList.contains('focus-icon')) {
-        selectItem(id); focusOnItem(id);
-      } else selectItem(id);
+        selectItem(id); focusOnItem(id); lastListClickId = id; return;
+      }
+      // The tick box builds a selection without opening the inspector, which
+      // would hide the very list the next row has to be picked from.
+      if (e.target.closest('.cargo-pick')) {
+        e.stopPropagation();
+        toggleInSelection(id);
+        lastListClickId = id;
+        return;
+      }
+      // Ctrl/Cmd adds one, Shift takes the run, a plain click starts over
+      if (e.ctrlKey || e.metaKey) { toggleInSelection(id); lastListClickId = id; return; }
+      if (e.shiftKey) { selectRangeTo(id); return; }
+      multiSelect.clear();
+      refreshMultiHighlights();
+      selectItem(id);
+      lastListClickId = id;
     });
   });
 }
@@ -2040,13 +2401,20 @@ const GROUP_COLORS = ['#1a6fdb', '#38b47a', '#f4a11c', '#8b5cf6', '#ec4899', '#1
 // trays and pallets rather than whatever the user actually ships.
 const TERM_DEFAULTS = { product: 'Unit', primary: 'Pack', outer: 'Outer box', secondary: 'Base' };
 
-// Shown as the heading until the user has named that level
-const TERM_UNNAMED = {
-  product:   'What are you shipping?',
-  primary:   'What do they go into?',
-  outer:     'What holds those?',
-  secondary: 'What does it all stack on?'
-};
+// Shown as the heading until the user has named that level. Each one names
+// the level below it rather than saying "those", which told nobody anything.
+function unnamedHeading(level) {
+  const below = (lvl) => isNamed(lvl)
+    ? term(lvl, 2, true)                 // their own word, plural: "trays"
+    : (lvl === 'product' ? 'the products' : 'the packs');
+  switch (level) {
+    case 'product':   return 'What are you shipping?';
+    case 'primary':   return `What do ${below('product')} go into?`;
+    case 'outer':     return `What do ${below('primary')} go into?`;
+    case 'secondary': return 'What does it all stack on?';
+    default:          return 'Name this level';
+  }
+}
 
 // Printed under each step heading, so no heading relies on jargon.
 const TERM_ROLES = {
@@ -2182,12 +2550,16 @@ function newGroup(index = 0) {
     batch_lot: '',
     medium: '',
     shape: 'cylinder',                   // 'cylinder' | 'box'
-    unit_d_mm: 73,                       // diameter — cylinder
-    unit_l_mm: 73,                       // footprint — box
-    unit_w_mm: 73,
-    unit_h_mm: 43,
-    unit_weight_g: 95,
-    cols: 4, rows: 3, layers: 4,
+    // Measurements start empty. A builder that opens pre-filled with
+    // somebody else's can invites a plan built on numbers nobody checked.
+    unit_d_mm: 0,                        // diameter — cylinder
+    unit_l_mm: 0,                        // footprint — box
+    unit_w_mm: 0,
+    unit_h_mm: 0,
+    unit_weight_g: 0,
+    // Counts stay at one so the first measurement typed shows something in
+    // the preview straight away.
+    cols: 1, rows: 1, layers: 1,
     orient: 'upright',                   // how the product sits: upright | side | end
     inverted: false,                     // packed upside down
     align_l: 'center',                   // where the block sits in the pack,
@@ -2202,9 +2574,9 @@ function newOuter() {
     enabled: false,
     sizing: 'contents',                  // 'contents' = size it around the packs
                                          // 'fixed'    = known box, fit packs into it
-    fixed_l_mm: 580, fixed_w_mm: 380, fixed_h_mm: 320,
-    cols: 2, rows: 2, layers: 1,         // packs across L, across W, stacked high
-    wall_mm: 4, gap_mm: 0, layer_gap_mm: 0, tare_kg: 0.55,
+    fixed_l_mm: 0, fixed_w_mm: 0, fixed_h_mm: 0,
+    cols: 1, rows: 1, layers: 1,         // packs across L, across W, stacked high
+    wall_mm: 0, gap_mm: 0, layer_gap_mm: 0, tare_kg: 0,
     open_top: false,
     wrap: { enabled: false, thickness_mm: 0.1, weight_g: 25 }
   };
@@ -2227,14 +2599,16 @@ function newBuilderSpec() {
     // cans sit shoulder to shoulder with a little air, but stack directly on
     // each other unless there is a layer pad between them.
     layer_gap_mm: 0,
-    wall_mm: 3,
-    gap_mm: 2,
-    tare_kg: 0.4,
+    // Zero too: a wall thickness and a tare weight are things only the user
+    // knows, and a guessed 3 mm quietly changes every size downstream.
+    wall_mm: 0,
+    gap_mm: 0,
+    tare_kg: 0,
     sizing: 'contents',                  // 'contents' = size the tray from what's in it
                                          // 'fixed'    = tray is a known size, fit units into it
-    fixed_l_mm: 400, fixed_w_mm: 300, fixed_h_mm: 150,
+    fixed_l_mm: 0, fixed_w_mm: 0, fixed_h_mm: 0,
     open_top: false,                     // no lid: contents may stand above the rim
-    wrap: { enabled: false, thickness_mm: 0.1, weight_g: 15 },
+    wrap: { enabled: false, thickness_mm: 0, weight_g: 0 },
     groups: [newGroup(0)],
     outer: newOuter(),
     pallet: {
@@ -3197,10 +3571,33 @@ function updatePalletFit(ship, p, stacked = 'primary') {
     return;
   }
   const pat = builder.pallet.pattern === 'interlock' ? 'interlocked' : 'block';
+  const what = term(stacked, 1, true);
+  const whats = term(stacked, 2, true);
+  const auto = !(builder.pallet.layers > 0);
+  const base = builder.pallet;
+  const over = (base.overhang_mm || 0) / 10;
+
+  // Say where each number came from. "4 outer boxes" on its own looks like it
+  // was invented; it is the footprint and the height limit doing their jobs.
   box.innerHTML = `
-    <div>${p.perLayer} per layer × ${p.layers} layer${p.layers === 1 ? '' : 's'} = <b>${p.trays}</b> ${escapeHtml(term(stacked, p.trays, true))}</div>
-    <div>${pat} pattern · max ${p.maxLayers} layer${p.maxLayers === 1 ? '' : 's'} under ${fromCm(builder.pallet.max_h_cm)} ${itemUnit}</div>
-    ${p.overhangs ? `<div class="pf-warn">${escapeHtml(term(stacked, 2))} overhang the base.</div>` : ''}
+    <div>${p.perLayer} per layer × ${p.layers} layer${p.layers === 1 ? '' : 's'} = <b>${p.trays}</b> ${escapeHtml(whats)}</div>
+    <div class="pf-why">
+      <b>${p.perLayer}</b> fits on a base of
+      <b>${fromCm(base.length_cm)} × ${fromCm(base.width_cm)} ${itemUnit}</b>${over ? ` (+${fromCm(over)} overhang each side)` : ''}
+      because one ${escapeHtml(what)} is
+      <b>${fromCm(ship.length_cm)} × ${fromCm(ship.width_cm)} ${itemUnit}</b> on the floor.
+    </div>
+    <div class="pf-why">
+      ${auto
+        ? `<b>${p.layers}</b> high because <b>Layers</b> is on <b>auto</b> — that is the most that fit under your
+           <b>${fromCm(base.max_h_cm)} ${itemUnit}</b> height limit
+           (${fromCm(base.max_h_cm)} − ${fromCm(base.deck_h_cm)} base ÷ ${fromCm(ship.height_cm)} each).
+           Type a number in <b>Layers</b> to stack fewer.`
+        : `<b>${p.layers}</b> high because you typed it. ${p.maxLayers} would fit under your
+           <b>${fromCm(base.max_h_cm)} ${itemUnit}</b> limit — clear the box to use the most that fit.`}
+    </div>
+    <div class="pf-why">${pat} pattern${p.perLayer === 1 ? ' · only one per layer, so the pattern makes no difference' : ''}</div>
+    ${p.overhangs ? `<div class="pf-warn">${escapeHtml(capitalise(whats))} overhang the base.</div>` : ''}
   `;
 }
 
@@ -3266,7 +3663,7 @@ function renderStepHeads() {
     const role  = document.querySelector(`[data-step-role="${level}"]`);
     const named = isNamed(level);
     if (title) {
-      title.textContent = named ? term(level) : TERM_UNNAMED[level];
+      title.textContent = named ? term(level) : unnamedHeading(level);
       title.classList.toggle('bstep-unnamed', !named);
     }
     if (num)   num.textContent = nums[level];
@@ -3371,6 +3768,7 @@ function renderOuterFields() {
 
   const pill = $('#bPreviewOuter');
   if (pill) { pill.hidden = !o.enabled; pill.textContent = term('outer'); }
+  renderOuterShape();
   refreshSegments();
 }
 
@@ -3425,7 +3823,10 @@ function readOuterFields() {
 function renderTermInputs() {
   $('#bTermProduct').value   = builder.terms.product;
   $('#bTermPrimary').value   = builder.terms.primary;
-  $('#bTermOuter').value     = builder.terms.outer || TERM_DEFAULTS.outer;
+  // Left empty when unnamed, like the other three. Writing the fallback in
+  // here made the next keystroke anywhere read it back as a real choice, so
+  // the level named itself without anyone typing a word.
+  $('#bTermOuter').value     = builder.terms.outer || '';
   $('#bTermSecondary').value = builder.terms.secondary;
   renderPreviewPills();
   renderStepHeads();
@@ -3859,20 +4260,145 @@ function buildCartonPreview() {
 // shows one thing while the maths reserves space for another:
 //   side -> quarter turn about X, height ends up across the width (Z)
 //   end  -> quarter turn about Z, length ends up vertical
-function unitQuaternion(g) {
-  const e = new THREE.Euler(0, 0, 0);
+// Returned as a plain triple so it can be stored and replayed in the plan
+// scene without carrying a THREE object around.
+function unitEulerTriple(g) {
   const orient = (g.shape === 'cylinder' && g.orient === 'end') ? 'upright' : g.orient;
-  if (orient === 'side') e.set(Math.PI / 2, 0, 0);
-  else if (orient === 'end') e.set(0, 0, Math.PI / 2);
-  const q = new THREE.Quaternion().setFromEuler(e);
+  const e = orient === 'side' ? [Math.PI / 2, 0, 0]
+          : orient === 'end'  ? [0, 0, Math.PI / 2]
+          : [0, 0, 0];
+  // Upside down is a half turn about whichever axis is still horizontal.
+  // Both turns are about the same axis, so they simply add.
   if (g.inverted) {
-    // Turn it over about whichever axis is still horizontal
-    const axis = orient === 'end'
-      ? new THREE.Vector3(0, 0, 1)
-      : new THREE.Vector3(1, 0, 0);
-    q.multiply(new THREE.Quaternion().setFromAxisAngle(axis, Math.PI));
+    if (orient === 'end') e[2] += Math.PI;
+    else                  e[0] += Math.PI;
   }
-  return q;
+  return e;
+}
+
+function unitQuaternion(g) {
+  return new THREE.Quaternion().setFromEuler(new THREE.Euler(...unitEulerTriple(g)));
+}
+
+// ---- turning a spec into drawable unit positions ----
+// Positions come out in the pack's own axes (X = length, Y = height,
+// Z = width), in centimetres, measured from the centre of the finished item.
+// Everything downstream just places little meshes at these points.
+
+const MAX_CELLS_PER_ITEM = 4000;
+
+function buildGroupGeometryList(spec) {
+  return spec.groups.map(g => {
+    const nat = groupNaturalDims(g);
+    return {
+      round: g.shape === 'cylinder',
+      d: g.unit_d_mm / 10,
+      l: nat.l / 10, w: nat.w / 10, h: nat.h / 10,
+      color: g.color,
+      euler: unitEulerTriple(g)
+    };
+  });
+}
+
+// Unit positions inside one level-2 pack
+function packCells(spec, c, blocks) {
+  const gap  = spec.gap_mm || 0;
+  const lgap = spec.layer_gap_mm || 0;
+  const wall = hasPack(spec) ? (spec.wall_mm || 0) : 0;
+  const outerH = c.height_cm * 10;                   // mm
+  const innerL = c.inner.l, innerW = c.inner.w;
+  const index = new Map(spec.groups.map((g, i) => [g.id, i]));
+  const cells = [];
+  let yCursor = -outerH / 2 + wall;
+  blocks.forEach(b => {
+    const gi = index.get(b.id) ?? 0;
+    const { fp, uh, cols, rows, layers } = b;
+    const spanL = cols * fp.l + Math.max(0, cols - 1) * gap;
+    const spanW = rows * fp.w + Math.max(0, rows - 1) * gap;
+    const startX = -innerL / 2 + alignOffset(b.group.align_l, spanL, innerL) + fp.l / 2;
+    const startZ = -innerW / 2 + alignOffset(b.group.align_w, spanW, innerW) + fp.w / 2;
+    for (let ly = 0; ly < layers; ly++) {
+      const y = yCursor + uh / 2 + ly * (uh + lgap);
+      for (let cx = 0; cx < cols; cx++) {
+        for (let rz = 0; rz < rows; rz++) {
+          cells.push({
+            g: gi,
+            x: (startX + cx * (fp.l + gap)) / 10,
+            y: y / 10,
+            z: (startZ + rz * (fp.w + gap)) / 10
+          });
+        }
+      }
+    }
+    yCursor += layers * uh + Math.max(0, layers - 1) * lgap + lgap;
+  });
+  return cells;
+}
+
+// Shift a set of cells to a new centre
+const offsetCells = (cells, dx, dy, dz) =>
+  cells.map(c => ({ g: c.g, x: c.x + dx, y: c.y + dy, z: c.z + dz }));
+
+// Every unit inside whatever this plan item actually is
+function flattenBuild(ref) {
+  const { spec, level, pack_index } = ref;
+  if (!spec || !spec.groups?.length) return null;
+  const groups = buildGroupGeometryList(spec);
+  const c = computeCarton(spec);
+  if (!c.total_units) return null;
+
+  // One cell list per pack kind
+  const perPack = c.packs.map(p => packCells(spec, c, p.blocks));
+
+  if (level === 'primary') {
+    const idx = Number.isInteger(pack_index) ? pack_index : 0;
+    const cells = perPack[idx] || perPack[0] || [];
+    return cells.length <= MAX_CELLS_PER_ITEM ? { groups, cells } : null;
+  }
+
+  // Level 3: a grid of packs inside the outer box
+  const o = computeOuter(spec, c);
+  const packL = c.length_cm, packW = c.width_cm, packH = c.height_cm;
+  const gap  = (spec.outer.gap_mm || 0) / 10;
+  const lgap = (spec.outer.layer_gap_mm || 0) / 10;
+  const wall = (spec.outer.wall_mm || 0) / 10;
+  const spanL = o.grid.cols * packL + Math.max(0, o.grid.cols - 1) * gap;
+  const spanW = o.grid.rows * packW + Math.max(0, o.grid.rows - 1) * gap;
+  const innerL = o.inner.l / 10, innerW = o.inner.w / 10;
+  const startX = -innerL / 2 + (innerL - spanL) / 2 + packL / 2;
+  const startZ = -innerW / 2 + (innerW - spanW) / 2 + packW / 2;
+  const floorY = -o.height_cm / 2 + wall;
+
+  const slots = [];
+  for (let ly = 0; ly < o.grid.layers; ly++)
+    for (let cx = 0; cx < o.grid.cols; cx++)
+      for (let rz = 0; rz < o.grid.rows; rz++)
+        slots.push([
+          startX + cx * (packL + gap),
+          floorY + packH / 2 + ly * (packH + lgap),
+          startZ + rz * (packW + gap)
+        ]);
+
+  const outerCells = [];
+  slots.forEach((s, i) => {
+    const src = perPack[i % perPack.length] || [];
+    if (outerCells.length + src.length > MAX_CELLS_PER_ITEM) return;
+    outerCells.push(...offsetCells(src, s[0], s[1], s[2]));
+  });
+  if (!outerCells.length) return null;
+
+  if (level === 'outer') return { groups, cells: outerCells };
+
+  // Level 4: the whole pallet. Usually far past the budget, and a pallet of
+  // identical cartons reads fine as cartons, so this is left to the cap.
+  return null;
+}
+
+// Cells are derived, not stored: the saved spec is small, the cell list is not
+function ensureBuild(item) {
+  if (item.build !== undefined) return item.build;
+  item.build = item.build_ref ? flattenBuild(item.build_ref) : null;
+  return item.build;
 }
 
 // The optional level-3 box, with the level-2 packs laid out inside it
@@ -4000,14 +4526,83 @@ function renderCartonSpecDropdown() {
 }
 
 // ---- open / close ----
+// ============================================================
+// RECENT BUILDS — a carton added to the plan is worth offering back. Saving
+// one by name is a deliberate act; this is the undeliberate version.
+// ============================================================
+const RECENT_BUILDS_KEY = 'smartuna_planner_recent_builds';
+const MAX_RECENT_BUILDS = 8;
+let recentBuilds = [];
+
+function loadRecentBuilds() {
+  try { recentBuilds = JSON.parse(localStorage.getItem(RECENT_BUILDS_KEY)) || []; }
+  catch (e) { recentBuilds = []; }
+}
+
+function rememberBuild(spec, label) {
+  const copy = JSON.parse(JSON.stringify(spec));
+  delete copy._done;                     // a recalled build is not a finished one
+  const c = computeCarton(copy);
+  const ship = computeShip(copy);
+  const entry = {
+    id: 'r_' + Math.random().toString(36).slice(2, 9),
+    name: (spec.name || label || '').trim() || 'Untitled build',
+    at: Date.now(),
+    summary: `${ship.units} ${term('product', ship.units, true)} · ` +
+             `${fromCm(ship.length_cm)} × ${fromCm(ship.width_cm)} × ${fromCm(ship.height_cm)} ${itemUnit}`,
+    spec: copy
+  };
+  // Same name rebuilt replaces the older entry rather than filling the list
+  recentBuilds = [entry, ...recentBuilds.filter(r => r.name !== entry.name)]
+    .slice(0, MAX_RECENT_BUILDS);
+  try { localStorage.setItem(RECENT_BUILDS_KEY, JSON.stringify(recentBuilds)); } catch (e) {}
+  renderRecentBuilds();
+}
+
+function renderRecentBuilds() {
+  const wrap = $('#bRecent');
+  if (!wrap) return;
+  wrap.hidden = !recentBuilds.length;
+  if (!recentBuilds.length) return;
+  wrap.innerHTML =
+    `<span class="brecent-label">Recent</span>` +
+    recentBuilds.map(r => `
+      <button type="button" class="brecent-chip" data-recent="${r.id}"
+              title="${escapeHtml(r.summary)}">
+        ${escapeHtml(r.name)}<small>${escapeHtml(r.summary)}</small>
+      </button>`).join('') +
+    `<button type="button" class="brecent-clear" id="bRecentClear" title="Forget these">Clear</button>`;
+
+  wrap.querySelectorAll('[data-recent]').forEach(btn => btn.addEventListener('click', () => {
+    const r = recentBuilds.find(x => x.id === btn.dataset.recent);
+    if (!r) return;
+    builder = normaliseSpec(JSON.parse(JSON.stringify(r.spec)));
+    delete builder._done;
+    writeBuilderFields();
+    renderTermInputs();
+    renderBuilderGroups();
+    updateBuilderComputed();
+    rebuildBuilderPreview();
+    showToast(`Loaded <b>${escapeHtml(r.name)}</b>.`);
+  }));
+  $('#bRecentClear').addEventListener('click', () => {
+    recentBuilds = [];
+    try { localStorage.removeItem(RECENT_BUILDS_KEY); } catch (e) {}
+    renderRecentBuilds();
+  });
+}
+
 function openBuilder() {
-  if (!builder) builder = newBuilderSpec();
+  // A finished build does not carry over into the next one. Pick it off the
+  // Recent row instead, where it is a deliberate choice.
+  if (!builder || builder._done) builder = newBuilderSpec();
   normaliseSpec(builder);
   writeBuilderFields();
   refreshBuilderUnitUI();
   renderTermInputs();
   renderBuilderGroups();
   renderCartonSpecDropdown();
+  renderRecentBuilds();
   $('#bHelp').hidden = true;
   if (builderPreviewMode === 'pallet' && !builder.pallet.enabled) builderPreviewMode = 'carton';
   if (builderPreviewMode === 'outer'  && !builder.outer.enabled)  builderPreviewMode = 'carton';
@@ -4103,18 +4698,26 @@ function addBuiltCartonToPlan() {
     return rows;
   };
 
+  // A snapshot of what this was built from, so the plan can draw the real
+  // contents rather than a brown box. Cheap: the unit positions are worked
+  // out again from this, not stored.
+  const specSnapshot = JSON.parse(JSON.stringify(builder));
+  const buildLevel = onPallet ? 'pallet' : (outerOn ? 'outer' : 'primary');
+
   // One piece per pack when loose, otherwise a single piece holding them all
   const pieces = loose
     ? c.packs.map((pk, i) => ({
         idxs: [i], color: pk.color,
         suffix: '-' + (packName(pk, i).replace(/\s+/g, '').slice(0, 10) || (i + 1)),
-        productName: builder.groups.find(g => g.id === pk.id)?.product_name || ''
+        productName: builder.groups.find(g => g.id === pk.id)?.product_name || '',
+        buildRef: { level: 'primary', pack_index: i, spec: specSnapshot }
       }))
     : [{
         idxs: c.packs.map((_, i) => i),
         color: null,
         suffix: '',
-        productName: builder.groups[0]?.product_name || ''
+        productName: builder.groups[0]?.product_name || '',
+        buildRef: { level: buildLevel, pack_index: null, spec: specSnapshot }
       }];
 
   let added = 0;
@@ -4144,7 +4747,8 @@ function addBuiltCartonToPlan() {
         height_cm: Number(ship.h.toFixed(2)),
         weight_kg: Number((loose ? c.packs[piece.idxs[0]].weight_kg : ship.kg).toFixed(3)),
         handling: 'standard',
-        color
+        color,
+        build_ref: piece.buildRef
       });
       item.contents = contents.map(x => ({ ...x }));
       item.terms = { ...builder.terms };
@@ -4163,6 +4767,9 @@ function addBuiltCartonToPlan() {
 
   updateStats();
   renderCargoList();
+  refreshAllContents();
+  rememberBuild(builder, baseLabel);
+  builder._done = true;                  // next open starts fresh
   closeBuilder();
   const totalUnits = pieces.reduce((s, piece) =>
     s + contentsFor(piece.idxs).reduce((t, r) => t + r.quantity, 0), 0) * builderQty;
@@ -4402,8 +5009,17 @@ function onPointerDown(e) {
   const hit = hitCarton(e);
   if (!hit) { deselectAll(); return; }
 
+  // Ctrl/Cmd-click marks a carton for the running total instead of grabbing
+  // it, so a part load can be weighed without dragging anything by accident.
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    toggleInSelection(hit.itemId);
+    return;
+  }
+
   e.preventDefault();
   canvas.setPointerCapture(e.pointerId);
+  if (!multiSelect.has(hit.itemId)) { multiSelect.clear(); refreshMultiHighlights(); }
   selectItem(hit.itemId);
 
   const item = items.find(i => i.id === hit.itemId);
@@ -5745,6 +6361,12 @@ function renderShortcuts() {
     { keys: ['2'],          desc: 'Switch to 2D orthographic mode' },
     { keys: ['3'],          desc: 'Switch to 3D perspective mode' },
     { keys: ['Alt', '+', '1'], desc: 'Hide or show the cargo space panel' },
+    { keys: ['C'],          desc: 'Show or hide what is inside each carton' },
+    { keys: ['←', '→', '↑', '↓'], desc: 'Nudge the selected carton across the floor' },
+    { keys: ['Shift', '+', '↑↓'], desc: 'Nudge the selected carton up or down' },
+    { keys: ['Alt', '+', 'arrows'], desc: 'Nudge by a fifth of the step' },
+    { keys: [modKey, '+', 'A'], desc: 'Select every carton' },
+    { keys: [modKey, '+', 'click'], desc: 'Add or remove one carton from the selection' },
     { keys: ['?'],          desc: 'Show this shortcuts guide' }
   ];
   const mouse = [
@@ -5782,7 +6404,7 @@ document.querySelectorAll('[data-close-shortcuts]').forEach(el => {
 // Columns added by later migrations. If a database hasn't had them applied,
 // PostgREST rejects the whole insert — so we detect that and retry without
 // them rather than failing the save outright.
-const OPTIONAL_ITEM_COLS = ['shape', 'max_stack_kg'];
+const OPTIONAL_ITEM_COLS = ['shape', 'max_stack_kg', 'build_spec'];
 
 function buildItemsPayload(planId, skip = []) {
   return items.map(i => {
@@ -5798,6 +6420,7 @@ function buildItemsPayload(planId, skip = []) {
     };
     if (!skip.includes('shape'))        row.shape = i.shape || 'box';
     if (!skip.includes('max_stack_kg')) row.max_stack_kg = i.max_stack_kg ?? null;
+    if (!skip.includes('build_spec'))   row.build_spec = i.build_ref ?? null;
     return row;
   });
 }
@@ -5994,13 +6617,15 @@ async function loadPlan(planId) {
         max_stack_kg: it.max_stack_kg ?? null,
         rot_y: it.rot_y || 0,
         pos_x: it.pos_x, pos_y: it.pos_y, pos_z: it.pos_z,
-        contents: contentsByItem[it.id] || null
+        contents: contentsByItem[it.id] || null,
+        build_spec: it.build_spec || null
       });
     });
 
     recomputeBatchCounter();
     updateStats();
     renderCargoList();
+    refreshAllContents();
     setEditMode(false, null);
     markClean();
 
@@ -6204,7 +6829,19 @@ $('#fQtyPlus').addEventListener('click', () => {
 
 $('#primaryFormBtn').addEventListener('click', addNewItems);
 $('#inspectSave').addEventListener('click', updateSelectedItem);
-$('#inspectBack').addEventListener('click', () => deselectAll());
+// Back closes the inspector and returns to the list. It deliberately keeps
+// anything ticked for the selection total: the tick boxes only exist on the
+// list, so wiping them on the way back would make a total impossible to build.
+$('#inspectBack').addEventListener('click', () => {
+  if (multiSelect.size) {
+    setEditMode(false, null);
+    setPanelTab('items');
+    renderCargoList();
+    renderEditStrip();
+  } else {
+    deselectAll();
+  }
+});
 
 function readFormValues() {
   return {
@@ -6308,6 +6945,48 @@ function updateSelectedItem() {
   renderEditStrip();
   markDirty();
   showToast(`Updated <b>${escapeHtml(item.label)}</b>.`);
+}
+
+// ---- nudge pad ----
+$$('#nudgeBlock [data-nudge]').forEach(btn => btn.addEventListener('click', () => {
+  const code = btn.dataset.nudge;                    // e.g. "x-1", "z1", "y1"
+  const axis = code[0];
+  const dir  = Number(code.slice(1));
+  nudgeSelected(axis, dir);
+}));
+$('#nudgeStep').addEventListener('change', e => {
+  nudgeStepCm = parseFloat(e.target.value) || 5;
+  try { localStorage.setItem(NUDGE_STEP_KEY, String(nudgeStepCm)); } catch (err) {}
+});
+
+// ---- carton contents ----
+function setShowContents(on) {
+  showContents = !!on;
+  try { localStorage.setItem(SHOW_CONTENTS_KEY, showContents ? '1' : '0'); } catch (e) {}
+  refreshAllContents();
+}
+$('#toggleContents').addEventListener('click', () => setShowContents(!showContents));
+
+// ---- selection summary ----
+$('#selClear').addEventListener('click', deselectAll);
+$('#selFocus').addEventListener('click', () => {
+  const t = selectionTotals();
+  if (t.picked.length) focusOnItems(t.picked);
+});
+
+// Frame a whole selection rather than a single item
+function focusOnItems(list) {
+  if (!list.length) return;
+  if (list.length === 1) return focusOnItem(list[0].id);
+  const box = new THREE.Box3();
+  list.forEach(i => { if (i.mesh) box.expandByObject(i.mesh); });
+  if (box.isEmpty()) return;
+  const centre = box.getCenter(new THREE.Vector3());
+  const radius = Math.max(box.getSize(new THREE.Vector3()).length() / 2, 0.5);
+  controls.target.copy(centre);
+  const dir = new THREE.Vector3().subVectors(camera.position, centre).normalize();
+  camera.position.copy(centre).add(dir.multiplyScalar(radius * 2.6));
+  controls.update();
 }
 
 $('#btnFocus').addEventListener('click', () => { if (selectedItemId) focusOnItem(selectedItemId); });
@@ -6639,10 +7318,13 @@ const OUTER_FIELD_IDS = ['#bOuterOn', '#bOuterFixL', '#bOuterFixW', '#bOuterFixH
   '#bOuterWrapT', '#bOuterWrapKg'];
 
 function onOuterFieldChange() {
+  const wasOn = builder.outer.enabled;
   readOuterFields();
   renderOuterFields();
-  // Dropping the level can't leave the preview showing it
+  // Switching the level on is the moment to show it; switching it off can't
+  // leave the preview pointing at something that no longer exists.
   if (!builder.outer.enabled && builderPreviewMode === 'outer') setBuilderPreviewMode('carton');
+  else if (!wasOn && builder.outer.enabled) setBuilderPreviewMode('outer');
   updateBuilderComputed();
   rebuildBuilderPreview();
 }
@@ -6661,15 +7343,80 @@ $$('#bOuterSizeMode .size-mode-btn').forEach(btn => btn.addEventListener('click'
   rebuildBuilderPreview();
 }));
 
+// ---- what kind of thing level 3 actually is ----
+// "Box" is only one answer. A stack of trays pulled tight in film has no
+// walls and no lid, and setting wall to 0 plus two switches to reach that is
+// not something anyone would guess.
+const OUTER_SHAPES = {
+  box:    { open_top: false, wrap: false, zeroWall: false,
+            why: 'Walls all round and a lid. Set the board thickness below.' },
+  bundle: { open_top: true,  wrap: true,  zeroWall: true,
+            why: 'No box at all — the packs are stacked and pulled tight in film. ' +
+                 'Nothing is added to the size except the film itself.' },
+  tray:   { open_top: true,  wrap: false, zeroWall: false,
+            why: 'A tray with low sides and no lid. The packs can stand above the rim.' }
+};
+
+function outerShapeOf(o) {
+  if (!(o.wall_mm > 0) && o.open_top && o.wrap?.enabled) return 'bundle';
+  if (o.open_top) return 'tray';
+  return 'box';
+}
+
+function applyOuterShape(kind) {
+  const s = OUTER_SHAPES[kind];
+  if (!s) return;
+  const o = builder.outer;
+  o.open_top = s.open_top;
+  o.wrap.enabled = s.wrap;
+  if (s.zeroWall) o.wall_mm = 0;
+  writeOuterFields();
+  renderOuterShape();
+  updateBuilderComputed();
+  rebuildBuilderPreview();
+}
+
+function renderOuterShape() {
+  const row = $('#bOuterShape');
+  if (!row) return;
+  const kind = outerShapeOf(builder.outer);
+  $$('#bOuterShape .bshape-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.oshape === kind));
+  $('#bOuterShapeWhy').textContent = OUTER_SHAPES[kind]?.why || '';
+  refreshSegments();
+}
+
+$$('#bOuterShape .bshape-btn').forEach(btn =>
+  btn.addEventListener('click', () => applyOuterShape(btn.dataset.oshape)));
+
 // Pallet section
 const PALLET_FIELD_IDS = ['#bPalletOn', '#bPalletPattern', '#bPalletL', '#bPalletW',
   '#bPalletH', '#bPalletKg', '#bPalletMaxH', '#bPalletOver', '#bPalletLayers',
   '#bPalletBatch', '#bPalletOrder', '#bPalletPacker'];
 
+// Editing a base dimension by hand means it is no longer that preset. Leaving
+// the dropdown reading "EUR1 · 120 × 80" over a 43 × 65 base is a lie about
+// what is being planned.
+function syncPalletPreset() {
+  const p = builder.pallet;
+  if (p.preset === 'custom') return;
+  const preset = PALLET_PRESETS[p.preset];
+  if (!preset) return;
+  const same = Math.abs(p.length_cm - preset.length) < 0.05 &&
+               Math.abs(p.width_cm  - preset.width)  < 0.05;
+  if (!same) {
+    p.preset = 'custom';
+    $('#bPalletPreset').value = 'custom';
+  }
+}
+
 function onPalletFieldChange() {
+  const wasOn = builder.pallet.enabled;
   readPalletFields();
+  syncPalletPreset();
   $('#bPalletFields').hidden = !builder.pallet.enabled;
   if (!builder.pallet.enabled && builderPreviewMode === 'pallet') setBuilderPreviewMode('carton');
+  else if (!wasOn && builder.pallet.enabled) setBuilderPreviewMode('pallet');
   updateBuilderComputed();
   rebuildBuilderPreview();
 }
@@ -6697,6 +7444,40 @@ $('#bPalletPreset').addEventListener('change', e => {
   updateBuilderComputed();
   rebuildBuilderPreview();
 });
+
+// ---- the preview follows the step being worked on ----
+// Filling in the outer box while the preview still shows the pack means
+// staring at something that is not changing. Touching a step switches to it;
+// clicking a pill by hand always wins and is never blocked.
+const STEP_PREVIEW = {
+  bProductStep:  'carton',               // the pack view also shows bare product
+  bPrimaryStep:  'carton',
+  bOuterStep:    'outer',
+  bPalletStep:   'pallet'
+};
+
+function previewAvailable(mode) {
+  if (mode === 'outer')  return !!builder.outer?.enabled;
+  if (mode === 'pallet') return !!builder.pallet?.enabled;
+  return true;
+}
+
+function followStepPreview(stepId) {
+  const want = STEP_PREVIEW[stepId];
+  if (!want || want === builderPreviewMode) return;
+  if (!previewAvailable(want)) return;   // level is switched off; leave it be
+  setBuilderPreviewMode(want);
+}
+
+function initStepPreviewFollow() {
+  Object.keys(STEP_PREVIEW).forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    // focusin covers tabbing as well as clicking into a field
+    el.addEventListener('focusin', () => followStepPreview(id));
+    el.addEventListener('pointerdown', () => followStepPreview(id));
+  });
+}
 
 function setBuilderPreviewMode(mode) {
   builderPreviewMode = mode;
@@ -6803,6 +7584,7 @@ $('#bSpecSelect').addEventListener('change', e => {
   const spec = cartonSpecs.find(s => s.id === id);
   if (!spec) return;
   builder = normaliseSpec(JSON.parse(JSON.stringify(spec)));
+  delete builder._done;                  // loading one is a fresh start, not a finished build
   writeBuilderFields();
   renderTermInputs();
   renderBuilderGroups();
@@ -6939,6 +7721,29 @@ window.addEventListener('keydown', (e) => {
     return;
   }
 
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a' && !inField) {
+    e.preventDefault();
+    selectAllItems();
+    return;
+  }
+
+  // Arrow keys nudge the selected carton. Left/right and up/down move it
+  // across the floor; holding Shift lifts it instead. Typing in a field
+  // still gets its own arrows.
+  if (!inField && selectedItemId && e.key.startsWith('Arrow')) {
+    const step = e.altKey ? nudgeStepCm / 5 : nudgeStepCm;   // Alt for a fine step
+    let axis = null, dir = 0;
+    if (e.key === 'ArrowLeft')  { axis = 'x'; dir = -1; }
+    if (e.key === 'ArrowRight') { axis = 'x'; dir =  1; }
+    if (e.key === 'ArrowUp')    { axis = e.shiftKey ? 'y' : 'z'; dir = e.shiftKey ?  1 : -1; }
+    if (e.key === 'ArrowDown')  { axis = e.shiftKey ? 'y' : 'z'; dir = e.shiftKey ? -1 :  1; }
+    if (axis) {
+      e.preventDefault();
+      nudgeSelected(axis, dir, step);
+      return;
+    }
+  }
+
   if (e.key === 'Escape') {
     // Close any open custom-select menu first
     const openSel = document.querySelector('.custom-select.open');
@@ -7000,6 +7805,8 @@ window.addEventListener('keydown', (e) => {
     $('#toggleLabels').click();
   } else if (e.key === 'g') {
     $('#toggleDims').click();
+  } else if (e.key === 'c') {
+    $('#toggleContents').click();
   } else if (e.key === 'p') {
     runAutoPack();
   } else if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
@@ -7078,7 +7885,7 @@ window.addEventListener('beforeunload', (e) => {
 let refreshSegments = () => {};
 
 function initSegmentedIndicators() {
-  const SELECTOR = '.view-pills, .scene-toggle, .kind-tabs, .unit-mini, .shape-pick, .panel-tabs, .shape-toggle, .size-mode, .base-type, .orient-toggle, .group-mode';
+  const SELECTOR = '.view-pills, .scene-toggle, .kind-tabs, .unit-mini, .shape-pick, .panel-tabs, .shape-toggle, .size-mode, .base-type, .orient-toggle, .group-mode, .bshape-pick';
   const getContainers = () => document.querySelectorAll(SELECTOR);
 
   const update = (container) => {
@@ -7142,6 +7949,10 @@ async function boot() {
     if (ss !== null && SNAP_STEP_OPTIONS.includes(Number(ss))) moveStep = Number(ss);
     const bu = localStorage.getItem(BUILDER_UNIT_KEY);
     if (bu && TO_MM[bu]) builderUnit = bu;
+    const ns = parseFloat(localStorage.getItem(NUDGE_STEP_KEY));
+    if (ns > 0) nudgeStepCm = ns;
+    const sc = localStorage.getItem(SHOW_CONTENTS_KEY);
+    if (sc !== null) showContents = sc === '1';
   } catch (e) {}
   try {
     const savedC = localStorage.getItem(CONTAINER_UNIT_KEY);
@@ -7155,6 +7966,7 @@ async function boot() {
   renderTemplateDropdown();
   loadCartonSpecs();
   loadBatchCodes();
+  loadRecentBuilds();
   builder = newBuilderSpec();
   renderGridOptions();                      // before enhanceSelect picks them up
   renderSnapOptions();
@@ -7166,6 +7978,10 @@ async function boot() {
   updateOptionsSummary();
   updateStatusChip();
   initLeftPanel();
+  $('#nudgeStep').value = String(nudgeStepCm);
+  refreshAllContents();
+  renderSelectionSummary();
+  initStepPreviewFollow();
 
   // Sync toggle button state
   $('#toggleRealistic').classList.toggle('active', realisticMode);
