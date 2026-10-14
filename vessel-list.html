@@ -389,17 +389,11 @@ async function getAuthUser(){
 (async function init(){
   const user=await getAuthUser();
   if(!user){location.href='login.html';return;}
-  // Show button instantly if cached as admin (avoids flash on revisit)
-  const cachedRole=sessionStorage.getItem('pm_role');
-  if(cachedRole&&['admin','operator'].includes(cachedRole)){
-    // show immediately — will be corrected below if role changed
-    $('addDropdown').style.removeProperty('display');
-  }
   const {data:p}=await sb.from('profiles').select('role,first_name,last_name,avatar_color,photo_url').eq('id',user.id).single();
   isAdmin=p&&['admin','operator'].includes(p.role);
   // Cache role for instant show on next page load
   if(p?.role) sessionStorage.setItem('pm_role',p.role);
-  if(!isAdmin) $('addDropdown').style.display='none';
+  // Add/Edit/Delete open to all authenticated users
 
   // avatar
   const first=(p?.first_name||user.email.split('@')[0]);

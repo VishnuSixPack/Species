@@ -620,8 +620,8 @@ function renderHeader(){
   $('hdrTitle').textContent=v.current_name;
   $('hdrSub').textContent=`${v.vessel_subtype||v.vessel_category||'Vessel'} · ${v.vessel_flag||'Flag unknown'}`;
   const backBtn=`<a href="vessel-list.html" class="btn secondary" style="margin-right:8px">← Vessels</a>`;
-  const editBtn=isAdmin?`<a class="btn primary" href="vessel.html?id=${v.id}">Edit vessel</a>`:'';
-  const delBtn=isAdmin?`<button class="btn danger" onclick="confirmDelete('${v.id}')" style="margin-left:8px">Delete vessel</button>`:'';
+  const editBtn=`<a class="btn primary" href="vessel.html?id=${v.id}">Edit vessel</a>`;
+  const delBtn=`<button class="btn danger" onclick="confirmDelete('${v.id}')" style="margin-left:8px">Delete vessel</button>`;
   $('hdrActions').innerHTML=backBtn+editBtn+delBtn;
   document.title=`${v.current_name} · SmarTuna concept`;
 }
@@ -682,7 +682,7 @@ async function renderNotesTab(tc){
   // This keeps the editor card alive across tab switches
   tc.innerHTML=''; // clear previous tab content
 
-  if(isAdmin){
+  if(true){
     // Editor card — built once, Quill attaches to real DOM node
     const editorCard=document.createElement('div');
     editorCard.className='card';
@@ -1131,7 +1131,7 @@ function renderSustain(v){
   <div class="card" style="margin-top:18px">
     <div class="card-head">
       <div class="card-title">Other Licenses</div>
-      ${isAdmin?`<button class="btn-edit" onclick="openModal('other_license')">+ Add License</button>`:''}
+      ${'<button class="btn-edit" onclick="openModal(\'other_license\')">+ Add License</button>'}
     </div>
     <div id="otherLicensesList"><div class="empty-state" style="padding:20px;text-align:center;color:var(--soft);font-size:13px">Loading…</div></div>
   </div>`;
@@ -1141,7 +1141,7 @@ function renderSustain(v){
 // renderNotesShell replaced by renderNotesTab (DOM-based)
 let quillEditor=null;
 function initQuillEditor(){
-  if(quillEditor||!isAdmin) return;
+  if(quillEditor) return;
   const el=$('noteEditor'); if(!el) return;
   if(typeof Quill==='undefined'){ setTimeout(initQuillEditor,150); return; }
   try{
@@ -1168,7 +1168,7 @@ async function loadNotes(retry=0){
     console.warn('loadNotes: #notesList not found after retries'); return;
   }
   // Init Quill if not already running
-  if(isAdmin && !quillEditor) setTimeout(initQuillEditor, 60);
+  if(!quillEditor) setTimeout(initQuillEditor, 60);
   // Fetch notes without join (avoids FK schema dependency)
   const {data,error}=await sb.from('vessel_notes').select('*').eq('vessel_id',vid).order('created_at',{ascending:false});
   if(error){
@@ -1195,7 +1195,7 @@ async function loadNotes(retry=0){
         <span class="note-card-author">${esc(profileMap[n.created_by]||'Admin')}</span>
         <span class="note-card-date">${fmtDateTime(n.created_at)}</span>
       </div>
-      ${isAdmin?`<div style="display:flex;gap:6px;flex-shrink:0">
+      ${true?`<div style="display:flex;gap:6px;flex-shrink:0">
         <button onclick="editNote('${n.id}')" style="height:30px;padding:0 11px;border-radius:7px;border:1.5px solid var(--border);background:#fff;font:inherit;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:.14s" onmouseover="this.style.borderColor='var(--primary)';this.style.color='var(--primary)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Edit</button>
         <button onclick="deleteNote('${n.id}')" style="height:30px;padding:0 11px;border-radius:7px;border:1.5px solid var(--border);background:#fff;font:inherit;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;transition:.14s" onmouseover="this.style.borderColor='var(--danger)';this.style.color='var(--danger)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">Delete</button>
       </div>`:''}
@@ -1484,12 +1484,12 @@ async function loadHistory(){
 }
 function histCard(title,type,cols,rows,ids){
   // ids = array of DB row IDs matching rows[], for delete
-  const editBtn=isAdmin?`<button class="btn-edit" onclick="openHistModal('${type}')">+ Add</button>`:'';
+  const editBtn=`<button class="btn-edit" onclick="openHistModal('${type}')">+ Add</button>`;
   const body=rows.length
-    ?`<table class="hist-table"><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}${isAdmin?'<th style="width:36px"></th>':''}</tr></thead><tbody>
+    ?`<table class="hist-table"><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}'<th style="width:36px"></th>'</tr></thead><tbody>
       ${rows.map((r,i)=>`<tr>
         ${r.map(c=>`<td>${esc(c||'—')}</td>`).join('')}
-        ${isAdmin&&ids?.[i]?`<td><button onclick="deleteHistRow('${type}','${ids[i]}')" style="width:26px;height:26px;border:none;background:none;cursor:pointer;color:var(--soft);border-radius:6px;display:flex;align-items:center;justify-content:center;transition:.14s" title="Delete" onmouseover="this.style.color='var(--danger)';this.style.background='var(--danger-soft)'" onmouseout="this.style.color='var(--soft)';this.style.background='none'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button></td>`:''}
+        ${ids?.[i]?`<td><button onclick="deleteHistRow('${type}','${ids[i]}')" style="width:26px;height:26px;border:none;background:none;cursor:pointer;color:var(--soft);border-radius:6px;display:flex;align-items:center;justify-content:center;transition:.14s" title="Delete" onmouseover="this.style.color='var(--danger)';this.style.background='var(--danger-soft)'" onmouseout="this.style.color='var(--soft)';this.style.background='none'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button></td>`:''}
       </tr>`).join('')}
     </tbody></table>`
     :`<div class="hist-empty">No records yet.</div>`;
