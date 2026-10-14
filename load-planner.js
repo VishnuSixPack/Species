@@ -1441,6 +1441,9 @@ function addItem(spec) {
     color:     spec.color,
     shape:     normaliseShape(spec.kind, spec.shape),
     max_stack_kg: spec.max_stack_kg ?? null,
+    // Pinned in place: nothing that changes where it sits or which way it
+    // faces will touch it until it is unlocked.
+    locked: !!spec.locked,
     rot_y: 0, pos_x: 0, pos_y: 0, pos_z: 0, mesh: null,
     contents: spec.contents ? spec.contents.map(c => ({ ...c })) : null,
     // What the carton builder made this from, so the plan can draw the real
@@ -1474,6 +1477,7 @@ function restoreItem(spec) {
     color:     spec.color,
     shape:     normaliseShape(spec.kind, spec.shape),
     max_stack_kg: spec.max_stack_kg ?? null,
+    locked:    !!spec.locked,
     rot_y:     normaliseOrient(spec.rot_y),
     pos_x:     Number(spec.pos_x) || 0,
     pos_y:     Number(spec.pos_y) || 0,
@@ -1520,6 +1524,9 @@ function settleAll() {
   );
   const placed = [];
   for (const item of sorted) {
+    // A locked carton is where somebody put it on purpose. It still counts as
+    // a support for anything above, it just never gets moved itself.
+    if (item.locked) { placed.push(item); continue; }
     const e = itemExtent(item);
     const minX = item.pos_x - e.l / 2, maxX = item.pos_x + e.l / 2;
     const minZ = item.pos_z - e.w / 2, maxZ = item.pos_z + e.w / 2;
@@ -1593,6 +1600,7 @@ function selectItem(id, { keepList = false } = {}) {
   renderEditStrip();
   updateNudgeReadout();
   renderSelectionSummary();
+  renderLockButton();
 }
 
 // Ctrl/Cmd-click: add or remove one item from the marked set
@@ -1695,6 +1703,7 @@ function renderSelectionSummary() {
   $('#selUnitsLabel').textContent = t.lots.length
     ? `units · ${t.lots.length} batch${t.lots.length === 1 ? '' : 'es'}`
     : 'units inside';
+  renderLockButton();
 }
 
 function deselectAll() {
@@ -1710,31 +1719,78 @@ function deselectAll() {
 }
 
 // ============================================================
-// NUDGE — move the selected item by an exact step. Dragging a carton into a
-// gap a few centimetres wide is a test of mouse control, not of planning.
+// MOVING THINGS — one place decides what is allowed to move, so the lock
+// cannot be forgotten on one route and honoured on another.
 // ============================================================
 let nudgeStepCm = 5;
 
 // Which way is which, in centimetres of world space
 const NUDGE_AXIS = { x: 'pos_x', y: 'pos_y', z: 'pos_z' };
+const AXIS_EXTENT = { x: 'l', y: 'h', z: 'w' };
+
+// Everything currently picked that is actually allowed to move
+function movableSelection() {
+  const ids = selectionIds();
+  return items.filter(i => ids.has(i.id) && !i.locked);
+}
+
+const lockedCount = () => items.filter(i => selectionIds().has(i.id) && i.locked).length;
+
+// The container size along one axis, in cm
+const spaceAlong = axis =>
+  ({ x: cargoSpace.length, y: cargoSpace.height, z: cargoSpace.width }[axis]) * 100;
+
+// How far a whole group may shift on one axis before any member would leave
+// the container. Clamping each member separately would squash the formation,
+// so the tightest member governs the lot.
+function clampGroupDelta(group, origins, axis, delta) {
+  const limit = spaceAlong(axis);
+  let allowed = delta;
+  group.forEach((it, i) => {
+    const half = itemExtent(it)[AXIS_EXTENT[axis]] / 2;
+    const from = origins[i][axis];
+    if (delta < 0) allowed = Math.max(allowed, half - from);
+    else if (delta > 0) allowed = Math.min(allowed, (limit - half) - from);
+  });
+  return allowed;
+}
+
+// Shift a whole group by one rigid delta
+function shiftGroup(group, origins, d) {
+  group.forEach((it, i) => {
+    const o = origins[i];
+    it.pos_x = o.x + (d.x || 0);
+    it.pos_y = o.y + (d.y || 0);
+    it.pos_z = o.z + (d.z || 0);
+    clampItemToBounds(it);               // belt and braces; the delta is already clamped
+    refreshItemMesh(it);
+  });
+}
+
+const snapshotPositions = group => group.map(i => ({ x: i.pos_x, y: i.pos_y, z: i.pos_z }));
 
 function nudgeSelected(axis, dir, step = nudgeStepCm) {
-  const item = items.find(i => i.id === selectedItemId);
-  if (!item) return false;
+  const group = movableSelection();
   const key = NUDGE_AXIS[axis];
   if (!key) return false;
+  if (!group.length) {
+    const blocked = lockedCount();
+    showToast(blocked
+      ? `${blocked === 1 ? 'That carton is' : `All ${blocked} are`} locked — unlock to move.`
+      : 'Nothing selected.');
+    return false;
+  }
 
-  const before = item[key];
-  item[key] = before + dir * step;
-  clampItemToBounds(item);
+  const origins = snapshotPositions(group);
+  const allowed = clampGroupDelta(group, origins, axis, dir * step);
 
   // Hard against a wall: say so rather than silently doing nothing
-  if (Math.abs(item[key] - before) < 0.001) {
+  if (Math.abs(allowed) < 0.001) {
     showToast(`Already against the ${axis === 'y' ? (dir > 0 ? 'roof' : 'floor') : 'wall'}.`);
     return false;
   }
 
-  refreshItemMesh(item);
+  shiftGroup(group, origins, { [axis]: allowed });
   evaluateStability();
   renderCargoList();
   updateStats();
@@ -1993,6 +2049,7 @@ function renderCargoList() {
           (i.shape && i.shape !== 'box') ? ` · <span class="row-shape">${escapeHtml(SHAPES[i.shape].label)}</span>` : ''}</small>
         ${extra ? `<small class="cargo-contents">${extra}</small>` : ''}
       </div>
+      ${i.locked ? '<span class="row-lock" title="Locked — cannot be moved">🔒</span>' : ''}
       ${i.issueLevel ? `<span class="row-warn lvl-${i.issueLevel}" title="${escapeHtml(i.issues.map(x => x.text).join(' · '))}">!</span>` : ''}
       <span class="focus-icon" title="Focus camera">⌖</span>
     </div>`;
@@ -2198,10 +2255,29 @@ function computeAutoPack(strategy) {
   const W = cargoSpace.width  * 100;
   const H = cargoSpace.height * 100;
 
-  const queue = sortItemsForPacking(items, strategy);
-  const placed = [];
+  // Locked cartons are not candidates — they are obstacles. Seeding them into
+  // `placed` means every collision and support check already knows about them,
+  // so the packer fills in around whatever has been pinned down.
+  const locked = items.filter(i => i.locked);
+  const queue = sortItemsForPacking(items.filter(i => !i.locked), strategy);
+  const placed = locked.map(i => {
+    const e = itemExtent(i);
+    return {
+      id: i.id, handling: i.handling, rot: i.rot_y, locked: true,
+      minX: i.pos_x - e.l / 2, minY: i.pos_y - e.h / 2, minZ: i.pos_z - e.w / 2,
+      dl: e.l, dw: e.w, dh: e.h
+    };
+  });
   const unplaced = [];
+  // Corners of the locked cartons are candidate spots too, otherwise nothing
+  // could ever be stacked on one or butted up against it.
   let points = [{ x: 0, y: 0, z: 0 }];
+  placed.forEach(r => {
+    points.push({ x: r.minX + r.dl, y: r.minY, z: r.minZ });
+    points.push({ x: r.minX, y: r.minY + r.dh, z: r.minZ });
+    points.push({ x: r.minX, y: r.minY, z: r.minZ + r.dw });
+  });
+  points = prunePackPoints(points, placed);
 
   for (const item of queue) {
     let hit = null;
@@ -2277,6 +2353,7 @@ function runAutoPackAnimation(placed, onComplete) {
 
   const anims = [];
   placed.forEach((pl, i) => {
+    if (pl.locked) return;               // seeded as an obstacle; never moved
     const item = items.find(x => x.id === pl.id);
     if (!item) return;
     item.rot_y = pl.rot;
@@ -5112,20 +5189,37 @@ function onPointerDown(e) {
   }
 
   e.preventDefault();
-  canvas.setPointerCapture(e.pointerId);
-  if (!multiSelect.has(hit.itemId)) { multiSelect.clear(); refreshMultiHighlights(); }
+  // Grabbing something already in the picked set keeps the set, so the whole
+  // block can be dragged. Grabbing anything else starts a fresh selection.
+  // isSelected, not multiSelect: the inspector item counts as picked too, and
+  // it is the one most likely to be grabbed.
+  if (!isSelected(hit.itemId)) { multiSelect.clear(); refreshMultiHighlights(); }
   selectItem(hit.itemId);
+
+  // A locked carton still selects, so it can be inspected or unlocked —
+  // it just refuses to be dragged, which is the whole point of the lock.
+  const lead = items.find(i => i.id === hit.itemId);
+  if (lead?.locked) {
+    showToast('That carton is locked. Unlock it to move it.');
+    return;
+  }
+  canvas.setPointerCapture(e.pointerId);
 
   const item = items.find(i => i.id === hit.itemId);
   const plane = getDragPlane(item);
   const startWorld = raycastDragPlane(e, plane);
   if (!startWorld) return;
 
+  // Anything else ticked travels with it, as one rigid block
+  const group = movableSelection().filter(i => i.id !== hit.itemId);
+
   dragState = {
     itemId: hit.itemId,
     plane,
     startWorld,
     origPos: { x: item.pos_x, y: item.pos_y, z: item.pos_z },
+    followers: group,
+    followerOrigins: snapshotPositions(group),
     startClientX: e.clientX,
     startClientY: e.clientY,
     activated: false,
@@ -5166,6 +5260,27 @@ function onPointerMove(e) {
   const dxCm = (currentWorld.x - dragState.startWorld.x) * 100;
   const dyCm = (currentWorld.y - dragState.startWorld.y) * 100;
   const dzCm = (currentWorld.z - dragState.startWorld.z) * 100;
+
+  // A multi-selection travels as one rigid block. Stack-snapping, dropping
+  // onto supports and the edge magnet all act on a single carton, and would
+  // pull the formation apart, so a group drag skips them.
+  if (dragState.followers.length) {
+    const all = [item, ...dragState.followers];
+    const origins = [dragState.origPos, ...dragState.followerOrigins];
+    const axes = (sceneMode === '3d' || orthoView === 'top')
+      ? [['x', dxCm], ['z', dzCm]]
+      : orthoView === 'side' ? [['x', dxCm], ['y', dyCm]]
+                             : [['z', dzCm], ['y', dyCm]];
+    const d = {};
+    // The delta is snapped, not each position, so the spacing between the
+    // cartons survives the move exactly.
+    axes.forEach(([axis, raw]) => {
+      d[axis] = clampGroupDelta(all, origins, axis, snapToGrid(raw));
+    });
+    shiftGroup(all, origins, d);
+    dragState.moved = true;
+    return;
+  }
 
   let newXcm = dragState.origPos.x;
   let newYcm = dragState.origPos.y;
@@ -5394,6 +5509,7 @@ function onHandlePointerDown(e) {
   const handleType = e.currentTarget.dataset.handle;
   const item = items.find(i => i.id === selectedItemId);
   if (!item) return;
+  if (item.locked) { showToast('That carton is locked. Unlock it to resize it.'); return; }
 
   e.currentTarget.setPointerCapture(e.pointerId);
   controls.enabled = false;
@@ -6457,6 +6573,7 @@ function renderShortcuts() {
     { keys: ['Del'],        desc: 'Delete selected carton' },
     { keys: ['R'],          desc: 'Rotate selected item 90°' },
     { keys: ['F'],          desc: 'Flip selected item onto another face' },
+    { keys: ['K'],          desc: 'Lock or unlock what is picked — locked cartons cannot be moved' },
     { keys: [modKey, 'D'],  desc: 'Duplicate selected carton' },
     { keys: ['L'],          desc: 'Toggle carton labels' },
     { keys: ['G'],          desc: 'Toggle dimension guides' },
@@ -6470,11 +6587,13 @@ function renderShortcuts() {
     { keys: ['Alt', '+', 'arrows'], desc: 'Nudge by a fifth of the step' },
     { keys: [modKey, '+', 'A'], desc: 'Select every carton' },
     { keys: [modKey, '+', 'click'], desc: 'Add or remove one carton from the selection' },
+    { keys: ['Arrows'],     desc: 'Move every picked carton together, keeping their spacing' },
     { keys: ['?'],          desc: 'Show this shortcuts guide' }
   ];
   const mouse = [
     { keys: ['Left-drag empty'],     desc: 'Orbit scene (3D) or pan (2D)' },
     { keys: ['Left-drag carton'],    desc: 'Move carton — top: X/Z · side: X/Y · front: Y/Z' },
+    { keys: ['Drag a picked one'],   desc: 'Drags the whole picked set as one block' },
     { keys: ['Vertical drag (2D)'],  desc: 'Lift a box to stack it (side/front views)' },
     { keys: ['Shift', '+', 'click'], desc: 'Measure the gap to the selected carton' },
     { keys: ['Shift', '+', 'drag'],  desc: 'Orbit even when over a carton' },
@@ -6507,7 +6626,7 @@ document.querySelectorAll('[data-close-shortcuts]').forEach(el => {
 // Columns added by later migrations. If a database hasn't had them applied,
 // PostgREST rejects the whole insert — so we detect that and retry without
 // them rather than failing the save outright.
-const OPTIONAL_ITEM_COLS = ['shape', 'max_stack_kg', 'build_spec'];
+const OPTIONAL_ITEM_COLS = ['shape', 'max_stack_kg', 'build_spec', 'locked'];
 
 function buildItemsPayload(planId, skip = []) {
   return items.map(i => {
@@ -6524,6 +6643,7 @@ function buildItemsPayload(planId, skip = []) {
     if (!skip.includes('shape'))        row.shape = i.shape || 'box';
     if (!skip.includes('max_stack_kg')) row.max_stack_kg = i.max_stack_kg ?? null;
     if (!skip.includes('build_spec'))   row.build_spec = i.build_ref ?? null;
+    if (!skip.includes('locked'))       row.locked = !!i.locked;
     return row;
   });
 }
@@ -7091,11 +7211,53 @@ function focusOnItems(list) {
   controls.update();
 }
 
+// ---- lock ----
+function setLocked(list, on) {
+  if (!list.length) return;
+  list.forEach(i => { i.locked = on; });
+  renderCargoList();
+  renderEditStrip();
+  renderLockButton();
+  markDirty();
+  showToast(list.length > 1
+    ? `${on ? 'Locked' : 'Unlocked'} <b>${list.length}</b> cartons.`
+    : `<b>${escapeHtml(list[0].label)}</b> ${on ? 'locked' : 'unlocked'}.`);
+}
+
+function renderLockButton() {
+  const item = items.find(i => i.id === selectedItemId);
+  const btn = $('#btnLock');
+  if (btn) {
+    btn.textContent = item?.locked ? 'Unlock' : 'Lock';
+    btn.classList.toggle('is-locked', !!item?.locked);
+  }
+  const sel = $('#selLock');
+  if (sel) {
+    const picked = selectionTotals().picked;
+    // One button for the whole set: lock them all unless they already are
+    const allLocked = picked.length > 0 && picked.every(i => i.locked);
+    sel.textContent = allLocked ? 'Unlock' : 'Lock';
+  }
+}
+
+$('#btnLock').addEventListener('click', () => {
+  const item = items.find(i => i.id === selectedItemId);
+  if (item) setLocked([item], !item.locked);
+});
+
+$('#selLock').addEventListener('click', () => {
+  const picked = selectionTotals().picked;
+  if (!picked.length) return;
+  const allLocked = picked.every(i => i.locked);
+  setLocked(picked, !allLocked);
+});
+
 $('#btnFocus').addEventListener('click', () => { if (selectedItemId) focusOnItem(selectedItemId); });
 
 function reorientSelected(nextOrient, verb) {
   const item = items.find(i => i.id === selectedItemId);
   if (!item) return;
+  if (item.locked) return showToast('That carton is locked. Unlock it to turn it.');
   item.rot_y = nextOrient;
   clampItemToBounds(item);
   refreshItemMesh(item);
@@ -7962,6 +8124,10 @@ window.addEventListener('keydown', (e) => {
     $('#btnRotate').click();
   } else if (e.key === 'f' && selectedItemId) {
     $('#btnFlip').click();
+  } else if (e.key === 'k' && selectionIds().size) {
+    // Locks whatever is picked — the whole Ctrl-selected set, or the one item
+    const picked = selectionTotals().picked;
+    setLocked(picked, !picked.every(i => i.locked));
   } else if (e.key === 'd' && selectedItemId && (e.ctrlKey || e.metaKey)) {
     e.preventDefault();
     $('#btnDuplicate').click();
