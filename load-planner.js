@@ -189,6 +189,20 @@ let hoveredItemId = null;               // box currently under the cursor (for l
 
 let sceneMode = '3d';                   // '3d' | '2d'
 let orthoView = 'top';                  // '2d' sub-view: top | side | front
+// Which side of that axis the camera sits on: +1 or -1. Kept separate from
+// orthoView so that everything asking "is this the side view?" — drag planes,
+// resize handles, rulers — carries on working without caring which wall you
+// happen to be standing at.
+let orthoSide = 1;
+
+// What each combination is called, from the point of view of someone standing
+// at the doors looking in: their right hand points to +Z.
+const VIEW_NAMES = {
+  'top:1': 'TOP', 'top:-1': 'TOP',
+  'side:1': 'RIGHT SIDE', 'side:-1': 'LEFT SIDE',
+  'front:1': 'DOOR END', 'front:-1': 'BACK END'
+};
+const viewName = () => VIEW_NAMES[`${orthoView}:${orthoSide}`] || orthoView.toUpperCase();
 let last3DView = 'perspective';
 let realisticMode = false;              // opt-in realistic container + yard
 let showDims = false;                   // opt-in dimension guides
@@ -681,6 +695,16 @@ function updateContainerVisibility() {
     if (obj.userData.is2DBackdrop) {
       // Backdrops only in simple 2D — realistic mode uses real walls instead
       obj.visible = in2DSimple && obj.userData.is2DBackdrop === orthoView;
+      // The backdrop belongs behind the load, so it moves to the far wall
+      // when the camera crosses to the other side.
+      if (obj.visible) {
+        const W = cargoSpace.width, L = cargoSpace.length;
+        if (obj.userData.is2DBackdrop === 'side') {
+          obj.position.z = orthoSide > 0 ? -W / 2 + 0.008 : W / 2 - 0.008;
+        } else if (obj.userData.is2DBackdrop === 'front') {
+          obj.position.x = orthoSide > 0 ? 0.008 : L - 0.008;
+        }
+      }
     }
   });
 
@@ -719,18 +743,32 @@ function updateAnnotations() {
   const doors = $('#v2dDoors');
   const back  = $('#v2dBack');
 
+  // doorsRight: are the container doors on the right of the screen?
+  // The right-hand label is .v2d-doors by position only — the word and the
+  // amber treatment move to whichever end is actually the door end.
+  const setEndLabels = (doorsRight) => {
+    const rightEl = doors, leftEl = back;
+    rightEl.textContent = doorsRight ? 'DOORS →' : 'BACK →';
+    leftEl.textContent  = doorsRight ? '← BACK'  : '← DOORS';
+    rightEl.classList.toggle('is-doors', doorsRight);
+    rightEl.classList.toggle('is-back',  !doorsRight);
+    leftEl.classList.toggle('is-doors',  !doorsRight);
+    leftEl.classList.toggle('is-back',   doorsRight);
+  };
+
   if (orthoView === 'top') {
     top.textContent   = `L · ${L.toFixed(2)} m`;
     right.textContent = `W · ${W.toFixed(2)} m`;
-    doors.textContent = 'DOORS →';
-    back.textContent  = '← BACK';
+    setEndLabels(true);
     doors.hidden = false;
     back.hidden = false;
   } else if (orthoView === 'side') {
     top.textContent   = `L · ${L.toFixed(2)} m`;
     right.textContent = `H · ${H.toFixed(2)} m`;
-    doors.textContent = 'DOORS →';
-    back.textContent  = '← BACK';
+    // Seen from the left wall the container is mirrored, so the doors are now
+    // at the other end of the screen. The two labels keep their positions and
+    // swap which end they name — colour included.
+    setEndLabels(orthoSide > 0);
     doors.hidden = false;
     back.hidden = false;
   } else {
@@ -5710,12 +5748,16 @@ function drawRulers(rect) {
     });
   };
 
+  // Rulers hug the wall furthest from the camera, so they sit behind the load
+  // rather than across it, and they follow the camera to the other side.
   if (sceneMode === '2d' && orthoView === 'front') {
-    along(zs, z => P(0.02, 0, z - W / 2 - 0.16));
-    along(ys, y => P(0.02, y, W / 2 + 0.16));
+    const x = orthoSide > 0 ? 0.02 : L - 0.02;
+    along(zs, z => P(x, 0, z - W / 2 - 0.16));
+    along(ys, y => P(x, y, W / 2 + 0.16));
   } else if (sceneMode === '2d' && orthoView === 'side') {
-    along(xs, x => P(x, -0.16, -W / 2 + 0.02));
-    along(ys, y => P(L + 0.16, y, -W / 2 + 0.02));
+    const z = orthoSide > 0 ? -W / 2 + 0.02 : W / 2 - 0.02;
+    along(xs, x => P(x, -0.16, z));
+    along(ys, y => P(orthoSide > 0 ? L + 0.16 : -0.16, y, z));
   } else {
     along(xs, x => P(x, 0, W / 2 + 0.16));             // length, along the near edge
     along(zs, z => P(L + 0.16, 0, z - W / 2));         // width, along the door end
@@ -5993,13 +6035,14 @@ function setSceneMode(mode) {
   // Hint text
   $('#viewportHint').textContent = mode === '3d'
     ? 'DRAG CARTON TO MOVE · SHIFT-DRAG OR RIGHT-DRAG TO ORBIT · SCROLL TO ZOOM'
-    : `2D ${orthoView.toUpperCase()} · DRAG CARTON · DRAG CORNERS/EDGES TO RESIZE · SCROLL TO ZOOM`;
+    : `2D ${viewName()} · DRAG CARTON · DRAG CORNERS/EDGES TO RESIZE · SCROLL TO ZOOM`;
 
   try { localStorage.setItem(SCENE_MODE_KEY, mode); } catch (e) {}
 }
 
-function positionOrthoCamera(view) {
+function positionOrthoCamera(view, side = orthoSide) {
   orthoView = view;
+  orthoSide = (view === 'top') ? 1 : (side < 0 ? -1 : 1);
   const L = cargoSpace.length;
   const W = cargoSpace.width;
   const H = cargoSpace.height;
@@ -6014,14 +6057,15 @@ function positionOrthoCamera(view) {
     target = new THREE.Vector3(L / 2, 0, 0);
     up = new THREE.Vector3(0, 0, -1);
   } else if (view === 'side') {
+    // Outside the +Z wall (right) or the -Z wall (left), looking in
     contentW = L * 1.15; contentH = H * 1.15;
-    camPos = new THREE.Vector3(L / 2, H / 2, 30);
+    camPos = new THREE.Vector3(L / 2, H / 2, 30 * orthoSide);
     target = new THREE.Vector3(L / 2, H / 2, 0);
     up = new THREE.Vector3(0, 1, 0);
   } else {
-    // front — camera looks from +X down the length
+    // Outside the door end (+X) or the far end (-X), looking down the length
     contentW = W * 1.15; contentH = H * 1.15;
-    camPos = new THREE.Vector3(L + 30, H / 2, 0);
+    camPos = new THREE.Vector3(orthoSide > 0 ? L + 30 : -30, H / 2, 0);
     target = new THREE.Vector3(L / 2, H / 2, 0);
     up = new THREE.Vector3(0, 1, 0);
   }
@@ -6052,11 +6096,14 @@ function positionOrthoCamera(view) {
   updateContainerVisibility();
 
   // Update 2D pill selection
+  // Both the axis and the side have to match, or Left and Right would always
+  // light up together
   $$('.view-pills-2d .view-pill').forEach(p =>
-    p.classList.toggle('selected', p.dataset.view === view));
+    p.classList.toggle('selected',
+      p.dataset.view === orthoView && Number(p.dataset.side) === orthoSide));
 
   $('#viewportHint').textContent =
-    `2D ${orthoView.toUpperCase()} · DRAG CARTON · DRAG CORNERS/EDGES TO RESIZE · SCROLL TO ZOOM`;
+    `2D ${viewName()} · DRAG CARTON · DRAG CORNERS/EDGES TO RESIZE · SCROLL TO ZOOM`;
 }
 
 // ============================================================
@@ -6828,9 +6875,7 @@ $$('.view-pills-3d .view-pill').forEach(pill => pill.addEventListener('click', (
 
 // View pills — 2D
 $$('.view-pills-2d .view-pill').forEach(pill => pill.addEventListener('click', () => {
-  $$('.view-pills-2d .view-pill').forEach(p => p.classList.remove('selected'));
-  pill.classList.add('selected');
-  positionOrthoCamera(pill.dataset.view);
+  positionOrthoCamera(pill.dataset.view, Number(pill.dataset.side) || 1);
 }));
 
 $('#zoomIn').addEventListener('click',  () => dolly( 1.2));
