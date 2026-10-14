@@ -1710,6 +1710,7 @@ function deselectAll() {
   const prev = items.find(i => i.id === selectedItemId);
   highlightMesh(prev, false);
   selectedItemId = null;
+  contentDraft = null;                  // the half-typed product row goes with it
   multiSelect.clear();
   refreshMultiHighlights();
   setEditMode(false, null);
@@ -2090,39 +2091,9 @@ function renderEditStrip() {
   const sh = $('#editStripShape');
   if (sh) sh.textContent = SHAPES[item.shape || 'box'].label;
 
-  // What's inside, when the carton came from the builder. The plan renders
-  // every item as a plain box for performance — a container of builder
-  // cartons would be tens of thousands of meshes — so this is where the
-  // contents stay visible.
-  const cbox = $('#inspContents');
-  if (cbox) {
-    const contents = item.contents || [];
-    if (!contents.length) {
-      cbox.hidden = true;
-      cbox.innerHTML = '';
-    } else {
-      cbox.hidden = false;
-      const total = contents.reduce((s, c) => s + (c.quantity || 0), 0);
-      const pm = item.pallet_meta;
-      const t = item.terms || TERM_DEFAULTS;
-      const unitWord = pluralise(t.product || 'unit', total).toLowerCase();
-      cbox.innerHTML = `
-        <div class="ic-head"><span>Inside</span><b>${total} ${escapeHtml(unitWord)}</b></div>
-        ${contents.map(c => `
-          <div class="ic-row">
-            <div>
-              <b>${escapeHtml(c.product_name || 'Unnamed')}</b>
-              ${c.batch_lot ? `<span class="ic-lot">${escapeHtml(c.batch_lot)}</span>` : ''}
-            </div>
-            <span class="ic-qty">${c.quantity || 0}</span>
-          </div>`).join('')}
-        ${pm ? `<div class="ic-note">${pm.trays} ${escapeHtml(pluralise(t.primary || 'pack', pm.trays).toLowerCase())}` +
-               ` \u00b7 ${pm.per_layer} per layer \u00d7 ${pm.layers} layers` +
-               `${pm.order_no ? ` \u00b7 order ${escapeHtml(pm.order_no)}` : ''}` +
-               `${pm.packer ? ` \u00b7 packed by ${escapeHtml(pm.packer)}` : ''}</div>` : ''}
-      `;
-    }
-  }
+  // What is inside this carton. A builder carton knows already; one added
+  // by hand starts empty and is filled in here.
+  renderInspContents(item);
 
   // Bearing readout — shown even when nothing is wrong, so the check is visible
   const bear = $('#editBearing');
@@ -7209,6 +7180,199 @@ function focusOnItems(list) {
   const dir = new THREE.Vector3().subVectors(camera.position, centre).normalize();
   camera.position.copy(centre).add(dir.multiplyScalar(radius * 2.6));
   controls.update();
+}
+
+// ============================================================
+// WHAT IS INSIDE A CARTON
+// ------------------------------------------------------------
+// A carton from the Carton Builder arrives knowing its own contents, because
+// the build says what went in. A carton added by hand starts empty — and an
+// empty carton cannot be traced to a lot, which is most of the point. This is
+// where the product, the batch and the count go in afterwards.
+//
+// Builder cartons stay read-only here: their list is worked out from the
+// build, so editing it would disagree with the units drawn inside them.
+// ============================================================
+// The add-row while it is open, kept outside the markup so a re-render
+// somewhere else in the inspector cannot quietly throw away what was typed.
+let contentDraft = null;           // { itemId, product, lot, medium, qty }
+
+const itemUnits = item =>
+  (item.contents || []).reduce((s, c) => s + (Number(c.quantity) || 0), 0);
+
+// A carton is the builder's if it carries the build it was made from
+const isBuilt = item => !!(item?.build_ref || item?.pallet_meta);
+
+function renderInspContents(item) {
+  const box = $('#inspContents');
+  if (!box) return;
+  if (!item) { box.hidden = true; box.innerHTML = ''; return; }
+  box.hidden = false;
+
+  const rows  = item.contents || [];
+  const total = itemUnits(item);
+  const t     = item.terms || TERM_DEFAULTS;
+  const word  = pluralise(t.product || 'unit', total).toLowerCase();
+  const built = isBuilt(item);
+  const pm    = item.pallet_meta;
+  const draft = contentDraft?.itemId === item.id ? contentDraft : null;
+
+  const head = `<div class="ic-head"><span>Inside</span>${
+    total ? `<b>${total} ${escapeHtml(word)}</b>` : '<b class="ic-none">empty</b>'}</div>`;
+
+  const body = rows.length
+    ? rows.map((c, n) => `
+        <div class="ic-row" data-crow="${n}">
+          <div>
+            <b>${escapeHtml(c.product_name || 'Unnamed')}</b>
+            ${c.medium ? `<span class="ic-medium">in ${escapeHtml(c.medium)}</span>` : ''}
+            ${c.batch_lot ? `<span class="ic-lot">${escapeHtml(c.batch_lot)}</span>` : ''}
+          </div>
+          <span class="ic-qty">${c.quantity || 0}</span>
+          ${built ? '' : `<button type="button" class="ic-del" data-del="${n}"
+                 title="Take this product out of the carton">✕</button>`}
+        </div>`).join('')
+    : `<div class="ic-empty">${built
+        ? 'This build records no units.'
+        : 'Nothing recorded inside yet. Add the product and batch, and this carton can be traced back to a lot.'}</div>`;
+
+  // Where the numbers came from, or what is still missing for the totals
+  const notes = [];
+  if (pm) notes.push(`${pm.trays} ${escapeHtml(pluralise(t.primary || 'pack', pm.trays).toLowerCase())}` +
+    ` · ${pm.per_layer} per layer × ${pm.layers} layers` +
+    `${pm.order_no ? ` · order ${escapeHtml(pm.order_no)}` : ''}` +
+    `${pm.packer ? ` · packed by ${escapeHtml(pm.packer)}` : ''}`);
+  if (built) notes.push('Set by the Carton Builder build, so it is not edited here.');
+  else if (total && item.weight_kg > 0)
+    notes.push(`${item.weight_kg} kg over ${total} ${escapeHtml(word)} is ` +
+      `<b>${(item.weight_kg / total).toFixed(3)} kg</b> each.`);
+  else if (total)
+    notes.push('This carton still weighs 0 kg. Put its weight in above, or the load totals will be short.');
+
+  const form = built ? '' : (draft ? `
+    <div class="ic-form">
+      <label class="field">
+        <span>Product</span>
+        <input id="icProduct" type="text" placeholder="Tuna in olive oil"
+               value="${escapeHtml(draft.product)}" />
+      </label>
+      <div class="form-row">
+        <label class="field combo" data-term="lot">
+          <span>Batch / lot</span>
+          <input id="icLot" type="text" placeholder="L2451" autocomplete="off"
+                 value="${escapeHtml(draft.lot)}" />
+          <div class="combo-menu" hidden></div>
+        </label>
+        <label class="field">
+          <span>Packed in</span>
+          <input id="icMedium" type="text" placeholder="Olive oil"
+                 value="${escapeHtml(draft.medium)}" />
+        </label>
+      </div>
+      <div class="ic-form-foot">
+        <label class="field ic-qty-field">
+          <span>How many</span>
+          <input id="icQty" type="number" min="1" step="1" value="${escapeHtml(draft.qty)}" />
+        </label>
+        <button type="button" class="btn-primary" id="icSave">Add</button>
+        <button type="button" class="btn-soft" id="icCancel">Cancel</button>
+      </div>
+    </div>`
+    : `<button type="button" class="ic-add" id="icOpen">+ Add product or units</button>`);
+
+  box.innerHTML = head + body +
+    notes.map(n => `<div class="ic-note">${n}</div>`).join('') + form;
+
+  if (built) return;
+
+  const open = $('#icOpen');
+  if (open) open.addEventListener('click', () => {
+    // The carton's own product name is the likely answer, so it starts there
+    contentDraft = { itemId: item.id, product: item.product_name || '',
+                     lot: '', medium: '', qty: '1' };
+    renderInspContents(item);
+    $('#icQty')?.select();
+  });
+
+  const cancel = $('#icCancel');
+  if (cancel) cancel.addEventListener('click', () => {
+    contentDraft = null;
+    renderInspContents(item);
+  });
+
+  const lot = $('#icLot');
+  if (lot) initTermCombo(lot, knownBatchCodes, () => { if (draft) draft.lot = lot.value; });
+
+  const save = $('#icSave');
+  if (save) {
+    const commit = () => addContentRow(item);
+    save.addEventListener('click', commit);
+    const fields = { icProduct: 'product', icLot: 'lot', icMedium: 'medium', icQty: 'qty' };
+    box.querySelectorAll('.ic-form input').forEach(el => {
+      el.addEventListener('input', () => { if (draft) draft[fields[el.id]] = el.value; });
+      // Enter anywhere in the little form adds the row, Escape backs out
+      el.addEventListener('keydown', e => {
+        if (e.key === 'Enter')  { e.preventDefault(); commit(); }
+        if (e.key === 'Escape') { e.preventDefault(); cancel.click(); }
+      });
+    });
+  }
+
+  box.querySelectorAll('[data-del]').forEach(btn =>
+    btn.addEventListener('click', () => removeContentRow(item, +btn.dataset.del)));
+}
+
+function addContentRow(item) {
+  const qty = Math.max(0, Math.round(Number($('#icQty')?.value) || 0));
+  if (!qty) return showToast('How many of them? Put a count in first.');
+  const product = ($('#icProduct')?.value || '').trim();
+  const medium  = ($('#icMedium')?.value || '').trim();
+  const lot     = normaliseBatchCode($('#icLot')?.value || '');
+
+  item.contents = item.contents || [];
+  // The same product and lot going in twice is one line with a bigger count,
+  // not two lines that have to be added up by eye.
+  const same = item.contents.find(c =>
+    (c.product_name || '') === product &&
+    (c.batch_lot || '')    === (lot || '') &&
+    (c.medium || '')       === (medium || ''));
+  if (same) same.quantity = (Number(same.quantity) || 0) + qty;
+  else item.contents.push({
+    product_name: product, batch_lot: lot || null,
+    medium: medium || null, quantity: qty
+  });
+
+  if (lot) rememberBatchCode(lot);
+  // A carton with no product name of its own takes the one just typed, so the
+  // list and the labels say something useful
+  if (product && !item.product_name) {
+    item.product_name = product;
+    const pf = $('#fProduct');
+    if (pf && selectedItemId === item.id) pf.value = product;
+  }
+  contentDraft = null;
+  afterContentsChange(item);
+  showToast(`Added <b>${qty}</b>${product ? ' × ' + escapeHtml(product) : ''}${
+    lot ? ' · ' + escapeHtml(lot) : ''}.`);
+}
+
+function removeContentRow(item, n) {
+  if (!item.contents || !item.contents[n]) return;
+  const [gone] = item.contents.splice(n, 1);
+  if (!item.contents.length) item.contents = null;
+  afterContentsChange(item);
+  showToast(`Took out <b>${gone.quantity || 0}</b>${
+    gone.product_name ? ' × ' + escapeHtml(gone.product_name) : ''}.`);
+}
+
+// One place to put the list, the row, the totals and the scene back in step
+function afterContentsChange(item) {
+  item.build = undefined;              // contents changed, so any cache is stale
+  renderInspContents(item);
+  renderCargoList();
+  renderSelectionSummary();
+  refreshAllContents();
+  markDirty();
 }
 
 // ---- lock ----
