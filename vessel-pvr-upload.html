@@ -468,7 +468,7 @@ function buildPreview(){
 function buildLogText(phase){
   const header=[
     '═══════════════════════════════════════════════════════════',
-    '  PROJECT MANHATTAN — ISSF PVR Upload Audit Log',
+    '  SmarTuna concept — ISSF PVR Upload Audit Log',
     `  ${phase==='final'?'IMPORT COMPLETED':'PREVIEW — Not yet imported'}`,
     `  Generated: ${uploadTimestamp}`,
     '═══════════════════════════════════════════════════════════',
@@ -619,8 +619,14 @@ function reset(){
 }
 
 // ── AUTH ──
+async function getAuthUser(){
+  // Try getUser first (validates with server); fall back to getSession if it returns null
+  let {data:{user}}=await sb.auth.getUser();
+  if(!user){const {data:{session}}=await sb.auth.getSession();user=session?.user||null;}
+  return user;
+}
 (async function init(){
-  const {data:{user}}=await sb.auth.getUser();
+  const user=await getAuthUser();
   if(!user){location.href='login.html';return;}
   const {data:p}=await sb.from('profiles').select('role,first_name,last_name,avatar_color').eq('id',user.id).single();
   const isAdmin=p&&['admin','operator'].includes(p.role);
@@ -646,5 +652,3 @@ function toast(msg,ok=null){
 </script>
 </body>
 </html>
-
-
