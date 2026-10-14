@@ -2417,11 +2417,13 @@ function unnamedHeading(level) {
 }
 
 // Printed under each step heading, so no heading relies on jargon.
+// The level number is prefixed at render time from the levels actually
+// switched on, so the words never disagree with the badge beside them.
 const TERM_ROLES = {
-  product:   'Level 1 · what you are shipping, in its own pack. Measure one of these.',
-  primary:   'Level 2 · the pack the products go into. Sized from the products, or to a size you already have.',
-  outer:     'Level 3 · optional. A bigger box holding several level-2 packs. Skip it if the packs ship as they are.',
-  secondary: 'Level 4 · the base the whole lot stacks onto.'
+  product:   'what you are shipping, in its own pack. Measure one of these.',
+  primary:   'the pack the products go into. Sized from the products, or to a size you already have.',
+  outer:     'optional. A bigger box holding several of the packs below. Skip it if the packs ship as they are.',
+  secondary: 'the base the whole lot stacks onto.'
 };
 
 const TERM_SUGGESTIONS = {
@@ -2619,7 +2621,9 @@ function newBuilderSpec() {
       deck_h_cm: 14.5, deck_kg: 25,
       max_h_cm: 180,
       overhang_mm: 0,
-      layers: 0,                         // 0 = auto from max height
+      per_layer: 0,                      // 0 = as many as fit on the base
+      layers: 0,                         // 0 = as many as fit under the height limit
+      wrap: { enabled: false, thickness_mm: 0, weight_g: 0 },
       pattern: 'block',
       batch_code: '', order_no: '', packer: ''
     }
@@ -2653,6 +2657,9 @@ function normaliseSpec(spec) {
   if (!spec.outer) spec.outer = newOuter();                  // before the outer level
   if (!spec.outer.wrap) spec.outer.wrap = { ...newOuter().wrap };
   if (!spec.pallet.base_type) spec.pallet.base_type = 'pallet';
+  // before the base could be wrapped, and before per-layer was the loader's call
+  if (!spec.pallet.wrap) spec.pallet.wrap = { enabled: false, thickness_mm: 0, weight_g: 0 };
+  if (spec.pallet.per_layer === undefined) spec.pallet.per_layer = 0;
   (spec.groups || []).forEach(g => {                         // before move / flip
     if (!g.orient) g.orient = 'upright';
     if (typeof g.inverted !== 'boolean') g.inverted = false;
@@ -3041,26 +3048,39 @@ function computePallet(spec, carton) {
     return (c > 0 && r > 0) ? gridLayout(c, r, carton.width_cm, carton.length_cm, 0, 0, 90) : [];
   })();
 
-  let layouts, perLayer;
+  let layouts, fitPerLayer;
   if (p.pattern === 'interlock' && pureA.length && pureB.length) {
-    perLayer = Math.min(pureA.length, pureB.length);
-    layouts = [pureA.slice(0, perLayer), pureB.slice(0, perLayer)];
+    fitPerLayer = Math.min(pureA.length, pureB.length);
+    layouts = [pureA.slice(0, fitPerLayer), pureB.slice(0, fitPerLayer)];
   } else {
-    perLayer = layoutBest.length;
+    fitPerLayer = layoutBest.length;
     layouts = [layoutBest];
   }
+
+  // How many actually go on a layer is the loader's call, not the geometry's.
+  // Blank means "as many as fit"; a number means that many, and asking for
+  // more than the base holds is reported rather than silently granted.
+  const wantPerLayer = Math.max(0, Math.floor(p.per_layer || 0));
+  const perLayer = wantPerLayer > 0 ? Math.min(wantPerLayer, fitPerLayer) : fitPerLayer;
+  layouts = layouts.map(l => l.slice(0, perLayer));
 
   const maxLayers = carton.height_cm > 0
     ? Math.max(0, Math.floor((p.max_h_cm - p.deck_h_cm) / carton.height_cm))
     : 0;
-  const layers = p.layers > 0 ? Math.min(p.layers, Math.max(maxLayers, 1)) : maxLayers;
+  const wantLayers = Math.max(0, Math.floor(p.layers || 0));
+  const layers = wantLayers > 0 ? Math.min(wantLayers, Math.max(maxLayers, 1)) : maxLayers;
 
   const trays = perLayer * layers;
   const totalH = p.deck_h_cm + layers * carton.height_cm;
   // Same round-robin as the outer box: a pallet of mixed packs carries what
   // those actual packs weigh, not a count times an averaged pack.
   const tally = tallyPacks(carton.packs || [{ units: carton.units, weight_kg: carton.weight_kg }], trays);
-  const weight = p.deck_kg + tally.weight_kg;
+
+  // Stretch wrap round the finished load: a skin on every side and over the top
+  const wrapOn = !!p.wrap?.enabled;
+  const wrapT  = wrapOn ? Math.max(0, p.wrap.thickness_mm || 0) / 10 : 0;   // cm per side
+  const wrapKg = wrapOn ? (p.wrap.weight_g || 0) / 1000 : 0;
+  const weight = p.deck_kg + tally.weight_kg + wrapKg;
 
   // Actual footprint the trays really use, including overhang
   let extentL = 0, extentW = 0;
@@ -3071,10 +3091,14 @@ function computePallet(spec, carton) {
 
   return {
     layouts, perLayer, layers, maxLayers, trays,
-    length_cm: Math.max(deckL, extentL),
-    width_cm:  Math.max(deckW, extentW),
-    height_cm: totalH,
+    fitPerLayer,                         // what the base geometrically holds
+    wantPerLayer, wantLayers,            // what was typed, 0 meaning "as many as fit"
+    length_cm: Math.max(deckL, extentL) + wrapT * 2,
+    width_cm:  Math.max(deckW, extentW) + wrapT * 2,
+    height_cm: totalH + wrapT,           // film over the top; the deck is the floor
     weight_kg: weight,
+    wrap_kg: wrapKg,
+    wrapped: wrapOn,
     units: tally.units,
     alloc: tally.alloc,                  // how many of each pack ended up on here
     overhangs: extentL > deckL + 0.01 || extentW > deckW + 0.01
@@ -3567,36 +3591,53 @@ function updatePalletFit(ship, p, stacked = 'primary') {
   if (!box) return;
   if (!builder.pallet.enabled) { box.innerHTML = ''; return; }
   if (!p || p.perLayer === 0) {
-    box.innerHTML = `<div class="pf-warn">${escapeHtml(term(stacked))} is too large for this ${escapeHtml(term('secondary', 1, true))} base.</div>`;
+    // "...for this base base" when the level is still unnamed
+    const baseWord = isNamed('secondary') ? term('secondary', 1, true) : 'base';
+    box.innerHTML = `<div class="pf-warn">${escapeHtml(term(stacked))} is too large for this ${escapeHtml(baseWord)}.</div>`;
     return;
   }
   const pat = builder.pallet.pattern === 'interlock' ? 'interlocked' : 'block';
   const what = term(stacked, 1, true);
   const whats = term(stacked, 2, true);
-  const auto = !(builder.pallet.layers > 0);
   const base = builder.pallet;
   const over = (base.overhang_mm || 0) / 10;
 
   // Say where each number came from. "4 outer boxes" on its own looks like it
   // was invented; it is the footprint and the height limit doing their jobs.
+  // Both counts are the loader's to set. Say which were typed, which were
+  // worked out, and — the part that matters — when a typed number could not
+  // be honoured, rather than quietly substituting a different one.
+  const perLayerTyped = p.wantPerLayer > 0;
+  const perLayerCut   = perLayerTyped && p.wantPerLayer > p.fitPerLayer;
+  const layersTyped   = p.wantLayers > 0;
+  const layersCut     = layersTyped && p.wantLayers > p.maxLayers;
+
   box.innerHTML = `
     <div>${p.perLayer} per layer × ${p.layers} layer${p.layers === 1 ? '' : 's'} = <b>${p.trays}</b> ${escapeHtml(whats)}</div>
+
     <div class="pf-why">
-      <b>${p.perLayer}</b> fits on a base of
-      <b>${fromCm(base.length_cm)} × ${fromCm(base.width_cm)} ${itemUnit}</b>${over ? ` (+${fromCm(over)} overhang each side)` : ''}
-      because one ${escapeHtml(what)} is
+      ${perLayerTyped
+        ? `<b>${p.perLayer}</b> per layer because you typed it.`
+        : `<b>${p.perLayer}</b> per layer because <b>Per layer</b> is blank — that is as many as fit.`}
+      A base of <b>${fromCm(base.length_cm)} × ${fromCm(base.width_cm)} ${itemUnit}</b>${over ? ` (+${fromCm(over)} overhang each side)` : ''}
+      holds <b>${p.fitPerLayer}</b>, because one ${escapeHtml(what)} is
       <b>${fromCm(ship.length_cm)} × ${fromCm(ship.width_cm)} ${itemUnit}</b> on the floor.
     </div>
+    ${perLayerCut ? `<div class="pf-warn">You asked for ${p.wantPerLayer} per layer; only ${p.fitPerLayer} fit on this base.
+      Widen the base, allow overhang, or lower the number.</div>` : ''}
+
     <div class="pf-why">
-      ${auto
-        ? `<b>${p.layers}</b> high because <b>Layers</b> is on <b>auto</b> — that is the most that fit under your
-           <b>${fromCm(base.max_h_cm)} ${itemUnit}</b> height limit
-           (${fromCm(base.max_h_cm)} − ${fromCm(base.deck_h_cm)} base ÷ ${fromCm(ship.height_cm)} each).
-           Type a number in <b>Layers</b> to stack fewer.`
-        : `<b>${p.layers}</b> high because you typed it. ${p.maxLayers} would fit under your
-           <b>${fromCm(base.max_h_cm)} ${itemUnit}</b> limit — clear the box to use the most that fit.`}
+      ${layersTyped
+        ? `<b>${p.layers}</b> high because you typed it.`
+        : `<b>${p.layers}</b> high because <b>Layers</b> is blank — that is as many as fit.`}
+      <b>${p.maxLayers}</b> fit under your <b>${fromCm(base.max_h_cm)} ${itemUnit}</b> height limit
+      (${fromCm(base.max_h_cm)} − ${fromCm(base.deck_h_cm)} base ÷ ${fromCm(ship.height_cm)} each).
     </div>
-    <div class="pf-why">${pat} pattern${p.perLayer === 1 ? ' · only one per layer, so the pattern makes no difference' : ''}</div>
+    ${layersCut ? `<div class="pf-warn">You asked for ${p.wantLayers} layers; only ${p.maxLayers} fit under
+      ${fromCm(base.max_h_cm)} ${itemUnit}. Raise the height limit or lower the number.</div>` : ''}
+
+    <div class="pf-why">${pat} pattern${p.perLayer === 1 ? ' · only one per layer, so the pattern makes no difference' : ''}${
+      p.wrapped ? ` · stretch wrapped, adding ${p.wrap_kg.toFixed(2)} kg` : ''}</div>
     ${p.overhangs ? `<div class="pf-warn">${escapeHtml(capitalise(whats))} overhang the base.</div>` : ''}
   `;
 }
@@ -3651,10 +3692,12 @@ function renderStepHeads() {
     outer: !!builder.outer?.enabled,
     secondary: !!builder.pallet?.enabled
   };
+  // A level that is switched off gets a dash rather than a number. Giving it
+  // the next number meant two steps on screen both claiming to be "3".
   const nums = {};
   let seq = 0;
   ['product', 'primary', 'outer', 'secondary'].forEach(level => {
-    nums[level] = live[level] ? ++seq : seq + 1;
+    nums[level] = live[level] ? String(++seq) : '–';
   });
 
   ['product', 'primary', 'outer', 'secondary'].forEach(level => {
@@ -3667,7 +3710,9 @@ function renderStepHeads() {
       title.classList.toggle('bstep-unnamed', !named);
     }
     if (num)   num.textContent = nums[level];
-    if (role)  role.textContent = TERM_ROLES[level];
+    if (role)  role.textContent = live[level]
+      ? `Level ${nums[level]} · ${TERM_ROLES[level]}`
+      : `Not in use · ${TERM_ROLES[level]}`;
   });
 
   // Why the two sizing choices exist, in the user's own words
@@ -3931,7 +3976,12 @@ function renderPalletFields() {
   $('#bPalletKg').value      = p.deck_kg;
   $('#bPalletMaxH').value    = bFromCm(p.max_h_cm);
   $('#bPalletOver').value    = bFromMm(p.overhang_mm);
+  $('#bPalletPerLayer').value = p.per_layer || '';
   $('#bPalletLayers').value  = p.layers || '';
+  $('#bPalletWrapOn').checked = !!p.wrap?.enabled;
+  $('#bPalletWrapT').value    = bFromMm(p.wrap?.thickness_mm || 0);
+  $('#bPalletWrapKg').value   = p.wrap?.weight_g || 0;
+  $('#bPalletWrapRow').hidden = !p.wrap?.enabled;
   $('#bPalletBatch').value   = p.batch_code;
   $('#bPalletOrder').value   = p.order_no;
   $('#bPalletPacker').value  = p.packer;
@@ -3948,7 +3998,12 @@ function readPalletFields() {
   p.deck_kg     = parseFloat($('#bPalletKg').value) || 0;
   p.max_h_cm    = bToCm($('#bPalletMaxH').value);
   p.overhang_mm = bToMm($('#bPalletOver').value);
+  p.per_layer   = parseInt($('#bPalletPerLayer').value, 10) || 0;
   p.layers      = parseInt($('#bPalletLayers').value, 10) || 0;
+  p.wrap.enabled      = $('#bPalletWrapOn').checked;
+  p.wrap.thickness_mm = bToMm($('#bPalletWrapT').value);
+  p.wrap.weight_g     = parseFloat($('#bPalletWrapKg').value) || 0;
+  $('#bPalletWrapRow').hidden = !p.wrap.enabled;
   p.batch_code  = $('#bPalletBatch').value;
   p.order_no    = $('#bPalletOrder').value;
   p.packer      = $('#bPalletPacker').value;
@@ -4077,8 +4132,9 @@ function buildPalletPreview() {
     });
   }
 
-  // Stretch-wrap shell over the stack
-  if (p.layers > 0) {
+  // Stretch-wrap shell over the stack. It used to be drawn whether or not
+  // anything was wrapped, which showed film on a load that had none.
+  if (p.wrapped && p.layers > 0) {
     const wrapH = p.layers * c.height_cm * S;
     const wrap = new THREE.Mesh(
       new THREE.BoxGeometry(Math.max(deckL, p.length_cm * S) * 1.02, wrapH, Math.max(deckW, p.width_cm * S) * 1.02),
@@ -7152,7 +7208,9 @@ const FIELD_HINTS = {
   gap: 'Air left between neighbours standing side by side. Set it to 0 for a tight pack where everything touches.',
   layergap: 'Space between one layer and the layer above it — the thickness of a layer pad, card or sheet. Set it to 0 and each layer sits directly on the one below, which is normal for cans and jars.',
   tare: 'The weight of the empty box, with no product in it. Printed on the carton spec sheet, or just weigh one. We add it to the content weight to get the gross weight.',
-  film: 'How thick the shrink-wrap film is. It adds a fraction of a millimetre to every side, and its own weight to the total.'
+  film: 'How thick the shrink-wrap film is. It adds a fraction of a millimetre to every side, and its own weight to the total.',
+  perlayer: 'How many go on each layer. Leave it blank and we fit as many as the base holds; type a number and that is what you get. Asking for more than fits is reported rather than granted.',
+  layers: 'How many layers high. Leave it blank and we stack as many as fit under the height limit; type a number to stack fewer.'
 };
 
 function buildHelpBody() {
@@ -7391,7 +7449,9 @@ $$('#bOuterShape .bshape-btn').forEach(btn =>
 
 // Pallet section
 const PALLET_FIELD_IDS = ['#bPalletOn', '#bPalletPattern', '#bPalletL', '#bPalletW',
-  '#bPalletH', '#bPalletKg', '#bPalletMaxH', '#bPalletOver', '#bPalletLayers',
+  '#bPalletH', '#bPalletKg', '#bPalletMaxH', '#bPalletOver',
+  '#bPalletPerLayer', '#bPalletLayers',
+  '#bPalletWrapOn', '#bPalletWrapT', '#bPalletWrapKg',
   '#bPalletBatch', '#bPalletOrder', '#bPalletPacker'];
 
 // Editing a base dimension by hand means it is no longer that preset. Leaving
