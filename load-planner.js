@@ -7069,6 +7069,7 @@ function setShowContents(on) {
 $('#toggleContents').addEventListener('click', () => setShowContents(!showContents));
 
 // ---- selection summary ----
+$('#selColor').addEventListener('input', e => applyColorToPicked(e.target.value));
 $('#selClear').addEventListener('click', deselectAll);
 $('#selFocus').addEventListener('click', () => {
   const t = selectionTotals();
@@ -7716,12 +7717,26 @@ window.addEventListener('resize', () => {
 // ============================================================
 // COLOUR PICKER — recolours every item sharing the selected SKU
 // ============================================================
-function applyColorToSelection(hex) {
+// 'one' = the carton in the inspector, or everything ticked when there is a
+// selection. 'sku' = every carton sharing this one's SKU — the old behaviour,
+// which now has to be asked for rather than being the only option.
+let colorScope = 'one';
+
+function colorTargets() {
   const item = items.find(i => i.id === selectedItemId);
-  if (!item) return;
-  const base = item.base_label;
-  const group = items.filter(i => i.base_label === base);
-  group.forEach(i => {
+  if (!item) return [];
+  if (colorScope === 'sku') return items.filter(i => i.base_label === item.base_label);
+  // Just this carton. Colouring a whole ticked set is a different gesture and
+  // lives on the selection bar, because the tick boxes are on the list and
+  // this popover is inside the inspector, which hides the list.
+  return [item];
+}
+
+// Paint every ticked carton at once, from the selection bar
+function applyColorToPicked(hex) {
+  const t = selectionTotals();
+  if (!t.picked.length) return;
+  t.picked.forEach(i => {
     i.color = hex;
     if (i.mesh) i.mesh.material.color.set(hex);
     refreshItemSprite(i);
@@ -7729,10 +7744,50 @@ function applyColorToSelection(hex) {
   renderCargoList();
   renderEditStrip();
   markDirty();
-  showToast(group.length > 1
-    ? `Recoloured <b>${group.length}</b> items in ${escapeHtml(base)}.`
-    : `Recoloured <b>${escapeHtml(item.label)}</b>.`);
+  showToast(`Recoloured <b>${t.picked.length}</b> selected.`);
 }
+
+// The labels carry the counts, so neither option is a guess about its reach
+function renderColorScope() {
+  const row = $('#colorScope');
+  if (!row) return;
+  const item = items.find(i => i.id === selectedItemId);
+  const [oneBtn, skuBtn] = $$('#colorScope .color-scope-btn');
+  if (!oneBtn || !skuBtn) return;
+  oneBtn.textContent = 'This one';
+  const sku = item ? items.filter(i => i.base_label === item.base_label).length : 0;
+  skuBtn.textContent = `Whole SKU (${sku})`;
+  // Nothing to widen to when the SKU is this carton on its own
+  skuBtn.disabled = sku <= 1;
+  if (skuBtn.disabled && colorScope === 'sku') colorScope = 'one';
+  oneBtn.classList.toggle('active', colorScope === 'one');
+  skuBtn.classList.toggle('active', colorScope === 'sku');
+  refreshSegments();
+}
+
+function applyColorToSelection(hex) {
+  const targets = colorTargets();
+  if (!targets.length) return;
+  targets.forEach(i => {
+    i.color = hex;
+    if (i.mesh) i.mesh.material.color.set(hex);
+    refreshItemSprite(i);
+  });
+  renderCargoList();
+  renderEditStrip();
+  renderColorGrid();
+  markDirty();
+  showToast(targets.length > 1
+    ? `Recoloured <b>${targets.length}</b> ${colorScope === 'sku'
+        ? 'in ' + escapeHtml(targets[0].base_label) : 'selected'}.`
+    : `Recoloured <b>${escapeHtml(targets[0].label)}</b>.`);
+}
+
+$$('#colorScope .color-scope-btn').forEach(btn => btn.addEventListener('click', e => {
+  e.stopPropagation();                   // keep the popover open
+  colorScope = btn.dataset.cscope;
+  renderColorScope();
+}));
 
 function renderColorGrid() {
   const grid = $('#colorGrid');
@@ -7752,6 +7807,10 @@ function renderColorGrid() {
 
 function openColorPop() {
   if (!selectedItemId) return;
+  // Always reopens on the narrow scope. A sticky "whole SKU" would recolour
+  // a dozen cartons the next time somebody reached for the swatch.
+  colorScope = 'one';
+  renderColorScope();
   renderColorGrid();
   $('#colorPop').hidden = false;
 }
@@ -7990,7 +8049,7 @@ window.addEventListener('beforeunload', (e) => {
 let refreshSegments = () => {};
 
 function initSegmentedIndicators() {
-  const SELECTOR = '.view-pills, .scene-toggle, .kind-tabs, .unit-mini, .shape-pick, .panel-tabs, .shape-toggle, .size-mode, .base-type, .orient-toggle, .group-mode, .bshape-pick';
+  const SELECTOR = '.view-pills, .scene-toggle, .kind-tabs, .unit-mini, .shape-pick, .panel-tabs, .shape-toggle, .size-mode, .base-type, .orient-toggle, .group-mode, .bshape-pick, .color-scope';
   const getContainers = () => document.querySelectorAll(SELECTOR);
 
   const update = (container) => {
