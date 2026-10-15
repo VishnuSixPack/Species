@@ -7627,22 +7627,22 @@ async function doSubmit(){
     })),
     submitted_at:nowIso
   };
-  // Full payload — tries all columns; falls back to minimal on schema error
+  // MINIMAL payload — only columns that definitely exist in beta_assessments
   const payload={
     submitted_by:assessorName||'beta-user',
     status:'submitted',
     products:products.filter(Boolean),
-    k_resp:{...kResp,_score:_scoreSummary},
+    k_resp:{...kResp,_score:_scoreSummary,_rv:rvOverrides},
     stage_index:kIdx,
-    rv_overrides:rvOverrides,
     updated_at:nowIso
   };
-  // Extended columns (may not exist yet — added separately if they do)
+  // Extended payload — tries optional columns too; falls back to payload on schema error
   const extPayload={
     ...payload,
     company_name:mriPayload.companyName||document.getElementById('assessorCompany')?.value||'',
     assessor_role:assessorRole||'',
     mri_score:mriPayload.totalScore,
+    rv_overrides:rvOverrides,
     submitted_at:nowIso
   };
 
