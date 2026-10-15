@@ -185,6 +185,19 @@ input::placeholder,textarea::placeholder{color:#c0c4d0}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3.5px rgba(26,111,219,.13)}
 select{appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:40px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 13px center;background-size:15px}
 select:focus{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%231a6fdb' stroke-width='2.2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")}
+/* CLEARABLE FIELD WRAPPER */
+.clearable{position:relative;display:flex;align-items:center}
+.clearable input,.clearable select,.clearable textarea{width:100%}
+.clearable input{padding-right:32px}
+.clearable textarea{padding-right:32px}
+.clearable select{padding-right:56px}/* space for both arrow + X */
+.clear-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:18px;height:18px;border-radius:50%;background:var(--soft);border:none;cursor:pointer;display:none;align-items:center;justify-content:center;padding:0;flex-shrink:0;transition:background .12s;z-index:2}
+.clearable.has-value .clear-btn{display:flex}
+.clear-btn:hover{background:#9aa0b4}
+.clear-btn svg{pointer-events:none}
+.clearable textarea~.clear-btn{top:12px;transform:none}
+/* select X sits left of the chevron */
+.clearable.is-select .clear-btn{right:32px}
 .inline-pair{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
 .inline-pair select{min-width:90px}
 .inline-pair .csel{min-width:90px;width:auto}
@@ -963,6 +976,7 @@ function addLicenseRow(v={}){
   if(v.end_date) row.querySelector('.lic-end').value=v.end_date.split('T')[0];
   if(v.agreement_note) row.querySelector('.lic-note').value=v.agreement_note;
   document.getElementById('licenseRows')?.appendChild(row);
+  if(window.initClearable) initClearable(row);
 }
 function getLicenseRowData(){
   return [...document.querySelectorAll('.license-row')].map(r=>({
@@ -1786,6 +1800,55 @@ function toast(msg,err=false){const t=$('toast');t.textContent=msg;t.className='
 function toggleAvatarMenu(){$('avatarMenu').classList.toggle('open');}
 document.addEventListener('click',e=>{if(!e.target.closest('.avatar-btn'))$('avatarMenu')?.classList.remove('open');});
 async function handleLogout(){await sb.auth.signOut();location.href='index.html';}
+
+/* ── CLEARABLE FIELDS ── */
+function initClearable(root=document){
+  const SKIP_TYPES=['checkbox','radio','file','hidden','submit','button','range','color'];
+  const SKIP_IDS=['built_in_year']; // year picker managed separately
+  const clearSVG=`<svg width="8" height="8" viewBox="0 0 8 8" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M1 1l6 6M7 1L1 7" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg>`;
+  function wrap(el){
+    if(el.closest('.clearable')) return; // already wrapped
+    const isSelect=el.tagName==='SELECT';
+    const isTextarea=el.tagName==='TEXTAREA';
+    if(isSelect&&el.closest('.csel')) return; // custom select, handled separately
+    const w=document.createElement('div');
+    w.className='clearable'+(isSelect?' is-select':'');
+    el.parentNode.insertBefore(w,el);
+    w.appendChild(el);
+    const btn=document.createElement('button');
+    btn.type='button';
+    btn.className='clear-btn';
+    btn.title='Clear';
+    btn.innerHTML=clearSVG;
+    w.appendChild(btn);
+    function sync(){
+      const hasVal=isSelect?(el.value&&el.value!==''):el.value.trim()!=='';
+      w.classList.toggle('has-value',!!hasVal);
+    }
+    el.addEventListener('input',sync);
+    el.addEventListener('change',sync);
+    btn.addEventListener('mousedown',e=>{
+      e.preventDefault();
+      el.value='';
+      el.dispatchEvent(new Event('input',{bubbles:true}));
+      el.dispatchEvent(new Event('change',{bubbles:true}));
+      sync();
+      el.focus();
+    });
+    sync();
+  }
+  root.querySelectorAll('input,select,textarea').forEach(el=>{
+    if(SKIP_TYPES.includes(el.type)) return;
+    if(SKIP_IDS.includes(el.id)) return;
+    if(el.closest('.chip-wrap,.tag-grid,.prev-flags-wrap,.toggle-sw')) return;
+    if(el.readOnly||el.disabled) return;
+    wrap(el);
+  });
+}
+// Run after DOM + after dynamic content added
+document.addEventListener('DOMContentLoaded',()=>{ setTimeout(()=>initClearable(),200); });
+// Export so dynamic rows (license rows, etc.) can call it after rendering
+window.initClearable=initClearable;
 </script>
 </body>
 </html>
