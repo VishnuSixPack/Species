@@ -190,14 +190,18 @@ select:focus{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
 .clearable input,.clearable select,.clearable textarea{width:100%}
 .clearable input{padding-right:32px}
 .clearable textarea{padding-right:32px}
-.clearable select{padding-right:56px}/* space for both arrow + X */
+/* inputs & textareas: circular X button */
 .clear-btn{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:18px;height:18px;border-radius:50%;background:var(--soft);border:none;cursor:pointer;display:none;align-items:center;justify-content:center;padding:0;flex-shrink:0;transition:background .12s;z-index:2}
 .clearable.has-value .clear-btn{display:flex}
 .clear-btn:hover{background:#9aa0b4}
 .clear-btn svg{pointer-events:none}
 .clearable textarea~.clear-btn{top:12px;transform:none}
-/* select X sits left of the chevron */
-.clearable.is-select .clear-btn{right:32px}
+/* selects: small "Clear" text link below the field, no circle X */
+.clearable.is-select{flex-direction:column;align-items:stretch}
+.clearable.is-select .clear-btn{display:none!important}
+.clear-select-lnk{display:none;font-size:10.5px;font-weight:600;color:var(--soft);background:none;border:none;cursor:pointer;padding:2px 0 0 2px;text-align:left;font-family:inherit;line-height:1;transition:color .12s}
+.clearable.is-select.has-value .clear-select-lnk{display:block}
+.clear-select-lnk:hover{color:var(--danger)}
 .inline-pair{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
 .inline-pair select{min-width:90px}
 .inline-pair .csel{min-width:90px;width:auto}
@@ -1821,6 +1825,20 @@ function initClearable(root=document){
     btn.title='Clear';
     btn.innerHTML=clearSVG;
     w.appendChild(btn);
+    if(isSelect){
+      const lnk=document.createElement('button');
+      lnk.type='button';
+      lnk.className='clear-select-lnk';
+      lnk.textContent='Clear';
+      w.appendChild(lnk);
+      lnk.addEventListener('mousedown',e=>{
+        e.preventDefault();
+        el.value='';
+        el.dispatchEvent(new Event('change',{bubbles:true}));
+        sync();
+        el.focus();
+      });
+    }
     function sync(){
       const hasVal=isSelect?(el.value&&el.value!==''):el.value.trim()!=='';
       w.classList.toggle('has-value',!!hasVal);
