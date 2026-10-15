@@ -7738,8 +7738,58 @@ function renderThankYouScreen(mri){
         </div>
       </div>
 
-      <div style="text-align:center;font-size:11px;color:#9aa0b4;">Assessment ID: <strong>${draftId||'—'}</strong> · Submitted ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</div>
+      <div style="text-align:center;font-size:11px;color:#9aa0b4;margin-bottom:20px;">Assessment ID: <strong>${draftId||'—'}</strong> · Submitted ${new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}</div>
+
+      <!-- Reviewer access -->
+      <div style="text-align:center;">
+        <button onclick="promptReviewerPasscode()" style="background:none;border:none;font-size:11px;color:#c0c4d0;cursor:pointer;font-family:'Poppins',sans-serif;letter-spacing:0.3px;text-decoration:underline;text-underline-offset:3px;">Reviewer access →</button>
+      </div>
     </div>`;
+}
+
+// ══ REVIEWER PASSCODE GATE ══
+function promptReviewerPasscode(){
+  // Inject modal if not already present
+  let m=document.getElementById('reviewerPasscodeModal');
+  if(!m){
+    m=document.createElement('div');
+    m.id='reviewerPasscodeModal';
+    m.style.cssText='position:fixed;inset:0;background:rgba(8,12,32,0.55);backdrop-filter:blur(6px);z-index:9500;display:flex;align-items:center;justify-content:center;';
+    m.innerHTML=`
+      <div style="background:#fff;border-radius:18px;padding:32px 28px;max-width:320px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.18);text-align:center;">
+        <div style="font-size:22px;margin-bottom:8px;">🔒</div>
+        <div style="font-size:14px;font-weight:800;color:#1a1a2e;margin-bottom:4px;">Reviewer Access</div>
+        <div style="font-size:11px;color:#6b7280;margin-bottom:20px;">Enter passcode to open the reviewer dashboard</div>
+        <input id="reviewerPasscodeInp" type="password" maxlength="12"
+          placeholder="Passcode"
+          style="width:100%;box-sizing:border-box;border:1.5px solid #e0e3ed;border-radius:10px;padding:10px 14px;font-size:15px;font-family:'Poppins',sans-serif;text-align:center;letter-spacing:4px;outline:none;margin-bottom:14px;"
+          onkeydown="if(event.key==='Enter')checkReviewerPasscode()"
+        />
+        <div id="reviewerPasscodeErr" style="font-size:11px;color:#e63946;min-height:16px;margin-bottom:10px;"></div>
+        <div style="display:flex;gap:10px;">
+          <button onclick="document.getElementById('reviewerPasscodeModal').remove()"
+            style="flex:1;padding:10px;border:1.5px solid #e0e3ed;border-radius:10px;background:#fff;font-size:12px;font-family:'Poppins',sans-serif;cursor:pointer;color:#6b7280;font-weight:600;">Cancel</button>
+          <button onclick="checkReviewerPasscode()"
+            style="flex:1;padding:10px;border:none;border-radius:10px;background:#1e40af;color:#fff;font-size:12px;font-family:'Poppins',sans-serif;cursor:pointer;font-weight:700;">Enter</button>
+        </div>
+      </div>`;
+    document.body.appendChild(m);
+  }
+  m.style.display='flex';
+  setTimeout(()=>document.getElementById('reviewerPasscodeInp')?.focus(),80);
+}
+function checkReviewerPasscode(){
+  const val=(document.getElementById('reviewerPasscodeInp')?.value||'').trim();
+  if(val==='123456'){
+    document.getElementById('reviewerPasscodeModal')?.remove();
+    goTo('sReview');buildReview();
+  } else {
+    const err=document.getElementById('reviewerPasscodeErr');
+    if(err){err.textContent='Incorrect passcode. Try again.';
+      setTimeout(()=>{if(err)err.textContent='';},2500);}
+    const inp=document.getElementById('reviewerPasscodeInp');
+    if(inp){inp.value='';inp.focus();}
+  }
 }
 
 // ══ REVIEW SCREEN ══
