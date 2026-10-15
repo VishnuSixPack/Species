@@ -5226,7 +5226,7 @@ function setTSZone(stKey,zone){kResp[`_tsZone_${stKey}`]=zone;renderKDE();}
 function setSRTransport(stKey,transport){kResp[`_srTransport_${stKey}`]=transport;renderKDE();}
 // Special KDE renderer for c_msc — includes fishery picker
 function renderMSCFisheryKDE(q){
-  if(q._nonScoring)return renderMSCFisheryKDE(q);
+  if(q._nonScoring)return '';
     const r=kResp[q.id]||{};const evs=r.evidence||[];
   const evIcons={cert:'CERT',url:'URL',doc:'DOC',ref:'REF',photo:'IMG',statement:'NOTE'};
   const evChips=evs.map(e=>`<span class="ev-chip" onclick="openEvMod('${q.id}')"><span style="font-size:8px;font-weight:800;opacity:0.6;">${evIcons[e.type]||'·'}</span> ${(e.name||e.value).slice(0,22)}</span>`).join('');
@@ -7613,45 +7613,70 @@ async function doSubmit(){
   if(btn){btn.disabled=true;btn.textContent='Submitting...';}
 
   const nowIso=new Date().toISOString();
-  const payload={
-    submitted_by:assessorName||'beta-user',
-    company_name:mriPayload.companyName,
-    assessor_role:assessorRole||'',
-    status:'submitted',
-    products:products.filter(Boolean),
-    k_resp:kResp,
-    stage_index:kIdx,
+  // Embed scoring summary inside k_resp so no extra columns needed
+  const _scoreSummary={
     mri_score:mriPayload.totalScore,
     risk_max:mriPayload.maxScore,
+    total_kdes:mriPayload.totalKdes,
+    answered_kdes:mriPayload.answeredKdes,
     gap_summary:mriPayload.gaps,
     stage_breakdown:mriPayload.stageBreakdown.map(s=>({
       stageType:s.stageType,instanceId:s.instanceId,label:s.label,
       riskScore:s.riskScore,maxScore:s.maxScore,
       avCount:s.avCount,paCount:s.paCount,unCount:s.unCount,unEvCount:s.unEvCount
     })),
+    submitted_at:nowIso
+  };
+  // Full payload — tries all columns; falls back to minimal on schema error
+  const payload={
+    submitted_by:assessorName||'beta-user',
+    status:'submitted',
+    products:products.filter(Boolean),
+    k_resp:{...kResp,_score:_scoreSummary},
+    stage_index:kIdx,
     rv_overrides:rvOverrides,
-    total_kdes:mriPayload.totalKdes,
-    answered_kdes:mriPayload.answeredKdes,
-    updated_at:nowIso,
+    updated_at:nowIso
+  };
+  // Extended columns (may not exist yet — added separately if they do)
+  const extPayload={
+    ...payload,
+    company_name:mriPayload.companyName||document.getElementById('assessorCompany')?.value||'',
+    assessor_role:assessorRole||'',
+    mri_score:mriPayload.totalScore,
     submitted_at:nowIso
   };
 
-  try{
+  async function trySubmit(pl,isRetry=false){
     if(draftId){
-      const{error}=await db.from('beta_assessments').update(payload).eq('id',draftId);
+      const{error}=await db.from('beta_assessments').update(pl).eq('id',draftId);
       if(error)throw error;
     } else {
-      const{data,error}=await db.from('beta_assessments').insert(payload).select('id').single();
+      const{data,error}=await db.from('beta_assessments').insert(pl).select('id').single();
       if(error)throw error;
       if(data)draftId=data.id;
+    }
+  }
+  try{
+    // Try with extended columns first
+    try{
+      await trySubmit(extPayload);
+    }catch(e1){
+      const msg1=e1?.message||e1?.details||'';
+      if(msg1.includes('column')||msg1.includes('schema')||e1?.code==='42703'||e1?.code==='PGRST204'){
+        console.warn('Extended payload failed, falling back to minimal:',msg1);
+        await trySubmit(payload,true);
+      } else {
+        throw e1;
+      }
     }
     // Store MRI payload for results screen
     window._lastMRIPayload=mriPayload;
     goTo('sThankYou');
     renderThankYouScreen(mriPayload);
   }catch(e){
-    console.error('Submit error:',e);
-    showToast('⚠ Submit failed: '+e.message,'error');
+    const msg=e?.message||e?.details||e?.hint||JSON.stringify(e)||'Unknown error';
+    console.error('Submit error:',e?.code,msg,e);
+    showToast('Submit failed: '+msg.slice(0,80),'error');
     if(btn){btn.disabled=false;btn.textContent='Submit Assessment';}
   }
 }

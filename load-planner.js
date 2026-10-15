@@ -101,6 +101,7 @@ const REALISTIC_MODE_KEY = 'smartuna_planner_realistic_mode';
 const DIMS_MODE_KEY = 'smartuna_planner_dims_mode';
 const NUDGE_STEP_KEY = 'smartuna_planner_nudge_step';
 const SHOW_CONTENTS_KEY = 'smartuna_planner_show_contents';
+const ADDRESSING_KEY = 'smartuna_planner_addressing_v1';
 const GRID_STEP_KEY = 'smartuna_planner_grid_step';
 
 // Selectable grid spacings, in metres. 'auto' sizes them to the container.
@@ -1774,6 +1775,15 @@ function shiftGroup(group, origins, d) {
 
 const snapshotPositions = group => group.map(i => ({ x: i.pos_x, y: i.pos_y, z: i.pos_z }));
 
+// Something moved. The list, the inspector and the nudge readout all say
+// where things are, so they are redrawn together rather than one at a time —
+// an address left over from before the move is worse than no address.
+function refreshPositionReadouts() {
+  renderCargoList();
+  renderEditStrip();
+  updateNudgeReadout();
+}
+
 function nudgeSelected(axis, dir, step = nudgeStepCm) {
   const group = movableSelection();
   const key = NUDGE_AXIS[axis];
@@ -1797,9 +1807,8 @@ function nudgeSelected(axis, dir, step = nudgeStepCm) {
 
   shiftGroup(group, origins, { [axis]: allowed });
   evaluateStability();
-  renderCargoList();
+  refreshPositionReadouts();
   updateStats();
-  updateNudgeReadout();
   updateDimOverlay?.();
   if (sceneMode === '2d') updateResizeHandlesPosition?.();
   markDirty();
@@ -2032,7 +2041,9 @@ function renderCargoList() {
     list.innerHTML = '<div class="list-empty">No items yet. Add cargo in the <b>Add</b> tab and it drops into the container.</div>';
     return;
   }
+  const addrs = addressesFor();
   list.innerHTML = items.map(i => {
+    const addr = addrs.get(i.id);
     const units = i.contents?.reduce((s, c) => s + (c.quantity || 0), 0) || 0;
     const lots = [...new Set((i.contents || []).map(c => c.batch_lot).filter(Boolean))];
     const pm = i.pallet_meta;
@@ -2054,6 +2065,7 @@ function renderCargoList() {
           (i.shape && i.shape !== 'box') ? ` · <span class="row-shape">${escapeHtml(SHAPES[i.shape].label)}</span>` : ''}</small>
         ${extra ? `<small class="cargo-contents">${extra}</small>` : ''}
       </div>
+      <span class="row-addr" title="Where it sits — ${escapeHtml(addressLegend())}">${addr.text}</span>
       ${i.locked ? '<span class="row-lock" title="Locked — cannot be moved">🔒</span>' : ''}
       ${i.issueLevel ? `<span class="row-warn lvl-${i.issueLevel}" title="${escapeHtml(i.issues.map(x => x.text).join(' · '))}">!</span>` : ''}
       <span class="focus-icon" title="Focus camera">⌖</span>
@@ -2094,6 +2106,14 @@ function renderEditStrip() {
   if (sw) sw.style.background = item.color;
   const sh = $('#editStripShape');
   if (sh) sh.textContent = SHAPES[item.shape || 'box'].label;
+
+  // Where it sits, in words someone in the container can use
+  const ad = $('#editStripAddr');
+  if (ad) {
+    const a = addressOf(item);
+    ad.textContent = a ? a.text : '—';
+    ad.title = addressLegend();
+  }
 
   // What is inside this carton. A builder carton knows already; one added
   // by hand starts empty and is filled in here.
@@ -5371,6 +5391,7 @@ function onPointerUp(e) {
     if (dragState.moved) {
       settleAll();
       updateStats();
+      refreshPositionReadouts();
       markDirty();
     }
     dragState = null;
@@ -7040,6 +7061,33 @@ $$('.view-pills-2d .view-pill').forEach(pill => pill.addEventListener('click', (
   positionOrthoCamera(pill.dataset.view, Number(pill.dataset.side) || 1);
 }));
 
+// ---- position numbering ----
+function renderAddressingControls() {
+  const from = $('#addrFrom'), bay = $('#addrBay'), row = $('#addrRow');
+  // enhanceSelect intercepts .value, so the styled trigger follows along
+  if (from) from.value = addressing.from;
+  if (bay) bay.value = addressing.bay_cm;
+  if (row) row.value = addressing.row_cm;
+  const legend = $('#addrLegend');
+  if (legend) legend.textContent = addressLegend();
+}
+
+function onAddressingChange() {
+  addressing.from   = $('#addrFrom')?.value || addressing.from;
+  addressing.bay_cm = +$('#addrBay')?.value || addressing.bay_cm;
+  addressing.row_cm = +$('#addrRow')?.value || addressing.row_cm;
+  normaliseAddressing();
+  saveAddressing();
+  renderAddressingControls();
+  renderCargoList();
+  renderEditStrip();
+  markDirty();
+}
+['#addrFrom', '#addrBay', '#addrRow'].forEach(sel => {
+  const el = $(sel);
+  if (el) el.addEventListener('change', onAddressingChange);
+});
+
 $('#zoomIn').addEventListener('click',  () => dolly( 1.2));
 $('#zoomOut').addEventListener('click', () => dolly(-1.2));
 $('#resetView').addEventListener('click', () => {
@@ -7251,6 +7299,99 @@ function focusOnItems(list) {
   const dir = new THREE.Vector3().subVectors(camera.position, centre).normalize();
   camera.position.copy(centre).add(dir.multiplyScalar(radius * 2.6));
   controls.update();
+}
+
+// ============================================================
+// WHERE A CARTON IS — the address
+// ------------------------------------------------------------
+// There is no industry standard for naming a position inside a container.
+// Bay/row/tier exists, but for whole containers on a ship, not for what is
+// packed inside one. So the planner defines its own, and prints the rule
+// next to the numbers so two parties cannot read them differently.
+//
+//   Bay  — how far in from the datum end, in slices of bay_cm
+//   Row  — across the width, in slices of row_cm
+//   Tier — how many cartons are underneath this one, plus one
+//
+// Bay and row come off a fixed grid because the floor is fixed and a grid
+// renumbers predictably. Tier is counted rather than measured, because
+// carton heights vary and "second one up" is what a person actually means.
+//
+// The exact centimetres stay the source of truth. This is the label on top.
+// ============================================================
+const ADDRESSING_DEFAULTS = { bay_cm: 100, row_cm: 80, from: 'doors' };
+let addressing = { ...ADDRESSING_DEFAULTS };
+
+function loadAddressing() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(ADDRESSING_KEY));
+    if (raw) addressing = { ...ADDRESSING_DEFAULTS, ...raw };
+  } catch (e) { addressing = { ...ADDRESSING_DEFAULTS }; }
+  normaliseAddressing();
+}
+
+function normaliseAddressing() {
+  const n = (v, d) => (Number.isFinite(+v) && +v > 0 ? +v : d);
+  addressing.bay_cm = n(addressing.bay_cm, ADDRESSING_DEFAULTS.bay_cm);
+  addressing.row_cm = n(addressing.row_cm, ADDRESSING_DEFAULTS.row_cm);
+  if (addressing.from !== 'nose') addressing.from = 'doors';
+}
+
+function saveAddressing() {
+  try { localStorage.setItem(ADDRESSING_KEY, JSON.stringify(addressing)); } catch (e) {}
+}
+
+// The doors are at the far end of the length axis, and someone standing in
+// them looking in has +Z on their right. Both facts are needed to turn a
+// measurement into something a person can act on.
+const DOORS_AT_FAR_END = true;
+
+function addressLegend() {
+  const end = addressing.from === 'doors' ? 'the doors' : 'the closed end';
+  return `Bay 1 at ${end}, counting inwards · Row 1 on the left as you look in from the doors · Tier 1 on the floor`;
+}
+
+// One carton's address. `ext` is the extent lookup so a whole-list pass does
+// not measure every carton again for every other carton.
+function computeAddress(item, list, ext) {
+  const a = ext.get(item.id);
+  const L = cargoSpace.length * 100;
+  const along = addressing.from === 'doors' && DOORS_AT_FAR_END
+    ? L - item.pos_x : item.pos_x;
+  const bay = Math.max(1, Math.floor(along / addressing.bay_cm) + 1);
+  const row = Math.max(1, Math.floor(item.pos_z / addressing.row_cm) + 1);
+
+  // Underneath means: overlapping this carton's footprint, and topping out at
+  // or below its base. A 1 cm slack keeps touching faces from reading as a
+  // miss, and keeps a neighbour alongside from reading as a hit.
+  let below = 0;
+  list.forEach(other => {
+    if (other.id === item.id) return;
+    const b = ext.get(other.id);
+    const overX = Math.min(item.pos_x + a.l / 2, other.pos_x + b.l / 2)
+                - Math.max(item.pos_x - a.l / 2, other.pos_x - b.l / 2);
+    const overZ = Math.min(item.pos_z + a.w / 2, other.pos_z + b.w / 2)
+                - Math.max(item.pos_z - a.w / 2, other.pos_z - b.w / 2);
+    if (overX <= 1 || overZ <= 1) return;
+    if (other.pos_y + b.h / 2 <= item.pos_y - a.h / 2 + 1) below++;
+  });
+
+  const tier = below + 1;
+  return { bay, row, tier, text: `B${bay}·R${row}·T${tier}` };
+}
+
+// Every address in one pass, for the list and the plan sheet
+function addressesFor(list = items) {
+  const ext = new Map(list.map(i => [i.id, itemExtent(i)]));
+  return new Map(list.map(i => [i.id, computeAddress(i, list, ext)]));
+}
+
+// Just one, for the inspector. Worked out fresh every time rather than
+// cached: a cached address that is one drag out of date is worse than none.
+function addressOf(item) {
+  if (!item) return null;
+  const ext = new Map(items.map(i => [i.id, itemExtent(i)]));
+  return computeAddress(item, items, ext);
 }
 
 // ============================================================
@@ -8532,10 +8673,12 @@ async function boot() {
   loadCartonSpecs();
   loadBatchCodes();
   loadRecentBuilds();
+  loadAddressing();
   builder = newBuilderSpec();
   renderGridOptions();                      // before enhanceSelect picks them up
   renderSnapOptions();
   $$('select').forEach(enhanceSelect);      // replace native selects with styled ones
+  renderAddressingControls();               // after the selects are styled
   updateStats();
   renderCargoList();
   renderEditStrip();
