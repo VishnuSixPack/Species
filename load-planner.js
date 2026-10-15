@@ -1184,6 +1184,9 @@ function removeContentsGroup(item) {
 // while they are showing so the contents are actually visible.
 function applyContents(item, budget) {
   if (!item.mesh) return 0;
+  // A ghosted carton is deliberately faded; the contents toggle does not get
+  // to put its opacity back.
+  if (item.mesh.userData.ghost) { removeContentsGroup(item); return 0; }
   removeContentsGroup(item);
   const count = itemContentCount(item);
   const want = showContents && count > 0;
@@ -1606,6 +1609,7 @@ function selectItem(id, { keepList = false } = {}) {
   updateNudgeReadout();
   renderSelectionSummary();
   renderLockButton();
+  applyIsolate();              // the fade follows whatever is picked
 }
 
 // Ctrl/Cmd-click: add or remove one item from the marked set
@@ -1665,6 +1669,7 @@ function selectAllItems() {
 }
 
 function refreshMultiHighlights() {
+  applyIsolate();              // picking or unpicking changes what is faded
   items.forEach(i => {
     if (!i.mesh) return;
     const marked = multiSelect.has(i.id);
@@ -1722,6 +1727,7 @@ function deselectAll() {
   renderCargoList();
   renderEditStrip();
   renderSelectionSummary();
+  applyIsolate();
 }
 
 // ============================================================
@@ -1782,6 +1788,65 @@ function refreshPositionReadouts() {
   renderCargoList();
   renderEditStrip();
   updateNudgeReadout();
+}
+
+// ============================================================
+// ISOLATE
+// ------------------------------------------------------------
+// A full container is a wall of boxes. Working on one carton inside it means
+// fighting every carton in front of it — you cannot see it, and clicking near
+// it grabs a neighbour. Isolate fades everything that is not picked down to a
+// ghost and makes those ghosts deaf to the mouse, so the only thing you can
+// see or grab is the thing you are working on.
+// ============================================================
+let isolateOn = false;
+const GHOST_OPACITY = 0.06;
+
+const isolateActive = () => isolateOn && selectionIds().size > 0;
+const isGhosted = id => isolateActive() && !selectionIds().has(id);
+
+function applyIsolate() {
+  const btn = $('#toggleIsolate');
+  if (btn) {
+    btn.classList.toggle('active', isolateOn);
+    btn.title = isolateOn
+      ? 'Showing only what you picked (I)'
+      : 'Fade everything except what you pick (I)';
+  }
+  // The selection changes constantly. Doing nothing when there is nothing to
+  // undo keeps that free.
+  const anyGhost = items.some(i => i.mesh?.userData.ghost);
+  if (!isolateOn && !anyGhost) return;
+
+  const active = isolateActive();
+  const keep = selectionIds();
+  items.forEach(i => {
+    if (!i.mesh) return;
+    const ghost = active && !keep.has(i.id);
+    i.mesh.userData.ghost = ghost;
+    const wire = i.mesh.children.find(c => c.userData.isEdge);
+    if (wire) wire.visible = !ghost;
+    if (ghost) {
+      i.mesh.material.transparent = true;
+      i.mesh.material.opacity = GHOST_OPACITY;
+      i.mesh.material.depthWrite = false;
+      i.mesh.material.needsUpdate = true;
+    }
+  });
+  // Anything that is not a ghost gets whatever opacity the contents toggle
+  // wants; applyContents leaves the ghosts alone.
+  refreshAllContents();
+  updateLabelVisibility();
+}
+
+function setIsolate(on) {
+  isolateOn = !!on;
+  applyIsolate();
+  if (isolateOn && !selectionIds().size) {
+    showToast('Isolate is on. Pick a carton and the rest will fade.');
+  } else if (isolateOn) {
+    showToast('Showing only what you picked. Press <b>I</b> to bring the rest back.');
+  }
 }
 
 function nudgeSelected(axis, dir, step = nudgeStepCm) {
@@ -2114,6 +2179,8 @@ function renderEditStrip() {
     ad.textContent = a ? a.text : '—';
     ad.title = addressLegend();
   }
+
+  renderResizeReadout();
 
   // What is inside this carton. A builder carton knows already; one added
   // by hand starts empty and is filled in here.
@@ -5116,8 +5183,11 @@ function hitCarton(e) {
   updateMouseNormalized(e);
   raycaster.setFromCamera(_mouse, camera);
   const hits = raycaster.intersectObjects(cartonGroup.children, false);
-  if (!hits.length) return null;
-  return { itemId: hits[0].object.userData.itemId, point: hits[0].point.clone() };
+  // While isolating, the faded ones are not there as far as the mouse is
+  // concerned — that is the whole point of getting them out of the way.
+  const hit = hits.find(h => !h.object.userData.ghost);
+  if (!hit) return null;
+  return { itemId: hit.object.userData.itemId, point: hit.point.clone() };
 }
 
 // Drag plane depends on scene mode + ortho view.
@@ -6637,6 +6707,7 @@ function renderShortcuts() {
     { keys: ['R'],          desc: 'Rotate selected item 90°' },
     { keys: ['F'],          desc: 'Flip selected item onto another face' },
     { keys: ['K'],          desc: 'Lock or unlock what is picked — locked cartons cannot be moved' },
+    { keys: ['I'],          desc: 'Isolate — fade everything except what you pick, so only it can be clicked' },
     { keys: [modKey, 'D'],  desc: 'Duplicate selected carton' },
     { keys: ['L'],          desc: 'Toggle carton labels' },
     { keys: ['G'],          desc: 'Toggle dimension guides' },
@@ -7060,6 +7131,27 @@ $$('.view-pills-3d .view-pill').forEach(pill => pill.addEventListener('click', (
 $$('.view-pills-2d .view-pill').forEach(pill => pill.addEventListener('click', () => {
   positionOrthoCamera(pill.dataset.view, Number(pill.dataset.side) || 1);
 }));
+
+// ---- isolate, resize steppers, slip sheet ----
+$('#toggleIsolate')?.addEventListener('click', () => setIsolate(!isolateOn));
+
+$('#resizeStep')?.addEventListener('change', e => {
+  resizeStepCm = Number(e.target.value) || 1;
+});
+
+$$('[data-resize]').forEach(btn => btn.addEventListener('click', () => {
+  const m = /^([lwh])(-?\d+)$/.exec(btn.dataset.resize);
+  if (m) resizeSelected(m[1], Number(m[2]) > 0 ? 1 : -1);
+}));
+
+// Works on the whole picked set, so sheeting a packed container is one click
+// rather than one click for every carton. Reachable from the inspector and
+// from the selection bar, because building a selection happens in the list
+// and the inspector is not open while you do it.
+const slipPicked = () =>
+  slipSheetUnder(selectionTotals().picked.filter(i => i.kind !== 'slipsheet'));
+$('#btnSlipSheet')?.addEventListener('click', slipPicked);
+$('#selSlip')?.addEventListener('click', slipPicked);
 
 // ---- position numbering ----
 function renderAddressingControls() {
@@ -7585,6 +7677,157 @@ function afterContentsChange(item) {
   renderSelectionSummary();
   refreshAllContents();
   markDirty();
+}
+
+// ============================================================
+// RESIZE BY THE NUMBER
+// ------------------------------------------------------------
+// The drag handles only exist in 2D, and dragging a handle in a packed
+// container is a fight. These change one dimension by an exact step, in
+// either view, and read in whatever unit the inspector is showing.
+// ============================================================
+const RESIZE_DIMS = { l: 'length_cm', w: 'width_cm', h: 'height_cm' };
+let resizeStepCm = 1;
+
+function resizeSelected(dim, dir, step = resizeStepCm) {
+  const item = items.find(i => i.id === selectedItemId);
+  if (!item) return false;
+  if (item.locked) { showToast('That carton is locked. Unlock it to resize it.'); return false; }
+  const prop = RESIZE_DIMS[dim];
+  if (!prop) return false;
+
+  const before = Number(item[prop]) || 0;
+  // Which world axis this dimension currently lies along, so the limit is the
+  // one it would actually run into
+  const o = ORIENTATIONS[item.rot_y] || ORIENTATIONS[0];
+  const axis = ['x', 'y', 'z'].find(a => o[a] === prop);
+  const limit = axis === 'x' ? cargoSpace.length * 100
+              : axis === 'y' ? cargoSpace.height * 100
+              : cargoSpace.width * 100;
+
+  const next = Math.min(limit, Math.max(MIN_SIZE_CM,
+    Math.round((before + dir * step) * 100) / 100));
+  if (Math.abs(next - before) < 0.001) {
+    showToast(dir > 0 ? 'That is as big as the space allows.'
+                      : `Nothing smaller than ${MIN_SIZE_CM} cm.`);
+    return false;
+  }
+
+  item[prop] = next;
+  // Growing taller grows upward from where it rests, rather than sinking the
+  // base into whatever is underneath. Length and width grow about the centre.
+  if (axis === 'y') item.pos_y += (next - before) / 2;
+
+  clampItemToBounds(item);
+  refreshItemMesh(item);
+  refreshItemSprite(item);
+  settleAll();
+  evaluateStability();
+  updateStats();
+  refreshPositionReadouts();
+  populateFormFromItem(item);
+  markDirty();
+  return true;
+}
+
+function renderResizeReadout() {
+  const item = items.find(i => i.id === selectedItemId);
+  Object.entries(RESIZE_DIMS).forEach(([dim, prop]) => {
+    const el = $(`#rs${dim.toUpperCase()}`);
+    if (el) el.textContent = item ? `${fromCm(item[prop])} ${itemUnit}` : '—';
+  });
+}
+
+// ============================================================
+// SLIPPING A SHEET UNDERNEATH
+// ------------------------------------------------------------
+// Remembering the slip sheets after the container is packed used to mean
+// dragging a 1 cm sheet into a gap that is not there, then lifting every
+// carton above it by hand. This puts a sheet in under whatever is picked and
+// leaves the lifting to the settle pass, which is what it is already for.
+// ============================================================
+const SHEET_THICKNESS_CM = 1;
+
+function slipSheetUnder(list) {
+  if (!list.length) { showToast('Pick a carton first.'); return []; }
+
+  const roof = cargoSpace.height * 100;
+  const made = [];
+  const tooTall = [];
+  const pinned = [];
+
+  list.forEach(item => {
+    const e = itemExtent(item);
+    const base = item.pos_y - e.h / 2;
+    const minX = item.pos_x - e.l / 2, maxX = item.pos_x + e.l / 2;
+    const minZ = item.pos_z - e.w / 2, maxZ = item.pos_z + e.w / 2;
+
+    // The column is this carton and everything stacked above it in the same
+    // footprint. All of it has to rise by the sheet's thickness.
+    const column = items.filter(o => {
+      const b = itemBounds(o);
+      if (minX + 0.5 >= b.maxX || maxX - 0.5 <= b.minX) return false;
+      if (minZ + 0.5 >= b.maxZ || maxZ - 0.5 <= b.minZ) return false;
+      return b.minY >= base - 0.5;
+    });
+
+    // A locked carton in the column is somebody saying "this one does not
+    // move". Lifting it anyway would be exactly the accident the lock exists
+    // to prevent.
+    if (column.some(o => o.locked)) { pinned.push(item); return; }
+
+    const columnTop = column.reduce((t, o) => Math.max(t, itemBounds(o).maxY), base);
+    if (columnTop + SHEET_THICKNESS_CM > roof + 0.01) { tooTall.push(item); return; }
+
+    batchCounters.slipsheet = (batchCounters.slipsheet || 0) + 1;
+    const sheet = addItem({
+      label: `SHEET-${batchCounters.slipsheet}`,
+      base_label: 'SHEET',
+      kind: 'slipsheet',
+      shape: 'box',
+      length_cm: Number(e.l.toFixed(2)),
+      width_cm:  Number(e.w.toFixed(2)),
+      height_cm: SHEET_THICKNESS_CM,
+      weight_kg: 1,
+      handling: 'standard',
+      color: KIND_COLORS.slipsheet
+    });
+
+    // The column goes up by the thickness, and the sheet takes the space that
+    // opens up underneath it. Done explicitly rather than left to the settle
+    // pass: the sheet and the carton would start at the same height, and
+    // which of them settled first would decide which ended up on top.
+    column.forEach(o => { o.pos_y += SHEET_THICKNESS_CM; });
+    sheet.pos_x = item.pos_x;
+    sheet.pos_z = item.pos_z;
+    sheet.pos_y = base + SHEET_THICKNESS_CM / 2;
+    [sheet, ...column].forEach(o => { clampItemToBounds(o); refreshItemMesh(o); });
+    made.push(sheet);
+  });
+
+  if (made.length) {
+    settleAll();
+    evaluateStability();
+    updateStats();
+    refreshPositionReadouts();
+    applyIsolate();
+    markDirty();
+  }
+
+  const skipped = [];
+  if (tooTall.length) skipped.push(`${tooTall.length} already up at the roof`);
+  if (pinned.length)  skipped.push(`${pinned.length} with a locked carton above`);
+
+  if (!made.length) {
+    showToast(skipped.length
+      ? `No sheet went in \u2014 ${skipped.join(', ')}.`
+      : 'Nothing to slip a sheet under.');
+  } else if (skipped.length) {
+    showToast(`Slipped <b>${made.length}</b> underneath. Skipped ${skipped.join(', ')}.`);
+  } else {
+    showToast(`Slipped <b>${made.length}</b> sheet${made.length === 1 ? '' : 's'} underneath.`);
+  }
+  return made;
 }
 
 // ---- lock ----
@@ -8500,6 +8743,8 @@ window.addEventListener('keydown', (e) => {
     $('#btnRotate').click();
   } else if (e.key === 'f' && selectedItemId) {
     $('#btnFlip').click();
+  } else if (e.key === 'i') {
+    setIsolate(!isolateOn);
   } else if (e.key === 'k' && selectionIds().size) {
     // Locks whatever is picked — the whole Ctrl-selected set, or the one item
     const picked = selectionTotals().picked;
