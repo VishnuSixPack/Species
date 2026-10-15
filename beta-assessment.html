@@ -942,14 +942,19 @@
       <button class="btn-ghost" onclick="goTo('sMOU')" style="font-size:12px;padding:8px 18px;">← Back</button>
     </div>
     <div style="font-size:22px;font-weight:800;color:#1a1a2e;margin-bottom:4px;">Saved Assessments</div>
-    <div style="font-size:13px;color:#9aa0b4;margin-bottom:14px;">Click Resume to pick up where you left off.</div>
+    <div style="font-size:13px;color:#9aa0b4;margin-bottom:14px;">Pick up where you left off, or view submitted assessments.</div>
     <div class="cont-tabs">
       <div class="cont-tab active" id="contTab_draft" onclick="setContTab('draft')">In Progress <span class="cont-tab-count" id="contCount_draft"></span></div>
       <div class="cont-tab" id="contTab_submitted" onclick="setContTab('submitted')">Submitted <span class="cont-tab-count" id="contCount_submitted"></span></div>
     </div>
-    <input type="text" id="contFilter" placeholder="🔍 Filter by your name..." oninput="filterContinueList(this.value)" style="width:100%;padding:10px 14px;border:1.5px solid #e0e3ed;border-radius:10px;font-family:'Poppins',sans-serif;font-size:13px;color:#1a1a2e;outline:none;margin-bottom:14px;flex-shrink:0;" onfocus="this.style.borderColor='#1d4ed8'" onblur="this.style.borderColor='#e0e3ed'"/>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+      <input type="text" id="contFilter" placeholder="🔍 Search by name or company..." oninput="applyContinueFilters()" style="flex:1;min-width:160px;padding:9px 14px;border:1.5px solid #e0e3ed;border-radius:10px;font-family:'Poppins',sans-serif;font-size:12px;color:#1a1a2e;outline:none;" onfocus="this.style.borderColor='#1d4ed8'" onblur="this.style.borderColor='#e0e3ed'"/>
+      <select id="contDateFilter" onchange="applyContinueFilters()" style="padding:9px 12px;border:1.5px solid #e0e3ed;border-radius:10px;font-family:'Poppins',sans-serif;font-size:12px;color:#1a1a2e;background:#fff;outline:none;cursor:pointer;">
+        <option value="">All dates</option>
+      </select>
+    </div>
     <div class="cont-list" id="cont-list">
-      <div style="text-align:center;padding:40px;color:#9aa0b4;font-size:13px;">Loading drafts...</div>
+      <div style="text-align:center;padding:40px;color:#9aa0b4;font-size:13px;">Loading...</div>
     </div>
   </div></div>
 </div>
@@ -1581,19 +1586,19 @@ function closeAIModal(){
 }
 
 // ── Delete Confirmation (styled) ──
-function confirmDelete(id,btn){
+function confirmDelete(id){
   const existing=document.getElementById('del-confirm-modal');
   if(existing)existing.remove();
   const modal=document.createElement('div');
   modal.id='del-confirm-modal';
-  modal.style.cssText='position:fixed;inset:0;background:rgba(8,12,32,0.5);backdrop-filter:blur(6px);z-index:700;display:flex;align-items:center;justify-content:center;padding:24px;';
-  modal.innerHTML=`<div style="background:#fff;border-radius:18px;padding:28px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.2);text-align:center;">
-    <div style="font-size:36px;margin-bottom:12px;">🗑️</div>
+  modal.style.cssText='position:fixed;inset:0;background:rgba(8,12,32,0.5);backdrop-filter:blur(6px);z-index:9000;display:flex;align-items:center;justify-content:center;padding:24px;';
+  modal.innerHTML=`<div style="background:#fff;border-radius:18px;padding:28px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.25);text-align:center;">
+    <div style="font-size:32px;margin-bottom:12px;">🗑</div>
     <div style="font-size:16px;font-weight:800;color:#1a1a2e;margin-bottom:8px;">Delete this assessment?</div>
-    <div style="font-size:12px;color:#9aa0b4;margin-bottom:24px;line-height:1.6;">This action cannot be undone. All your answers, evidence and notes for this assessment will be permanently removed.</div>
+    <div style="font-size:12px;color:#9aa0b4;margin-bottom:24px;line-height:1.6;">This cannot be undone. All answers, evidence and notes will be permanently removed.</div>
     <div style="display:flex;gap:10px;">
       <button onclick="document.getElementById('del-confirm-modal').remove()" style="flex:1;padding:12px;border:1.5px solid #e0e3ed;border-radius:10px;background:#fff;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:#6b7280;cursor:pointer;">Cancel</button>
-      <button onclick="document.getElementById('del-confirm-modal').remove();deleteDraft('${id}',document.querySelector('[data-del-id=\'${id}\']'))" style="flex:1;padding:12px;border:none;border-radius:10px;background:#e63946;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:#fff;cursor:pointer;">Yes, Delete</button>
+      <button onclick="document.getElementById('del-confirm-modal').remove();deleteDraft('${id}')" style="flex:1;padding:12px;border:none;border-radius:10px;background:#e63946;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:#fff;cursor:pointer;">Yes, Delete</button>
     </div>
   </div>`;
   document.body.appendChild(modal);
@@ -8635,6 +8640,20 @@ async function loadContinue(){
     // Pre-fill filter with current assessor's name if known
     const filterInp=document.getElementById('contFilter');
     if(filterInp&&assessorName)filterInp.value=assessorName;
+    // Populate date filter dropdown
+    const dateFilter=document.getElementById('contDateFilter');
+    if(dateFilter){
+      const months=new Set();
+      (_continueData||[]).forEach(d=>{
+        const dt=new Date(d.updated_at||d.created_at||'');
+        if(!isNaN(dt))months.add(`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`);
+      });
+      const sorted=[...months].sort().reverse();
+      const M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      dateFilter.innerHTML='<option value="">All dates</option>'+sorted.map(k=>{
+        const[y,m]=k.split('-');return `<option value="${k}">${M[parseInt(m,10)-1]} ${y}</option>`;
+      }).join('');
+    }
     applyContinueFilters();
   }catch(e){el.innerHTML=`<div style="text-align:center;padding:40px;color:#e63946;font-size:13px;">Error loading: ${e.message}</div>`;}
 }
@@ -8644,14 +8663,23 @@ function setContTab(tab){
   document.getElementById('contTab_submitted')?.classList.toggle('active',tab==='submitted');
   applyContinueFilters();
 }
-function filterContinueList(query){
-  applyContinueFilters();
-}
+// filterContinueList merged into applyContinueFilters
 function applyContinueFilters(){
-  const query=document.getElementById('contFilter')?.value||'';
-  const q=query.trim().toLowerCase();
+  const query=(document.getElementById('contFilter')?.value||'').trim().toLowerCase();
+  const dateFilter=document.getElementById('contDateFilter')?.value||'';
   let filtered=_continueData.filter(d=>d.status===_contActiveTab);
-  if(q)filtered=filtered.filter(d=>(d.submitted_by||'').toLowerCase().includes(q));
+  if(query)filtered=filtered.filter(d=>
+    (d.submitted_by||'').toLowerCase().includes(query)||
+    (d.company_name||'').toLowerCase().includes(query)||
+    (d.assessor_role||'').toLowerCase().includes(query)
+  );
+  if(dateFilter){
+    filtered=filtered.filter(d=>{
+      const dt=new Date(d.updated_at||d.created_at||'');
+      const key=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}`;
+      return key===dateFilter;
+    });
+  }
   renderContinueList(filtered, query);
 }
 function renderContinueList(data, activeQuery){
@@ -8662,37 +8690,70 @@ function renderContinueList(data, activeQuery){
     return;
   }
   el.innerHTML=data.map(d=>{
-    const prods=Array.isArray(d.products)?d.products:[];const kdeCount=d.k_resp?Object.keys(d.k_resp).filter(k=>!k.startsWith('_')&&d.k_resp[k]?.ans).length:0;
+    const prods=Array.isArray(d.products)?d.products:[];
+    // Progress calculation
+    const kResp2=d.k_resp||{};
+    const totalKdes=Object.keys(kResp2).filter(k=>!k.startsWith('_')).length;
+    const answered=Object.keys(kResp2).filter(k=>!k.startsWith('_')&&kResp2[k]?.ans).length;
+    const pct=totalKdes>0?Math.round((answered/totalKdes)*100):0;
+    // Av/Pa/Un breakdown
+    const avCount=Object.keys(kResp2).filter(k=>!k.startsWith('_')&&kResp2[k]?.ans==='av').length;
+    const paCount=Object.keys(kResp2).filter(k=>!k.startsWith('_')&&kResp2[k]?.ans==='pa').length;
+    const unCount=Object.keys(kResp2).filter(k=>!k.startsWith('_')&&kResp2[k]?.ans==='un').length;
     const isDraft=d.status==='draft';
     const cardBorder=isDraft?'#bfdbfe':'#bbf7d0';
     const cardBg=isDraft?'#fff':'#f6fef9';
     const statusColor=isDraft?'#1e40af':'#16a34a';
     const statusLabel=isDraft?'In Progress':'Submitted';
-    const diff=Date.now()-new Date(d.updated_at||d.created_at).getTime();const mins=Math.floor(diff/60000);const timeAgo=mins<2?'Just now':mins<60?`${mins}m ago`:Math.floor(mins/60)<24?`${Math.floor(mins/60)}h ago`:`${Math.floor(mins/1440)}d ago`;
+    // Date formatting
+    const dt=new Date(d.updated_at||d.created_at||'');
+    const diff=Date.now()-dt.getTime();const mins=Math.floor(diff/60000);
+    const timeAgo=mins<2?'Just now':mins<60?`${mins}m ago`:Math.floor(mins/60)<24?`${Math.floor(mins/60)}h ago`:`${Math.floor(mins/1440)}d ago`;
+    const dtFull=dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
     const scoreChip=(!isDraft&&d.mri_score!=null)?`<span class="cont-pill" style="background:#eff6ff;color:#1e40af;">Score: ${d.mri_score} pts</span>`:'';
-    const companyChip=d.company_name?`<span class="cont-pill">${d.company_name}</span>`:'';
     const roleChip=d.assessor_role?`<span class="cont-pill">${d.assessor_role}</span>`:'';
+    // Progress bar color
+    const progColor=pct===100?'#16a34a':pct>50?'#f59e0b':'#1d4ed8';
+    const progressBar=`<div style="margin-top:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+        <span style="font-size:10px;font-weight:600;color:#9aa0b4;">Progress</span>
+        <span style="font-size:10px;font-weight:700;color:${progColor};">${pct}% · ${answered}/${totalKdes||'?'} KDEs</span>
+      </div>
+      <div style="height:5px;background:#e8eaf0;border-radius:999px;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:${progColor};border-radius:999px;transition:width 0.3s;"></div>
+      </div>
+      ${answered>0?`<div style="display:flex;gap:8px;margin-top:4px;">
+        <span style="font-size:9px;color:#16a34a;font-weight:600;">✓ ${avCount} Available</span>
+        <span style="font-size:9px;color:#f59e0b;font-weight:600;">◎ ${paCount} Partial</span>
+        <span style="font-size:9px;color:#e63946;font-weight:600;">✕ ${unCount} Gaps</span>
+      </div>`:''}
+    </div>`;
     const resumeBtn=isDraft
       ?`<button onclick="resumeDraft('${d.id}')" style="background:#1d4ed8;color:#fff;border:none;border-radius:999px;padding:8px 18px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">Resume →</button>`
-      :`<button onclick="resumeDraft('${d.id}',true)" style="background:#1e40af;color:#fff;border:none;border-radius:999px;padding:8px 14px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">View Answers</button>
-        <button onclick="viewSubmittedReview('${d.id}')" style="background:#16a34a;color:#fff;border:none;border-radius:999px;padding:8px 14px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;margin-left:6px;white-space:nowrap;">Review</button>`;
-    return `<div class="cont-card" style="border-color:${cardBorder};background:${cardBg};">
-      <div style="flex:1;min-width:0;">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
-          <span style="font-size:13px;font-weight:700;color:#1a1a2e;">${d.submitted_by||'Unknown'}</span>
-          <span style="background:${statusColor}22;color:${statusColor};font-size:10px;font-weight:700;border-radius:5px;padding:1px 8px;">${statusLabel}</span>
+      :`<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+        <button onclick="resumeDraft('${d.id}',true)" style="background:#1e40af;color:#fff;border:none;border-radius:999px;padding:7px 14px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">View Answers</button>
+        <button onclick="viewSubmittedReview('${d.id}')" style="background:#16a34a;color:#fff;border:none;border-radius:999px;padding:7px 14px;font-family:'Poppins',sans-serif;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">Review →</button>
+       </div>`;
+    return `<div class="cont-card" data-draft-id="${d.id}" style="border-color:${cardBorder};background:${cardBg};flex-direction:column;align-items:stretch;gap:0;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:2px;">
+            <span style="font-size:13px;font-weight:700;color:#1a1a2e;">${d.submitted_by||'Unknown'}</span>
+            <span style="background:${statusColor}22;color:${statusColor};font-size:10px;font-weight:700;border-radius:5px;padding:1px 8px;">${statusLabel}</span>
+          </div>
+          <div class="cont-meta">${dtFull} · ${timeAgo}${d.company_name?' · '+d.company_name:''}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;">
+            ${prods.length?`<span class="cont-pill">${prods.length} product${prods.length>1?'s':''}</span>`:''}
+            ${isDraft?`<span class="cont-pill">Last: Stage ${(d.stage_index||0)+1}</span>`:''}
+            ${scoreChip}${roleChip}
+          </div>
         </div>
-        <div class="cont-meta" style="margin-bottom:6px;">${timeAgo}${d.company_name?' · '+d.company_name:''}</div>
-        <div style="display:flex;flex-wrap:wrap;gap:4px;">
-          ${prods.length?`<span class="cont-pill">${prods.length} product${prods.length>1?'s':''}</span>`:''}
-          ${kdeCount?`<span class="cont-pill">${kdeCount} answered</span>`:''}
-          ${isDraft?`<span class="cont-pill">Stage ${(d.stage_index||0)+1}</span>`:''}
-          ${scoreChip}${roleChip}
+        <div class="cont-acts" style="flex-direction:column;align-items:flex-end;gap:6px;">
+          ${resumeBtn}
+          <button class="cont-del" onclick="event.stopPropagation();confirmDelete('${d.id}')" title="Delete this assessment" style="align-self:flex-end;">🗑</button>
         </div>
       </div>
-      <div class="cont-acts">${resumeBtn}
-        <button class="cont-del" onclick="event.stopPropagation();confirmDelete('${d.id}',this)" title="Delete">🗑</button>
-      </div>
+      ${progressBar}
     </div>`;
   }).join('');
 }
@@ -8781,10 +8842,21 @@ async function viewSubmittedReview(id){
     showToast('Viewing submitted review','success');
   }catch(e){showToast('Could not load review: '+e.message,'error');}
 }
-async function deleteDraft(id,btn){
-  if(!confirm('Delete this saved assessment?'))return;
-  try{await db.from('beta_assessments').delete().eq('id',id);btn.closest('.cont-card').remove();showToast('Draft deleted','info');}
-  catch(e){showToast('Delete failed: '+e.message,'error');}
+async function deleteDraft(id){
+  try{
+    const{error}=await db.from('beta_assessments').delete().eq('id',id);
+    if(error)throw error;
+    // Remove card from DOM by data-draft-id attribute
+    const card=document.querySelector('[data-draft-id="'+id+'"]');
+    if(card){card.style.transition='opacity 0.2s';card.style.opacity='0';setTimeout(()=>{card.remove();},200);}
+    // Update counts
+    _continueData=_continueData.filter(d=>d.id!==id);
+    const draftCount=_continueData.filter(d=>d.status==='draft').length;
+    const submittedCount=_continueData.filter(d=>d.status==='submitted').length;
+    const dc=document.getElementById('contCount_draft');if(dc)dc.textContent=draftCount?`(${draftCount})`:'';
+    const sc=document.getElementById('contCount_submitted');if(sc)sc.textContent=submittedCount?`(${submittedCount})`:'';
+    showToast('Assessment deleted','info');
+  }catch(e){showToast('Delete failed: '+(e?.message||JSON.stringify(e)),'error');}
 }
 
 // ══ DROPDOWN HELPERS ══
