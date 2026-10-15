@@ -32,11 +32,18 @@ const PRESETS = {
 };
 
 // Standard pallet footprints (cm) — height ~14.5cm is typical for wooden pallets
+// EPAL figures: EPAL 1 is 1200 x 800 x 144 mm at about 25 kg, EPAL 2 is
+// 1200 x 1000 x 162 mm at about 35 kg, EPAL 3 is 1000 x 1200 x 144 mm at about
+// 30 kg, EPAL 6 is the 800 x 600 half at about 10 kg, and the US GMA pallet is
+// 48 x 40 inches. Each is a starting point rather than a law: the weight in
+// particular moves with the timber and how wet it is, so it stays editable.
 const PALLET_PRESETS = {
-  'eur1':   { name: 'EUR1 · 120 × 80 cm',    length: 120,   width: 80,    height: 14.5, weight: 25 },
-  'eur2':   { name: 'EUR2 · 120 × 100 cm',   length: 120,   width: 100,   height: 14.5, weight: 25 },
-  'us':     { name: 'US · 121.9 × 101.6 cm', length: 121.9, width: 101.6, height: 14.5, weight: 25 },
-  'custom': { name: 'Custom',                length: 100,   width: 80,    height: 14.5, weight: 20 }
+  'eur1':   { name: 'EUR1 · 120 × 80 cm',        length: 120,   width: 80,    height: 14.4, weight: 25 },
+  'eur2':   { name: 'EUR2 · 120 × 100 cm',       length: 120,   width: 100,   height: 16.2, weight: 35 },
+  'eur3':   { name: 'EUR3 · 100 × 120 cm',       length: 100,   width: 120,   height: 14.4, weight: 30 },
+  'eur6':   { name: 'EUR6 half · 80 × 60 cm',    length: 80,    width: 60,    height: 14.4, weight: 10 },
+  'us':     { name: 'US GMA · 121.9 × 101.6 cm', length: 121.9, width: 101.6, height: 14,   weight: 16 },
+  'custom': { name: 'Custom',                    length: 100,   width: 80,    height: 14.4, weight: 20 }
 };
 
 // Slipsheets — flat sheets. Real ones are ~2mm, but at container scale that's
@@ -1609,6 +1616,7 @@ function selectItem(id, { keepList = false } = {}) {
   updateNudgeReadout();
   renderSelectionSummary();
   renderLockButton();
+  renderSlipNote();            // how many bases it would take follows the pick
   applyIsolate();              // the fade follows whatever is picked
 }
 
@@ -1710,6 +1718,7 @@ function renderSelectionSummary() {
   $('#selWeight').textContent = `${t.weight.toFixed(1)} kg`;
   $('#selVolume').textContent = `${t.volume_m3.toFixed(3)} m³`;
   $('#selUnits').textContent  = t.units ? String(t.units) : '—';
+  renderSlipNote();
   $('#selUnitsLabel').textContent = t.lots.length
     ? `units · ${t.lots.length} batch${t.lots.length === 1 ? '' : 'es'}`
     : 'units inside';
@@ -7148,10 +7157,21 @@ $$('[data-resize]').forEach(btn => btn.addEventListener('click', () => {
 // rather than one click for every carton. Reachable from the inspector and
 // from the selection bar, because building a selection happens in the list
 // and the inspector is not open while you do it.
+// Bases do not get bases of their own, so they drop out of the picked set
 const slipPicked = () =>
-  slipSheetUnder(selectionTotals().picked.filter(i => i.kind !== 'slipsheet'));
+  slipUnder(selectionTotals().picked.filter(i => i.kind === 'carton'));
 $('#btnSlipSheet')?.addEventListener('click', slipPicked);
 $('#selSlip')?.addEventListener('click', slipPicked);
+$('#slipWhat')?.addEventListener('change', e => {
+  baseChoice = e.target.value;
+  try { localStorage.setItem(BASE_CHOICE_KEY, baseChoice); } catch (err) {}
+  renderSlipNote();
+});
+$('#slipMode')?.addEventListener('change', e => {
+  baseMode = e.target.value === 'each' ? 'each' : 'group';
+  try { localStorage.setItem(BASE_MODE_KEY, baseMode); } catch (err) {}
+  renderSlipNote();
+});
 
 // ---- position numbering ----
 function renderAddressingControls() {
@@ -7739,70 +7759,211 @@ function renderResizeReadout() {
 }
 
 // ============================================================
-// SLIPPING A SHEET UNDERNEATH
+// PUTTING SOMETHING UNDERNEATH
 // ------------------------------------------------------------
-// Remembering the slip sheets after the container is packed used to mean
-// dragging a 1 cm sheet into a gap that is not there, then lifting every
-// carton above it by hand. This puts a sheet in under whatever is picked and
-// leaves the lifting to the settle pass, which is what it is already for.
+// Remembering the pallets after the container is packed used to mean dragging
+// a base into a gap that is not there and then lifting every carton above it
+// by hand. This puts the chosen base in under whatever is picked and lifts
+// the column itself.
+//
+// A slip sheet can be cut to the carton. A pallet cannot — a EUR1 is 120 x 80
+// whatever is standing on it — so the real footprint goes in and any overhang
+// is shown rather than hidden. Overhang is a real problem and the plan should
+// say so.
 // ============================================================
-const SHEET_THICKNESS_CM = 1;
+const BASE_OPTIONS = [
+  { id: 'sheet_fit', kind: 'slipsheet', fit: true,
+    label: 'Slip sheet · cut to the carton',                   height: 1,    weight: 1 },
+  { id: 'sheet_sm',  kind: 'slipsheet', length: 120,   width: 80,
+    label: 'Slip sheet · 120 × 80 cm',                         height: 1,    weight: 1 },
+  { id: 'sheet_md',  kind: 'slipsheet', length: 120,   width: 100,
+    label: 'Slip sheet · 120 × 100 cm',                        height: 1,    weight: 1 },
+  { id: 'eur1',      kind: 'pallet',    length: 120,   width: 80,
+    label: 'EUR1 pallet · 120 × 80 cm',                        height: 14.4, weight: 25 },
+  { id: 'eur2',      kind: 'pallet',    length: 120,   width: 100,
+    label: 'EUR2 pallet · 120 × 100 cm',                       height: 16.2, weight: 35 },
+  { id: 'eur3',      kind: 'pallet',    length: 100,   width: 120,
+    label: 'EUR3 pallet · 100 × 120 cm',                       height: 14.4, weight: 30 },
+  { id: 'eur6',      kind: 'pallet',    length: 80,    width: 60,
+    label: 'EUR6 half pallet · 80 × 60 cm',                    height: 14.4, weight: 10 },
+  { id: 'gma',       kind: 'pallet',    length: 121.9, width: 101.6,
+    label: 'US GMA pallet · 121.9 × 101.6 cm',                 height: 14,   weight: 16 }
+];
+const BASE_CHOICE_KEY = 'smartuna_planner_base_choice';
+const BASE_MODE_KEY   = 'smartuna_planner_base_mode';
+let baseChoice = 'sheet_fit';
+let baseMode   = 'group';          // 'group' covers the picked load, 'each' is per carton
 
-function slipSheetUnder(list) {
+const baseOption = id => BASE_OPTIONS.find(b => b.id === id) || BASE_OPTIONS[0];
+
+function loadBaseChoice() {
+  try {
+    const saved = localStorage.getItem(BASE_CHOICE_KEY);
+    if (saved && BASE_OPTIONS.some(b => b.id === saved)) baseChoice = saved;
+    const m = localStorage.getItem(BASE_MODE_KEY);
+    if (m === 'each' || m === 'group') baseMode = m;
+  } catch (e) {}
+}
+
+function renderBaseOptions() {
+  const sel = $('#slipWhat');
+  if (sel) {
+    if (!sel.options.length) {
+      sel.innerHTML = BASE_OPTIONS
+        .map(b => `<option value="${b.id}">${escapeHtml(b.label)}</option>`).join('');
+    }
+    sel.value = baseChoice;
+  }
+  const modeSel = $('#slipMode');
+  if (modeSel) modeSel.value = baseMode;
+  renderSlipNote();
+}
+
+// Say what the button is about to do, before it does it
+function renderSlipNote() {
+  const note = $('#slipNote');
+  if (!note) return;
+  const base = baseOption(baseChoice);
+  const picked = selectionTotals().picked.filter(i => i.kind === 'carton');
+  const lift = `Lifts whatever is above by ${base.height} cm.`;
+  if (base.fit) {
+    note.textContent = `${lift} Each sheet is cut to the carton it goes under.`;
+    return;
+  }
+  if (baseMode === 'each') {
+    note.textContent = `${lift} One ${base.length} \u00d7 ${base.width} cm base under every carton picked.`;
+    return;
+  }
+  if (!picked.length) {
+    note.textContent = `${lift} Pick the cartons to cover and it will say how many it needs.`;
+    return;
+  }
+  const bs = picked.map(itemBounds);
+  const { tiles } = tileBases(base,
+    Math.min(...bs.map(b => b.minX)), Math.max(...bs.map(b => b.maxX)),
+    Math.min(...bs.map(b => b.minZ)), Math.max(...bs.map(b => b.maxZ)));
+  note.textContent = `${lift} Covering what you picked takes ` +
+    `${tiles.length} \u00d7 ${base.length} \u00d7 ${base.width} cm.`;
+}
+
+// Which way round to lay a fixed-size base, and how many of them it takes to
+// cover a footprint. A EUR1 is 120 x 80 whatever stands on it, so a load wider
+// than one pallet gets the number of pallets it actually needs rather than one
+// stretched pallet that does not exist.
+function tileBases(base, minX, maxX, minZ, maxZ) {
+  const spanL = Math.max(0.01, maxX - minX), spanW = Math.max(0.01, maxZ - minZ);
+  const count = o => Math.max(1, Math.ceil(spanL / o.l - 1e-6)) *
+                     Math.max(1, Math.ceil(spanW / o.w - 1e-6));
+  const ways = [
+    { l: base.length, w: base.width },
+    { l: base.width,  w: base.length }
+  ].sort((a, b) => count(a) - count(b));
+  const f = ways[0];
+  const nx = Math.max(1, Math.ceil(spanL / f.l - 1e-6));
+  const nz = Math.max(1, Math.ceil(spanW / f.w - 1e-6));
+  const tiles = [];
+  for (let i = 0; i < nx; i++) {
+    for (let k = 0; k < nz; k++) {
+      tiles.push({ l: f.l, w: f.w,
+                   cx: minX + f.l * (i + 0.5),
+                   cz: minZ + f.w * (k + 0.5) });
+    }
+  }
+  return { tiles, coverX: minX + nx * f.l, coverZ: minZ + nz * f.w };
+}
+
+function slipUnder(list, base = baseOption(baseChoice), mode = baseMode) {
   if (!list.length) { showToast('Pick a carton first.'); return []; }
 
   const roof = cargoSpace.height * 100;
+  // One base per carton, or one run of bases under the whole picked load.
+  // A pallet carries a load, not a single box, so covering the load is the
+  // usual answer and putting one under every carton builds a tower of pallets.
+  const groups = mode === 'each' ? list.map(i => [i]) : [list];
   const made = [];
   const tooTall = [];
   const pinned = [];
+  // A base is usually wider than the carton it was asked for, so it ends up
+  // under the neighbours too. Without this, asking for one under each of two
+  // touching cartons builds a tower: the second base goes under the first.
+  const covered = new Set();
+  let already = 0;
+  let overhung = 0;
 
-  list.forEach(item => {
-    const e = itemExtent(item);
-    const base = item.pos_y - e.h / 2;
-    const minX = item.pos_x - e.l / 2, maxX = item.pos_x + e.l / 2;
-    const minZ = item.pos_z - e.w / 2, maxZ = item.pos_z + e.w / 2;
+  groups.forEach(group => {
+    if (group.every(o => covered.has(o.id))) { already += group.length; return; }
+    const bs = group.map(itemBounds);
+    const minX = Math.min(...bs.map(b => b.minX)), maxX = Math.max(...bs.map(b => b.maxX));
+    const minZ = Math.min(...bs.map(b => b.minZ)), maxZ = Math.max(...bs.map(b => b.maxZ));
+    const bottom = Math.min(...bs.map(b => b.minY));
 
-    // The column is this carton and everything stacked above it in the same
-    // footprint. All of it has to rise by the sheet's thickness.
+    const laid = base.fit
+      ? { tiles: [{ l: maxX - minX, w: maxZ - minZ,
+                    cx: (minX + maxX) / 2, cz: (minZ + maxZ) / 2 }],
+          coverX: maxX, coverZ: maxZ }
+      : tileBases(base, minX, maxX, minZ, maxZ);
+
+    // Only lay a base where something actually stands on it. Picking two
+    // cartons at opposite ends of the container should not pave the empty
+    // twelve metres between them.
+    laid.tiles = laid.tiles.filter(t => group.some(o => {
+      const b = itemBounds(o);
+      return t.cx - t.l / 2 + 0.5 < b.maxX && t.cx + t.l / 2 - 0.5 > b.minX &&
+             t.cz - t.w / 2 + 0.5 < b.maxZ && t.cz + t.w / 2 - 0.5 > b.minZ;
+    }));
+    if (!laid.tiles.length) return;
+
+    // The column is everything standing anywhere on the ground the bases
+    // cover, from the insertion height up. All of it rises together, once,
+    // before any base goes in — lifting per base would stack them.
     const column = items.filter(o => {
       const b = itemBounds(o);
-      if (minX + 0.5 >= b.maxX || maxX - 0.5 <= b.minX) return false;
-      if (minZ + 0.5 >= b.maxZ || maxZ - 0.5 <= b.minZ) return false;
-      return b.minY >= base - 0.5;
+      if (minX + 0.5 >= b.maxX || laid.coverX - 0.5 <= b.minX) return false;
+      if (minZ + 0.5 >= b.maxZ || laid.coverZ - 0.5 <= b.minZ) return false;
+      return b.minY >= bottom - 0.5;
     });
 
     // A locked carton in the column is somebody saying "this one does not
     // move". Lifting it anyway would be exactly the accident the lock exists
     // to prevent.
-    if (column.some(o => o.locked)) { pinned.push(item); return; }
+    if (column.some(o => o.locked)) { pinned.push(group); return; }
 
-    const columnTop = column.reduce((t, o) => Math.max(t, itemBounds(o).maxY), base);
-    if (columnTop + SHEET_THICKNESS_CM > roof + 0.01) { tooTall.push(item); return; }
+    const columnTop = column.reduce((t, o) => Math.max(t, itemBounds(o).maxY), bottom);
+    if (columnTop + base.height > roof + 0.01) { tooTall.push(group); return; }
 
-    batchCounters.slipsheet = (batchCounters.slipsheet || 0) + 1;
-    const sheet = addItem({
-      label: `SHEET-${batchCounters.slipsheet}`,
-      base_label: 'SHEET',
-      kind: 'slipsheet',
-      shape: 'box',
-      length_cm: Number(e.l.toFixed(2)),
-      width_cm:  Number(e.w.toFixed(2)),
-      height_cm: SHEET_THICKNESS_CM,
-      weight_kg: 1,
-      handling: 'standard',
-      color: KIND_COLORS.slipsheet
+    column.forEach(o => { o.pos_y += base.height; covered.add(o.id); });
+
+    const kind = base.kind;
+    laid.tiles.forEach(t => {
+      batchCounters[kind] = (batchCounters[kind] || 0) + 1;
+      const piece = addItem({
+        label: `${KIND_LABEL_PREFIX[kind] || 'BASE'}-${batchCounters[kind]}`,
+        base_label: KIND_LABEL_PREFIX[kind] || 'BASE',
+        kind,
+        shape: 'box',
+        length_cm: Number(t.l.toFixed(2)),
+        width_cm:  Number(t.w.toFixed(2)),
+        height_cm: base.height,
+        weight_kg: base.weight,
+        handling: 'standard',
+        color: KIND_COLORS[kind]
+      });
+      piece.pos_x = t.cx;
+      piece.pos_z = t.cz;
+      piece.pos_y = bottom + base.height / 2;
+      clampItemToBounds(piece);
+      refreshItemMesh(piece);
+      made.push(piece);
     });
+    column.forEach(o => { clampItemToBounds(o); refreshItemMesh(o); });
 
-    // The column goes up by the thickness, and the sheet takes the space that
-    // opens up underneath it. Done explicitly rather than left to the settle
-    // pass: the sheet and the carton would start at the same height, and
-    // which of them settled first would decide which ended up on top.
-    column.forEach(o => { o.pos_y += SHEET_THICKNESS_CM; });
-    sheet.pos_x = item.pos_x;
-    sheet.pos_z = item.pos_z;
-    sheet.pos_y = base + SHEET_THICKNESS_CM / 2;
-    [sheet, ...column].forEach(o => { clampItemToBounds(o); refreshItemMesh(o); });
-    made.push(sheet);
+    // Anything standing proud of the ground the bases cover is overhanging,
+    // which is a real problem on a real pallet and should be said out loud.
+    group.forEach(o => {
+      const b = itemBounds(o);
+      if (b.minX < minX - 0.5 || b.maxX > laid.coverX + 0.5 ||
+          b.minZ < minZ - 0.5 || b.maxZ > laid.coverZ + 0.5) overhung++;
+    });
   });
 
   if (made.length) {
@@ -7817,15 +7978,18 @@ function slipSheetUnder(list) {
   const skipped = [];
   if (tooTall.length) skipped.push(`${tooTall.length} already up at the roof`);
   if (pinned.length)  skipped.push(`${pinned.length} with a locked carton above`);
+  if (already) skipped.push(`${already} already standing on one`);
 
+  const noun = base.kind === 'pallet' ? 'pallet' : 'sheet';
   if (!made.length) {
     showToast(skipped.length
-      ? `No sheet went in \u2014 ${skipped.join(', ')}.`
-      : 'Nothing to slip a sheet under.');
-  } else if (skipped.length) {
-    showToast(`Slipped <b>${made.length}</b> underneath. Skipped ${skipped.join(', ')}.`);
+      ? `Nothing went in — ${skipped.join(', ')}.`
+      : 'Nothing to put a base under.');
   } else {
-    showToast(`Slipped <b>${made.length}</b> sheet${made.length === 1 ? '' : 's'} underneath.`);
+    const bits = [`Put <b>${made.length}</b> ${noun}${made.length === 1 ? '' : 's'} underneath`];
+    if (skipped.length) bits.push(`skipped ${skipped.join(', ')}`);
+    if (overhung) bits.push(`<b>${overhung}</b> overhang${overhung === 1 ? 's' : ''} the base`);
+    showToast(bits.join(' · ') + '.');
   }
   return made;
 }
@@ -8919,6 +9083,8 @@ async function boot() {
   loadBatchCodes();
   loadRecentBuilds();
   loadAddressing();
+  loadBaseChoice();
+  renderBaseOptions();                      // before enhanceSelect styles it
   builder = newBuilderSpec();
   renderGridOptions();                      // before enhanceSelect picks them up
   renderSnapOptions();
