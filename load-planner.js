@@ -300,8 +300,10 @@ function initScene() {
   perspControls = new OrbitControls(perspCamera, canvas);
   perspControls.enableDamping = true;
   perspControls.dampingFactor = 0.08;
-  perspControls.minDistance = 3;
-  perspControls.maxDistance = 45;
+  // Zoom is handled by onWheelZoom below rather than by OrbitControls, which
+  // reads deltaY without looking at deltaMode. The near and far limits are
+  // set from the container by updateZoomRange().
+  perspControls.enableZoom = false;
   perspControls.maxPolarAngle = Math.PI / 2 - 0.05;
   perspControls.mouseButtons = {
     LEFT: THREE.MOUSE.ROTATE,
@@ -312,6 +314,7 @@ function initScene() {
   // Ortho controls (2D) — pan and zoom only
   orthoControls = new OrbitControls(orthoCamera, canvas);
   orthoControls.enableRotate = false;
+  orthoControls.enableZoom = false;              // same wheel handler as 3D
   orthoControls.enableDamping = true;
   orthoControls.dampingFactor = 0.15;
   orthoControls.mouseButtons = {
@@ -447,6 +450,7 @@ function buildContainer() {
 
   perspControls.target.set(L / 2, H / 2, 0);
   perspControls.update();
+  updateZoomRange();              // the limits follow the container's size
 
   updateContainerVisibility();
 
@@ -5124,6 +5128,8 @@ function attachSceneInput() {
   canvas.addEventListener('pointerup',   onPointerUp);
   canvas.addEventListener('pointercancel', onPointerUp);
   canvas.addEventListener('pointerleave', onPointerLeave);
+  // passive:false — the handler stops the page scrolling behind the scene
+  canvas.addEventListener('wheel', onWheelZoom, { passive: false });
 }
 
 function onPointerLeave() {
@@ -6321,14 +6327,79 @@ function animateCamera(newPos, newTarget) {
   requestAnimationFrame(tick);
 }
 
-function dolly(step) {
+// ============================================================
+// ZOOM
+// ------------------------------------------------------------
+// OrbitControls works its wheel step out from event.deltaY alone and never
+// looks at event.deltaMode. A browser is free to report a wheel in lines
+// (deltaMode 1, deltaY 3) rather than pixels, and three "pixels" of scroll
+// moves the camera by 0.1% — so scrolling appears to do nothing at all, and
+// the only views left are wherever the buttons and the view pills put you.
+// That is what "only two views" is. So the wheel is read here, in the units
+// the browser actually sent.
+// ============================================================
+// Firefox reports a wheel notch as 3 lines, where Chrome reports 120 px, so
+// 40 px a line makes one notch move the same amount in both.
+const WHEEL_LINE_PX = 40;
+const WHEEL_PAGE_PX = 400;         // one page
+const ZOOM_DECAY     = 0.95;       // per 100 px of scroll, as OrbitControls uses
+
+function wheelPixels(e) {
+  const unit = e.deltaMode === 1 ? WHEEL_LINE_PX
+             : e.deltaMode === 2 ? WHEEL_PAGE_PX : 1;
+  // A free-spinning wheel can report one enormous delta. Capping it keeps a
+  // single flick from crossing the whole range in one go.
+  return Math.max(-WHEEL_PAGE_PX, Math.min(WHEEL_PAGE_PX, e.deltaY * unit));
+}
+
+// px < 0 is a scroll towards the screen, which means closer
+function zoomByPixels(px) {
+  if (!px) return;
+  const factor = Math.pow(ZOOM_DECAY, -px / 100);
   if (sceneMode === '3d') {
-    const dir = new THREE.Vector3().subVectors(controls.target, camera.position).normalize();
-    camera.position.addScaledVector(dir, step);
+    const offset = new THREE.Vector3().subVectors(perspCamera.position, perspControls.target);
+    const want = offset.length() * factor;
+    const d = Math.max(perspControls.minDistance,
+                       Math.min(perspControls.maxDistance, want));
+    perspCamera.position.copy(perspControls.target)
+      .add(offset.setLength(d));
+    perspControls.update();
   } else {
-    orthoCamera.zoom = Math.max(0.2, Math.min(10, orthoCamera.zoom * (step > 0 ? 1.15 : 0.87)));
+    orthoCamera.zoom = Math.max(0.2, Math.min(10, orthoCamera.zoom / factor));
     orthoCamera.updateProjectionMatrix();
   }
+}
+
+function onWheelZoom(e) {
+  if (isPacking) return;                 // the scene is mid-animation
+  e.preventDefault();
+  zoomByPixels(wheelPixels(e));
+}
+
+// The +/- buttons move by a fixed share of the current distance, so they step
+// the same amount wherever you are. Taking a flat 1.2 m off, as they used to,
+// was imperceptible far out and overshot through the target close in.
+function dolly(step) {
+  zoomByPixels(step > 0 ? -120 : 120);
+}
+
+// How near and how far the camera may go, worked out from the container
+// rather than fixed. The old 3 m and 45 m were chosen for a 40-footer: in a
+// 20-footer, 45 m left the load at a tenth of the viewport and 3 m was close
+// enough to be inside it, which is two useless extremes and nothing between.
+function updateZoomRange() {
+  if (!perspControls) return;
+  const span = Math.hypot(cargoSpace.length, cargoSpace.width, cargoSpace.height);
+  // Far: the whole container framed with room around it. Near: close enough
+  // to read one carton, and never above the distance Focus asks for.
+  perspControls.minDistance = Math.max(1.0, span * 0.15);
+  perspControls.maxDistance = Math.max(6, span * 2.4);
+  // Whatever the camera was doing, bring it inside the new range
+  const offset = new THREE.Vector3().subVectors(perspCamera.position, perspControls.target);
+  const d = Math.max(perspControls.minDistance,
+                     Math.min(perspControls.maxDistance, offset.length()));
+  perspCamera.position.copy(perspControls.target).add(offset.setLength(d));
+  perspControls.update();
 }
 
 // ============================================================
