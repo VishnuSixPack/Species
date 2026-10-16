@@ -3,6 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script>
+    // Gate: only reachable once Developer mode has been unlocked from the home
+    // page. This keeps casual visitors out; it is not real security — anyone
+    // who sets the flag themselves gets in. See the note in the chat.
+    (function(){var ok=false;try{ok=localStorage.getItem('smartuna_dev_unlocked')==='1';}catch(e){}if(!ok){location.replace('home-logged-in.html');}})();
+  </script>
   <script>(function(){var t='dark';try{var v=localStorage.getItem('smartuna_dev_lab_theme');if(v==='light'||v==='dark')t=v;}catch(e){}document.documentElement.setAttribute('data-theme',t);})();</script>
   <title>Dev Lab</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -51,6 +57,7 @@
     .side-foot{margin-top:auto;padding:12px 8px;border-top:1px solid var(--line);}
     .exit{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;color:var(--muted);text-decoration:none;padding:8px 10px;border-radius:6px;}
     .exit:hover{background:var(--panel2);color:var(--text);}
+    button.exit{width:100%;background:none;border:none;cursor:pointer;text-align:left;margin-top:2px;}
 
     /* ── MAIN ── */
     .main{display:flex;flex-direction:column;min-width:0;min-height:0;}
@@ -244,6 +251,10 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
         exit to platform
       </a>
+      <button class="exit" onclick="lockAndExit()" title="Hide the Developer link again and go back">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+        lock &amp; exit
+      </button>
     </div>
   </aside>
 
@@ -390,6 +401,12 @@
     const c = document.getElementById('console');
     c.classList.toggle('min');
     document.getElementById('minBtn').textContent = c.classList.contains('min') ? 'show' : 'hide';
+  }
+
+  // ── LOCK ──
+  function lockAndExit(){
+    try{ localStorage.removeItem('smartuna_dev_unlocked'); }catch(e){}
+    window.location.href = 'home-logged-in.html';
   }
 
   // ── THEME ──

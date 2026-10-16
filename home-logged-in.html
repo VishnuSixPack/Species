@@ -230,6 +230,13 @@
 
     .view-all{font-size:11px;color:var(--primary);text-decoration:none;margin-top:auto;padding-top:8px;display:inline-block;}
     .view-all:hover{text-decoration:underline;}
+    /* ── DEVELOPER EASTER EGG ── */
+    #devNav[hidden]{display:none !important;}
+    #devNav.just-unlocked{animation:devPulse 1.2s ease 2;}
+    @keyframes devPulse{0%,100%{box-shadow:0 0 0 0 rgba(63,185,80,0);}50%{box-shadow:0 0 0 6px rgba(63,185,80,0.22);}}
+    .dev-toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,16px);opacity:0;pointer-events:none;z-index:10000;display:flex;align-items:center;gap:10px;background:#0b0e14;color:#d6dde8;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;padding:10px 16px;border-radius:10px;border:1px solid #2e3746;box-shadow:0 10px 30px rgba(0,0,0,0.25);transition:opacity .25s,transform .25s;}
+    .dev-toast.show{opacity:1;transform:translate(-50%,0);}
+    .dev-toast b{color:#3fb950;font-weight:600;}
   </style>
 </head>
 <body>
@@ -306,7 +313,8 @@
         <a href="#" class="nav-item"><img src="messages.png" alt=""/>Messages</a>
         <a href="#" class="nav-item"><img src="report.png" alt=""/>Reports</a>
         <a href="report.html" class="nav-item"><img src="support.png" alt=""/>Support</a>
-        <a href="developer.html" class="nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 6 2 12 8 18"/><polyline points="16 6 22 12 16 18"/></svg>Developer</a>
+        <a href="developer.html" class="nav-item" id="devNav" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 6 2 12 8 18"/><polyline points="16 6 22 12 16 18"/></svg>Developer</a>
+        <script>try{if(localStorage.getItem('smartuna_dev_unlocked')==='1')document.getElementById('devNav').hidden=false;}catch(e){}</script>
       </div>
     </div>
     <div class="topbar-right">
@@ -644,6 +652,49 @@
   }
   </script>
   <script>
+    // ── DEVELOPER EASTER EGG ──
+    // Typing the secret word below (anywhere on the page, not inside a text box)
+    // toggles the hidden Developer nav item. Change SECRET to change the word. This only hides the link — see the gate at the top of
+    // developer.html, which sends anyone who hasn't unlocked back here.
+    (function(){
+      const KEY = 'smartuna_dev_unlocked';
+      const SECRET = 'tuna';
+      const CODE = SECRET.toLowerCase().split('');
+      const recent = []; let toastTimer = null;
+      function isUnlocked(){ try{ return localStorage.getItem(KEY)==='1'; }catch(e){ return false; } }
+      function toast(html){
+        let t = document.getElementById('devToast');
+        if(!t){ t = document.createElement('div'); t.id='devToast'; t.className='dev-toast'; t.setAttribute('role','status'); document.body.appendChild(t); }
+        t.innerHTML = html; requestAnimationFrame(()=>t.classList.add('show'));
+        clearTimeout(toastTimer); toastTimer = setTimeout(()=>t.classList.remove('show'), 2800);
+      }
+      function setUnlocked(on){
+        let saved = true;
+        try{ on ? localStorage.setItem(KEY,'1') : localStorage.removeItem(KEY); }catch(e){ saved = false; }
+        const nav = document.getElementById('devNav');
+        if(nav){
+          nav.hidden = !on;
+          if(on){ nav.classList.remove('just-unlocked'); void nav.offsetWidth; nav.classList.add('just-unlocked'); }
+        }
+        toast(on
+          ? '<b>&lt;/&gt;</b> Developer mode unlocked' + (saved ? '' : ' (this visit only)')
+          : '<b>&lt;/&gt;</b> Developer mode locked');
+      }
+      document.addEventListener('keydown', e=>{
+        const el = e.target;
+        if(el && (el.tagName==='INPUT' || el.tagName==='TEXTAREA' || el.tagName==='SELECT' || el.isContentEditable)) return;
+        if(e.ctrlKey || e.metaKey || e.altKey) return;
+        // rolling window of the last N keys, so a stray keypress before the
+        // code doesn't throw the match off
+        recent.push((e.key||'').toLowerCase());
+        if(recent.length > CODE.length) recent.shift();
+        if(recent.length === CODE.length && recent.every((k,i)=>k===CODE[i])){
+          recent.length = 0;
+          setUnlocked(!isUnlocked());
+        }
+      });
+    })();
+
     // ── DEMO MODE ──
     // Set to false to restore the dashboard tiles and greeting once the
     // demo is done — this is the only line that needs to change.
