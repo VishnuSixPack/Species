@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logistics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --page:#f4f5f7;
+  --surface:#ffffff;
+  --border:#e6e8ec;
+  --field-border:#cfd5de;
+  --field-bg:#ffffff;
+  --text:#14161a;
+  --label:#1c1f25;
+  --muted:#79818f;
+  --placeholder:#7b8494;
+  --accent:#2f6fed;
+  --accent-soft:rgba(47,111,237,.14);
+  --accent-ring:rgba(47,111,237,.18);
+  --ok-bg:#d9f5e1;
+  --ok-text:#1c7a43;
+  --warn-bg:#fdf0d5;
+  --warn-text:#8a5f0f;
+  --rule:#5b616b;
+  --menu-shadow:0 14px 34px rgba(16,24,40,.16);
+  --shadow:0 1px 2px rgba(16,24,40,.05);
+}
+:root:not([data-theme="light"]){
+  @media (prefers-color-scheme: dark){
+    --page:#0f1115;--surface:#171a20;--border:#272b33;--field-border:#3a404b;--field-bg:#1c2027;
+    --text:#e8eaee;--label:#dfe2e8;--muted:#98a0ae;--placeholder:#8a92a0;--accent:#7aa2ff;
+    --accent-soft:rgba(122,162,255,.18);--accent-ring:rgba(122,162,255,.26);--ok-bg:#14361f;--ok-text:#6ddc98;
+    --warn-bg:#3a2d10;--warn-text:#e6bd63;--rule:#606673;--menu-shadow:0 14px 34px rgba(0,0,0,.5);--shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0f1115;--surface:#171a20;--border:#272b33;--field-border:#3a404b;--field-bg:#1c2027;
+  --text:#e8eaee;--label:#dfe2e8;--muted:#98a0ae;--placeholder:#8a92a0;--accent:#7aa2ff;
+  --accent-soft:rgba(122,162,255,.18);--accent-ring:rgba(122,162,255,.26);--ok-bg:#14361f;--ok-text:#6ddc98;
+  --warn-bg:#3a2d10;--warn-text:#e6bd63;--rule:#606673;--menu-shadow:0 14px 34px rgba(0,0,0,.5);--shadow:none;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--page);color:var(--text);
+  font-family:Poppins,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:13.5px;line-height:1.5;-webkit-font-smoothing:antialiased;
+  padding:28px 24px 200px;
+}
+.wrap{max-width:1180px;margin:0 auto}
+
+.section-head{display:flex;align-items:center;gap:14px;margin:0 0 14px}
+.section-head span{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:500;white-space:nowrap}
+.section-head i{flex:1;height:1px;background:var(--rule);opacity:.5}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow);margin-bottom:16px}
+.card-head{display:flex;align-items:center;gap:16px;padding:15px 20px}
+.card-head h2{font-size:18px;font-weight:600;margin:0;letter-spacing:-.01em}
+.card-head .spacer{flex:1}
+.card-body{padding:4px 20px 22px;border-top:1px solid var(--border)}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow);margin-bottom:14px}
+.panel-body{padding:18px 20px 22px}
+.panel h3{font-size:14.5px;font-weight:600;margin:0 0 16px}
+.panel .divider{height:1px;background:var(--border);margin:22px -20px}
+
+.switch{position:relative;display:inline-flex;width:44px;height:24px;flex:none}
+.switch input{position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
+.switch span{position:absolute;inset:0;border-radius:999px;background:#c6cdd8;transition:background .15s ease}
+.switch span::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .15s ease;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.switch input:checked + span{background:var(--accent)}
+.switch input:checked + span::after{transform:translateX(20px)}
+.switch input:focus-visible + span{box-shadow:0 0 0 3px var(--accent-ring)}
+
+.pill{font-size:11px;font-weight:500;padding:4px 10px;border-radius:999px}
+.pill.ok{background:var(--ok-bg);color:var(--ok-text)}
+.pill.pending{background:var(--warn-bg);color:var(--warn-text)}
+.iconbtn{border:0;background:transparent;color:var(--muted);width:30px;height:30px;border-radius:6px;display:grid;place-items:center;cursor:pointer}
+.iconbtn:hover{background:var(--page)}
+.iconbtn svg{transition:transform .18s ease}
+.collapsed .iconbtn svg{transform:rotate(180deg)}
+
+.row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px 26px;margin-top:18px;align-items:start}
+.row.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.field{display:flex;flex-direction:column;gap:7px;min-width:0}
+.field > label{font-size:13px;font-weight:500;color:var(--label);display:flex;align-items:center;gap:8px;min-height:26px}
+.field.dim > label{color:var(--muted)}
+.hint{font-size:11.5px;color:var(--muted);margin:0;line-height:1.45}
+.seg{margin-left:auto;display:inline-flex;align-items:center;height:26px;background:var(--page);border:1px solid var(--border);border-radius:8px;padding:2px;gap:2px;flex:none}
+.seg button{height:20px;display:flex;align-items:center;border:0;background:transparent;color:var(--muted);font:inherit;font-size:11px;font-weight:600;letter-spacing:.02em;padding:0 10px;border-radius:6px;cursor:pointer;transition:background .14s ease,color .14s ease}
+.seg button:hover:not(.on){color:var(--text)}
+.seg button.on{background:var(--surface);color:var(--accent);box-shadow:0 1px 3px rgba(16,24,40,.14)}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg.locked{opacity:.5;pointer-events:none}
+.hint.alert{color:var(--warn-text)}
+
+.ctl{width:100%;height:44px;border:1px solid var(--field-border);background:var(--field-bg);color:var(--text);
+  border-radius:8px;padding:0 13px;font:inherit;font-size:13.5px;outline:none;transition:border-color .12s ease,box-shadow .12s ease}
+.ctl::placeholder{color:var(--placeholder)}
+.ctl:hover:not(:disabled){border-color:#b3bccb}
+.ctl:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring)}
+.ctl:disabled{background:var(--page);color:var(--muted);cursor:not-allowed}
+.ctl.strong{font-weight:600}
+
+/* ---- dropdown ---- */
+.dd{position:relative}
+.dd.open{z-index:60}
+.trigger{
+  width:100%;height:44px;border:1px solid var(--field-border);background:var(--field-bg);color:var(--placeholder);
+  border-radius:8px;padding:0 12px 0 13px;font:inherit;font-size:13.5px;text-align:left;cursor:pointer;
+  display:flex;align-items:center;gap:10px;transition:border-color .12s ease,box-shadow .12s ease
+}
+.trigger:hover:not(:disabled){border-color:#b3bccb}
+.trigger:focus-visible{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring)}
+.trigger:disabled{background:var(--page);cursor:not-allowed}
+.trigger.has{color:var(--text);font-weight:500}
+.trigger .txt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trigger .caret{color:var(--muted);flex:none;transition:transform .18s ease}
+.dd.open .trigger{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring)}
+.dd.open .caret{transform:rotate(180deg)}
+
+.menu{
+  position:absolute;top:calc(100% + 6px);left:0;min-width:100%;z-index:70;background:var(--surface);
+  border:1px solid var(--border);border-radius:10px;box-shadow:var(--menu-shadow);padding:6px;
+  max-height:264px;overflow-y:auto;display:none;
+}
+.dd.open .menu,.dp.open .menu{display:block;animation:pop .13s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.opt{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:7px;cursor:pointer;font-size:13.5px;white-space:nowrap}
+.opt:hover,.opt.active{background:var(--page)}
+.opt.sel{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.opt .tick{margin-left:auto;opacity:0;flex:none}
+.opt.sel .tick{opacity:1}
+.opt .sub{margin-left:auto;font-size:11.5px;color:var(--muted);font-weight:400}
+.menu::-webkit-scrollbar{width:10px}
+.menu::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px;border:3px solid var(--surface)}
+
+/* ---- date picker ---- */
+.dp{position:relative}
+.dp.open{z-index:60}
+.dp .menu{width:288px;padding:12px}
+.dp.open .trigger{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring)}
+.cal-head{display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.cal-title{flex:1;text-align:center;font-weight:600;font-size:13.5px}
+.nav{border:1px solid var(--border);background:var(--surface);color:var(--text);width:28px;height:28px;border-radius:7px;display:grid;place-items:center;cursor:pointer}
+.nav:hover{background:var(--page)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.dow{font-size:10.5px;color:var(--muted);text-align:center;padding:4px 0 6px;font-weight:500}
+.day{height:34px;border:0;background:transparent;color:var(--text);border-radius:8px;cursor:pointer;font:inherit;font-size:12.5px}
+.day:hover{background:var(--page)}
+.day.today{box-shadow:inset 0 0 0 1px var(--accent);color:var(--accent);font-weight:600}
+.day.sel{background:var(--accent);color:#fff;font-weight:600}
+.day.blank{visibility:hidden}
+.cal-foot{display:flex;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+.cal-foot button{border:0;background:transparent;color:var(--accent);font:inherit;font-size:12.5px;font-weight:500;cursor:pointer;padding:4px 6px;border-radius:6px}
+.cal-foot button:hover{background:var(--page)}
+.cal-foot .clear{color:var(--muted)}
+
+.chain{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-top:18px}
+.chain .field{flex:0 1 236px}
+.arrow{height:44px;display:flex;align-items:center;color:var(--muted);font-size:16px;user-select:none}
+.linkbtn{height:44px;border:0;background:transparent;color:var(--accent);font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;padding:0 2px;border-radius:6px}
+.linkbtn:hover:not(:disabled){text-decoration:underline}
+.linkbtn:disabled{color:var(--muted);opacity:.6;cursor:not-allowed}
+.linkbtn.inline{height:auto;padding:6px 2px;margin-top:14px}
+.linkbtn:focus-visible,.iconbtn:focus-visible,.rm:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.xbtn{width:18px;height:18px;border-radius:50%;border:0;background:var(--page);color:var(--muted);display:grid;place-items:center;cursor:pointer;padding:0;flex:none;transition:background .12s ease,color .12s ease}
+.xbtn:hover{background:rgba(209,67,67,.12);color:#d14343}
+.xbtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.rm{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:11.5px;padding:0;line-height:1;font-family:inherit}
+.rm:hover{color:#d14343}
+
+.clearwrap{position:relative}
+.clearwrap .trigger,.clearwrap .ctl{padding-right:40px}
+.clearbtn{position:absolute;right:9px;top:22px;transform:translateY(-50%);border:0;background:transparent;color:var(--muted);cursor:pointer;width:26px;height:26px;display:none;place-items:center;border-radius:5px;z-index:2}
+.clearwrap.has-value .clearbtn{display:grid}
+.clearwrap.has-value .caret{display:none}
+.clearbtn:hover{color:var(--text);background:var(--page)}
+.panel.off .clearbtn,.clearwrap:has(.ctl:disabled) .clearbtn,.clearwrap:has(.trigger:disabled) .clearbtn{display:none}
+
+.ts-head{padding:16px 20px}
+.ts-head h3{margin:0 0 2px}
+.ts-note{margin:0;font-size:12.5px;color:var(--muted)}
+.ts-body{padding:16px 20px 20px;border-top:1px solid var(--border)}
+.panel.off .ts-body{opacity:.55;pointer-events:none}
+
+.off-section{opacity:.55;pointer-events:none}
+.hidden{display:none !important}
+
+.foot{display:flex;align-items:center;gap:14px;margin-top:22px;flex-wrap:wrap}
+.ghost{border:1px solid var(--field-border);background:var(--surface);color:var(--text);font:inherit;font-size:13px;font-weight:500;height:38px;padding:0 14px;border-radius:8px;cursor:pointer}
+.ghost:hover{border-color:#b3bccb}
+pre{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;margin:14px 0 0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.6;overflow-x:auto}
+
+/* ---- modal ---- */
+.overlay{
+  position:fixed;inset:0;z-index:200;display:grid;place-items:center;padding:20px;
+  background:rgba(10,14,22,.46);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);
+  animation:fadeIn .18s ease
+}
+.overlay.out{animation:fadeOut .18s ease forwards}
+.modal{
+  position:relative;width:min(420px,100%);background:var(--surface);border:1px solid var(--border);
+  border-radius:18px;padding:34px 30px 26px;text-align:center;
+  box-shadow:0 34px 80px rgba(8,12,20,.38),0 2px 8px rgba(8,12,20,.12);
+  animation:rise .42s cubic-bezier(.19,1,.3,1)
+}
+.overlay.out .modal{animation:sink .18s ease forwards}
+.modal::before{content:"";position:absolute;inset:0 0 auto 0;height:1px;border-radius:18px 18px 0 0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent)}
+.modal .badge{
+  width:60px;height:60px;border-radius:20px;margin:0 auto 18px;display:grid;place-items:center;color:#fff;
+  background:linear-gradient(145deg,#33c473,#0f8f4c);box-shadow:0 12px 26px rgba(15,143,76,.34);
+  animation:pulse 2.4s ease-out .3s
+}
+.modal.err .badge{background:linear-gradient(145deg,#f3a441,#d4761a);box-shadow:0 12px 26px rgba(212,118,26,.34)}
+.modal .badge svg{stroke-dasharray:30;stroke-dashoffset:30;animation:draw .55s .2s cubic-bezier(.65,0,.35,1) forwards}
+.modal h3{margin:0 0 8px;font-size:17px;font-weight:600;letter-spacing:-.01em}
+.modal p{margin:0 auto;font-size:13px;color:var(--muted);line-height:1.6;max-width:31ch}
+.modal .obj{color:var(--text);font-weight:600}
+.modal .primary{
+  margin-top:22px;width:100%;height:44px;border:0;border-radius:10px;background:var(--accent);color:#fff;
+  font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;transition:filter .12s ease
+}
+.modal .primary:hover{filter:brightness(1.07)}
+.modal .primary:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.modal .mx{
+  position:absolute;top:12px;right:12px;border:0;background:transparent;color:var(--muted);width:30px;height:30px;
+  border-radius:8px;display:grid;place-items:center;cursor:pointer
+}
+.modal .mx:hover{background:var(--page);color:var(--text)}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{to{opacity:0}}
+@keyframes rise{from{opacity:0;transform:translateY(18px) scale(.94)}to{opacity:1;transform:none}}
+@keyframes sink{to{opacity:0;transform:translateY(8px) scale(.97)}}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes pulse{0%{box-shadow:0 12px 26px rgba(15,143,76,.34),0 0 0 0 rgba(47,191,107,.45)}70%,100%{box-shadow:0 12px 26px rgba(15,143,76,.34),0 0 0 18px rgba(47,191,107,0)}}
+.linkbtn.done{color:var(--ok-text)}
+.linkbtn.done svg{vertical-align:-2px;margin-right:5px}
+
+@media (max-width:820px){
+  body{padding:18px 14px 160px}
+  .modal{padding:30px 22px 22px}
+  .row,.row.two{grid-template-columns:1fr;gap:16px}
+  .chain .field{flex:1 1 100%}
+  .arrow{display:none}
+  .dp .menu{width:min(288px,calc(100vw - 60px))}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none !important;animation:none !important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="section-head"><span>Logistics</span><i></i></div>
+
+  <div class="card" id="mainCard">
+    <div class="card-head">
+      <label class="switch"><input type="checkbox" id="enabled" checked aria-label="Enable logistics"><span></span></label>
+      <h2>Logistics</h2>
+      <div class="spacer"></div>
+      <span class="pill pending" id="status">incomplete</span>
+      <button class="iconbtn" id="collapse" aria-label="Collapse section">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+      </button>
+    </div>
+    <div class="card-body" id="mainBody"></div>
+  </div>
+
+  <div id="panels"></div>
+
+  <div class="foot">
+    <button class="ghost" id="togglePayload">Show form data</button>
+    <span class="hint" id="hint"></span>
+  </div>
+  <pre id="payload" class="hidden"></pre>
+</div>
+
+
+<script>
+const ALL_INCOTERMS = [
+  {code:"EXW",name:"Ex Works",sea:true,air:true,road:true},
+  {code:"FCA",name:"Free Carrier",sea:true,air:true,road:true},
+  {code:"FAS",name:"Free Alongside Ship",sea:true,air:false,road:false},
+  {code:"FOB",name:"Free on Board",sea:true,air:false,road:false},
+  {code:"CFR",name:"Cost and Freight",sea:true,air:false,road:false},
+  {code:"CIF",name:"Cost, Insurance and Freight",sea:true,air:false,road:false},
+  {code:"CPT",name:"Carriage Paid To",sea:true,air:true,road:true},
+  {code:"CIP",name:"Carriage and Insurance Paid To",sea:true,air:true,road:true},
+  {code:"DAP",name:"Delivered at Place",sea:true,air:true,road:true},
+  {code:"DPU",name:"Delivered at Place Unloaded",sea:true,air:true,road:true},
+  {code:"DDP",name:"Delivered Duty Paid",sea:true,air:true,road:true}
+];
+const MODE_KEY = {Sea:"sea",Air:"air",Truck:"road"};
+const LOAD = {
+  Sea:{label:"Container type", basis:["FCL","LCL"], ph:"Select container type",
+    types:{FCL:["20ft Dry","40ft Dry","45ft HC Dry","20ft Reefer","40ft Reefer","45ft HC Reefer"],
+           LCL:["20ft Dry","40ft Dry","45ft HC Dry","20ft Reefer","40ft Reefer","45ft HC Reefer"]},
+    hint:{FCL:"The whole container moves under this booking.",
+          LCL:"The consolidator assigns the box, so container type is optional."}},
+  Air:{label:"Load type", basis:["ULD","Loose"], ph:"Select load type",
+    types:{ULD:[
+             {value:"AKH / LD3-45", sub:"3.6 m\u00b3 \u00b7 1,135 kg"},
+             {value:"AKE / LD-3",   sub:"4.3 m\u00b3 \u00b7 1,587 kg"},
+             {value:"DQF / LD-8",   sub:"7.2 m\u00b3 \u00b7 2,499 kg"},
+             {value:"ALF / LD-6",   sub:"9 m\u00b3 \u00b7 3,175 kg"},
+             {value:"AAF / LD-26",  sub:"13 m\u00b3 \u00b7 4,626 kg"},
+             {value:"AAU / LD-29",  sub:"14.5 m\u00b3 \u00b7 4,626 kg"},
+             {value:"PAG Pallet",   sub:"11.1 m\u00b3 \u00b7 4,626 kg"},
+             {value:"PMC Pallet",   sub:"12.1 m\u00b3 \u00b7 5,035 kg"},
+             {value:"Unknown",      sub:"assigned by the airline"}],
+           Loose:["Cartons","Pallets","Crates","Drums","Unknown"]},
+    hint:{ULD:"Unit sizes follow IATA types. Pick Unknown if the airline still has to assign one.",
+          Loose:"Cargo is handed over loose and built up by the airline."}},
+  Truck:{label:"Vehicle type", basis:["FTL","LTL"], ph:"Select vehicle type",
+    types:{FTL:["20ft trailer","40ft trailer","Closed body","Open flatbed","Reefer truck","Tipper","Tanker"],
+           LTL:["Closed body","Open flatbed","Reefer truck"]},
+    hint:{FTL:"The full vehicle is booked for this shipment.",
+          LTL:"The vehicle is shared, so the load is charged by weight or volume."}}
+};
+const OPTIONS = {
+  modes:["Sea","Air","Truck"],
+  shippingLines:["Maersk","MSC","CMA CGM","Hapag-Lloyd","Ocean Network Express","COSCO","Evergreen"],
+  airlines:["Emirates SkyCargo","Singapore Airlines Cargo","Qatar Airways Cargo","Lufthansa Cargo","Etihad Cargo","Air India Cargo"],
+  shipModes:["Direct","Transhipment"],
+  ports:["Singapore","Port Klang","Colombo","Jebel Ali","Salalah","Rotterdam","Antwerp","Hong Kong","Busan"]
+};
+
+const state = {
+  enabled:true, mode:"", loadBasis:"", loadType:"", incoterm:"",
+  sea:{shippingLine:"",vessels:[""],shipMode:"Direct",container:{containerNo:"",sealNo:""},traceableObject:null,blNo:"",blDate:"",transhipmentPorts:[""]},
+  air:{airline:"",flights:[""],shipMode:"Direct",awbNo:"",awbDate:"",transhipmentAirports:[""]},
+  truck:{trucks:[""],shipMode:"Direct",transfers:[""]}
+};
+let lastFocus = null, incotermNote = "";
+
+const $ = s => document.querySelector(s);
+const esc = v => String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const get = p => p.split(".").reduce((o,k)=>o?.[k], state);
+const set = (p,v) => {const k=p.split("."); const last=k.pop(); k.reduce((o,x)=>o[x],state)[last]=v;};
+
+const CARET = `<svg class="caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
+const TICK = `<svg class="tick" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+const CALICON = `<svg class="caret" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6"/><line x1="16" y1="2.5" x2="16" y2="6"/></svg>`;
+
+/* ---------- builders ---------- */
+const field = (label, inner, extra="") => `<div class="field ${extra}"><label>${label}</label>${inner}</div>`;
+
+const CLEARICON = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+const clearBtn = path => `<button class="clearbtn" type="button" data-action="clearField" data-path="${path}" aria-label="Clear field">${CLEARICON}</button>`;
+
+const textIn = (path, placeholder="Enter value", opts={}) => {
+  const val = get(path);
+  return `<div class="clearwrap ${val?"has-value":""}">
+    <input class="ctl ${opts.strong&&val?"strong":""}" type="text" data-bind="${path}" value="${esc(val)}" placeholder="${placeholder}" ${opts.disabled?"disabled":""}>
+    ${clearBtn(path)}</div>`;
+};
+
+function dropdown(path, list, placeholder, opts={}){
+  const val = get(path);
+  const items = list.map(o=>{
+    const v = typeof o==="string" ? o : o.value;
+    const sub = typeof o==="string" ? "" : `<span class="sub">${esc(o.sub)}</span>`;
+    return `<div class="opt ${v===val?"sel":""}" role="option" tabindex="-1" data-value="${esc(v)}">${esc(v)}${sub}${TICK}</div>`;
+  }).join("");
+  return `<div class="clearwrap ${val?"has-value":""}"><div class="dd" data-path="${path}" ${opts.rerender?'data-rerender="1"':""}>
+    <button type="button" class="trigger ${val?"has":""}" ${opts.disabled?"disabled":""} aria-haspopup="listbox" aria-expanded="false">
+      <span class="txt">${val?esc(val):placeholder}</span>${CARET}
+    </button>
+    <div class="menu" role="listbox">${items}</div>
+  </div>${clearBtn(path)}</div>`;
+}
+
+const fmtDate = iso => {
+  if(!iso) return "";
+  const [y,m,d] = iso.split("-").map(Number);
+  return `${String(d).padStart(2,"0")} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][m-1]} ${y}`;
+};
+function datePicker(path, placeholder="Select date"){
+  const val = get(path);
+  return `<div class="clearwrap ${val?"has-value":""}"><div class="dp" data-path="${path}">
+    <button type="button" class="trigger ${val?"has":""}" aria-haspopup="dialog" aria-expanded="false">
+      <span class="txt">${val?fmtDate(val):placeholder}</span>${CALICON}
+    </button>
+    <div class="menu" role="dialog" aria-label="Choose date"></div>
+  </div>${clearBtn(path)}</div>`;
+}
+function calendarHTML(view, selected){
+  const [y,m] = view.split("-").map(Number);
+  const first = (new Date(y,m-1,1).getDay()+6)%7;
+  const days = new Date(y,m,0).getDate();
+  const today = new Date(); const todayISO = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+  const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  let cells = "";
+  for(let i=0;i<first;i++) cells += `<button class="day blank" tabindex="-1"></button>`;
+  for(let d=1;d<=days;d++){
+    const iso = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    cells += `<button class="day ${iso===selected?"sel":""} ${iso===todayISO&&iso!==selected?"today":""}" data-date="${iso}">${d}</button>`;
+  }
+  return `<div class="cal-head">
+      <button class="nav" data-step="-1" aria-label="Previous month"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div class="cal-title">${months[m-1]} ${y}</div>
+      <button class="nav" data-step="1" aria-label="Next month"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+    </div>
+    <div class="cal-grid">${["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d=>`<div class="dow">${d}</div>`).join("")}${cells}</div>
+    <div class="cal-foot"><button data-date="${todayISO}">Today</button><button class="clear" data-clear="1">Clear</button></div>`;
+}
+
+function isLinked(){
+  const t = state.sea.traceableObject, c = state.sea.container;
+  return !!t && t.containerNo===c.containerNo.trim() && t.sealNo===c.sealNo.trim();
+}
+
+function popup(opts){
+  const {ok=true, title, msg} = opts;
+  closePopup(true);
+  const ov = document.createElement("div");
+  ov.className = "overlay"; ov.id = "overlay";
+  ov.innerHTML = `<div class="modal ${ok?"":"err"}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+    <button class="mx" data-close="1" aria-label="Close"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    <div class="badge">${ok
+      ? `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+      : `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="6" x2="12" y2="13"/><line x1="12" y1="17.5" x2="12" y2="17.5"/></svg>`}</div>
+    <h3>${esc(title)}</h3><p>${msg}</p>
+    <button class="primary" data-close="1">${ok?"Done":"Got it"}</button>
+  </div>`;
+  document.body.appendChild(ov);
+  ov.querySelector(".primary").focus();
+  ov.addEventListener("click", e=>{ if(e.target===ov || e.target.closest("[data-close]")) closePopup(); });
+}
+function closePopup(now){
+  const ov = document.getElementById("overlay");
+  if(!ov) return;
+  if(now){ ov.remove(); return; }
+  ov.classList.add("out"); ov.removeAttribute("id");
+  setTimeout(()=>ov.remove(), 190);
+}
+
+function shipModeField(path, legs, noun){
+  const note = legs > 1
+    ? `<p class="hint">Set automatically: ${legs} ${noun} legs means the cargo is transhipped.</p>` : "";
+  return `<div class="field"><label>Ship Mode</label>
+    ${dropdown(path, OPTIONS.shipModes, "Select an option", {rerender:true})}${note}</div>`;
+}
+
+const lockedMode = mode => `<div class="field"><label>Shipment Mode</label>
+  <button type="button" class="trigger has" disabled><span class="txt">${mode}</span>${CARET}</button></div>`;
+const arrow = `<span class="arrow" aria-hidden="true">&rarr;</span>`;
+const removeBtn = (action,i) => `<button class="xbtn" type="button" data-action="${action}" data-i="${i}" aria-label="Remove">
+  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
+
+/* ---------- main card ---------- */
+function incotermList(){
+  const key = MODE_KEY[state.mode];
+  const list = key ? ALL_INCOTERMS.filter(t=>t[key]) : ALL_INCOTERMS;
+  return list.map(t=>({value:t.code, sub:t.name}));
+}
+function loadField(){
+  const cfg = LOAD[state.mode];
+  if(!cfg) return `<div class="field"><label>Load type</label>
+    <button type="button" class="trigger" disabled><span class="txt">Select a shipment mode first</span>${CARET}</button>
+    <p class="hint">The options depend on how the cargo moves.</p></div>`;
+  const seg = cfg.basis.map(b=>
+    `<button type="button" class="${state.loadBasis===b?"on":""}" data-action="setBasis" data-basis="${b}">${b}</button>`).join("");
+  return `<div class="field">
+    <label>${cfg.label}<span class="seg">${seg}</span></label>
+    ${dropdown("loadType", cfg.types[state.loadBasis]||[], cfg.ph)}
+    <p class="hint">${cfg.hint[state.loadBasis]||""}</p>
+  </div>`;
+}
+
+function mainRow(){
+  const notSea = state.mode && state.mode!=="Sea";
+  const note = incotermNote
+    ? `<p class="hint alert">${incotermNote}</p>`
+    : notSea ? `<p class="hint">FAS, FOB, CFR and CIF are sea-only terms and stay hidden for ${state.mode}.</p>` : "";
+  return `<div class="row">
+    ${field("Shipment mode", dropdown("mode", OPTIONS.modes, "Select shipment mode", {rerender:true}))}
+    ${loadField()}
+    <div class="field"><label>Incoterm</label>
+      ${dropdown("incoterm", incotermList(), "Select incoterm")}${note}
+    </div>
+  </div>`;
+}
+
+/* ---------- panels ---------- */
+function seaPanel(){
+  const s = state.sea;
+  const n = s.vessels.length;
+  const vessels = s.vessels.map((v,i)=>{
+    const isMother = i === n-1;
+    const name = isMother ? "Mother vessel" : (n > 2 ? `Feeder vessel ${i+1}` : "Feeder vessel");
+    const head = n > 1 ? `${name} ${removeBtn("rmVessel",i)}` : name;
+    return field(head, textIn(`sea.vessels.${i}`,"Enter vessel name",{strong:true}));
+  }).join(arrow);
+
+  const added = isLinked();
+  const containerRow = `
+    <div class="row">
+      ${field("Container No.", textIn("sea.container.containerNo","e.g. MSKU1234567"))}
+      ${field("Seal No.", textIn("sea.container.sealNo","e.g. SL0098231"))}
+    </div>`;
+  const addBtn = added
+    ? `<button class="linkbtn inline done" type="button" data-action="addTraceable" disabled>
+         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Added to Traceable Object</button>`
+    : `<button class="linkbtn inline" type="button" data-action="addTraceable">Add to Traceable Object</button>`;
+
+  return `
+  <div class="panel"><div class="panel-body">
+    <h3>Shipping info</h3>
+    <div class="row two" style="margin-top:0">
+      ${lockedMode("Sea")}
+      ${field("Shipping line", dropdown("sea.shippingLine", OPTIONS.shippingLines, "Select an option"))}
+    </div>
+    <div class="chain">
+      ${vessels}${arrow}
+      <button class="linkbtn" type="button" data-action="addVessel">Add Vessel</button>
+    </div>
+    <div class="row">${shipModeField("sea.shipMode", s.vessels.length, "vessel")}</div>
+    <div class="divider"></div>
+    ${containerRow}
+    ${addBtn}
+    <div class="row" style="margin-top:8px">
+      ${field("BL No.", textIn("sea.blNo","Enter B/L number"))}
+      ${field("BL Date", datePicker("sea.blDate","Select B/L date"))}
+    </div>
+  </div></div>
+  ${transhipmentPanel("sea", s.shipMode==="Transhipment")}`;
+}
+
+function airPanel(){
+  const a = state.air;
+  const flights = a.flights.map((f,i)=>{
+    const head = i>0 ? `Flight ${i+1} ${removeBtn("rmFlight",i)}` : "Flight 1";
+    return field(head, textIn(`air.flights.${i}`,"e.g. SQ 0711",{strong:true}));
+  }).join(arrow);
+  return `
+  <div class="panel"><div class="panel-body">
+    <h3>Airline info</h3>
+    <div class="row" style="margin-top:0">
+      ${lockedMode("Air")}
+      ${field("Airline", dropdown("air.airline", OPTIONS.airlines, "Select an option"))}
+      ${shipModeField("air.shipMode", a.flights.length, "flight")}
+    </div>
+    <div class="chain">
+      ${flights}${arrow}
+      <button class="linkbtn" type="button" data-action="addFlight">Add Airline</button>
+    </div>
+    <div class="divider"></div>
+    <div class="row">
+      ${field("AWB No.", textIn("air.awbNo","e.g. 618-12345678"))}
+      ${field("AWB Date", datePicker("air.awbDate","Select AWB date"))}
+    </div>
+  </div></div>
+  ${transhipmentPanel("air", a.shipMode==="Transhipment")}`;
+}
+
+function truckPanel(){
+  const t = state.truck;
+  const trucks = t.trucks.map((v,i)=>{
+    const head = i>0 ? `Truck ${i+1} No. ${removeBtn("rmTruck",i)}` : "Truck No.";
+    return field(head, textIn(`truck.trucks.${i}`,"e.g. KL 07 BX 4412",{strong:true}));
+  }).join(arrow);
+  return `<div class="panel"><div class="panel-body">
+    <h3>Truck Delivery</h3>
+    <div class="row two" style="margin-top:0">
+      ${lockedMode("Truck")}
+      ${shipModeField("truck.shipMode", t.trucks.length, "truck")}
+    </div>
+    <div class="chain">
+      ${trucks}${arrow}
+      <button class="linkbtn" type="button" data-action="addTruck">Add Truck</button>
+    </div>
+  </div></div>
+  ${transhipmentPanel("truck", t.shipMode==="Transhipment")}`;
+}
+
+const legsOf = m => ({sea:state.sea.vessels, air:state.air.flights, truck:state.truck.trucks})[m].length;
+const tsCap  = m => Math.max(1, legsOf(m) - 1);
+const tsFull = m => get(TS[m].path).length >= tsCap(m);
+
+const TS = {
+  sea:{path:"sea.transhipmentPorts", label:"Transhipment port(s)", add:"Add Port",
+       note:"Add the ports in the order the cargo moves through them.", add_action:"addSeaPort", rm:"rmSeaPort", noun:"vessel"},
+  air:{path:"air.transhipmentAirports", label:"Transhipment Airport", add:"Add Airport",
+       note:"Type each transhipment airport in the order the cargo moves through it.", add_action:"addAirport", rm:"rmAirport",
+       ph:"e.g. Dubai (DXB)", noun:"flight"},
+  truck:{path:"truck.transfers", label:"Transfer location", add:"Add Transfer",
+       note:"Type where each truck-to-truck transfer takes place.", add_action:"addTransfer", rm:"rmTransfer",
+       ph:"e.g. Salem transfer yard", noun:"truck"}
+};
+function transhipmentPanel(mode, active){
+  const cfg = TS[mode];
+  const cap = tsCap(mode), legs = legsOf(mode), full = tsFull(mode);
+  const list = get(cfg.path);
+  const fields = list.map((v,i)=>{
+    const head = i===0 ? cfg.label : `${cfg.label} ${i+1} ${removeBtn(cfg.rm,i)}`;
+    const ctl = mode==="sea"
+      ? dropdown(`${cfg.path}.${i}`, OPTIONS.ports, i===0?"Select an option":"Select the next Transhipment port", {disabled:!active})
+      : textIn(`${cfg.path}.${i}`, cfg.ph, {disabled:!active});
+    return field(head, ctl, active?"":"dim");
+  }).join(arrow);
+  return `<div class="panel ${active?"":"off"}" data-ts="${mode}">
+    <div class="ts-head"><h3>Transhipment Info</h3>
+      <p class="ts-note">${active
+        ? `${cfg.note} ${legs} ${cfg.noun} leg${legs>1?"s":""} allow${legs===1?"s":""} up to ${cap} handover${cap>1?"s":""}.`
+        : "To be filled later"}</p></div>
+    <div class="ts-body"><div class="chain" style="margin-top:0">
+      ${fields}${arrow}
+      <button class="linkbtn" type="button" data-action="${cfg.add_action}" ${active && !full?"":"disabled"}
+        title="${full?`Add another ${cfg.noun} first — a handover needs a leg on each side.`:""}">${cfg.add}</button>
+    </div></div>
+  </div>`;
+}
+
+/* ---------- render ---------- */
+function render(){
+  $("#mainBody").innerHTML = mainRow();
+  $("#panels").innerHTML = state.mode==="Sea" ? seaPanel() : state.mode==="Air" ? airPanel() : state.mode==="Truck" ? truckPanel() : "";
+  $("#hint").textContent = state.mode ? `Showing the ${state.mode.toLowerCase()} section.` : "Pick a shipment mode to reveal its section.";
+  updateStatus();
+  if(!$("#payload").classList.contains("hidden")) renderPayload();
+  if(lastFocus){
+    const el = document.querySelector(`.dd[data-path="${lastFocus}"] .trigger`);
+    if(el) el.focus();
+    lastFocus = null;
+  }
+}
+
+function updateStatus(){
+  const optionalLoad = (state.mode==="Sea" && state.loadBasis==="LCL");
+  const req = [!!state.mode, !!state.loadBasis, optionalLoad || !!state.loadType, !!state.incoterm];
+  if(state.mode==="Sea"){
+    const s = state.sea;
+    req.push(!!s.shippingLine, !!s.vessels[s.vessels.length-1], !!s.shipMode, !!s.container.containerNo, !!s.container.sealNo, !!s.blNo, !!s.blDate);
+    if(s.shipMode==="Transhipment") req.push(!!s.transhipmentPorts[0]);
+  }
+  if(state.mode==="Air"){
+    const a = state.air;
+    req.push(!!a.airline, !!a.flights[0], !!a.shipMode, !!a.awbNo, !!a.awbDate);
+    if(a.shipMode==="Transhipment") req.push(!!a.transhipmentAirports[0]);
+  }
+  if(state.mode==="Truck"){
+    req.push(!!state.truck.trucks[0], !!state.truck.shipMode);
+    if(state.truck.shipMode==="Transhipment") req.push(!!state.truck.transfers[0]);
+  }
+  const done = state.enabled && req.every(Boolean);
+  const pill = $("#status");
+  pill.textContent = done ? "completed" : "incomplete";
+  pill.className = "pill " + (done?"ok":"pending");
+}
+
+function refreshTranshipment(){
+  const rules = {
+    sea:state.sea.shipMode==="Transhipment",
+    air:state.air.shipMode==="Transhipment",
+    truck:state.truck.shipMode==="Transhipment"
+  };
+  document.querySelectorAll("[data-ts]").forEach(p=>{
+    const active = rules[p.dataset.ts];
+    p.classList.toggle("off", !active);
+    p.querySelector(".ts-note").textContent = active ? TS[p.dataset.ts].note : "To be filled later";
+    p.querySelectorAll(".trigger,input.ctl").forEach(b=>b.disabled = !active);
+    p.querySelectorAll(".linkbtn").forEach(b=>b.disabled = !active || tsFull(p.dataset.ts));
+    p.querySelectorAll(".field").forEach(f=>f.classList.toggle("dim", !active));
+  });
+}
+
+function closeAll(except){
+  document.querySelectorAll(".dd.open,.dp.open").forEach(d=>{
+    if(d!==except){d.classList.remove("open"); d.querySelector(".trigger").setAttribute("aria-expanded","false");}
+  });
+}
+
+/* ---------- events ---------- */
+document.addEventListener("input", e=>{
+  const el = e.target.closest("[data-bind]");
+  if(!el) return;
+  set(el.dataset.bind, el.value);
+  el.closest(".clearwrap")?.classList.toggle("has-value", !!el.value);
+  el.classList.toggle("strong", /vessels|flights/.test(el.dataset.bind) && !!el.value);
+  if(el.dataset.bind.startsWith("air.flights")) refreshTranshipment();
+  if(el.dataset.bind.startsWith("sea.container")){
+    const btn = document.querySelector('[data-action="addTraceable"]');
+    if(btn && !isLinked()){
+      btn.classList.remove("done"); btn.disabled = false; btn.textContent = "Add to Traceable Object";
+    }
+  }
+  updateStatus();
+  if(!$("#payload").classList.contains("hidden")) renderPayload();
+});
+
+document.addEventListener("click", e=>{
+  /* dropdown trigger */
+  const trig = e.target.closest(".dd .trigger, .dp .trigger");
+  if(trig && !trig.disabled){
+    const box = trig.parentElement;
+    const isOpen = box.classList.contains("open");
+    closeAll();
+    if(!isOpen){
+      if(box.classList.contains("dp")){
+        box.dataset.view = (get(box.dataset.path) || new Date().toISOString().slice(0,10)).slice(0,7);
+        box.querySelector(".menu").innerHTML = calendarHTML(box.dataset.view, get(box.dataset.path));
+      }
+      box.classList.add("open"); trig.setAttribute("aria-expanded","true");
+      const sel = box.querySelector(".opt.sel"); if(sel) sel.scrollIntoView({block:"nearest"});
+    }
+    return;
+  }
+
+  /* dropdown option */
+  const opt = e.target.closest(".opt");
+  if(opt){
+    const box = opt.closest(".dd"); const path = box.dataset.path;
+    set(path, opt.dataset.value);
+    if(path==="mode"){
+      state.loadBasis = LOAD[state.mode] ? LOAD[state.mode].basis[0] : "";
+      state.loadType = "";
+      const key = MODE_KEY[state.mode];
+      const term = ALL_INCOTERMS.find(t=>t.code===state.incoterm);
+      incotermNote = (term && !term[key]) ? `${term.code} applies to sea freight only, so it was cleared for ${state.mode}.` : "";
+      if(term && !term[key]) state.incoterm = "";
+    }
+    if(path==="incoterm") incotermNote = "";
+    closeAll();
+    lastFocus = path;
+    if(box.dataset.rerender || path==="mode" || path==="incoterm") render();
+    else { render(); }
+    return;
+  }
+
+  /* calendar */
+  const nav = e.target.closest(".nav");
+  if(nav){
+    const dp = nav.closest(".dp");
+    let [y,m] = dp.dataset.view.split("-").map(Number);
+    m += Number(nav.dataset.step);
+    if(m<1){m=12;y--} if(m>12){m=1;y++}
+    dp.dataset.view = `${y}-${String(m).padStart(2,"0")}`;
+    dp.querySelector(".menu").innerHTML = calendarHTML(dp.dataset.view, get(dp.dataset.path));
+    return;
+  }
+  const day = e.target.closest("[data-date],[data-clear]");
+  if(day && day.closest(".dp")){
+    const dp = day.closest(".dp");
+    set(dp.dataset.path, day.dataset.clear ? "" : day.dataset.date);
+    const val = get(dp.dataset.path);
+    const trigger = dp.querySelector(".trigger");
+    trigger.querySelector(".txt").textContent = val ? fmtDate(val) : (dp.dataset.path.includes("bl") ? "Select B/L date" : "Select AWB date");
+    trigger.classList.toggle("has", !!val);
+    dp.closest(".clearwrap")?.classList.toggle("has-value", !!val);
+    closeAll(); trigger.focus(); updateStatus();
+    if(!$("#payload").classList.contains("hidden")) renderPayload();
+    return;
+  }
+
+  /* actions */
+  const act = e.target.closest("[data-action]");
+  if(act && !act.disabled){
+    const a = act.dataset.action, i = +act.dataset.i;
+    const legs = {addVessel:["sea","vessels"], rmVessel:["sea","vessels"],
+                  addFlight:["air","flights"], rmFlight:["air","flights"],
+                  addTruck:["truck","trucks"], rmTruck:["truck","trucks"]}[a];
+    if(legs){
+      const [grp,key] = legs;
+      if(a.startsWith("add")) state[grp][key].push("");
+      else state[grp][key].splice(i,1);
+      const many = state[grp][key].length > 1;
+      const arr = get(TS[grp].path), cap = Math.max(1, state[grp][key].length - 1);
+      if(arr.length > cap) set(TS[grp].path, arr.slice(0, cap));
+      state[grp].shipMode = many ? "Transhipment" : "Direct";
+      render();
+      return;
+    }
+    if(a==="addTraceable"){
+      const c = state.sea.container;
+      const cn = c.containerNo.trim(), sn = c.sealNo.trim();
+      if(!cn || !sn){
+        popup({ok:false, title:"Container and seal needed",
+          msg:`Enter ${!cn && !sn ? "a container number and seal number" : !cn ? "a container number" : "a seal number"} before linking to the traceable object.`});
+        const miss = document.querySelector(`[data-bind="sea.container.${cn?"sealNo":"containerNo"}"]`);
+        if(miss) miss.focus();
+        return;
+      }
+      state.sea.traceableObject = {containerNo:cn, sealNo:sn, linkedAt:new Date().toISOString()};
+      popup({title:"Added to Traceable Object",
+        msg:`Container <span class="obj">${esc(cn)}</span> with seal <span class="obj">${esc(sn)}</span> is now linked.`});
+      render();
+      return;
+    }
+    const addTs = {addSeaPort:"sea", addAirport:"air", addTransfer:"truck"}[a];
+    if(addTs){
+      if(tsFull(addTs)) return;
+      get(TS[addTs].path).push("");
+      render();
+      return;
+    }
+    if(a==="rmSeaPort") state.sea.transhipmentPorts.splice(i,1);
+    if(a==="rmAirport") state.air.transhipmentAirports.splice(i,1);
+    if(a==="rmTransfer") state.truck.transfers.splice(i,1);
+    if(a==="setBasis"){
+      state.loadBasis = act.dataset.basis;
+      const list = LOAD[state.mode].types[state.loadBasis];
+      if(!list.includes(state.loadType)) state.loadType = "";
+      render();
+      return;
+    }
+    if(a==="clearField"){
+      const p = act.dataset.path;
+      set(p, "");
+      if(p==="incoterm") incotermNote = "";
+      if(p==="mode"){ incotermNote = ""; state.loadBasis = ""; state.loadType = ""; }
+      render();
+      return;
+    }
+    render();
+    return;
+  }
+
+  if(!e.target.closest(".dd,.dp")) closeAll();
+});
+
+document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ closeAll(); closePopup(); } });
+
+$("#enabled").addEventListener("change", e=>{
+  state.enabled = e.target.checked;
+  $("#mainBody").classList.toggle("off-section", !state.enabled);
+  $("#panels").classList.toggle("off-section", !state.enabled);
+  updateStatus();
+});
+
+$("#collapse").addEventListener("click", ()=>{
+  const card = $("#mainCard"); card.classList.toggle("collapsed");
+  const hidden = card.classList.contains("collapsed");
+  $("#mainBody").classList.toggle("hidden", hidden);
+  $("#panels").classList.toggle("hidden", hidden);
+  $("#collapse").setAttribute("aria-label", hidden?"Expand section":"Collapse section");
+});
+
+function renderPayload(){
+  const out = {shipmentMode:state.mode, loadBasis:state.loadBasis, loadType:state.loadType, incoterm:state.incoterm};
+  if(state.mode==="Sea") out.sea = state.sea;
+  if(state.mode==="Air") out.air = state.air;
+  if(state.mode==="Truck") out.truck = state.truck;
+  $("#payload").textContent = JSON.stringify(out,null,2);
+}
+$("#togglePayload").addEventListener("click", ()=>{
+  const p = $("#payload"), show = p.classList.contains("hidden");
+  p.classList.toggle("hidden", !show);
+  $("#togglePayload").textContent = show ? "Hide form data" : "Show form data";
+  if(show) renderPayload();
+});
+
+render();
+</script>
+</body>
+</html>
