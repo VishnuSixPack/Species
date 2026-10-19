@@ -6733,6 +6733,7 @@ function renderShortcuts() {
     { keys: ['3'],          desc: 'Switch to 3D perspective mode' },
     { keys: ['Alt', '+', '1'], desc: 'Hide or show the cargo space panel' },
     { keys: ['C'],          desc: 'Show or hide what is inside each carton' },
+    { keys: ['Shift', '+', 'F'], desc: 'Full screen — the stage takes the whole display' },
     { keys: ['←', '→', '↑', '↓'], desc: 'Nudge the selected carton across the floor' },
     { keys: ['Shift', '+', '↑↓'], desc: 'Nudge the selected carton up or down' },
     { keys: ['Alt', '+', 'arrows'], desc: 'Nudge by a fifth of the step' },
@@ -7151,6 +7152,60 @@ $$('.view-pills-2d .view-pill').forEach(pill => pill.addEventListener('click', (
 
 // ---- isolate, resize steppers, slip sheet ----
 $('#toggleIsolate')?.addEventListener('click', () => setIsolate(!isolateOn));
+
+// ============================================================
+// FULL SCREEN
+// ------------------------------------------------------------
+// Hands the whole display to the stage: the top bar, the plan title and the
+// cargo-space panel step aside, and the browser's own chrome goes with them
+// wherever the browser allows it. The inspector stays — being able to look at
+// a carton is not much use if you cannot nudge it while you are looking.
+//
+// The layout is driven by a class rather than by :fullscreen, so a browser
+// that refuses the request still gives you the bigger stage.
+// ============================================================
+const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement || null;
+let stageOnly = false;
+
+function renderFullscreenButton() {
+  const btn = $('#btnFullscreen');
+  if (!btn) return;
+  btn.textContent = stageOnly ? '\u2921' : '\u2922';
+  btn.title = stageOnly ? 'Exit full screen (Shift+F)' : 'Full screen (Shift+F)';
+  btn.classList.toggle('active', stageOnly);
+  btn.setAttribute('aria-pressed', String(stageOnly));
+}
+
+function applyStageOnly(on) {
+  stageOnly = !!on;
+  document.body.classList.toggle('is-fullscreen', stageOnly);
+  renderFullscreenButton();
+  // A CSS resize never reaches the renderer, so the canvas has to be told.
+  // Next frame, once the new box has actually been laid out.
+  requestAnimationFrame(() => { onResize(); updateZoomRange(); });
+}
+
+function setFullscreen(on) {
+  const el = document.documentElement;
+  if (on) {
+    const req = el.requestFullscreen || el.webkitRequestFullscreen;
+    if (req) Promise.resolve(req.call(el)).catch(() => {});
+  } else if (fsElement()) {
+    const exit = document.exitFullscreen || document.webkitExitFullscreen;
+    if (exit) Promise.resolve(exit.call(document)).catch(() => {});
+  }
+  applyStageOnly(on);
+}
+
+const toggleFullscreen = () => setFullscreen(!stageOnly);
+
+// Leaving by the browser's own route — Escape, F11, the window buttons —
+// has to put the panels back as well.
+['fullscreenchange', 'webkitfullscreenchange'].forEach(ev =>
+  document.addEventListener(ev, () => { if (!fsElement() && stageOnly) applyStageOnly(false); }));
+
+$('#btnFullscreen')?.addEventListener('click', toggleFullscreen);
+renderFullscreenButton();
 
 $('#resizeStep')?.addEventListener('change', e => {
   resizeStepCm = Number(e.target.value) || 1;
@@ -9422,6 +9477,10 @@ window.addEventListener('keydown', (e) => {
       return;
     }
     if (measureIds.length) { clearMeasurement(); return; }
+    // Escape gives the panels back. Most browsers drop out of their own full
+    // screen on this key as well, which fires fullscreenchange and lands in
+    // the same place; calling it twice is harmless.
+    if (stageOnly) { setFullscreen(false); return; }
     deselectAll();
     return;
   }
@@ -9433,6 +9492,8 @@ window.addEventListener('keydown', (e) => {
     $('#btnDelete').click();
   } else if (e.key === 'r' && selectedItemId) {
     $('#btnRotate').click();
+  } else if (e.key === 'F') {
+    toggleFullscreen();
   } else if (e.key === 'f' && selectedItemId) {
     $('#btnFlip').click();
   } else if (e.key === 'i') {
