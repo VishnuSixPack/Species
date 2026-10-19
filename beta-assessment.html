@@ -351,10 +351,10 @@
     .rv-scroll::-webkit-scrollbar{width:3px;}
     .rv-scroll::-webkit-scrollbar-thumb{background:#e0e3ed;border-radius:999px;}
     .rv-layout{display:flex;gap:0;flex:1;min-height:0;overflow:hidden;}
-    .rv-sidebar{width:200px;flex-shrink:0;border-right:1px solid #f0f2f7;overflow-y:auto;padding:10px 0;display:flex;flex-direction:column;}
+    .rv-sidebar{width:180px;flex-shrink:0;border-right:1px solid #f0f2f7;overflow-y:auto;padding:10px 0;display:flex;flex-direction:column;}
     .rv-sidebar::-webkit-scrollbar{width:3px;}
     .rv-sidebar::-webkit-scrollbar-thumb{background:#e0e3ed;border-radius:999px;}
-    .rv-sidebar-label{font-size:9px;font-weight:800;color:#9aa0b4;text-transform:uppercase;letter-spacing:1px;padding:6px 14px 4px;}
+    .rv-sidebar-label{font-size:9px;font-weight:800;color:#9aa0b4;text-transform:uppercase;letter-spacing:1px;padding:6px 14px 4px;position:sticky;top:0;background:#fff;z-index:1;}
     .rv-nav-item{display:flex;align-items:center;justify-content:space-between;padding:7px 14px;cursor:pointer;font-size:11px;font-weight:600;color:#6b7280;border-left:3px solid transparent;transition:all .12s;}
     .rv-nav-item:hover{background:#f4f6fb;color:#1a1a2e;}
     .rv-nav-item.active{background:#eff6ff;color:#1d4ed8;border-left-color:#1d4ed8;}
@@ -8423,7 +8423,7 @@ function buildReview(){
     const stScoreLabel=stMax?`${stScore}`:null;
     // Build sidebar nav item for this stage
     const navDotColor=stUn>0?'#e63946':stPa>0?'#f59e0b':stAv>0?'#16a34a':'#e0e3ed';
-    navHtml+=`<div class="rv-nav-item" data-stage="${si}" onclick="toggleStage(${si});this.classList.add('active')">`+
+    navHtml+=`<div class="rv-nav-item" data-stage="${si}" onclick="jumpToStage(${si})">`+
       `<div style="display:flex;align-items:center;gap:7px;flex:1;">`+
       `<div class="rv-nav-dot" style="background:${navDotColor};"></div>`+
       `<span>${st.t}</span></div>`+
@@ -8577,7 +8577,25 @@ function editStageComment(si){
     document.getElementById('stcmt_'+si)?.focus();
   }
 }
-function toggleStage(i){const body=document.getElementById('rv-body-'+i);const chev=document.getElementById('rv-chev-'+i);body.classList.toggle('open');if(chev)chev.setAttribute('transform',body.classList.contains('open')?'rotate(180,12,12)':'');}
+function toggleStage(i){
+  const body=document.getElementById('rv-body-'+i);
+  const chev=document.getElementById('rv-chev-'+i);
+  body.classList.toggle('open');
+  if(chev)chev.setAttribute('transform',body.classList.contains('open')?'rotate(180,12,12)':'');
+}
+function jumpToStage(i){
+  // Open the stage if closed
+  const body=document.getElementById('rv-body-'+i);
+  if(body&&!body.classList.contains('open'))body.classList.add('open');
+  // Highlight nav item
+  document.querySelectorAll('.rv-nav-item').forEach(el=>el.classList.remove('active'));
+  const navItem=document.querySelector('.rv-nav-item[data-stage="'+i+'"]');
+  if(navItem)navItem.classList.add('active');
+  // Scroll right panel to this stage
+  const hd=document.getElementById('rv-hd-'+i);
+  if(hd){const scroll=document.querySelector('#sReview .rv-scroll');
+    if(scroll){const top=hd.offsetTop-16;scroll.scrollTo({top,behavior:'smooth'});}}
+}
 // ── Score editor: Edit → number input + optional comment → Apply ──
 function openScoreEditor(qid){
   const safeQid=qid.replace(/[^a-zA-Z0-9]/g,'_');
