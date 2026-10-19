@@ -92,14 +92,14 @@ const Calc = (() => {
     // 2 Towing to cage
     {
       const T = S.towing;
-      let base;
-      if (T.mode === 'truck') base = wKg * num(T.distKm) * SD.towing.truckEF;
-      else base = wKg * SD.towing.intensity;
-      const fuel = num(T.fuelL) * dieselL;
+      // Well boat and Truck screens are not designed yet, so they add no emission. The weight and yield still flow downstream.
+      const live = T.mode === 'tow';
+      const base = live ? wKg * SD.towing.intensity : 0;
+      const fuel = live ? num(T.fuelL) * dieselL : 0;
       const total = base + fuel;
       out.stages.towing = {
         total, basis: wKg, perKg: wKg ? total / wKg : 0,
-        parts: [{ label: T.mode === 'truck' ? 'Truck transfer' : 'Towing', value: base }, { label: 'Fuel', value: fuel }]
+        parts: [{ label: 'Towing', value: base }, { label: 'Fuel', value: fuel }]
       };
     }
 
@@ -242,7 +242,7 @@ if (typeof module !== 'undefined') module.exports = Calc;
 const S = Calc.defaultState();
 const SD = Calc.defaultSD();
 const M = {};                       // text / select / date fields that do not feed the maths
-const UI = { stage: 'juvenile', view: 'stage', ev: { trans: 0, storage: 0 }, modal: false, sdTab: 'juvenile', sdSub: {} };
+const UI = { more: {}, stage: 'juvenile', view: 'stage', ev: { trans: 0, storage: 0 }, modal: false, sdTab: 'juvenile', sdSub: {} };
 let R = Calc.compute(S, SD);
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -269,6 +269,7 @@ const ICON = {
   x: '<path d="M6 6l12 12"/><path d="M18 6 6 18"/>',
   reset: '<path d="M4 12a8 8 0 1 0 3-6.2"/><path d="M4 4v5h5"/>',
   link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  chev: '<path d="m6 9 6 6 6-6"/>',
   cal: '<rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16"/><path d="M9 3v4"/><path d="M15 3v4"/>'
 };
 const ic = (n, c = '') => `<svg class="ic ${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]}</svg>`;
@@ -302,10 +303,10 @@ function lab(f, id) {
 }
 
 function fieldHTML(stage, f) {
-  const id = `${stage}-${f.id}`;
-  const key = `${stage}.${f.id}`;
+  const key = f.key || `${stage}.${f.id}`;
+  const id = f.key ? key.replace(/\./g, '-') : `${stage}-${f.id}`;
   let body = '';
-  if (f.t === 'text' || f.t === 'date' || f.t === 'select') {
+  if (f.t === 'text' || f.t === 'date' || f.t === 'select' || f.t === 'mnum') {
     if (!f.p && M[key] === undefined) M[key] = f.def ?? '';
   }
   switch (f.t) {
@@ -313,6 +314,12 @@ function fieldHTML(stage, f) {
       body = `<input class="in" id="${id}" type="text" data-m="${key}" value="${esc(M[key])}" placeholder="${esc(f.ph || '')}" ${f.dis ? 'disabled' : ''}>`; break;
     case 'date':
       body = `<input class="in" id="${id}" type="date" data-m="${key}" value="${esc(M[key])}">`; break;
+    case 'dt': {
+      const d = M[key + '.d'] ?? (M[key + '.d'] = ''), t = M[key + '.t'] ?? (M[key + '.t'] = '');
+      body = `<div class="dtm"><input class="in" id="${id}" type="date" data-m="${key}.d" value="${esc(d)}" aria-label="${esc(f.label)} date"><input class="in tm" type="time" data-m="${key}.t" value="${esc(t)}" aria-label="${esc(f.label)} time"></div>`; break;
+    }
+    case 'mnum':
+      body = `<div class="inp"><input class="in" id="${id}" type="number" step="any" min="0" data-m="${key}" value="${esc(M[key])}" placeholder="${esc(f.ph || '')}">${f.unit ? `<span class="unit">${esc(f.unit)}</span>` : ''}</div>`; break;
     case 'range': {
       const a = M[key + '.0'] ?? (M[key + '.0'] = f.def?.[0] ?? ''), b = M[key + '.1'] ?? (M[key + '.1'] = f.def?.[1] ?? '');
       body = `<div class="range"><input class="in" id="${id}" type="date" data-m="${key}.0" value="${esc(a)}" aria-label="${esc(f.label)} start"><span>to</span><input class="in" type="date" data-m="${key}.1" value="${esc(b)}" aria-label="${esc(f.label)} end"></div>`; break;
@@ -343,8 +350,29 @@ function fieldHTML(stage, f) {
   return `<div class="fld t-${f.t}">${lab(f, id)}${body}</div>`;
 }
 
+/* every titled section is a collapsible card. Sections with sec.count start closed and show how many fields are filled */
+const secKey = (stage, sec) => `${stage}:${sec.title}`;
+function secKeys(stage, sec) { return sec.fields.filter((f) => f.t !== 'note' && f.t !== 'calc').map((f) => (f.t === 'dt' ? 'dt:' : '') + (f.key || `${stage}.${f.id}`)).join('|'); }
+function secCount(el) {
+  const ks = el.dataset.keys.split('|').filter(Boolean); let n = 0;
+  ks.forEach((k) => { if (k.startsWith('dt:')) { k = k.slice(3); if (M[k + '.d'] || M[k + '.t']) n++; } else if (M[k]) n++; });
+  return n ? `${n} of ${ks.length} filled` : 'Not filled';
+}
 function sectionHTML(stage, sec) {
-  return `<section class="sec">${sec.title ? `<h3>${esc(sec.title)}</h3>` : ''}<div class="fields">${sec.fields.map((f) => fieldHTML(stage, f)).join('')}</div></section>`;
+  const body = `<div class="fields">${sec.fields.map((f) => fieldHTML(stage, f)).join('')}</div>`;
+  if (!sec.title) return `<section class="sec">${body}</section>`;
+  const key = secKey(stage, sec), open = UI.more[key] ?? !sec.closed;
+  const d = `<details class="sec sec-c" data-sec="${esc(key)}" ${sec.count ? `data-keys="${esc(secKeys(stage, sec))}"` : ''} ${open ? 'open' : ''}>`;
+  const tmp = d + `<summary><span class="mt">${esc(sec.title)}</span><span class="mcount" data-mcount></span>${ic('chev', 'mchev')}</summary>${body}</details>`;
+  return tmp;
+}
+
+function moreHTML(st) {
+  const secs = st.more ? st.more() : []; if (!secs.length) return '';
+  return `<div class="mgrid">${secs.map((sec) => sectionHTML(st.id, { closed: true, count: true, ...sec })).join('')}</div>`;
+}
+function updateMore() {
+  $$('details.sec-c[data-keys]').forEach((d) => { const el = $('[data-mcount]', d), t = secCount(d); if (el && el.textContent !== t) el.textContent = t; });
 }
 
 /* refresh every computed element in place (keeps focus and caret) */
@@ -373,6 +401,8 @@ function convertQty(path, newU) {
 }
 
 function bindEvents(root) {
+  root.addEventListener('input', () => setTimeout(updateMore, 0)); root.addEventListener('change', () => setTimeout(updateMore, 0));
+  root.addEventListener('toggle', (e) => { const d = e.target; if (d.matches?.('details.sec-c')) UI.more[d.dataset.sec] = d.open; }, true);
   root.addEventListener('input', (e) => {
     const el = e.target;
     if (el.dataset.p && el.tagName === 'INPUT') { setP(el.dataset.p, el.value === '' ? 0 : +el.value); refresh(); }
@@ -436,6 +466,25 @@ const FEED_MODES = [['bait', 'Bait Fish'], ['pellet', 'Pellet']];
 
 const STAGES = [];
 
+/* GDST Event and Location data. Belong to the CTE, so the keys are shared by every stage under it.
+   Informational only: they never change the result. */
+const COUNTRIES = 'Afghanistan|Albania|Algeria|Angola|Argentina|Australia|Austria|Azerbaijan|Bahamas|Bahrain|Bangladesh|Barbados|Belgium|Belize|Benin|Brazil|Brunei|Bulgaria|Cambodia|Cameroon|Canada|Cape Verde|Chile|China|Colombia|Comoros|Costa Rica|Croatia|Cuba|Cyprus|Czechia|Denmark|Djibouti|Dominican Republic|Ecuador|Egypt|El Salvador|Equatorial Guinea|Eritrea|Estonia|Faroe Islands|Fiji|Finland|France|French Polynesia|Gabon|Gambia|Georgia|Germany|Ghana|Greece|Greenland|Guatemala|Guinea|Guyana|Honduras|Hong Kong|Hungary|Iceland|India|Indonesia|Iran|Iraq|Ireland|Israel|Italy|Ivory Coast|Jamaica|Japan|Jordan|Kenya|Kiribati|Kuwait|Latvia|Lebanon|Liberia|Libya|Lithuania|Madagascar|Malaysia|Maldives|Malta|Marshall Islands|Mauritania|Mauritius|Mexico|Micronesia|Monaco|Montenegro|Morocco|Mozambique|Myanmar|Namibia|Nauru|Netherlands|New Caledonia|New Zealand|Nicaragua|Nigeria|North Korea|Norway|Oman|Pakistan|Palau|Panama|Papua New Guinea|Peru|Philippines|Poland|Portugal|Qatar|Romania|Russia|Samoa|Saudi Arabia|Senegal|Seychelles|Sierra Leone|Singapore|Slovenia|Solomon Islands|Somalia|South Africa|South Korea|Spain|Sri Lanka|Sudan|Suriname|Sweden|Taiwan|Tanzania|Thailand|Togo|Tonga|Trinidad and Tobago|Tunisia|Turkey|Tuvalu|Ukraine|United Arab Emirates|United Kingdom|United States|Uruguay|Vanuatu|Venezuela|Vietnam|Yemen'.split('|');
+const GEARS = ['Purse seine', 'Longline', 'Trawl', 'Gillnet', 'Pole and line', 'Handline / troll', 'Trap / pot', 'Dredge', 'Other'];
+const EVLOC = (c) => [
+  { title: 'Event', fields: [
+    T('evid', 'Event ID', { key: c + '.evid', ph: 'Enter value' }),
+    { t: 'dt', id: 'evdt', key: c + '.evdt', label: 'Event date and time' },
+    T('evpt', 'Event read point (geo location)', { key: c + '.evpt', ph: 'Latitude, Longitude' }),
+    T('evprov', 'Information provider', { key: c + '.evprov', ph: 'Enter value' })
+  ] },
+  { title: 'Location', fields: [
+    T('locname', 'Location name', { key: c + '.locname', ph: 'Enter value' }),
+    T('locid', 'Location ID', { key: c + '.locid', ph: 'e.g. GLN' }),
+    SEL('loccty', 'Location Country', COUNTRIES, { key: c + '.loccty', ph: 'Select a country' }),
+    T('locgeo', 'Location Geo-Coordinates or Address', { key: c + '.locgeo', ph: 'Latitude, Longitude or address' })
+  ] }
+];
+
 STAGES.push({
   id: 'juvenile', tab: 'Juvenile Sourcing', title: 'Sourcing',
   desc: 'Accounts for upstream emissions from hatchery operations and the fuel used to transport seed stock to the facility.',
@@ -443,19 +492,25 @@ STAGES.push({
   cols: () => {
     if (S.juvenile.mode === 'fullcycle') return [[{ title: '', fields: [{ t: 'note', span: 1, html: '<strong>Full Cycle fields are not designed yet.</strong><br>Hatchery inputs for the full cycle will appear here once that screen is shared. Ranching is fully calculated.' }] }]];
     return [[{
-      title: 'Sourcing', fields: [
+      title: 'Party and product', fields: [
         T('org', 'Organization', { def: 'Fishing Company' }),
+        T('own', 'Product Ownership', { def: 'Unknown' }),
+        T('species', 'Species', { def: SPECIES }),
+        T('form', 'Product Form', { def: 'Live Juvenile Fish' }),
+        T('sku', 'Item/SKU/UPC/GTIN', { def: '', ph: 'Enter value' })
+      ]
+    }], [{
+      title: 'Capture', fields: [
         SEL('coords', 'Availability of Catch Coordinates', ['Yes', 'No'], { def: 'No' }),
         T('vessel', 'Vessel Name', { def: 'VESSEL NO.101' }),
         T('vesselId', 'Unique Vessel ID', { def: '9xxxxxx9' }),
+        SEL('gear', 'Gear Type', GEARS, { ph: 'Select an option' }),
         { t: 'chips', id: 'area', label: 'Catch Area', opts: FAO, def: ['FAO 71', 'FAO 77'] },
         { t: 'range', id: 'capture', label: 'Date(s) of Capture' },
-        T('species', 'Species', { def: SPECIES }),
-        T('form', 'Product Form', { def: 'Live Juvenile Fish' })
+        SEL('ocean', 'Ocean', ['Pacific', 'Atlantic', 'Indian', 'Southern', 'Mediterranean'], { ph: 'Select an option' })
       ]
     }], [{
-      title: 'Details', fields: [
-        T('own', 'Product Ownership', { def: 'Unknown' }),
+      title: 'Traceability', fields: [
         T('kde', 'Linking KDE (batch, lot, or serial)', { def: 'Unknown' }),
         T('coc', 'Chain of Custody Certification', { def: 'Unknown' })
       ]
@@ -464,46 +519,57 @@ STAGES.push({
         { t: 'qty', id: 'w', label: 'Weight or quantity', p: 'juvenile.weight', tip: 'Total emission = fuel emission × weight in MT.' },
         SEL('fuel', 'Fuel type', FUELS, { def: 'Marine Diesel Oil' }),
         NUM('fuelL', 'Fuel consumption', 'juvenile.fuelL', { unit: 'Litre', tip: 'Litres × 0.85 × 3.026 kg CO₂e. Both constants are editable in Source Data.' }),
-        SEL('ocean', 'Ocean', ['Pacific', 'Atlantic', 'Indian', 'Southern', 'Mediterranean'], { ph: 'Select an option' })
+        { t: 'mnum', id: 'distNM', label: 'Distance (NM)', unit: 'NM', ph: 'Enter value', tip: 'Nautical miles. Informational only. It does not change the result.' }
       ]
     }]];
-  }
+  },
+  more: () => (S.juvenile.mode === 'fullcycle' ? [] : EVLOC('hatchery'))
 });
 
 STAGES.push({
   id: 'towing', tab: 'Towing to cage', title: 'To Cage',
   desc: 'Tracks the emissions generated during the final transfer.',
-  modeKey: 'towing', modes: [['tow', 'Towing/Support Vessel'], ['wellboat', 'Well boat'], ['truck', 'Truck']],
+  modeKey: 'towing', modes: [['tow', 'Tug boat'], ['wellboat', 'Well boat'], ['truck', 'Truck']],
   cols: () => {
     const m = S.towing.mode;
-    const prov = m === 'tow' ? [] : [{ t: 'note', span: 1, html: `The ${m === 'truck' ? 'Truck' : 'Well boat'} layout is provisional until its screen is shared.` }];
+    if (m !== 'tow') return [[{ title: '', fields: [{ t: 'note', span: 1, html: `<strong>The ${m === 'truck' ? 'Truck' : 'Well boat'} layout is not designed yet.</strong><br>Its fields will appear here once that screen is shared. Tug boat is fully calculated.` }] }]];
     return [[{
-      title: 'General', fields: [
-        T('gln', 'Location GLN', { ph: 'Enter value' }),
-        { t: 'range', id: 'ev', label: 'Event Date(s)' },
+      title: 'Party and product', fields: [
+        T('org', 'Organization', { def: '', ph: 'Enter value' }),
         T('species', 'Species', { def: SPECIES }),
-        T('form', 'Product form', { def: 'Live Juvenile Fish' }),
-        T('kde', 'Linking KDE (batch, lot, or serial number)', { def: '--' })
+        T('own', 'Product Ownership', { def: '', ph: 'Enter value' }),
+        T('sku', 'Item/SKU/UPC/GTIN', { def: '', ph: 'Enter value' })
       ]
     }, {
-      title: 'Towing & Cage', fields: [
-        ...prov,
-        T('vessel', m === 'truck' ? 'Vehicle' : 'Vessel', { def: m === 'truck' ? 'TRUCK NO.12' : 'TUGBOAT NO.101' }),
-        T('vesselId', m === 'truck' ? 'Plate number' : 'Unique Vessel ID', { def: m === 'truck' ? 'KL-07-AB-1234' : 'ICCAT Reg.123456' }),
-        SEL('fuel', 'Fuel type', FUELS, { def: 'Marine Diesel Oil' }),
-        NUM('fuelL', 'Fuel consumption', 'towing.fuelL', { unit: 'Litre', tip: 'Optional. Added on top of the transfer emission at 0.85 × 3.026 kg CO₂e per litre.' }),
-        ...(m === 'truck' ? [NUM('dist', 'Distance travelled', 'towing.distKm', { unit: 'km', tip: 'Weight × distance × 0.0000542 kg CO₂e per kg·km.' })] : [])
+      title: 'Traceability', fields: [
+        T('kde', 'Linking KDE (batch, lot, or serial number)', { def: '--' }),
+        T('coc', 'Chain of Custody Certification', { def: '', ph: 'Enter value' }),
+        T('hcert', 'Harvest Certification', { def: '', ph: 'Enter value' })
       ]
     }], [{
-      title: 'Quantity', fields: [
-        T('cage', 'Cage Number', { def: '#AFR20S' }),
+      title: 'Hatchery origin', fields: [
+        T('brood', 'Source of broodstock', { def: '', ph: 'Enter value' }),
+        { t: 'date', id: 'hvdate', label: 'Harvest date per tank', tip: 'Date on which fingerlings were transferred to the grow-out farm/pond.' }
+      ]
+    }, {
+      title: 'Vessel and cage', fields: [
+        T('vesselId', 'Vessel or Hatchery ID', { def: 'ICCAT Reg.123456' }),
+        T('cage', 'Cage No', { def: '#AFR20S' }),
         NUM('cages', 'No. of cages', 'towing.cages', { step: 1 }),
-        NUM('mort', 'Mortality', 'towing.mortality', { unit: '%', tip: 'Yield = weight × (1 − mortality).' }),
-        { t: 'qty', id: 'w', label: 'Weight or Quantity', p: 'towing.weight' },
-        CALC('yield', 'Yield', 'tow.yield', { unit: 'MT' })
+        { t: 'mnum', id: 'cvol', label: 'Cage volume', unit: 'm³', ph: 'Enter value', tip: 'Informational only. It does not change the result.' }
+      ]
+    }], [{
+      title: 'Calculation', fields: [
+        { t: 'qty', id: 'w', label: 'Weight or Quantity', p: 'towing.weight', tip: 'The unit of measure is set in the dropdown next to the value.' },
+        NUM('mort', 'Mortality during transfer', 'towing.mortality', { unit: '%', tip: 'Yield = weight × (1 − mortality).' }),
+        CALC('yield', 'Yield', 'tow.yield', { unit: 'MT' }),
+        { t: 'mnum', id: 'distNM', label: 'Distance to cage', unit: 'NM', ph: 'Enter value', tip: 'Nautical miles. Informational only. It does not change the result.' },
+        SEL('fuel', 'Fuel type', FUELS, { def: 'Marine Diesel Oil' }),
+        NUM('fuelL', 'Fuel consumption', 'towing.fuelL', { unit: 'Litre', tip: 'Added on top of the transfer emission at 0.85 × 3.026 kg CO₂e per litre.' })
       ]
     }]];
-  }
+  },
+  more: () => (S.towing.mode === 'tow' ? EVLOC('hatchery') : [])
 });
 S.towing.cages = 1;
 
@@ -891,15 +957,16 @@ function renderStage() {
     </section>
     </div>
     <div class="cols c${cols.length}">${cols.map((c) => `<div class="col">${c.map((sec) => sectionHTML(st.id, sec)).join('')}</div>`).join('')}</div>
+    ${moreHTML(st)}
 `;
-  placeSegs(host, prevThumbs); renderRail(); updateBars();
+  placeSegs(host, prevThumbs); renderRail(); updateBars(); updateMore();
 }
 
 function updateBars() {
   if (UI.view !== 'stage') return;
   const st = R.stages[UI.stage]; if (!st) return;
   $('[data-bar="total"]').textContent = fmt(st.total);
-  $('[data-bar="perkg"]').textContent = fmt(st.perKg, st.perKg < 0.1 ? 4 : 2);
+  $('[data-bar="perkg"]').textContent = fmt(st.perKg, st.perKg > 0 && st.perKg < 0.1 ? 4 : 2);
   $('[data-bar="basis"]').textContent = 'per kg of ' + BASIS[UI.stage];
   const parts = st.parts.filter((p) => p.value > 0), sum = parts.reduce((a, p) => a + p.value, 0) || 1;
   $('[data-bar="stack"]').innerHTML = parts.map((p, i) => `<i style="width:${(p.value / sum * 100).toFixed(2)}%;background:var(${PAL[i]})" title="${esc(p.label)}"></i>`).join('');

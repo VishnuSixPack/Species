@@ -7153,13 +7153,101 @@ $$('.view-pills-2d .view-pill').forEach(pill => pill.addEventListener('click', (
 // ---- isolate, resize steppers, slip sheet ----
 $('#toggleIsolate')?.addEventListener('click', () => setIsolate(!isolateOn));
 
+
+// ============================================================
+// ICONS
+// ------------------------------------------------------------
+// Line drawings on a 24 grid, in the same weight as each other, drawn here
+// rather than pulled from a font or a CDN: a character like ⊞ or 🚢 renders
+// differently on every machine, and half the time not at all. These inherit
+// the button's colour, so the active state needs no second set.
+// ============================================================
+const ICONS = {
+  // a dimension line with arrow heads and witness lines at each end
+  ruler: '<path d="M4 7v10"/><path d="M20 7v10"/><path d="M6 12h12"/>' +
+         '<path d="m8.5 9.5-2.5 2.5 2.5 2.5"/><path d="m15.5 9.5 2.5 2.5-2.5 2.5"/>',
+  // a shipping container: ribbed body, door panel at one end
+  container: '<rect x="2.5" y="7" width="19" height="10" rx="1.5"/>' +
+             '<path d="M16.3 7v10"/>' +
+             '<path d="M7.6 9.6v4.8"/><path d="M10.4 9.6v4.8"/><path d="M13.2 9.6v4.8"/>',
+  // the typographer's T, for labels
+  type: '<path d="M4 7V4h16v3"/><path d="M12 4v16"/><path d="M9 20h6"/>',
+  // a carton with its units showing through
+  contents: '<rect x="3" y="3" width="18" height="18" rx="2.5"/>' +
+            '<rect x="6.6" y="6.6" width="4.3" height="4.3" rx="1"/>' +
+            '<rect x="13.1" y="6.6" width="4.3" height="4.3" rx="1"/>' +
+            '<rect x="6.6" y="13.1" width="4.3" height="4.3" rx="1"/>' +
+            '<rect x="13.1" y="13.1" width="4.3" height="4.3" rx="1"/>',
+  // brackets closing in on one thing
+  focus: '<circle cx="12" cy="12" r="3"/>' +
+         '<path d="M3 8V5.5A2.5 2.5 0 0 1 5.5 3H8"/><path d="M16 3h2.5A2.5 2.5 0 0 1 21 5.5V8"/>' +
+         '<path d="M21 16v2.5a2.5 2.5 0 0 1-2.5 2.5H16"/><path d="M8 21H5.5A2.5 2.5 0 0 1 3 18.5V16"/>',
+  'zoom-in':  '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/>' +
+              '<path d="M10.5 7.8v5.4"/><path d="M7.8 10.5h5.4"/>',
+  'zoom-out': '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.8-4.8"/>' +
+              '<path d="M7.8 10.5h5.4"/>',
+  rotate: '<path d="M3 12a9 9 0 1 0 9-9 9.7 9.7 0 0 0-6.7 2.7L3 8"/><path d="M3 3.5V8h4.5"/>',
+  maximize: '<path d="M8 3H5.5A2.5 2.5 0 0 0 3 5.5V8"/><path d="M16 3h2.5A2.5 2.5 0 0 1 21 5.5V8"/>' +
+            '<path d="M21 16v2.5a2.5 2.5 0 0 1-2.5 2.5H16"/><path d="M8 21H5.5A2.5 2.5 0 0 1 3 18.5V16"/>',
+  minimize: '<path d="M8 3v2.5A2.5 2.5 0 0 1 5.5 8H3"/><path d="M21 8h-2.5A2.5 2.5 0 0 1 16 5.5V3"/>' +
+            '<path d="M3 16h2.5A2.5 2.5 0 0 1 8 18.5V21"/><path d="M16 21v-2.5a2.5 2.5 0 0 1 2.5-2.5H21"/>',
+  'chevron-right': '<path d="m9.5 5 7 7-7 7"/>',
+  'chevron-left':  '<path d="m14.5 5-7 7 7 7"/>'
+};
+
+const iconSvg = name => ICONS[name]
+  ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" ` +
+    `stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">` +
+    `${ICONS[name]}</svg>`
+  : '';
+
+function setIcon(el, name) {
+  if (!el) return;
+  el.dataset.icon = name;
+  el.innerHTML = iconSvg(name);
+}
+
+// Every button that names an icon gets one, so a new button needs nothing
+// here beyond its data-icon.
+function paintIcons(root = document) {
+  root.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = iconSvg(el.dataset.icon); });
+}
+paintIcons();
+
+
+// ============================================================
+// PUTTING THE VIEW CONTROLS AWAY
+// ------------------------------------------------------------
+// Nine buttons down one edge is a lot to look past when all you want is to
+// see the load. The handle stays in the corner either way, so the rail is
+// never lost — and the choice is remembered.
+// ============================================================
+const TOOLS_HIDDEN_KEY = 'smartuna_planner_tools_hidden';
+let toolsTucked = false;
+
+function setToolsTucked(on, save = true) {
+  toolsTucked = !!on;
+  $('#viewportTools')?.classList.toggle('is-tucked', toolsTucked);
+  const btn = $('#toolsToggle');
+  if (btn) {
+    setIcon(btn, toolsTucked ? 'chevron-left' : 'chevron-right');
+    btn.title = toolsTucked ? 'Show the view controls' : 'Hide the view controls';
+    btn.setAttribute('aria-pressed', String(toolsTucked));
+  }
+  if (save) { try { localStorage.setItem(TOOLS_HIDDEN_KEY, toolsTucked ? '1' : '0'); } catch (e) {} }
+}
+
+$('#toolsToggle')?.addEventListener('click', () => setToolsTucked(!toolsTucked));
+try { setToolsTucked(localStorage.getItem(TOOLS_HIDDEN_KEY) === '1', false); } catch (e) {}
+
+
 // ============================================================
 // FULL SCREEN
 // ------------------------------------------------------------
-// Hands the whole display to the stage: the top bar, the plan title and the
-// cargo-space panel step aside, and the browser's own chrome goes with them
-// wherever the browser allows it. The inspector stays — being able to look at
-// a carton is not much use if you cannot nudge it while you are looking.
+// Hands the whole display to the stage: everything around the viewport steps
+// aside — the top bar, the plan title, the cargo-space panel and the cargo /
+// inspector panel — and the browser's own chrome goes with them wherever the
+// browser allows it. What is left is the container and the view controls.
 //
 // The layout is driven by a class rather than by :fullscreen, so a browser
 // that refuses the request still gives you the bigger stage.
@@ -7170,7 +7258,7 @@ let stageOnly = false;
 function renderFullscreenButton() {
   const btn = $('#btnFullscreen');
   if (!btn) return;
-  btn.textContent = stageOnly ? '\u2921' : '\u2922';
+  setIcon(btn, stageOnly ? 'minimize' : 'maximize');
   btn.title = stageOnly ? 'Exit full screen (Shift+F)' : 'Full screen (Shift+F)';
   btn.classList.toggle('active', stageOnly);
   btn.setAttribute('aria-pressed', String(stageOnly));
