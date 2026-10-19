@@ -7324,6 +7324,246 @@ $('#slipMode')?.addEventListener('change', e => {
   renderSlipNote();
 });
 
+// ============================================================
+// HOW A POSITION WORKS — the drawn explainer
+// ------------------------------------------------------------
+// An address is only obvious once you have seen where it comes from. This
+// draws the container the same way you would sketch it on the back of a
+// docket: a flat isometric, doors on the left, the far wall faint, and one
+// idea at a time. Four steps — zone, row, layer, stack letter — with the
+// first two looking at the whole container and the last two zoomed into a
+// single cell, because a 7 cm carton in a 12 m box is a dot.
+//
+// Everything here is drawn from the live container, so a 20 footer really
+// does show five zones.
+// ============================================================
+
+// A plain axonometric. Length runs left to right, width recedes up and to
+// the right, height goes straight up. The door end is left open rather than
+// walled in, which is what you are looking at when you stand at the doors.
+function isoScene(L, W, H, lenPx, widPx, hgtPx, ox, oy) {
+  const p = (x, y, z) => [
+    ox + (x / L) * lenPx + (z / W) * widPx * 0.78,
+    oy - (y / H) * hgtPx - (z / W) * widPx * 0.52
+  ];
+  return { L, W, H, p };
+}
+
+const isoPt = ([a, b]) => `${a.toFixed(1)},${b.toFixed(1)}`;
+const isoPoly = (s, pts, cls) =>
+  `<polygon class="${cls}" points="${pts.map(c => isoPt(s.p(...c))).join(' ')}"/>`;
+const isoLine = (s, a, b, cls) => {
+  const [x1, y1] = s.p(...a), [x2, y2] = s.p(...b);
+  return `<line class="${cls}" x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" ` +
+         `x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/>`;
+};
+// A line of type at a fixed spot on the canvas. Anything hung off a 3D point
+// ends up wherever the projection puts it, which is how a caption ends up
+// running straight through a carton.
+const svgNote = (x, y, text, cls = 'lb-note') =>
+  `<text class="${cls}" x="${x}" y="${y}">${escapeHtml(text)}</text>`;
+
+const isoText = (s, at, text, cls, dx = 0, dy = 0) => {
+  const [x, y] = s.p(...at);
+  return `<text class="${cls}" x="${(x + dx).toFixed(1)}" y="${(y + dy).toFixed(1)}">${escapeHtml(text)}</text>`;
+};
+
+// Three faces is all you ever see of a box from one corner.
+function isoBox(s, x0, y0, z0, l, h, w, cls) {
+  const x1 = x0 + l, y1 = y0 + h, z1 = z0 + w;
+  return isoPoly(s, [[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]], `${cls} fc-top`)
+       + isoPoly(s, [[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0]], `${cls} fc-front`)
+       + isoPoly(s, [[x1, y0, z0], [x1, y0, z1], [x1, y1, z1], [x1, y1, z0]], `${cls} fc-side`);
+}
+
+// The empty container: floor, the two walls you can see past, and an open
+// frame at the door end.
+function isoShell(s, opts = {}) {
+  const { L, W, H } = s;
+  let out = isoPoly(s, [[0, 0, 0], [L, 0, 0], [L, 0, W], [0, 0, W]], 'sh-floor');
+  if (!opts.plainFloor) out += (opts.floor || '');
+  out += isoPoly(s, [[0, 0, W], [L, 0, W], [L, H, W], [0, H, W]], 'sh-back');
+  out += isoPoly(s, [[L, 0, 0], [L, 0, W], [L, H, W], [L, H, 0]], 'sh-end');
+  // the open edges, so the box reads as a box without boxing the view in
+  [[[0, 0, 0], [L, 0, 0]], [[0, 0, W], [L, 0, W]],
+   [[0, H, 0], [L, H, 0]], [[0, H, W], [L, H, W]],
+   [[L, 0, 0], [L, H, 0]], [[L, 0, W], [L, H, W]], [[L, H, 0], [L, H, W]],
+   [[L, 0, 0], [L, 0, W]],
+   [[0, 0, 0], [0, H, 0]], [[0, H, 0], [0, H, W]], [[0, 0, 0], [0, 0, W]],
+   [[0, 0, W], [0, H, W]]].forEach(([a, b]) => { out += isoLine(s, a, b, 'sh-edge'); });
+  // the door frame, drawn heavier — it is the datum everything counts from
+  [[[0, 0, 0], [0, H, 0]], [[0, H, 0], [0, H, W]], [[0, 0, W], [0, H, W]],
+   [[0, 0, 0], [0, 0, W]]].forEach(([a, b]) => { out += isoLine(s, a, b, 'sh-door'); });
+  out += isoText(s, [0, H, W / 2], 'DOORS', 'lb-end', -6, -14);
+  out += isoText(s, [L, H, W / 2], 'NOSE', 'lb-end nose', 10, -12);
+  return out;
+}
+
+// ---- the four steps -------------------------------------------------
+const ADDR_STEPS = [
+  { key: 'zone',  tag: 'Z',  title: 'Zone',
+    blurb: 'The container is cut into equal slices along its length. Zone 1 is at the doors; the numbers count inwards.',
+    caption: 'Each slice is about one pallet long, so a zone is a place you can walk to.' },
+  { key: 'row',   tag: 'R',  title: 'Row',
+    blurb: 'Down the middle, lengthways. Row 1 is the left-hand half as you look in from the doors, Row 2 the right.',
+    caption: 'Always two rows, whatever the container — left and right is something nobody has to look up.' },
+  { key: 'layer', tag: 'L',  title: 'Layer',
+    blurb: 'How many cartons up from the floor. Layer 1 sits on the floor and the count goes up from there.',
+    caption: 'A pallet is not a layer. The carton standing on one is still L1.' },
+  { key: 'stack', tag: 'a',  title: 'Stack letter',
+    blurb: 'Two columns can share one zone and row. When they do, each gets a letter — otherwise L2 would mean two different heights.',
+    caption: 'Only where it is needed. One column in a cell keeps the shorter three-part address.' }
+];
+let addrStep = 0;
+
+function drawAddrZone() {
+  const g = addressGrid();
+  const s = isoScene(g.L, g.W, cargoSpace.height * 100, 398, 150, 122, 92, 258);
+  let floor = '';
+  for (let b = 0; b < g.zones; b++) {
+    const x0 = b * g.zoneCm, x1 = Math.min(g.L, x0 + g.zoneCm);
+    floor += isoPoly(s, [[x0, 0, 0], [x1, 0, 0], [x1, 0, g.W], [x0, 0, g.W]],
+                     b === 0 ? 'zn-lit' : (b % 2 ? 'zn-odd' : 'zn-even'));
+  }
+  for (let b = 1; b < g.zones; b++)
+    floor += isoLine(s, [b * g.zoneCm, 0, 0], [b * g.zoneCm, 0, g.W], 'zn-cut');
+  let out = isoShell(s, { floor });
+  // the numbers go on last: the far wall is translucent, but it still dims
+  // anything drawn underneath it
+  for (let b = 0; b < g.zones; b++)
+    out += isoText(s, [(b + 0.5) * g.zoneCm, 0, g.W / 2], `${b + 1}`,
+                   b === 0 ? 'lb-cell on' : 'lb-cell', 0, 4);
+  // the measuring line underneath, counting in from the doors
+  const [ax, ay] = s.p(0, 0, 0), [bx] = s.p(g.L, 0, 0);
+  const ry = ay + 30;
+  out += `<line class="ruler" x1="${ax.toFixed(1)}" y1="${ry.toFixed(1)}" x2="${bx.toFixed(1)}" y2="${ry.toFixed(1)}"/>` +
+         `<path class="ruler" d="M${(bx - 9).toFixed(1)} ${(ry - 5).toFixed(1)}L${bx.toFixed(1)} ${ry.toFixed(1)}l-9 5"/>` +
+         `<line class="ruler" x1="${ax.toFixed(1)}" y1="${(ry - 5).toFixed(1)}" x2="${ax.toFixed(1)}" y2="${(ry + 5).toFixed(1)}"/>` +
+         `<text class="lb-note" x="${((ax + bx) / 2).toFixed(1)}" y="${(ry + 17).toFixed(1)}" text-anchor="middle">` +
+         `${g.zones} zones of ${g.zoneCm.toFixed(0)} cm &#183; counting in from the doors</text>`;
+  return out;
+}
+
+function drawAddrRow() {
+  const g = addressGrid();
+  const s = isoScene(g.L, g.W, cargoSpace.height * 100, 398, 150, 122, 92, 258);
+  let floor = isoPoly(s, [[0, 0, 0], [g.L, 0, 0], [g.L, 0, g.rowCm], [0, 0, g.rowCm]], 'zn-lit')
+            + isoPoly(s, [[0, 0, g.rowCm], [g.L, 0, g.rowCm], [g.L, 0, g.W], [0, 0, g.W]], 'zn-even')
+            + isoLine(s, [0, 0, g.rowCm], [g.L, 0, g.rowCm], 'zn-cut')
+            + isoText(s, [g.L * 0.22, 0, g.rowCm / 2], 'ROW 1  ·  LEFT', 'lb-cell on')
+            + isoText(s, [g.L * 0.22, 0, g.rowCm * 1.5], 'ROW 2  ·  RIGHT', 'lb-cell');
+  let out = isoShell(s, { floor });
+  const [ax, ay] = s.p(0, 0, 0), [bx] = s.p(g.L, 0, 0);
+  out += `<text class="lb-note" x="${((ax + bx) / 2).toFixed(1)}" y="${(ay + 42).toFixed(1)}" text-anchor="middle">` +
+         `2 rows of ${g.rowCm.toFixed(0)} cm &#183; left and right as you look in</text>`;
+  return out;
+}
+
+// Steps three and four zoom into one zone and row. At full length a 7 cm
+// carton is a dot, and the whole point is what happens inside one cell.
+function cellScene() {
+  const g = addressGrid();
+  return isoScene(g.zoneCm, g.rowCm, 200, 230, 150, 150, 150, 258);
+}
+
+function drawAddrLayer() {
+  const g = addressGrid();
+  const s = cellScene();
+  const l = s.L * 0.6, w = s.W * 0.55, h = 40;
+  const x0 = s.L * 0.2, z0 = s.W * 0.22;
+  let out = isoPoly(s, [[0, 0, 0], [s.L, 0, 0], [s.L, 0, s.W], [0, 0, s.W]], 'sh-floor cell')
+          + isoLine(s, [0, 0, 0], [s.L, 0, 0], 'sh-edge')
+          + isoLine(s, [0, 0, 0], [0, 0, s.W], 'sh-edge')
+          ;
+  for (let n = 0; n < 4; n++) {
+    out += isoBox(s, x0, n * h, z0, l, h, w, n === 1 ? 'bx bx-lit' : 'bx');
+    out += isoText(s, [x0, n * h + h / 2, z0], `L${n + 1}`, n === 1 ? 'lb-lay on' : 'lb-lay', -24, 4);
+  }
+  // the count runs up the outside of the column, clear of it
+  const [tx, ty] = s.p(x0, 0, z0), ty4 = s.p(x0, 4 * h, z0)[1];
+  out += `<line class="ruler" x1="${(tx - 48).toFixed(1)}" y1="${(ty - 2).toFixed(1)}" ` +
+         `x2="${(tx - 48).toFixed(1)}" y2="${(ty4 + 8).toFixed(1)}"/>` +
+         `<path class="ruler" d="M${(tx - 53).toFixed(1)} ${(ty4 + 17).toFixed(1)}` +
+         `L${(tx - 48).toFixed(1)} ${(ty4 + 8).toFixed(1)}l5 9"/>`;
+  out += svgNote(310, 322, 'one zone × one row · the count runs up from the floor', 'lb-note mid');
+  return out;
+}
+
+function drawAddrStack() {
+  const s = cellScene();
+  const l = s.L * 0.5, w = s.W * 0.4, x0 = s.L * 0.25;
+  let out = isoPoly(s, [[0, 0, 0], [s.L, 0, 0], [s.L, 0, s.W], [0, 0, s.W]], 'sh-floor cell')
+          + isoLine(s, [0, 0, 0], [s.L, 0, 0], 'sh-edge')
+          + isoLine(s, [0, 0, 0], [0, 0, s.W], 'sh-edge');
+  // Side by side across the width, which is the case the letter exists for.
+  // The far column goes down first so the near one sits in front of it.
+  const tall = 50, zB = s.W * 0.56;
+  for (let n = 0; n < 2; n++)
+    out += isoBox(s, x0, n * tall, zB, l, tall, w, `bx bx-b${n === 1 ? ' hot' : ''}`);
+  out += isoText(s, [x0 + l / 2, 2 * tall, zB + w / 2], 'b', 'lb-stack b', 0, -9);
+  out += isoText(s, [x0 + l, tall * 1.5, zB + w], 'L2', 'lb-lay b', 24, 4);
+
+  const flat = 20, zA = s.W * 0.04;
+  for (let n = 0; n < 5; n++)
+    out += isoBox(s, x0, n * flat, zA, l, flat, w, `bx bx-a${n === 1 ? ' hot' : ''}`);
+  out += isoText(s, [x0 + l / 2, 5 * flat, zA + w / 2], 'a', 'lb-stack a', 0, -9);
+  out += isoText(s, [x0, flat * 1.5, zA], 'L2', 'lb-lay a', -24, 4);
+
+  out += svgNote(310, 322, 'the same L2 at two heights — so each column takes a letter', 'lb-note mid');
+  return out;
+}
+
+const ADDR_DRAW = { zone: drawAddrZone, row: drawAddrRow, layer: drawAddrLayer, stack: drawAddrStack };
+
+function renderAddrModal() {
+  const step = ADDR_STEPS[addrStep];
+  const svg = $('#addrSvg');
+  if (svg) svg.innerHTML = ADDR_DRAW[step.key]();
+  const cap = $('#addrCaption');
+  if (cap) cap.textContent = step.caption;
+  const sub = $('#addrSub');
+  if (sub) sub.textContent = addressGrid().zones + ' zones · 2 rows · '
+    + (PRESETS[containerPreset]?.name || containerPreset);
+
+  const steps = $('#addrSteps');
+  if (steps) steps.innerHTML = ADDR_STEPS.map((s, n) => `
+    <button type="button" class="addr-step${n === addrStep ? ' on' : ''}" data-step="${n}">
+      <span class="addr-step-tag">${escapeHtml(s.tag)}</span>
+      <span class="addr-step-text"><b>${escapeHtml(s.title)}</b>${escapeHtml(s.blurb)}</span>
+    </button>`).join('');
+
+  // the worked example, with the part this step is about picked out
+  const parts = [
+    { key: 'zone',  text: 'Z1', note: 'first slice in from the doors' },
+    { key: 'row',   text: 'R1', note: 'left-hand half' },
+    { key: 'stack', text: 'a',  note: 'the first of two columns here' },
+    { key: 'layer', text: 'L2 of 8', note: 'second carton up, in a column of eight' }
+  ];
+  const ex = $('#addrExample');
+  if (ex) ex.innerHTML = parts.map(p => `
+    <span class="addr-part${p.key === step.key ? ' on' : ''}">
+      <b>${escapeHtml(p.text)}</b><small>${escapeHtml(p.note)}</small>
+    </span>`).join('<span class="addr-dot">·</span>');
+}
+
+function openAddrModal(step = 0) {
+  addrStep = Math.max(0, Math.min(ADDR_STEPS.length - 1, step));
+  renderAddrModal();
+  $('#addrModal').hidden = false;
+}
+
+$('#addrHelpOpen')?.addEventListener('click', () => openAddrModal(0));
+$('#editStripAddr')?.addEventListener('click', () => openAddrModal(0));
+$('#addrSteps')?.addEventListener('click', e => {
+  const b = e.target.closest('[data-step]');
+  if (!b) return;
+  addrStep = Number(b.dataset.step);
+  renderAddrModal();
+});
+document.querySelectorAll('[data-close-addr]').forEach(el =>
+  el.addEventListener('click', () => { $('#addrModal').hidden = true; }));
+
+
 // ---- position numbering ----
 // The zone grid is read off the container, so there is nothing to set here —
 // only the rule to state, which has to appear wherever addresses are printed.
@@ -9533,6 +9773,7 @@ window.addEventListener('keydown', (e) => {
     }
     if (!$('#exitModal').hidden) { closeExitDialog(); return; }
     if (!$('#builderModal').hidden) { closeBuilder(); return; }
+    if (!$('#addrModal').hidden)  { $('#addrModal').hidden = true; return; }
     if (!$('#sheetModal').hidden) { $('#sheetModal').hidden = true; return; }
     if (!$('#shortcutsModal').hidden) { $('#shortcutsModal').hidden = true; return; }
     if (!$('#plansModal').hidden) { $('#plansModal').hidden = true; return; }
