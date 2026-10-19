@@ -14,7 +14,7 @@ const CONTINENT_ICONS = {
 const CONTINENTS = ['All','Africa','Antarctica','Asia','Europe','North America','Oceania','South America'];
 
 const CONTINENT_MAP = {
-  AF:'Africa',AX:'Europe',AL:'Europe',DZ:'Africa',AS:'Oceania',AD:'Europe',AO:'Africa',AI:'North America',AQ:'Antarctica',AG:'North America',AR:'South America',AM:'Asia',AW:'North America',AU:'Oceania',AT:'Europe',AZ:'Asia',BS:'North America',BH:'Asia',BD:'Asia',BB:'North America',BY:'Europe',BE:'Europe',BZ:'North America',BJ:'Africa',BM:'North America',BT:'Asia',BO:'South America',BQ:'North America',BA:'Europe',BW:'Africa',BV:'Antarctica',BR:'South America',IO:'Asia',BN:'Asia',BG:'Europe',BF:'Africa',BI:'Africa',CV:'Africa',KH:'Asia',CM:'Africa',CA:'North America',KY:'North America',CF:'Africa',TD:'Africa',CL:'South America',CN:'Asia',CX:'Asia',CC:'Asia',CO:'South America',KM:'Africa',CG:'Africa',CD:'Africa',CK:'Oceania',CR:'North America',CI:'Africa',HR:'Europe',CU:'North America',CW:'North America',CY:'Asia',CZ:'Europe',DK:'Europe',DJ:'Africa',DM:'North America',DO:'North America',EC:'South America',EG:'Africa',SV:'North America',GQ:'Africa',ER:'Africa',EE:'Europe',SZ:'Africa',ET:'Africa',FK:'South America',FO:'Europe',FJ:'Oceania',FI:'Europe',FR:'Europe',GF:'South America',PF:'Oceania',TF:'Antarctica',GA:'Africa',GM:'Africa',GE:'Asia',DE:'Europe',GH:'Africa',GI:'Europe',GR:'Europe',GL:'North America',GD:'North America',GP:'North America',GU:'Oceania',GT:'North America',GG:'Europe',GN:'Africa',GW:'Africa',GY:'South America',HT:'North America',HM:'Antarctica',VA:'Europe',HN:'North America',HK:'Asia',HU:'Europe',IS:'Europe',IN:'Asia',ID:'Asia',IR:'Asia',IQ:'Asia',IE:'Europe',IM:'Europe',IL:'Asia',IT:'Europe',JM:'North America',JP:'Asia',JE:'Europe',JO:'Asia',KZ:'Asia',KE:'Africa',KI:'Oceania',KP:'Asia',KR:'Asia',KW:'Asia',KG:'Asia',LA:'Asia',LV:'Europe',LB:'Asia',LS:'Africa',LR:'Africa',LY:'Africa',LI:'Europe',LT:'Europe',LU:'Europe',MO:'Asia',MG:'Africa',MW:'Africa',MY:'Asia',MV:'Asia',ML:'Africa',MT:'Europe',MH:'Oceania',MQ:'North America',MR:'Africa',MU:'Africa',YT:'Africa',MX:'North America',FM:'Oceania',MD:'Europe',MC:'Europe',MN:'Asia',ME:'Europe',MS:'North America',MA:'Africa',MZ:'Africa',MM:'Asia',NA:'Africa',NR:'Oceania',NP:'Asia',NL:'Europe',NC:'Oceania',NZ:'Oceania',NI:'North America',NE:'Africa',NG:'Africa',NU:'Oceania',NF:'Oceania',MK:'Europe',MP:'Oceania',NO:'Europe',OM:'Asia',PK:'Asia',PW:'Oceania',PS:'Asia',PA:'North America',PG:'Oceania',PY:'South America',PE:'South America',PH:'Asia',PN:'Oceania',PL:'Europe',PT:'Europe',PR:'North America',QA:'Asia',RE:'Africa',RO:'Europe',RU:'Europe',RW:'Africa',BL:'North America',SH:'Africa',KN:'North America',LC:'North America',MF:'North America',PM:'North America',VC:'North America',WS:'Oceania',SM:'Europe',ST:'Africa',SA:'Asia',SN:'Africa',RS:'Europe',SC:'Africa',SL:'Africa',SG:'Asia',SX:'North America',SK:'Europe',SI:'Europe',SB:'Oceania',SO:'Africa',ZA:'Africa',GS:'Antarctica',SS:'Africa',ES:'Europe',LK:'Asia',SD:'Africa',SR:'South America',SJ:'Europe',SE:'Europe',CH:'Europe',SY:'Asia',TW:'Asia',TJ:'Asia',TZ:'Africa',TH:'Asia',TL:'Asia',TG:'Africa',TK:'Oceania',TO:'Oceania',TT:'North America',TN:'Africa',TR:'Asia',TM:'Asia',TC:'North America',TV:'Oceania',UG:'Africa',UA:'Europe',AE:'Asia',GB:'Europe',US:'North America',UM:'Oceania',UY:'South America',UZ:'Asia',VU:'Oceania',VE:'South America',VN:'Asia',VG:'North America',VI:'North America',WF:'Oceania',EH:'Africa',YE:'Asia',ZM:'Africa',ZW:'Africa'
+  AF:'Asia',AX:'Europe',AL:'Europe',DZ:'Africa',AS:'Oceania',AD:'Europe',AO:'Africa',AI:'North America',AQ:'Antarctica',AG:'North America',AR:'South America',AM:'Asia',AW:'North America',AU:'Oceania',AT:'Europe',AZ:'Asia',BS:'North America',BH:'Asia',BD:'Asia',BB:'North America',BY:'Europe',BE:'Europe',BZ:'North America',BJ:'Africa',BM:'North America',BT:'Asia',BO:'South America',BQ:'North America',BA:'Europe',BW:'Africa',BV:'Antarctica',BR:'South America',IO:'Asia',BN:'Asia',BG:'Europe',BF:'Africa',BI:'Africa',CV:'Africa',KH:'Asia',CM:'Africa',CA:'North America',KY:'North America',CF:'Africa',TD:'Africa',CL:'South America',CN:'Asia',CX:'Asia',CC:'Asia',CO:'South America',KM:'Africa',CG:'Africa',CD:'Africa',CK:'Oceania',CR:'North America',CI:'Africa',HR:'Europe',CU:'North America',CW:'North America',CY:'Asia',CZ:'Europe',DK:'Europe',DJ:'Africa',DM:'North America',DO:'North America',EC:'South America',EG:'Africa',SV:'North America',GQ:'Africa',ER:'Africa',EE:'Europe',SZ:'Africa',ET:'Africa',FK:'South America',FO:'Europe',FJ:'Oceania',FI:'Europe',FR:'Europe',GF:'South America',PF:'Oceania',TF:'Antarctica',GA:'Africa',GM:'Africa',GE:'Asia',DE:'Europe',GH:'Africa',GI:'Europe',GR:'Europe',GL:'North America',GD:'North America',GP:'North America',GU:'Oceania',GT:'North America',GG:'Europe',GN:'Africa',GW:'Africa',GY:'South America',HT:'North America',HM:'Antarctica',VA:'Europe',HN:'North America',HK:'Asia',HU:'Europe',IS:'Europe',IN:'Asia',ID:'Asia',IR:'Asia',IQ:'Asia',IE:'Europe',IM:'Europe',IL:'Asia',IT:'Europe',JM:'North America',JP:'Asia',JE:'Europe',JO:'Asia',KZ:'Asia',KE:'Africa',KI:'Oceania',KP:'Asia',KR:'Asia',KW:'Asia',KG:'Asia',LA:'Asia',LV:'Europe',LB:'Asia',LS:'Africa',LR:'Africa',LY:'Africa',LI:'Europe',LT:'Europe',LU:'Europe',MO:'Asia',MG:'Africa',MW:'Africa',MY:'Asia',MV:'Asia',ML:'Africa',MT:'Europe',MH:'Oceania',MQ:'North America',MR:'Africa',MU:'Africa',YT:'Africa',MX:'North America',FM:'Oceania',MD:'Europe',MC:'Europe',MN:'Asia',ME:'Europe',MS:'North America',MA:'Africa',MZ:'Africa',MM:'Asia',NA:'Africa',NR:'Oceania',NP:'Asia',NL:'Europe',NC:'Oceania',NZ:'Oceania',NI:'North America',NE:'Africa',NG:'Africa',NU:'Oceania',NF:'Oceania',MK:'Europe',MP:'Oceania',NO:'Europe',OM:'Asia',PK:'Asia',PW:'Oceania',PS:'Asia',PA:'North America',PG:'Oceania',PY:'South America',PE:'South America',PH:'Asia',PN:'Oceania',PL:'Europe',PT:'Europe',PR:'North America',QA:'Asia',RE:'Africa',RO:'Europe',RU:'Europe',RW:'Africa',BL:'North America',SH:'Africa',KN:'North America',LC:'North America',MF:'North America',PM:'North America',VC:'North America',WS:'Oceania',SM:'Europe',ST:'Africa',SA:'Asia',SN:'Africa',RS:'Europe',SC:'Africa',SL:'Africa',SG:'Asia',SX:'North America',SK:'Europe',SI:'Europe',SB:'Oceania',SO:'Africa',ZA:'Africa',GS:'Antarctica',SS:'Africa',ES:'Europe',LK:'Asia',SD:'Africa',SR:'South America',SJ:'Europe',SE:'Europe',CH:'Europe',SY:'Asia',TW:'Asia',TJ:'Asia',TZ:'Africa',TH:'Asia',TL:'Asia',TG:'Africa',TK:'Oceania',TO:'Oceania',TT:'North America',TN:'Africa',TR:'Asia',TM:'Asia',TC:'North America',TV:'Oceania',UG:'Africa',UA:'Europe',AE:'Asia',GB:'Europe',US:'North America',UM:'Oceania',UY:'South America',UZ:'Asia',VU:'Oceania',VE:'South America',VN:'Asia',VG:'North America',VI:'North America',WF:'Oceania',EH:'Africa',YE:'Asia',ZM:'Africa',ZW:'Africa'
 };
 
 let allCountries = [];
@@ -222,40 +222,6 @@ async function initDetailPage() {
     if (data.iuu_year) { const e = document.getElementById('iuu-year-label'); if (e) e.textContent = 'IUU Fishing Index ' + data.iuu_year; }
   }
   if (data.iuu_url) { const e = document.getElementById('iuu-url'); if (e) { e.href = data.iuu_url; e.style.display = 'inline-flex'; } }
-
-  // ── FiTI / Fisheries Transparency ──
-  const hasFiti = data.fiti_participation !== null && data.fiti_participation !== undefined;
-  const fitiCard = document.getElementById('fitiCard');
-  if (fitiCard && hasFiti) {
-    fitiCard.style.display = 'block';
-    // Participation
-    const partEl = document.getElementById('fiti-participation');
-    if (partEl) partEl.innerHTML = data.fiti_participation
-      ? '<span style="color:#0369a1;font-weight:700;">✓ Yes</span>'
-      : '<span style="color:#6b7280;">— No</span>';
-    // FIS
-    const fisEl = document.getElementById('fiti-fis');
-    if (fisEl) {
-      const fisColors = { 'Yes':'#16a34a', 'No':'#e63946', 'Planned':'#f59e0b', 'Coming Soon':'#7c3aed' };
-      const fisVal = data.fiti_fis || '—';
-      fisEl.innerHTML = `<span style="color:${fisColors[fisVal]||'#6b7280'};font-weight:700;">${fisVal}</span>`;
-    }
-    // Status
-    const statusEl = document.getElementById('fiti-status');
-    if (statusEl) {
-      const statusColors = {
-        'Compliant':'#16a34a', 'Implementing':'#0369a1',
-        'Committed':'#7c3aed', 'Target':'#f59e0b', 'Not Participating':'#9aa0b4'
-      };
-      const sv = data.fiti_status || '—';
-      statusEl.innerHTML = `<span style="color:${statusColors[sv]||'#1a1a2e'};font-weight:700;">${sv}</span>`;
-    }
-    // URL
-    if (data.fiti_url) {
-      const urlEl = document.getElementById('fiti-url');
-      if (urlEl) { urlEl.href = data.fiti_url; urlEl.style.display = 'inline-flex'; }
-    }
-  }
 
   document.getElementById('detailContent').classList.remove('hidden');
 
