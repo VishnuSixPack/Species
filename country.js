@@ -301,14 +301,7 @@ async function loadCountryMap(alpha3, countryName) {
     });
     setTimeout(() => countryMap.invalidateSize(), 200);
 
-    // Labels layer (neighbour names) above fills
-    countryMap.createPane('labels');
-    countryMap.getPane('labels').style.zIndex = 650;
-    countryMap.getPane('labels').style.pointerEvents = 'none';
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
-      pane: 'labels', subdomains: 'abcd',
-      attribution: '© OpenStreetMap, © CARTO', maxZoom: 18
-    }).addTo(countryMap);
+
   }
 
   if (countryBase)  { countryMap.removeLayer(countryBase);  countryBase = null; }
