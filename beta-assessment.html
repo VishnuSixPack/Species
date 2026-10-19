@@ -8550,6 +8550,25 @@ function buildReview(){
   if(firstBody)firstBody.classList.add('open');
   const firstNav=document.querySelector('.rv-nav-item[data-stage="0"]');
   if(firstNav)firstNav.classList.add('active');
+
+  // Scroll-spy: highlight sidebar nav as user scrolls the right panel
+  const rvScrollEl=document.querySelector('#sReview .rv-scroll');
+  if(rvScrollEl){
+    // Remove any existing listener to avoid duplicates on re-render
+    if(rvScrollEl._spyHandler)rvScrollEl.removeEventListener('scroll',rvScrollEl._spyHandler);
+    rvScrollEl._spyHandler=function(){
+      let activeIdx=0;
+      reviewStages.forEach((_,i)=>{
+        const hd=document.getElementById('rv-hd-'+i);
+        if(hd&&hd.offsetTop-rvScrollEl.scrollTop<=40)activeIdx=i;
+      });
+      document.querySelectorAll('.rv-nav-item').forEach(el=>{
+        const idx=parseInt(el.dataset.stage);
+        el.classList.toggle('active',idx===activeIdx);
+      });
+    };
+    rvScrollEl.addEventListener('scroll',rvScrollEl._spyHandler,{passive:true});
+  }
 }
 function saveStageComment(si){
   const ta=document.getElementById('stcmt_'+si);
