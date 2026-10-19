@@ -108,7 +108,6 @@ const REALISTIC_MODE_KEY = 'smartuna_planner_realistic_mode';
 const DIMS_MODE_KEY = 'smartuna_planner_dims_mode';
 const NUDGE_STEP_KEY = 'smartuna_planner_nudge_step';
 const SHOW_CONTENTS_KEY = 'smartuna_planner_show_contents';
-const ADDRESSING_KEY = 'smartuna_planner_addressing_v1';
 const GRID_STEP_KEY = 'smartuna_planner_grid_step';
 
 // Selectable grid spacings, in metres. 'auto' sizes them to the container.
@@ -465,6 +464,7 @@ function buildContainer() {
   items.forEach(clampItemToBounds);
   items.forEach(refreshItemMesh);
   updateStats();
+  renderAddressingControls();     // the zone grid is read off the container
 }
 
 // Filled "blueprint" planes that give 2D views a defined silhouette
@@ -2139,7 +2139,7 @@ function renderCargoList() {
           (i.shape && i.shape !== 'box') ? ` · <span class="row-shape">${escapeHtml(SHAPES[i.shape].label)}</span>` : ''}</small>
         ${extra ? `<small class="cargo-contents">${extra}</small>` : ''}
       </div>
-      <span class="row-addr" title="Where it sits — ${escapeHtml(addressLegend())}">${addr.text}</span>
+      <span class="row-addr" title="${escapeHtml(addr.full)} — ${escapeHtml(addressLegend())}">${addr.text}</span>
       ${i.locked ? '<span class="row-lock" title="Locked — cannot be moved">🔒</span>' : ''}
       ${i.issueLevel ? `<span class="row-warn lvl-${i.issueLevel}" title="${escapeHtml(i.issues.map(x => x.text).join(' · '))}">!</span>` : ''}
       <span class="focus-icon" title="Focus camera">⌖</span>
@@ -2185,8 +2185,16 @@ function renderEditStrip() {
   const ad = $('#editStripAddr');
   if (ad) {
     const a = addressOf(item);
-    ad.textContent = a ? a.text : '—';
+    ad.textContent = a ? a.full : '—';
     ad.title = addressLegend();
+  }
+  const off = $('#editStripOffsets');
+  if (off) {
+    const o = offsetsOf(item);
+    off.innerHTML = `<b>${o.doors.toFixed(0)}</b> cm in from the doors · ` +
+                    `<b>${o.left.toFixed(0)}</b> cm from the left wall · ` +
+                    `<b>${o.right.toFixed(0)}</b> cm from the right · ` +
+                    `<b>${o.floor.toFixed(0)}</b> cm off the floor`;
   }
 
   renderResizeReadout();
@@ -7174,31 +7182,19 @@ $('#slipMode')?.addEventListener('change', e => {
 });
 
 // ---- position numbering ----
+// The zone grid is read off the container, so there is nothing to set here —
+// only the rule to state, which has to appear wherever addresses are printed.
 function renderAddressingControls() {
-  const from = $('#addrFrom'), bay = $('#addrBay'), row = $('#addrRow');
-  // enhanceSelect intercepts .value, so the styled trigger follows along
-  if (from) from.value = addressing.from;
-  if (bay) bay.value = addressing.bay_cm;
-  if (row) row.value = addressing.row_cm;
   const legend = $('#addrLegend');
   if (legend) legend.textContent = addressLegend();
+  const grid = $('#addrGrid');
+  if (grid) {
+    const g = addressGrid();
+    grid.innerHTML =
+      `<b>${g.zones}</b> zones of <b>${g.zoneCm.toFixed(0)} cm</b>` +
+      ` &nbsp;\u00b7&nbsp; <b>2</b> rows of <b>${g.rowCm.toFixed(0)} cm</b>`;
+  }
 }
-
-function onAddressingChange() {
-  addressing.from   = $('#addrFrom')?.value || addressing.from;
-  addressing.bay_cm = +$('#addrBay')?.value || addressing.bay_cm;
-  addressing.row_cm = +$('#addrRow')?.value || addressing.row_cm;
-  normaliseAddressing();
-  saveAddressing();
-  renderAddressingControls();
-  renderCargoList();
-  renderEditStrip();
-  markDirty();
-}
-['#addrFrom', '#addrBay', '#addrRow'].forEach(sel => {
-  const el = $(sel);
-  if (el) el.addEventListener('change', onAddressingChange);
-});
 
 $('#zoomIn').addEventListener('click',  () => dolly( 1.2));
 $('#zoomOut').addEventListener('click', () => dolly(-1.2));
@@ -7416,95 +7412,626 @@ function focusOnItems(list) {
 // ============================================================
 // WHERE A CARTON IS — the address
 // ------------------------------------------------------------
-// There is no industry standard for naming a position inside a container.
-// Bay/row/tier exists, but for whole containers on a ship, not for what is
-// packed inside one. So the planner defines its own, and prints the rule
-// next to the numbers so two parties cannot read them differently.
+// Z2·R1·L5, or Z1·R1·a·L2 where one zone and row hold more than one stack.
+// There is no industry standard for naming a position inside a container —
+// bay/row/tier is for whole containers on a ship — so this is ours, and the
+// word "zone" is deliberately not "bay" so our numbers cannot be read as a
+// carrier's bay plan.
 //
-//   Bay  — how far in from the datum end, in slices of bay_cm
-//   Row  — across the width, in slices of row_cm
-//   Tier — how many cartons are underneath this one, plus one
+//   Zone  — how far in from the doors. A fixed grid off the container length.
+//   Row   — always two, the width halved. R1 on the left as you look in.
+//   Layer — how many cartons are underneath, plus one. Counted, not measured.
+//   Stack — a column of cartons on one footprint. Lettered only when a zone
+//           and row hold more than one, because then Z·R·L is not enough.
 //
-// Bay and row come off a fixed grid because the floor is fixed and a grid
-// renumbers predictably. Tier is counted rather than measured, because
-// carton heights vary and "second one up" is what a person actually means.
-//
-// The exact centimetres stay the source of truth. This is the label on top.
+// An address is a direction, not a key: two cartons may share one, and the
+// carton's own label says which is which. The centimetres stay the source of
+// truth — this is the label on top of them.
 // ============================================================
-const ADDRESSING_DEFAULTS = { bay_cm: 100, row_cm: 80, from: 'doors' };
-let addressing = { ...ADDRESSING_DEFAULTS };
+const ZONE_TARGET_CM = 120;          // one pallet long, give or take
+const DOORS_AT_FAR_END = true;       // the doors sit at the far end of the X axis
 
-function loadAddressing() {
-  try {
-    const raw = JSON.parse(localStorage.getItem(ADDRESSING_KEY));
-    if (raw) addressing = { ...ADDRESSING_DEFAULTS, ...raw };
-  } catch (e) { addressing = { ...ADDRESSING_DEFAULTS }; }
-  normaliseAddressing();
+// How the current container divides up. Worked out from its size, not set.
+function addressGrid() {
+  const L = cargoSpace.length * 100, W = cargoSpace.width * 100;
+  const zones = Math.max(1, Math.round(L / ZONE_TARGET_CM));
+  return { zones, zoneCm: L / zones, rows: 2, rowCm: W / 2, L, W };
 }
-
-function normaliseAddressing() {
-  const n = (v, d) => (Number.isFinite(+v) && +v > 0 ? +v : d);
-  addressing.bay_cm = n(addressing.bay_cm, ADDRESSING_DEFAULTS.bay_cm);
-  addressing.row_cm = n(addressing.row_cm, ADDRESSING_DEFAULTS.row_cm);
-  if (addressing.from !== 'nose') addressing.from = 'doors';
-}
-
-function saveAddressing() {
-  try { localStorage.setItem(ADDRESSING_KEY, JSON.stringify(addressing)); } catch (e) {}
-}
-
-// The doors are at the far end of the length axis, and someone standing in
-// them looking in has +Z on their right. Both facts are needed to turn a
-// measurement into something a person can act on.
-const DOORS_AT_FAR_END = true;
 
 function addressLegend() {
-  const end = addressing.from === 'doors' ? 'the doors' : 'the closed end';
-  return `Bay 1 at ${end}, counting inwards · Row 1 on the left as you look in from the doors · Tier 1 on the floor`;
+  const g = addressGrid();
+  return `Zone 1 at the doors, counting inwards — ${g.zones} zones of ${g.zoneCm.toFixed(0)} cm · ` +
+         `Row 1 on the left as you look in — 2 rows of ${g.rowCm.toFixed(0)} cm · ` +
+         `Layer 1 on the floor, counting up — pallets are not a layer`;
 }
 
-// One carton's address. `ext` is the extent lookup so a whole-list pass does
-// not measure every carton again for every other carton.
-function computeAddress(item, list, ext) {
-  const a = ext.get(item.id);
-  const L = cargoSpace.length * 100;
-  const along = addressing.from === 'doors' && DOORS_AT_FAR_END
-    ? L - item.pos_x : item.pos_x;
-  const bay = Math.max(1, Math.floor(along / addressing.bay_cm) + 1);
-  const row = Math.max(1, Math.floor(item.pos_z / addressing.row_cm) + 1);
+// A carton counts as cargo; a pallet or sheet is a base it stands on.
+const isCargo = it => (it.kind || 'carton') === 'carton';
 
-  // Underneath means: overlapping this carton's footprint, and topping out at
-  // or below its base. A 1 cm slack keeps touching faces from reading as a
-  // miss, and keeps a neighbour alongside from reading as a hit.
-  let below = 0;
-  list.forEach(other => {
-    if (other.id === item.id) return;
-    const b = ext.get(other.id);
-    const overX = Math.min(item.pos_x + a.l / 2, other.pos_x + b.l / 2)
-                - Math.max(item.pos_x - a.l / 2, other.pos_x - b.l / 2);
-    const overZ = Math.min(item.pos_z + a.w / 2, other.pos_z + b.w / 2)
-                - Math.max(item.pos_z - a.w / 2, other.pos_z - b.w / 2);
-    if (overX <= 1 || overZ <= 1) return;
-    if (other.pos_y + b.h / 2 <= item.pos_y - a.h / 2 + 1) below++;
+// Which column a carton stands in. Sharing a footprint means sharing a stack.
+const stackKey = it => `${Math.round(it.pos_x)}|${Math.round(it.pos_z)}|` +
+                       `${Math.round(itemExtent(it).l)}|${Math.round(itemExtent(it).w)}`;
+
+function footprintsOverlap(a, ea, b, eb) {
+  const overX = Math.min(a.pos_x + ea.l / 2, b.pos_x + eb.l / 2)
+              - Math.max(a.pos_x - ea.l / 2, b.pos_x - eb.l / 2);
+  const overZ = Math.min(a.pos_z + ea.w / 2, b.pos_z + eb.w / 2)
+              - Math.max(a.pos_z - ea.w / 2, b.pos_z - eb.w / 2);
+  return overX > 1 && overZ > 1;
+}
+
+// Every address in one pass. Stacks have to be lettered across the whole load
+// before any single address is complete, so this is the real entry point.
+function addressesFor(list = items) {
+  const g = addressGrid();
+  const ext = new Map(list.map(i => [i.id, itemExtent(i)]));
+  const out = new Map();
+
+  list.forEach(it => {
+    const e = ext.get(it.id);
+    const along = DOORS_AT_FAR_END ? g.L - it.pos_x : it.pos_x;
+    const zone = Math.min(g.zones, Math.max(1, Math.floor(along / g.zoneCm) + 1));
+    const row  = it.pos_z + e.w / 2 < g.rowCm ? 1 : 2;
+
+    // Layer counts cartons underneath. A pallet is not a layer, so a carton
+    // standing on one is still L1.
+    let layer = null, stack = null;
+    if (isCargo(it)) {
+      let below = 0;
+      list.forEach(o => {
+        if (o.id === it.id || !isCargo(o)) return;
+        const b = ext.get(o.id);
+        if (!footprintsOverlap(it, e, o, b)) return;
+        if (o.pos_y + b.h / 2 <= it.pos_y - e.h / 2 + 1) below++;
+      });
+      layer = below + 1;
+    }
+    out.set(it.id, { zone, row, layer, stack, letter: '', text: '' });
   });
 
-  const tier = below + 1;
-  return { bay, row, tier, text: `B${bay}·R${row}·T${tier}` };
-}
+  // Letter the stacks inside each zone and row, in the order you meet them
+  // walking in from the doors. Only where there is more than one: a single
+  // column keeps the shorter three-part address.
+  const cells = new Map();
+  list.forEach(it => {
+    if (!isCargo(it)) return;
+    const a = out.get(it.id);
+    const cell = `${a.zone}|${a.row}`;
+    if (!cells.has(cell)) cells.set(cell, new Map());
+    const byStack = cells.get(cell);
+    const k = stackKey(it);
+    if (!byStack.has(k)) byStack.set(k, []);
+    byStack.get(k).push(it);
+  });
+  cells.forEach(byStack => {
+    const keys = [...byStack.keys()].sort((p, q) => {
+      const [px, pz] = p.split('|').map(Number), [qx, qz] = q.split('|').map(Number);
+      // nearest the doors first, then nearest the left wall
+      const pd = DOORS_AT_FAR_END ? -px : px, qd = DOORS_AT_FAR_END ? -qx : qx;
+      return pd - qd || pz - qz;
+    });
+    const many = keys.length > 1;
+    keys.forEach((k, n) => {
+      const column = byStack.get(k);
+      const height = column.reduce((m, o) => Math.max(m, out.get(o.id).layer), 1);
+      column.forEach(o => {
+        const a = out.get(o.id);
+        a.letter = many ? String.fromCharCode(97 + n) : '';
+        a.stack = height;
+      });
+    });
+  });
 
-// Every address in one pass, for the list and the plan sheet
-function addressesFor(list = items) {
-  const ext = new Map(list.map(i => [i.id, itemExtent(i)]));
-  return new Map(list.map(i => [i.id, computeAddress(i, list, ext)]));
+  out.forEach((a, id) => {
+    const mid = a.letter ? `·${a.letter}` : '';
+    a.text = a.layer
+      ? `Z${a.zone}·R${a.row}${mid}·L${a.layer}`
+      : `Z${a.zone}·R${a.row}·base`;
+    a.full = a.layer ? `${a.text} of ${a.stack}` : a.text;
+  });
+  return out;
 }
 
 // Just one, for the inspector. Worked out fresh every time rather than
 // cached: a cached address that is one drag out of date is worse than none.
 function addressOf(item) {
-  if (!item) return null;
-  const ext = new Map(items.map(i => [i.id, itemExtent(i)]));
-  return computeAddress(item, items, ext);
+  return item ? addressesFor().get(item.id) : null;
 }
+
+// How far a carton sits from each face of the container, to its nearest face.
+// These are what settle a position once the address has got you to the zone.
+function offsetsOf(item) {
+  const g = addressGrid();
+  const e = itemExtent(item);
+  return {
+    doors: DOORS_AT_FAR_END ? g.L - (item.pos_x + e.l / 2) : item.pos_x - e.l / 2,
+    nose:  DOORS_AT_FAR_END ? item.pos_x - e.l / 2 : g.L - (item.pos_x + e.l / 2),
+    left:  item.pos_z - e.w / 2,
+    right: g.W - (item.pos_z + e.w / 2),
+    floor: item.pos_y - e.h / 2
+  };
+}
+
+
+// ============================================================
+// THE LOAD SHEET  —  the paper version of everything above
+// ------------------------------------------------------------
+// An address is only worth having if it leaves the screen. This builds a
+// standalone document — plan view, two elevations, the stowage list and a
+// "where is lot X" index — and drops it into an iframe, so the planner's own
+// stylesheet cannot leak in and the browser's print-to-PDF does the rest.
+//
+// It only ever reads the model. Nothing in here moves a carton.
+// ============================================================
+const SHEET_PAGE = { w: 297, h: 210, top: 12, side: 12, bottom: 14 };  // A4 landscape, mm
+const SHEET_PADX = 11;        // room beside a drawing for DOORS / NOSE / R1 / R2
+
+// Both drawings are to scale, in millimetres per centimetre. The plan is
+// sized to fill the page width; the elevations are capped so that two of
+// them still stand one above the other on a single page.
+function sheetScales() {
+  const g = addressGrid();
+  const usableW = SHEET_PAGE.w - SHEET_PAGE.side * 2;
+  const usableH = SHEET_PAGE.h - SHEET_PAGE.top - SHEET_PAGE.bottom;
+  const plan = (usableW - SHEET_PADX * 2) / g.L;
+  const H = cargoSpace.height * 100;
+  return { plan, elev: Math.min(plan, (usableH / 2 - 18) / H) };
+}
+
+// Distance from the doors to the near face, so a drawing can always be laid
+// out doors-on-the-left whichever end of the X axis they happen to be on.
+function sheetAlong(x0, len, L) {
+  return DOORS_AT_FAR_END ? L - (x0 + len) : x0;
+}
+
+// Everything the sheet needs about every item, worked out once.
+function sheetData() {
+  const g = addressGrid();
+  const addrs = addressesFor();
+  const rows = items.map(it => {
+    const e = itemExtent(it);
+    const a = addrs.get(it.id) || { zone: 1, row: 1, layer: null, letter: '', text: '—', full: '—' };
+    const o = offsetsOf(it);
+    return {
+      it, e, a, o,
+      cargo: isCargo(it),
+      key: stackKey(it),
+      x0: it.pos_x - e.l / 2,
+      z0: it.pos_z - e.w / 2,
+      y0: it.pos_y - e.h / 2,
+      along: sheetAlong(it.pos_x - e.l / 2, e.l, g.L),
+      units: itemUnits(it),
+      product: it.product_name || '',
+      lots: [...new Set((it.contents || []).map(c => c.batch_lot).filter(Boolean))]
+    };
+  });
+
+  // Load sequence runs from the nose, because that is the end a container is
+  // stuffed from first. The list itself reads the other way.
+  [...rows].sort((p, q) => p.o.nose - q.o.nose || p.o.left - q.o.left || p.y0 - q.y0)
+           .forEach((r, n) => { r.seq = n + 1; });
+
+  // Reading order: walking in from the doors, left row first, bottom up.
+  rows.sort((p, q) => p.a.zone - q.a.zone || p.a.row - q.a.row
+                   || (p.a.letter || '').localeCompare(q.a.letter || '')
+                   || (p.a.layer || 0) - (q.a.layer || 0));
+
+  const cartons = rows.filter(r => r.cargo);
+  return {
+    g, rows, cartons,
+    units: cartons.reduce((s, r) => s + r.units, 0),
+    kg: rows.reduce((s, r) => s + (Number(r.it.weight_kg) || 0), 0),
+    volPct: (() => {
+      const cap = cargoSpace.length * cargoSpace.width * cargoSpace.height * 1e6;
+      const used = items.reduce((s, i) => s + i.length_cm * i.width_cm * i.height_cm, 0);
+      return cap > 0 ? (used / cap) * 100 : 0;
+    })()
+  };
+}
+
+// --- drawings -------------------------------------------------
+// Both are plain SVG in millimetre units, so the type sizes below are real
+// millimetres on paper rather than something that has to be guessed at.
+
+function sheetFrameSvg(out, s, cw, ch, padt, g, zoneLabelY) {
+  for (let b = 0; b < g.zones; b++) {
+    const x0 = SHEET_PADX + b * g.zoneCm * s;
+    if (b % 2) out.push(`<rect x="${x0.toFixed(2)}" y="${padt}" width="${(g.zoneCm * s).toFixed(2)}" height="${ch.toFixed(2)}" fill="#eef2f7"/>`);
+    out.push(`<text x="${(x0 + g.zoneCm * s / 2).toFixed(2)}" y="${zoneLabelY.toFixed(2)}" text-anchor="middle" class="bl">ZONE ${b + 1}</text>`);
+    if (b) out.push(`<line x1="${x0.toFixed(2)}" y1="${padt}" x2="${x0.toFixed(2)}" y2="${(padt + ch).toFixed(2)}" stroke="#9aa7b6" stroke-width="0.25"/>`);
+  }
+  out.push(`<rect x="${SHEET_PADX}" y="${padt}" width="${cw.toFixed(2)}" height="${ch.toFixed(2)}" fill="none" stroke="#1d2733" stroke-width="0.5"/>`);
+  const my = padt + ch / 2;
+  out.push(`<text x="${SHEET_PADX - 6.5}" y="${my.toFixed(2)}" class="end" transform="rotate(-90 ${SHEET_PADX - 6.5} ${my.toFixed(2)})">DOORS</text>`);
+  out.push(`<text x="${(SHEET_PADX + cw + 6.5).toFixed(2)}" y="${my.toFixed(2)}" class="end nose" transform="rotate(90 ${(SHEET_PADX + cw + 6.5).toFixed(2)} ${my.toFixed(2)})">NOSE</text>`);
+}
+
+function sheetPlanSvg(d, s) {
+  const g = d.g, padt = 6, padb = 8;
+  const cw = g.L * s, ch = g.W * s;
+  const W = cw + SHEET_PADX * 2, H = ch + padt + padb;
+  const out = [`<svg viewBox="0 0 ${W.toFixed(2)} ${H.toFixed(2)}" width="${W.toFixed(2)}mm" height="${H.toFixed(2)}mm" xmlns="http://www.w3.org/2000/svg">`];
+  sheetFrameSvg(out, s, cw, ch, padt, g, padt - 1.6);
+
+  // the row split, and which side is which
+  out.push(`<line x1="${SHEET_PADX}" y1="${(padt + g.rowCm * s).toFixed(2)}" x2="${(SHEET_PADX + cw).toFixed(2)}" y2="${(padt + g.rowCm * s).toFixed(2)}" stroke="#9aa7b6" stroke-width="0.25" stroke-dasharray="1.6 1.2"/>`);
+  [[1, g.rowCm / 2], [2, g.rowCm * 1.5]].forEach(([r, zc]) =>
+    out.push(`<text x="${SHEET_PADX - 3.2}" y="${(padt + zc * s + 1).toFixed(2)}" text-anchor="middle" class="bl">R${r}</text>`));
+
+  // one block per column of cargo, not per carton — a stack of eight reads as
+  // one footprint from above, which is what someone looking down actually sees
+  const cols = new Map();
+  d.rows.forEach(r => {
+    if (!cols.has(r.key)) cols.set(r.key, []);
+    cols.get(r.key).push(r);
+  });
+  const bases = d.rows.filter(r => !r.cargo);
+  // Bases first, so a carton standing on a pallet is drawn over the top of it
+  // rather than hidden underneath — a pallet is usually the wider footprint.
+  const order = [...cols.values()].sort((p, q) => (p[0].cargo ? 1 : 0) - (q[0].cargo ? 1 : 0));
+  order.forEach(group => {
+    const cs = group.filter(r => r.cargo);
+    const top = cs.reduce((m, r) => Math.max(m, r.a.layer || 0), 0);
+    const lead = cs[0] || group[0];
+    const base = group.find(r => !r.cargo)
+              || bases.find(b => footprintsOverlap(lead.it, lead.e, b.it, b.e));
+    const x = SHEET_PADX + lead.along * s, y = padt + lead.z0 * s;
+    out.push(`<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${Math.max(0.6, lead.e.l * s - 0.4).toFixed(2)}" height="${Math.max(0.6, lead.e.w * s - 0.4).toFixed(2)}" rx="0.5" fill="${base ? '#dbe7f6' : '#ffffff'}" stroke="#2a5d9f" stroke-width="0.35"/>`);
+    const cx = x + lead.e.l * s / 2, cy = y + lead.e.w * s / 2;
+    const head = `Z${lead.a.zone}·R${lead.a.row}${lead.a.letter ? '·' + lead.a.letter : ''}`;
+    out.push(`<text x="${cx.toFixed(2)}" y="${(cy - 0.3).toFixed(2)}" text-anchor="middle" class="ad">${head}</text>`);
+    let tag = top > 1 ? `L1–${top}` : (top ? 'L1' : baseWordFor(lead.it).toLowerCase());
+    if (top && base) tag += ' +' + (base.it.kind === 'pallet' ? 'pal' : 'sht');
+    out.push(`<text x="${cx.toFixed(2)}" y="${(cy + 2.5).toFixed(2)}" text-anchor="middle" class="sm">${tag}</text>`);
+  });
+
+  const ry = padt + ch + 4.5;
+  out.push(`<line x1="${SHEET_PADX}" y1="${ry.toFixed(2)}" x2="${(SHEET_PADX + 100 * s).toFixed(2)}" y2="${ry.toFixed(2)}" stroke="#5d6b7b" stroke-width="0.3"/>`);
+  out.push(`<text x="${(SHEET_PADX + 100 * s + 2).toFixed(2)}" y="${(ry + 1).toFixed(2)}" class="sm">1 metre</text>`);
+  out.push('</svg>');
+  return out.join('');
+}
+
+function sheetElevationSvg(d, row, s) {
+  const g = d.g, padt = 5, padb = 3;
+  const Hcm = cargoSpace.height * 100;
+  const cw = g.L * s, ch = Hcm * s;
+  const W = cw + SHEET_PADX * 2, H = ch + padt + padb;
+  const out = [`<svg viewBox="0 0 ${W.toFixed(2)} ${H.toFixed(2)}" width="${W.toFixed(2)}mm" height="${H.toFixed(2)}mm" xmlns="http://www.w3.org/2000/svg">`];
+  sheetFrameSvg(out, s, cw, ch, padt, g, padt - 1.3);
+
+  const ground = padt + ch;
+  const mine = d.rows.filter(r => r.a.row === row);
+
+  // Two stacks standing abreast fill the same place in a side view, so one
+  // would simply hide the other. Where that happens the span is split between
+  // them, left to right, which is the only way a flat drawing can show both.
+  const spanOf = r => `${Math.round(r.along)}|${Math.round(r.e.l)}`;
+  const bySpan = new Map();
+  mine.forEach(r => {
+    if (!bySpan.has(spanOf(r))) bySpan.set(spanOf(r), new Map());
+    const m = bySpan.get(spanOf(r));
+    if (!m.has(r.key)) m.set(r.key, r.z0);
+  });
+  const slot = new Map();
+  bySpan.forEach(m => {
+    const keys = [...m.entries()].sort((p, q) => p[1] - q[1]).map(e => e[0]);
+    keys.forEach((k, i) => slot.set(k, { i, n: keys.length }));
+  });
+
+  [...mine].sort((p, q) => p.z0 - q.z0).forEach(r => {
+    const sl = slot.get(r.key) || { i: 0, n: 1 };
+    const w = r.e.l * s / sl.n;
+    const x = SHEET_PADX + (r.along + r.e.l * sl.i / sl.n) * s;
+    const y0 = ground - (r.y0 + r.e.h) * s;
+    out.push(`<rect x="${x.toFixed(2)}" y="${y0.toFixed(2)}" width="${Math.max(0.5, w - 0.3).toFixed(2)}" height="${Math.max(0.5, r.e.h * s - 0.3).toFixed(2)}" rx="0.4" fill="${r.cargo ? '#ffffff' : '#dbe7f6'}" stroke="#2a5d9f" stroke-width="0.3"/>`);
+    if (r.e.h * s > 3.4 && w > 5)
+      out.push(`<text x="${(x + w / 2).toFixed(2)}" y="${(y0 + r.e.h * s / 2 + 0.8).toFixed(2)}" text-anchor="middle" class="ad">${r.cargo ? 'L' + r.a.layer : 'base'}</text>`);
+  });
+
+  // The letter goes over the top of each column that carries one.
+  const tops = new Map();
+  mine.forEach(r => {
+    if (!r.cargo || !r.a.letter) return;
+    const prev = tops.get(r.key);
+    if (!prev || r.y0 + r.e.h > prev.top) tops.set(r.key, { top: r.y0 + r.e.h, r });
+  });
+  tops.forEach(({ top, r }) => {
+    const sl = slot.get(r.key) || { i: 0, n: 1 };
+    const w = r.e.l * s / sl.n;
+    const x = SHEET_PADX + (r.along + r.e.l * sl.i / sl.n) * s;
+    out.push(`<text x="${(x + w / 2).toFixed(2)}" y="${(ground - top * s - 1.4).toFixed(2)}" text-anchor="middle" class="stk">${r.a.letter}</text>`);
+  });
+  out.push('</svg>');
+  return out.join('');
+}
+
+// --- the stowage list ----------------------------------------
+function sheetStowageRows(d) {
+  const out = [];
+  let lastZone = null, lastStack = null;
+  const cm = v => v.toFixed(0);
+  d.rows.forEach(r => {
+    if (r.a.zone !== lastZone) {
+      const from = (r.a.zone - 1) * d.g.zoneCm, to = r.a.zone * d.g.zoneCm;
+      out.push(`<tr class="zonerow"><td colspan="11">Zone ${r.a.zone} &nbsp;·&nbsp; ${cm(from)}–${cm(to)} cm from the doors</td></tr>`);
+      lastZone = r.a.zone;
+      lastStack = null;
+    }
+    // A stack gets a heading of its own, because two columns standing side by
+    // side in one zone and row count their layers quite separately.
+    const key = `${r.a.zone}|${r.a.row}|${r.a.letter}`;
+    if (r.cargo && r.a.letter && key !== lastStack) {
+      const peers = d.cartons.filter(o => `${o.a.zone}|${o.a.row}|${o.a.letter}` === key);
+      const tall = peers.reduce((m, o) => Math.max(m, o.y0 + o.e.h), 0);
+      out.push(`<tr class="stackrow"><td colspan="11">Stack <b>${r.a.letter}</b> &nbsp;·&nbsp; ${peers.length} carton${peers.length > 1 ? 's' : ''} of ${peers[0].e.h.toFixed(0)} cm &nbsp;·&nbsp; ${tall.toFixed(0)} cm tall &nbsp;·&nbsp; ${cm(r.o.doors)} cm from the doors, ${cm(r.o.left)} cm from the left wall</td></tr>`);
+      lastStack = key;
+    }
+    const lay = r.a.layer ? `<b>L${r.a.layer}</b> of ${r.a.stack}` : '<i>base</i>';
+    out.push('<tr>' +
+      `<td class="mono addr">${escapeHtml(r.a.text)}</td>` +
+      `<td class="num">${r.seq}</td>` +
+      `<td class="mono">${escapeHtml(r.it.label)}</td>` +
+      `<td>${escapeHtml(r.product || (r.cargo ? '—' : baseWordFor(r.it)))}</td>` +
+      `<td class="mono lot">${escapeHtml(r.lots.join(', ')) || '—'}</td>` +
+      `<td class="num">${r.units || '—'}</td>` +
+      `<td class="num">${(Number(r.it.weight_kg) || 0).toFixed(1)}</td>` +
+      `<td class="lay">${lay}</td>` +
+      `<td class="num">${cm(r.o.doors)}</td>` +
+      `<td class="num">${cm(r.o.nose)}</td>` +
+      `<td class="num">${cm(r.o.left)} / ${cm(r.o.right)}</td>` +
+      '</tr>');
+  });
+  return out.join('');
+}
+
+const baseWordFor = it => it.kind === 'pallet' ? 'Pallet' : 'Slip sheet';
+
+// --- the "where is lot X" index ------------------------------
+function sheetLotCards(d) {
+  const byLot = new Map();
+  d.cartons.forEach(r => {
+    const keys = r.lots.length ? r.lots : ['(no lot)'];
+    keys.forEach(k => {
+      if (!byLot.has(k)) byLot.set(k, []);
+      byLot.get(k).push(r);
+    });
+  });
+  if (!byLot.size) return '<p class="note">No lot numbers recorded yet. Fill in the batch on each carton and they will be indexed here.</p>';
+
+  return [...byLot.keys()].sort().map(lot => {
+    const group = byLot.get(lot);
+    const spots = new Map();
+    group.forEach(r => {
+      const k = `${r.a.zone}|${r.a.row}|${r.a.letter}`;
+      if (!spots.has(k)) spots.set(k, []);
+      spots.get(k).push(r);
+    });
+    const places = [...spots.keys()].sort().map(k => {
+      const gr = spots.get(k);
+      const lays = gr.map(r => r.a.layer).sort((a, b) => a - b);
+      const span = lays.length > 1 ? `L${lays[0]}–L${lays[lays.length - 1]}` : `L${lays[0]}`;
+      const a = gr[0].a;
+      const near = Math.min(...gr.map(r => r.o.doors));
+      const side = a.row === 1 ? 'left' : 'right';
+      return `<li><span class="mono addr">Z${a.zone}·R${a.row}${a.letter ? '·' + a.letter : ''}·${span}</span>` +
+             `<span class="where">zone ${a.zone} from the doors, ${side}-hand side` +
+             `${a.letter ? ', stack ' + a.letter : ''} &nbsp;·&nbsp; ${gr.length} carton${gr.length > 1 ? 's' : ''}` +
+             ` &nbsp;·&nbsp; ${near.toFixed(0)} cm in from the doors</span></li>`;
+    }).join('');
+    const units = group.reduce((s, r) => s + r.units, 0);
+    const kg = group.reduce((s, r) => s + (Number(r.it.weight_kg) || 0), 0);
+    return `<div class="lotcard"><div class="lotcard-head"><b class="mono lot">${escapeHtml(lot)}</b>` +
+           `<span>${escapeHtml(group[0].product || '—')}</span>` +
+           `<span class="tot">${units} units &nbsp;·&nbsp; ${kg.toFixed(1)} kg</span></div>` +
+           `<ul>${places}</ul></div>`;
+  }).join('');
+}
+
+// --- the document --------------------------------------------
+function buildSheetHtml() {
+  const d = sheetData();
+  const s = sheetScales();
+  const g = d.g;
+  const name = ($('#planName').value || '').trim() || 'Untitled plan';
+  const preset = PRESETS[containerPreset];
+  const when = new Date().toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  const foot = `<div class="pagefoot"><span>${escapeHtml(name)}</span><span>${escapeHtml(preset ? preset.name : containerPreset)} · ${(g.L / 100).toFixed(2)} × ${(g.W / 100).toFixed(2)} × ${cargoSpace.height.toFixed(2)} m</span><span>${escapeHtml(when)}</span></div>`;
+
+  const empty = d.rows.length === 0;
+
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8" />
+<title>Load sheet — ${escapeHtml(name)}</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=DM+Sans:wght@400;500;700&display=swap" />
+<style>
+  @page { size: A4 landscape; margin: ${SHEET_PAGE.top}mm ${SHEET_PAGE.side}mm ${SHEET_PAGE.bottom}mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; color: #1d2733; line-height: 1.4;
+         font: 7.4pt/1.4 'DM Sans', system-ui, sans-serif; }
+  .mono { font-family: 'DM Sans', ui-monospace, monospace; letter-spacing: .02em; }
+  h1 { font: 700 17pt 'Poppins', system-ui, sans-serif; margin: 0; letter-spacing: -.2pt; }
+  h2 { font: 600 10.5pt 'Poppins', system-ui, sans-serif; margin: 0 0 2.5mm; letter-spacing: .2pt; }
+  .eyebrow { font-size: 6.4pt; letter-spacing: 1.3pt; text-transform: uppercase; color: #5d6b7b; font-weight: 600; }
+
+  .masthead { display: flex; justify-content: space-between; align-items: flex-start;
+              border-bottom: 1.1pt solid #1d2733; padding-bottom: 2.5mm; margin-bottom: 3mm; }
+  .facts { display: flex; gap: 7mm; }
+  .fact b { display: block; font-size: 9.5pt; font-family: 'DM Sans', ui-monospace, monospace; }
+  .fact span { font-size: 6.2pt; letter-spacing: .7pt; text-transform: uppercase; color: #5d6b7b; }
+
+  .datum { background: #eef2f7; border-left: 2.2pt solid #2a5d9f; padding: 2.2mm 3mm;
+           margin-bottom: 3.5mm; display: flex; gap: 6mm; flex-wrap: wrap; align-items: baseline; }
+  .datum b { font-size: 7.6pt; }
+  .datum span { color: #3b4756; }
+
+  .drawing { margin-bottom: 4mm; }
+  .drawing svg { display: block; }
+  .cap { font-size: 6.4pt; letter-spacing: 1.1pt; text-transform: uppercase; color: #5d6b7b;
+         font-weight: 600; margin-bottom: 1.2mm; }
+  svg text.bl  { font: 600 2.6px 'DM Sans', monospace; fill: #5d6b7b; }
+  svg text.ad  { font: 700 2.5px 'DM Sans', monospace; fill: #1d2733; }
+  svg text.sm  { font: 2.3px 'DM Sans', sans-serif; fill: #5d6b7b; }
+  svg text.stk { font: 700 2.1px 'DM Sans', monospace; fill: #2a5d9f; }
+  svg text.end { font: 700 3px 'Poppins', sans-serif; fill: #2a5d9f; text-anchor: middle; letter-spacing: .5px; }
+  svg text.nose { fill: #5d6b7b; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 6.2pt; letter-spacing: .6pt; text-transform: uppercase;
+       color: #5d6b7b; border-bottom: .8pt solid #1d2733; padding: 1.4mm 1.6mm; font-weight: 600; }
+  td { padding: 1.15mm 1.6mm; border-bottom: .3pt solid #dce2e9; vertical-align: top; }
+  td.num { text-align: right; font-family: 'DM Sans', ui-monospace, monospace; }
+  td.addr { font-weight: 700; }
+  td.lot { color: #2a5d9f; font-weight: 700; }
+  td.lay b { font-family: 'DM Sans', ui-monospace, monospace; }
+  tr.stackrow td { background: #f6f8fb; font-size: 6.4pt; color: #3b4756;
+                   padding: 1.1mm 1.6mm 1.1mm 5mm; border-bottom: .3pt solid #e4e9f0; }
+  tr.stackrow b { font-family: 'DM Sans', ui-monospace, monospace; }
+  tr.zonerow td { background: #eef2f7; font-weight: 700; font-size: 6.6pt; letter-spacing: .5pt;
+                  text-transform: uppercase; color: #3b4756; padding: 1.3mm 1.6mm;
+                  border-bottom: .3pt solid #c9d3df; }
+  thead { display: table-header-group; }
+  tr { page-break-inside: avoid; }
+
+  .lots { display: grid; grid-template-columns: 1fr 1fr; gap: 3mm 6mm; }
+  .lotcard { border: .4pt solid #dce2e9; border-left: 2.2pt solid #2a5d9f; padding: 2mm 2.6mm;
+             page-break-inside: avoid; }
+  .lotcard-head { display: flex; gap: 3mm; align-items: baseline; margin-bottom: 1.2mm;
+                  border-bottom: .3pt solid #dce2e9; padding-bottom: 1.1mm; }
+  .lotcard-head b { font-size: 8.4pt; }
+  .lotcard-head .tot { margin-left: auto; color: #5d6b7b; font-size: 6.6pt; }
+  .lotcard ul { margin: 0; padding: 0; list-style: none; }
+  .lotcard li { display: flex; gap: 2.5mm; align-items: baseline; padding: .7mm 0; }
+  .lotcard li .addr { font-weight: 700; min-width: 26mm; }
+  .lotcard .where { color: #5d6b7b; }
+
+  .note { font-size: 6.6pt; color: #5d6b7b; margin-top: 2.5mm; }
+  .pagefoot { display: flex; justify-content: space-between; gap: 4mm; margin-top: 4mm;
+              padding-top: 1.4mm; border-top: .4pt solid #dce2e9;
+              font-size: 6pt; color: #8b97a5; letter-spacing: .3pt; }
+
+  /* On screen the sections have to look like sheets of paper, because this is
+     the preview. In print the real @page box does that job instead. */
+  @media screen {
+    body { background: #55606d; padding: 8mm 0; }
+    .page { width: ${SHEET_PAGE.w}mm; min-height: ${SHEET_PAGE.h}mm; background: #fff;
+            margin: 0 auto 7mm; box-shadow: 0 4px 18px rgba(0,0,0,.35);
+            padding: ${SHEET_PAGE.top}mm ${SHEET_PAGE.side}mm ${SHEET_PAGE.bottom}mm;
+            display: flex; flex-direction: column; }
+    .page .pagefoot { margin-top: auto; }
+  }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .page { width: auto; min-height: 0; margin: 0; padding: 0; box-shadow: none;
+            page-break-after: always; }
+    .page:last-child { page-break-after: auto; }
+  }
+</style></head><body>
+
+<section class="page">
+  <div class="masthead">
+    <div>
+      <div class="eyebrow">Container load plan</div>
+      <h1>${escapeHtml(name)}</h1>
+      <div style="color:#5d6b7b;margin-top:.6mm;">${escapeHtml(preset ? preset.name : containerPreset)} &nbsp;·&nbsp; ${transportMode} &nbsp;·&nbsp; ${(g.L / 100).toFixed(2)} × ${(g.W / 100).toFixed(2)} × ${cargoSpace.height.toFixed(2)} m</div>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>${d.cartons.length}</b><span>cartons</span></div>
+      <div class="fact"><b>${d.units.toLocaleString()}</b><span>units</span></div>
+      <div class="fact"><b>${d.kg.toFixed(0)} kg</b><span>gross</span></div>
+      <div class="fact"><b>${d.volPct.toFixed(0)}%</b><span>of volume</span></div>
+      <div class="fact"><b>${g.zones}</b><span>zones</span></div>
+    </div>
+  </div>
+
+  <div class="datum">
+    <b>How to read a position</b>
+    <span><b>Zone 1</b> at the doors, counting inwards — ${g.zones} zones of ${g.zoneCm.toFixed(0)} cm</span>
+    <span><b>Row 1</b> on the left as you look in — 2 rows of ${g.rowCm.toFixed(0)} cm</span>
+    <span><b>Layer 1</b> on the floor, counting up — pallets are not a layer</span>
+  </div>
+
+  ${empty ? '<p class="note">This plan is empty. Add cargo and the drawings, the stowage list and the lot index all fill in.</p>' : `
+  <div class="drawing">
+    <div class="cap">Plan view — looking down, doors on the left</div>
+    ${sheetPlanSvg(d, s.plan)}
+  </div>
+  <div class="note">Each block is a column of cargo seen from above, labelled with its
+  zone and row and how many layers deep it goes. A layer is counted inside its own
+  stack, which is why the list says <b>L5 of 8</b> rather than L5 alone.</div>`}
+  ${foot}
+</section>
+${empty ? '' : `
+<section class="page">
+  <h2>Elevations</h2>
+  <div class="drawing">
+    <div class="cap">Row 1 — the left-hand side, seen from inside</div>
+    ${sheetElevationSvg(d, 1, s.elev)}
+  </div>
+  <div class="drawing">
+    <div class="cap">Row 2 — the right-hand side, seen from inside</div>
+    ${sheetElevationSvg(d, 2, s.elev)}
+  </div>
+  <div class="note">Layer numbers are counted upward within their own stack, so the
+  same <b>L2</b> can be two different heights off the floor in two stacks standing
+  side by side. Where that happens the stack carries a letter —
+  <b>Z1·R1·a·L2</b> and <b>Z1·R1·b·L2</b>. A pallet is not a layer: the carton
+  standing on one is still L1.</div>
+  ${foot}
+</section>
+
+<section class="page">
+  <h2>Stowage list</h2>
+  <table>
+    <thead><tr>
+      <th>Position</th><th style="text-align:right">Load<br/>seq</th><th>Item</th>
+      <th>Product</th><th>Lot</th><th style="text-align:right">Units</th>
+      <th style="text-align:right">kg</th><th>Layer</th>
+      <th style="text-align:right">From<br/>doors</th><th style="text-align:right">From<br/>nose</th>
+      <th style="text-align:right">From left /<br/>right wall</th>
+    </tr></thead>
+    <tbody>${sheetStowageRows(d)}</tbody>
+  </table>
+  <div class="note">Listed in the order you meet them walking in from the doors.
+  <b>Load seq</b> runs the other way, because stuffing starts at the nose.
+  All distances in centimetres, measured to the nearest face.</div>
+  ${foot}
+</section>
+
+<section class="page">
+  <h2>Where each lot is</h2>
+  <div class="lots">${sheetLotCards(d)}</div>
+  <div class="note">One lot can sit in more than one zone. Every place it occurs is
+  listed, so a recall or an inspection reaches all of it.</div>
+  ${foot}
+</section>`}
+
+</body></html>`;
+}
+
+// --- the preview window --------------------------------------
+function openLoadSheet() {
+  const frame = $('#sheetFrame');
+  $('#sheetModal').hidden = false;
+  const doc = frame.contentDocument || frame.contentWindow.document;
+  doc.open();
+  doc.write(buildSheetHtml());
+  doc.close();
+}
+
+function printLoadSheet() {
+  const frame = $('#sheetFrame');
+  if (!frame.contentWindow) return;
+  frame.contentWindow.focus();
+  frame.contentWindow.print();
+}
+
+$('#btnLoadSheet')?.addEventListener('click', openLoadSheet);
+$('#sheetPrint')?.addEventListener('click', printLoadSheet);
+document.querySelectorAll('[data-close-sheet]').forEach(el => {
+  el.addEventListener('click', () => { $('#sheetModal').hidden = true; });
+});
+
 
 // ============================================================
 // WHAT IS INSIDE A CARTON
@@ -8863,6 +9390,7 @@ window.addEventListener('keydown', (e) => {
     }
     if (!$('#exitModal').hidden) { closeExitDialog(); return; }
     if (!$('#builderModal').hidden) { closeBuilder(); return; }
+    if (!$('#sheetModal').hidden) { $('#sheetModal').hidden = true; return; }
     if (!$('#shortcutsModal').hidden) { $('#shortcutsModal').hidden = true; return; }
     if (!$('#plansModal').hidden) { $('#plansModal').hidden = true; return; }
     if (!$('#tplModal').hidden)   { $('#tplModal').hidden = true; return; }
@@ -9082,14 +9610,13 @@ async function boot() {
   loadCartonSpecs();
   loadBatchCodes();
   loadRecentBuilds();
-  loadAddressing();
   loadBaseChoice();
   renderBaseOptions();                      // before enhanceSelect styles it
   builder = newBuilderSpec();
   renderGridOptions();                      // before enhanceSelect picks them up
   renderSnapOptions();
   $$('select').forEach(enhanceSelect);      // replace native selects with styled ones
-  renderAddressingControls();               // after the selects are styled
+  renderAddressingControls();
   updateStats();
   renderCargoList();
   renderEditStrip();
