@@ -7447,11 +7447,13 @@ function drawAddrZone() {
 function drawAddrRow() {
   const g = addressGrid();
   const s = isoScene(g.L, g.W, cargoSpace.height * 100, 398, 150, 122, 92, 258);
-  let floor = isoPoly(s, [[0, 0, 0], [g.L, 0, 0], [g.L, 0, g.rowCm], [0, 0, g.rowCm]], 'zn-lit')
-            + isoPoly(s, [[0, 0, g.rowCm], [g.L, 0, g.rowCm], [g.L, 0, g.W], [0, 0, g.W]], 'zn-even')
+  // Row 1 is the far half here, because +Z is your left as you look in from
+  // the doors and the width recedes away from you in this projection.
+  let floor = isoPoly(s, [[0, 0, g.rowCm], [g.L, 0, g.rowCm], [g.L, 0, g.W], [0, 0, g.W]], 'zn-lit')
+            + isoPoly(s, [[0, 0, 0], [g.L, 0, 0], [g.L, 0, g.rowCm], [0, 0, g.rowCm]], 'zn-even')
             + isoLine(s, [0, 0, g.rowCm], [g.L, 0, g.rowCm], 'zn-cut')
-            + isoText(s, [g.L * 0.22, 0, g.rowCm / 2], 'ROW 1  ·  LEFT', 'lb-cell on')
-            + isoText(s, [g.L * 0.22, 0, g.rowCm * 1.5], 'ROW 2  ·  RIGHT', 'lb-cell');
+            + isoText(s, [g.L * 0.22, 0, g.rowCm * 1.5], 'ROW 1  ·  LEFT', 'lb-cell on')
+            + isoText(s, [g.L * 0.22, 0, g.rowCm / 2], 'ROW 2  ·  RIGHT', 'lb-cell');
   let out = isoShell(s, { floor });
   const [ax, ay] = s.p(0, 0, 0), [bx] = s.p(g.L, 0, 0);
   out += `<text class="lb-note" x="${((ax + bx) / 2).toFixed(1)}" y="${(ay + 42).toFixed(1)}" text-anchor="middle">` +
@@ -7854,7 +7856,10 @@ function addressesFor(list = items) {
     const e = ext.get(it.id);
     const along = DOORS_AT_FAR_END ? g.L - it.pos_x : it.pos_x;
     const zone = Math.min(g.zones, Math.max(1, Math.floor(along / g.zoneCm) + 1));
-    const row  = it.pos_z + e.w / 2 < g.rowCm ? 1 : 2;
+    // Stand at the doors and look in: your left hand points along +Z, so the
+    // far half of the width is Row 1. Worth stating, because the axis runs the
+    // other way and getting it backwards puts every carton on the wrong side.
+    const row  = it.pos_z - e.w / 2 >= g.rowCm ? 1 : 2;
 
     // Layer counts cartons underneath. A pallet is not a layer, so a carton
     // standing on one is still L1.
@@ -7891,7 +7896,7 @@ function addressesFor(list = items) {
       const [px, pz] = p.split('|').map(Number), [qx, qz] = q.split('|').map(Number);
       // nearest the doors first, then nearest the left wall
       const pd = DOORS_AT_FAR_END ? -px : px, qd = DOORS_AT_FAR_END ? -qx : qx;
-      return pd - qd || pz - qz;
+      return pd - qd || qz - pz;      // then nearest the left wall, which is +Z
     });
     const many = keys.length > 1;
     keys.forEach((k, n) => {
@@ -7929,8 +7934,8 @@ function offsetsOf(item) {
   return {
     doors: DOORS_AT_FAR_END ? g.L - (item.pos_x + e.l / 2) : item.pos_x - e.l / 2,
     nose:  DOORS_AT_FAR_END ? item.pos_x - e.l / 2 : g.L - (item.pos_x + e.l / 2),
-    left:  item.pos_z - e.w / 2,
-    right: g.W - (item.pos_z + e.w / 2),
+    left:  g.W - (item.pos_z + e.w / 2),    // +Z is your left from the doors
+    right: item.pos_z - e.w / 2,
     floor: item.pos_y - e.h / 2
   };
 }
@@ -7967,6 +7972,12 @@ function sheetAlong(x0, len, L) {
   return DOORS_AT_FAR_END ? L - (x0 + len) : x0;
 }
 
+// Distance from the left wall. A plan is drawn with the way you are facing
+// running to the right, which puts your left hand at the top of the page.
+function sheetAcross(z0, w, W) {
+  return W - (z0 + w);
+}
+
 // Everything the sheet needs about every item, worked out once.
 function sheetData() {
   const g = addressGrid();
@@ -7983,6 +7994,7 @@ function sheetData() {
       z0: it.pos_z - e.w / 2,
       y0: it.pos_y - e.h / 2,
       along: sheetAlong(it.pos_x - e.l / 2, e.l, g.L),
+      across: sheetAcross(it.pos_z - e.w / 2, e.w, g.W),
       units: itemUnits(it),
       product: it.product_name || '',
       lots: [...new Set((it.contents || []).map(c => c.batch_lot).filter(Boolean))]
@@ -8058,7 +8070,7 @@ function sheetPlanSvg(d, s) {
     const lead = cs[0] || group[0];
     const base = group.find(r => !r.cargo)
               || bases.find(b => footprintsOverlap(lead.it, lead.e, b.it, b.e));
-    const x = SHEET_PADX + lead.along * s, y = padt + lead.z0 * s;
+    const x = SHEET_PADX + lead.along * s, y = padt + lead.across * s;
     out.push(`<rect x="${x.toFixed(2)}" y="${y.toFixed(2)}" width="${Math.max(0.6, lead.e.l * s - 0.4).toFixed(2)}" height="${Math.max(0.6, lead.e.w * s - 0.4).toFixed(2)}" rx="0.5" fill="${base ? '#dbe7f6' : '#ffffff'}" stroke="#2a5d9f" stroke-width="0.35"/>`);
     const cx = x + lead.e.l * s / 2, cy = y + lead.e.w * s / 2;
     const head = `Z${lead.a.zone}·R${lead.a.row}${lead.a.letter ? '·' + lead.a.letter : ''}`;
@@ -8094,7 +8106,7 @@ function sheetElevationSvg(d, row, s) {
   mine.forEach(r => {
     if (!bySpan.has(spanOf(r))) bySpan.set(spanOf(r), new Map());
     const m = bySpan.get(spanOf(r));
-    if (!m.has(r.key)) m.set(r.key, r.z0);
+    if (!m.has(r.key)) m.set(r.key, r.across);
   });
   const slot = new Map();
   bySpan.forEach(m => {
@@ -8102,7 +8114,7 @@ function sheetElevationSvg(d, row, s) {
     keys.forEach((k, i) => slot.set(k, { i, n: keys.length }));
   });
 
-  [...mine].sort((p, q) => p.z0 - q.z0).forEach(r => {
+  [...mine].sort((p, q) => p.across - q.across).forEach(r => {
     const sl = slot.get(r.key) || { i: 0, n: 1 };
     const w = r.e.l * s / sl.n;
     const x = SHEET_PADX + (r.along + r.e.l * sl.i / sl.n) * s;
