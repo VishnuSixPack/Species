@@ -467,6 +467,13 @@ table.tbl.pv{min-width:760px}
 
 .page > .stats .stat{background:var(--surface);border:1px solid var(--border)}
 
+.share-t{color:var(--accent)}
+.tag-share{font-size:10px;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:1px;white-space:nowrap;cursor:help}
+.mixed-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.mixed-chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent);border-radius:8px;padding:7px 12px;font-size:12.5px;text-decoration:none}
+.mixed-chip span{color:var(--text);font-size:12px}
+.mixed-chip:hover{filter:brightness(.97)}
+
 </style>
 </head>
 <body>
@@ -482,13 +489,13 @@ table.tbl.pv{min-width:760px}
     </div></div>
   <div class="stats" id="stats" style="margin-top:0"></div>
   <div class="howto">
-    <div><b>1 · One row per product line</b>Fill the template; rows sharing Master Ref no, Container no and B/L No become one shipment.</div>
-    <div><b>2 · Master Ref no must exist</b>It must match a master order number below, or the rows are rejected with an error.</div>
-    <div><b>3 · Duplicates are skipped</b>A container and B/L already on the order won’t be imported twice.</div>
+    <div><b>1 · Master = main data, one product</b>Shipments are created under it as MO1.1, MO1.2 … and copy its details, so nothing is typed twice. Master Ref no must exist.</div>
+    <div><b>2 · Customer order no. is the key</b>Rows with the same master, customer order no. (Purchase Order no.), container and seal are one shipment. Blank container rows continue the row above.</div>
+    <div><b>3 · Mixed with</b>Shipments of other products with the same customer order no., container and seal are linked automatically. Exact repeats are skipped.</div>
   </div>
   <div id="banner" role="status"></div>
   <div class="toolbar">
-    <div class="search"><div class="clearwrap"><svg class="sicon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.5" y2="16.5"/></svg><input class="ctl" id="search" type="search" placeholder="Search order, supplier, container or B/L" aria-label="Search master orders"></div></div>
+    <div class="search"><div class="clearwrap"><svg class="sicon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.5" y2="16.5"/></svg><input class="ctl" id="search" type="search" placeholder="Search master, customer order, container or seal" aria-label="Search master orders"></div></div>
     <span class="spacer"></span>
     <button type="button" class="linkbtn" data-action="expandAll">Expand / collapse all</button>
   </div>
@@ -920,7 +927,7 @@ const PRODUCTS = [
 function sampleOrder(){
   const p = PRODUCTS[0];
   return {
-    details:{refId:"12345", date:todayISO(), orderNo:"MO-2026-0142", orderDate:"2026-10-20", branch:"Main branch"},
+    details:{refId:"12345", date:todayISO(), orderNo:"MO1", orderDate:"2026-10-20", branch:"Main branch"},
     parties:{list:[
       {label:"Buyer",  party:"Simplot Australia PTY LTD", role:"Buyer",  ref:"SIM-PO-88412", gln:"9312345000019"},
       {label:"Seller", party:"MMP International Co., Ltd.", role:"Seller", ref:"", gln:""}]},
@@ -936,15 +943,15 @@ function sampleOrder(){
 }
 function sampleShipment(order){
   return {
-    ref:`${order.details.refId}.0001`, savedAt:"2026-10-21T09:12:00Z", source:"manual",
-    summary:{type:"Export", status:"In transit", mode:"Sea", from:"Bangkok, Thailand", to:"Brisbane, Australia", depDate:"2026-10-18", qty:800, unit:order.qty.unit, container:"MSKU7781203", bl:"MAEU2610018", lines:1},
+    ref:`${order.details.orderNo}.1`, savedAt:"2026-10-21T09:12:00Z", source:"manual",
+    summary:{type:"Export", status:"In transit", mode:"Sea", from:"Bangkok, Thailand", to:"Brisbane, Australia", depDate:"2026-10-18", qty:800, unit:order.qty.unit, custOrder:"SIM-PO-88412", container:"MSKU7781203", seal:"SL0097002", bl:"MAEU2610018", lines:1},
     state:null
   };
 }
 function sampleOrders(){
   const a = sampleOrder();
   const b = sampleOrder(), p2 = PRODUCTS[1];
-  Object.assign(b.details, {refId:"12346", orderNo:"MO-2026-0143", orderDate:"2026-10-09"});
+  Object.assign(b.details, {refId:"12346", orderNo:"MO2", orderDate:"2026-10-09"});
   b.parties.list[1].party = "Thai Union Group PCL"; b.parties.list[0].ref = "SIM-PO-88530";
   Object.assign(b.fp, {search:`${p2.gtin} — ${p2.name}`, gtin:p2.gtin, intId:p2.id, name:p2.name, unit:p2.unit, brand:p2.brand, form:p2.form, style:p2.style, medium:p2.medium, treat:[...p2.treat]});
   Object.assign(b.raw, {species:"Yellowfin tuna", fao:"FAO 57", vessel:"FV Andaman Pearl"});
@@ -952,7 +959,7 @@ function sampleOrders(){
   Object.assign(b.logistics, {dep:["Laem Chabang, Thailand"], arr:["Sydney, Australia"], incoterm:"CIF"});
   b.delivery.period = "Nov 2026 – Jan 2027";
   const c = sampleOrder(), p3 = PRODUCTS[2];
-  Object.assign(c.details, {refId:"12347", orderNo:"MO-2026-0151", orderDate:"2026-10-15", branch:"Port Klang branch"});
+  Object.assign(c.details, {refId:"12347", orderNo:"MO3", orderDate:"2026-10-15", branch:"Port Klang branch"});
   c.parties.list[0].ref = "SIM-PO-88611";
   Object.assign(c.fp, {search:`${p3.gtin} — ${p3.name}`, gtin:p3.gtin, intId:p3.id, name:p3.name, unit:p3.unit, brand:p3.brand, form:p3.form, style:p3.style, medium:p3.medium, treat:[...p3.treat]});
   Object.assign(c.qty, {qty:"1,500", unit:"Cases", shipments:"2"}); c.pack.primary = "Retort pouch 85 g";
@@ -976,7 +983,7 @@ function blankOrder(refId){
 }
 
 /* storage: { orders:{refId:order}, shipments:{refId:[shipment...]}, seeded:true } */
-const DB_KEY = "smartuna-forms-v2";
+const DB_KEY = "smartuna-forms-v3";
 function db(){ return store.get(DB_KEY, {orders:{}, shipments:{}}); }
 function saveDb(d){ return store.set(DB_KEY, d); }
 let MEM_DB = null;   /* fallback when browser storage is blocked */
@@ -992,6 +999,15 @@ function loadOrder(refId){
   return d.orders[refId] || (refId ? blankOrder(refId) : d.orders["12345"]);
 }
 function nextOrderRef(){ const d = ensureSeed(); return String(Object.keys(d.orders).reduce((m,k)=>Math.max(m, parseInt(k,10)||0), 12344) + 1); }
+/* Shipment reference = master number + "." + running number, e.g. MO1.1, MO1.2 */
+const masterNo = o => o.details.orderNo || o.details.refId;
+const shipSeq = s => parseInt(String(s.ref).split(".").pop(),10) || 0;
+function nextShipRefFor(o, extra=0){ const n = shipmentsOf(o.details.refId).reduce((m,s)=>Math.max(m, shipSeq(s)), 0); return `${masterNo(o)}.${n+1+extra}`; }
+/* Shipments are "mixed" when Customer order no + Container no + Seal number are all the same */
+const U = v => String(v??"").trim().toUpperCase();
+const mixKey = (po, cont, seal) => (U(po) && U(cont) && U(seal)) ? `${U(po)}|${U(cont)}|${U(seal)}` : "";
+const mixKeyOf = s => mixKey(s.summary?.custOrder, s.summary?.container, s.summary?.seal);
+function allShipments(){ const d = db(); return Object.entries(d.shipments).flatMap(([o,l])=>l.map(s=>({...s, orderRef:o, orderNo:(d.orders[o]||{details:{}}).details.orderNo||o, product:(d.orders[o]||{fp:{}}).fp.name||""}))); }
 function shipmentsOf(refId){ return (db().shipments[refId]||[]); }
 const qtyOf = sh => num(sh.summary?.qty);
 const statusClass = s => ({"In transit":"blue","Booked":"blue","Booking requested":"amber","Arrived":"green","Delivered":"green"}[s]||"");
@@ -1036,7 +1052,7 @@ const COLS = [
   {key:"master",     head:"*Master Ref no",         req:true},
   {key:"invNo",      head:"Purchase Invoice no."},
   {key:"invDate",    head:"Purchase Invoice Date*", req:true, date:true},
-  {key:"po",         head:"Purchase Order no."},
+  {key:"po",         head:"Purchase Order no.",     key2:true},
   {key:"units",      head:"Units",                  num:true},
   {key:"product",    head:"*Product",               req:true},
   {key:"produced",   head:"Produced",               date:true},
@@ -1117,41 +1133,62 @@ function parseWorkbook(buf){
 function analyse(parsed){
   const errors = [], warnings = [], groups = new Map();
   const addErr = (r,col,msg) => { r._err = r._err || []; r._err.push(`${col}: ${msg}`); errors.push({row:r._row, col, msg}); };
+
+  /* Continuation rows: Container no and B/L No both blank = the row rides in the same
+     container / B/L as the row above. Blank shipment-level cells are taken from that row.
+     Its Master Ref no may differ (another product = another master order in the same box). */
+  const SHIP_KEYS = ["supplier","master","invNo","invDate","po","etd","eta","dest","container","seal","feeder","mother","line","bl","blDate","mode"];
+  let head = null;
   parsed.rows.forEach(r=>{
+    const isCont = txt(r.container)==="" && txt(r.bl)==="";
+    if(!isCont){ head = r; return; }
+    if(!head){ r._noHead = true; return; }
+    r._cont = head._row; r._head = head;
+    SHIP_KEYS.forEach(k=>{ if(txt(r[k])==="") r[k] = head[k]; });
+    if(txt(r.gtin)==="" && sameText(r.product, head.product)) r.gtin = head.gtin;
+  });
+
+  parsed.rows.forEach(r=>{
+    if(r._noHead){ addErr(r, "Container no / B/L No", "blank, and there’s no shipment row above to add this line to"); return; }
     COLS.forEach(c=>{
       const raw = r[c.key];
       if(c.req && txt(raw)===""){ addErr(r, label(c), "required but empty"); return; }
       if(c.date && txt(raw)!==""){ const v = toISO(raw); if(v===null) addErr(r, label(c), `“${txt(raw)}” is not a valid date`); else r[c.key] = v; }
       else if(c.date) r[c.key] = "";
     });
+    if(txt(r.po)==="") addErr(r, "Purchase Order no.", "required: it’s the customer order number that identifies the shipment");
     const u = txt(r.units).replace(/,/g,"");
     if(u!=="" && (isNaN(+u) || +u<0)) addErr(r, "Units", `“${txt(r.units)}” is not a valid quantity`); else r.units = u==="" ? 0 : +u;
     if(r.etd && r.eta && r.eta < r.etd) addErr(r, "ETA", "is before ETD");
     if(r.produced && r.bestBefore && r.bestBefore < r.produced) addErr(r, "Best Before", "is before the production date");
     const mode = toMode(r.mode); if(mode===null) addErr(r, "Shipment(s) mode", `“${txt(r.mode)}” is not Sea, Air or Truck`); r.modeN = mode || "Sea";
-    if(txt(r.master)){ r.order = findOrder(r.master); if(!r.order) addErr(r, "Master Ref no", `“${txt(r.master)}” doesn't match any master order`); }
     r.gtin = txt(r.gtin).replace(/\.0+$/,"");
-    const key = [txt(r.master), txt(r.container), txt(r.bl)].map(s=>s.toUpperCase()).join("|");
+    if(txt(r.master)){ r.order = findOrder(r.master); if(!r.order) addErr(r, "Master Ref no", `“${txt(r.master)}” doesn't match any master order`); }
+    if(r.order && txt(r.product)){
+      /* one product per master order: GTIN decides when both sides have one, otherwise the name */
+      const oG = txt(r.order.fp.gtin), ok = (r.gtin && oG) ? r.gtin===oG : sameText(r.product, r.order.fp.name);
+      if(!ok) addErr(r, "Product", `“${r.gtin?r.gtin+" — ":""}${txt(r.product)}” isn’t the product of ${r.order.details.orderNo} (${oG?oG+" — ":""}${r.order.fp.name||"no product set"}). Each master order covers one product.`);
+    }
+    const key = [txt(r.master), txt(r.po), txt(r.container), txt(r.seal)].map(s=>s.toUpperCase()).join("|");
     if(!groups.has(key)) groups.set(key, {key, rows:[]});
     groups.get(key).rows.push(r);
   });
 
   const out = [...groups.values()].map(g=>{
     const f = g.rows[0], o = f.order;
-    g.order = o; g.master = txt(f.master); g.container = txt(f.container).toUpperCase(); g.bl = txt(f.bl).toUpperCase();
+    g.order = o; g.master = txt(f.master); g.container = txt(f.container).toUpperCase(); g.bl = txt(f.bl).toUpperCase(); g.po = txt(f.po); g.seal = txt(f.seal).toUpperCase(); g.mix = mixKey(g.po, g.container, g.seal);
     g.units = g.rows.reduce((a,r)=>a+(typeof r.units==="number"?r.units:0),0);
     g.warn = []; g.err = g.rows.flatMap(r=>(r._err||[]).map(e=>`Row ${r._row} · ${e}`));
     if(g.err.length){ g.status = "error"; return g; }
-    ["seal","feeder","mother","line","etd","eta","dest","invNo","invDate","supplier","modeN"].forEach(k=>{
+    ["bl","feeder","mother","line","etd","eta","dest","invNo","invDate","supplier","modeN"].forEach(k=>{
       const vals = [...new Set(g.rows.map(r=>txt(r[k]).toLowerCase()))];
       if(vals.length>1) g.warn.push(`Rows ${g.rows.map(r=>r._row).join(", ")} have different ${COLS.find(c=>c.key===(k==="modeN"?"mode":k))?.head.replace(/\*/g,"").trim()} values; the first one is used.`);
     });
-    const dupe = shipmentsOf(o.details.refId).find(s=>(s.summary.container||"").toUpperCase()===g.container && (s.summary.bl||"").toUpperCase()===g.bl);
+    const dupe = shipmentsOf(o.details.refId).find(s=>mixKeyOf(s)===g.mix);
     if(dupe){ g.status = "dup"; g.dupRef = dupe.ref; return g; }
     if(sellerOf(o) && !sameText(f.supplier, sellerOf(o))) g.warn.push(`Supplier “${txt(f.supplier)}” differs from the order’s seller (${sellerOf(o)}).`);
     g.rows.forEach(r=>{
-      const okProduct = (r.gtin && r.gtin===txt(o.fp.gtin)) || sameText(r.product, o.fp.name);
-      if(!okProduct) g.warn.push(`Row ${r._row}: product “${txt(r.product)}” isn’t the order’s product (${o.fp.name||"none"}).`);
+      if(r.gtin && txt(o.fp.gtin) && r.gtin===txt(o.fp.gtin) && !sameText(r.product, o.fp.name)) g.warn.push(`Row ${r._row}: GTIN matches but the name “${txt(r.product)}” differs from “${o.fp.name}”.`);
       if(!r.units) g.warn.push(`Row ${r._row}: Units is empty, so the line quantity is 0.`);
     });
     g.port = toPort(f.dest); if(g.port.unknown) g.warn.push(`Destination “${txt(f.dest)}” isn’t in the port list; kept as typed.`);
@@ -1165,6 +1202,22 @@ function analyse(parsed){
   Object.entries(byOrder).forEach(([ref,gs])=>{
     const o = gs[0].order, Q = num(o.qty.qty), used = shipmentsOf(ref).reduce((a,s)=>a+qtyOf(s),0), add = gs.reduce((a,g)=>a+g.units,0);
     if(Q && used+add > Q) gs[gs.length-1].warn.push(`${o.details.orderNo}: this import takes the order to ${fmtN(used+add)} of ${fmtN(Q)} ${o.qty.unit||""} (over by ${fmtN(used+add-Q)}).`);
+  });
+  /* reference numbers for the new shipments: master number + "." + running number (MO1.1, MO1.2 …) */
+  const counters = {};
+  out.filter(g=>g.status==="new").forEach(g=>{
+    const ref = g.order.details.refId;
+    if(counters[ref]===undefined) counters[ref] = shipmentsOf(ref).reduce((m,s)=>Math.max(m, shipSeq(s)), 0);
+    g.plannedRef = `${masterNo(g.order)}.${++counters[ref]}`;
+  });
+  /* Mixed with: same customer order no + container no + seal no, on any master (this file or already saved) */
+  const pool = {};
+  allShipments().forEach(s=>{ const k = mixKeyOf(s); if(k) (pool[k] = pool[k] || []).push({ref:s.ref, orderRef:s.orderRef, orderNo:s.orderNo, product:s.product, from:s.summary.from||"", saved:true}); });
+  out.filter(g=>g.status==="new").forEach(g=>{ (pool[g.mix] = pool[g.mix] || []).push({ref:g.plannedRef, orderRef:g.order.details.refId, orderNo:g.order.details.orderNo, product:g.order.fp.name, saved:false}); });
+  out.filter(g=>g.status==="new").forEach(g=>{
+    g.shared = (pool[g.mix]||[]).filter(x=>x.ref!==g.plannedRef);
+    const f = g.rows[0], lead = f._head && f._head.order, savedMate = g.shared.find(x=>x.saved && x.from);
+    g.depPort = (lead && lead.logistics.dep[0]) || (savedMate && savedMate.from) || g.order.logistics.dep[0] || "";
   });
   out.forEach(g=>warnings.push(...g.warn.map(w=>({ref:g.container, msg:w}))));
   return {groups:out, errors, warnings, rows:parsed.rows.length};
@@ -1191,14 +1244,14 @@ function buildShipment(g, ref, fileName){
   const mode = f.modeN;
   const state = {
     ref,
-    details:{type:"", status, custOrder:txt(f.po) || buyer.ref || "", orderDate:o.details.orderDate||"", mixed:[]},
+    details:{type:"", status, custOrder:txt(f.po), orderDate:o.details.orderDate||"", mixed:[]},
     parties:{who:{party:txt(f.supplier), role:"Seller", ref:"", gln:""}, to:{party:buyer.party||"", role:"Buyer", ref:buyer.ref||"", gln:buyer.gln||""}},
     lg:{mode, loadBasis:{Sea:"FCL",Air:"ULD",Truck:"FTL"}[mode], loadType: mode==="Sea" ? (o.logistics.load||"") : "", incoterm:o.logistics.incoterm||"",
         sea:{shippingLine:txt(f.line), vessels, shipMode: vessels.length>1?"Transhipment":"Direct", container:{containerNo:g.container, sealNo:txt(f.seal)}, traceableObject:null, blNo:g.bl, blDate:f.blDate||"", transhipmentPorts:[""]},
         air:{airline:"",flights:[""],shipMode:"Direct",awbNo:"",awbDate:"",transhipmentAirports:[""]},
         truck:{trucks:[""],shipMode:"Direct",transfers:[""]}},
     lines,
-    dep:{port:o.logistics.dep[0]||"", planned:f.etd||"", scheduled:"", actual:""},
+    dep:{port:g.depPort ?? (o.logistics.dep[0]||""), planned:f.etd||"", scheduled:"", actual:""},
     arr:{port:g.port.value, planned:f.eta||"", scheduled:"", actual:""},
     com:{invNo:txt(f.invNo), invDate:f.invDate||"", due, dueManual:false},
     courier:{company:"", tracking:"", dispatch:""},
@@ -1207,7 +1260,7 @@ function buildShipment(g, ref, fileName){
     _off:{}
   };
   return {ref, savedAt:new Date().toISOString(), source:"import",
-    summary:{type:"", status, mode, from:state.dep.port, to:state.arr.port, depDate:state.dep.planned, qty:g.units, unit, container:g.container, bl:g.bl, lines:lines.length},
+    summary:{type:"", status, mode, from:state.dep.port, to:state.arr.port, depDate:state.dep.planned, qty:g.units, unit, custOrder:g.po, container:g.container, seal:g.seal, bl:g.bl, lines:lines.length},
     state};
 }
 
@@ -1216,7 +1269,7 @@ function allOrders(){ return Object.values(db().orders).sort((a,b)=>String(a.det
 function render(){
   const d = db(), orders = allOrders();
   const q = UI.q.toLowerCase().trim();
-  const match = o => !q || [o.details.orderNo, o.details.refId, sellerOf(o), buyerOf(o), o.fp.name, ...(d.shipments[o.details.refId]||[]).flatMap(s=>[s.ref, s.summary.container, s.summary.bl])]
+  const match = o => !q || [o.details.orderNo, o.details.refId, sellerOf(o), buyerOf(o), o.fp.name, ...(d.shipments[o.details.refId]||[]).flatMap(s=>[s.ref, s.summary.container, s.summary.bl, s.summary.custOrder, s.summary.seal])]
     .some(v=>txt(v).toLowerCase().includes(q));
   const shown = orders.filter(match);
   const allShips = orders.flatMap(o=>d.shipments[o.details.refId]||[]);
@@ -1227,13 +1280,15 @@ function render(){
     <div class="stat"><span>Child shipments</span><b>${allShips.length}<small>of ${planned} planned</small></b></div>
     <div class="stat"><span>Imported from Excel</span><b>${imported}</b></div>
     <div class="stat"><span>Last import</span><b style="font-size:14px">${UI.last ? esc(UI.last.file) : "—"}</b></div>`;
+  const boxCount = {};
+  orders.forEach(o=>(d.shipments[o.details.refId]||[]).forEach(s=>{ const k = mixKeyOf(s); if(k) (boxCount[k] = boxCount[k] || []).push({ref:s.ref, product:o.fp.name}); }));
   const rows = shown.map(o=>{
     const ref = o.details.refId, ships = d.shipments[ref]||[], Q = num(o.qty.qty), alloc = ships.reduce((a,s)=>a+qtyOf(s),0);
-    const pct = Q ? Math.round(alloc/Q*100) : 0, open = UI.open.has(ref) || (q && ships.some(s=>[s.ref,s.summary.container,s.summary.bl].some(v=>txt(v).toLowerCase().includes(q))));
+    const pct = Q ? Math.round(alloc/Q*100) : 0, open = UI.open.has(ref) || (q && ships.some(s=>[s.ref,s.summary.container,s.summary.bl,s.summary.custOrder,s.summary.seal].some(v=>txt(v).toLowerCase().includes(q))));
     const kids = ships.length ? ships.map(s=>{ const m = s.summary;
       return `<tr class="kid ${UI.flash.has(s.ref)?"flash":""}" data-open-ship="${esc(ref)}|${esc(s.ref)}" tabindex="0">
         <td></td><td class="ref">${esc(s.ref)}${s.source==="import"?`<span class="tag-src">Excel</span>`:""}</td>
-        <td>${esc(m.container||"—")}<br><span class="muted-s">${esc(m.bl||"")}</span></td>
+        <td>${esc(m.custOrder||"—")}${(()=>{ const others = (boxCount[mixKeyOf(s)]||[]).filter(x=>x.ref!==s.ref); return others.length?` <span class="tag-share" title="Mixed with ${esc(others.map(x=>`${x.ref} (${x.product})`).join(", "))}">mixed with ${others.map(x=>esc(x.ref)).join(", ")}</span>`:""; })()}<br><span class="muted-s">${esc(m.container||"—")} · ${esc(m.seal||"—")}</span></td>
         <td>${esc((m.from||"—").split(",")[0])} → ${esc((m.to||"—").split(",")[0])}</td>
         <td>${m.depDate?fmtDate(m.depDate):"—"}</td><td class="num">${fmtN(m.qty)} ${esc(m.unit||"")}<br><span class="muted-s">${m.lines||1} line${(m.lines||1)>1?"s":""}</span></td>
         <td colspan="2"><span class="st ${statusClass(m.status)}">${esc(m.status||"Draft")}</span></td></tr>`; }).join("")
@@ -1250,7 +1305,7 @@ function render(){
         <td><b>${ships.length}</b><span class="muted-s"> / ${num(o.qty.shipments)||"—"}</span></td>
       </tr>${kids}</tbody>`;
   }).join("");
-  $("#otbl").innerHTML = `<thead><tr><th style="width:34px"></th><th>Master order</th><th>Supplier / buyer</th><th>Route</th><th>Product</th><th class="num">Quantity</th><th>Allocated</th><th>Shipments</th></tr></thead>`
+  $("#otbl").innerHTML = `<thead><tr><th style="width:34px"></th><th>Master / shipment</th><th>Supplier / buyer · customer order</th><th>Route</th><th>Product</th><th class="num">Quantity</th><th>Allocated</th><th>Shipments</th></tr></thead>`
     + (rows || `<tbody><tr class="empty"><td colspan="8">No master orders match “${esc(UI.q)}”.</td></tr></tbody>`);
   setTimeout(()=>{ UI.flash.clear(); $$(".kid.flash").forEach(t=>t.classList.remove("flash")); }, 2600);
 }
@@ -1266,12 +1321,12 @@ function showPreview(res, file, parsed){
   const badge = s => ({new:`<span class="st green">Will import</span>`, dup:`<span class="st">Duplicate · skipped</span>`, error:`<span class="st red">Error</span>`})[s];
   const sections = Object.entries(byOrder).map(([k,list])=>`
     <div class="pv-grp"><div class="pv-grp-h"><b>${esc(k)}</b><span>${list[0].order ? esc(list[0].order.fp.name||"") : "Not imported"}</span></div>
-    <div class="tbl-wrap"><table class="tbl pv"><thead><tr><th>Status</th><th>Container / B/L</th><th>Excel rows</th><th class="num">Units</th><th>ETD</th><th>Destination</th><th>Notes</th></tr></thead><tbody>
+    <div class="tbl-wrap"><table class="tbl pv"><thead><tr><th>Status</th><th>Customer order / container / seal</th><th>Excel rows</th><th class="num">Units</th><th>ETD</th><th>Destination</th><th>Notes</th></tr></thead><tbody>
     ${list.map(x=>{ const f = x.rows[0];
       const note = x.status==="error" ? `<span class="bad-t">${esc(x.err[0])}${x.err.length>1?` (+${x.err.length-1} more)`:""}</span>`
-        : x.status==="dup" ? `Already imported as ${esc(x.dupRef)}` : (x.warn.length ? `<span class="warn-t">${esc(x.warn[0])}${x.warn.length>1?` (+${x.warn.length-1})`:""}</span>` : `New ${esc(nextHint(x))}`);
-      return `<tr><td>${badge(x.status)}</td><td>${esc(x.container||"—")}<br><span class="muted-s">${esc(x.bl||"—")}</span></td>
-        <td>${x.rows.map(r=>r._row).join(", ")}</td><td class="num">${fmtN(x.units)}</td><td>${f.etd?fmtDate(f.etd):"—"}</td><td>${esc(txt(f.dest)||"—")}</td><td class="pv-note">${note}</td></tr>`; }).join("")}
+        : x.status==="dup" ? `Already exists as ${esc(x.dupRef)}` : `New · <b>${esc(x.plannedRef)}</b> · ${x.rows.length} line${x.rows.length>1?"s":""}${x.shared&&x.shared.length?`<br><span class="share-t">Mixed with ${x.shared.map(s=>`${esc(s.ref)} (${esc(s.product)})`).join(", ")}</span>`:""}${x.warn.length?`<br><span class="warn-t">${esc(x.warn[0])}${x.warn.length>1?` (+${x.warn.length-1})`:""}</span>`:""}`;
+      return `<tr><td>${badge(x.status)}</td><td>${esc(x.po||"—")}<br><span class="muted-s">${esc(x.container||"—")} · ${esc(x.seal||"—")}</span></td>
+        <td>${x.rows.map(r=>r._row).join(", ")}${x.rows.some(r=>r._cont)?`<br><span class="muted-s">${x.rows.filter(r=>r._cont).length} continued from row above</span>`:""}</td><td class="num">${fmtN(x.units)}</td><td>${f.etd?fmtDate(f.etd):"—"}</td><td>${esc(txt(f.dest)||"—")}</td><td class="pv-note">${note}</td></tr>`; }).join("")}
     </tbody></table></div></div>`).join("");
   const errList = res.errors.length ? `<details class="pv-list bad" open><summary>${res.errors.length} error${res.errors.length>1?"s":""} — these rows are not imported</summary><ul>${res.errors.map(e=>`<li><b>Row ${e.row}</b> · ${esc(e.col)}: ${esc(e.msg)}</li>`).join("")}</ul></details>` : "";
   const warnList = res.warnings.length ? `<details class="pv-list warn"><summary>${res.warnings.length} warning${res.warnings.length>1?"s":""} — imported, but worth checking</summary><ul>${res.warnings.map(w=>`<li>${esc(w.msg)}</li>`).join("")}</ul></details>` : "";
@@ -1305,9 +1360,15 @@ function doImport(){
   const {res, file} = PENDING, d = db(), made = [];
   res.groups.filter(g=>g.status==="new").forEach(g=>{
     const ref = g.order.details.refId; d.shipments[ref] = d.shipments[ref] || [];
-    const sh = buildShipment(g, nextShipRef(ref, d.shipments[ref]), file);
+    const sh = buildShipment(g, g.plannedRef, file);
+    sh.state.details.mixed = (g.shared||[]).map(s=>s.ref);
     d.shipments[ref].push(sh); made.push(sh.ref); UI.open.add(ref); UI.flash.add(sh.ref);
   });
+  /* link already-saved shipments in the same container back to the new ones */
+  res.groups.filter(g=>g.status==="new").forEach(g=>(g.shared||[]).filter(s=>s.saved).forEach(s=>{
+    const other = (d.shipments[s.orderRef]||[]).find(x=>x.ref===s.ref);
+    if(other && other.state){ other.state.details.mixed = [...new Set([...(other.state.details.mixed||[]), g.plannedRef])]; }
+  }));
   const ok = saveDb(d);
   const dup = res.groups.filter(g=>g.status==="dup").length, err = res.groups.filter(g=>g.status==="error").length;
   UI.last = {file, made:made.length, dup, err, at:new Date()};

@@ -467,6 +467,13 @@ table.tbl.pv{min-width:760px}
 
 .page > .stats .stat{background:var(--surface);border:1px solid var(--border)}
 
+.share-t{color:var(--accent)}
+.tag-share{font-size:10px;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:1px;white-space:nowrap;cursor:help}
+.mixed-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.mixed-chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent);border-radius:8px;padding:7px 12px;font-size:12.5px;text-decoration:none}
+.mixed-chip span{color:var(--text);font-size:12px}
+.mixed-chip:hover{filter:brightness(.97)}
+
 </style>
 </head>
 <body>
@@ -910,7 +917,7 @@ const PRODUCTS = [
 function sampleOrder(){
   const p = PRODUCTS[0];
   return {
-    details:{refId:"12345", date:todayISO(), orderNo:"MO-2026-0142", orderDate:"2026-10-20", branch:"Main branch"},
+    details:{refId:"12345", date:todayISO(), orderNo:"MO1", orderDate:"2026-10-20", branch:"Main branch"},
     parties:{list:[
       {label:"Buyer",  party:"Simplot Australia PTY LTD", role:"Buyer",  ref:"SIM-PO-88412", gln:"9312345000019"},
       {label:"Seller", party:"MMP International Co., Ltd.", role:"Seller", ref:"", gln:""}]},
@@ -926,15 +933,15 @@ function sampleOrder(){
 }
 function sampleShipment(order){
   return {
-    ref:`${order.details.refId}.0001`, savedAt:"2026-10-21T09:12:00Z", source:"manual",
-    summary:{type:"Export", status:"In transit", mode:"Sea", from:"Bangkok, Thailand", to:"Brisbane, Australia", depDate:"2026-10-18", qty:800, unit:order.qty.unit, container:"MSKU7781203", bl:"MAEU2610018", lines:1},
+    ref:`${order.details.orderNo}.1`, savedAt:"2026-10-21T09:12:00Z", source:"manual",
+    summary:{type:"Export", status:"In transit", mode:"Sea", from:"Bangkok, Thailand", to:"Brisbane, Australia", depDate:"2026-10-18", qty:800, unit:order.qty.unit, custOrder:"SIM-PO-88412", container:"MSKU7781203", seal:"SL0097002", bl:"MAEU2610018", lines:1},
     state:null
   };
 }
 function sampleOrders(){
   const a = sampleOrder();
   const b = sampleOrder(), p2 = PRODUCTS[1];
-  Object.assign(b.details, {refId:"12346", orderNo:"MO-2026-0143", orderDate:"2026-10-09"});
+  Object.assign(b.details, {refId:"12346", orderNo:"MO2", orderDate:"2026-10-09"});
   b.parties.list[1].party = "Thai Union Group PCL"; b.parties.list[0].ref = "SIM-PO-88530";
   Object.assign(b.fp, {search:`${p2.gtin} — ${p2.name}`, gtin:p2.gtin, intId:p2.id, name:p2.name, unit:p2.unit, brand:p2.brand, form:p2.form, style:p2.style, medium:p2.medium, treat:[...p2.treat]});
   Object.assign(b.raw, {species:"Yellowfin tuna", fao:"FAO 57", vessel:"FV Andaman Pearl"});
@@ -942,7 +949,7 @@ function sampleOrders(){
   Object.assign(b.logistics, {dep:["Laem Chabang, Thailand"], arr:["Sydney, Australia"], incoterm:"CIF"});
   b.delivery.period = "Nov 2026 – Jan 2027";
   const c = sampleOrder(), p3 = PRODUCTS[2];
-  Object.assign(c.details, {refId:"12347", orderNo:"MO-2026-0151", orderDate:"2026-10-15", branch:"Port Klang branch"});
+  Object.assign(c.details, {refId:"12347", orderNo:"MO3", orderDate:"2026-10-15", branch:"Port Klang branch"});
   c.parties.list[0].ref = "SIM-PO-88611";
   Object.assign(c.fp, {search:`${p3.gtin} — ${p3.name}`, gtin:p3.gtin, intId:p3.id, name:p3.name, unit:p3.unit, brand:p3.brand, form:p3.form, style:p3.style, medium:p3.medium, treat:[...p3.treat]});
   Object.assign(c.qty, {qty:"1,500", unit:"Cases", shipments:"2"}); c.pack.primary = "Retort pouch 85 g";
@@ -966,7 +973,7 @@ function blankOrder(refId){
 }
 
 /* storage: { orders:{refId:order}, shipments:{refId:[shipment...]}, seeded:true } */
-const DB_KEY = "smartuna-forms-v2";
+const DB_KEY = "smartuna-forms-v3";
 function db(){ return store.get(DB_KEY, {orders:{}, shipments:{}}); }
 function saveDb(d){ return store.set(DB_KEY, d); }
 let MEM_DB = null;   /* fallback when browser storage is blocked */
@@ -982,6 +989,15 @@ function loadOrder(refId){
   return d.orders[refId] || (refId ? blankOrder(refId) : d.orders["12345"]);
 }
 function nextOrderRef(){ const d = ensureSeed(); return String(Object.keys(d.orders).reduce((m,k)=>Math.max(m, parseInt(k,10)||0), 12344) + 1); }
+/* Shipment reference = master number + "." + running number, e.g. MO1.1, MO1.2 */
+const masterNo = o => o.details.orderNo || o.details.refId;
+const shipSeq = s => parseInt(String(s.ref).split(".").pop(),10) || 0;
+function nextShipRefFor(o, extra=0){ const n = shipmentsOf(o.details.refId).reduce((m,s)=>Math.max(m, shipSeq(s)), 0); return `${masterNo(o)}.${n+1+extra}`; }
+/* Shipments are "mixed" when Customer order no + Container no + Seal number are all the same */
+const U = v => String(v??"").trim().toUpperCase();
+const mixKey = (po, cont, seal) => (U(po) && U(cont) && U(seal)) ? `${U(po)}|${U(cont)}|${U(seal)}` : "";
+const mixKeyOf = s => mixKey(s.summary?.custOrder, s.summary?.container, s.summary?.seal);
+function allShipments(){ const d = db(); return Object.entries(d.shipments).flatMap(([o,l])=>l.map(s=>({...s, orderRef:o, orderNo:(d.orders[o]||{details:{}}).details.orderNo||o, product:(d.orders[o]||{fp:{}}).fp.name||""}))); }
 function shipmentsOf(refId){ return (db().shipments[refId]||[]); }
 const qtyOf = sh => num(sh.summary?.qty);
 const statusClass = s => ({"In transit":"blue","Booked":"blue","Booking requested":"amber","Arrived":"green","Delivered":"green"}[s]||"");
@@ -1023,7 +1039,8 @@ const editId = params.get("id");
 const existing = editId ? shipmentsOf(OREF).find(s=>s.ref===editId) : null;
 const PRODUCT_LABEL = ORDER.fp.gtin ? `${ORDER.fp.gtin} — ${ORDER.fp.name}` : (ORDER.fp.name || "Order product");
 OPT.orderProducts = [PRODUCT_LABEL];
-OPT.otherShipments = shipmentsOf(OREF).filter(s=>s.ref!==(existing?.ref)).map(s=>s.ref);
+const ALL_SHIPS = allShipments();
+OPT.otherShipments = [];
 
 /* ---------- logistics config (ported from logistics.html) ---------- */
 const LOAD = {
@@ -1056,10 +1073,7 @@ const tsFull = g => get(TS[g].path).length >= tsCap(g);
 let incotermNote = "";
 
 /* ---------- state ---------- */
-function nextRef(){
-  const n = shipmentsOf(OREF).reduce((m,s)=>Math.max(m, parseInt(String(s.ref).split(".").pop(),10)||0), 0);
-  return `${OREF}.${String(n+1).padStart(4,"0")}`;
-}
+function nextRef(){ return nextShipRefFor(ORDER); }
 const PREFILL = {};
 function buildDefault(){
   const buyer = ORDER.parties.list.find(p=>p.role==="Buyer") || ORDER.parties.list[0] || {};
@@ -1071,11 +1085,11 @@ function buildDefault(){
   const sm = existing?.summary || {};
   const st = {
     ref: existing?.ref || nextRef(),
-    details:{type:sm.type||"", status:sm.status||"No shipment instructions", custOrder:buyer.ref||"", orderDate:ORDER.details.orderDate||"", mixed:[]},
+    details:{type:sm.type||"", status:sm.status||"No shipment instructions", custOrder:sm.custOrder||buyer.ref||"", orderDate:ORDER.details.orderDate||"", mixed:[]},
     parties:{who:{party:seller.party||"", role:seller.role||"Seller", ref:seller.ref||"", gln:seller.gln||""},
              to:{party:buyer.party||"", role:buyer.role||"Buyer", ref:buyer.ref||"", gln:buyer.gln||""}},
     lg:{mode, loadBasis:basis, loadType:loadOk?ORDER.logistics.load:"", incoterm:ORDER.logistics.incoterm||"",
-        sea:{shippingLine:"",vessels:[""],shipMode:"Direct",container:{containerNo:sm.container||"",sealNo:""},traceableObject:null,blNo:sm.bl||"",blDate:"",transhipmentPorts:[""]},
+        sea:{shippingLine:"",vessels:[""],shipMode:"Direct",container:{containerNo:sm.container||"",sealNo:sm.seal||""},traceableObject:null,blNo:sm.bl||"",blDate:"",transhipmentPorts:[""]},
         air:{airline:"",flights:[""],shipMode:"Direct",awbNo:"",awbDate:"",transhipmentAirports:[""]},
         truck:{trucks:[""],shipMode:"Direct",transfers:[""]}},
     lines:[{product:PRODUCT_LABEL, qty: sm.qty ? fmtN(sm.qty) : "", rawId:"", batch:"", prodDate:"", bestBefore:"", net:"", netUnit:"kg"}],
@@ -1091,6 +1105,10 @@ function buildDefault(){
   return st;
 }
 S = existing?.state ? JSON.parse(JSON.stringify(existing.state)) : buildDefault();
+/* Mixed with = other shipments with the same Customer order no + Container no + Seal number */
+const myMixKey = () => mixKey(S.details.custOrder, S.lg.sea.container.containerNo, S.lg.sea.container.sealNo);
+const sameBox = () => { const k = myMixKey(); return k ? ALL_SHIPS.filter(s=>s.ref!==S.ref && mixKeyOf(s)===k) : []; };
+OPT.otherShipments = [...new Set([...sameBox().map(s=>s.ref), ...ALL_SHIPS.filter(s=>s.orderRef===OREF && s.ref!==S.ref).map(s=>s.ref), ...(S.details.mixed||[])])];
 OPT.orderProducts = [...new Set([PRODUCT_LABEL, ...S.lines.map(l=>l.product).filter(Boolean)])];
 /* remember which values came from the master order, to tag them */
 (function(){
@@ -1098,7 +1116,7 @@ OPT.orderProducts = [...new Set([PRODUCT_LABEL, ...S.lines.map(l=>l.product).fil
   ["details.custOrder","details.orderDate","parties.who.party","parties.who.role","parties.to.party","parties.to.role","parties.to.ref","lg.mode","lg.incoterm","lg.loadType","dep.port","arr.port","pay.term"]
     .forEach(p=>{ const v = p.split(".").reduce((o,k)=>o?.[k], d); if(v) PREFILL[p] = v; });
 })();
-const tag = p => PREFILL[p]!==undefined && get(p)===PREFILL[p] ? "from order" : "";
+const tag = p => existing?.source!=="import" && PREFILL[p]!==undefined && get(p)===PREFILL[p] ? "from order" : "";
 
 /* ---------- logistics rendering ---------- */
 const arrow = `<span class="arrow" aria-hidden="true">→</span>`;
@@ -1144,6 +1162,7 @@ function seaPanel(){
       ${field("Container No.", textIn("lg.sea.container.containerNo","e.g. MSKU1234567"), {req:true, path:"lg.sea.container.containerNo"})}
       ${field("Seal No.", textIn("lg.sea.container.sealNo","e.g. SL0098231"), {req:true, path:"lg.sea.container.sealNo"})}
     </div>
+    ${(()=>{ const o = sameBox(); return o.length ? `<p class="after share-t" style="margin-top:8px">Mixed with ${o.map(s=>`<a href="shipment.html?order=${encodeURIComponent(s.orderRef)}&id=${encodeURIComponent(s.ref)}">${esc(s.ref)}</a> (${esc(s.product)})`).join(", ")}: same customer order, container and seal.</p>` : ""; })()}
     <div style="margin-top:10px">${addBtn}</div>
     <div class="row">
       ${field("BL No.", textIn("lg.sea.blNo","Enter B/L number"), {req:true, path:"lg.sea.blNo"})}
@@ -1208,6 +1227,12 @@ const thisQty  = () => S.lines.reduce((a,l)=>a+num(l.qty),0);
 const remaining = () => orderQty() - otherQty() - thisQty();
 const UNIT = ORDER.qty.unit || "units";
 
+function mixedBox(){
+  const o = sameBox();
+  if(!myMixKey()) return `<div class="lockbox">${LOCK}<span>Fill customer order no., container no. and seal no. to find mixed shipments</span></div>`;
+  if(!o.length) return `<div class="lockbox">${LOCK}<span>No other shipment shares this customer order, container and seal</span></div>`;
+  return `<div class="mixed-list">${o.map(s=>`<a class="mixed-chip" href="shipment.html?order=${encodeURIComponent(s.orderRef)}&id=${encodeURIComponent(s.ref)}"><b>${esc(s.ref)}</b><span>${esc(s.product)}</span></a>`).join("")}</div>`;
+}
 /* ---------- sections ---------- */
 const partyRow = (b) => `<div class="row wide1">
   ${field("Party", dropdown(`${b}.party`,"orgs","Select a party",{plus:true}), {req:true, path:`${b}.party`, tag:tag(`${b}.party`), hint:"Organization or counterparty"})}
@@ -1219,16 +1244,16 @@ SECTIONS.push(
 { id:"details", group:"General", title:"Details",
   render(){ const d="details";
     return `<div class="row">
-      ${field("Reference", lockBox(esc(S.ref),{title:"Generated from the master order"}), {hint:"Master order ref + shipment number"})}
+      ${field("Reference", lockBox(esc(S.ref),{title:"Generated from the master order"}), {hint:"Master number + shipment number"})}
       ${field("Type of shipping", dropdown(`${d}.type`,"shipTypes","Select a type",{plus:true}), {req:true, path:`${d}.type`, hint:"How this shipment moves commercially"})}
       ${field("Status", dropdown(`${d}.status`,"shipStatus","Select a status",{plus:true}), {hint:"Current shipment status"})}
-      ${field("Customer order number", textIn(`${d}.custOrder`,"Enter customer order no."), {tag:tag(`${d}.custOrder`), hint:"Buyer’s purchase order number"})}
+      ${field("Customer order number", textIn(`${d}.custOrder`,"Enter customer order no.",{live:true}), {req:true, path:`${d}.custOrder`, tag:tag(`${d}.custOrder`), hint:"Key identifier · buyer’s purchase order number"})}
       ${field("Order date", datePicker(`${d}.orderDate`,"Select order date"), {tag:tag(`${d}.orderDate`), hint:"Date of the customer order"})}
       ${field("Related to", `<div class="lockbox" title="Master order this shipment belongs to">${LOCK}<a href="order.html?order=${encodeURIComponent(OREF)}">${esc(ORDER.details.orderNo||OREF)}</a></div>`, {hint:"Master order this shipment belongs to"})}
     </div><div class="row one">
-      ${field("Mixed with", dropdown(`${d}.mixed`,"otherShipments", OPT.otherShipments.length?"Select shipments":"No other shipments on this order yet",{multi:true, disabled:!OPT.otherShipments.length}), {hint:"Other shipments of this order consolidated in the same container"})}
+      ${field("Mixed with", mixedBox(), {hint:"Found automatically: other shipments with the same customer order number, container number and seal number"})}
     </div>`; },
-  req:()=>[filled("details.type")] },
+  req:()=>[filled("details.type"), filled("details.custOrder")] },
 
 { id:"parties", group:"General", title:"Parties",
   render(){ return subhead("Who · shipper") + partyRow("parties.who") + subhead("To whom · consignee") + partyRow("parties.to"); },
@@ -1245,7 +1270,7 @@ SECTIONS.push(
     const lines = S.lines.map((l,i)=>{ const b = `lines.${i}`;
       return `<div class="line"><div class="line-head"><b>Line ${i+1}</b>${l.item?`<span class="tag-src">Excel item #${esc(l.item)}</span>`:""}${S.lines.length>1?`<button type="button" class="rm" data-action="rmLine" data-i="${i}">Remove</button>`:""}</div>
         <div class="row">
-          ${field("Product", dropdown(`${b}.product`,"orderProducts","Select a product"), {req:true, path:`${b}.product`, cls:"span2", hint:"Finished product from the master order"})}
+          ${field("Product", lockBox(esc(l.product||PRODUCT_LABEL),{title:"Each master order covers one product"}), {cls:"span2", hint:"The master order’s product (one product per master order)"})}
           ${field("Quantity", `<div class="unit-wrap"><input class="ctl" type="text" inputmode="decimal" data-num="1" data-live="1" data-bind="${b}.qty" value="${esc(l.qty)}" placeholder="Enter quantity" aria-label="Quantity"><span class="unit-tag">${esc(UNIT)}</span></div>`, {req:true, path:`${b}.qty`, hint:`Counted in ${esc(UNIT)}, same as the order`})}
           ${field("Raw material ID", textIn(`${b}.rawId`,"e.g. RM-TH-2026-0812"), {hint:"Links this line to its raw material lot"})}
           ${field("Batch / lot no.", textIn(`${b}.batch`,"e.g. LOT-26-0912"), {hint:"Production batch or lot"})}
@@ -1262,7 +1287,7 @@ SECTIONS.push(
       <div class="alloc"><div class="alloc-bar" role="img" aria-label="Allocation of the order quantity"><i style="width:${w(O)}%"></i><i class="${R<0?"over":"this"}" style="width:${w(T)}%"></i></div>
         <div class="alloc-legend"><span><i style="background:var(--accent)"></i>Other shipments</span><span><i style="background:${R<0?"var(--danger)":"#1fbf6a"}"></i>This shipment</span><span><i style="background:var(--neutral-bg)"></i>Not yet allocated</span></div></div>
       ${over}${lines}
-      <button type="button" class="addbtn" data-action="addLine">+ Add product line</button>`; },
+      <button type="button" class="addbtn" data-action="addLine">+ Add another lot</button><p class="after">Add a line for each raw material lot of this product. Other products in the same container belong to their own master order.</p>`; },
   req:()=>[S.lines.length>0, ...S.lines.flatMap((l,i)=>[filled(`lines.${i}.product`), num(l.qty)>0]), remaining()>=0] },
 
 { id:"dep", group:"Routing", title:"Departure",
@@ -1345,6 +1370,8 @@ HOOKS.onChange = path => {
   if(path==="details.mixed" || path.startsWith("lines.")) {}
 };
 HOOKS.onInput = path => {
+  if(path==="lg.sea.container.containerNo" || path==="lg.sea.container.sealNo") renderSection("details", true);
+  if(path==="details.custOrder") { const id="logistics"; renderSection(id, true); }
   if(path.startsWith("lg.sea.container") && S.lg.sea.traceableObject && !isLinked()){ S.lg.sea.traceableObject = null; rerenderKeepFocus(path); }
   if(path.startsWith("lines.")) {}
 };
@@ -1377,13 +1404,14 @@ Object.assign(ACTIONS, {
     SHOW_ERR = true; renderAll();
     const bad = firstIncomplete();
     if(bad.length){ popup({ok:false, title:"Some required fields are missing", msg:"Finish these sections to save the shipment:", list:bad.map(s=>({id:s.id, title:s.title, note: s.id==="lines" && remaining()<0 ? "over quantity" : "incomplete"})), primary:"Got it"}); return; }
-    const cn = S.lg.sea.container.containerNo.trim().toUpperCase(), bl = S.lg.sea.blNo.trim().toUpperCase();
-    const dupe = S.lg.mode==="Sea" && cn && bl && shipmentsOf(OREF).find(s=>s.ref!==S.ref && (s.summary.container||"").toUpperCase()===cn && (s.summary.bl||"").toUpperCase()===bl);
-    if(dupe){ popup({ok:false, title:"Duplicate container and B/L", msg:`Shipment <span class="obj">${esc(dupe.ref)}</span> already uses container ${esc(cn)} with B/L ${esc(bl)}.`}); return; }
+    const k = myMixKey();
+    const dupe = k && shipmentsOf(OREF).find(s=>s.ref!==S.ref && mixKeyOf(s)===k);
+    if(dupe){ popup({ok:false, title:"Shipment already exists", msg:`<span class="obj">${esc(dupe.ref)}</span> on this master already has customer order ${esc(S.details.custOrder)}, container ${esc(S.lg.sea.container.containerNo)} and seal ${esc(S.lg.sea.container.sealNo)}.`}); return; }
+    S.details.mixed = sameBox().map(s=>s.ref);
     const d = db(); d.shipments[OREF] = d.shipments[OREF] || [];
     const rec = {ref:S.ref, savedAt:new Date().toISOString(),
       source: existing?.source || "manual",
-      summary:{type:S.details.type, status:S.details.status, mode:S.lg.mode, from:S.dep.port, to:S.arr.port, depDate:S.dep.planned, qty:thisQty(), unit:UNIT, container:S.lg.sea.container.containerNo.trim(), bl:S.lg.sea.blNo.trim(), lines:S.lines.length},
+      summary:{type:S.details.type, status:S.details.status, mode:S.lg.mode, from:S.dep.port, to:S.arr.port, depDate:S.dep.planned, qty:thisQty(), unit:UNIT, custOrder:S.details.custOrder.trim(), container:S.lg.sea.container.containerNo.trim(), seal:S.lg.sea.container.sealNo.trim(), bl:S.lg.sea.blNo.trim(), lines:S.lines.length},
       state:JSON.parse(JSON.stringify(S))};
     const i = d.shipments[OREF].findIndex(s=>s.ref===S.ref);
     if(i>=0) d.shipments[OREF][i] = rec; else d.shipments[OREF].push(rec);

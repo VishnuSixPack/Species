@@ -467,6 +467,13 @@ table.tbl.pv{min-width:760px}
 
 .page > .stats .stat{background:var(--surface);border:1px solid var(--border)}
 
+.share-t{color:var(--accent)}
+.tag-share{font-size:10px;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:1px;white-space:nowrap;cursor:help}
+.mixed-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.mixed-chip{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--accent);background:var(--accent-soft);color:var(--accent);border-radius:8px;padding:7px 12px;font-size:12.5px;text-decoration:none}
+.mixed-chip span{color:var(--text);font-size:12px}
+.mixed-chip:hover{filter:brightness(.97)}
+
 </style>
 </head>
 <body>
@@ -910,7 +917,7 @@ const PRODUCTS = [
 function sampleOrder(){
   const p = PRODUCTS[0];
   return {
-    details:{refId:"12345", date:todayISO(), orderNo:"MO-2026-0142", orderDate:"2026-10-20", branch:"Main branch"},
+    details:{refId:"12345", date:todayISO(), orderNo:"MO1", orderDate:"2026-10-20", branch:"Main branch"},
     parties:{list:[
       {label:"Buyer",  party:"Simplot Australia PTY LTD", role:"Buyer",  ref:"SIM-PO-88412", gln:"9312345000019"},
       {label:"Seller", party:"MMP International Co., Ltd.", role:"Seller", ref:"", gln:""}]},
@@ -926,15 +933,15 @@ function sampleOrder(){
 }
 function sampleShipment(order){
   return {
-    ref:`${order.details.refId}.0001`, savedAt:"2026-10-21T09:12:00Z", source:"manual",
-    summary:{type:"Export", status:"In transit", mode:"Sea", from:"Bangkok, Thailand", to:"Brisbane, Australia", depDate:"2026-10-18", qty:800, unit:order.qty.unit, container:"MSKU7781203", bl:"MAEU2610018", lines:1},
+    ref:`${order.details.orderNo}.1`, savedAt:"2026-10-21T09:12:00Z", source:"manual",
+    summary:{type:"Export", status:"In transit", mode:"Sea", from:"Bangkok, Thailand", to:"Brisbane, Australia", depDate:"2026-10-18", qty:800, unit:order.qty.unit, custOrder:"SIM-PO-88412", container:"MSKU7781203", seal:"SL0097002", bl:"MAEU2610018", lines:1},
     state:null
   };
 }
 function sampleOrders(){
   const a = sampleOrder();
   const b = sampleOrder(), p2 = PRODUCTS[1];
-  Object.assign(b.details, {refId:"12346", orderNo:"MO-2026-0143", orderDate:"2026-10-09"});
+  Object.assign(b.details, {refId:"12346", orderNo:"MO2", orderDate:"2026-10-09"});
   b.parties.list[1].party = "Thai Union Group PCL"; b.parties.list[0].ref = "SIM-PO-88530";
   Object.assign(b.fp, {search:`${p2.gtin} — ${p2.name}`, gtin:p2.gtin, intId:p2.id, name:p2.name, unit:p2.unit, brand:p2.brand, form:p2.form, style:p2.style, medium:p2.medium, treat:[...p2.treat]});
   Object.assign(b.raw, {species:"Yellowfin tuna", fao:"FAO 57", vessel:"FV Andaman Pearl"});
@@ -942,7 +949,7 @@ function sampleOrders(){
   Object.assign(b.logistics, {dep:["Laem Chabang, Thailand"], arr:["Sydney, Australia"], incoterm:"CIF"});
   b.delivery.period = "Nov 2026 – Jan 2027";
   const c = sampleOrder(), p3 = PRODUCTS[2];
-  Object.assign(c.details, {refId:"12347", orderNo:"MO-2026-0151", orderDate:"2026-10-15", branch:"Port Klang branch"});
+  Object.assign(c.details, {refId:"12347", orderNo:"MO3", orderDate:"2026-10-15", branch:"Port Klang branch"});
   c.parties.list[0].ref = "SIM-PO-88611";
   Object.assign(c.fp, {search:`${p3.gtin} — ${p3.name}`, gtin:p3.gtin, intId:p3.id, name:p3.name, unit:p3.unit, brand:p3.brand, form:p3.form, style:p3.style, medium:p3.medium, treat:[...p3.treat]});
   Object.assign(c.qty, {qty:"1,500", unit:"Cases", shipments:"2"}); c.pack.primary = "Retort pouch 85 g";
@@ -966,7 +973,7 @@ function blankOrder(refId){
 }
 
 /* storage: { orders:{refId:order}, shipments:{refId:[shipment...]}, seeded:true } */
-const DB_KEY = "smartuna-forms-v2";
+const DB_KEY = "smartuna-forms-v3";
 function db(){ return store.get(DB_KEY, {orders:{}, shipments:{}}); }
 function saveDb(d){ return store.set(DB_KEY, d); }
 let MEM_DB = null;   /* fallback when browser storage is blocked */
@@ -982,6 +989,15 @@ function loadOrder(refId){
   return d.orders[refId] || (refId ? blankOrder(refId) : d.orders["12345"]);
 }
 function nextOrderRef(){ const d = ensureSeed(); return String(Object.keys(d.orders).reduce((m,k)=>Math.max(m, parseInt(k,10)||0), 12344) + 1); }
+/* Shipment reference = master number + "." + running number, e.g. MO1.1, MO1.2 */
+const masterNo = o => o.details.orderNo || o.details.refId;
+const shipSeq = s => parseInt(String(s.ref).split(".").pop(),10) || 0;
+function nextShipRefFor(o, extra=0){ const n = shipmentsOf(o.details.refId).reduce((m,s)=>Math.max(m, shipSeq(s)), 0); return `${masterNo(o)}.${n+1+extra}`; }
+/* Shipments are "mixed" when Customer order no + Container no + Seal number are all the same */
+const U = v => String(v??"").trim().toUpperCase();
+const mixKey = (po, cont, seal) => (U(po) && U(cont) && U(seal)) ? `${U(po)}|${U(cont)}|${U(seal)}` : "";
+const mixKeyOf = s => mixKey(s.summary?.custOrder, s.summary?.container, s.summary?.seal);
+function allShipments(){ const d = db(); return Object.entries(d.shipments).flatMap(([o,l])=>l.map(s=>({...s, orderRef:o, orderNo:(d.orders[o]||{details:{}}).details.orderNo||o, product:(d.orders[o]||{fp:{}}).fp.name||""}))); }
 function shipmentsOf(refId){ return (db().shipments[refId]||[]); }
 const qtyOf = sh => num(sh.summary?.qty);
 const statusClass = s => ({"In transit":"blue","Booked":"blue","Booking requested":"amber","Arrived":"green","Delivered":"green"}[s]||"");
@@ -1179,7 +1195,7 @@ SECTIONS.push(
       return `<tr data-action="openShip" data-ref="${esc(s.ref)}" tabindex="0">
         <td class="ref">${esc(s.ref)}${s.source==="import"?` <span class="tag-src">Excel</span>`:""}</td><td>${esc(m.type||"—")}</td><td>${esc(m.mode||"—")}</td>
         <td>${esc((m.from||"—").split(",")[0])} → ${esc((m.to||"—").split(",")[0])}</td>
-        <td>${esc(m.container||"—")}${m.bl?`<br><span class="muted-s">${esc(m.bl)}</span>`:""}</td><td>${m.depDate?fmtDate(m.depDate):"—"}</td><td class="num">${fmtN(m.qty)} ${esc(m.unit||"")}</td>
+        <td>${esc(m.custOrder||"—")}<br><span class="muted-s">${esc(m.container||"—")} · ${esc(m.seal||"—")}</span>${(()=>{ const n = sharedWith(s); return n.length?` <span class="tag-share" title="Same customer order, container and seal">mixed with ${esc(n.join(", "))}</span>`:""; })()}</td><td>${m.depDate?fmtDate(m.depDate):"—"}</td><td class="num">${fmtN(m.qty)} ${esc(m.unit||"")}</td>
         <td><span class="st ${statusClass(m.status)}">${esc(m.status||"Draft")}</span></td>
         <td><button type="button" class="rm" data-action="delShip" data-ref="${esc(s.ref)}" aria-label="Delete ${esc(s.ref)}">Delete</button></td></tr>`; }).join("")
       : `<tr class="empty"><td colspan="9">No shipments yet. Add the first one to start splitting this order.</td></tr>`;
@@ -1191,11 +1207,12 @@ SECTIONS.push(
         <div class="stat"><span>Remaining</span><b style="color:${rem<0?"var(--danger)":"inherit"}">${fmtN(rem)}<small>${esc(unit)}</small></b></div>
       </div>
       <div class="alloc"><div class="alloc-bar" role="img" aria-label="${fmtN(alloc)} of ${fmtN(Q)} allocated"><i class="${rem<0?"over":""}" style="width:${pct}%"></i></div></div>
-      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Reference</th><th>Type</th><th>Mode</th><th>Route</th><th>Container / B/L</th><th>Departure</th><th class="num">Quantity</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Reference</th><th>Type</th><th>Mode</th><th>Route</th><th>Customer order · container · seal</th><th>Departure</th><th class="num">Quantity</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
       <div class="tbl-foot">${warn}<button type="button" class="btn primary" data-action="addShip"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add shipment</button></div>`; },
   req:null, all:()=>[shipmentsOf(REF()).length>0] }
 );
 
+function sharedWith(s){ const k = mixKeyOf(s); return k ? allShipments().filter(x=>x.ref!==s.ref && mixKeyOf(x)===k).map(x=>x.ref) : []; }
 /* ---------- product search ---------- */
 function productMatches(q){
   q = (q||"").toLowerCase().trim();
