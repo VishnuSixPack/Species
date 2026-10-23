@@ -474,11 +474,41 @@ table.tbl.pv{min-width:760px}
 .mixed-chip span{color:var(--text);font-size:12px}
 .mixed-chip:hover{filter:brightness(.97)}
 
+.dd-search{position:sticky;top:-6px;margin:-6px -6px 6px;padding:6px;background:var(--surface);border-bottom:1px solid var(--border);z-index:1}
+.dd-search .ctl{height:34px;font-size:13px}
+.opt[hidden]{display:none}
+
+/* ---- sign-in / loading screen ---- */
+body.booting{overflow:hidden}
+.boot{position:fixed;inset:48px 0 0 0;z-index:400;background:var(--page);display:grid;place-items:center;padding:20px;overflow:auto}
+.boot[hidden]{display:none}
+.boot-card{width:min(420px,100%);background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px 26px;box-shadow:0 20px 60px rgba(16,24,40,.1)}
+.boot-brand{display:flex;align-items:center;gap:10px;margin-bottom:16px;font-size:16px}
+.boot-brand .brand-mark{background:var(--brand)}
+.boot-card h2{margin:0 0 6px;font-size:19px;font-weight:600}
+.boot-card p{margin:0 0 14px;font-size:13px;color:var(--muted)}
+.boot-card form{display:flex;flex-direction:column;gap:12px}
+.boot-card label{display:flex;flex-direction:column;gap:6px;font-size:12.5px;font-weight:500}
+.boot-card .btn{justify-content:center;height:42px;margin-top:4px}
+.boot-card .linkbtn{margin-top:12px;font-weight:500;font-size:12.5px}
+.boot-err{color:var(--danger)!important;background:var(--danger-soft);border-radius:8px;padding:9px 12px}
+.boot-load{display:flex;align-items:center;justify-content:center;gap:12px;padding:20px 0;color:var(--muted)}
+.spin{width:20px;height:20px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--accent);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* ---- account menu ---- */
+.acct{position:relative}
+button.avatar{border:0;cursor:pointer;font-family:inherit}
+button.avatar:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.acct-menu{position:absolute;right:0;top:calc(100% + 8px);z-index:300;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--menu-shadow);padding:6px;min-width:210px}
+.acct-menu[hidden]{display:none}
+.acct-menu button{display:block;width:100%;text-align:left;border:0;background:none;color:var(--text);font:inherit;font-size:13px;padding:9px 10px;border-radius:7px;cursor:pointer}
+.acct-menu button:hover{background:var(--page)}
+
 </style>
 </head>
 <body>
 <div id="shellTop"></div>
-<nav class="crumbs" aria-label="Breadcrumb"><div class="crumbs-inner"><a href="interactive_dashboard.html">Home</a><span class="sep">›</span><a href="orders.html">Master orders</a><span class="sep">›</span><a id="crumbOrder" href="order.html">Master order</a><span class="sep">›</span><span aria-current="page" id="crumbHere">Create shipment</span></div></nav>
+<nav class="crumbs" aria-label="Breadcrumb"><div class="crumbs-inner"><a href="orders.html">Master orders</a><span class="sep">›</span><a id="crumbOrder" href="order.html">Master order</a><span class="sep">›</span><span aria-current="page" id="crumbHere">Create shipment</span></div></nav>
 <main class="page">
   <div class="page-head"><div><h1><span id="pageTitle">Create shipment</span> <span class="src-badge">from master order</span></h1><p class="sub" id="headSub"></p></div>
     <div class="head-actions"><button type="button" class="btn" data-action="changeSource"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><polyline points="21 3 21 8 16 8"/><polyline points="3 21 3 16 8 16"/></svg>Change source</button></div></div>
@@ -493,6 +523,7 @@ table.tbl.pv{min-width:760px}
   </div>
 </main>
 <div class="mobile-save"><span class="progress"></span><button type="button" class="btn primary" data-action="save"><svg viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>Save shipment</button></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 /* =====================================================================
    Shared form core: state paths, controls, section cards, side nav,
@@ -569,17 +600,40 @@ function dropdown(path, src, ph="Select an option", o={}){
   const val = get(path), multi = !!o.multi;
   const list = listOf(src);
   const has = multi ? (val||[]).length>0 : !!val;
-  const items = list.length ? list.map(x=>optionHTML(x, multi ? (val||[]).includes(optVal(x)) : optVal(x)===val)).join("")
+  const lazy = list.length > LAZY_AT && typeof src==="string";
+  const items = lazy ? "" : list.length ? list.map(x=>optionHTML(x, multi ? (val||[]).includes(optVal(x)) : optVal(x)===val)).join("")
                             : `<div class="opt empty">No options</div>`;
+  const search = list.length > SEARCH_AT ? `<div class="dd-search"><input type="text" class="ctl" placeholder="Type to search ${list.length.toLocaleString()} options…" aria-label="Search options" autocomplete="off"></div>` : "";
   const shown = multi ? (has ? `<span class="chips">${chipsHTML(path,val)}</span>` : `<span class="txt">${esc(ph)}</span>`)
                       : `<span class="txt">${has?esc(val):esc(ph)}</span>`;
   const dd = `<div class="clearwrap ${has?"has-value":""}"><div class="dd" data-path="${path}" ${multi?'data-multi="1"':""} data-src="${typeof src==="string"?src:""}">
       <button type="button" class="trigger ${has?"has":""}" ${o.disabled?"disabled":""} aria-haspopup="listbox" aria-expanded="false" aria-label="${esc(o.aria||ph)}">${shown}${CARET}</button>
-      <div class="menu" role="listbox" ${multi?'aria-multiselectable="true"':""}>${items}</div>
+      <div class="menu" role="listbox" ${multi?'aria-multiselectable="true"':""}>${search}<div class="dd-opts" ${lazy?'data-lazy="1"':""}>${items}</div></div>
     </div>${clearBtn(path,multi)}</div>`;
   if(!o.plus) return dd;
   return `<div class="with-plus">${dd}<button type="button" class="plus" data-addopt="${path}" data-src="${src}" ${multi?'data-multi="1"':""} ${o.disabled?"disabled":""} aria-label="Add new option" title="Add new option">+</button></div>`;
 }
+const SEARCH_AT = 10, LAZY_AT = 80, LAZY_SHOW = 100;
+/* render (or filter) the options of an open dropdown */
+function fillOptions(box, q){
+  const wrap = box.querySelector(".dd-opts"); if(!wrap) return;
+  q = (q||"").trim().toLowerCase();
+  const path = box.dataset.path, multi = !!box.dataset.multi, val = get(path);
+  if(wrap.dataset.lazy){
+    const all = listOf(box.dataset.src);
+    const hits = q ? all.filter(o=>optVal(o).toLowerCase().includes(q) || String(o.sub||"").toLowerCase().includes(q)) : all;
+    const sel = x => multi ? (val||[]).includes(optVal(x)) : optVal(x)===val;
+    const top = [...hits.filter(sel), ...hits.filter(x=>!sel(x))].slice(0, LAZY_SHOW);
+    wrap.innerHTML = top.length ? top.map(x=>optionHTML(x, sel(x))).join("") + (hits.length>LAZY_SHOW ? `<div class="opt empty">Showing ${LAZY_SHOW} of ${hits.length.toLocaleString()} · keep typing to narrow down</div>` : "")
+                                : `<div class="opt empty">No match for “${esc(q)}”</div>`;
+  } else {
+    let shown = 0;
+    wrap.querySelectorAll(".opt[data-value]").forEach(o=>{ const hit = !q || o.textContent.toLowerCase().includes(q); o.hidden = !hit; if(hit) shown++; });
+    let none = wrap.querySelector(".opt.none"); if(!shown && !none){ none = document.createElement("div"); none.className = "opt empty none"; wrap.appendChild(none); }
+    if(none){ none.textContent = shown ? "" : `No match for “${q}”`; none.hidden = !!shown; }
+  }
+}
+document.addEventListener("input", e=>{ const inp = e.target.closest(".dd-search input"); if(inp) fillOptions(inp.closest(".dd"), inp.value); });
 function datePicker(path, ph="Select date", o={}){
   const v = get(path);
   return `<div class="clearwrap ${v?"has-value":""}"><div class="dp" data-path="${path}" data-ph="${esc(ph)}">
@@ -787,6 +841,7 @@ document.addEventListener("click", e=>{
         box.querySelector(".menu").innerHTML = calendarHTML(box.dataset.view, get(box.dataset.path));
       }
       box.classList.add("open"); trig.setAttribute("aria-expanded","true");
+      if(box.classList.contains("dd")){ const si = box.querySelector(".dd-search input"); if(si) si.value = ""; fillOptions(box, ""); if(si) setTimeout(()=>si.focus(), 0); }
       const sel = box.querySelector(".opt.sel"); if(sel) sel.scrollIntoView({block:"nearest"});
     }
     return;
@@ -825,7 +880,7 @@ document.addEventListener("click", e=>{
   if(add && !add.disabled){
     const path = add.dataset.addopt, src = add.dataset.src, multi = !!add.dataset.multi;
     popup({kind:"ask", title:"Add a new option", msg:"It will be added to this list and selected.", input:"Type the new option", primary:"Add", secondary:"Cancel",
-      onPrimary: v => { OPT[src] = OPT[src] || []; if(!listOf(src).some(o=>optVal(o).toLowerCase()===v.toLowerCase())) OPT[src].push(v);
+      onPrimary: v => { OPT[src] = OPT[src] || []; if(!listOf(src).some(o=>optVal(o).toLowerCase()===v.toLowerCase())){ OPT[src].push(v); HOOKS.onAddOption && HOOKS.onAddOption(src, v); }
         const existing = listOf(src).map(optVal).find(x=>x.toLowerCase()===v.toLowerCase()) || v;
         set(path, multi ? [...new Set([...(get(path)||[]), existing])] : existing);
         changed(path); const id = secOfPath(path); if(id) renderSection(id); toast(`“${existing}” added`); }});
@@ -841,7 +896,7 @@ document.addEventListener("keydown", e=>{
   if(e.key==="Escape"){ if($("#overlay")) closePopup(); else closeAll(); return; }
   const box = document.activeElement?.closest(".dd.open, .search.open");
   if(!box) return;
-  const opts = $$(".opt[data-value], .opt[data-pick]", box);
+  const opts = $$(".opt[data-value], .opt[data-pick]", box).filter(o=>!o.hidden);
   if(!opts.length) return;
   let i = opts.findIndex(o=>o.classList.contains("active"));
   if(e.key==="ArrowDown"||e.key==="ArrowUp"){
@@ -871,176 +926,177 @@ function initTheme(){
 }
 
 /* =====================================================================
-   Shared demo data: dropdown options, products, sample master order,
-   and the storage used to pass data between order.html and shipment.html
+   Supabase data layer shared by orders.html, order.html, shipment.html
+   · connect (project URL + publishable key) and sign in
+   · reference lists from your modules (ports, countries, products) and
+     from smartuna.lookup_values / incoterms / payment_terms / organizations
+   No sample data; nothing business-related is kept in the browser.
    ===================================================================== */
+
+/* Fixed lists that mirror database enums / form rules (not data) */
 Object.assign(OPT, {
-  branches:["Main branch","Port Klang branch","Bangkok branch","Manila branch"],
-  orgs:["Simplot Australia PTY LTD","MMP International Co., Ltd.","Thai Union Group PCL","Pacific Seafood Traders","Ocean Fresh Ltd.","Bumble Bee Foods"],
   roles:["Buyer","Seller","Consignee","Notify party","Processor","Supplier","Freight forwarder"],
-  gln:["9312345000019","8851234000012","0614141000036","4012345000009"],
-  species:[{value:"Skipjack tuna",sub:"Katsuwonus pelamis"},{value:"Yellowfin tuna",sub:"Thunnus albacares"},{value:"Albacore tuna",sub:"Thunnus alalunga"},{value:"Bigeye tuna",sub:"Thunnus obesus"}],
-  fao:[{value:"FAO 71",sub:"Pacific, Western Central"},{value:"FAO 57",sub:"Indian Ocean, Eastern"},{value:"FAO 51",sub:"Indian Ocean, Western"},{value:"FAO 77",sub:"Pacific, Eastern Central"},{value:"FAO 87",sub:"Pacific, Southeast"}],
-  catchMethods:["Purse seine (FAD-free)","Purse seine (on FAD)","Pole and line","Longline","Handline","Troll line"],
-  countries:["Thailand","Indonesia","Philippines","Vietnam","Malaysia","Papua New Guinea","Kiribati","Solomon Islands","Ecuador","Spain","Australia","New Zealand"],
-  ports:[{value:"Bangkok, Thailand",sub:"THBKK"},{value:"Laem Chabang, Thailand",sub:"THLCH"},{value:"Port Klang, Malaysia",sub:"MYPKG"},{value:"Singapore, Singapore",sub:"SGSIN"},{value:"General Santos, Philippines",sub:"PHGES"},{value:"Bitung, Indonesia",sub:"IDBIT"},{value:"Brisbane, Australia",sub:"AUBNE"},{value:"Sydney, Australia",sub:"AUSYD"},{value:"Melbourne, Australia",sub:"AUMEL"},{value:"Fremantle, Australia",sub:"AUFRE"},{value:"Auckland, New Zealand",sub:"NZAKL"}],
-  unitTypes:["Base Unit Or Each","Case","Pallet","Display unit"],
-  brands:["John West","Sirena","Safcol","Greenseas"],
-  productForms:["Can","Pouch","Frozen loin","Fresh","Jar"],
-  packingStyles:["Chunks","Flakes","Steaks","Solid","Shredded"],
-  packingMedia:["Olive Oil","Sunflower oil","Brine","Spring water","Vacuum packed"],
-  treatments:["None","Cooked","Smoked","Retorted","Frozen (IQF)","Glazed"],
-  primaryPack:["Tin can 95 g","Tin can 185 g","Retort pouch 85 g","Glass jar 200 g"],
-  innerPack:["Shrink-wrap 4-pack","Cardboard sleeve","Plastic tray"],
-  outerPack:["Corrugated carton (48 units)","Corrugated carton (24 units)","Wooden pallet","Plastic crate"],
-  countUnits:["Cartons","Cases","Pallets","Cans"],
-  weightUnits:["kg","t","lb"],
-  weightSpecs:[{value:"Net weight 95 g",sub:"drained 66 g"},{value:"Net weight 185 g",sub:"drained 130 g"},{value:"Net carton 4.56 kg"},{value:"Gross carton 6.2 kg"}],
   modes:["Sea","Air","Truck"],
-  partners:["Maersk Logistics","DHL Global Forwarding","Kuehne+Nagel","DB Schenker","CEVA Logistics"],
-  schedules:["Single delivery","Weekly","Fortnightly","Monthly","As per call-off"],
-  paymentTerms:[{value:"Advance payment",sub:"0 days"},{value:"Net 30",sub:"30 days"},{value:"Net 60",sub:"60 days"},{value:"Net 90",sub:"90 days"},{value:"Letter of credit at sight",sub:"LC"},{value:"Cash against documents",sub:"CAD"}],
-  deliveryLocations:["Simplot DC, Brisbane","Simplot cold store, Sydney","Melbourne DC, Laverton","Fremantle cold store"],
-  shipTypes:["Export","Import","Domestic","Re-export"],
-  shipStatus:["No shipment instructions","Booking requested","Booked","In transit","Arrived","Delivered"],
-  couriers:["DHL Express","FedEx","UPS","TNT","Aramex","Blue Dart"]
+  shipModes:["Direct","Transhipment"],
+  countUnits:["Cartons","Cases","Pallets","Cans"],
+  weightUnits:["kg","t","lb"]
 });
-const PAY_DAYS = {"Advance payment":0,"Net 30":30,"Net 60":60,"Net 90":90};
+let PAY_DAYS = {};
+let ALL_INCOTERMS = [];
+const MODE_KEY = {Sea:"sea",Air:"air",Truck:"road"};
+const incotermsFor = mode => { const k = MODE_KEY[mode]; return (k ? ALL_INCOTERMS.filter(t=>t[k]) : ALL_INCOTERMS).map(t=>({value:t.code, sub:t.name})); };
 
-const PRODUCTS = [
-  {gtin:"240993", id:"31032022", name:"Canned Skipjack tuna in Olive oil", unit:"Base Unit Or Each", brand:"John West", form:"Can", style:"Chunks", medium:"Olive Oil", treat:["None"], info:"95 g tin, ring-pull lid", ingredients:"Skipjack tuna (75%), olive oil (24%), salt"},
-  {gtin:"240994", id:"31032023", name:"Canned Yellowfin tuna in Brine",    unit:"Base Unit Or Each", brand:"Sirena",    form:"Can", style:"Steaks", medium:"Brine",     treat:["Cooked"], info:"185 g tin", ingredients:"Yellowfin tuna (80%), water, salt"},
-  {gtin:"240995", id:"31032031", name:"Tuna flakes in Sunflower oil",      unit:"Case",              brand:"Safcol",    form:"Pouch", style:"Flakes", medium:"Sunflower oil", treat:["Retorted"], info:"85 g retort pouch, 24 per case", ingredients:"Skipjack tuna (70%), sunflower oil (29%), salt"},
-  {gtin:"240996", id:"31032040", name:"Frozen Albacore loins",             unit:"Case",              brand:"Greenseas", form:"Frozen loin", style:"Solid", medium:"Vacuum packed", treat:["Frozen (IQF)"], info:"Vacuum packed, 10 kg case", ingredients:"Albacore tuna (100%)"}
-];
+/* ---------- connection ---------- */
+const CFG_KEY = "smartuna-supabase";          /* only the URL + publishable key are remembered */
+let SB = null, USER = null;
+const smt = () => SB.schema("smartuna");
+/* SmarTuna project (built in, so no connect screen) */
+const PROJECT = { url:"https://enbdaajcromxmhgcverp.supabase.co", key:"sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5" };
+const getCfg = () => PROJECT;
+const setCfg = c => { try{ c ? localStorage.setItem(CFG_KEY, JSON.stringify(c)) : localStorage.removeItem(CFG_KEY); }catch(e){} };
 
-function sampleOrder(){
-  const p = PRODUCTS[0];
-  return {
-    details:{refId:"12345", date:todayISO(), orderNo:"MO1", orderDate:"2026-10-20", branch:"Main branch"},
-    parties:{list:[
-      {label:"Buyer",  party:"Simplot Australia PTY LTD", role:"Buyer",  ref:"SIM-PO-88412", gln:"9312345000019"},
-      {label:"Seller", party:"MMP International Co., Ltd.", role:"Seller", ref:"", gln:""}]},
-    raw:{species:"Skipjack tuna", fao:"FAO 71", method:"Purse seine (FAD-free)", vessel:"FV Ocean Star", flag:"Thailand", catchDate:"2026-08-02", landing:"Bangkok, Thailand", cert:"TH-CC-2026-88412"},
-    fp:{search:`${p.gtin} — ${p.name}`, gtin:p.gtin, intId:p.id, name:p.name, unit:p.unit, brand:p.brand, form:p.form, style:p.style, medium:p.medium, treat:[...p.treat], info:"", ingredients:""},
-    pack:{primary:"Tin can 95 g", hasInner:false, inner:"", outer:"Corrugated carton (48 units)"},
-    qty:{qty:"3,200", unit:"Cartons", isWeight:false, shipments:"4", specs:["Net weight 95 g"]},
-    handling:{shelf:"1095", shelfUnit:"days", min:"0", minUnit:"°C", max:"25", maxUnit:"°C", instr:"Store in a cool, dry place. Do not stack more than 8 cartons high."},
-    logistics:{mode:"Sea", load:"20ft Dry", incoterm:"CFR", origin:"Thailand", dep:["Bangkok, Thailand"], arr:["Brisbane, Australia"], partners:["Maersk Logistics"], hs:"1604.14"},
-    delivery:{schedule:"Monthly", period:"", payment:"Net 60", specific:false, location:""},
-    _off:{}
-  };
+/* readable error text from Supabase / PostgREST errors */
+function errText(e){
+  if(!e) return "Unknown error";
+  const m = e.message || String(e);
+  if(/schema must be one of/i.test(m) || e.code==="PGRST106") return "The smartuna schema isn’t exposed to the API. In Supabase: Settings → API → Exposed schemas, add “smartuna”.";
+  if(/Failed to fetch|NetworkError/i.test(m)) return "Can’t reach Supabase. Check the project URL and your internet connection.";
+  if(/Invalid API key|No API key/i.test(m)) return "The publishable key was rejected. Check the key for this project.";
+  if(/permission denied/i.test(m)) return "Permission denied by the database. Make sure you are signed in and the smartuna grants were applied.";
+  return m.replace(/^DUPLICATE:/,"Duplicate of ");
 }
-function sampleShipment(order){
-  return {
-    ref:`${order.details.orderNo}.1`, savedAt:"2026-10-21T09:12:00Z", source:"manual",
-    summary:{type:"Export", status:"In transit", mode:"Sea", from:"Bangkok, Thailand", to:"Brisbane, Australia", depDate:"2026-10-18", qty:800, unit:order.qty.unit, custOrder:"SIM-PO-88412", container:"MSKU7781203", seal:"SL0097002", bl:"MAEU2610018", lines:1},
-    state:null
-  };
-}
-function sampleOrders(){
-  const a = sampleOrder();
-  const b = sampleOrder(), p2 = PRODUCTS[1];
-  Object.assign(b.details, {refId:"12346", orderNo:"MO2", orderDate:"2026-10-09"});
-  b.parties.list[1].party = "Thai Union Group PCL"; b.parties.list[0].ref = "SIM-PO-88530";
-  Object.assign(b.fp, {search:`${p2.gtin} — ${p2.name}`, gtin:p2.gtin, intId:p2.id, name:p2.name, unit:p2.unit, brand:p2.brand, form:p2.form, style:p2.style, medium:p2.medium, treat:[...p2.treat]});
-  Object.assign(b.raw, {species:"Yellowfin tuna", fao:"FAO 57", vessel:"FV Andaman Pearl"});
-  Object.assign(b.qty, {qty:"2,000", shipments:"3"}); b.pack.primary = "Tin can 185 g";
-  Object.assign(b.logistics, {dep:["Laem Chabang, Thailand"], arr:["Sydney, Australia"], incoterm:"CIF"});
-  b.delivery.period = "Nov 2026 – Jan 2027";
-  const c = sampleOrder(), p3 = PRODUCTS[2];
-  Object.assign(c.details, {refId:"12347", orderNo:"MO3", orderDate:"2026-10-15", branch:"Port Klang branch"});
-  c.parties.list[0].ref = "SIM-PO-88611";
-  Object.assign(c.fp, {search:`${p3.gtin} — ${p3.name}`, gtin:p3.gtin, intId:p3.id, name:p3.name, unit:p3.unit, brand:p3.brand, form:p3.form, style:p3.style, medium:p3.medium, treat:[...p3.treat]});
-  Object.assign(c.qty, {qty:"1,500", unit:"Cases", shipments:"2"}); c.pack.primary = "Retort pouch 85 g";
-  Object.assign(c.logistics, {dep:["Port Klang, Malaysia"], arr:["Melbourne, Australia"], origin:"Malaysia"});
-  c.delivery.period = "Dec 2026";
-  return [a,b,c];
-}
-function blankOrder(refId){
-  return {
-    details:{refId, date:todayISO(), orderNo:"", orderDate:"", branch:"Main branch"},
-    parties:{list:[{label:"Buyer",party:"",role:"Buyer",ref:"",gln:""},{label:"Seller",party:"",role:"Seller",ref:"",gln:""}]},
-    raw:{species:"",fao:"",method:"",vessel:"",flag:"",catchDate:"",landing:"",cert:""},
-    fp:{search:"",gtin:"",intId:"",name:"",unit:"",brand:"",form:"",style:"",medium:"",treat:[],info:"",ingredients:""},
-    pack:{primary:"",hasInner:false,inner:"",outer:""},
-    qty:{qty:"",unit:"",isWeight:false,shipments:"",specs:[]},
-    handling:{shelf:"",shelfUnit:"days",min:"",minUnit:"°C",max:"",maxUnit:"°C",instr:""},
-    logistics:{mode:"",load:"",incoterm:"",origin:"",dep:[],arr:[],partners:[],hs:""},
-    delivery:{schedule:"",period:"",payment:"",specific:false,location:""},
-    _off:{}
-  };
+async function q(promise){ const {data, error} = await promise; if(error) throw error; return data; }
+/* page through tables bigger than the 1,000-row API limit */
+async function fetchAll(build, size=1000){
+  let out = [], from = 0;
+  for(;;){ const rows = await q(build().range(from, from+size-1)); out = out.concat(rows); if(rows.length < size) return out; from += size; }
 }
 
-/* storage: { orders:{refId:order}, shipments:{refId:[shipment...]}, seeded:true } */
-const DB_KEY = "smartuna-forms-v3";
-function db(){ return store.get(DB_KEY, {orders:{}, shipments:{}}); }
-function saveDb(d){ return store.set(DB_KEY, d); }
-let MEM_DB = null;   /* fallback when browser storage is blocked */
-function ensureSeed(){
-  const d = db();
-  if(d.seeded) return d;
-  sampleOrders().forEach(o=>{ if(!d.orders[o.details.refId]) d.orders[o.details.refId] = o; d.shipments[o.details.refId] = d.shipments[o.details.refId] || []; });
-  if(!d.shipments["12345"].length) d.shipments["12345"].push(sampleShipment(d.orders["12345"]));
-  d.seeded = true; saveDb(d); return d;
+/* ---------- boot screens ---------- */
+function bootScreen(html){
+  let el = $("#boot");
+  if(!el){ el = document.createElement("div"); el.id = "boot"; el.className = "boot"; document.body.appendChild(el); }
+  el.innerHTML = `<div class="boot-card"><div class="boot-brand"><span class="brand-mark">${BRAND_SVG}</span><b>SmarTuna</b></div>${html}</div>`;
+  el.hidden = false; document.body.classList.add("booting");
+  return el;
 }
-function loadOrder(refId){
-  const d = ensureSeed();
-  return d.orders[refId] || (refId ? blankOrder(refId) : d.orders["12345"]);
+function bootDone(){ const el = $("#boot"); if(el) el.hidden = true; document.body.classList.remove("booting"); }
+function connectForm(msg){
+  const c = getCfg() || {};
+  const el = bootScreen(`<h2>Connect to Supabase</h2><p>Enter your project’s API details (Supabase → Settings → API). They’re remembered in this browser only.</p>
+    ${msg?`<p class="boot-err" role="alert">${esc(msg)}</p>`:""}
+    <form id="cfgForm"><label>Project URL<input class="ctl" name="url" type="url" required placeholder="https://xxxx.supabase.co" value="${esc(c.url||"")}"></label>
+    <label>Publishable (anon) key<input class="ctl" name="key" required placeholder="eyJ… or sb_publishable_…" value="${esc(c.key||"")}"></label>
+    <button class="btn primary" type="submit">Connect</button></form>`);
+  return new Promise(res=>{ el.querySelector("form").addEventListener("submit", e=>{ e.preventDefault(); const f = new FormData(e.target);
+    const cfg = {url:String(f.get("url")).trim().replace(/\/+$/,""), key:String(f.get("key")).trim()}; setCfg(cfg); res(cfg); }); });
 }
-function nextOrderRef(){ const d = ensureSeed(); return String(Object.keys(d.orders).reduce((m,k)=>Math.max(m, parseInt(k,10)||0), 12344) + 1); }
-/* Shipment reference = master number + "." + running number, e.g. MO1.1, MO1.2 */
-const masterNo = o => o.details.orderNo || o.details.refId;
-const shipSeq = s => parseInt(String(s.ref).split(".").pop(),10) || 0;
-function nextShipRefFor(o, extra=0){ const n = shipmentsOf(o.details.refId).reduce((m,s)=>Math.max(m, shipSeq(s)), 0); return `${masterNo(o)}.${n+1+extra}`; }
-/* Shipments are "mixed" when Customer order no + Container no + Seal number are all the same */
+function signInForm(msg){
+  const el = bootScreen(`<h2>Sign in</h2><p>Use your SmarTuna (Supabase) account.</p>${msg?`<p class="boot-err" role="alert">${esc(msg)}</p>`:""}
+    <form id="signForm"><label>Email<input class="ctl" name="email" type="email" autocomplete="username" required></label>
+    <label>Password<input class="ctl" name="password" type="password" autocomplete="current-password" required></label>
+    <button class="btn primary" type="submit">Sign in</button></form>
+    <button class="linkbtn" type="button" id="changeConn">Use a different Supabase project</button>`);
+  el.querySelector("#changeConn").onclick = ()=>{ setCfg(null); location.reload(); };
+  return new Promise(res=>{ el.querySelector("form").addEventListener("submit", async e=>{ e.preventDefault();
+    const f = new FormData(e.target), btn = e.target.querySelector("button"); btn.disabled = true; btn.textContent = "Signing in…";
+    let r; try{ r = await SB.auth.signInWithPassword({email:String(f.get("email")).trim(), password:String(f.get("password"))}); }
+    catch(err){ r = {error:err}; }
+    if(r.error){ res(signInForm(/fetch/i.test(r.error.message||"") ? errText(r.error) : r.error.message)); return; }
+    res(r.data.session); }); });
+}
+async function boot(start){
+  $("#shellTop").outerHTML = shellTop(); initTheme();
+  if(typeof supabase==="undefined"){ bootScreen(`<h2>Couldn’t load</h2><p class="boot-err">The Supabase library didn’t load. Check your internet connection and reload.</p>`); return; }
+  let cfg = getCfg() || await connectForm();
+  for(;;){
+    try{ SB = supabase.createClient(cfg.url, cfg.key); break; }
+    catch(e){ cfg = await connectForm("That project URL or key isn’t valid."); }
+  }
+  let session = (await SB.auth.getSession()).data.session;
+  if(!session) session = await signInForm();
+  USER = session.user;
+  $("#avatar").textContent = (USER.email||"?").slice(0,2).toUpperCase(); $("#avatar").title = `Signed in as ${USER.email}`;
+  bootScreen(`<div class="boot-load"><span class="spin"></span>Loading…</div>`);
+  try{ await loadRefs(); await start(); bootDone(); }
+  catch(e){
+    console.error(e);
+    const t = errText(e);
+    bootScreen(`<h2>Something went wrong</h2><p class="boot-err">${esc(t)}</p><button class="btn" onclick="location.reload()">Try again</button>`);
+  }
+}
+
+/* ---------- reference lists ---------- */
+const REFS = { portByLabel:new Map(), portById:new Map(), ports:[], countryByName:new Map(), countryById:new Map(),
+               productByLabel:new Map(), productById:new Map(), orgByName:new Map() };
+const portLabel = p => [p.main_port_name, p.country].filter(Boolean).join(", ") + (p.un_locode ? ` (${p.un_locode})` : "");
+const productLabel = p => p ? `${p.gtin ? p.gtin+" — " : ""}${p.name||""}` : "";
+async function loadRefs(){
+  const [lookups, incos, terms, orgs, countries, ports, products] = await Promise.all([
+    fetchAll(()=>smt().from("lookup_values").select("list_key,value,sub,sort_order").eq("is_active", true).order("list_key").order("sort_order").order("value")),
+    q(smt().from("incoterms").select("*")),
+    q(smt().from("payment_terms").select("*")),
+    fetchAll(()=>smt().from("organizations").select("id,name").order("name")),
+    fetchAll(()=>SB.from("countries").select("id,country").order("country")),
+    fetchAll(()=>SB.from("ports").select("id,main_port_name,alternate_port_name,un_locode,country").order("main_port_name").order("id")),
+    fetchAll(()=>smt().from("v_products").select("id,gtin,name,internal_id").order("name").order("id"))
+  ]);
+  lookups.forEach(l=>{ (OPT[l.list_key] = OPT[l.list_key] || []).push(l.sub ? {value:l.value, sub:l.sub} : l.value); });
+  ["branches","species","catchMethods","certifications","receiptForms","fao","primaryPack","innerPack","outerPack","weightSpecs",
+   "schedules","partners","deliveryLocations","shipTypes","shipStatus","couriers","shippingLines","airlines"].forEach(k=>OPT[k] = OPT[k] || []);
+  const order = ["EXW","FCA","FAS","FOB","CFR","CIF","CPT","CIP","DAP","DPU","DDP"];
+  const rank = c => { const i = order.indexOf(c); return i<0 ? 99 : i; };
+  ALL_INCOTERMS = incos.sort((a,b)=>rank(a.code)-rank(b.code));
+  OPT.paymentTerms = terms.map(t=>({value:t.name, sub: t.days!=null ? `${t.days} days` : ""}));
+  PAY_DAYS = Object.fromEntries(terms.filter(t=>t.days!=null).map(t=>[t.name, t.days]));
+  OPT.orgs = orgs.map(o=>o.name); orgs.forEach(o=>REFS.orgByName.set(o.name.toLowerCase(), o.id));
+  OPT.countries = countries.map(c=>c.country); countries.forEach(c=>{ REFS.countryByName.set(c.country, c.id); REFS.countryById.set(c.id, c.country); });
+  REFS.ports = ports;
+  OPT.ports = ports.map(p=>{ const l = portLabel(p); REFS.portByLabel.set(l, p.id); REFS.portById.set(p.id, l); return p.alternate_port_name ? {value:l, sub:p.alternate_port_name} : l; });
+  OPT.products = products.map(p=>{ const l = productLabel(p); REFS.productByLabel.set(l, p); REFS.productById.set(p.id, p); return p.internal_id ? {value:l, sub:p.internal_id} : l; });
+}
+/* "+" buttons: save the new option so everyone sees it */
+HOOKS.onAddOption = async (src, v) => {
+  try{
+    if(src==="orgs"){ const row = await q(smt().from("organizations").insert({name:v}).select("id,name").single()); REFS.orgByName.set(row.name.toLowerCase(), row.id); }
+    else await q(smt().from("lookup_values").insert({list_key:src, value:v}));
+  }catch(e){ if(!/duplicate key/i.test(e.message||"")) toast(`Couldn’t save “${v}”: ${errText(e)}`); }
+};
+
+/* ---------- shipment helpers ---------- */
 const U = v => String(v??"").trim().toUpperCase();
 const mixKey = (po, cont, seal) => (U(po) && U(cont) && U(seal)) ? `${U(po)}|${U(cont)}|${U(seal)}` : "";
-const mixKeyOf = s => mixKey(s.summary?.custOrder, s.summary?.container, s.summary?.seal);
-function allShipments(){ const d = db(); return Object.entries(d.shipments).flatMap(([o,l])=>l.map(s=>({...s, orderRef:o, orderNo:(d.orders[o]||{details:{}}).details.orderNo||o, product:(d.orders[o]||{fp:{}}).fp.name||""}))); }
-function shipmentsOf(refId){ return (db().shipments[refId]||[]); }
-const qtyOf = sh => num(sh.summary?.qty);
 const statusClass = s => ({"In transit":"blue","Booked":"blue","Booking requested":"amber","Arrived":"green","Delivered":"green"}[s]||"");
+const shortPort = l => String(l||"—").split(",")[0];
 
-/* shared shell */
+/* ---------- shell ---------- */
 const BRAND_SVG = `<svg viewBox="0 0 24 24"><path d="M3 13c3-5 9-7 14-4l4-3v12l-4-3c-5 3-11 1-14-2z" fill="#fff"/><circle cx="15" cy="11" r="1.2" fill="#2059a8"/></svg>`;
 function shellTop(){
   return `<header class="top-band"><div class="tb-inner">
-    <a class="brand" href="interactive_dashboard.html"><span class="brand-mark" aria-hidden="true">${BRAND_SVG}</span><span class="brand-name">SmarTuna</span><span class="brand-sub">Supply Chain Portal</span></a>
+    <a class="brand" href="orders.html"><span class="brand-mark" aria-hidden="true">${BRAND_SVG}</span><span class="brand-name">SmarTuna</span><span class="brand-sub">Supply Chain Portal</span></a>
     <div class="tb-actions">
       <button class="theme-toggle" id="themeToggle" type="button"><span class="tt-track"><span class="tt-thumb"><svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg><svg class="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></span></span><span class="tt-label">Light</span></button>
-      <div class="avatar" title="Signed in as Admin">AD</div>
+      <div class="acct"><button type="button" class="avatar" id="avatar" aria-haspopup="true" aria-expanded="false" title="Account">··</button>
+        <div class="acct-menu" id="acctMenu" hidden><button type="button" data-action="signOut">Sign out</button></div></div>
     </div></div></header>`;
 }
-
-const ALL_INCOTERMS = [
-  {code:"EXW",name:"Ex Works",sea:true,air:true,road:true},
-  {code:"FCA",name:"Free Carrier",sea:true,air:true,road:true},
-  {code:"FAS",name:"Free Alongside Ship",sea:true,air:false,road:false},
-  {code:"FOB",name:"Free on Board",sea:true,air:false,road:false},
-  {code:"CFR",name:"Cost and Freight",sea:true,air:false,road:false},
-  {code:"CIF",name:"Cost, Insurance and Freight",sea:true,air:false,road:false},
-  {code:"CPT",name:"Carriage Paid To",sea:true,air:true,road:true},
-  {code:"CIP",name:"Carriage and Insurance Paid To",sea:true,air:true,road:true},
-  {code:"DAP",name:"Delivered at Place",sea:true,air:true,road:true},
-  {code:"DPU",name:"Delivered at Place Unloaded",sea:true,air:true,road:true},
-  {code:"DDP",name:"Delivered Duty Paid",sea:true,air:true,road:true}
-];
-const MODE_KEY = {Sea:"sea",Air:"air",Truck:"road"};
-const incotermsFor = mode => { const k = MODE_KEY[mode]; return (k ? ALL_INCOTERMS.filter(t=>t[k]) : ALL_INCOTERMS).map(t=>({value:t.code, sub:t.name})); };
+document.addEventListener("click", e=>{
+  const a = e.target.closest("#avatar"), m = $("#acctMenu");
+  if(a){ m.hidden = !m.hidden; a.setAttribute("aria-expanded", !m.hidden); return; }
+  if(m && !e.target.closest("#acctMenu")) m.hidden = true;
+});
+Object.assign(ACTIONS, {
+  async signOut(){ if(SB) await SB.auth.signOut(); location.reload(); },
+});
 
 /* =====================================================================
    shipment.html — Child shipment of a master order
    ===================================================================== */
 const params = new URLSearchParams(location.search);
-const ORDER = loadOrder(params.get("order") || "12345");
-const OREF = ORDER.details.refId;
-const editId = params.get("id");
-const existing = editId ? shipmentsOf(OREF).find(s=>s.ref===editId) : null;
-const PRODUCT_LABEL = ORDER.fp.gtin ? `${ORDER.fp.gtin} — ${ORDER.fp.name}` : (ORDER.fp.name || "Order product");
-OPT.orderProducts = [PRODUCT_LABEL];
-const ALL_SHIPS = allShipments();
-OPT.otherShipments = [];
+let ORDER = null, OREF = null, PRODUCT_LABEL = "", UNIT = "units";
+let EXISTING = null;          /* get_shipment() result when editing */
+let OTHERS = [];              /* other shipments of this master (allocation) */
+let MIXED = [];               /* shipments with the same customer order + container + seal */
 
 /* ---------- logistics config (ported from logistics.html) ---------- */
 const LOAD = {
@@ -1056,12 +1112,6 @@ const LOAD = {
     types:{FTL:["20ft trailer","40ft trailer","Closed body","Open flatbed","Reefer truck","Tipper","Tanker"], LTL:["Closed body","Open flatbed","Reefer truck"]},
     hint:{FTL:"The full vehicle is booked for this shipment.", LTL:"The vehicle is shared, so the load is charged by weight or volume."}}
 };
-Object.assign(OPT, {
-  shippingLines:["Maersk","MSC","CMA CGM","Hapag-Lloyd","Ocean Network Express","COSCO","Evergreen"],
-  airlines:["Emirates SkyCargo","Singapore Airlines Cargo","Qatar Airways Cargo","Lufthansa Cargo","Etihad Cargo","Air India Cargo"],
-  shipModes:["Direct","Transhipment"],
-  tsPorts:["Singapore","Port Klang","Colombo","Jebel Ali","Salalah","Rotterdam","Antwerp","Hong Kong","Busan"]
-});
 const TS = {
   sea:{path:"lg.sea.transhipmentPorts", legs:"lg.sea.vessels", label:"Transhipment port", add:"Add port", note:"Add the ports in the order the cargo moves through them.", noun:"vessel"},
   air:{path:"lg.air.transhipmentAirports", legs:"lg.air.flights", label:"Transhipment airport", add:"Add airport", note:"Type each transhipment airport in the order the cargo moves through it.", ph:"e.g. Dubai (DXB)", noun:"flight"},
@@ -1073,50 +1123,108 @@ const tsFull = g => get(TS[g].path).length >= tsCap(g);
 let incotermNote = "";
 
 /* ---------- state ---------- */
-function nextRef(){ return nextShipRefFor(ORDER); }
+const str = v => v==null ? "" : String(v);
+const blankLg = () => ({
+  sea:{shippingLine:"",vessels:[""],shipMode:"Direct",container:{containerNo:"",sealNo:""},traceableObject:null,blNo:"",blDate:"",transhipmentPorts:[""]},
+  air:{airline:"",flights:[""],shipMode:"Direct",awbNo:"",awbDate:"",transhipmentAirports:[""]},
+  truck:{trucks:[""],shipMode:"Direct",transfers:[""]}});
 const PREFILL = {};
 function buildDefault(){
-  const buyer = ORDER.parties.list.find(p=>p.role==="Buyer") || ORDER.parties.list[0] || {};
-  const seller = ORDER.parties.list.find(p=>p.role==="Seller") || ORDER.parties.list[1] || {};
-  const mode = ORDER.logistics.mode || "";
-  const cfg = LOAD[mode];
-  const basis = cfg ? cfg.basis[0] : "";
-  const loadOk = cfg && cfg.types[basis].map(optVal).includes(ORDER.logistics.load);
-  const sm = existing?.summary || {};
-  const st = {
-    ref: existing?.ref || nextRef(),
-    details:{type:sm.type||"", status:sm.status||"No shipment instructions", custOrder:sm.custOrder||buyer.ref||"", orderDate:ORDER.details.orderDate||"", mixed:[]},
-    parties:{who:{party:seller.party||"", role:seller.role||"Seller", ref:seller.ref||"", gln:seller.gln||""},
-             to:{party:buyer.party||"", role:buyer.role||"Buyer", ref:buyer.ref||"", gln:buyer.gln||""}},
-    lg:{mode, loadBasis:basis, loadType:loadOk?ORDER.logistics.load:"", incoterm:ORDER.logistics.incoterm||"",
-        sea:{shippingLine:"",vessels:[""],shipMode:"Direct",container:{containerNo:sm.container||"",sealNo:sm.seal||""},traceableObject:null,blNo:sm.bl||"",blDate:"",transhipmentPorts:[""]},
-        air:{airline:"",flights:[""],shipMode:"Direct",awbNo:"",awbDate:"",transhipmentAirports:[""]},
-        truck:{trucks:[""],shipMode:"Direct",transfers:[""]}},
-    lines:[{product:PRODUCT_LABEL, qty: sm.qty ? fmtN(sm.qty) : "", rawId:"", batch:"", prodDate:"", bestBefore:"", net:"", netUnit:"kg"}],
-    dep:{port: sm.from || ORDER.logistics.dep[0] || "", planned: sm.depDate||"", scheduled:"", actual:""},
-    arr:{port: sm.to || ORDER.logistics.arr[0] || "", planned:"", scheduled:"", actual:""},
+  const m = ORDER, parties = m.parties||[];
+  const buyer = parties.find(p=>p.role==="Buyer") || {}, seller = parties.find(p=>p.role==="Seller") || {};
+  const mode = m.shipment_mode || "", cfg = LOAD[mode], basis = cfg ? cfg.basis[0] : "";
+  const loadOk = cfg && cfg.types[basis].map(optVal).includes(m.load_type);
+  return {
+    id:null, ref:`${m.master_no}.${(m.next_shipment_no||0)+1}`,
+    details:{type:"", status:"No shipment instructions", custOrder:buyer.party_reference||"", orderDate:m.master_order_date||"", mixed:[]},
+    parties:{who:{party:seller.organization_name||"", role:"Seller", ref:seller.party_reference||"", gln:seller.gln||""},
+             to:{party:buyer.organization_name||"", role:"Buyer", ref:buyer.party_reference||"", gln:buyer.gln||""}},
+    lg:Object.assign({mode, loadBasis:basis, loadType:loadOk?m.load_type:"", incoterm:m.incoterm||""}, blankLg()),
+    lines:[{product:PRODUCT_LABEL, qty:"", rawId:"", batch:"", prodDate:"", bestBefore:"", net:"", netUnit:"kg"}],
+    dep:{port:(m.departure_ports||[])[0]?.label||"", planned:"", scheduled:"", actual:""},
+    arr:{port:(m.arrival_ports||[])[0]?.label||"", planned:"", scheduled:"", actual:""},
     com:{invNo:"", invDate:"", due:"", dueManual:false},
     courier:{company:"", tracking:"", dispatch:""},
-    dest:{date:""},
-    pay:{term: ORDER.delivery.payment || ""},
-    notes:{text:""},
-    _off:{}
+    dest:{date:""}, pay:{term:m.payment_term||""}, notes:{text:""}, _off:{}
   };
-  return st;
 }
-S = existing?.state ? JSON.parse(JSON.stringify(existing.state)) : buildDefault();
-/* Mixed with = other shipments with the same Customer order no + Container no + Seal number */
-const myMixKey = () => mixKey(S.details.custOrder, S.lg.sea.container.containerNo, S.lg.sea.container.sealNo);
-const sameBox = () => { const k = myMixKey(); return k ? ALL_SHIPS.filter(s=>s.ref!==S.ref && mixKeyOf(s)===k) : []; };
-OPT.otherShipments = [...new Set([...sameBox().map(s=>s.ref), ...ALL_SHIPS.filter(s=>s.orderRef===OREF && s.ref!==S.ref).map(s=>s.ref), ...(S.details.mixed||[])])];
-OPT.orderProducts = [...new Set([PRODUCT_LABEL, ...S.lines.map(l=>l.product).filter(Boolean)])];
+function fromShipment(x){
+  const legs = k => { const v = (x.legs||[]).filter(l=>l.kind===k).map(l=>l.name); return v.length ? v : [""]; };
+  const ts = x.transhipments||[], grp = {Sea:"sea", Air:"air", Truck:"truck"}[x.shipment_mode];
+  const lg = Object.assign({mode:x.shipment_mode||"", loadBasis:x.load_basis || (LOAD[x.shipment_mode]?.basis[0]||""), loadType:x.load_type||"", incoterm:x.incoterm||""}, blankLg());
+  Object.assign(lg.sea, {shippingLine:x.shipping_line||"", vessels:legs("vessel"), container:{containerNo:x.container_no||"", sealNo:x.seal_no||""},
+    traceableObject: x.traceable_linked_at ? {containerNo:x.container_no||"", sealNo:x.seal_no||"", linkedAt:x.traceable_linked_at} : null,
+    blNo:x.bl_no||"", blDate:x.bl_date||"", transhipmentPorts: grp==="sea" && ts.length ? ts.map(t=>t.label||"") : [""]});
+  Object.assign(lg.air, {airline:x.airline||"", flights:legs("flight"), awbNo:x.awb_no||"", awbDate:x.awb_date||"", transhipmentAirports: grp==="air" && ts.length ? ts.map(t=>t.location||"") : [""]});
+  Object.assign(lg.truck, {trucks:legs("truck"), transfers: grp==="truck" && ts.length ? ts.map(t=>t.location||"") : [""]});
+  if(grp) lg[grp].shipMode = x.ship_mode || "Direct";
+  return {
+    id:x.id, ref:x.reference,
+    details:{type:x.shipping_type||"", status:x.status||"", custOrder:x.customer_order_no||"", orderDate:x.order_date||"", mixed:[]},
+    parties:{who:{party:x.shipper_name||"", role:x.shipper_role||"Seller", ref:x.shipper_reference||"", gln:x.shipper_gln||""},
+             to:{party:x.consignee_name||"", role:x.consignee_role||"Buyer", ref:x.consignee_reference||"", gln:x.consignee_gln||""}},
+    lg,
+    lines:(x.lines||[]).map(l=>({product:PRODUCT_LABEL, qty:fmtN(+l.quantity), rawId:l.raw_material_id||"", batch:l.batch_no||"", prodDate:l.production_date||"",
+      bestBefore:l.best_before||"", net:str(l.net_weight), netUnit:l.net_weight_unit||"kg", item:l.excel_item_no||""})),
+    dep:{port:x.departure_port_label||"", planned:x.departure_planned||"", scheduled:x.departure_scheduled||"", actual:x.departure_actual||""},
+    arr:{port:x.arrival_port_label||"", planned:x.arrival_planned||"", scheduled:x.arrival_scheduled||"", actual:x.arrival_actual||""},
+    com:{invNo:x.invoice_no||"", invDate:x.invoice_date||"", due:x.due_date||"", dueManual:!!x.due_date},
+    courier:{company:x.courier||"", tracking:x.courier_tracking_no||"", dispatch:x.courier_dispatch_date||""},
+    dest:{date:x.destination_delivery_date||""}, pay:{term:x.payment_term||""}, notes:{text:x.notes||""}, _off:{}
+  };
+}
+function toPayload(){
+  const L = S.lg, grp = {Sea:"sea", Air:"air", Truck:"truck"}[L.mode], G = L[grp] || {};
+  const legs = (grp==="sea" ? L.sea.vessels : grp==="air" ? L.air.flights : L.truck.trucks).map(n=>({kind:{sea:"vessel",air:"flight",truck:"truck"}[grp], name:n.trim()}));
+  const tsOn = G.shipMode==="Transhipment";
+  const ts = !tsOn ? [] : grp==="sea" ? L.sea.transhipmentPorts.map(l=>({port_id:REFS.portByLabel.get(l)||""}))
+           : (grp==="air" ? L.air.transhipmentAirports : L.truck.transfers).map(v=>({location:v.trim()}));
+  const sea = grp==="sea", air = grp==="air";
+  return {
+    id:S.id, master_id:ORDER.id,
+    shipping_type:S.details.type, status:S.details.status, customer_order_no:S.details.custOrder.trim(), order_date:S.details.orderDate,
+    shipper_name:S.parties.who.party, shipper_role:S.parties.who.role, shipper_reference:S.parties.who.ref, shipper_gln:S.parties.who.gln,
+    consignee_name:S.parties.to.party, consignee_role:S.parties.to.role, consignee_reference:S.parties.to.ref, consignee_gln:S.parties.to.gln,
+    shipment_mode:L.mode, load_basis:L.loadBasis, load_type:L.loadType, incoterm:L.incoterm, ship_mode:G.shipMode||"Direct",
+    shipping_line: sea ? L.sea.shippingLine : "", container_no: sea ? L.sea.container.containerNo : "", seal_no: sea ? L.sea.container.sealNo : "",
+    bl_no: sea ? L.sea.blNo : "", bl_date: sea ? L.sea.blDate : "",
+    traceable_linked_at: sea && isLinked() ? L.sea.traceableObject.linkedAt : "",
+    airline: air ? L.air.airline : "", awb_no: air ? L.air.awbNo : "", awb_date: air ? L.air.awbDate : "",
+    departure_port_id:REFS.portByLabel.get(S.dep.port)||"", departure_planned:S.dep.planned, departure_scheduled:S.dep.scheduled, departure_actual:S.dep.actual,
+    arrival_port_id:REFS.portByLabel.get(S.arr.port)||"", arrival_planned:S.arr.planned, arrival_scheduled:S.arr.scheduled, arrival_actual:S.arr.actual,
+    invoice_no:S.com.invNo, invoice_date:S.com.invDate, due_date:S.com.due,
+    courier:S.courier.company, courier_tracking_no:S.courier.tracking, courier_dispatch_date:S.courier.dispatch,
+    destination_delivery_date:S.dest.date, payment_term:S.pay.term, notes:S.notes.text,
+    legs, transhipments:ts,
+    lines:S.lines.map(l=>({quantity:String(num(l.qty)), raw_material_id:l.rawId, batch_no:l.batch, production_date:l.prodDate, best_before:l.bestBefore,
+      net_weight:l.net.replace(/,/g,""), net_weight_unit:l.net?l.netUnit:"", excel_item_no:l.item||""}))
+  };
+}
 /* remember which values came from the master order, to tag them */
-(function(){
+function rememberPrefill(){
   const d = buildDefault();
   ["details.custOrder","details.orderDate","parties.who.party","parties.who.role","parties.to.party","parties.to.role","parties.to.ref","lg.mode","lg.incoterm","lg.loadType","dep.port","arr.port","pay.term"]
     .forEach(p=>{ const v = p.split(".").reduce((o,k)=>o?.[k], d); if(v) PREFILL[p] = v; });
-})();
-const tag = p => existing?.source!=="import" && PREFILL[p]!==undefined && get(p)===PREFILL[p] ? "from order" : "";
+}
+const tag = p => EXISTING?.source!=="import" && PREFILL[p]!==undefined && get(p)===PREFILL[p] ? "from order" : "";
+
+/* Mixed with = other shipments (any master) with the same Customer order no + Container no + Seal number */
+const myMixKey = () => S.lg.mode==="Sea" ? mixKey(S.details.custOrder, S.lg.sea.container.containerNo, S.lg.sea.container.sealNo) : "";
+const sameBox = () => MIXED;
+let mixT, mixSeq = 0;
+async function refreshMixed(){
+  const k = myMixKey(), seq = ++mixSeq;
+  if(!k){ MIXED = []; return; }
+  let rows = await q(smt().from("shipments").select("id,reference,master_id").eq("mix_key", k));
+  rows = rows.filter(x=>x.id!==S.id);
+  const mids = [...new Set(rows.map(x=>x.master_id))];
+  const masters = mids.length ? await q(smt().from("master_orders").select("id,ref_id,master_no,product_id").in("id", mids)) : [];
+  if(seq!==mixSeq) return;
+  MIXED = rows.map(x=>{ const m = masters.find(y=>y.id===x.master_id)||{};
+    return {id:x.id, ref:x.reference, orderRef:m.ref_id, orderNo:m.master_no, product:(REFS.productById.get(m.product_id)||{}).name||""}; })
+    .sort((a,b)=>a.ref.localeCompare(b.ref));
+}
+function scheduleMixed(){ clearTimeout(mixT); mixT = setTimeout(async()=>{ try{ await refreshMixed(); renderSection("details", true); renderSection("logistics", true); }catch(e){} }, 400); }
 
 /* ---------- logistics rendering ---------- */
 const arrow = `<span class="arrow" aria-hidden="true">→</span>`;
@@ -1162,7 +1270,7 @@ function seaPanel(){
       ${field("Container No.", textIn("lg.sea.container.containerNo","e.g. MSKU1234567"), {req:true, path:"lg.sea.container.containerNo"})}
       ${field("Seal No.", textIn("lg.sea.container.sealNo","e.g. SL0098231"), {req:true, path:"lg.sea.container.sealNo"})}
     </div>
-    ${(()=>{ const o = sameBox(); return o.length ? `<p class="after share-t" style="margin-top:8px">Mixed with ${o.map(s=>`<a href="shipment.html?order=${encodeURIComponent(s.orderRef)}&id=${encodeURIComponent(s.ref)}">${esc(s.ref)}</a> (${esc(s.product)})`).join(", ")}: same customer order, container and seal.</p>` : ""; })()}
+    ${(()=>{ const o = sameBox(); return o.length ? `<p class="after share-t" style="margin-top:8px">Mixed with ${o.map(s=>`<a href="shipment.html?order=${encodeURIComponent(s.orderRef)}&id=${encodeURIComponent(s.id)}">${esc(s.ref)}</a> (${esc(s.product)})`).join(", ")}: same customer order, container and seal.</p>` : ""; })()}
     <div style="margin-top:10px">${addBtn}</div>
     <div class="row">
       ${field("BL No.", textIn("lg.sea.blNo","Enter B/L number"), {req:true, path:"lg.sea.blNo"})}
@@ -1201,7 +1309,7 @@ function tsPanel(g, active){
   const cfg = TS[g], cap = tsCap(g), legs = legsOf(g), full = tsFull(g), list = get(cfg.path);
   const fields = list.map((v,i)=>{
     const head = i===0 ? cfg.label : `${cfg.label} ${i+1} <button class="xbtn" type="button" data-action="rmTs" data-grp="${g}" data-i="${i}" aria-label="Remove"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
-    const ctl = g==="sea" ? dropdown(`${cfg.path}.${i}`,"tsPorts", i===0?"Select an option":"Select the next port",{disabled:!active})
+    const ctl = g==="sea" ? dropdown(`${cfg.path}.${i}`,"ports", i===0?"Search ports":"Search the next port",{disabled:!active})
                           : textIn(`${cfg.path}.${i}`, cfg.ph, {disabled:!active});
     return field(head, ctl, {dim:!active, req:active && i===0, path:`${cfg.path}.${i}`, disabled:!active});
   }).join(arrow);
@@ -1221,35 +1329,34 @@ function lgReq(){
 }
 
 /* ---------- allocation ---------- */
-const orderQty = () => num(ORDER.qty.qty);
-const otherQty = () => shipmentsOf(OREF).filter(s=>s.ref!==S.ref).reduce((a,s)=>a+qtyOf(s),0);
+const orderQty = () => num(ORDER.quantity);
+const otherQty = () => OTHERS.filter(s=>s.id!==S.id).reduce((a,s)=>a+num(s.quantity),0);
 const thisQty  = () => S.lines.reduce((a,l)=>a+num(l.qty),0);
 const remaining = () => orderQty() - otherQty() - thisQty();
-const UNIT = ORDER.qty.unit || "units";
 
 function mixedBox(){
   const o = sameBox();
   if(!myMixKey()) return `<div class="lockbox">${LOCK}<span>Fill customer order no., container no. and seal no. to find mixed shipments</span></div>`;
   if(!o.length) return `<div class="lockbox">${LOCK}<span>No other shipment shares this customer order, container and seal</span></div>`;
-  return `<div class="mixed-list">${o.map(s=>`<a class="mixed-chip" href="shipment.html?order=${encodeURIComponent(s.orderRef)}&id=${encodeURIComponent(s.ref)}"><b>${esc(s.ref)}</b><span>${esc(s.product)}</span></a>`).join("")}</div>`;
+  return `<div class="mixed-list">${o.map(s=>`<a class="mixed-chip" href="shipment.html?order=${encodeURIComponent(s.orderRef)}&id=${encodeURIComponent(s.id)}"><b>${esc(s.ref)}</b><span>${esc(s.product)}</span></a>`).join("")}</div>`;
 }
 /* ---------- sections ---------- */
 const partyRow = (b) => `<div class="row wide1">
   ${field("Party", dropdown(`${b}.party`,"orgs","Select a party",{plus:true}), {req:true, path:`${b}.party`, tag:tag(`${b}.party`), hint:"Organization or counterparty"})}
   ${field("Role", dropdown(`${b}.role`,"roles","Select a role"), {req:true, path:`${b}.role`, tag:tag(`${b}.role`), hint:"Role in party"})}
   ${field("Party reference", textIn(`${b}.ref`,"Enter reference"), {tag:tag(`${b}.ref`), hint:"A custom personalized party reference"})}
-  ${field("GLN", dropdown(`${b}.gln`,"gln","Select an option"), {hint:"Global Location Number (GLN)"})}</div>`;
+  ${field("GLN", textIn(`${b}.gln`,"13-digit GLN",{num:true}), {hint:"Global Location Number (GLN)"})}</div>`;
 
 SECTIONS.push(
 { id:"details", group:"General", title:"Details",
   render(){ const d="details";
     return `<div class="row">
-      ${field("Reference", lockBox(esc(S.ref),{title:"Generated from the master order"}), {hint:"Master number + shipment number"})}
+      ${field("Reference", lockBox(esc(S.ref)+(S.id?"":" · assigned on save"),{title:"Generated from the master order"}), {hint:"Master number + shipment number"})}
       ${field("Type of shipping", dropdown(`${d}.type`,"shipTypes","Select a type",{plus:true}), {req:true, path:`${d}.type`, hint:"How this shipment moves commercially"})}
       ${field("Status", dropdown(`${d}.status`,"shipStatus","Select a status",{plus:true}), {hint:"Current shipment status"})}
       ${field("Customer order number", textIn(`${d}.custOrder`,"Enter customer order no.",{live:true}), {req:true, path:`${d}.custOrder`, tag:tag(`${d}.custOrder`), hint:"Key identifier · buyer’s purchase order number"})}
       ${field("Order date", datePicker(`${d}.orderDate`,"Select order date"), {tag:tag(`${d}.orderDate`), hint:"Date of the customer order"})}
-      ${field("Related to", `<div class="lockbox" title="Master order this shipment belongs to">${LOCK}<a href="order.html?order=${encodeURIComponent(OREF)}">${esc(ORDER.details.orderNo||OREF)}</a></div>`, {hint:"Master order this shipment belongs to"})}
+      ${field("Related to", `<div class="lockbox" title="Master order this shipment belongs to">${LOCK}<a href="order.html?order=${encodeURIComponent(OREF)}">${esc(ORDER.master_no)}</a></div>`, {hint:"Master order this shipment belongs to"})}
     </div><div class="row one">
       ${field("Mixed with", mixedBox(), {hint:"Found automatically: other shipments with the same customer order number, container number and seal number"})}
     </div>`; },
@@ -1293,7 +1400,7 @@ SECTIONS.push(
 { id:"dep", group:"Routing", title:"Departure",
   render(){ const d="dep", future = S.dep.actual && S.dep.actual > todayISO();
     return `<div class="row wide1">
-      ${field("Departure port", dropdown(`${d}.port`,"ports","Select port, country",{plus:true}), {req:true, path:`${d}.port`, tag:tag(`${d}.port`), hint:"Location (port, country)"})}
+      ${field("Departure port", dropdown(`${d}.port`,"ports","Search ports"), {req:true, path:`${d}.port`, tag:tag(`${d}.port`), hint:"From the Port module"})}
       ${field("Planned date", datePicker(`${d}.planned`,"Select date"), {req:true, path:`${d}.planned`, hint:"Originally planned departure"})}
       ${field("Scheduled date", datePicker(`${d}.scheduled`,"Select date"), {hint:"Carrier’s scheduled departure (ETD)"})}
       ${field("Actual date", datePicker(`${d}.actual`,"Select date"), {hint:"Actual departure (ATD)", after: future?`<p class="after alert">This date is in the future.</p>`:""})}
@@ -1304,7 +1411,7 @@ SECTIONS.push(
   render(){ const a="arr";
     const before = (k)=> S.arr[k] && S.dep[k] && S.arr[k] < S.dep[k] ? `<p class="after bad">Arrival is before departure (${fmtDate(S.dep[k])}).</p>` : "";
     return `<div class="row wide1">
-      ${field("Destination port", dropdown(`${a}.port`,"ports","Select port, country",{plus:true}), {req:true, path:`${a}.port`, tag:tag(`${a}.port`), hint:"Location (port, country)"})}
+      ${field("Destination port", dropdown(`${a}.port`,"ports","Search ports"), {req:true, path:`${a}.port`, tag:tag(`${a}.port`), hint:"From the Port module"})}
       ${field("Planned date", datePicker(`${a}.planned`,"Select date"), {hint:"Originally planned arrival", after:before("planned")})}
       ${field("Scheduled date", datePicker(`${a}.scheduled`,"Select date"), {hint:"Carrier’s estimated arrival (ETA)", after:before("scheduled")})}
       ${field("Actual date", datePicker(`${a}.actual`,"Select date"), {hint:"Actual arrival (ATA)", after:before("actual")})}
@@ -1333,7 +1440,7 @@ SECTIONS.push(
 
 { id:"dest", group:"Additional", title:"Destination delivery",
   render(){
-    const loc = ORDER.delivery.specific && ORDER.delivery.location;
+    const loc = ORDER.deliver_to_specific && ORDER.delivery_location;
     return `<div class="row two">
       ${field("Delivery date", datePicker("dest.date","Select date"), {hint:"Date the goods are delivered at destination", after: S.dest.date && S.arr.planned && S.dest.date < S.arr.planned ? `<p class="after bad">Delivery is before the planned arrival (${fmtDate(S.arr.planned)}).</p>` : ""})}
       ${field("Deliver to", lockBox(esc(loc || (S.arr.port ? `${S.arr.port} (arrival port)` : "Arrival port")),{title:"Set on the master order"}), {tag: loc ? "from order" : "", hint:"Delivery location from the master order"})}
@@ -1367,15 +1474,14 @@ HOOKS.onChange = path => {
   if(path==="com.due") S.com.dueManual = !!S.com.due;
   if(path.startsWith("dep.")){ renderSection("arr", true); }
   if(path.startsWith("arr.")){ renderSection("dest", true); }
-  if(path==="details.mixed" || path.startsWith("lines.")) {}
+  if(path==="lg.mode") scheduleMixed();
 };
 HOOKS.onInput = path => {
-  if(path==="lg.sea.container.containerNo" || path==="lg.sea.container.sealNo") renderSection("details", true);
-  if(path==="details.custOrder") { const id="logistics"; renderSection(id, true); }
+  if(path==="lg.sea.container.containerNo" || path==="lg.sea.container.sealNo" || path==="details.custOrder") scheduleMixed();
   if(path.startsWith("lg.sea.container") && S.lg.sea.traceableObject && !isLinked()){ S.lg.sea.traceableObject = null; rerenderKeepFocus(path); }
   if(path.startsWith("lines.")) {}
 };
-HOOKS.onStatus = () => { $("#headSub").innerHTML = `<b>${esc(S.ref)}</b> · ${esc(ORDER.fp.name||"")} · ${fmtN(thisQty())} of ${fmtN(orderQty())} ${esc(UNIT)}`; };
+HOOKS.onStatus = () => { const h = $("#headSub"); if(h && ORDER) h.innerHTML = `<b>${esc(S.ref)}</b> · ${esc(ORDER.product?.name||"")} · ${fmtN(thisQty())} of ${fmtN(orderQty())} ${esc(UNIT)}`; };
 
 /* ---------- actions ---------- */
 Object.assign(ACTIONS, {
@@ -1400,39 +1506,57 @@ Object.assign(ACTIONS, {
     const q = $$('[data-bind^="lines."][data-bind$=".qty"]'); q[q.length-1]?.focus(); },
   rmLine(el){ S.lines.splice(+el.dataset.i,1); renderSection("lines"); },
   changeSource(){ location.href = `order.html?order=${encodeURIComponent(OREF)}`; },
-  save(){
+  async save(){
     SHOW_ERR = true; renderAll();
     const bad = firstIncomplete();
     if(bad.length){ popup({ok:false, title:"Some required fields are missing", msg:"Finish these sections to save the shipment:", list:bad.map(s=>({id:s.id, title:s.title, note: s.id==="lines" && remaining()<0 ? "over quantity" : "incomplete"})), primary:"Got it"}); return; }
-    const k = myMixKey();
-    const dupe = k && shipmentsOf(OREF).find(s=>s.ref!==S.ref && mixKeyOf(s)===k);
-    if(dupe){ popup({ok:false, title:"Shipment already exists", msg:`<span class="obj">${esc(dupe.ref)}</span> on this master already has customer order ${esc(S.details.custOrder)}, container ${esc(S.lg.sea.container.containerNo)} and seal ${esc(S.lg.sea.container.sealNo)}.`}); return; }
-    S.details.mixed = sameBox().map(s=>s.ref);
-    const d = db(); d.shipments[OREF] = d.shipments[OREF] || [];
-    const rec = {ref:S.ref, savedAt:new Date().toISOString(),
-      source: existing?.source || "manual",
-      summary:{type:S.details.type, status:S.details.status, mode:S.lg.mode, from:S.dep.port, to:S.arr.port, depDate:S.dep.planned, qty:thisQty(), unit:UNIT, custOrder:S.details.custOrder.trim(), container:S.lg.sea.container.containerNo.trim(), seal:S.lg.sea.container.sealNo.trim(), bl:S.lg.sea.blNo.trim(), lines:S.lines.length},
-      state:JSON.parse(JSON.stringify(S))};
-    const i = d.shipments[OREF].findIndex(s=>s.ref===S.ref);
-    if(i>=0) d.shipments[OREF][i] = rec; else d.shipments[OREF].push(rec);
-    const ok = saveDb(d);
-    const back = `order.html?order=${encodeURIComponent(OREF)}#shipments`;
-    popup({title:`Shipment ${S.ref} saved`, msg:`Linked to master order <span class="obj">${esc(ORDER.details.orderNo)}</span>. ${fmtN(thisQty())} ${esc(UNIT)} allocated, ${fmtN(remaining())} left on the order.${ok?"":"<br><br>Saving is blocked in this browser, so the order page won’t show it."}`,
-      primary:"Back to master order", onPrimary:()=>{ location.href = back; },
-      secondary:"Add another shipment", onSecondary:()=>{ location.href = `shipment.html?order=${encodeURIComponent(OREF)}`; }});
+    const btns = $$('[data-action="save"]'); btns.forEach(b=>{ b.disabled = true; });
+    try{
+      const wasNew = !S.id;
+      const res = await q(smt().rpc("save_shipment", {p: toPayload()}));
+      EXISTING = await q(smt().rpc("get_shipment", {p_id: res.id}));
+      S = fromShipment(EXISTING); SHOW_ERR = false;
+      if(wasNew) history.replaceState(null, "", `shipment.html?order=${OREF}&id=${res.id}`);
+      OTHERS = await q(smt().from("v_shipment_list").select("id,quantity").eq("master_id", ORDER.id));
+      await refreshMixed(); renderAll(); setHead();
+      const back = `order.html?order=${encodeURIComponent(OREF)}#shipments`;
+      popup({title:`Shipment ${res.reference} saved`, msg:`Linked to master order <span class="obj">${esc(ORDER.master_no)}</span>. ${fmtN(thisQty())} ${esc(UNIT)} allocated, ${fmtN(remaining())} left on the order.${MIXED.length?`<br>Mixed with ${MIXED.map(m=>esc(m.ref)).join(", ")}.`:""}`,
+        primary:"Back to master order", onPrimary:()=>{ location.href = back; },
+        secondary:"Add another shipment", onSecondary:()=>{ location.href = `shipment.html?order=${encodeURIComponent(OREF)}`; }});
+    }catch(err){
+      const m = String(err.message||"");
+      if(m.startsWith("DUPLICATE:")) popup({ok:false, title:"Shipment already exists", msg:`<span class="obj">${esc(m.slice(10))}</span> on this master already has customer order ${esc(S.details.custOrder)}, container ${esc(S.lg.sea.container.containerNo)} and seal ${esc(S.lg.sea.container.sealNo)}.`});
+      else popup({ok:false, title:"Couldn’t save", msg:esc(errText(err))});
+    } finally { btns.forEach(b=>{ b.disabled = false; }); }
   }
 });
 
 /* ---------- header + mount ---------- */
-$("#shellTop").outerHTML = shellTop();
-initTheme();
-$("#pageTitle").textContent = existing ? "Edit shipment" : "Create shipment";
-document.title = `${existing ? "Edit" : "Create"} Shipment`;
-$("#crumbOrder").textContent = ORDER.details.orderNo || OREF;
-if(existing?.source==="import") $("#pageTitle").insertAdjacentHTML("afterend", ` <span class="src-badge" style="background:var(--ok-bg);color:var(--ok-text)">imported from Excel</span>`);
-$("#crumbOrder").href = `order.html?order=${encodeURIComponent(OREF)}`;
-$("#crumbHere").textContent = existing ? `Edit ${existing.ref}` : "Create shipment";
-mount();
+function setHead(){
+  $("#pageTitle").textContent = S.id ? "Edit shipment" : "Create shipment";
+  document.title = S.id ? `${S.ref} · Shipment` : "Create Shipment";
+  $("#crumbOrder").textContent = ORDER.master_no; $("#crumbOrder").href = `order.html?order=${encodeURIComponent(OREF)}`;
+  $("#crumbHere").textContent = S.id ? S.ref : "Create shipment";
+  const b = $("#importBadge"); if(b) b.hidden = EXISTING?.source!=="import";
+}
+boot(async ()=>{
+  const ref = +params.get("order");
+  ORDER = ref ? await q(smt().rpc("get_master", {p_ref: ref})) : null;
+  if(!ORDER){ location.replace("orders.html"); return; }
+  OREF = ORDER.ref_id; PRODUCT_LABEL = productLabel(ORDER.product); UNIT = ORDER.quantity_unit || "units";
+  OPT.orderProducts = [PRODUCT_LABEL];
+  if(params.get("id")){
+    EXISTING = await q(smt().rpc("get_shipment", {p_id: params.get("id")}));
+    if(!EXISTING){ popup({ok:false, title:"Shipment not found", msg:"It may have been deleted.", primary:"Back to master order", onPrimary:()=>location.href=`order.html?order=${OREF}#shipments`}); }
+  }
+  S = EXISTING ? fromShipment(EXISTING) : buildDefault();
+  rememberPrefill();
+  OTHERS = await q(smt().from("v_shipment_list").select("id,quantity").eq("master_id", ORDER.id));
+  MIXED = EXISTING ? (EXISTING.mixed_with||[]).map(m=>({id:m.id, ref:m.reference, orderRef:m.master_ref_id, orderNo:m.master_no, product:m.product})) : [];
+  if(!EXISTING) await refreshMixed();
+  $("#pageTitle").insertAdjacentHTML("afterend", ` <span class="src-badge" id="importBadge" style="background:var(--ok-bg);color:var(--ok-text)" hidden>imported from Excel</span>`);
+  setHead(); mount();
+});
 
 </script>
 </body>

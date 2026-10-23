@@ -474,11 +474,41 @@ table.tbl.pv{min-width:760px}
 .mixed-chip span{color:var(--text);font-size:12px}
 .mixed-chip:hover{filter:brightness(.97)}
 
+.dd-search{position:sticky;top:-6px;margin:-6px -6px 6px;padding:6px;background:var(--surface);border-bottom:1px solid var(--border);z-index:1}
+.dd-search .ctl{height:34px;font-size:13px}
+.opt[hidden]{display:none}
+
+/* ---- sign-in / loading screen ---- */
+body.booting{overflow:hidden}
+.boot{position:fixed;inset:48px 0 0 0;z-index:400;background:var(--page);display:grid;place-items:center;padding:20px;overflow:auto}
+.boot[hidden]{display:none}
+.boot-card{width:min(420px,100%);background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px 26px;box-shadow:0 20px 60px rgba(16,24,40,.1)}
+.boot-brand{display:flex;align-items:center;gap:10px;margin-bottom:16px;font-size:16px}
+.boot-brand .brand-mark{background:var(--brand)}
+.boot-card h2{margin:0 0 6px;font-size:19px;font-weight:600}
+.boot-card p{margin:0 0 14px;font-size:13px;color:var(--muted)}
+.boot-card form{display:flex;flex-direction:column;gap:12px}
+.boot-card label{display:flex;flex-direction:column;gap:6px;font-size:12.5px;font-weight:500}
+.boot-card .btn{justify-content:center;height:42px;margin-top:4px}
+.boot-card .linkbtn{margin-top:12px;font-weight:500;font-size:12.5px}
+.boot-err{color:var(--danger)!important;background:var(--danger-soft);border-radius:8px;padding:9px 12px}
+.boot-load{display:flex;align-items:center;justify-content:center;gap:12px;padding:20px 0;color:var(--muted)}
+.spin{width:20px;height:20px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--accent);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* ---- account menu ---- */
+.acct{position:relative}
+button.avatar{border:0;cursor:pointer;font-family:inherit}
+button.avatar:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.acct-menu{position:absolute;right:0;top:calc(100% + 8px);z-index:300;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--menu-shadow);padding:6px;min-width:210px}
+.acct-menu[hidden]{display:none}
+.acct-menu button{display:block;width:100%;text-align:left;border:0;background:none;color:var(--text);font:inherit;font-size:13px;padding:9px 10px;border-radius:7px;cursor:pointer}
+.acct-menu button:hover{background:var(--page)}
+
 </style>
 </head>
 <body>
 <div id="shellTop"></div>
-<nav class="crumbs" aria-label="Breadcrumb"><div class="crumbs-inner"><a href="interactive_dashboard.html">Home</a><span class="sep">›</span><span aria-current="page">Master orders</span></div></nav>
+<nav class="crumbs" aria-label="Breadcrumb"><div class="crumbs-inner"><span aria-current="page">Master orders</span></div></nav>
 <main class="page">
   <div class="page-head"><div><h1>Master orders</h1><p class="sub">Each master order (parent) holds its child shipments. Import an Excel file to create shipments in bulk.</p></div>
     <div class="head-actions">
@@ -503,6 +533,7 @@ table.tbl.pv{min-width:760px}
 </main>
 <div class="drop" id="drop" aria-hidden="true"><div>Drop the Excel file to import<small>.xlsx, .xls or .csv using the shipment template</small></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
 /* =====================================================================
    Shared form core: state paths, controls, section cards, side nav,
@@ -579,17 +610,40 @@ function dropdown(path, src, ph="Select an option", o={}){
   const val = get(path), multi = !!o.multi;
   const list = listOf(src);
   const has = multi ? (val||[]).length>0 : !!val;
-  const items = list.length ? list.map(x=>optionHTML(x, multi ? (val||[]).includes(optVal(x)) : optVal(x)===val)).join("")
+  const lazy = list.length > LAZY_AT && typeof src==="string";
+  const items = lazy ? "" : list.length ? list.map(x=>optionHTML(x, multi ? (val||[]).includes(optVal(x)) : optVal(x)===val)).join("")
                             : `<div class="opt empty">No options</div>`;
+  const search = list.length > SEARCH_AT ? `<div class="dd-search"><input type="text" class="ctl" placeholder="Type to search ${list.length.toLocaleString()} options…" aria-label="Search options" autocomplete="off"></div>` : "";
   const shown = multi ? (has ? `<span class="chips">${chipsHTML(path,val)}</span>` : `<span class="txt">${esc(ph)}</span>`)
                       : `<span class="txt">${has?esc(val):esc(ph)}</span>`;
   const dd = `<div class="clearwrap ${has?"has-value":""}"><div class="dd" data-path="${path}" ${multi?'data-multi="1"':""} data-src="${typeof src==="string"?src:""}">
       <button type="button" class="trigger ${has?"has":""}" ${o.disabled?"disabled":""} aria-haspopup="listbox" aria-expanded="false" aria-label="${esc(o.aria||ph)}">${shown}${CARET}</button>
-      <div class="menu" role="listbox" ${multi?'aria-multiselectable="true"':""}>${items}</div>
+      <div class="menu" role="listbox" ${multi?'aria-multiselectable="true"':""}>${search}<div class="dd-opts" ${lazy?'data-lazy="1"':""}>${items}</div></div>
     </div>${clearBtn(path,multi)}</div>`;
   if(!o.plus) return dd;
   return `<div class="with-plus">${dd}<button type="button" class="plus" data-addopt="${path}" data-src="${src}" ${multi?'data-multi="1"':""} ${o.disabled?"disabled":""} aria-label="Add new option" title="Add new option">+</button></div>`;
 }
+const SEARCH_AT = 10, LAZY_AT = 80, LAZY_SHOW = 100;
+/* render (or filter) the options of an open dropdown */
+function fillOptions(box, q){
+  const wrap = box.querySelector(".dd-opts"); if(!wrap) return;
+  q = (q||"").trim().toLowerCase();
+  const path = box.dataset.path, multi = !!box.dataset.multi, val = get(path);
+  if(wrap.dataset.lazy){
+    const all = listOf(box.dataset.src);
+    const hits = q ? all.filter(o=>optVal(o).toLowerCase().includes(q) || String(o.sub||"").toLowerCase().includes(q)) : all;
+    const sel = x => multi ? (val||[]).includes(optVal(x)) : optVal(x)===val;
+    const top = [...hits.filter(sel), ...hits.filter(x=>!sel(x))].slice(0, LAZY_SHOW);
+    wrap.innerHTML = top.length ? top.map(x=>optionHTML(x, sel(x))).join("") + (hits.length>LAZY_SHOW ? `<div class="opt empty">Showing ${LAZY_SHOW} of ${hits.length.toLocaleString()} · keep typing to narrow down</div>` : "")
+                                : `<div class="opt empty">No match for “${esc(q)}”</div>`;
+  } else {
+    let shown = 0;
+    wrap.querySelectorAll(".opt[data-value]").forEach(o=>{ const hit = !q || o.textContent.toLowerCase().includes(q); o.hidden = !hit; if(hit) shown++; });
+    let none = wrap.querySelector(".opt.none"); if(!shown && !none){ none = document.createElement("div"); none.className = "opt empty none"; wrap.appendChild(none); }
+    if(none){ none.textContent = shown ? "" : `No match for “${q}”`; none.hidden = !!shown; }
+  }
+}
+document.addEventListener("input", e=>{ const inp = e.target.closest(".dd-search input"); if(inp) fillOptions(inp.closest(".dd"), inp.value); });
 function datePicker(path, ph="Select date", o={}){
   const v = get(path);
   return `<div class="clearwrap ${v?"has-value":""}"><div class="dp" data-path="${path}" data-ph="${esc(ph)}">
@@ -797,6 +851,7 @@ document.addEventListener("click", e=>{
         box.querySelector(".menu").innerHTML = calendarHTML(box.dataset.view, get(box.dataset.path));
       }
       box.classList.add("open"); trig.setAttribute("aria-expanded","true");
+      if(box.classList.contains("dd")){ const si = box.querySelector(".dd-search input"); if(si) si.value = ""; fillOptions(box, ""); if(si) setTimeout(()=>si.focus(), 0); }
       const sel = box.querySelector(".opt.sel"); if(sel) sel.scrollIntoView({block:"nearest"});
     }
     return;
@@ -835,7 +890,7 @@ document.addEventListener("click", e=>{
   if(add && !add.disabled){
     const path = add.dataset.addopt, src = add.dataset.src, multi = !!add.dataset.multi;
     popup({kind:"ask", title:"Add a new option", msg:"It will be added to this list and selected.", input:"Type the new option", primary:"Add", secondary:"Cancel",
-      onPrimary: v => { OPT[src] = OPT[src] || []; if(!listOf(src).some(o=>optVal(o).toLowerCase()===v.toLowerCase())) OPT[src].push(v);
+      onPrimary: v => { OPT[src] = OPT[src] || []; if(!listOf(src).some(o=>optVal(o).toLowerCase()===v.toLowerCase())){ OPT[src].push(v); HOOKS.onAddOption && HOOKS.onAddOption(src, v); }
         const existing = listOf(src).map(optVal).find(x=>x.toLowerCase()===v.toLowerCase()) || v;
         set(path, multi ? [...new Set([...(get(path)||[]), existing])] : existing);
         changed(path); const id = secOfPath(path); if(id) renderSection(id); toast(`“${existing}” added`); }});
@@ -851,7 +906,7 @@ document.addEventListener("keydown", e=>{
   if(e.key==="Escape"){ if($("#overlay")) closePopup(); else closeAll(); return; }
   const box = document.activeElement?.closest(".dd.open, .search.open");
   if(!box) return;
-  const opts = $$(".opt[data-value], .opt[data-pick]", box);
+  const opts = $$(".opt[data-value], .opt[data-pick]", box).filter(o=>!o.hidden);
   if(!opts.length) return;
   let i = opts.findIndex(o=>o.classList.contains("active"));
   if(e.key==="ArrowDown"||e.key==="ArrowUp"){
@@ -881,169 +936,185 @@ function initTheme(){
 }
 
 /* =====================================================================
-   Shared demo data: dropdown options, products, sample master order,
-   and the storage used to pass data between order.html and shipment.html
+   Supabase data layer shared by orders.html, order.html, shipment.html
+   · connect (project URL + publishable key) and sign in
+   · reference lists from your modules (ports, countries, products) and
+     from smartuna.lookup_values / incoterms / payment_terms / organizations
+   No sample data; nothing business-related is kept in the browser.
    ===================================================================== */
+
+/* Fixed lists that mirror database enums / form rules (not data) */
 Object.assign(OPT, {
-  branches:["Main branch","Port Klang branch","Bangkok branch","Manila branch"],
-  orgs:["Simplot Australia PTY LTD","MMP International Co., Ltd.","Thai Union Group PCL","Pacific Seafood Traders","Ocean Fresh Ltd.","Bumble Bee Foods"],
   roles:["Buyer","Seller","Consignee","Notify party","Processor","Supplier","Freight forwarder"],
-  gln:["9312345000019","8851234000012","0614141000036","4012345000009"],
-  species:[{value:"Skipjack tuna",sub:"Katsuwonus pelamis"},{value:"Yellowfin tuna",sub:"Thunnus albacares"},{value:"Albacore tuna",sub:"Thunnus alalunga"},{value:"Bigeye tuna",sub:"Thunnus obesus"}],
-  fao:[{value:"FAO 71",sub:"Pacific, Western Central"},{value:"FAO 57",sub:"Indian Ocean, Eastern"},{value:"FAO 51",sub:"Indian Ocean, Western"},{value:"FAO 77",sub:"Pacific, Eastern Central"},{value:"FAO 87",sub:"Pacific, Southeast"}],
-  catchMethods:["Purse seine (FAD-free)","Purse seine (on FAD)","Pole and line","Longline","Handline","Troll line"],
-  countries:["Thailand","Indonesia","Philippines","Vietnam","Malaysia","Papua New Guinea","Kiribati","Solomon Islands","Ecuador","Spain","Australia","New Zealand"],
-  ports:[{value:"Bangkok, Thailand",sub:"THBKK"},{value:"Laem Chabang, Thailand",sub:"THLCH"},{value:"Port Klang, Malaysia",sub:"MYPKG"},{value:"Singapore, Singapore",sub:"SGSIN"},{value:"General Santos, Philippines",sub:"PHGES"},{value:"Bitung, Indonesia",sub:"IDBIT"},{value:"Brisbane, Australia",sub:"AUBNE"},{value:"Sydney, Australia",sub:"AUSYD"},{value:"Melbourne, Australia",sub:"AUMEL"},{value:"Fremantle, Australia",sub:"AUFRE"},{value:"Auckland, New Zealand",sub:"NZAKL"}],
-  unitTypes:["Base Unit Or Each","Case","Pallet","Display unit"],
-  brands:["John West","Sirena","Safcol","Greenseas"],
-  productForms:["Can","Pouch","Frozen loin","Fresh","Jar"],
-  packingStyles:["Chunks","Flakes","Steaks","Solid","Shredded"],
-  packingMedia:["Olive Oil","Sunflower oil","Brine","Spring water","Vacuum packed"],
-  treatments:["None","Cooked","Smoked","Retorted","Frozen (IQF)","Glazed"],
-  primaryPack:["Tin can 95 g","Tin can 185 g","Retort pouch 85 g","Glass jar 200 g"],
-  innerPack:["Shrink-wrap 4-pack","Cardboard sleeve","Plastic tray"],
-  outerPack:["Corrugated carton (48 units)","Corrugated carton (24 units)","Wooden pallet","Plastic crate"],
-  countUnits:["Cartons","Cases","Pallets","Cans"],
-  weightUnits:["kg","t","lb"],
-  weightSpecs:[{value:"Net weight 95 g",sub:"drained 66 g"},{value:"Net weight 185 g",sub:"drained 130 g"},{value:"Net carton 4.56 kg"},{value:"Gross carton 6.2 kg"}],
   modes:["Sea","Air","Truck"],
-  partners:["Maersk Logistics","DHL Global Forwarding","Kuehne+Nagel","DB Schenker","CEVA Logistics"],
-  schedules:["Single delivery","Weekly","Fortnightly","Monthly","As per call-off"],
-  paymentTerms:[{value:"Advance payment",sub:"0 days"},{value:"Net 30",sub:"30 days"},{value:"Net 60",sub:"60 days"},{value:"Net 90",sub:"90 days"},{value:"Letter of credit at sight",sub:"LC"},{value:"Cash against documents",sub:"CAD"}],
-  deliveryLocations:["Simplot DC, Brisbane","Simplot cold store, Sydney","Melbourne DC, Laverton","Fremantle cold store"],
-  shipTypes:["Export","Import","Domestic","Re-export"],
-  shipStatus:["No shipment instructions","Booking requested","Booked","In transit","Arrived","Delivered"],
-  couriers:["DHL Express","FedEx","UPS","TNT","Aramex","Blue Dart"]
+  shipModes:["Direct","Transhipment"],
+  countUnits:["Cartons","Cases","Pallets","Cans"],
+  weightUnits:["kg","t","lb"]
 });
-const PAY_DAYS = {"Advance payment":0,"Net 30":30,"Net 60":60,"Net 90":90};
+let PAY_DAYS = {};
+let ALL_INCOTERMS = [];
+const MODE_KEY = {Sea:"sea",Air:"air",Truck:"road"};
+const incotermsFor = mode => { const k = MODE_KEY[mode]; return (k ? ALL_INCOTERMS.filter(t=>t[k]) : ALL_INCOTERMS).map(t=>({value:t.code, sub:t.name})); };
 
-const PRODUCTS = [
-  {gtin:"240993", id:"31032022", name:"Canned Skipjack tuna in Olive oil", unit:"Base Unit Or Each", brand:"John West", form:"Can", style:"Chunks", medium:"Olive Oil", treat:["None"], info:"95 g tin, ring-pull lid", ingredients:"Skipjack tuna (75%), olive oil (24%), salt"},
-  {gtin:"240994", id:"31032023", name:"Canned Yellowfin tuna in Brine",    unit:"Base Unit Or Each", brand:"Sirena",    form:"Can", style:"Steaks", medium:"Brine",     treat:["Cooked"], info:"185 g tin", ingredients:"Yellowfin tuna (80%), water, salt"},
-  {gtin:"240995", id:"31032031", name:"Tuna flakes in Sunflower oil",      unit:"Case",              brand:"Safcol",    form:"Pouch", style:"Flakes", medium:"Sunflower oil", treat:["Retorted"], info:"85 g retort pouch, 24 per case", ingredients:"Skipjack tuna (70%), sunflower oil (29%), salt"},
-  {gtin:"240996", id:"31032040", name:"Frozen Albacore loins",             unit:"Case",              brand:"Greenseas", form:"Frozen loin", style:"Solid", medium:"Vacuum packed", treat:["Frozen (IQF)"], info:"Vacuum packed, 10 kg case", ingredients:"Albacore tuna (100%)"}
-];
+/* ---------- connection ---------- */
+const CFG_KEY = "smartuna-supabase";          /* only the URL + publishable key are remembered */
+let SB = null, USER = null;
+const smt = () => SB.schema("smartuna");
+/* SmarTuna project (built in, so no connect screen) */
+const PROJECT = { url:"https://enbdaajcromxmhgcverp.supabase.co", key:"sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5" };
+const getCfg = () => PROJECT;
+const setCfg = c => { try{ c ? localStorage.setItem(CFG_KEY, JSON.stringify(c)) : localStorage.removeItem(CFG_KEY); }catch(e){} };
 
-function sampleOrder(){
-  const p = PRODUCTS[0];
-  return {
-    details:{refId:"12345", date:todayISO(), orderNo:"MO1", orderDate:"2026-10-20", branch:"Main branch"},
-    parties:{list:[
-      {label:"Buyer",  party:"Simplot Australia PTY LTD", role:"Buyer",  ref:"SIM-PO-88412", gln:"9312345000019"},
-      {label:"Seller", party:"MMP International Co., Ltd.", role:"Seller", ref:"", gln:""}]},
-    raw:{species:"Skipjack tuna", fao:"FAO 71", method:"Purse seine (FAD-free)", vessel:"FV Ocean Star", flag:"Thailand", catchDate:"2026-08-02", landing:"Bangkok, Thailand", cert:"TH-CC-2026-88412"},
-    fp:{search:`${p.gtin} — ${p.name}`, gtin:p.gtin, intId:p.id, name:p.name, unit:p.unit, brand:p.brand, form:p.form, style:p.style, medium:p.medium, treat:[...p.treat], info:"", ingredients:""},
-    pack:{primary:"Tin can 95 g", hasInner:false, inner:"", outer:"Corrugated carton (48 units)"},
-    qty:{qty:"3,200", unit:"Cartons", isWeight:false, shipments:"4", specs:["Net weight 95 g"]},
-    handling:{shelf:"1095", shelfUnit:"days", min:"0", minUnit:"°C", max:"25", maxUnit:"°C", instr:"Store in a cool, dry place. Do not stack more than 8 cartons high."},
-    logistics:{mode:"Sea", load:"20ft Dry", incoterm:"CFR", origin:"Thailand", dep:["Bangkok, Thailand"], arr:["Brisbane, Australia"], partners:["Maersk Logistics"], hs:"1604.14"},
-    delivery:{schedule:"Monthly", period:"", payment:"Net 60", specific:false, location:""},
-    _off:{}
-  };
+/* readable error text from Supabase / PostgREST errors */
+function errText(e){
+  if(!e) return "Unknown error";
+  const m = e.message || String(e);
+  if(/schema must be one of/i.test(m) || e.code==="PGRST106") return "The smartuna schema isn’t exposed to the API. In Supabase: Settings → API → Exposed schemas, add “smartuna”.";
+  if(/Failed to fetch|NetworkError/i.test(m)) return "Can’t reach Supabase. Check the project URL and your internet connection.";
+  if(/Invalid API key|No API key/i.test(m)) return "The publishable key was rejected. Check the key for this project.";
+  if(/permission denied/i.test(m)) return "Permission denied by the database. Make sure you are signed in and the smartuna grants were applied.";
+  return m.replace(/^DUPLICATE:/,"Duplicate of ");
 }
-function sampleShipment(order){
-  return {
-    ref:`${order.details.orderNo}.1`, savedAt:"2026-10-21T09:12:00Z", source:"manual",
-    summary:{type:"Export", status:"In transit", mode:"Sea", from:"Bangkok, Thailand", to:"Brisbane, Australia", depDate:"2026-10-18", qty:800, unit:order.qty.unit, custOrder:"SIM-PO-88412", container:"MSKU7781203", seal:"SL0097002", bl:"MAEU2610018", lines:1},
-    state:null
-  };
-}
-function sampleOrders(){
-  const a = sampleOrder();
-  const b = sampleOrder(), p2 = PRODUCTS[1];
-  Object.assign(b.details, {refId:"12346", orderNo:"MO2", orderDate:"2026-10-09"});
-  b.parties.list[1].party = "Thai Union Group PCL"; b.parties.list[0].ref = "SIM-PO-88530";
-  Object.assign(b.fp, {search:`${p2.gtin} — ${p2.name}`, gtin:p2.gtin, intId:p2.id, name:p2.name, unit:p2.unit, brand:p2.brand, form:p2.form, style:p2.style, medium:p2.medium, treat:[...p2.treat]});
-  Object.assign(b.raw, {species:"Yellowfin tuna", fao:"FAO 57", vessel:"FV Andaman Pearl"});
-  Object.assign(b.qty, {qty:"2,000", shipments:"3"}); b.pack.primary = "Tin can 185 g";
-  Object.assign(b.logistics, {dep:["Laem Chabang, Thailand"], arr:["Sydney, Australia"], incoterm:"CIF"});
-  b.delivery.period = "Nov 2026 – Jan 2027";
-  const c = sampleOrder(), p3 = PRODUCTS[2];
-  Object.assign(c.details, {refId:"12347", orderNo:"MO3", orderDate:"2026-10-15", branch:"Port Klang branch"});
-  c.parties.list[0].ref = "SIM-PO-88611";
-  Object.assign(c.fp, {search:`${p3.gtin} — ${p3.name}`, gtin:p3.gtin, intId:p3.id, name:p3.name, unit:p3.unit, brand:p3.brand, form:p3.form, style:p3.style, medium:p3.medium, treat:[...p3.treat]});
-  Object.assign(c.qty, {qty:"1,500", unit:"Cases", shipments:"2"}); c.pack.primary = "Retort pouch 85 g";
-  Object.assign(c.logistics, {dep:["Port Klang, Malaysia"], arr:["Melbourne, Australia"], origin:"Malaysia"});
-  c.delivery.period = "Dec 2026";
-  return [a,b,c];
-}
-function blankOrder(refId){
-  return {
-    details:{refId, date:todayISO(), orderNo:"", orderDate:"", branch:"Main branch"},
-    parties:{list:[{label:"Buyer",party:"",role:"Buyer",ref:"",gln:""},{label:"Seller",party:"",role:"Seller",ref:"",gln:""}]},
-    raw:{species:"",fao:"",method:"",vessel:"",flag:"",catchDate:"",landing:"",cert:""},
-    fp:{search:"",gtin:"",intId:"",name:"",unit:"",brand:"",form:"",style:"",medium:"",treat:[],info:"",ingredients:""},
-    pack:{primary:"",hasInner:false,inner:"",outer:""},
-    qty:{qty:"",unit:"",isWeight:false,shipments:"",specs:[]},
-    handling:{shelf:"",shelfUnit:"days",min:"",minUnit:"°C",max:"",maxUnit:"°C",instr:""},
-    logistics:{mode:"",load:"",incoterm:"",origin:"",dep:[],arr:[],partners:[],hs:""},
-    delivery:{schedule:"",period:"",payment:"",specific:false,location:""},
-    _off:{}
-  };
+async function q(promise){ const {data, error} = await promise; if(error) throw error; return data; }
+/* page through tables bigger than the 1,000-row API limit */
+async function fetchAll(build, size=1000){
+  let out = [], from = 0;
+  for(;;){ const rows = await q(build().range(from, from+size-1)); out = out.concat(rows); if(rows.length < size) return out; from += size; }
 }
 
-/* storage: { orders:{refId:order}, shipments:{refId:[shipment...]}, seeded:true } */
-const DB_KEY = "smartuna-forms-v3";
-function db(){ return store.get(DB_KEY, {orders:{}, shipments:{}}); }
-function saveDb(d){ return store.set(DB_KEY, d); }
-let MEM_DB = null;   /* fallback when browser storage is blocked */
-function ensureSeed(){
-  const d = db();
-  if(d.seeded) return d;
-  sampleOrders().forEach(o=>{ if(!d.orders[o.details.refId]) d.orders[o.details.refId] = o; d.shipments[o.details.refId] = d.shipments[o.details.refId] || []; });
-  if(!d.shipments["12345"].length) d.shipments["12345"].push(sampleShipment(d.orders["12345"]));
-  d.seeded = true; saveDb(d); return d;
+/* ---------- boot screens ---------- */
+function bootScreen(html){
+  let el = $("#boot");
+  if(!el){ el = document.createElement("div"); el.id = "boot"; el.className = "boot"; document.body.appendChild(el); }
+  el.innerHTML = `<div class="boot-card"><div class="boot-brand"><span class="brand-mark">${BRAND_SVG}</span><b>SmarTuna</b></div>${html}</div>`;
+  el.hidden = false; document.body.classList.add("booting");
+  return el;
 }
-function loadOrder(refId){
-  const d = ensureSeed();
-  return d.orders[refId] || (refId ? blankOrder(refId) : d.orders["12345"]);
+function bootDone(){ const el = $("#boot"); if(el) el.hidden = true; document.body.classList.remove("booting"); }
+function connectForm(msg){
+  const c = getCfg() || {};
+  const el = bootScreen(`<h2>Connect to Supabase</h2><p>Enter your project’s API details (Supabase → Settings → API). They’re remembered in this browser only.</p>
+    ${msg?`<p class="boot-err" role="alert">${esc(msg)}</p>`:""}
+    <form id="cfgForm"><label>Project URL<input class="ctl" name="url" type="url" required placeholder="https://xxxx.supabase.co" value="${esc(c.url||"")}"></label>
+    <label>Publishable (anon) key<input class="ctl" name="key" required placeholder="eyJ… or sb_publishable_…" value="${esc(c.key||"")}"></label>
+    <button class="btn primary" type="submit">Connect</button></form>`);
+  return new Promise(res=>{ el.querySelector("form").addEventListener("submit", e=>{ e.preventDefault(); const f = new FormData(e.target);
+    const cfg = {url:String(f.get("url")).trim().replace(/\/+$/,""), key:String(f.get("key")).trim()}; setCfg(cfg); res(cfg); }); });
 }
-function nextOrderRef(){ const d = ensureSeed(); return String(Object.keys(d.orders).reduce((m,k)=>Math.max(m, parseInt(k,10)||0), 12344) + 1); }
-/* Shipment reference = master number + "." + running number, e.g. MO1.1, MO1.2 */
-const masterNo = o => o.details.orderNo || o.details.refId;
-const shipSeq = s => parseInt(String(s.ref).split(".").pop(),10) || 0;
-function nextShipRefFor(o, extra=0){ const n = shipmentsOf(o.details.refId).reduce((m,s)=>Math.max(m, shipSeq(s)), 0); return `${masterNo(o)}.${n+1+extra}`; }
-/* Shipments are "mixed" when Customer order no + Container no + Seal number are all the same */
+function signInForm(msg){
+  const el = bootScreen(`<h2>Sign in</h2><p>Use your SmarTuna (Supabase) account.</p>${msg?`<p class="boot-err" role="alert">${esc(msg)}</p>`:""}
+    <form id="signForm"><label>Email<input class="ctl" name="email" type="email" autocomplete="username" required></label>
+    <label>Password<input class="ctl" name="password" type="password" autocomplete="current-password" required></label>
+    <button class="btn primary" type="submit">Sign in</button></form>
+    <button class="linkbtn" type="button" id="changeConn">Use a different Supabase project</button>`);
+  el.querySelector("#changeConn").onclick = ()=>{ setCfg(null); location.reload(); };
+  return new Promise(res=>{ el.querySelector("form").addEventListener("submit", async e=>{ e.preventDefault();
+    const f = new FormData(e.target), btn = e.target.querySelector("button"); btn.disabled = true; btn.textContent = "Signing in…";
+    let r; try{ r = await SB.auth.signInWithPassword({email:String(f.get("email")).trim(), password:String(f.get("password"))}); }
+    catch(err){ r = {error:err}; }
+    if(r.error){ res(signInForm(/fetch/i.test(r.error.message||"") ? errText(r.error) : r.error.message)); return; }
+    res(r.data.session); }); });
+}
+async function boot(start){
+  $("#shellTop").outerHTML = shellTop(); initTheme();
+  if(typeof supabase==="undefined"){ bootScreen(`<h2>Couldn’t load</h2><p class="boot-err">The Supabase library didn’t load. Check your internet connection and reload.</p>`); return; }
+  let cfg = getCfg() || await connectForm();
+  for(;;){
+    try{ SB = supabase.createClient(cfg.url, cfg.key); break; }
+    catch(e){ cfg = await connectForm("That project URL or key isn’t valid."); }
+  }
+  let session = (await SB.auth.getSession()).data.session;
+  if(!session) session = await signInForm();
+  USER = session.user;
+  $("#avatar").textContent = (USER.email||"?").slice(0,2).toUpperCase(); $("#avatar").title = `Signed in as ${USER.email}`;
+  bootScreen(`<div class="boot-load"><span class="spin"></span>Loading…</div>`);
+  try{ await loadRefs(); await start(); bootDone(); }
+  catch(e){
+    console.error(e);
+    const t = errText(e);
+    bootScreen(`<h2>Something went wrong</h2><p class="boot-err">${esc(t)}</p><button class="btn" onclick="location.reload()">Try again</button>`);
+  }
+}
+
+/* ---------- reference lists ---------- */
+const REFS = { portByLabel:new Map(), portById:new Map(), ports:[], countryByName:new Map(), countryById:new Map(),
+               productByLabel:new Map(), productById:new Map(), orgByName:new Map() };
+const portLabel = p => [p.main_port_name, p.country].filter(Boolean).join(", ") + (p.un_locode ? ` (${p.un_locode})` : "");
+const productLabel = p => p ? `${p.gtin ? p.gtin+" — " : ""}${p.name||""}` : "";
+async function loadRefs(){
+  const [lookups, incos, terms, orgs, countries, ports, products] = await Promise.all([
+    fetchAll(()=>smt().from("lookup_values").select("list_key,value,sub,sort_order").eq("is_active", true).order("list_key").order("sort_order").order("value")),
+    q(smt().from("incoterms").select("*")),
+    q(smt().from("payment_terms").select("*")),
+    fetchAll(()=>smt().from("organizations").select("id,name").order("name")),
+    fetchAll(()=>SB.from("countries").select("id,country").order("country")),
+    fetchAll(()=>SB.from("ports").select("id,main_port_name,alternate_port_name,un_locode,country").order("main_port_name").order("id")),
+    fetchAll(()=>smt().from("v_products").select("id,gtin,name,internal_id").order("name").order("id"))
+  ]);
+  lookups.forEach(l=>{ (OPT[l.list_key] = OPT[l.list_key] || []).push(l.sub ? {value:l.value, sub:l.sub} : l.value); });
+  ["branches","species","catchMethods","certifications","receiptForms","fao","primaryPack","innerPack","outerPack","weightSpecs",
+   "schedules","partners","deliveryLocations","shipTypes","shipStatus","couriers","shippingLines","airlines"].forEach(k=>OPT[k] = OPT[k] || []);
+  const order = ["EXW","FCA","FAS","FOB","CFR","CIF","CPT","CIP","DAP","DPU","DDP"];
+  const rank = c => { const i = order.indexOf(c); return i<0 ? 99 : i; };
+  ALL_INCOTERMS = incos.sort((a,b)=>rank(a.code)-rank(b.code));
+  OPT.paymentTerms = terms.map(t=>({value:t.name, sub: t.days!=null ? `${t.days} days` : ""}));
+  PAY_DAYS = Object.fromEntries(terms.filter(t=>t.days!=null).map(t=>[t.name, t.days]));
+  OPT.orgs = orgs.map(o=>o.name); orgs.forEach(o=>REFS.orgByName.set(o.name.toLowerCase(), o.id));
+  OPT.countries = countries.map(c=>c.country); countries.forEach(c=>{ REFS.countryByName.set(c.country, c.id); REFS.countryById.set(c.id, c.country); });
+  REFS.ports = ports;
+  OPT.ports = ports.map(p=>{ const l = portLabel(p); REFS.portByLabel.set(l, p.id); REFS.portById.set(p.id, l); return p.alternate_port_name ? {value:l, sub:p.alternate_port_name} : l; });
+  OPT.products = products.map(p=>{ const l = productLabel(p); REFS.productByLabel.set(l, p); REFS.productById.set(p.id, p); return p.internal_id ? {value:l, sub:p.internal_id} : l; });
+}
+/* "+" buttons: save the new option so everyone sees it */
+HOOKS.onAddOption = async (src, v) => {
+  try{
+    if(src==="orgs"){ const row = await q(smt().from("organizations").insert({name:v}).select("id,name").single()); REFS.orgByName.set(row.name.toLowerCase(), row.id); }
+    else await q(smt().from("lookup_values").insert({list_key:src, value:v}));
+  }catch(e){ if(!/duplicate key/i.test(e.message||"")) toast(`Couldn’t save “${v}”: ${errText(e)}`); }
+};
+
+/* ---------- shipment helpers ---------- */
 const U = v => String(v??"").trim().toUpperCase();
 const mixKey = (po, cont, seal) => (U(po) && U(cont) && U(seal)) ? `${U(po)}|${U(cont)}|${U(seal)}` : "";
-const mixKeyOf = s => mixKey(s.summary?.custOrder, s.summary?.container, s.summary?.seal);
-function allShipments(){ const d = db(); return Object.entries(d.shipments).flatMap(([o,l])=>l.map(s=>({...s, orderRef:o, orderNo:(d.orders[o]||{details:{}}).details.orderNo||o, product:(d.orders[o]||{fp:{}}).fp.name||""}))); }
-function shipmentsOf(refId){ return (db().shipments[refId]||[]); }
-const qtyOf = sh => num(sh.summary?.qty);
 const statusClass = s => ({"In transit":"blue","Booked":"blue","Booking requested":"amber","Arrived":"green","Delivered":"green"}[s]||"");
+const shortPort = l => String(l||"—").split(",")[0];
 
-/* shared shell */
+/* ---------- shell ---------- */
 const BRAND_SVG = `<svg viewBox="0 0 24 24"><path d="M3 13c3-5 9-7 14-4l4-3v12l-4-3c-5 3-11 1-14-2z" fill="#fff"/><circle cx="15" cy="11" r="1.2" fill="#2059a8"/></svg>`;
 function shellTop(){
   return `<header class="top-band"><div class="tb-inner">
-    <a class="brand" href="interactive_dashboard.html"><span class="brand-mark" aria-hidden="true">${BRAND_SVG}</span><span class="brand-name">SmarTuna</span><span class="brand-sub">Supply Chain Portal</span></a>
+    <a class="brand" href="orders.html"><span class="brand-mark" aria-hidden="true">${BRAND_SVG}</span><span class="brand-name">SmarTuna</span><span class="brand-sub">Supply Chain Portal</span></a>
     <div class="tb-actions">
       <button class="theme-toggle" id="themeToggle" type="button"><span class="tt-track"><span class="tt-thumb"><svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg><svg class="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></span></span><span class="tt-label">Light</span></button>
-      <div class="avatar" title="Signed in as Admin">AD</div>
+      <div class="acct"><button type="button" class="avatar" id="avatar" aria-haspopup="true" aria-expanded="false" title="Account">··</button>
+        <div class="acct-menu" id="acctMenu" hidden><button type="button" data-action="signOut">Sign out</button></div></div>
     </div></div></header>`;
 }
-
-const ALL_INCOTERMS = [
-  {code:"EXW",name:"Ex Works",sea:true,air:true,road:true},
-  {code:"FCA",name:"Free Carrier",sea:true,air:true,road:true},
-  {code:"FAS",name:"Free Alongside Ship",sea:true,air:false,road:false},
-  {code:"FOB",name:"Free on Board",sea:true,air:false,road:false},
-  {code:"CFR",name:"Cost and Freight",sea:true,air:false,road:false},
-  {code:"CIF",name:"Cost, Insurance and Freight",sea:true,air:false,road:false},
-  {code:"CPT",name:"Carriage Paid To",sea:true,air:true,road:true},
-  {code:"CIP",name:"Carriage and Insurance Paid To",sea:true,air:true,road:true},
-  {code:"DAP",name:"Delivered at Place",sea:true,air:true,road:true},
-  {code:"DPU",name:"Delivered at Place Unloaded",sea:true,air:true,road:true},
-  {code:"DDP",name:"Delivered Duty Paid",sea:true,air:true,road:true}
-];
-const MODE_KEY = {Sea:"sea",Air:"air",Truck:"road"};
-const incotermsFor = mode => { const k = MODE_KEY[mode]; return (k ? ALL_INCOTERMS.filter(t=>t[k]) : ALL_INCOTERMS).map(t=>({value:t.code, sub:t.name})); };
+document.addEventListener("click", e=>{
+  const a = e.target.closest("#avatar"), m = $("#acctMenu");
+  if(a){ m.hidden = !m.hidden; a.setAttribute("aria-expanded", !m.hidden); return; }
+  if(m && !e.target.closest("#acctMenu")) m.hidden = true;
+});
+Object.assign(ACTIONS, {
+  async signOut(){ if(SB) await SB.auth.signOut(); location.reload(); },
+});
 
 /* =====================================================================
    orders.html — Master orders list + Excel import of child shipments
    ===================================================================== */
-ensureSeed();
 const UI = { q:"", open:new Set(), flash:new Set(), last:null };
+/* data from Supabase */
+const DATA = { masters:[], ships:[], mports:[] };
+async function loadData(){
+  const [masters, ships, mports] = await Promise.all([
+    fetchAll(()=>smt().from("v_master_list").select("*").order("ref_id")),
+    fetchAll(()=>smt().from("v_shipment_list").select("*").order("master_no").order("shipment_no")),
+    fetchAll(()=>smt().from("master_ports").select("master_id,direction,port_id,sort_order").order("sort_order"))
+  ]);
+  Object.assign(DATA, {masters, ships, mports});
+}
+const shipsOf = m => DATA.ships.filter(s=>s.master_id===m.id);
+const portsOf = (m, dir) => DATA.mports.filter(x=>x.master_id===m.id && x.direction===dir).map(x=>x.port_id);
 
 /* ---------- template columns ---------- */
 const COLS = [
@@ -1090,22 +1161,19 @@ function toISO(v){
 }
 const txt = v => v==null ? "" : (typeof v==="number" ? String(Number.isInteger(v)?v:+v.toFixed(4)) : String(v).trim());
 function toMode(v){ const s = txt(v).toLowerCase(); if(!s) return "Sea"; if(/sea|ocean|vessel|fcl|lcl/.test(s)) return "Sea"; if(/air|flight/.test(s)) return "Air"; if(/truck|road|land/.test(s)) return "Truck"; return null; }
-function toPort(v){
-  const s = txt(v).toLowerCase(); if(!s) return {value:""};
-  const hit = OPT.ports.find(p=>p.value.toLowerCase()===s || p.value.toLowerCase().startsWith(s+",") || p.value.split(",")[0].toLowerCase()===s || (p.sub||"").toLowerCase()===s);
-  return hit ? {value:hit.value} : {value:txt(v), unknown:true};
+/* same rule as smartuna.find_ports(): UN/LOCODE, main or alternate name, or "name, country" */
+function findPorts(v){
+  const s = txt(v).toLowerCase(); if(!s) return [];
+  return REFS.ports.filter(p=>(p.un_locode||"").toLowerCase()===s || (p.main_port_name||"").toLowerCase()===s
+    || (p.alternate_port_name||"").toLowerCase()===s || [p.main_port_name,p.country].filter(Boolean).join(", ").toLowerCase()===s);
 }
 const sameText = (a,b) => txt(a).toLowerCase()===txt(b).toLowerCase();
 
-/* ---------- order lookup ---------- */
+/* ---------- master lookup ---------- */
 function findOrder(master){
   const m = txt(master).toLowerCase(); if(!m) return null;
-  const d = db();
-  return Object.values(d.orders).find(o=>txt(o.details.orderNo).toLowerCase()===m || txt(o.details.refId).toLowerCase()===m) || null;
+  return DATA.masters.find(o=>txt(o.master_no).toLowerCase()===m || String(o.ref_id)===m) || null;
 }
-const sellerOf = o => (o.parties.list.find(p=>p.role==="Seller")||{}).party || "";
-const buyerOf  = o => (o.parties.list.find(p=>p.role==="Buyer")||{}).party || "";
-const productLabel = o => o.fp.gtin ? `${o.fp.gtin} — ${o.fp.name}` : (o.fp.name||"");
 
 /* ---------- parse workbook ---------- */
 function parseWorkbook(buf){
@@ -1120,8 +1188,8 @@ function parseWorkbook(buf){
     const rows = [];
     aoa.slice(hi+1).forEach((r,k)=>{
       if(!r.some(c=>txt(c)!=="")) return;
-      const o = {_row: hi+2+k, _raw:r};
-      COLS.forEach(c=>{ o[c.key] = map[c.key]===undefined ? "" : r[map[c.key]]; });
+      const o = {_row: hi+2+k, _raw:r, _orig:{}};
+      COLS.forEach(c=>{ o[c.key] = map[c.key]===undefined ? "" : r[map[c.key]]; o._orig[c.key] = o[c.key]; });
       rows.push(o);
     });
     return {sheet:name, headRow:aoa[hi], rows, missing};
@@ -1166,8 +1234,21 @@ function analyse(parsed){
     if(txt(r.master)){ r.order = findOrder(r.master); if(!r.order) addErr(r, "Master Ref no", `“${txt(r.master)}” doesn't match any master order`); }
     if(r.order && txt(r.product)){
       /* one product per master order: GTIN decides when both sides have one, otherwise the name */
-      const oG = txt(r.order.fp.gtin), ok = (r.gtin && oG) ? r.gtin===oG : sameText(r.product, r.order.fp.name);
-      if(!ok) addErr(r, "Product", `“${r.gtin?r.gtin+" — ":""}${txt(r.product)}” isn’t the product of ${r.order.details.orderNo} (${oG?oG+" — ":""}${r.order.fp.name||"no product set"}). Each master order covers one product.`);
+      const oG = txt(r.order.gtin), ok = (r.gtin && oG) ? r.gtin===oG : sameText(r.product, r.order.product);
+      if(!ok) addErr(r, "Product", `“${r.gtin?r.gtin+" — ":""}${txt(r.product)}” isn’t the product of ${r.order.master_no} (${oG?oG+" — ":""}${r.order.product||"no product set"}). Each master order covers one product.`);
+    }
+    /* destination -> one port in the Port module (the master's arrival port wins a tie) */
+    if(txt(r.dest)){
+      const hits = findPorts(r.dest);
+      const mine = r.order ? hits.find(p=>portsOf(r.order,"arrival").includes(p.id)) : null;
+      r.arrPort = mine || (hits.length===1 ? hits[0] : null);
+      if(!r.arrPort) addErr(r, "Destination", hits.length ? `“${txt(r.dest)}” matches ${hits.length} ports; use the UN/LOCODE` : `“${txt(r.dest)}” isn’t in the Ports module (use the port name or UN/LOCODE)`);
+    }
+    /* departure = first departure port of the master on the container's first row */
+    if(r.order){
+      const lead = (r._head && findOrder(r._head.master)) || r.order;
+      r.depPortId = portsOf(lead,"departure")[0] || portsOf(r.order,"departure")[0] || null;
+      if(!r.depPortId) addErr(r, "Master Ref no", `${r.order.master_no} has no departure port set`);
     }
     const key = [txt(r.master), txt(r.po), txt(r.container), txt(r.seal)].map(s=>s.toUpperCase()).join("|");
     if(!groups.has(key)) groups.set(key, {key, rows:[]});
@@ -1184,129 +1265,79 @@ function analyse(parsed){
       const vals = [...new Set(g.rows.map(r=>txt(r[k]).toLowerCase()))];
       if(vals.length>1) g.warn.push(`Rows ${g.rows.map(r=>r._row).join(", ")} have different ${COLS.find(c=>c.key===(k==="modeN"?"mode":k))?.head.replace(/\*/g,"").trim()} values; the first one is used.`);
     });
-    const dupe = shipmentsOf(o.details.refId).find(s=>mixKeyOf(s)===g.mix);
-    if(dupe){ g.status = "dup"; g.dupRef = dupe.ref; return g; }
-    if(sellerOf(o) && !sameText(f.supplier, sellerOf(o))) g.warn.push(`Supplier “${txt(f.supplier)}” differs from the order’s seller (${sellerOf(o)}).`);
+    const dupe = shipsOf(o).find(s=>mixKey(s.customer_order_no, s.container_no, s.seal_no)===g.mix);
+    if(dupe){ g.status = "dup"; g.dupRef = dupe.reference; return g; }
+    if(o.seller && !sameText(f.supplier, o.seller)) g.warn.push(`Supplier “${txt(f.supplier)}” differs from the order’s seller (${o.seller}).`);
     g.rows.forEach(r=>{
-      if(r.gtin && txt(o.fp.gtin) && r.gtin===txt(o.fp.gtin) && !sameText(r.product, o.fp.name)) g.warn.push(`Row ${r._row}: GTIN matches but the name “${txt(r.product)}” differs from “${o.fp.name}”.`);
+      if(r.gtin && txt(o.gtin) && r.gtin===txt(o.gtin) && !sameText(r.product, o.product)) g.warn.push(`Row ${r._row}: GTIN matches but the name “${txt(r.product)}” differs from “${o.product}”.`);
       if(!r.units) g.warn.push(`Row ${r._row}: Units is empty, so the line quantity is 0.`);
     });
-    g.port = toPort(f.dest); if(g.port.unknown) g.warn.push(`Destination “${txt(f.dest)}” isn’t in the port list; kept as typed.`);
+    g.arrLabel = f.arrPort ? portLabel(f.arrPort) : ""; g.depLabel = REFS.portById.get(f.depPortId) || "";
     g.status = "new";
     return g;
   });
 
   /* quantity check per order, across the new shipments */
   const byOrder = {};
-  out.filter(g=>g.status==="new").forEach(g=>{ (byOrder[g.order.details.refId] = byOrder[g.order.details.refId] || []).push(g); });
-  Object.entries(byOrder).forEach(([ref,gs])=>{
-    const o = gs[0].order, Q = num(o.qty.qty), used = shipmentsOf(ref).reduce((a,s)=>a+qtyOf(s),0), add = gs.reduce((a,g)=>a+g.units,0);
-    if(Q && used+add > Q) gs[gs.length-1].warn.push(`${o.details.orderNo}: this import takes the order to ${fmtN(used+add)} of ${fmtN(Q)} ${o.qty.unit||""} (over by ${fmtN(used+add-Q)}).`);
+  out.filter(g=>g.status==="new").forEach(g=>{ (byOrder[g.order.id] = byOrder[g.order.id] || []).push(g); });
+  Object.values(byOrder).forEach(gs=>{
+    const o = gs[0].order, Q = num(o.order_quantity), used = num(o.allocated), add = gs.reduce((a,g)=>a+g.units,0);
+    if(Q && used+add > Q) gs[gs.length-1].warn.push(`${o.master_no}: this import takes the order to ${fmtN(used+add)} of ${fmtN(Q)} ${o.quantity_unit||""} (over by ${fmtN(used+add-Q)}).`);
   });
-  /* reference numbers for the new shipments: master number + "." + running number (MO1.1, MO1.2 …) */
+  /* expected references (the database assigns the real ones): MO1.1, MO1.2 … */
   const counters = {};
   out.filter(g=>g.status==="new").forEach(g=>{
-    const ref = g.order.details.refId;
-    if(counters[ref]===undefined) counters[ref] = shipmentsOf(ref).reduce((m,s)=>Math.max(m, shipSeq(s)), 0);
-    g.plannedRef = `${masterNo(g.order)}.${++counters[ref]}`;
+    const id = g.order.id;
+    if(counters[id]===undefined) counters[id] = shipsOf(g.order).reduce((m,s)=>Math.max(m, s.shipment_no||0), 0);
+    g.plannedRef = `${g.order.master_no}.${++counters[id]}`;
   });
   /* Mixed with: same customer order no + container no + seal no, on any master (this file or already saved) */
   const pool = {};
-  allShipments().forEach(s=>{ const k = mixKeyOf(s); if(k) (pool[k] = pool[k] || []).push({ref:s.ref, orderRef:s.orderRef, orderNo:s.orderNo, product:s.product, from:s.summary.from||"", saved:true}); });
-  out.filter(g=>g.status==="new").forEach(g=>{ (pool[g.mix] = pool[g.mix] || []).push({ref:g.plannedRef, orderRef:g.order.details.refId, orderNo:g.order.details.orderNo, product:g.order.fp.name, saved:false}); });
-  out.filter(g=>g.status==="new").forEach(g=>{
-    g.shared = (pool[g.mix]||[]).filter(x=>x.ref!==g.plannedRef);
-    const f = g.rows[0], lead = f._head && f._head.order, savedMate = g.shared.find(x=>x.saved && x.from);
-    g.depPort = (lead && lead.logistics.dep[0]) || (savedMate && savedMate.from) || g.order.logistics.dep[0] || "";
-  });
+  DATA.ships.forEach(s=>{ const k = mixKey(s.customer_order_no, s.container_no, s.seal_no); if(k) (pool[k] = pool[k] || []).push({ref:s.reference, product:(DATA.masters.find(m=>m.id===s.master_id)||{}).product||""}); });
+  out.filter(g=>g.status==="new").forEach(g=>{ (pool[g.mix] = pool[g.mix] || []).push({ref:g.plannedRef, product:g.order.product}); });
+  out.filter(g=>g.status==="new").forEach(g=>{ g.shared = (pool[g.mix]||[]).filter(x=>x.ref!==g.plannedRef); });
   out.forEach(g=>warnings.push(...g.warn.map(w=>({ref:g.container, msg:w}))));
   return {groups:out, errors, warnings, rows:parsed.rows.length};
 }
 
-/* ---------- build child shipment from a group ---------- */
-function nextShipRef(orderRef, list){
-  const n = list.reduce((m,s)=>Math.max(m, parseInt(String(s.ref).split(".").pop(),10)||0), 0);
-  return `${orderRef}.${String(n+1).padStart(4,"0")}`;
-}
-function buildShipment(g, ref, fileName){
-  const o = g.order, f = g.rows[0];
-  const buyer = o.parties.list.find(p=>p.role==="Buyer") || {};
-  const mother = txt(f.mother), feeder = txt(f.feeder);
-  const vessels = mother && !sameText(mother, feeder) ? [feeder, mother] : [feeder];
-  const status = f.etd && f.etd <= todayISO() ? "In transit" : "Booked";
-  const days = PAY_DAYS[o.delivery.payment];
-  const due = f.invDate && days!=null ? addDays(f.invDate, days) : "";
-  const unit = o.qty.unit || "units";
-  const lines = g.rows.map(r=>{
-    const mine = (r.gtin && r.gtin===txt(o.fp.gtin)) || sameText(r.product, o.fp.name);
-    return {product: mine ? productLabel(o) : `${r.gtin?r.gtin+" — ":""}${txt(r.product)}`, qty: fmtN(r.units), rawId:txt(r.rawId), batch:"", prodDate:r.produced||"", bestBefore:r.bestBefore||"", net:"", netUnit:"kg", item:txt(r.item)};
-  });
-  const mode = f.modeN;
-  const state = {
-    ref,
-    details:{type:"", status, custOrder:txt(f.po), orderDate:o.details.orderDate||"", mixed:[]},
-    parties:{who:{party:txt(f.supplier), role:"Seller", ref:"", gln:""}, to:{party:buyer.party||"", role:"Buyer", ref:buyer.ref||"", gln:buyer.gln||""}},
-    lg:{mode, loadBasis:{Sea:"FCL",Air:"ULD",Truck:"FTL"}[mode], loadType: mode==="Sea" ? (o.logistics.load||"") : "", incoterm:o.logistics.incoterm||"",
-        sea:{shippingLine:txt(f.line), vessels, shipMode: vessels.length>1?"Transhipment":"Direct", container:{containerNo:g.container, sealNo:txt(f.seal)}, traceableObject:null, blNo:g.bl, blDate:f.blDate||"", transhipmentPorts:[""]},
-        air:{airline:"",flights:[""],shipMode:"Direct",awbNo:"",awbDate:"",transhipmentAirports:[""]},
-        truck:{trucks:[""],shipMode:"Direct",transfers:[""]}},
-    lines,
-    dep:{port:g.depPort ?? (o.logistics.dep[0]||""), planned:f.etd||"", scheduled:"", actual:""},
-    arr:{port:g.port.value, planned:f.eta||"", scheduled:"", actual:""},
-    com:{invNo:txt(f.invNo), invDate:f.invDate||"", due, dueManual:false},
-    courier:{company:"", tracking:"", dispatch:""},
-    dest:{date:""}, pay:{term:o.delivery.payment||""},
-    notes:{text:`Imported from ${fileName} (rows ${g.rows.map(r=>r._row).join(", ")}) on ${fmtDate(todayISO())}.`},
-    _off:{}
-  };
-  return {ref, savedAt:new Date().toISOString(), source:"import",
-    summary:{type:"", status, mode, from:state.dep.port, to:state.arr.port, depDate:state.dep.planned, qty:g.units, unit, custOrder:g.po, container:g.container, seal:g.seal, bl:g.bl, lines:lines.length},
-    state};
-}
-
 /* ---------- list rendering ---------- */
-function allOrders(){ return Object.values(db().orders).sort((a,b)=>String(a.details.refId).localeCompare(String(b.details.refId))); }
 function render(){
-  const d = db(), orders = allOrders();
-  const q = UI.q.toLowerCase().trim();
-  const match = o => !q || [o.details.orderNo, o.details.refId, sellerOf(o), buyerOf(o), o.fp.name, ...(d.shipments[o.details.refId]||[]).flatMap(s=>[s.ref, s.summary.container, s.summary.bl, s.summary.custOrder, s.summary.seal])]
-    .some(v=>txt(v).toLowerCase().includes(q));
+  const orders = DATA.masters;
+  const qq = UI.q.toLowerCase().trim();
+  const shipHit = s => [s.reference, s.container_no, s.bl_no, s.customer_order_no, s.seal_no].some(v=>txt(v).toLowerCase().includes(qq));
+  const match = o => !qq || [o.master_no, o.ref_id, o.seller, o.buyer, o.product, o.gtin].some(v=>txt(v).toLowerCase().includes(qq)) || shipsOf(o).some(shipHit);
   const shown = orders.filter(match);
-  const allShips = orders.flatMap(o=>d.shipments[o.details.refId]||[]);
-  const planned = orders.reduce((a,o)=>a+num(o.qty.shipments),0);
-  const imported = allShips.filter(s=>s.source==="import").length;
+  const planned = orders.reduce((a,o)=>a+num(o.planned_shipments),0);
+  const imported = DATA.ships.filter(s=>s.source==="import").length;
   $("#stats").innerHTML = `
     <div class="stat"><span>Master orders</span><b>${orders.length}</b></div>
-    <div class="stat"><span>Child shipments</span><b>${allShips.length}<small>of ${planned} planned</small></b></div>
+    <div class="stat"><span>Child shipments</span><b>${DATA.ships.length}<small>of ${planned} planned</small></b></div>
     <div class="stat"><span>Imported from Excel</span><b>${imported}</b></div>
     <div class="stat"><span>Last import</span><b style="font-size:14px">${UI.last ? esc(UI.last.file) : "—"}</b></div>`;
-  const boxCount = {};
-  orders.forEach(o=>(d.shipments[o.details.refId]||[]).forEach(s=>{ const k = mixKeyOf(s); if(k) (boxCount[k] = boxCount[k] || []).push({ref:s.ref, product:o.fp.name}); }));
   const rows = shown.map(o=>{
-    const ref = o.details.refId, ships = d.shipments[ref]||[], Q = num(o.qty.qty), alloc = ships.reduce((a,s)=>a+qtyOf(s),0);
-    const pct = Q ? Math.round(alloc/Q*100) : 0, open = UI.open.has(ref) || (q && ships.some(s=>[s.ref,s.summary.container,s.summary.bl,s.summary.custOrder,s.summary.seal].some(v=>txt(v).toLowerCase().includes(q))));
-    const kids = ships.length ? ships.map(s=>{ const m = s.summary;
-      return `<tr class="kid ${UI.flash.has(s.ref)?"flash":""}" data-open-ship="${esc(ref)}|${esc(s.ref)}" tabindex="0">
-        <td></td><td class="ref">${esc(s.ref)}${s.source==="import"?`<span class="tag-src">Excel</span>`:""}</td>
-        <td>${esc(m.custOrder||"—")}${(()=>{ const others = (boxCount[mixKeyOf(s)]||[]).filter(x=>x.ref!==s.ref); return others.length?` <span class="tag-share" title="Mixed with ${esc(others.map(x=>`${x.ref} (${x.product})`).join(", "))}">mixed with ${others.map(x=>esc(x.ref)).join(", ")}</span>`:""; })()}<br><span class="muted-s">${esc(m.container||"—")} · ${esc(m.seal||"—")}</span></td>
-        <td>${esc((m.from||"—").split(",")[0])} → ${esc((m.to||"—").split(",")[0])}</td>
-        <td>${m.depDate?fmtDate(m.depDate):"—"}</td><td class="num">${fmtN(m.qty)} ${esc(m.unit||"")}<br><span class="muted-s">${m.lines||1} line${(m.lines||1)>1?"s":""}</span></td>
-        <td colspan="2"><span class="st ${statusClass(m.status)}">${esc(m.status||"Draft")}</span></td></tr>`; }).join("")
-      : `<tr class="kid empty"><td></td><td colspan="7">No shipments yet. Import an Excel file or add one from the order.</td></tr>`;
+    const ships = shipsOf(o), Q = num(o.order_quantity), pct = Math.round(num(o.allocated_pct));
+    const open = UI.open.has(o.id) || (qq && ships.some(shipHit));
+    const kids = ships.length ? ships.map(s=>`<tr class="kid ${UI.flash.has(s.reference)?"flash":""}" data-open-ship="${o.ref_id}|${esc(s.id)}" tabindex="0">
+        <td></td><td class="ref">${esc(s.reference)}${s.source==="import"?`<span class="tag-src">Excel</span>`:""}</td>
+        <td>${esc(s.customer_order_no||"—")}${s.mixed_with?` <span class="tag-share" title="Same customer order, container and seal">mixed with ${esc(s.mixed_with)}</span>`:""}<br><span class="muted-s">${esc(s.container_no||"—")} · ${esc(s.seal_no||"—")}</span></td>
+        <td>${esc(shortPort(s.departure_port))} → ${esc(shortPort(s.arrival_port))}</td>
+        <td>${s.departure_planned?fmtDate(s.departure_planned):"—"}</td><td class="num">${fmtN(+s.quantity)} ${esc(s.quantity_unit||"")}<br><span class="muted-s">${s.line_count} line${s.line_count!=1?"s":""}</span></td>
+        <td colspan="2"><span class="st ${statusClass(s.status)}">${esc(s.status||"—")}</span></td></tr>`).join("")
+      : `<tr class="kid empty"><td></td><td colspan="7">No shipments yet. Import an Excel file or add one from the master order.</td></tr>`;
     return `<tbody class="grp-body ${open?"open":""}">
-      <tr class="parent" data-toggle="${esc(ref)}" tabindex="0" aria-expanded="${open}">
+      <tr class="parent" data-toggle="${esc(o.id)}" tabindex="0" aria-expanded="${open}">
         <td><span class="chev" aria-hidden="true">›</span></td>
-        <td><a class="ref" href="order.html?order=${encodeURIComponent(ref)}" data-stop="1">${esc(o.details.orderNo||"(no number)")}</a><br><span class="muted-s">Ref ${esc(ref)} · ${esc(o.details.branch||"")}</span></td>
-        <td>${esc(sellerOf(o)||"—")}<br><span class="muted-s">to ${esc(buyerOf(o)||"—")}</span></td>
-        <td>${esc((o.logistics.dep[0]||"—").split(",")[0])} → ${esc((o.logistics.arr[0]||"—").split(",")[0])}</td>
-        <td>${esc(o.fp.name||"—")}</td>
-        <td class="num">${fmtN(Q)} ${esc(o.qty.unit||"")}</td>
+        <td><a class="ref" href="order.html?order=${o.ref_id}" data-stop="1">${esc(o.master_no)}</a><br><span class="muted-s">Ref ${o.ref_id} · ${esc(o.branch||"")}</span></td>
+        <td>${esc(o.seller||"—")}<br><span class="muted-s">to ${esc(o.buyer||"—")}</span></td>
+        <td>${esc(shortPort(o.departure))} → ${esc(shortPort(o.arrival))}</td>
+        <td>${esc(o.product||"—")}${o.gtin?`<br><span class="muted-s">${esc(o.gtin)}</span>`:""}</td>
+        <td class="num">${fmtN(Q)} ${esc(o.quantity_unit||"")}</td>
         <td><div class="mini"><div class="mini-bar"><i style="width:${Math.min(100,pct)}%;${pct>100?"background:var(--danger)":""}"></i></div><span>${pct}%</span></div></td>
-        <td><b>${ships.length}</b><span class="muted-s"> / ${num(o.qty.shipments)||"—"}</span></td>
+        <td><b>${ships.length}</b><span class="muted-s"> / ${num(o.planned_shipments)||"—"}</span></td>
       </tr>${kids}</tbody>`;
   }).join("");
   $("#otbl").innerHTML = `<thead><tr><th style="width:34px"></th><th>Master / shipment</th><th>Supplier / buyer · customer order</th><th>Route</th><th>Product</th><th class="num">Quantity</th><th>Allocated</th><th>Shipments</th></tr></thead>`
-    + (rows || `<tbody><tr class="empty"><td colspan="8">No master orders match “${esc(UI.q)}”.</td></tr></tbody>`);
+    + (rows || `<tbody><tr class="empty"><td colspan="8">${orders.length ? `No master orders match “${esc(UI.q)}”.` : `No master orders yet. Create one with <b>New master order</b>; then add shipments to it or import them from Excel.`}</td></tr></tbody>`);
   setTimeout(()=>{ UI.flash.clear(); $$(".kid.flash").forEach(t=>t.classList.remove("flash")); }, 2600);
 }
 
@@ -1317,16 +1348,16 @@ function showPreview(res, file, parsed){
   const g = res.groups, n = s => g.filter(x=>x.status===s).length;
   const newN = n("new"), dupN = n("dup"), errN = n("error");
   const byOrder = {};
-  g.forEach(x=>{ const k = x.order ? x.order.details.orderNo : `Unknown · ${x.master||"(blank)"}`; (byOrder[k] = byOrder[k] || []).push(x); });
+  g.forEach(x=>{ const k = x.order ? x.order.master_no : `Unknown · ${x.master||"(blank)"}`; (byOrder[k] = byOrder[k] || []).push(x); });
   const badge = s => ({new:`<span class="st green">Will import</span>`, dup:`<span class="st">Duplicate · skipped</span>`, error:`<span class="st red">Error</span>`})[s];
   const sections = Object.entries(byOrder).map(([k,list])=>`
-    <div class="pv-grp"><div class="pv-grp-h"><b>${esc(k)}</b><span>${list[0].order ? esc(list[0].order.fp.name||"") : "Not imported"}</span></div>
+    <div class="pv-grp"><div class="pv-grp-h"><b>${esc(k)}</b><span>${list[0].order ? esc(list[0].order.product||"") : "Not imported"}</span></div>
     <div class="tbl-wrap"><table class="tbl pv"><thead><tr><th>Status</th><th>Customer order / container / seal</th><th>Excel rows</th><th class="num">Units</th><th>ETD</th><th>Destination</th><th>Notes</th></tr></thead><tbody>
     ${list.map(x=>{ const f = x.rows[0];
       const note = x.status==="error" ? `<span class="bad-t">${esc(x.err[0])}${x.err.length>1?` (+${x.err.length-1} more)`:""}</span>`
         : x.status==="dup" ? `Already exists as ${esc(x.dupRef)}` : `New · <b>${esc(x.plannedRef)}</b> · ${x.rows.length} line${x.rows.length>1?"s":""}${x.shared&&x.shared.length?`<br><span class="share-t">Mixed with ${x.shared.map(s=>`${esc(s.ref)} (${esc(s.product)})`).join(", ")}</span>`:""}${x.warn.length?`<br><span class="warn-t">${esc(x.warn[0])}${x.warn.length>1?` (+${x.warn.length-1})`:""}</span>`:""}`;
       return `<tr><td>${badge(x.status)}</td><td>${esc(x.po||"—")}<br><span class="muted-s">${esc(x.container||"—")} · ${esc(x.seal||"—")}</span></td>
-        <td>${x.rows.map(r=>r._row).join(", ")}${x.rows.some(r=>r._cont)?`<br><span class="muted-s">${x.rows.filter(r=>r._cont).length} continued from row above</span>`:""}</td><td class="num">${fmtN(x.units)}</td><td>${f.etd?fmtDate(f.etd):"—"}</td><td>${esc(txt(f.dest)||"—")}</td><td class="pv-note">${note}</td></tr>`; }).join("")}
+        <td>${x.rows.map(r=>r._row).join(", ")}${x.rows.some(r=>r._cont)?`<br><span class="muted-s">${x.rows.filter(r=>r._cont).length} continued from row above</span>`:""}</td><td class="num">${fmtN(x.units)}</td><td>${f.etd?fmtDate(f.etd):"—"}</td><td>${esc(x.arrLabel || txt(f.dest) || "—")}</td><td class="pv-note">${note}</td></tr>`; }).join("")}
     </tbody></table></div></div>`).join("");
   const errList = res.errors.length ? `<details class="pv-list bad" open><summary>${res.errors.length} error${res.errors.length>1?"s":""} — these rows are not imported</summary><ul>${res.errors.map(e=>`<li><b>Row ${e.row}</b> · ${esc(e.col)}: ${esc(e.msg)}</li>`).join("")}</ul></details>` : "";
   const warnList = res.warnings.length ? `<details class="pv-list warn"><summary>${res.warnings.length} warning${res.warnings.length>1?"s":""} — imported, but worth checking</summary><ul>${res.warnings.map(w=>`<li>${esc(w.msg)}</li>`).join("")}</ul></details>` : "";
@@ -1352,34 +1383,34 @@ function showPreview(res, file, parsed){
     if(e.target.closest("[data-doimport]")) return doImport();
   });
 }
-function nextHint(x){ const list = shipmentsOf(x.order.details.refId); const pend = PENDING ? PENDING.res.groups.filter(y=>y.status==="new" && y.order.details.refId===x.order.details.refId) : [];
-  const n = list.reduce((m,s)=>Math.max(m, parseInt(String(s.ref).split(".").pop(),10)||0), 0) + pend.indexOf(x) + 1;
-  return `· ${x.order.details.refId}.${String(n).padStart(4,"0")} · ${x.rows.length} line${x.rows.length>1?"s":""}`; }
-
-function doImport(){
-  const {res, file} = PENDING, d = db(), made = [];
-  res.groups.filter(g=>g.status==="new").forEach(g=>{
-    const ref = g.order.details.refId; d.shipments[ref] = d.shipments[ref] || [];
-    const sh = buildShipment(g, g.plannedRef, file);
-    sh.state.details.mixed = (g.shared||[]).map(s=>s.ref);
-    d.shipments[ref].push(sh); made.push(sh.ref); UI.open.add(ref); UI.flash.add(sh.ref);
-  });
-  /* link already-saved shipments in the same container back to the new ones */
-  res.groups.filter(g=>g.status==="new").forEach(g=>(g.shared||[]).filter(s=>s.saved).forEach(s=>{
-    const other = (d.shipments[s.orderRef]||[]).find(x=>x.ref===s.ref);
-    if(other && other.state){ other.state.details.mixed = [...new Set([...(other.state.details.mixed||[]), g.plannedRef])]; }
-  }));
-  const ok = saveDb(d);
-  const dup = res.groups.filter(g=>g.status==="dup").length, err = res.groups.filter(g=>g.status==="error").length;
-  UI.last = {file, made:made.length, dup, err, at:new Date()};
-  closePopup(true); render(); showBanner();
-  if(!ok) toast("Saving is blocked in this browser, so the import won’t survive a reload.");
-  else toast(`${made.length} shipment${made.length!==1?"s":""} imported`);
+const cellText = v => v==null || v==="" ? null : (typeof v==="number" ? String(Number.isInteger(v) ? v : +v.toFixed(6)) : String(v).trim() || null);
+async function doImport(){
+  const {file, parsed} = PENDING;
+  const btn = $("[data-doimport]"); if(btn){ btn.disabled = true; btn.textContent = "Importing…"; }
+  try{
+    const batch = await q(smt().from("import_batches").insert({file_name:file, sheet_name:parsed.sheet}).select("id").single());
+    const KEYS = {item:"item_no", supplier:"supplier", master:"master_ref", invNo:"invoice_no", invDate:"invoice_date", po:"purchase_order_no", units:"units",
+      product:"product", produced:"produced", bestBefore:"best_before", rawId:"raw_material_id", etd:"etd", eta:"eta", dest:"destination", container:"container_no",
+      seal:"seal_no", feeder:"feeder_vessel", mother:"mother_vessel", line:"shipping_line", bl:"bl_no", blDate:"bl_issue_date", mode:"shipment_mode", gtin:"gtin"};
+    const rows = parsed.rows.map(r=>{ const o = {batch_id:batch.id, excel_row:r._row};
+      Object.entries(KEYS).forEach(([k,col])=>{ o[col] = cellText(r._orig[k]); }); return o; });
+    for(let i=0;i<rows.length;i+=500) await q(smt().from("import_rows").insert(rows.slice(i,i+500)));
+    const out = await q(smt().rpc("process_import", {p_batch: batch.id}));
+    const made = out.filter(o=>o.outcome==="created"), dup = out.filter(o=>o.outcome==="duplicate").length, err = out.filter(o=>o.outcome==="error").length;
+    await loadData();
+    made.forEach(o=>{ UI.flash.add(o.reference); const m = DATA.masters.find(x=>x.master_no===o.master_no); if(m) UI.open.add(m.id); });
+    UI.last = {file, made:made.length, dup, err, refs:made.map(o=>o.reference)};
+    closePopup(true); render(); showBanner();
+    toast(`${made.length} shipment${made.length!==1?"s":""} imported`);
+  }catch(e){
+    if(btn){ btn.disabled = false; btn.textContent = "Try again"; }
+    popup({ok:false, title:"Import failed", msg:esc(errText(e))});
+  }
 }
 function showBanner(){
   const l = UI.last; if(!l) return;
   $("#banner").innerHTML = `<div class="banner"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
-    <span><b>${l.made} shipment${l.made!==1?"s":""} imported</b> from ${esc(l.file)}${l.dup?` · ${l.dup} duplicate${l.dup>1?"s":""} skipped`:""}${l.err?` · <span class="bad-t">${l.err} with errors not imported</span>`:""}</span>
+    <span><b>${l.made} shipment${l.made!==1?"s":""} imported</b>${l.refs&&l.refs.length?` (${l.refs.map(esc).join(", ")})`:""} from ${esc(l.file)}${l.dup?` · ${l.dup} duplicate${l.dup>1?"s":""} skipped`:""}${l.err?` · <span class="bad-t">${l.err} with errors not imported</span>`:""}</span>
     <button class="mx" data-dismiss="1" aria-label="Dismiss">${XICON}</button></div>`;
 }
 function errorReport(){
@@ -1400,6 +1431,7 @@ function downloadTemplate(){
 /* ---------- file handling ---------- */
 async function handleFile(file){
   if(!file) return;
+  if(!SB){ return; }
   if(typeof XLSX==="undefined"){ popup({ok:false, title:"Excel reader didn’t load", msg:"The spreadsheet library couldn’t be loaded. Check your internet connection and reload the page."}); return; }
   if(!/\.(xlsx|xlsm|xls|csv)$/i.test(file.name)){ popup({ok:false, title:"Unsupported file", msg:`“${esc(file.name)}” isn’t an Excel or CSV file.`}); return; }
   let parsed;
@@ -1427,8 +1459,8 @@ document.addEventListener("keydown", e=>{
 Object.assign(ACTIONS, {
   pickFile(){ $("#fileIn").click(); },
   template(){ if(typeof XLSX==="undefined") return toast("Excel library not loaded yet"); downloadTemplate(); },
-  newOrder(){ location.href = `order.html?order=${nextOrderRef()}`; },
-  expandAll(){ const all = allOrders().map(o=>o.details.refId); const openAll = UI.open.size < all.length; UI.open = new Set(openAll ? all : []); render(); }
+  newOrder(){ location.href = "order.html"; },
+  expandAll(){ const all = DATA.masters.map(o=>o.id); const openAll = UI.open.size < all.length; UI.open = new Set(openAll ? all : []); render(); }
 });
 $("#fileIn").addEventListener("change", e=>{ handleFile(e.target.files[0]); e.target.value = ""; });
 $("#search").addEventListener("input", e=>{ UI.q = e.target.value; render(); });
@@ -1437,11 +1469,10 @@ window.addEventListener("dragenter", e=>{ if([...(e.dataTransfer?.types||[])].in
 window.addEventListener("dragleave", ()=>{ if(--dragN<=0){ dragN=0; $("#drop").classList.remove("show"); } });
 window.addEventListener("dragover", e=>e.preventDefault());
 window.addEventListener("drop", e=>{ e.preventDefault(); dragN = 0; $("#drop").classList.remove("show"); handleFile(e.dataTransfer.files[0]); });
-window.addEventListener("focus", render);
+let lastLoad = 0;
+window.addEventListener("focus", async ()=>{ if(!SB || Date.now()-lastLoad < 5000) return; lastLoad = Date.now(); try{ await loadData(); render(); }catch(e){} });
 
-$("#shellTop").outerHTML = shellTop();
-initTheme();
-render();
+boot(async ()=>{ await loadData(); lastLoad = Date.now(); render(); });
 
 </script>
 </body>
