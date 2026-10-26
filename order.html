@@ -1202,6 +1202,9 @@ HOOKS.onAddOption = async (src, v) => {
   }catch(e){ if(!/duplicate key/i.test(e.message||"")) toast(`Couldn’t save “${v}”: ${errText(e)}`); }
 };
 
+/* ---------- master identifier: External reference (UID), else Master PO number ---------- */
+const mKey = m => m ? (String(m.external_reference||"").trim() || m.master_no || "") : "";
+
 /* ---------- organisations ---------- */
 const orgIdOf = label => REFS.orgByLabel.get(label)?.id || null;
 const orgLabelOf = (id, name) => REFS.orgById.get(id)?.label || name || "";
@@ -1318,8 +1321,8 @@ SECTIONS.push(
       ${field("Date", datePicker(`${d}.date`,"Select date"), {req:true, path:`${d}.date`, hint:"Date this order record was created"})}
       ${field("Branch", dropdown(`${d}.branch`,"branches","Select a branch"), {hint:"Branch that owns this master order"})}
     </div><div class="row">
-      ${field("Master order number", textIn(`${d}.orderNo`,"e.g. MO-2026-0142"), {req:true, path:`${d}.orderNo`, hint:"Order number all child shipments belong to"})}
-      ${field("External reference", textIn(`${d}.extRef`,"e.g. SIM-2026-0142"), {req:true, path:`${d}.extRef`, hint:"Unique identifier of this master order"})}
+      ${field("External reference", textIn(`${d}.extRef`,"e.g. 34567CMC"), {req:true, path:`${d}.extRef`, hint:"Unique ID; shipments are numbered from it"})}
+      ${field("Master PO number", textIn(`${d}.orderNo`,"e.g. MP-123-456"), {req:true, path:`${d}.orderNo`, hint:"Purchase order number of this master order"})}
       ${field("Master order date", datePicker(`${d}.orderDate`,"Select order date"), {req:true, path:`${d}.orderDate`, hint:"Date the master order was placed"})}
     </div>`; },
   req:()=>[filled("details.date"), filled("details.orderNo"), filled("details.extRef"), filled("details.orderDate")] },
@@ -1514,7 +1517,7 @@ Object.assign(ACTIONS, {
       if(wasNew) history.replaceState(null, "", `order.html?order=${res.ref_id}`);
       await loadShips(); renderAll(); updateHead();
       if(typeof after==="function") return after();
-      popup({title:"Master order saved", msg:`<span class="obj">${esc(res.master_no)}</span> is saved${SHIPS.length?` with ${SHIPS.length} shipment${SHIPS.length>1?"s":""}`:""}.`,
+      popup({title:"Master order saved", msg:`<span class="obj">${esc(mKey(res))}</span> is saved${SHIPS.length?` with ${SHIPS.length} shipment${SHIPS.length>1?"s":""}`:""}.`,
         primary:"Add a shipment", onPrimary:()=>goShipment(null), secondary:"Close"});
     }catch(err){ popup({ok:false, title:"Couldn’t save", msg:esc(errText(err))}); }
     finally{ btns.forEach(b=>{ b.disabled = false; }); }
@@ -1526,8 +1529,8 @@ document.addEventListener("keydown", e=>{ const tr = e.target.closest?.("tr[data
 function updateHead(){
   $("#headTitle").textContent = IS_NEW ? "Create master order" : "Master order";
   $("#headBadge").textContent = S.details.branch || "No branch";
-  $("#headSub").innerHTML = S.details.refId ? `Ref ID <b>${esc(S.details.refId)}</b> · ${esc(S.details.orderNo||"")}${S.details.extRef?` · Ext. ref <b>${esc(S.details.extRef)}</b>`:""}` : "New master order · not saved yet";
-  document.title = S.details.orderNo ? `${S.details.orderNo} · Master order` : "Create Master Order";
+  $("#headSub").innerHTML = S.details.refId ? `Ref ID <b>${esc(S.details.refId)}</b>${S.details.extRef?` · Ext. ref <b>${esc(S.details.extRef)}</b>`:""}${S.details.orderNo?` · PO ${esc(S.details.orderNo)}`:""}` : "New master order · not saved yet";
+  document.title = (S.details.extRef||S.details.orderNo) ? `${S.details.extRef||S.details.orderNo} · Master order` : "Create Master Order";
 }
 window.addEventListener("focus", async ()=>{ if(!SB || !S.details.id) return; try{ await loadShips(); renderSection("shipments"); renderSection("qty", true); }catch(e){} });
 

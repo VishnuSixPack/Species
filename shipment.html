@@ -1202,6 +1202,9 @@ HOOKS.onAddOption = async (src, v) => {
   }catch(e){ if(!/duplicate key/i.test(e.message||"")) toast(`Couldn’t save “${v}”: ${errText(e)}`); }
 };
 
+/* ---------- master identifier: External reference (UID), else Master PO number ---------- */
+const mKey = m => m ? (String(m.external_reference||"").trim() || m.master_no || "") : "";
+
 /* ---------- organisations ---------- */
 const orgIdOf = label => REFS.orgByLabel.get(label)?.id || null;
 const orgLabelOf = (id, name) => REFS.orgById.get(id)?.label || name || "";
@@ -1283,7 +1286,7 @@ function buildDefault(){
   const mode = m.shipment_mode || "", cfg = LOAD[mode], basis = cfg ? cfg.basis[0] : "";
   const loadOk = cfg && cfg.types[basis].map(optVal).includes(m.load_type);
   return {
-    id:null, ref:`${m.master_no}.${(m.next_shipment_no||0)+1}`,
+    id:null, ref:`${mKey(m)}.${(m.next_shipment_no||0)+1}`,
     details:{type:"", status:"No shipment instructions", custOrder:buyer.party_reference||"", orderDate:m.master_order_date||"", mixed:[]},
     parties:{who:{party:orgLabelOf(seller.organization_id, seller.organization_name), role:"Seller", ref:seller.party_reference||"", gln:seller.gln||"", glnAuto:seller.module_gln||""},
              to:{party:orgLabelOf(buyer.organization_id, buyer.organization_name), role:"Buyer", ref:buyer.party_reference||"", gln:buyer.gln||"", glnAuto:buyer.module_gln||""}},
@@ -1366,10 +1369,10 @@ async function refreshMixed(){
   let rows = await q(smt().from("shipments").select("id,reference,master_id").eq("mix_key", k));
   rows = rows.filter(x=>x.id!==S.id);
   const mids = [...new Set(rows.map(x=>x.master_id))];
-  const masters = mids.length ? await q(smt().from("master_orders").select("id,ref_id,master_no,product_id").in("id", mids)) : [];
+  const masters = mids.length ? await q(smt().from("master_orders").select("id,ref_id,master_no,external_reference,product_id").in("id", mids)) : [];
   if(seq!==mixSeq) return;
   MIXED = rows.map(x=>{ const m = masters.find(y=>y.id===x.master_id)||{};
-    return {id:x.id, ref:x.reference, orderRef:m.ref_id, orderNo:m.master_no, product:(REFS.productById.get(m.product_id)||{}).name||""}; })
+    return {id:x.id, ref:x.reference, orderRef:m.ref_id, orderNo:mKey(m), product:(REFS.productById.get(m.product_id)||{}).name||""}; })
     .sort((a,b)=>a.ref.localeCompare(b.ref));
 }
 function scheduleMixed(){ clearTimeout(mixT); mixT = setTimeout(async()=>{ try{ await refreshMixed(); renderSection("details", true); renderSection("logistics", true); }catch(e){} }, 400); }
@@ -1504,7 +1507,7 @@ SECTIONS.push(
       ${field("Status", dropdown(`${d}.status`,"shipStatus","Select a status",{plus:true}), {hint:"Current shipment status"})}
       ${field("Customer order number", textIn(`${d}.custOrder`,"Enter customer order no.",{live:true}), {req:true, path:`${d}.custOrder`, tag:tag(`${d}.custOrder`), hint:"Key identifier · buyer’s purchase order number"})}
       ${field("Order date", datePicker(`${d}.orderDate`,"Select order date"), {tag:tag(`${d}.orderDate`), hint:"Date of the customer order"})}
-      ${field("Related to", `<div class="lockbox" title="Master order this shipment belongs to">${LOCK}<a href="order.html?order=${encodeURIComponent(OREF)}">${esc(ORDER.master_no)}</a>${ORDER.external_reference?`<span class="muted-s">&nbsp;· Ext. ref ${esc(ORDER.external_reference)}</span>`:""}</div>`, {hint:"Master order this shipment belongs to"})}
+      ${field("Related to", `<div class="lockbox" title="Master order this shipment belongs to">${LOCK}<a href="order.html?order=${encodeURIComponent(OREF)}">${esc(mKey(ORDER))}</a>${ORDER.external_reference?`<span class="muted-s">&nbsp;· PO ${esc(ORDER.master_no)}</span>`:""}</div>`, {hint:"Master order this shipment belongs to"})}
     </div><div class="row one">
       ${field("Mixed with", mixedBox(), {hint:"Found automatically: other shipments with the same customer order number, container number and seal number"})}
     </div>`; },
@@ -1670,7 +1673,7 @@ Object.assign(ACTIONS, {
       OTHERS = await q(smt().from("v_shipment_list").select("id,quantity").eq("master_id", ORDER.id));
       await refreshMixed(); renderAll(); setHead();
       const back = `order.html?order=${encodeURIComponent(OREF)}#shipments`;
-      popup({title:`Shipment ${res.reference} saved`, msg:`Linked to master order <span class="obj">${esc(ORDER.master_no)}</span>. ${fmtN(thisQty())} ${esc(UNIT)} allocated, ${fmtN(remaining())} left on the order.${MIXED.length?`<br>Mixed with ${MIXED.map(m=>esc(m.ref)).join(", ")}.`:""}`,
+      popup({title:`Shipment ${res.reference} saved`, msg:`Linked to master order <span class="obj">${esc(mKey(ORDER))}</span>. ${fmtN(thisQty())} ${esc(UNIT)} allocated, ${fmtN(remaining())} left on the order.${MIXED.length?`<br>Mixed with ${MIXED.map(m=>esc(m.ref)).join(", ")}.`:""}`,
         primary:"Back to master order", onPrimary:()=>{ location.href = back; },
         secondary:"Add another shipment", onSecondary:()=>{ location.href = `shipment.html?order=${encodeURIComponent(OREF)}`; }});
     }catch(err){
@@ -1685,7 +1688,7 @@ Object.assign(ACTIONS, {
 function setHead(){
   $("#pageTitle").textContent = S.id ? "Edit shipment" : "Create shipment";
   document.title = S.id ? `${S.ref} · Shipment` : "Create Shipment";
-  $("#crumbOrder").textContent = ORDER.master_no; $("#crumbOrder").href = `order.html?order=${encodeURIComponent(OREF)}`;
+  $("#crumbOrder").textContent = mKey(ORDER); $("#crumbOrder").href = `order.html?order=${encodeURIComponent(OREF)}`;
   $("#crumbHere").textContent = S.id ? S.ref : "Create shipment";
   const b = $("#importBadge"); if(b) b.hidden = EXISTING?.source!=="import";
 }
@@ -1702,7 +1705,7 @@ boot(async ()=>{
   S = EXISTING ? fromShipment(EXISTING) : buildDefault();
   rememberPrefill();
   OTHERS = await q(smt().from("v_shipment_list").select("id,quantity").eq("master_id", ORDER.id));
-  MIXED = EXISTING ? (EXISTING.mixed_with||[]).map(m=>({id:m.id, ref:m.reference, orderRef:m.master_ref_id, orderNo:m.master_no, product:m.product})) : [];
+  MIXED = EXISTING ? (EXISTING.mixed_with||[]).map(m=>({id:m.id, ref:m.reference, orderRef:m.master_ref_id, orderNo:m.master_key||m.master_no, product:m.product})) : [];
   if(!EXISTING) await refreshMixed();
   $("#pageTitle").insertAdjacentHTML("afterend", ` <span class="src-badge" id="importBadge" style="background:var(--ok-bg);color:var(--ok-text)" hidden>imported from Excel</span>`);
   setHead(); mount();

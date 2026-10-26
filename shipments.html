@@ -1202,6 +1202,9 @@ HOOKS.onAddOption = async (src, v) => {
   }catch(e){ if(!/duplicate key/i.test(e.message||"")) toast(`Couldn’t save “${v}”: ${errText(e)}`); }
 };
 
+/* ---------- master identifier: External reference (UID), else Master PO number ---------- */
+const mKey = m => m ? (String(m.external_reference||"").trim() || m.master_no || "") : "";
+
 /* ---------- organisations ---------- */
 const orgIdOf = label => REFS.orgByLabel.get(label)?.id || null;
 const orgLabelOf = (id, name) => REFS.orgById.get(id)?.label || name || "";
@@ -1277,7 +1280,7 @@ function enrich(s){
   if(s.shipment_mode==="Sea" && (!txt(s.container_no) || !txt(s.seal_no))) missing.push("Container / seal");
   const etaDue = s.arrival_scheduled || s.arrival_planned || "";
   return {...s,
-    master_no:m.master_no||"", ext_ref:m.external_reference||"", master_ref:m.ref_id, unit:m.quantity_unit||"",
+    master_no:m.master_no||"", ext_ref:m.external_reference||"", master_key:mKey(m), master_ref:m.ref_id, unit:m.quantity_unit||"",
     product: prod ? prod.name : "", gtin: prod ? prod.gtin : "",
     dep: REFS.portById.get(s.departure_port_id) || "", arr: REFS.portById.get(s.arrival_port_id) || "",
     tranship: (s.shipment_transhipments||[]).sort((a,b)=>a.seq-b.seq).map(t=>t.port_id ? (REFS.portById.get(t.port_id)||"") : (t.location||"")).filter(Boolean),
@@ -1320,7 +1323,7 @@ function baseFiltered(){
               .some(v=>txt(v).toLowerCase().includes(qq))));
 }
 const SORTS = {
-  ref:    (a,b)=>a.master_no.localeCompare(b.master_no, undefined, {numeric:true}) || a.shipment_no-b.shipment_no,
+  ref:    (a,b)=>a.master_key.localeCompare(b.master_key, undefined, {numeric:true, sensitivity:"base"}) || a.shipment_no-b.shipment_no,
   etd:    (a,b)=>(a.etd||"").localeCompare(b.etd||""),
   eta:    (a,b)=>(a.eta||"").localeCompare(b.eta||""),
   status: (a,b)=>(a.stage-b.stage) || (a.status||"").localeCompare(b.status||""),
@@ -1421,7 +1424,7 @@ async function openView(id, push=true){
   dr.querySelector(".dr").innerHTML = `
     <div class="dr-head">
       <div><div class="dr-ttl"><h2>${esc(s.reference)}</h2><span class="st ${statusClass(s.status)}">${esc(s.status)}</span>${s.source==="import"?`<span class="tag-src">Excel</span>`:""}</div>
-        <p>${esc(s.product||"—")}${s.gtin?` · ${esc(s.gtin)}`:""} · Master <a href="order.html?order=${s.master_ref}">${esc(s.master_no)}</a>${s.ext_ref?` · Ext. ref ${esc(s.ext_ref)}`:""}</p></div>
+        <p>${esc(s.product||"—")}${s.gtin?` · ${esc(s.gtin)}`:""} · Master <a href="order.html?order=${s.master_ref}">${esc(s.master_key)}</a>${s.ext_ref?` · PO ${esc(s.master_no)}`:""}</p></div>
       <button type="button" class="mx" data-close-dr="1" aria-label="Close">${XICON}</button>
     </div>
     <div class="dr-body">
@@ -1458,7 +1461,7 @@ async function openView(id, push=true){
       ${x.notes?`<section><h3>Notes</h3><p class="notes">${esc(x.notes)}</p></section>`:""}
     </div>
     <div class="dr-foot">
-      <a class="btn" href="order.html?order=${s.master_ref}">Open master ${esc(s.master_no)}</a>
+      <a class="btn" href="order.html?order=${s.master_ref}">Open master ${esc(s.master_key)}</a>
       <a class="btn primary" href="shipment.html?order=${s.master_ref}&id=${encodeURIComponent(s.id)}">Edit shipment</a>
     </div>`;
   dr.querySelector(".mx").focus();

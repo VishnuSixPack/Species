@@ -650,7 +650,7 @@ body.dr-open{overflow:hidden}
     </div></div>
   <div class="stats" id="stats" style="margin-top:0"></div>
   <div class="howto">
-    <div><b>1 · Master = main data, one product</b>Shipments are created under it as MO1.1, MO1.2 … and copy its details, so nothing is typed twice. Master Ref no must exist.</div>
+    <div><b>1 · Master = main data, one product</b>Shipments are numbered from its External reference (e.g. 34567CMC.1, 34567CMC.2) and copy its details. In Excel, Master Ref no is the External reference, Master PO number or Ref ID.</div>
     <div><b>2 · Customer order no. is the key</b>Rows with the same master, customer order no. (Purchase Order no.), container and seal are one shipment. Blank container rows continue the row above.</div>
     <div><b>3 · Mixed with</b>Shipments of other products with the same customer order no., container and seal are linked automatically. Exact repeats are skipped.</div>
   </div>
@@ -1212,6 +1212,9 @@ HOOKS.onAddOption = async (src, v) => {
   }catch(e){ if(!/duplicate key/i.test(e.message||"")) toast(`Couldn’t save “${v}”: ${errText(e)}`); }
 };
 
+/* ---------- master identifier: External reference (UID), else Master PO number ---------- */
+const mKey = m => m ? (String(m.external_reference||"").trim() || m.master_no || "") : "";
+
 /* ---------- organisations ---------- */
 const orgIdOf = label => REFS.orgByLabel.get(label)?.id || null;
 const orgLabelOf = (id, name) => REFS.orgById.get(id)?.label || name || "";
@@ -1320,9 +1323,9 @@ const sameText = (a,b) => txt(a).toLowerCase()===txt(b).toLowerCase();
 /* ---------- master lookup ---------- */
 function findOrder(master){
   const m = txt(master).toLowerCase(); if(!m) return null;
-  /* same order as the import on the server: master order number, then external reference, then Ref ID */
-  return DATA.masters.find(o=>txt(o.master_no).toLowerCase()===m)
-      || DATA.masters.find(o=>txt(o.external_reference).toLowerCase()===m)
+  /* same order as the import on the server: External reference (UID), then Master PO number, then Ref ID */
+  return DATA.masters.find(o=>txt(o.external_reference).toLowerCase()===m)
+      || DATA.masters.find(o=>txt(o.master_no).toLowerCase()===m)
       || DATA.masters.find(o=>String(o.ref_id)===m) || null;
 }
 
@@ -1387,7 +1390,7 @@ function analyse(parsed){
     if(r.order && txt(r.product)){
       /* one product per master order: GTIN decides when both sides have one, otherwise the name */
       const oG = txt(r.order.gtin), ok = (r.gtin && oG) ? r.gtin===oG : sameText(r.product, r.order.product);
-      if(!ok) addErr(r, "Product", `“${r.gtin?r.gtin+" — ":""}${txt(r.product)}” isn’t the product of ${r.order.master_no} (${oG?oG+" — ":""}${r.order.product||"no product set"}). Each master order covers one product.`);
+      if(!ok) addErr(r, "Product", `“${r.gtin?r.gtin+" — ":""}${txt(r.product)}” isn’t the product of ${mKey(r.order)} (${oG?oG+" — ":""}${r.order.product||"no product set"}). Each master order covers one product.`);
     }
     /* destination -> one port in the Port module (the master's arrival port wins a tie) */
     if(txt(r.dest)){
@@ -1400,7 +1403,7 @@ function analyse(parsed){
     if(r.order){
       const lead = (r._head && findOrder(r._head.master)) || r.order;
       r.depPortId = portsOf(lead,"departure")[0] || portsOf(r.order,"departure")[0] || null;
-      if(!r.depPortId) addErr(r, "Master Ref no", `${r.order.master_no} has no departure port set`);
+      if(!r.depPortId) addErr(r, "Master Ref no", `${mKey(r.order)} has no departure port set`);
     }
     const key = [txt(r.master), txt(r.po), txt(r.container), txt(r.seal)].map(s=>s.toUpperCase()).join("|");
     if(!groups.has(key)) groups.set(key, {key, rows:[]});
@@ -1434,14 +1437,14 @@ function analyse(parsed){
   out.filter(g=>g.status==="new").forEach(g=>{ (byOrder[g.order.id] = byOrder[g.order.id] || []).push(g); });
   Object.values(byOrder).forEach(gs=>{
     const o = gs[0].order, Q = num(o.order_quantity), used = num(o.allocated), add = gs.reduce((a,g)=>a+g.units,0);
-    if(Q && used+add > Q) gs[gs.length-1].warn.push(`${o.master_no}: this import takes the order to ${fmtN(used+add)} of ${fmtN(Q)} ${o.quantity_unit||""} (over by ${fmtN(used+add-Q)}).`);
+    if(Q && used+add > Q) gs[gs.length-1].warn.push(`${mKey(o)}: this import takes the order to ${fmtN(used+add)} of ${fmtN(Q)} ${o.quantity_unit||""} (over by ${fmtN(used+add-Q)}).`);
   });
   /* expected references (the database assigns the real ones): MO1.1, MO1.2 … */
   const counters = {};
   out.filter(g=>g.status==="new").forEach(g=>{
     const id = g.order.id;
     if(counters[id]===undefined) counters[id] = shipsOf(g.order).reduce((m,s)=>Math.max(m, s.shipment_no||0), 0);
-    g.plannedRef = `${g.order.master_no}.${++counters[id]}`;
+    g.plannedRef = `${mKey(g.order)}.${++counters[id]}`;
   });
   /* Mixed with: same customer order no + container no + seal no, on any master (this file or already saved) */
   const pool = {};
@@ -1479,7 +1482,7 @@ function render(){
     return `<tbody class="grp-body ${open?"open":""}">
       <tr class="parent" data-toggle="${esc(o.id)}" tabindex="0" aria-expanded="${open}">
         <td><span class="chev" aria-hidden="true">›</span></td>
-        <td><a class="ref" href="order.html?order=${o.ref_id}" data-stop="1">${esc(o.master_no)}</a><br><span class="muted-s">${o.external_reference?`${esc(o.external_reference)} · `:""}Ref ${o.ref_id} · ${esc(o.branch||"")}</span></td>
+        <td><a class="ref" href="order.html?order=${o.ref_id}" data-stop="1">${esc(mKey(o))}</a><br><span class="muted-s">${o.external_reference?`PO ${esc(o.master_no)} · `:""}Ref ${o.ref_id} · ${esc(o.branch||"")}</span></td>
         <td>${esc(o.seller||"—")}<br><span class="muted-s">to ${esc(o.buyer||"—")}</span></td>
         <td>${esc(shortPort(o.departure))} → ${esc(shortPort(o.arrival))}</td>
         <td>${esc(o.product||"—")}${o.gtin?`<br><span class="muted-s">${esc(o.gtin)}</span>`:""}</td>
@@ -1500,7 +1503,7 @@ function showPreview(res, file, parsed){
   const g = res.groups, n = s => g.filter(x=>x.status===s).length;
   const newN = n("new"), dupN = n("dup"), errN = n("error");
   const byOrder = {};
-  g.forEach(x=>{ const k = x.order ? x.order.master_no : `Unknown · ${x.master||"(blank)"}`; (byOrder[k] = byOrder[k] || []).push(x); });
+  g.forEach(x=>{ const k = x.order ? mKey(x.order) : `Unknown · ${x.master||"(blank)"}`; (byOrder[k] = byOrder[k] || []).push(x); });
   const badge = s => ({new:`<span class="st green">Will import</span>`, dup:`<span class="st">Duplicate · skipped</span>`, error:`<span class="st red">Error</span>`})[s];
   const sections = Object.entries(byOrder).map(([k,list])=>`
     <div class="pv-grp"><div class="pv-grp-h"><b>${esc(k)}</b><span>${list[0].order ? esc(list[0].order.product||"") : "Not imported"}</span></div>
