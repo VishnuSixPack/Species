@@ -635,6 +635,33 @@ body.dr-open{overflow:hidden}
 }
 @media print{ .dr-ov{display:none} }
 
+/* ---- import preview: one card per shipment, notes on their own line ---- */
+.pv-grp-h em{margin-left:auto;font-style:normal;font-size:11.5px;color:var(--muted)}
+.pv-cards{display:grid;gap:8px}
+.pv-card{border:1px solid var(--border);border-radius:10px;background:var(--surface);overflow:hidden}
+.pv-card.error{border-color:rgba(209,67,67,.35)}
+.pv-main{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.2fr) minmax(0,.5fr) minmax(0,1.3fr);gap:14px;padding:11px 14px;align-items:start}
+.pv-main span{display:block;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.pv-main b{display:block;font-weight:500;font-size:13px}
+.pv-main small{display:block;font-size:11.5px;color:var(--muted);overflow-wrap:anywhere}
+.pv-c1{display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:center}
+.pv-c1 .st{grid-row:1}
+.pv-c1 small{grid-column:1/-1;margin-top:3px}
+.pv-ref{font-size:14px!important;font-weight:600!important;color:var(--accent)}
+.pv-ref.muted{color:var(--muted)}
+.pv-c3 b{font-variant-numeric:tabular-nums}
+.pv-n{display:grid;grid-template-columns:110px 1fr;gap:10px;padding:8px 14px;border-top:1px solid var(--border);font-size:12px;background:var(--page)}
+.pv-n > span{font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding-top:2px}
+.pv-n.bad > span,.pv-n.bad > div{color:var(--danger)}
+.pv-n.warn > span,.pv-n.warn > div{color:var(--warn-text)}
+.pv-n.share > span{color:var(--accent)}
+.pv-chips{display:flex;flex-wrap:wrap;gap:5px}
+.pv-chips i{font-style:normal;font-size:11.5px;font-weight:500;color:var(--accent);background:var(--accent-soft);border-radius:5px;padding:1px 7px;cursor:help;white-space:nowrap}
+@media (max-width:760px){
+  .pv-main{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .pv-n{grid-template-columns:1fr;gap:4px}
+}
+
 </style>
 </head>
 <body>
@@ -1257,11 +1284,14 @@ const UI = { q:"", open:new Set(), flash:new Set(), last:null };
 /* data from Supabase */
 const DATA = { masters:[], ships:[], mports:[] };
 async function loadData(){
-  const [masters, ships, mports] = await Promise.all([
+  const [masters, ships, mports, nexts] = await Promise.all([
     fetchAll(()=>smt().from("v_master_list").select("*").order("ref_id")),
     fetchAll(()=>smt().from("v_shipment_list").select("*").order("master_no").order("shipment_no")),
-    fetchAll(()=>smt().from("master_ports").select("master_id,direction,port_id,sort_order").order("sort_order"))
+    fetchAll(()=>smt().from("master_ports").select("master_id,direction,port_id,sort_order").order("sort_order")),
+    fetchAll(()=>smt().from("master_orders").select("id,next_shipment_no").order("id"))
   ]);
+  const nx = Object.fromEntries(nexts.map(n=>[n.id, n.next_shipment_no||0]));
+  masters.forEach(m=>{ m.next_shipment_no = nx[m.id] || 0; });
   Object.assign(DATA, {masters, ships, mports});
 }
 const shipsOf = m => DATA.ships.filter(s=>s.master_id===m.id);
@@ -1441,7 +1471,7 @@ function analyse(parsed){
   const counters = {};
   out.filter(g=>g.status==="new").forEach(g=>{
     const id = g.order.id;
-    if(counters[id]===undefined) counters[id] = shipsOf(g.order).reduce((m,s)=>Math.max(m, s.shipment_no||0), 0);
+    if(counters[id]===undefined) counters[id] = Math.max(num(g.order.next_shipment_no), shipsOf(g.order).reduce((m,s)=>Math.max(m, s.shipment_no||0), 0));   /* numbers are never reused */
     g.plannedRef = `${mKey(g.order)}.${++counters[id]}`;
   });
   /* Mixed with: same customer order no + container no + seal no, on any master (this file or already saved) */
@@ -1495,6 +1525,10 @@ function render(){
 }
 
 /* ---------- preview dialog ---------- */
+/* 2,3,4,9 -> "2–4, 9" */
+function rowSpan(ns){ const a = [...ns].sort((x,y)=>x-y), out = []; let i = 0;
+  while(i<a.length){ let j = i; while(j+1<a.length && a[j+1]===a[j]+1) j++; out.push(j>i ? `${a[i]}–${a[j]}` : `${a[i]}`); i = j+1; }
+  return out.join(", "); }
 let PENDING = null;
 function showPreview(res, file, parsed){
   PENDING = {res, file, parsed};
@@ -1504,14 +1538,25 @@ function showPreview(res, file, parsed){
   g.forEach(x=>{ const k = x.order ? mKey(x.order) : `Unknown · ${x.master||"(blank)"}`; (byOrder[k] = byOrder[k] || []).push(x); });
   const badge = s => ({new:`<span class="st green">Will import</span>`, dup:`<span class="st">Duplicate · skipped</span>`, error:`<span class="st red">Error</span>`})[s];
   const sections = Object.entries(byOrder).map(([k,list])=>`
-    <div class="pv-grp"><div class="pv-grp-h"><b>${esc(k)}</b><span>${list[0].order ? esc(list[0].order.product||"") : "Not imported"}</span></div>
-    <div class="tbl-wrap"><table class="tbl pv"><thead><tr><th>Status</th><th>Customer order / container / seal</th><th>Excel rows</th><th class="num">Units</th><th>ETD</th><th>Destination</th><th>Notes</th></tr></thead><tbody>
+    <div class="pv-grp"><div class="pv-grp-h"><b>${esc(k)}</b><span>${list[0].order ? esc(list[0].order.product||"") : "Not imported"}</span><em>${list.length} shipment${list.length>1?"s":""}</em></div>
+    <div class="pv-cards">
     ${list.map(x=>{ const f = x.rows[0];
-      const note = x.status==="error" ? `<span class="bad-t">${esc(x.err[0])}${x.err.length>1?` (+${x.err.length-1} more)`:""}</span>`
-        : x.status==="dup" ? `Already exists as ${esc(x.dupRef)}` : `New · <b>${esc(x.plannedRef)}</b> · ${x.rows.length} line${x.rows.length>1?"s":""}${x.shared&&x.shared.length?`<br><span class="share-t">Mixed with ${x.shared.map(s=>`${esc(s.ref)} (${esc(s.product)})`).join(", ")}</span>`:""}${x.warn.length?`<br><span class="warn-t">${esc(x.warn[0])}${x.warn.length>1?` (+${x.warn.length-1})`:""}</span>`:""}`;
-      return `<tr><td>${badge(x.status)}</td><td>${esc(x.po||"—")}<br><span class="muted-s">${esc(x.container||"—")} · ${esc(x.seal||"—")}</span></td>
-        <td>${x.rows.map(r=>r._row).join(", ")}${x.rows.some(r=>r._cont)?`<br><span class="muted-s">${x.rows.filter(r=>r._cont).length} continued from row above</span>`:""}</td><td class="num">${fmtN(x.units)}</td><td>${f.etd?fmtDate(f.etd):"—"}</td><td>${esc(x.arrLabel || txt(f.dest) || "—")}</td><td class="pv-note">${note}</td></tr>`; }).join("")}
-    </tbody></table></div></div>`).join("");
+      const head = x.status==="new" ? `<b class="pv-ref">${esc(x.plannedRef)}</b>` : x.status==="dup" ? `<b class="pv-ref muted">${esc(x.dupRef)}</b>` : `<b class="pv-ref muted">Not imported</b>`;
+      const notes = [];
+      if(x.status==="error") notes.push(`<div class="pv-n bad"><span>Error</span><div>${x.err.map(esc).join("<br>")}</div></div>`);
+      if(x.status==="dup") notes.push(`<div class="pv-n"><span>Duplicate</span><div>Already imported as ${esc(x.dupRef)}; skipped.</div></div>`);
+      if(x.status==="new" && x.shared && x.shared.length) notes.push(`<div class="pv-n share"><span>Mixed with ${x.shared.length}</span><div class="pv-chips">${x.shared.map(s=>`<i title="${esc(s.product)}">${esc(s.ref)}</i>`).join("")}</div></div>`);
+      if(x.warn.length) notes.push(`<div class="pv-n warn"><span>Check</span><div>${x.warn.map(esc).join("<br>")}</div></div>`);
+      return `<div class="pv-card ${x.status}">
+        <div class="pv-main">
+          <div class="pv-c1">${badge(x.status)}${head}<small>${x.rows.length} line${x.rows.length>1?"s":""} · Excel row${x.rows.length>1?"s":""} ${esc(rowSpan(x.rows.map(r=>r._row)))}</small></div>
+          <div class="pv-c2"><span>Customer order</span><b>${esc(x.po||"—")}</b><small>${esc(x.container||"—")} · ${esc(x.seal||"—")}</small></div>
+          <div class="pv-c3"><span>Units</span><b>${fmtN(x.units)}</b></div>
+          <div class="pv-c4"><span>ETD → destination</span><b>${f.etd?fmtDate(f.etd):"—"}</b><small>${esc(x.arrLabel || txt(f.dest) || "—")}</small></div>
+        </div>
+        ${notes.join("")}
+      </div>`; }).join("")}
+    </div></div>`).join("");
   const errList = res.errors.length ? `<details class="pv-list bad" open><summary>${res.errors.length} error${res.errors.length>1?"s":""} — these rows are not imported</summary><ul>${res.errors.map(e=>`<li><b>Row ${e.row}</b> · ${esc(e.col)}: ${esc(e.msg)}</li>`).join("")}</ul></details>` : "";
   const warnList = res.warnings.length ? `<details class="pv-list warn"><summary>${res.warnings.length} warning${res.warnings.length>1?"s":""} — imported, but worth checking</summary><ul>${res.warnings.map(w=>`<li>${esc(w.msg)}</li>`).join("")}</ul></details>` : "";
   closePopup(true);
