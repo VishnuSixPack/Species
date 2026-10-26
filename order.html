@@ -40,8 +40,13 @@ a{color:var(--accent)}
 .tb-inner{height:100%;max-width:1320px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between}
 .brand{display:flex;align-items:center;gap:9px;color:#fff;text-decoration:none}
 .brand-mark{width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center}
-.brand-mark svg{width:20px;height:20px}
-.brand-name{font-size:15px;font-weight:600}
+.brand-mark svg{width:20px;height:20px;display:none}
+.brand-mark.no-img svg{display:block}
+.brand-mark img{width:24px;height:24px;object-fit:contain;display:block}
+.brand-mark:not(.no-img){background:#fff}
+@font-face{font-family:"Bitsumis";src:url("BITSUMIS.TTF") format("truetype");font-display:swap}
+.brand-font{font-family:"Bitsumis",Poppins,sans-serif;font-weight:400!important;letter-spacing:.02em}
+.brand-name{font-size:16px;font-weight:600}
 .brand-sub{font-size:11px;opacity:.75;padding-left:10px;border-left:1px solid rgba(255,255,255,.3)}
 .tb-actions{display:flex;align-items:center;gap:14px}
 .avatar{width:30px;height:30px;border-radius:50%;background:#fff;color:#2059a8;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center}
@@ -635,6 +640,58 @@ body.dr-open{overflow:hidden}
 }
 @media print{ .dr-ov{display:none} }
 
+/* ---- import preview: one card per shipment, notes on their own line ---- */
+.pv-grp-h em{margin-left:auto;font-style:normal;font-size:11.5px;color:var(--muted)}
+.pv-cards{display:grid;gap:8px}
+.pv-card{border:1px solid var(--border);border-radius:10px;background:var(--surface);overflow:hidden}
+.pv-card.error{border-color:rgba(209,67,67,.35)}
+.pv-main{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.2fr) minmax(0,.5fr) minmax(0,1.3fr);gap:14px;padding:11px 14px;align-items:start}
+.pv-main span{display:block;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.pv-main b{display:block;font-weight:500;font-size:13px}
+.pv-main small{display:block;font-size:11.5px;color:var(--muted);overflow-wrap:anywhere}
+.pv-c1{display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:center}
+.pv-c1 .st{grid-row:1}
+.pv-c1 small{grid-column:1/-1;margin-top:3px}
+.pv-ref{font-size:14px!important;font-weight:600!important;color:var(--accent)}
+.pv-ref.muted{color:var(--muted)}
+.pv-c3 b{font-variant-numeric:tabular-nums}
+.pv-n{display:grid;grid-template-columns:110px 1fr;gap:10px;padding:8px 14px;border-top:1px solid var(--border);font-size:12px;background:var(--page)}
+.pv-n > span{font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding-top:2px}
+.pv-n.bad > span,.pv-n.bad > div{color:var(--danger)}
+.pv-n.warn > span,.pv-n.warn > div{color:var(--warn-text)}
+.pv-n.share > span{color:var(--accent)}
+.pv-chips{display:flex;flex-wrap:wrap;gap:5px}
+.pv-chips i{font-style:normal;font-size:11.5px;font-weight:500;color:var(--accent);background:var(--accent-soft);border-radius:5px;padding:1px 7px;cursor:help;white-space:nowrap}
+@media (max-width:760px){
+  .pv-main{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .pv-n{grid-template-columns:1fr;gap:4px}
+}
+
+/* ---- delete ---- */
+.btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn.danger:hover{filter:brightness(1.07)}
+.btn.danger-ghost{color:var(--danger);border-color:transparent;background:transparent}
+.btn.danger-ghost:hover{background:var(--danger-soft)}
+.btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn[hidden]{display:none}
+.dr-foot .sp{flex:1}
+.stbl .selc{width:38px;padding-right:0}
+.cbx{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;vertical-align:middle}
+.stbl tbody tr.picked{background:var(--accent-soft)}
+.selbar{position:sticky;bottom:16px;z-index:20;margin:14px auto 0;width:max-content;max-width:100%;display:flex;align-items:center;gap:14px;padding:8px 8px 8px 18px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--menu-shadow);font-size:13px;animation:pop .15s ease-out}
+.selbar[hidden]{display:none}
+@media (max-width:760px){
+  .stbl tbody tr{grid-template-columns:auto minmax(0,1fr) auto !important;grid-template-areas:"sel ship status" "sel order docs" "sel route route" "sel mode qty" !important}
+  .stbl td.selc{grid-area:sel;padding-top:2px}
+  .stbl td:nth-child(2){grid-area:ship} .stbl td:nth-child(3){grid-area:order} .stbl td:nth-child(4){grid-area:route}
+  .stbl td:nth-child(5){grid-area:mode} .stbl td:nth-child(6){grid-area:qty} .stbl td:nth-child(7){grid-area:status;text-align:right} .stbl td:nth-child(8){grid-area:docs;text-align:right;align-self:center}
+  .selbar{width:auto;left:0;right:0}
+}
+.selbar span,.selbar .btn{white-space:nowrap}
+@media (max-width:760px){ .selbar{gap:10px;padding-left:14px} }
+.boot-brand .brand-mark:not(.no-img){background:transparent}
+.boot-brand .brand-mark img{width:28px;height:28px}
+
 </style>
 </head>
 <body>
@@ -1107,7 +1164,7 @@ async function fetchAll(build, size=1000){
 function bootScreen(html){
   let el = $("#boot");
   if(!el){ el = document.createElement("div"); el.id = "boot"; el.className = "boot"; document.body.appendChild(el); }
-  el.innerHTML = `<div class="boot-card"><div class="boot-brand"><span class="brand-mark">${BRAND_SVG}</span><b>SmarTuna</b></div>${html}</div>`;
+  el.innerHTML = `<div class="boot-card"><div class="boot-brand"><span class="brand-mark">${BRAND_IMG}${BRAND_SVG}</span><b class="brand-font">SmarTuna</b></div>${html}</div>`;
   el.hidden = false; document.body.classList.add("booting");
   return el;
 }
@@ -1126,9 +1183,7 @@ function signInForm(msg){
   const el = bootScreen(`<h2>Sign in</h2><p>Use your SmarTuna (Supabase) account.</p>${msg?`<p class="boot-err" role="alert">${esc(msg)}</p>`:""}
     <form id="signForm"><label>Email<input class="ctl" name="email" type="email" autocomplete="username" required></label>
     <label>Password<input class="ctl" name="password" type="password" autocomplete="current-password" required></label>
-    <button class="btn primary" type="submit">Sign in</button></form>
-    <button class="linkbtn" type="button" id="changeConn">Use a different Supabase project</button>`);
-  el.querySelector("#changeConn").onclick = ()=>{ setCfg(null); location.reload(); };
+    <button class="btn primary" type="submit">Sign in</button></form>`);
   return new Promise(res=>{ el.querySelector("form").addEventListener("submit", async e=>{ e.preventDefault();
     const f = new FormData(e.target), btn = e.target.querySelector("button"); btn.disabled = true; btn.textContent = "Signing in…";
     let r; try{ r = await SB.auth.signInWithPassword({email:String(f.get("email")).trim(), password:String(f.get("password"))}); }
@@ -1221,10 +1276,12 @@ const statusClass = s => ({"In transit":"blue","Booked":"blue","Booking requeste
 const shortPort = l => String(l||"—").split(",")[0];
 
 /* ---------- shell ---------- */
+/* logo file next to the pages; the old mark is shown if it can't be found */
+const BRAND_IMG = `<img src="sc-blue-logo.png" alt="" onerror="this.closest('.brand-mark').classList.add('no-img');this.remove()">`;
 const BRAND_SVG = `<svg viewBox="0 0 24 24"><path d="M3 13c3-5 9-7 14-4l4-3v12l-4-3c-5 3-11 1-14-2z" fill="#fff"/><circle cx="15" cy="11" r="1.2" fill="#2059a8"/></svg>`;
 function shellTop(){
   return `<header class="top-band"><div class="tb-inner">
-    <a class="brand" href="orders.html"><span class="brand-mark" aria-hidden="true">${BRAND_SVG}</span><span class="brand-name">SmarTuna</span><span class="brand-sub">Supply Chain Portal</span></a>
+    <a class="brand" href="orders.html"><span class="brand-mark" aria-hidden="true">${BRAND_IMG}${BRAND_SVG}</span><span class="brand-name brand-font">SmarTuna</span><span class="brand-sub">Supply Chain Portal</span></a>
     <div class="tb-actions">
       <button class="theme-toggle" id="themeToggle" type="button"><span class="tt-track"><span class="tt-thumb"><svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg><svg class="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></span></span><span class="tt-label">Light</span></button>
       <div class="acct"><button type="button" class="avatar" id="avatar" aria-haspopup="true" aria-expanded="false" title="Account">··</button>

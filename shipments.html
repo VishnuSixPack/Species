@@ -40,8 +40,13 @@ a{color:var(--accent)}
 .tb-inner{height:100%;max-width:1320px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between}
 .brand{display:flex;align-items:center;gap:9px;color:#fff;text-decoration:none}
 .brand-mark{width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center}
-.brand-mark svg{width:20px;height:20px}
-.brand-name{font-size:15px;font-weight:600}
+.brand-mark svg{width:20px;height:20px;display:none}
+.brand-mark.no-img svg{display:block}
+.brand-mark img{width:24px;height:24px;object-fit:contain;display:block}
+.brand-mark:not(.no-img){background:#fff}
+@font-face{font-family:"Bitsumis";src:url("BITSUMIS.TTF") format("truetype");font-display:swap}
+.brand-font{font-family:"Bitsumis",Poppins,sans-serif;font-weight:400!important;letter-spacing:.02em}
+.brand-name{font-size:16px;font-weight:600}
 .brand-sub{font-size:11px;opacity:.75;padding-left:10px;border-left:1px solid rgba(255,255,255,.3)}
 .tb-actions{display:flex;align-items:center;gap:14px}
 .avatar{width:30px;height:30px;border-radius:50%;background:#fff;color:#2059a8;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center}
@@ -635,6 +640,58 @@ body.dr-open{overflow:hidden}
 }
 @media print{ .dr-ov{display:none} }
 
+/* ---- import preview: one card per shipment, notes on their own line ---- */
+.pv-grp-h em{margin-left:auto;font-style:normal;font-size:11.5px;color:var(--muted)}
+.pv-cards{display:grid;gap:8px}
+.pv-card{border:1px solid var(--border);border-radius:10px;background:var(--surface);overflow:hidden}
+.pv-card.error{border-color:rgba(209,67,67,.35)}
+.pv-main{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1.2fr) minmax(0,.5fr) minmax(0,1.3fr);gap:14px;padding:11px 14px;align-items:start}
+.pv-main span{display:block;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.pv-main b{display:block;font-weight:500;font-size:13px}
+.pv-main small{display:block;font-size:11.5px;color:var(--muted);overflow-wrap:anywhere}
+.pv-c1{display:grid;grid-template-columns:auto 1fr;column-gap:8px;align-items:center}
+.pv-c1 .st{grid-row:1}
+.pv-c1 small{grid-column:1/-1;margin-top:3px}
+.pv-ref{font-size:14px!important;font-weight:600!important;color:var(--accent)}
+.pv-ref.muted{color:var(--muted)}
+.pv-c3 b{font-variant-numeric:tabular-nums}
+.pv-n{display:grid;grid-template-columns:110px 1fr;gap:10px;padding:8px 14px;border-top:1px solid var(--border);font-size:12px;background:var(--page)}
+.pv-n > span{font-size:10.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);padding-top:2px}
+.pv-n.bad > span,.pv-n.bad > div{color:var(--danger)}
+.pv-n.warn > span,.pv-n.warn > div{color:var(--warn-text)}
+.pv-n.share > span{color:var(--accent)}
+.pv-chips{display:flex;flex-wrap:wrap;gap:5px}
+.pv-chips i{font-style:normal;font-size:11.5px;font-weight:500;color:var(--accent);background:var(--accent-soft);border-radius:5px;padding:1px 7px;cursor:help;white-space:nowrap}
+@media (max-width:760px){
+  .pv-main{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .pv-n{grid-template-columns:1fr;gap:4px}
+}
+
+/* ---- delete ---- */
+.btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn.danger:hover{filter:brightness(1.07)}
+.btn.danger-ghost{color:var(--danger);border-color:transparent;background:transparent}
+.btn.danger-ghost:hover{background:var(--danger-soft)}
+.btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn[hidden]{display:none}
+.dr-foot .sp{flex:1}
+.stbl .selc{width:38px;padding-right:0}
+.cbx{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;vertical-align:middle}
+.stbl tbody tr.picked{background:var(--accent-soft)}
+.selbar{position:sticky;bottom:16px;z-index:20;margin:14px auto 0;width:max-content;max-width:100%;display:flex;align-items:center;gap:14px;padding:8px 8px 8px 18px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:var(--menu-shadow);font-size:13px;animation:pop .15s ease-out}
+.selbar[hidden]{display:none}
+@media (max-width:760px){
+  .stbl tbody tr{grid-template-columns:auto minmax(0,1fr) auto !important;grid-template-areas:"sel ship status" "sel order docs" "sel route route" "sel mode qty" !important}
+  .stbl td.selc{grid-area:sel;padding-top:2px}
+  .stbl td:nth-child(2){grid-area:ship} .stbl td:nth-child(3){grid-area:order} .stbl td:nth-child(4){grid-area:route}
+  .stbl td:nth-child(5){grid-area:mode} .stbl td:nth-child(6){grid-area:qty} .stbl td:nth-child(7){grid-area:status;text-align:right} .stbl td:nth-child(8){grid-area:docs;text-align:right;align-self:center}
+  .selbar{width:auto;left:0;right:0}
+}
+.selbar span,.selbar .btn{white-space:nowrap}
+@media (max-width:760px){ .selbar{gap:10px;padding-left:14px} }
+.boot-brand .brand-mark:not(.no-img){background:transparent}
+.boot-brand .brand-mark img{width:28px;height:28px}
+
 </style>
 </head>
 <body>
@@ -653,6 +710,7 @@ body.dr-open{overflow:hidden}
     <span class="count" id="count" role="status"></span>
   </div>
   <div class="list-card"><table class="otbl stbl" id="stbl"></table></div>
+  <div class="selbar" id="selbar" role="region" aria-label="Selected shipments" hidden></div>
 </main>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>
@@ -1107,7 +1165,7 @@ async function fetchAll(build, size=1000){
 function bootScreen(html){
   let el = $("#boot");
   if(!el){ el = document.createElement("div"); el.id = "boot"; el.className = "boot"; document.body.appendChild(el); }
-  el.innerHTML = `<div class="boot-card"><div class="boot-brand"><span class="brand-mark">${BRAND_SVG}</span><b>SmarTuna</b></div>${html}</div>`;
+  el.innerHTML = `<div class="boot-card"><div class="boot-brand"><span class="brand-mark">${BRAND_IMG}${BRAND_SVG}</span><b class="brand-font">SmarTuna</b></div>${html}</div>`;
   el.hidden = false; document.body.classList.add("booting");
   return el;
 }
@@ -1126,9 +1184,7 @@ function signInForm(msg){
   const el = bootScreen(`<h2>Sign in</h2><p>Use your SmarTuna (Supabase) account.</p>${msg?`<p class="boot-err" role="alert">${esc(msg)}</p>`:""}
     <form id="signForm"><label>Email<input class="ctl" name="email" type="email" autocomplete="username" required></label>
     <label>Password<input class="ctl" name="password" type="password" autocomplete="current-password" required></label>
-    <button class="btn primary" type="submit">Sign in</button></form>
-    <button class="linkbtn" type="button" id="changeConn">Use a different Supabase project</button>`);
-  el.querySelector("#changeConn").onclick = ()=>{ setCfg(null); location.reload(); };
+    <button class="btn primary" type="submit">Sign in</button></form>`);
   return new Promise(res=>{ el.querySelector("form").addEventListener("submit", async e=>{ e.preventDefault();
     const f = new FormData(e.target), btn = e.target.querySelector("button"); btn.disabled = true; btn.textContent = "Signing in…";
     let r; try{ r = await SB.auth.signInWithPassword({email:String(f.get("email")).trim(), password:String(f.get("password"))}); }
@@ -1221,10 +1277,12 @@ const statusClass = s => ({"In transit":"blue","Booked":"blue","Booking requeste
 const shortPort = l => String(l||"—").split(",")[0];
 
 /* ---------- shell ---------- */
+/* logo file next to the pages; the old mark is shown if it can't be found */
+const BRAND_IMG = `<img src="sc-blue-logo.png" alt="" onerror="this.closest('.brand-mark').classList.add('no-img');this.remove()">`;
 const BRAND_SVG = `<svg viewBox="0 0 24 24"><path d="M3 13c3-5 9-7 14-4l4-3v12l-4-3c-5 3-11 1-14-2z" fill="#fff"/><circle cx="15" cy="11" r="1.2" fill="#2059a8"/></svg>`;
 function shellTop(){
   return `<header class="top-band"><div class="tb-inner">
-    <a class="brand" href="orders.html"><span class="brand-mark" aria-hidden="true">${BRAND_SVG}</span><span class="brand-name">SmarTuna</span><span class="brand-sub">Supply Chain Portal</span></a>
+    <a class="brand" href="orders.html"><span class="brand-mark" aria-hidden="true">${BRAND_IMG}${BRAND_SVG}</span><span class="brand-name brand-font">SmarTuna</span><span class="brand-sub">Supply Chain Portal</span></a>
     <div class="tb-actions">
       <button class="theme-toggle" id="themeToggle" type="button"><span class="tt-track"><span class="tt-thumb"><svg class="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg><svg class="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg></span></span><span class="tt-label">Light</span></button>
       <div class="acct"><button type="button" class="avatar" id="avatar" aria-haspopup="true" aria-expanded="false" title="Account">··</button>
@@ -1244,7 +1302,8 @@ Object.assign(ACTIONS, {
    shipments.html — overview of every child shipment + read-only summary
    ===================================================================== */
 const txt = v => v==null ? "" : String(v).trim();
-const UI = { q:"", tile:"all", mode:"", dep:"", arr:"", when:"", sort:"etd", dir:-1 };
+const UI = { q:"", tile:"all", mode:"", dep:"", arr:"", when:"", sort:"etd", dir:-1, sel:new Set() };
+let SHOWN = [];   /* ids in the list as filtered */
 const DATA = { ships:[], mixed:{} };
 
 const SHIP_COLS = "id,master_id,reference,shipment_no,source,status,customer_order_no,container_no,seal_no,bl_no,awb_no,invoice_no,"
@@ -1346,9 +1405,13 @@ function render(){
     return `<button type="button" class="tile ${t.tone||""} ${UI.tile===t.k?"on":""}" data-tile="${t.k}" aria-pressed="${UI.tile===t.k}"><span>${t.label}</span><b>${n}</b></button>`; }).join("");
   const tile = TILES.find(t=>t.k===UI.tile);
   const rows = base.filter(tile.test).sort((a,b)=>SORTS[UI.sort](a,b)*UI.dir || SORTS.ref(a,b));
+  SHOWN = rows.map(s=>s.id);
+  const ids = new Set(DATA.ships.map(s=>s.id)); [...UI.sel].forEach(id=>{ if(!ids.has(id)) UI.sel.delete(id); });
+  const allOn = rows.length && rows.every(s=>UI.sel.has(s.id)), someOn = rows.some(s=>UI.sel.has(s.id));
   $("#count").textContent = `${rows.length} of ${DATA.ships.length} shipment${DATA.ships.length===1?"":"s"}`;
   const th = (k, label, cls="") => `<th class="${cls}"><button type="button" class="sortb ${UI.sort===k?"on":""}" data-sort="${k}">${label}<span aria-hidden="true">${UI.sort===k ? (UI.dir>0?"↑":"↓") : "↕"}</span></button></th>`;
-  const body = rows.map(s=>`<tr data-view="${esc(s.id)}" tabindex="0">
+  const body = rows.map(s=>`<tr data-view="${esc(s.id)}" tabindex="0" class="${UI.sel.has(s.id)?"picked":""}">
+      <td class="selc"><input type="checkbox" class="cbx" data-pick="${esc(s.id)}" ${UI.sel.has(s.id)?"checked":""} aria-label="Select ${esc(s.reference)}"></td>
       <td><span class="ref">${esc(s.reference)}</span>${s.source==="import"?`<span class="tag-src">Excel</span>`:""}<br><span class="muted-s">${esc(s.product||"—")}</span></td>
       <td>${esc(s.customer_order_no||"—")}${s.mixed.length?` <span class="tag-share" title="Same customer order, container and seal">mixed with ${esc(s.mixed.map(m=>m.ref).join(", "))}</span>`:""}<br><span class="muted-s">${esc(s.container_no||"—")} · ${esc(s.seal_no||"—")}</span></td>
       <td class="rt-cell">${routeMini(s)}</td>
@@ -1360,8 +1423,36 @@ function render(){
   const empty = !DATA.ships.length
     ? `No shipments yet. Add one from a master order or import them on the <a href="orders.html">Master orders</a> page.`
     : `No shipments match these filters. <button type="button" class="linkbtn" data-action="resetFilters">Clear filters</button>`;
-  $("#stbl").innerHTML = `<thead><tr>${th("ref","Shipment")}<th>Customer order · container</th>${th("etd","Route · ETD → ETA","rt-h")}<th>Mode</th>${th("qty","Quantity","num")}${th("status","Status")}<th>Documents</th></tr></thead>
-    <tbody>${body || `<tr class="empty"><td colspan="7">${empty}</td></tr>`}</tbody>`;
+  $("#stbl").innerHTML = `<thead><tr><th class="selc"><input type="checkbox" class="cbx" data-pickall="1" ${allOn?"checked":""} aria-label="Select all shown shipments"></th>${th("ref","Shipment")}<th>Customer order · container</th>${th("etd","Route · ETD → ETA","rt-h")}<th>Mode</th>${th("qty","Quantity","num")}${th("status","Status")}<th>Documents</th></tr></thead>
+    <tbody>${body || `<tr class="empty"><td colspan="8">${empty}</td></tr>`}</tbody>`;
+  const pa = $('[data-pickall]'); if(pa) pa.indeterminate = !allOn && someOn;
+  renderSelBar();
+}
+function renderSelBar(){
+  const n = UI.sel.size, bar = $("#selbar");
+  bar.hidden = !n;
+  if(n) bar.innerHTML = `<span><b>${n}</b> selected</span>
+    <button type="button" class="linkbtn" data-action="clearSel">Clear</button>
+    <button type="button" class="btn danger" data-action="deleteSel"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Delete ${n>1?`${n} shipments`:"shipment"}</button>`;
+}
+/* delete one or more shipments (lines, legs and transhipments go with them) */
+function confirmDelete(ids, after){
+  const list = ids.map(id=>DATA.ships.find(s=>s.id===id)).filter(Boolean);
+  if(!list.length) return;
+  const refs = list.map(s=>s.reference), shown = refs.slice(0,8).map(r=>`<span class="obj">${esc(r)}</span>`).join(", ") + (refs.length>8 ? ` and ${refs.length-8} more` : "");
+  const mixed = list.filter(s=>s.mixed.length && !s.mixed.every(m=>ids.includes(m.id)));
+  popup({ok:false, title: list.length>1 ? `Delete ${list.length} shipments?` : `Delete ${refs[0]}?`,
+    msg:`${shown} will be removed with ${list.length>1?"their":"its"} lines. The quantity goes back to the master order. Shipment numbers aren’t reused.${mixed.length?`<br><br>${mixed.length>1?"Some are":"It is"} mixed with other shipments; those stay and simply lose the link.`:""}<br><br><b>This can’t be undone.</b>`,
+    primary: list.length>1 ? `Delete ${list.length}` : "Delete", secondary:"Cancel",
+    async onPrimary(){
+      try{
+        for(let i=0;i<ids.length;i+=100) await q(smt().from("shipments").delete().in("id", ids.slice(i,i+100)));
+        ids.forEach(id=>UI.sel.delete(id));
+        if(after) after();
+        await loadData(); fillFilters(); render();
+        toast(list.length>1 ? `${list.length} shipments deleted` : `${refs[0]} deleted`);
+      }catch(err){ popup({ok:false, title:"Couldn’t delete", msg:esc(errText(err))}); await loadData(); render(); }
+    }});
 }
 const MODE_ICON = {
   Sea:`<svg viewBox="0 0 24 24"><path d="M3 17c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0"/><path d="M5 14l-1-5h16l-1 5"/><path d="M9 9V5h6v4"/></svg>`,
@@ -1461,6 +1552,7 @@ async function openView(id, push=true){
       ${x.notes?`<section><h3>Notes</h3><p class="notes">${esc(x.notes)}</p></section>`:""}
     </div>
     <div class="dr-foot">
+      <button type="button" class="btn danger-ghost" data-action="deleteOne" data-id="${esc(s.id)}"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Delete</button><span class="sp"></span>
       <a class="btn" href="order.html?order=${s.master_ref}">Open master ${esc(s.master_key)}</a>
       <a class="btn primary" href="shipment.html?order=${s.master_ref}&id=${encodeURIComponent(s.id)}">Edit shipment</a>
     </div>`;
@@ -1476,6 +1568,10 @@ let LAST_VIEW = null;
 
 /* ---------- events ---------- */
 document.addEventListener("click", e=>{
+  const pk = e.target.closest("[data-pick]");
+  if(pk){ e.stopPropagation(); const id = pk.dataset.pick; pk.checked ? UI.sel.add(id) : UI.sel.delete(id); pk.closest("tr").classList.toggle("picked", pk.checked); render(); $(`[data-pick="${CSS.escape(id)}"]`)?.focus(); return; }
+  if(e.target.closest("[data-pickall]")){ const on = e.target.checked; SHOWN.forEach(id=>on ? UI.sel.add(id) : UI.sel.delete(id)); render(); $('[data-pickall]')?.focus(); return; }
+  if(e.target.closest("td.selc")) return;   /* a click beside the checkbox doesn't open the summary */
   if(e.target.closest("[data-close-dr]") || e.target.id==="drawer"){ closeView(); return; }
   const v = e.target.closest("[data-view]");
   if(v){ if(v.closest("#stbl")) LAST_VIEW = v.dataset.view; openView(v.dataset.view); return; }
@@ -1485,10 +1581,14 @@ document.addEventListener("click", e=>{
 });
 document.addEventListener("keydown", e=>{
   if(e.key==="Escape" && $("#drawer.show")){ closeView(); return; }
+  if(e.target.matches?.("input")) return;
   const r = e.target.closest?.("#stbl tr[data-view]");
   if(r && (e.key==="Enter"||e.key===" ")){ e.preventDefault(); r.click(); }
 });
 Object.assign(ACTIONS, {
+  clearSel(){ UI.sel.clear(); render(); },
+  deleteSel(){ confirmDelete([...UI.sel]); },
+  deleteOne(el){ confirmDelete([el.dataset.id], closeView); },
   resetFilters(){ Object.assign(UI, {q:"", tile:"all", mode:"", dep:"", arr:"", when:""}); $("#search").value = ""; fillFilters(); render(); }
 });
 $("#search").addEventListener("input", e=>{ UI.q = e.target.value; render(); });
