@@ -1276,7 +1276,7 @@ const COLS = [
   {key:"invDate",    head:"Purchase Invoice Date*", req:true, date:true},
   {key:"po",         head:"Purchase Order no.",     key2:true},
   {key:"units",      head:"Units",                  num:true},
-  {key:"product",    head:"*Product",               req:true},
+  {key:"batch",      head:"*Batch / Lot no.",       req:true, alt:["*Product","Batch no","Lot no","Batch","Lot"]},   /* column H; a product can have many batches */
   {key:"produced",   head:"Produced",               date:true},
   {key:"bestBefore", head:"Best Before",            date:true},
   {key:"rawId",      head:"*Raw Material ID",       req:true},
@@ -1294,7 +1294,7 @@ const COLS = [
   {key:"gtin",       head:"GTIN"}
 ];
 const normHead = h => String(h??"").replace(/\*/g,"").replace(/\s+/g," ").trim().toLowerCase();
-const COL_BY_HEAD = Object.fromEntries(COLS.map(c=>[normHead(c.head), c]));
+const COL_BY_HEAD = Object.fromEntries(COLS.flatMap(c=>[c.head, ...(c.alt||[])].map(h=>[normHead(h), c])));
 const label = c => c.head.replace(/\*/g,"").trim();
 
 /* ---------- value normalisers ---------- */
@@ -1367,7 +1367,7 @@ function analyse(parsed){
     if(!head){ r._noHead = true; return; }
     r._cont = head._row; r._head = head;
     SHIP_KEYS.forEach(k=>{ if(txt(r[k])==="") r[k] = head[k]; });
-    if(txt(r.gtin)==="" && sameText(r.product, head.product)) r.gtin = head.gtin;
+    if(txt(r.gtin)==="" && sameText(r.master, head.master)) r.gtin = head.gtin;   /* same master = same product */
   });
 
   parsed.rows.forEach(r=>{
@@ -1387,10 +1387,9 @@ function analyse(parsed){
     const mode = toMode(r.mode); if(mode===null) addErr(r, "Shipment(s) mode", `“${txt(r.mode)}” is not Sea, Air or Truck`); r.modeN = mode || "Sea";
     r.gtin = txt(r.gtin).replace(/\.0+$/,"");
     if(txt(r.master)){ r.order = findOrder(r.master); if(!r.order) addErr(r, "Master Ref no", `“${txt(r.master)}” doesn't match any master order`); }
-    if(r.order && txt(r.product)){
-      /* one product per master order: GTIN decides when both sides have one, otherwise the name */
-      const oG = txt(r.order.gtin), ok = (r.gtin && oG) ? r.gtin===oG : sameText(r.product, r.order.product);
-      if(!ok) addErr(r, "Product", `“${r.gtin?r.gtin+" — ":""}${txt(r.product)}” isn’t the product of ${mKey(r.order)} (${oG?oG+" — ":""}${r.order.product||"no product set"}). Each master order covers one product.`);
+    if(r.order && r.gtin && txt(r.order.gtin) && r.gtin!==txt(r.order.gtin)){
+      /* one product per master order: the product comes from the master; a GTIN in the file must match it */
+      addErr(r, "GTIN", `“${r.gtin}” isn’t the product of ${mKey(r.order)} (${txt(r.order.gtin)} — ${r.order.product||""}). Each master order covers one product.`);
     }
     /* destination -> one port in the Port module (the master's arrival port wins a tie) */
     if(txt(r.dest)){
@@ -1424,7 +1423,6 @@ function analyse(parsed){
     if(dupe){ g.status = "dup"; g.dupRef = dupe.reference; return g; }
     if(o.seller && !sameText(f.supplier, o.seller)) g.warn.push(`Supplier “${txt(f.supplier)}” differs from the order’s seller (${o.seller}).`);
     g.rows.forEach(r=>{
-      if(r.gtin && txt(o.gtin) && r.gtin===txt(o.gtin) && !sameText(r.product, o.product)) g.warn.push(`Row ${r._row}: GTIN matches but the name “${txt(r.product)}” differs from “${o.product}”.`);
       if(!r.units) g.warn.push(`Row ${r._row}: Units is empty, so the line quantity is 0.`);
     });
     g.arrLabel = f.arrPort ? portLabel(f.arrPort) : ""; g.depLabel = REFS.portById.get(f.depPortId) || "";
@@ -1545,7 +1543,7 @@ async function doImport(){
   try{
     const batch = await q(smt().from("import_batches").insert({file_name:file, sheet_name:parsed.sheet}).select("id").single());
     const KEYS = {supplier:"supplier", master:"master_ref", invNo:"invoice_no", invDate:"invoice_date", po:"purchase_order_no", units:"units",
-      product:"product", produced:"produced", bestBefore:"best_before", rawId:"raw_material_id", etd:"etd", eta:"eta", dest:"destination", container:"container_no",
+      batch:"batch_no", produced:"produced", bestBefore:"best_before", rawId:"raw_material_id", etd:"etd", eta:"eta", dest:"destination", container:"container_no",
       seal:"seal_no", feeder:"feeder_vessel", mother:"mother_vessel", line:"shipping_line", bl:"bl_no", blDate:"bl_issue_date", mode:"shipment_mode", gtin:"gtin"};
     const rows = parsed.rows.map(r=>{ const o = {batch_id:batch.id, excel_row:r._row};
       Object.entries(KEYS).forEach(([k,col])=>{ o[col] = cellText(r._orig[k]); }); return o; });
