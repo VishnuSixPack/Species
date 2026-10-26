@@ -1320,7 +1320,10 @@ const sameText = (a,b) => txt(a).toLowerCase()===txt(b).toLowerCase();
 /* ---------- master lookup ---------- */
 function findOrder(master){
   const m = txt(master).toLowerCase(); if(!m) return null;
-  return DATA.masters.find(o=>txt(o.master_no).toLowerCase()===m || String(o.ref_id)===m) || null;
+  /* same order as the import on the server: master order number, then external reference, then Ref ID */
+  return DATA.masters.find(o=>txt(o.master_no).toLowerCase()===m)
+      || DATA.masters.find(o=>txt(o.external_reference).toLowerCase()===m)
+      || DATA.masters.find(o=>String(o.ref_id)===m) || null;
 }
 
 /* ---------- parse workbook ---------- */
@@ -1454,7 +1457,7 @@ function render(){
   const orders = DATA.masters;
   const qq = UI.q.toLowerCase().trim();
   const shipHit = s => [s.reference, s.container_no, s.bl_no, s.customer_order_no, s.seal_no].some(v=>txt(v).toLowerCase().includes(qq));
-  const match = o => !qq || [o.master_no, o.ref_id, o.seller, o.buyer, o.product, o.gtin].some(v=>txt(v).toLowerCase().includes(qq)) || shipsOf(o).some(shipHit);
+  const match = o => !qq || [o.master_no, o.external_reference, o.ref_id, o.seller, o.buyer, o.product, o.gtin].some(v=>txt(v).toLowerCase().includes(qq)) || shipsOf(o).some(shipHit);
   const shown = orders.filter(match);
   const planned = orders.reduce((a,o)=>a+num(o.planned_shipments),0);
   const imported = DATA.ships.filter(s=>s.source==="import").length;
@@ -1476,7 +1479,7 @@ function render(){
     return `<tbody class="grp-body ${open?"open":""}">
       <tr class="parent" data-toggle="${esc(o.id)}" tabindex="0" aria-expanded="${open}">
         <td><span class="chev" aria-hidden="true">›</span></td>
-        <td><a class="ref" href="order.html?order=${o.ref_id}" data-stop="1">${esc(o.master_no)}</a><br><span class="muted-s">Ref ${o.ref_id} · ${esc(o.branch||"")}</span></td>
+        <td><a class="ref" href="order.html?order=${o.ref_id}" data-stop="1">${esc(o.master_no)}</a><br><span class="muted-s">${o.external_reference?`${esc(o.external_reference)} · `:""}Ref ${o.ref_id} · ${esc(o.branch||"")}</span></td>
         <td>${esc(o.seller||"—")}<br><span class="muted-s">to ${esc(o.buyer||"—")}</span></td>
         <td>${esc(shortPort(o.departure))} → ${esc(shortPort(o.arrival))}</td>
         <td>${esc(o.product||"—")}${o.gtin?`<br><span class="muted-s">${esc(o.gtin)}</span>`:""}</td>

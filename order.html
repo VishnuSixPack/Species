@@ -1249,7 +1249,7 @@ const REF = () => S.details.refId;
 
 function blankMaster(){
   return {
-    details:{id:null, refId:null, nextNo:0, date:todayISO(), orderNo:"", orderDate:"", branch:"Main branch"},
+    details:{id:null, refId:null, nextNo:0, date:todayISO(), orderNo:"", extRef:"", orderDate:"", branch:"Main branch"},
     parties:{list:[{label:"Buyer",party:"",role:"Buyer",ref:"",gln:""},{label:"Seller",party:"",role:"Seller",ref:"",gln:""}]},
     raw:{species:"",sciName:"",method:"",fao:[],certs:[],form:""},
     fp:{product:""},
@@ -1265,7 +1265,7 @@ const str = v => v==null ? "" : String(v);
 function fromMaster(m){
   const parties = (m.parties||[]).map(x=>({label:x.role==="Buyer"||x.role==="Seller"?x.role:"", party:orgLabelOf(x.organization_id, x.organization_name), role:x.role||"", ref:x.party_reference||"", gln:x.gln||"", glnAuto:x.module_gln||""}));
   return {
-    details:{id:m.id, refId:m.ref_id, nextNo:m.next_shipment_no||0, date:m.record_date||"", orderNo:m.master_no||"", orderDate:m.master_order_date||"", branch:m.branch||""},
+    details:{id:m.id, refId:m.ref_id, nextNo:m.next_shipment_no||0, date:m.record_date||"", orderNo:m.master_no||"", extRef:m.external_reference||"", orderDate:m.master_order_date||"", branch:m.branch||""},
     parties:{list: parties.length ? parties : blankMaster().parties.list},
     raw:{species:m.species||"", sciName:m.scientific_name||"", method:m.catch_method||"", fao:m.fao_areas||[], certs:m.certifications||[], form:m.form_at_receipt||""},
     fp:{product: productLabel(m.product)},
@@ -1282,7 +1282,7 @@ function toPayload(){
   const L = S.logistics, prod = REFS.productByLabel.get(S.fp.product);
   const ids = labels => labels.map(l=>REFS.portByLabel.get(l)).filter(Boolean);
   return {
-    id:S.details.id, master_no:S.details.orderNo.trim(), record_date:S.details.date||null, master_order_date:S.details.orderDate, branch:S.details.branch,
+    id:S.details.id, master_no:S.details.orderNo.trim(), external_reference:S.details.extRef.trim(), record_date:S.details.date||null, master_order_date:S.details.orderDate, branch:S.details.branch,
     species:S.raw.species, scientific_name:S.raw.sciName.trim(), catch_method:S.raw.method, fao_areas:S.raw.fao, certifications:S.raw.certs, form_at_receipt:S.raw.form,
     product_id: prod ? prod.id : null,
     primary_packaging:S.pack.primary, has_inner_packaging:S.pack.hasInner, inner_packaging:S.pack.hasInner?S.pack.inner:"", outer_packaging:S.pack.outer,
@@ -1317,11 +1317,12 @@ SECTIONS.push(
       ${field("Ref ID", lockBox(S.details.refId ? esc(S.details.refId) : "Assigned on save",{title:"Generated automatically"}), {hint:"System reference for this order"})}
       ${field("Date", datePicker(`${d}.date`,"Select date"), {req:true, path:`${d}.date`, hint:"Date this order record was created"})}
       ${field("Branch", dropdown(`${d}.branch`,"branches","Select a branch"), {hint:"Branch that owns this master order"})}
-    </div><div class="row two">
+    </div><div class="row">
       ${field("Master order number", textIn(`${d}.orderNo`,"e.g. MO-2026-0142"), {req:true, path:`${d}.orderNo`, hint:"Order number all child shipments belong to"})}
+      ${field("External reference", textIn(`${d}.extRef`,"e.g. SIM-2026-0142"), {req:true, path:`${d}.extRef`, hint:"Unique identifier of this master order"})}
       ${field("Master order date", datePicker(`${d}.orderDate`,"Select order date"), {req:true, path:`${d}.orderDate`, hint:"Date the master order was placed"})}
     </div>`; },
-  req:()=>[filled("details.date"), filled("details.orderNo"), filled("details.orderDate")] },
+  req:()=>[filled("details.date"), filled("details.orderNo"), filled("details.extRef"), filled("details.orderDate")] },
 
 { id:"parties", group:"General", title:"Parties",
   render(){
@@ -1460,7 +1461,7 @@ window.addEventListener("beforeunload", e=>{ if(DIRTY){ e.preventDefault(); e.re
 HOOKS.onInput = path => {
   if(path.startsWith("handling.min") || path.startsWith("handling.max")) rerenderKeepFocus(path);
   if(path==="qty.shipments" || path==="qty.qty") renderSection("shipments", true);
-  if(path==="details.orderNo") updateHead();
+  if(path==="details.orderNo" || path==="details.extRef") updateHead();
   markDirty();
 };
 HOOKS.onChange = path => {
@@ -1525,7 +1526,7 @@ document.addEventListener("keydown", e=>{ const tr = e.target.closest?.("tr[data
 function updateHead(){
   $("#headTitle").textContent = IS_NEW ? "Create master order" : "Master order";
   $("#headBadge").textContent = S.details.branch || "No branch";
-  $("#headSub").innerHTML = S.details.refId ? `Ref ID <b>${esc(S.details.refId)}</b> · ${esc(S.details.orderNo||"")}` : "New master order · not saved yet";
+  $("#headSub").innerHTML = S.details.refId ? `Ref ID <b>${esc(S.details.refId)}</b> · ${esc(S.details.orderNo||"")}${S.details.extRef?` · Ext. ref <b>${esc(S.details.extRef)}</b>`:""}` : "New master order · not saved yet";
   document.title = S.details.orderNo ? `${S.details.orderNo} · Master order` : "Create Master Order";
 }
 window.addEventListener("focus", async ()=>{ if(!SB || !S.details.id) return; try{ await loadShips(); renderSection("shipments"); renderSection("qty", true); }catch(e){} });

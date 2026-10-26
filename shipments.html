@@ -1247,7 +1247,7 @@ const DATA = { ships:[], mixed:{} };
 const SHIP_COLS = "id,master_id,reference,shipment_no,source,status,customer_order_no,container_no,seal_no,bl_no,awb_no,invoice_no,"
   + "shipment_mode,load_basis,load_type,ship_mode,shipping_line,airline,courier_tracking_no,shipper_org_id,consignee_org_id,"
   + "departure_port_id,departure_planned,departure_scheduled,departure_actual,arrival_port_id,arrival_planned,arrival_scheduled,arrival_actual,"
-  + "destination_delivery_date,master_orders(ref_id,master_no,product_id,quantity_unit),shipment_lines(quantity),shipment_transhipments(seq,port_id,location)";
+  + "destination_delivery_date,master_orders(ref_id,master_no,external_reference,product_id,quantity_unit),shipment_lines(quantity),shipment_transhipments(seq,port_id,location)";
 
 async function loadData(){
   const [ships, mixed] = await Promise.all([
@@ -1277,7 +1277,7 @@ function enrich(s){
   if(s.shipment_mode==="Sea" && (!txt(s.container_no) || !txt(s.seal_no))) missing.push("Container / seal");
   const etaDue = s.arrival_scheduled || s.arrival_planned || "";
   return {...s,
-    master_no:m.master_no||"", master_ref:m.ref_id, unit:m.quantity_unit||"",
+    master_no:m.master_no||"", ext_ref:m.external_reference||"", master_ref:m.ref_id, unit:m.quantity_unit||"",
     product: prod ? prod.name : "", gtin: prod ? prod.gtin : "",
     dep: REFS.portById.get(s.departure_port_id) || "", arr: REFS.portById.get(s.arrival_port_id) || "",
     tranship: (s.shipment_transhipments||[]).sort((a,b)=>a.seq-b.seq).map(t=>t.port_id ? (REFS.portById.get(t.port_id)||"") : (t.location||"")).filter(Boolean),
@@ -1316,7 +1316,7 @@ function baseFiltered(){
     (!UI.dep || s.departure_port_id===UI.dep) &&
     (!UI.arr || s.arrival_port_id===UI.arr) &&
     WHEN[UI.when].test(s) &&
-    (!qq || [s.reference, s.master_no, s.customer_order_no, s.container_no, s.seal_no, s.bl_no, s.awb_no, s.invoice_no, s.product, s.gtin, s.shipper, s.consignee, s.dep, s.arr]
+    (!qq || [s.reference, s.master_no, s.ext_ref, s.customer_order_no, s.container_no, s.seal_no, s.bl_no, s.awb_no, s.invoice_no, s.product, s.gtin, s.shipper, s.consignee, s.dep, s.arr]
               .some(v=>txt(v).toLowerCase().includes(qq))));
 }
 const SORTS = {
@@ -1421,7 +1421,7 @@ async function openView(id, push=true){
   dr.querySelector(".dr").innerHTML = `
     <div class="dr-head">
       <div><div class="dr-ttl"><h2>${esc(s.reference)}</h2><span class="st ${statusClass(s.status)}">${esc(s.status)}</span>${s.source==="import"?`<span class="tag-src">Excel</span>`:""}</div>
-        <p>${esc(s.product||"—")}${s.gtin?` · ${esc(s.gtin)}`:""} · Master <a href="order.html?order=${s.master_ref}">${esc(s.master_no)}</a></p></div>
+        <p>${esc(s.product||"—")}${s.gtin?` · ${esc(s.gtin)}`:""} · Master <a href="order.html?order=${s.master_ref}">${esc(s.master_no)}</a>${s.ext_ref?` · Ext. ref ${esc(s.ext_ref)}`:""}</p></div>
       <button type="button" class="mx" data-close-dr="1" aria-label="Close">${XICON}</button>
     </div>
     <div class="dr-body">
