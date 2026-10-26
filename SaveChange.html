@@ -1,0 +1,404 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Dynamic Save Changes</title>
+
+  <!-- Poppins Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  >
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 40px 20px;
+      background: #f5f7fb;
+      font-family: 'Poppins', sans-serif;
+      color: #202938;
+    }
+
+    .form-container {
+      width: 100%;
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 32px;
+      background: #ffffff;
+      border: 1px solid #e7eaf0;
+      border-radius: 18px;
+      box-shadow: 0 12px 36px rgba(25, 35, 55, 0.05);
+    }
+
+    .form-header {
+      margin-bottom: 30px;
+    }
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 10px;
+      color: #2563eb;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+
+    .form-header h2 {
+      margin: 0 0 8px;
+      color: #172033;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.6px;
+    }
+
+    .form-header p {
+      margin: 0;
+      color: #7b8495;
+      font-size: 12px;
+      line-height: 1.8;
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 9px;
+      color: #374151;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .field-hint {
+      display: block;
+      margin-top: 7px;
+      color: #929aaa;
+      font-size: 10px;
+    }
+
+    .form-group input,
+    .form-group select {
+      display: block;
+      width: 100%;
+      height: 46px;
+      padding: 0 14px;
+      border: 1px solid #e1e5ed;
+      border-radius: 10px;
+      outline: none;
+      background: #fbfcfe;
+      color: #1f2937;
+      font-family: 'Poppins', sans-serif;
+      font-size: 12px;
+      transition: border-color 0.2s ease,
+                  box-shadow 0.2s ease,
+                  background 0.2s ease;
+    }
+
+    .form-group input:hover,
+    .form-group select:hover {
+      border-color: #b8c6e0;
+      background: #ffffff;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      border-color: #2563eb;
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.10);
+    }
+
+    .form-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-top: 32px;
+      padding-top: 22px;
+      border-top: 1px solid #edf0f5;
+    }
+
+    .status-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .save-status {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: #7b8495;
+      font-size: 11px;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      background: #22c55e;
+    }
+
+    .save-status.unsaved .status-dot {
+      background: #f59e0b;
+    }
+
+    .reset-button {
+      width: fit-content;
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: #8b93a3;
+      font-family: 'Poppins', sans-serif;
+      font-size: 11px;
+      cursor: pointer;
+      text-align: left;
+      transition: color 0.2s ease;
+    }
+
+    .reset-button:hover {
+      color: #2563eb;
+    }
+
+    .save-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      min-height: 44px;
+      padding: 0 22px;
+      border: 1px solid #2563eb;
+      border-radius: 10px;
+      background: #2563eb;
+      color: #ffffff;
+      font-family: 'Poppins', sans-serif;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      cursor: not-allowed;
+      opacity: 0.25;
+      box-shadow: 0 3px 8px rgba(37, 99, 235, 0.12);
+      transition: opacity 0.25s ease,
+                  box-shadow 0.25s ease,
+                  transform 0.2s ease,
+                  background 0.2s ease;
+    }
+
+    .save-button.has-changes {
+      opacity: 1;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.22);
+    }
+
+    .save-button.has-changes:hover {
+      background: #1d4ed8;
+      border-color: #1d4ed8;
+      box-shadow: 0 6px 16px rgba(37, 99, 235, 0.28);
+      transform: translateY(-1px);
+    }
+
+    .save-button:disabled {
+      cursor: not-allowed;
+    }
+
+    .save-button svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 20px 12px;
+      }
+
+      .form-container {
+        padding: 23px 19px;
+        border-radius: 14px;
+      }
+
+      .form-footer {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .save-button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <main class="form-container">
+
+    <header class="form-header">
+      <span class="eyebrow">Product management</span>
+      <h2>Product Details</h2>
+      <p>Manage your product information and keep your records up to date.</p>
+    </header>
+
+    <form id="productForm">
+
+      <!-- Field 1 -->
+      <div class="form-group">
+        <label for="productName">Product Name</label>
+        <input
+          type="text"
+          id="productName"
+          name="productName"
+          value="Canned Tuna"
+          placeholder="Enter product name"
+        />
+        <span class="field-hint">The name displayed across your records.</span>
+      </div>
+
+      <!-- Field 2 -->
+      <div class="form-group">
+        <label for="productCategory">Product Category</label>
+        <select id="productCategory" name="productCategory">
+          <option value="Seafood" selected>Seafood</option>
+          <option value="Vegetables">Vegetables</option>
+          <option value="Fruits">Fruits</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+
+      <!-- Field 3 -->
+      <div class="form-group">
+        <label for="netWeight">Net Weight (kg)</label>
+        <input
+          type="number"
+          id="netWeight"
+          name="netWeight"
+          value="12.5"
+          min="0"
+          step="0.1"
+          placeholder="Enter net weight"
+        />
+        <span class="field-hint">Enter the net product weight in kilograms.</span>
+      </div>
+
+      <!-- Footer -->
+      <footer class="form-footer">
+
+        <div class="status-wrapper">
+          <div class="save-status" id="saveStatus" aria-live="polite">
+            <span class="status-dot"></span>
+            <span id="statusText">All changes saved</span>
+          </div>
+
+          <button
+            type="button"
+            class="reset-button"
+            id="resetButton"
+          >
+            Reset changes
+          </button>
+        </div>
+
+        <button
+          type="submit"
+          class="save-button"
+          id="saveButton"
+          disabled
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z"/>
+            <path d="M17 21v-8H7v8"/>
+            <path d="M7 3v5h8"/>
+          </svg>
+          <span>Save Changes</span>
+        </button>
+
+      </footer>
+
+    </form>
+  </main>
+
+  <script>
+    const form = document.getElementById('productForm');
+    const saveButton = document.getElementById('saveButton');
+    const saveStatus = document.getElementById('saveStatus');
+    const statusText = document.getElementById('statusText');
+    const resetButton = document.getElementById('resetButton');
+
+    // Capture the initial values.
+    let originalValues = getFormValues();
+
+    function getFormValues() {
+      return JSON.stringify(
+        Array.from(form.elements)
+          .filter(element => element.name)
+          .map(element => [element.name, element.value])
+      );
+    }
+
+    function checkForChanges() {
+      const hasChanges = getFormValues() !== originalValues;
+
+      saveButton.classList.toggle('has-changes', hasChanges);
+      saveButton.disabled = !hasChanges;
+
+      saveStatus.classList.toggle('unsaved', hasChanges);
+
+      statusText.textContent = hasChanges
+        ? 'Unsaved changes'
+        : 'All changes saved';
+    }
+
+    // Detect changes in any field.
+    form.addEventListener('input', checkForChanges);
+    form.addEventListener('change', checkForChanges);
+
+    // Demo save: replace this section with your actual save/API logic.
+    form.addEventListener('submit', function(event) {
+      event.preventDefault();
+
+      if (getFormValues() === originalValues) return;
+
+      originalValues = getFormValues();
+      checkForChanges();
+
+      statusText.textContent = 'Changes saved successfully';
+    });
+
+    // Reset all fields to their last saved values.
+    resetButton.addEventListener('click', function() {
+      const savedValues = JSON.parse(originalValues);
+
+      savedValues.forEach(([name, value]) => {
+        const field = Array.from(form.elements)
+          .find(element => element.name === name);
+
+        if (field) field.value = value;
+      });
+
+      checkForChanges();
+    });
+
+    // Initial state: button at 25% opacity.
+    checkForChanges();
+  </script>
+
+</body>
+</html>
