@@ -1118,6 +1118,7 @@ function contentQuaternion(rot_y) {
 }
 
 let showContents = true;                 // viewport toggle
+const CONTENTS_SHELL_OPACITY = 0.22;     // how far you can see into a carton
 // Drawing every can of every carton can run to tens of thousands of meshes.
 // Past this many the plan falls back to plain boxes and says why.
 const MAX_CONTENT_UNITS = 12000;
@@ -1187,6 +1188,24 @@ function removeContentsGroup(item) {
   });
 }
 
+// How see-through a carton's shell is, set in one place so that turning it on
+// and turning it off touch exactly the same properties.
+//
+// This used to be done inline at each call site, and the one that made a
+// carton see-through set depthWrite while the one that made it solid again
+// forgot to. A carton that writes no depth lets the container wall, the floor
+// grid, its own wireframe and every carton behind it draw straight through —
+// so the whole load stayed glassy after the contents toggle had been switched
+// off. Symmetry here is the fix: there is only one function to get right.
+function setShellOpacity(mesh, opacity) {
+  const solid = opacity >= 1;
+  const m = mesh.material;
+  m.transparent = !solid;
+  m.opacity = opacity;
+  m.depthWrite = solid;
+  m.needsUpdate = true;
+}
+
 // Add or drop the contents of one carton, and make its shell see-through
 // while they are showing so the contents are actually visible.
 function applyContents(item, budget) {
@@ -1199,17 +1218,12 @@ function applyContents(item, budget) {
   const want = showContents && count > 0;
 
   if (!want || count > budget.left) {
-    item.mesh.material.transparent = false;
-    item.mesh.material.opacity = 1;
-    item.mesh.material.needsUpdate = true;
+    setShellOpacity(item.mesh, 1);
     return 0;
   }
   const grp = buildContentsGroup(item);
   if (grp) item.mesh.add(grp);
-  item.mesh.material.transparent = true;
-  item.mesh.material.opacity = 0.22;
-  item.mesh.material.depthWrite = false;
-  item.mesh.material.needsUpdate = true;
+  setShellOpacity(item.mesh, CONTENTS_SHELL_OPACITY);
   budget.left -= count;
   return count;
 }
@@ -1835,12 +1849,7 @@ function applyIsolate() {
     i.mesh.userData.ghost = ghost;
     const wire = i.mesh.children.find(c => c.userData.isEdge);
     if (wire) wire.visible = !ghost;
-    if (ghost) {
-      i.mesh.material.transparent = true;
-      i.mesh.material.opacity = GHOST_OPACITY;
-      i.mesh.material.depthWrite = false;
-      i.mesh.material.needsUpdate = true;
-    }
+    if (ghost) setShellOpacity(i.mesh, GHOST_OPACITY);
   });
   // Anything that is not a ghost gets whatever opacity the contents toggle
   // wants; applyContents leaves the ghosts alone.
