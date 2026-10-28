@@ -1496,7 +1496,7 @@ function buildDefault(){
     lines:[{product:PRODUCT_LABEL, qty:"", rawId:"", batch:"", prodDate:"", bestBefore:"", net:"", netUnit:"kg"}],
     dep:{port:(m.departure_ports||[])[0]?.label||"", planned:"", scheduled:"", actual:""},
     arr:{port:(m.arrival_ports||[])[0]?.label||"", planned:"", scheduled:"", actual:""},
-    com:{invNo:"", invDate:"", due:"", dueManual:false},
+    com:{invNo:"", invDate:"", due:"", rule:"", ruleLabel:""},
     courier:{company:"", tracking:"", dispatch:""},
     dest:{date:""}, pay:{term:m.payment_term||""}, notes:{text:""}, _off:{}
   };
@@ -1521,7 +1521,7 @@ function fromShipment(x){
       bestBefore:l.best_before||"", net:str(l.net_weight), netUnit:l.net_weight_unit||"kg"})),
     dep:{port:x.departure_port_label||"", planned:x.departure_planned||"", scheduled:x.departure_scheduled||"", actual:x.departure_actual||""},
     arr:{port:x.arrival_port_label||"", planned:x.arrival_planned||"", scheduled:x.arrival_scheduled||"", actual:x.arrival_actual||""},
-    com:{invNo:x.invoice_no||"", invDate:x.invoice_date||"", due:x.due_date||"", dueManual:!!x.due_date},
+    com:{invNo:x.invoice_no||"", invDate:x.invoice_date||"", due:x.due_date||"", rule:x.due_rule||"", ruleLabel:""},
     courier:{company:x.courier||"", tracking:x.courier_tracking_no||"", dispatch:x.courier_dispatch_date||""},
     dest:{date:x.destination_delivery_date||""}, pay:{term:x.payment_term||""}, notes:{text:x.notes||""}, _off:{}
   };
@@ -1545,7 +1545,7 @@ function toPayload(){
     airline: air ? L.air.airline : "", awb_no: air ? L.air.awbNo : "", awb_date: air ? L.air.awbDate : "",
     departure_port_id:REFS.portByLabel.get(S.dep.port)||"", departure_planned:S.dep.planned, departure_scheduled:S.dep.scheduled, departure_actual:S.dep.actual,
     arrival_port_id:REFS.portByLabel.get(S.arr.port)||"", arrival_planned:S.arr.planned, arrival_scheduled:S.arr.scheduled, arrival_actual:S.arr.actual,
-    invoice_no:S.com.invNo, invoice_date:S.com.invDate, due_date:S.com.due,
+    invoice_no:S.com.invNo, invoice_date:S.com.invDate, due_date:S.com.due, due_rule:S.com.rule||"",
     courier:S.courier.company, courier_tracking_no:S.courier.tracking, courier_dispatch_date:S.courier.dispatch,
     destination_delivery_date:S.dest.date, payment_term:S.pay.term,   /* notes are saved on their own (Notes section) */
     legs, transhipments:ts,
@@ -1780,13 +1780,19 @@ SECTIONS.push(
   req:()=>[filled("arr.port"), ...["planned","scheduled","actual"].map(k=>!(S.arr[k] && S.dep[k] && S.arr[k] < S.dep[k]))] },
 
 { id:"com", group:"Additional", title:"Commercial details",
-  render(){ const c="com", days = PAY_DAYS[S.pay.term];
-    const auto = !S.com.dueManual && S.com.due && days!=null ? `<p class="after">Calculated from the ${esc(S.pay.term)} payment term.</p>` : "";
+  render(){ const c="com";
+    syncDueLabel();
+    const r = dueRuleOf(S.com.rule), base = r && r.base ? r.base : null;
     const bad = S.com.due && S.com.invDate && S.com.due < S.com.invDate ? `<p class="after bad">Due date is before the invoice date.</p>` : "";
-    return `<div class="row">
+    const how = !r || r.code==="manual" ? `<p class="after">Picked by hand. Choose a rule to calculate it instead.</p>`
+      : !base.date ? `<p class="after alert">Add the ${esc(base.label)} to calculate the due date.</p>`
+      : `<p class="after">${esc(base.label[0].toUpperCase()+base.label.slice(1))} ${esc(fmtDate(base.date))} + ${r.days} days. Updates when that date changes.</p>`;
+    return `<div class="row two">
       ${field("Invoice no.", textIn(`${c}.invNo`,"e.g. INV-2026-0418"), {hint:"Commercial invoice number"})}
       ${field("Invoice date", datePicker(`${c}.invDate`,"Select date"), {hint:"Date of the commercial invoice"})}
-      ${field("Due date", datePicker(`${c}.due`,"Select date"), {hint:"Payment due date", after: bad || auto})}
+    </div><div class="row two">
+      ${field("Due date rule", dropdown(`${c}.ruleLabel`, dueOptions(), "Choose how the due date is set"), {hint:"Pick a rule and the due date is filled in for you", after: how})}
+      ${field("Due date", datePicker(`${c}.due`,"Select date"), {hint:"Payment due date; picking one by hand switches the rule off", after: bad})}
     </div>`; },
   req:null, all:()=>[filled("com.invNo"), filled("com.invDate"), filled("com.due")] },
 
@@ -1966,9 +1972,41 @@ Object.assign(ACTIONS, {
 window.addEventListener("beforeunload", e=>{ if(noteText(NOTES.draft) || NOTES.pending.length){ e.preventDefault(); e.returnValue = ""; } });
 
 /* ---------- hooks ---------- */
+/* ---------- due date rules: +N days from the invoice date or the B/L (AWB) date ---------- */
+const DUE_DAYS = [15, 30, 45, 60, 90, 120];
+function dueBases(){
+  const L = S.lg, out = [{key:"invoice", label:"invoice date", date:S.com.invDate}];
+  if(L.mode==="Sea") out.push({key:"bl", label:"B/L date", date:L.sea.blDate});
+  if(L.mode==="Air") out.push({key:"awb", label:"AWB date", date:L.air.awbDate});
+  return out;
+}
+function dueRules(){
+  const rules = [], days = PAY_DAYS[S.pay.term], inv = dueBases()[0];
+  if(days!=null) rules.push({code:"term", days, base:inv, label:`${S.pay.term} payment term (+${days} days from invoice date)`});
+  dueBases().forEach(b=>DUE_DAYS.forEach(n=>rules.push({code:`${b.key}+${n}`, days:n, base:b, label:`+${n} days from ${b.label}`})));
+  rules.push({code:"manual", label:"Pick a date myself"});
+  return rules;
+}
+const dueRuleOf = code => dueRules().find(r=>r.code===code) || null;
+const dueOptions = () => dueRules().map(r=>({value:r.label, sub: r.code==="manual" ? "" : r.base.date ? `→ ${fmtDate(addDays(r.base.date, r.days))}` : `needs the ${r.base.label}`}));
+function syncDueLabel(){ const r = dueRuleOf(S.com.rule); S.com.ruleLabel = r ? r.label : ""; }
+/* the rule a saved shipment most likely used (older shipments don't store one) */
+function guessDueRule(){
+  if(S.com.rule){
+    const m = S.com.rule.match(/^(bl|awb)\+(\d+)$/);   /* B/L rule but now Air (or the reverse) */
+    if(m && !dueRuleOf(S.com.rule)) S.com.rule = dueBases()[1] ? `${dueBases()[1].key}+${m[2]}` : "manual";
+    if(!dueRuleOf(S.com.rule)) S.com.rule = "manual";
+    return;
+  }
+  if(!S.com.due){ S.com.rule = PAY_DAYS[S.pay.term]!=null ? "term" : ""; return; }
+  const hit = dueRules().find(r=>r.code!=="manual" && r.base.date && addDays(r.base.date, r.days)===S.com.due);
+  S.com.rule = hit ? hit.code : "manual";
+}
 function recalcDue(){
-  const days = PAY_DAYS[S.pay.term];
-  if(!S.com.dueManual && S.com.invDate && days!=null) S.com.due = addDays(S.com.invDate, days);
+  guessDueRule();
+  const r = dueRuleOf(S.com.rule);
+  if(r && r.code!=="manual") S.com.due = r.base.date ? addDays(r.base.date, r.days) : "";
+  syncDueLabel();
 }
 HOOKS.onChange = path => {
   const pm = path.match(/^parties\.(who|to)\.party$/);
@@ -1981,8 +2019,11 @@ HOOKS.onChange = path => {
     if(!ok) L.incoterm = "";
   }
   if(path==="lg.incoterm") incotermNote = "";
-  if(path==="com.invDate" || path==="pay.term"){ recalcDue(); renderSection("com", true); }
-  if(path==="com.due") S.com.dueManual = !!S.com.due;
+  if(path==="com.ruleLabel"){ const r = dueRules().find(x=>x.label===S.com.ruleLabel); S.com.rule = r ? r.code : ""; recalcDue(); renderSection("com"); }
+  if(["com.invDate","pay.term","lg.sea.blDate","lg.air.awbDate","lg.mode"].includes(path)){ recalcDue(); renderSection("com", true); }
+  if(path==="com.due"){ const r = dueRuleOf(S.com.rule);
+    if(!r || r.code==="manual" || !r.base.date || addDays(r.base.date, r.days)!==S.com.due){ S.com.rule = S.com.due ? "manual" : ""; }
+    syncDueLabel(); renderSection("com"); }
   if(path.startsWith("dep.")){ renderSection("arr", true); }
   if(path.startsWith("arr.")){ renderSection("dest", true); }
   if(path==="lg.mode") scheduleMixed();
@@ -2042,7 +2083,7 @@ Object.assign(ACTIONS, {
       let posted = 0;
       if(wasNew){ try{ posted = await postPendingNotes(res.id); }catch(e){ toast(`Shipment saved, but a note couldn’t be posted: ${errText(e)}`); } }
       EXISTING = await q(smt().rpc("get_shipment", {p_id: res.id}));
-      S = fromShipment(EXISTING); SHOW_ERR = false;
+      S = fromShipment(EXISTING); guessDueRule(); syncDueLabel(); SHOW_ERR = false;
       if(wasNew) history.replaceState(null, "", `shipment.html?order=${OREF}&id=${res.id}`);
       OTHERS = await q(smt().from("v_shipment_list").select("id,quantity").eq("master_id", ORDER.id));
       await refreshMixed(); renderAll(); setHead(); refreshNotes();
@@ -2114,6 +2155,7 @@ boot(async ()=>{
     if(!EXISTING){ popup({ok:false, title:"Shipment not found", msg:"It may have been deleted.", primary:"Back to master order", onPrimary:()=>location.href=`order.html?order=${OREF}#shipments`}); }
   }
   S = EXISTING ? fromShipment(EXISTING) : buildDefault();
+  if(EXISTING) guessDueRule(); else recalcDue(); syncDueLabel();
   rememberPrefill();
   OTHERS = await q(smt().from("v_shipment_list").select("id,quantity").eq("master_id", ORDER.id));
   MIXED = EXISTING ? (EXISTING.mixed_with||[]).map(m=>({id:m.id, ref:m.reference, orderRef:m.master_ref_id, orderNo:m.master_key||m.master_no, product:m.product})) : [];
