@@ -751,6 +751,27 @@ body.dr-open{overflow:hidden}
   .nt-kbd{display:none}
   .nt-meta{flex-wrap:wrap}
 }
+.nt-tag.pend{color:var(--warn-text);background:var(--warn-bg)}
+
+/* ---- create shipment: choose the master order ---- */
+.picker .boot-err{margin:0 0 12px}
+.pk-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.pk-bar .search{max-width:440px}
+.pk-count{font-size:12px;color:var(--muted);margin-left:auto}
+.pk-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.pk-card{display:flex;flex-direction:column;gap:7px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--text);text-decoration:none;transition:border-color .12s,box-shadow .12s,transform .12s}
+.pk-card:hover{border-color:var(--accent);box-shadow:0 6px 20px rgba(16,24,40,.08);transform:translateY(-1px)}
+.pk-card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pk-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.pk-h b{font-size:16px;font-weight:600;color:var(--accent)}
+.pk-h span{font-size:11.5px;color:var(--muted)}
+.pk-prod{font-weight:500}
+.pk-prod small{color:var(--muted);font-weight:400}
+.pk-meta{display:flex;flex-direction:column;font-size:12px;color:var(--muted)}
+.pk-alloc{display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--muted)}
+.pk-alloc .mini-bar{flex:0 0 80px}
+.pk-go{margin-top:2px;font-size:12px;font-weight:600;color:var(--accent)}
+@media (max-width:760px){ .pk-bar .search{max-width:none;flex:1 1 100%} .pk-count{margin-left:0} }
 
 </style>
 </head>
@@ -1377,12 +1398,13 @@ function fmtStamp(iso){
 }
 function noteCard(n, opts={}){
   const mine = USER && n.author_id === USER.id;
-  const tag = n.source==="import" ? `<span class="nt-tag">Excel import</span>` : n.source==="legacy" ? `<span class="nt-tag">Earlier note</span>` : "";
+  const tag = n.source==="import" ? `<span class="nt-tag">Excel import</span>` : n.source==="legacy" ? `<span class="nt-tag">Earlier note</span>`
+    : n.source==="pending" ? `<span class="nt-tag pend">Not posted yet · posts when the shipment is saved</span>` : "";
   return `<article class="nt-card ${opts.editing===n.id?"editing":""}" data-note="${esc(n.id)}">
     <header class="nt-meta">
       <div class="nt-author"><span class="nt-av" aria-hidden="true">${esc(initialsOf(n.author_name))}</span>
         <div><b>${esc(n.author_name)}</b>${mine?`<span class="nt-you">you</span>`:""}${tag}
-          <div class="nt-date">${esc(fmtStamp(n.created_at))}${n.updated_at?` · edited ${esc(fmtStamp(n.updated_at))}`:""}</div></div></div>
+          <div class="nt-date">${n.source==="pending" ? "Draft" : esc(fmtStamp(n.created_at))}${n.updated_at?` · edited ${esc(fmtStamp(n.updated_at))}`:""}</div></div></div>
       ${opts.actions && mine ? `<div class="nt-actions">
         <button type="button" class="nt-btn" data-action="noteEdit" data-id="${esc(n.id)}" ${opts.editing===n.id?"disabled":""}>Edit</button>
         <button type="button" class="nt-btn danger" data-action="noteDelete" data-id="${esc(n.id)}">Delete</button></div>` : ""}

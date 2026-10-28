@@ -751,6 +751,27 @@ body.dr-open{overflow:hidden}
   .nt-kbd{display:none}
   .nt-meta{flex-wrap:wrap}
 }
+.nt-tag.pend{color:var(--warn-text);background:var(--warn-bg)}
+
+/* ---- create shipment: choose the master order ---- */
+.picker .boot-err{margin:0 0 12px}
+.pk-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.pk-bar .search{max-width:440px}
+.pk-count{font-size:12px;color:var(--muted);margin-left:auto}
+.pk-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.pk-card{display:flex;flex-direction:column;gap:7px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:12px;color:var(--text);text-decoration:none;transition:border-color .12s,box-shadow .12s,transform .12s}
+.pk-card:hover{border-color:var(--accent);box-shadow:0 6px 20px rgba(16,24,40,.08);transform:translateY(-1px)}
+.pk-card:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pk-h{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.pk-h b{font-size:16px;font-weight:600;color:var(--accent)}
+.pk-h span{font-size:11.5px;color:var(--muted)}
+.pk-prod{font-weight:500}
+.pk-prod small{color:var(--muted);font-weight:400}
+.pk-meta{display:flex;flex-direction:column;font-size:12px;color:var(--muted)}
+.pk-alloc{display:flex;align-items:center;gap:10px;font-size:11.5px;color:var(--muted)}
+.pk-alloc .mini-bar{flex:0 0 80px}
+.pk-go{margin-top:2px;font-size:12px;font-weight:600;color:var(--accent)}
+@media (max-width:760px){ .pk-bar .search{max-width:none;flex:1 1 100%} .pk-count{margin-left:0} }
 
 </style>
 </head>
@@ -759,7 +780,7 @@ body.dr-open{overflow:hidden}
 <nav class="crumbs" aria-label="Breadcrumb"><div class="crumbs-inner"><a href="orders.html">Master orders</a><span class="sep">›</span><a id="crumbOrder" href="order.html">Master order</a><span class="sep">›</span><span aria-current="page" id="crumbHere">Create shipment</span></div></nav>
 <main class="page">
   <div class="page-head"><div><h1><span id="pageTitle">Create shipment</span> <span class="src-badge">from master order</span></h1><p class="sub" id="headSub"></p></div>
-    <div class="head-actions"><button type="button" class="btn danger-ghost" id="delShipBtn" data-action="delShipment" hidden><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Delete shipment</button><button type="button" class="btn" data-action="changeSource"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><polyline points="21 3 21 8 16 8"/><polyline points="3 21 3 16 8 16"/></svg>Change source</button></div></div>
+    <div class="head-actions"><button type="button" class="btn danger-ghost" id="delShipBtn" data-action="delShipment" hidden><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Delete shipment</button><button type="button" class="btn" data-action="changeSource"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><polyline points="21 3 21 8 16 8"/><polyline points="3 21 3 16 8 16"/></svg>Change master order</button></div></div>
   <div class="layout">
     <aside class="side">
       <nav id="sidenav" aria-label="Form sections"></nav>
@@ -1377,12 +1398,13 @@ function fmtStamp(iso){
 }
 function noteCard(n, opts={}){
   const mine = USER && n.author_id === USER.id;
-  const tag = n.source==="import" ? `<span class="nt-tag">Excel import</span>` : n.source==="legacy" ? `<span class="nt-tag">Earlier note</span>` : "";
+  const tag = n.source==="import" ? `<span class="nt-tag">Excel import</span>` : n.source==="legacy" ? `<span class="nt-tag">Earlier note</span>`
+    : n.source==="pending" ? `<span class="nt-tag pend">Not posted yet · posts when the shipment is saved</span>` : "";
   return `<article class="nt-card ${opts.editing===n.id?"editing":""}" data-note="${esc(n.id)}">
     <header class="nt-meta">
       <div class="nt-author"><span class="nt-av" aria-hidden="true">${esc(initialsOf(n.author_name))}</span>
         <div><b>${esc(n.author_name)}</b>${mine?`<span class="nt-you">you</span>`:""}${tag}
-          <div class="nt-date">${esc(fmtStamp(n.created_at))}${n.updated_at?` · edited ${esc(fmtStamp(n.updated_at))}`:""}</div></div></div>
+          <div class="nt-date">${n.source==="pending" ? "Draft" : esc(fmtStamp(n.created_at))}${n.updated_at?` · edited ${esc(fmtStamp(n.updated_at))}`:""}</div></div></div>
       ${opts.actions && mine ? `<div class="nt-actions">
         <button type="button" class="nt-btn" data-action="noteEdit" data-id="${esc(n.id)}" ${opts.editing===n.id?"disabled":""}>Edit</button>
         <button type="button" class="nt-btn danger" data-action="noteDelete" data-id="${esc(n.id)}">Delete</button></div>` : ""}
@@ -1555,7 +1577,15 @@ async function refreshMixed(){
     return {id:x.id, ref:x.reference, orderRef:m.ref_id, orderNo:mKey(m), product:(REFS.productById.get(m.product_id)||{}).name||""}; })
     .sort((a,b)=>a.ref.localeCompare(b.ref));
 }
-function scheduleMixed(){ clearTimeout(mixT); mixT = setTimeout(async()=>{ try{ await refreshMixed(); renderSection("details", true); renderSection("logistics", true); }catch(e){} }, 400); }
+function scheduleMixed(){ clearTimeout(mixT); mixT = setTimeout(async()=>{ try{
+  const before = MIXED.map(m=>m.id).join();
+  await refreshMixed();
+  if(MIXED.map(m=>m.id).join()===before) return;   /* nothing changed: don't redraw under the user's cursor */
+  if(document.querySelector(".dd.open,.dp.open")) closeAll();
+  const bind = document.activeElement?.dataset?.bind, pos = document.activeElement?.selectionStart;
+  renderSection("details", true); renderSection("logistics", true);
+  if(bind){ const el = document.querySelector(`[data-bind="${CSS.escape(bind)}"]`); if(el){ el.focus(); try{ el.setSelectionRange(pos,pos); }catch(e){} } }
+}catch(e){} }, 400); }
 
 /* ---------- logistics rendering ---------- */
 const arrow = `<span class="arrow" aria-hidden="true">→</span>`;
@@ -1784,11 +1814,11 @@ SECTIONS.push(
 
 { id:"notes", group:"Additional", title:"Notes", noSwitch:true,
   render(){
-    if(!S.id) return `<div class="nt-empty">Save the shipment first; then you and your team can add working notes here.</div>`;
-    const list = NOTES.list;
+    if(NOTES.error) return `<p class="boot-err" role="alert" style="margin:0">${esc(NOTES.error)}</p>`;
+    const list = S.id ? NOTES.list : NOTES.pending;
     const cards = NOTES.loading ? `<div class="nt-empty"><span class="spin"></span> Loading notes…</div>`
       : list.length ? list.map(n=>noteCard(n, {actions:true, editing:NOTES.editing})).join("")
-      : `<div class="nt-empty">No notes yet. Write the first note below.</div>`;
+      : `<div class="nt-empty">${S.id ? "No notes yet. Write the first note below." : "No notes yet. Notes you add now are posted when you save the shipment."}</div>`;
     const tb = (cmd, title, label, val) => `<button type="button" class="nt-tool" data-ncmd="${cmd}" ${val?`data-val="${val}"`:""} title="${title}" aria-label="${title}">${label}</button>`;
     return `<div class="nt-list" aria-live="polite">${cards}</div>
       <div class="nt-compose ${NOTES.editing?"is-editing":""}">
@@ -1841,12 +1871,25 @@ SECTIONS.push(
 );
 
 /* ---------- working notes ---------- */
-const NOTES = { list:[], draft:"", editing:null, busy:false, loading:false, focus:false };
+const NOTES = { list:[], pending:[], draft:"", editing:null, busy:false, loading:false, focus:false };
+let PEND_N = 0;
+/* new shipment: notes written before the first save are posted right after it */
+async function postPendingNotes(shipId){
+  const extra = cleanNote(NOTES.draft);
+  const all = [...NOTES.pending].reverse().map(n=>n.body_html);   /* oldest first, so the order is kept */
+  if(noteText(extra) && !NOTES.editing) all.push(extra);
+  if(!all.length) return 0;
+  for(const html of all) await q(smt().from("shipment_notes").insert({shipment_id:shipId, body_html:html, author_name:meName()}).select("id").single());
+  NOTES.pending = []; NOTES.draft = ""; NOTES.editing = null;
+  return all.length;
+}
 async function refreshNotes(){
   if(!S.id){ NOTES.list = []; return; }
   NOTES.loading = !NOTES.list.length; if(NOTES.loading) renderSection("notes", true);
+  NOTES.error = "";
   try{ NOTES.list = await loadNotes(S.id); }
-  catch(e){ NOTES.list = []; toast(`Couldn’t load notes: ${errText(e)}`); }
+  catch(e){ NOTES.list = [];
+    NOTES.error = /shipment_notes|PGRST205|42P01/.test(`${e.code} ${e.message}`) ? "Notes aren’t set up in the database yet. Run smartuna_patch_notes.sql in the Supabase SQL editor, then reload this page." : `Couldn’t load notes: ${errText(e)}`; }
   NOTES.loading = false; renderSection("notes");
 }
 function placeCaretEnd(el){ const r = document.createRange(); r.selectNodeContents(el); r.collapse(false); const s = getSelection(); s.removeAllRanges(); s.addRange(r); }
@@ -1879,9 +1922,15 @@ document.addEventListener("click", e=>{
 });
 Object.assign(ACTIONS, {
   async noteSave(){
-    if(NOTES.busy || !S.id) return;
+    if(NOTES.busy) return;
     const ed = $("#noteEditor"); const html = cleanNote(ed ? ed.innerHTML : NOTES.draft);
     if(!noteText(html)){ toast("Write something first"); ed && ed.focus(); return; }
+    if(!S.id){   /* not saved yet: keep it until the shipment is saved */
+      if(NOTES.editing){ const n = NOTES.pending.find(x=>x.id===NOTES.editing); if(n) n.body_html = html; }
+      else NOTES.pending.unshift({id:`tmp-${++PEND_N}`, body_html:html, author_id:USER && USER.id, author_name:meName(), source:"pending", created_at:new Date().toISOString()});
+      NOTES.draft = ""; NOTES.editing = null; renderSection("notes");
+      toast("Note kept · it’s posted when you save the shipment"); return;
+    }
     NOTES.busy = true; $$('[data-action="noteSave"]').forEach(b=>b.disabled = true);
     try{
       if(NOTES.editing){
@@ -1897,7 +1946,7 @@ Object.assign(ACTIONS, {
     NOTES.busy = false; renderSection("notes");
   },
   noteEdit(el){
-    const n = NOTES.list.find(x=>x.id===el.dataset.id); if(!n) return;
+    const n = (S.id ? NOTES.list : NOTES.pending).find(x=>x.id===el.dataset.id); if(!n) return;
     if(!NOTES.editing && noteText(NOTES.draft) && !confirm("Discard the note you were writing and edit this one instead?")) return;
     NOTES.editing = n.id; NOTES.draft = cleanNote(n.body_html); NOTES.focus = true; renderSection("notes");
     $("#sec-notes .nt-compose").scrollIntoView({behavior:"smooth", block:"center"});
@@ -1905,6 +1954,7 @@ Object.assign(ACTIONS, {
   noteCancel(){ NOTES.editing = null; NOTES.draft = ""; renderSection("notes"); },
   noteDelete(el){
     const id = el.dataset.id;
+    if(id.startsWith("tmp-")){ NOTES.pending = NOTES.pending.filter(n=>n.id!==id); if(NOTES.editing===id){ NOTES.editing = null; NOTES.draft = ""; } renderSection("notes"); toast("Note removed"); return; }
     popup({ok:false, title:"Delete this note?", msg:"It will be removed for everyone. This can’t be undone.", primary:"Delete", secondary:"Cancel",
       async onPrimary(){
         try{ await q(smt().from("shipment_notes").delete().eq("id", id).select("id").single());
@@ -1913,7 +1963,7 @@ Object.assign(ACTIONS, {
         catch(e){ popup({ok:false, title:"Couldn’t delete the note", msg: e.code==="PGRST116" ? "You can only delete notes you wrote." : esc(errText(e))}); } } });
   }
 });
-window.addEventListener("beforeunload", e=>{ if(noteText(NOTES.draft)){ e.preventDefault(); e.returnValue = ""; } });
+window.addEventListener("beforeunload", e=>{ if(noteText(NOTES.draft) || NOTES.pending.length){ e.preventDefault(); e.returnValue = ""; } });
 
 /* ---------- hooks ---------- */
 function recalcDue(){
@@ -1976,7 +2026,11 @@ Object.assign(ACTIONS, {
              location.href = `order.html?order=${encodeURIComponent(OREF)}#shipments`; }
         catch(err){ popup({ok:false, title:"Couldn’t delete", msg:esc(errText(err))}); } }});
   },
-  changeSource(){ location.href = `order.html?order=${encodeURIComponent(OREF)}`; },
+  changeSource(){   /* new shipment: pick another master order (nothing is saved yet) */
+    const go = () => { location.href = "shipment.html"; };
+    if(S.id) return;
+    popup({kind:"ask", title:"Change master order?", msg:"You’ll choose another master order and start this shipment again from its details. Anything typed here isn’t saved.", primary:"Choose master order", secondary:"Stay here", onPrimary:go});
+  },
   async save(){
     SHOW_ERR = true; renderAll();
     const bad = firstIncomplete();
@@ -1985,13 +2039,15 @@ Object.assign(ACTIONS, {
     try{
       const wasNew = !S.id;
       const res = await q(smt().rpc("save_shipment", {p: toPayload()}));
+      let posted = 0;
+      if(wasNew){ try{ posted = await postPendingNotes(res.id); }catch(e){ toast(`Shipment saved, but a note couldn’t be posted: ${errText(e)}`); } }
       EXISTING = await q(smt().rpc("get_shipment", {p_id: res.id}));
       S = fromShipment(EXISTING); SHOW_ERR = false;
       if(wasNew) history.replaceState(null, "", `shipment.html?order=${OREF}&id=${res.id}`);
       OTHERS = await q(smt().from("v_shipment_list").select("id,quantity").eq("master_id", ORDER.id));
       await refreshMixed(); renderAll(); setHead(); refreshNotes();
       const back = `order.html?order=${encodeURIComponent(OREF)}#shipments`;
-      popup({title:`Shipment ${res.reference} saved`, msg:`Linked to master order <span class="obj">${esc(mKey(ORDER))}</span>. ${fmtN(thisQty())} ${esc(UNIT)} allocated, ${fmtN(remaining())} left on the order.${MIXED.length?`<br>Mixed with ${MIXED.map(m=>esc(m.ref)).join(", ")}.`:""}`,
+      popup({title:`Shipment ${res.reference} saved`, msg:`Linked to master order <span class="obj">${esc(mKey(ORDER))}</span>. ${fmtN(thisQty())} ${esc(UNIT)} allocated, ${fmtN(remaining())} left on the order.${MIXED.length?`<br>Mixed with ${MIXED.map(m=>esc(m.ref)).join(", ")}.`:""}${posted?`<br>${posted} note${posted>1?"s":""} posted.`:""}`,
         primary:"Back to master order", onPrimary:()=>{ location.href = back; },
         secondary:"Add another shipment", onSecondary:()=>{ location.href = `shipment.html?order=${encodeURIComponent(OREF)}`; }});
     }catch(err){
@@ -2002,10 +2058,46 @@ Object.assign(ACTIONS, {
   }
 });
 
+/* ---------- step 1 of a new shipment: choose the master order ---------- */
+async function showPicker(warn){
+  document.title = "Create Shipment";
+  $("#pageTitle").textContent = "Create shipment";
+  $("#headSub").innerHTML = "Step 1 of 2 · choose the master order this shipment belongs to. Its details are copied in, so you only fill what’s new.";
+  $(".page-head .src-badge")?.remove();
+  $$(".page-head .head-actions .btn").forEach(b=>b.hidden = true);
+  $(".crumbs-inner").innerHTML = `<a href="shipments.html">Shipments</a><span class="sep">›</span><span aria-current="page">Create shipment</span>`;
+  $(".layout").style.display = "none"; const ms = $(".mobile-save"); if(ms) ms.style.display = "none";
+  const masters = await fetchAll(()=>smt().from("v_master_list").select("*").order("ref_id",{ascending:false}));
+  const box = document.createElement("section"); box.className = "picker"; box.setAttribute("aria-label","Choose a master order");
+  box.innerHTML = `${warn?`<p class="boot-err" role="alert">${esc(warn)}</p>`:""}
+    <div class="pk-bar"><div class="search"><div class="clearwrap">${SEARCHI}<input class="ctl" id="pkSearch" type="search" placeholder="Search external reference, PO, product, buyer, port…" aria-label="Search master orders"></div></div>
+      <span class="pk-count" id="pkCount" role="status"></span><a class="btn" href="order.html">New master order</a></div>
+    <div class="pk-list" id="pkList"></div>`;
+  $(".page-head").after(box);
+  const draw = () => {
+    const qq = $("#pkSearch").value.trim().toLowerCase();
+    const hit = m => !qq || [m.external_reference, m.master_no, m.ref_id, m.product, m.gtin, m.seller, m.buyer, m.departure, m.arrival].some(v=>String(v??"").toLowerCase().includes(qq));
+    const list = masters.filter(hit);
+    $("#pkCount").textContent = `${list.length} of ${masters.length} master order${masters.length===1?"":"s"}`;
+    $("#pkList").innerHTML = list.length ? list.map(m=>{
+      const Q = num(m.order_quantity), used = num(m.allocated), left = Q - used, pct = Q ? Math.min(100, Math.round(used/Q*100)) : 0;
+      return `<a class="pk-card" href="shipment.html?order=${m.ref_id}">
+        <div class="pk-h"><b>${esc(mKey(m))}</b>${m.external_reference?`<span>PO ${esc(m.master_no)}</span>`:""}<span>Ref ${m.ref_id}</span></div>
+        <div class="pk-prod">${esc(m.product||"—")}${m.gtin?` <small>${esc(m.gtin)}</small>`:""}</div>
+        <div class="pk-meta"><span>${esc(m.seller||"—")} → ${esc(m.buyer||"—")}</span><span>${esc(shortPort(m.departure))} → ${esc(shortPort(m.arrival))}</span></div>
+        <div class="pk-alloc"><div class="mini-bar"><i style="width:${pct}%;${left<0?"background:var(--danger)":""}"></i></div>
+          <span class="${left<=0?"bad-t":""}">${fmtN(left)} of ${fmtN(Q)} ${esc(m.quantity_unit||"")} left · ${num(m.shipments_created)} shipment${num(m.shipments_created)===1?"":"s"}</span></div>
+        <span class="pk-go">Create shipment →</span></a>`; }).join("")
+      : `<div class="nt-empty">${masters.length ? `No master orders match “${esc(qq)}”.` : `No master orders yet. <a href="order.html">Create one</a> first.`}</div>`;
+  };
+  $("#pkSearch").addEventListener("input", draw); draw(); $("#pkSearch").focus();
+}
+
 /* ---------- header + mount ---------- */
 function setHead(){
   $("#pageTitle").textContent = S.id ? "Edit shipment" : "Create shipment";
   const db = $("#delShipBtn"); if(db) db.hidden = !S.id;
+  const cs = $('[data-action="changeSource"]'); if(cs) cs.hidden = !!S.id;
   document.title = S.id ? `${S.ref} · Shipment` : "Create Shipment";
   $("#crumbOrder").textContent = mKey(ORDER); $("#crumbOrder").href = `order.html?order=${encodeURIComponent(OREF)}`;
   $("#crumbHere").textContent = S.id ? S.ref : "Create shipment";
@@ -2014,7 +2106,7 @@ function setHead(){
 boot(async ()=>{
   const ref = +params.get("order");
   ORDER = ref ? await q(smt().rpc("get_master", {p_ref: ref})) : null;
-  if(!ORDER){ location.replace("orders.html"); return; }
+  if(!ORDER){ await showPicker(ref ? "That master order wasn’t found. Choose another one." : ""); return; }
   OREF = ORDER.ref_id; PRODUCT_LABEL = productLabel(ORDER.product); UNIT = ORDER.quantity_unit || "units";
   OPT.orderProducts = [PRODUCT_LABEL];
   if(params.get("id")){
