@@ -1544,13 +1544,27 @@ function removeItem(id) {
   markDirty();
 }
 
+// A carton counts as cargo; a pallet or sheet is a base it stands on.
+const isCargo = it => (it.kind || 'carton') === 'carton';
+
+// Who gets the lower spot when two things start at the same height. A pallet
+// is what cargo stands on, so it goes under. Left to the plain height sort the
+// tie falls to whichever was added first, which meant a pallet dropped under a
+// load climbed on top of it instead — and a carton pushed onto a pallet sank
+// into it. Only ties are decided here: a base that has genuinely been lifted
+// above the cargo stays where it was put.
+const settleRank = it => (isCargo(it) ? 1 : 0);
+
 function settleAll() {
   // Process bottom-up, only considering items already placed in this pass as
   // potential supports. Without this, a stacked pair finds each other as
   // "supports" and both end up climbing to the ceiling on every settle.
-  const sorted = [...items].sort((a, b) =>
-    (a.pos_y - itemExtent(a).h / 2) - (b.pos_y - itemExtent(b).h / 2)
-  );
+  const sorted = [...items].sort((a, b) => {
+    const ab = a.pos_y - itemExtent(a).h / 2;
+    const bb = b.pos_y - itemExtent(b).h / 2;
+    if (Math.abs(ab - bb) > 0.01) return ab - bb;
+    return settleRank(a) - settleRank(b);
+  });
   const placed = [];
   for (const item of sorted) {
     // A locked carton is where somebody put it on purpose. It still counts as
@@ -7838,9 +7852,6 @@ function addressLegend() {
          `Row 1 on the left as you look in — 2 rows of ${g.rowCm.toFixed(0)} cm · ` +
          `Layer 1 on the floor, counting up — pallets are not a layer`;
 }
-
-// A carton counts as cargo; a pallet or sheet is a base it stands on.
-const isCargo = it => (it.kind || 'carton') === 'carton';
 
 // Which column a carton stands in. Sharing a footprint means sharing a stack.
 const stackKey = it => `${Math.round(it.pos_x)}|${Math.round(it.pos_z)}|` +
