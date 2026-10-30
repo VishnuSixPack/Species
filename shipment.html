@@ -773,6 +773,37 @@ body.dr-open{overflow:hidden}
 .pk-go{margin-top:2px;font-size:12px;font-weight:600;color:var(--accent)}
 @media (max-width:760px){ .pk-bar .search{max-width:none;flex:1 1 100%} .pk-count{margin-left:0} }
 
+/* ---- collapsible section menu (desktop) ---- */
+.layout{transition:grid-template-columns .25s ease,gap .25s ease}
+.layout.no-anim,.layout.no-anim *{transition:none!important}
+.side-toggle{display:flex;align-items:center;gap:8px;width:100%;margin:0 0 14px;padding:6px 8px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--muted);font:inherit;font-size:12px;cursor:pointer}
+.side-toggle:hover{color:var(--accent);border-color:var(--accent)}
+.side-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.side-toggle svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .25s}
+.progress-s{display:none}
+.layout.collapsed{grid-template-columns:52px minmax(0,1fr);gap:22px}
+.layout.collapsed .side-toggle{justify-content:center;padding:6px 0}
+.layout.collapsed .side-toggle svg{transform:rotate(180deg)}
+.layout.collapsed .side .nl,.layout.collapsed .side .progress{display:none}
+.layout.collapsed .side .grp-label{height:1px;overflow:hidden;color:transparent;background:var(--border);margin:0 8px 8px}
+.layout.collapsed .side .grp{margin-bottom:10px}
+.layout.collapsed .side a{justify-content:center;margin-left:0;padding:9px 0;border-left:0;border-radius:8px;position:relative}
+.layout.collapsed .side a.active{background:var(--accent-soft)}
+.layout.collapsed .side a .ndot{width:10px;height:10px}
+.layout.collapsed .side .save{width:44px;height:44px;padding:0;margin:8px auto 0;border-radius:12px;position:relative}
+.layout.collapsed .side .save svg{width:18px;height:18px}
+.layout.collapsed .progress-s{display:block;margin:8px 0 0;text-align:center;font-size:11px;font-weight:600;color:var(--warn-text)}
+.layout.collapsed .progress-s.all{color:var(--ok-text)}
+/* tooltips on the rail */
+.layout.collapsed .side [data-tip]:hover::after,.layout.collapsed .side [data-tip]:focus-visible::after{content:attr(data-tip);position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%);white-space:nowrap;background:#1c2230;color:#fff;font-size:12px;font-weight:500;padding:5px 10px;border-radius:7px;pointer-events:none;z-index:50;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+@media (max-width:980px){
+  .side-toggle,.progress-s{display:none!important}
+  .layout.collapsed{grid-template-columns:minmax(0,1fr);gap:0}
+  .layout.collapsed .side .nl{display:inline}
+  .layout.collapsed .side a{padding:5px 12px;border:1px solid var(--border);border-radius:999px}
+  .layout.collapsed .side [data-tip]:hover::after{display:none}
+}
+
 </style>
 </head>
 <body>
@@ -783,10 +814,11 @@ body.dr-open{overflow:hidden}
     <div class="head-actions"><button type="button" class="btn danger-ghost" id="delShipBtn" data-action="delShipment" hidden><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Delete shipment</button><button type="button" class="btn" data-action="changeSource"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><polyline points="21 3 21 8 16 8"/><polyline points="3 21 3 16 8 16"/></svg>Change master order</button></div></div>
   <div class="layout">
     <aside class="side">
+      <button type="button" class="side-toggle" id="sideToggle" aria-expanded="true" aria-label="Collapse section menu" title="Collapse menu"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg><span class="nl">Collapse</span></button>
       <nav id="sidenav" aria-label="Form sections"></nav>
       <hr>
-      <button type="button" class="btn primary save" data-action="save"><svg viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>Save shipment</button>
-      <p class="progress"></p>
+      <button type="button" class="btn primary save" data-action="save" data-tip="Save shipment"><svg viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg><span class="nl">Save shipment</span></button>
+      <p class="progress"></p><p class="progress-s" aria-hidden="true"></p>
     </aside>
     <div id="sections"></div>
   </div>
@@ -952,7 +984,7 @@ function mount(){
         <span class="pill" data-pill="${sec.id}"></span>
         <button type="button" class="iconbtn" data-collapse="${sec.id}" aria-expanded="true" aria-label="Collapse ${sec.title}">${CHEV}</button></div>
       <div class="card-body" data-body="${sec.id}"></div></section>`;
-    nav += `<a href="#sec-${sec.id}" data-nav="${sec.id}"><i class="ndot"></i>${sec.navTitle||sec.title}</a>`;
+    nav += `<a href="#sec-${sec.id}" data-nav="${sec.id}" data-tip="${esc(sec.navTitle||sec.title)}"><i class="ndot"></i><span class="nl">${sec.navTitle||sec.title}</span></a>`;
   });
   nav += `</div>`;
   $("#sections").innerHTML = html;
@@ -980,6 +1012,7 @@ function updateStatus(){
     if(sec.req && st!=="off"){ total++; if(st==="ok") done++; }
   });
   $$(".progress").forEach(p=>p.textContent = `${done} of ${total} required sections complete`);
+  $$(".progress-s").forEach(p=>{ p.textContent = `${done}/${total}`; p.classList.toggle("all", done===total); });
   HOOKS.onStatus && HOOKS.onStatus();
 }
 function rerenderKeepFocus(path){
@@ -1178,6 +1211,19 @@ document.addEventListener("keydown", e=>{
 document.addEventListener("keydown", e=>{
   const c = e.target.closest?.(".chip-x"); if(c && (e.key==="Enter"||e.key===" ")){ e.preventDefault(); c.click(); }
 });
+
+/* ---------- side navigation: collapse to a narrow rail (remembered per browser) ---------- */
+function setSide(collapsed, animate){
+  const lay = $(".layout"), btn = $("#sideToggle"); if(!lay || !btn) return;
+  lay.classList.toggle("no-anim", !animate);
+  lay.classList.toggle("collapsed", collapsed);
+  btn.setAttribute("aria-expanded", String(!collapsed));
+  btn.setAttribute("aria-label", collapsed ? "Expand section menu" : "Collapse section menu");
+  btn.title = collapsed ? "Expand menu" : "Collapse menu";
+  store.set("side-collapsed", collapsed);
+}
+document.addEventListener("click", e=>{ if(e.target.closest("#sideToggle")) setSide(!$(".layout").classList.contains("collapsed"), true); });
+document.addEventListener("DOMContentLoaded", ()=>setSide(!!store.get("side-collapsed", false), false));
 
 /* ---------- theme + storage ---------- */
 const store = {
