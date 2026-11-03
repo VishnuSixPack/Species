@@ -1980,6 +1980,7 @@ const state = {
   overviewListLoading:false,
   overviewDetailLoading:false,
   overviewDetailId:null,
+  kdeOpen:{},                      // open/closed state of the KDE category cards, keyed by CTE + category
   confirmed:{ harvesting:false, ovp:false, transshipment:false, landing:false, aggrDisaggr:false, transformation:false, storage:false, shipReceive:false },
 };
 
@@ -2814,7 +2815,7 @@ function renderAggrDisaggr(){
       ${bottomBar(data.metrics, data.checkbox, multiple, 'aggrDisaggr', {label:'Total Volume', initial:sec.weight.value, unit:sec.weight.unit.toUpperCase()}, {value: document.getElementById('aggr-water-perkg')?.value ?? aggrConstants.waterPerKg, unit:'L/kg'}, {id:'aggr-metric-percan', perKgValue:grandTotalParts.aggrDisaggr})}
       ${renderInstanceSubtabs('aggr', data.instanceBase)}
       <div style="height:16px"></div>
-      ${fieldGrid(sec.main, 'aggr-main::'+st.active)}
+      ${kdeGrid(sec.main, 'aggr-main::'+st.active)}
 
       <div class="section-label">Received (all species combined)</div>
       <div class="field-grid" style="margin-top:2px;">
@@ -2924,7 +2925,7 @@ function renderLandingCTE(){
       ${bottomBar(data.metrics, data.checkbox, multiple, 'landing', {label:'Total Volume', initial:sec.weight.value, unit:sec.weight.unit.toUpperCase()}, null, {id:'ld-metric-percan', perKgValue:grandTotalParts.landing})}
       ${renderInstanceSubtabs('landing', data.instanceBase)}
       <div style="height:16px"></div>
-      ${fieldGrid(sec.main, 'landing-main::'+st.active)}
+      ${kdeGrid(sec.main, 'landing-main::'+st.active)}
       <div class="field-grid" style="margin-top:2px;">
         <div class="field">
           <label>Weight or Quantity <span class="req">*</span></label>
@@ -3065,7 +3066,7 @@ function renderTransshipment(){
       <div style="height:16px"></div>
       ${renderInstanceSubtabs('transshipment', data.instanceBase)}
       <div style="height:16px"></div>
-      ${fieldGrid(sec.main, 'transship-main::'+st.active)}
+      ${kdeGrid(sec.main, 'transship-main::'+st.active)}
       ${rcsBlock}
     </div>
   `;
@@ -3197,6 +3198,65 @@ function fieldHTML(f, ctx, idx){
 function fieldGrid(fields, ctx){
   return `<div class="field-grid">${fields.map((f,i)=>fieldHTML(f, ctx, i)).join('')}</div>`;
 }
+
+/* ---------- KDE CATEGORIES ----------
+   The KDE grid of every CTE is split into collapsible category cards (same idea as the
+   Aquaculture calculator). Fields are sorted into categories by label, so no CTE_DATA entry,
+   shipment mapping or state key changes: each field is still rendered by fieldHTML() with its
+   original index. Event and Location start closed and show how many of their fields are filled. */
+const KDE_RULES = [
+  ['event', /^event\b|information provider/i],
+  ['location', /\blocation\b|^port$|facility (id|name)|sorting facility|\bgln\b/i],
+  ['calc', /scope level|fuel (type|consumption)|water usage|electricity consumption|transport mode|refrigeration energy/i],
+  ['party', /^species|product (form|ownership|origin)|production method|processing type|expiry|sku|organi[sz]ation/i],
+  ['trace', /linking kde|custody|certification|fishery improvement|lot id|transaction no/i],
+  ['origin', /vessel|gear|fao area|date\(?s?\)? of|satellite|carrier|catch|\bimo\b|authori[sz]ation|fishing/i],
+  ['storage', /storage|^type$/i],
+];
+const KDE_TITLES = { party:'Party and product', trace:'Traceability', storage:'Storage', other:'Other', calc:'Calculation', event:'Event', location:'Location' };
+const KDE_CLOSED = ['event','location'];
+function kdeCat(label){ const r = KDE_RULES.find(([,re]) => re.test(String(label).trim())); return r ? r[0] : 'other'; }
+function kdeTitle(cat, ctx){
+  if(cat !== 'origin') return KDE_TITLES[cat];
+  const c = String(ctx).toLowerCase();
+  if(c.includes('harvest')) return 'Vessel and capture';
+  if(c.includes('transship')) return 'Vessel and transshipment';
+  if(c.includes('landing')) return 'Landing';
+  if(c.includes('ovp') || c.includes('ship')) return 'Vessel';
+  return 'Origin';
+}
+function kdeCard(cat, ctx, html, title){
+  const key = String(ctx).split('::')[0] + ':' + cat;
+  const closed = KDE_CLOSED.includes(cat);
+  const open = key in state.kdeOpen ? state.kdeOpen[key] : !closed;
+  return `<details class="kde-sec${closed?' kde-closable':''}" data-kde="${key}"${open?' open':''}>
+    <summary><span class="kde-t">${title || kdeTitle(cat, ctx)}</span><span class="kde-count"></span><svg class="kde-chev" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></summary>
+    <div class="field-grid kde-body">${html}</div>
+  </details>`;
+}
+// extra = more field arrays that belong to the same KDE set, e.g. [{fields, ctx}] (Ship/Receive sea / air fields)
+function kdeGrid(fields, ctx, extra){
+  const buckets = {};
+  [{fields, ctx}, ...(extra||[])].forEach(part => part.fields.forEach((f,i) => {
+    (buckets[kdeCat(f.label)] ||= []).push(fieldHTML(f, part.ctx, i));
+  }));
+  const air = (extra||[]).some(e => e.ctx === 'ship-air');
+  const card = cat => buckets[cat] ? kdeCard(cat, ctx, buckets[cat].join(''), cat === 'origin' && air ? 'Carrier' : '') : '';
+  const main = ['party','trace','origin','storage','other','calc'].map(card).join('');
+  const pair = card('event') + card('location'), two = buckets.event && buckets.location;
+  return `<div class="kde-wrap">${main}${pair ? `<div class="kde-pair${two ? '' : ' single'}">${pair}</div>` : ''}</div>`;
+}
+function updateKdeCounts(){
+  document.querySelectorAll('.kde-closable').forEach(d => {
+    const fields = [...d.querySelectorAll('.field')];
+    const n = fields.filter(f => [...f.querySelectorAll('input')].some(i => i.type !== 'hidden' && String(i.value).trim() !== '') || f.querySelector('.pm-select-trigger:not(.placeholder)')).length;
+    const el = d.querySelector('.kde-count'), t = n ? `${n} of ${fields.length} filled` : 'Not filled';
+    if(el && el.textContent !== t) el.textContent = t;
+  });
+}
+document.addEventListener('toggle', e => { const d = e.target; if(d && d.matches && d.matches('details.kde-sec')){ state.kdeOpen[d.dataset.kde] = d.open; if(d.open) d.querySelectorAll('.seg-toggle-sm, .subtab-row').forEach(t=>{ if(t._pillRefresh) t._pillRefresh(); }); } }, true);
+document.addEventListener('input', () => setTimeout(updateKdeCounts, 0));
+document.addEventListener('change', () => setTimeout(updateKdeCounts, 0));
 
 function subtabRow(list, active, group){
   return `<div class="subtab-row">${list.map(s=>
@@ -3334,7 +3394,7 @@ function renderOVP(){
       </div>
       ${bottomBar(data.metrics, null, false, 'ovp', {label:'Total Volume', initial:ovpCalc.weight.value, unit:ovpCalc.weight.unit.toUpperCase()}, {value: document.getElementById('ovp-water')?.value ?? '0.00', unit:''}, {id:'ovp-metric-percan', perKgValue:grandTotalParts.ovp})}
       <div style="height:16px"></div>
-      ${fieldGrid(workingFields, 'ovp-main')}
+      ${kdeGrid(workingFields, 'ovp-main')}
 
       <div class="section-label">Weight &amp; Yield</div>
       <div class="field-grid">
@@ -3443,7 +3503,7 @@ function renderGenericTab(data, ctx, subKey){
         ${bottomBar(data.metrics, data.checkbox, multiple, ctx, {label:'Total Volume', initial: wField?wField.value.value:'', unit: wField?wField.value.unit.toUpperCase():''}, null, {id:'hv-metric-percan', perKgValue:grandTotalParts.harvesting})}
         ${renderInstanceSubtabs(ctx, data.instanceBase)}
         <div style="height:16px"></div>
-        ${fieldGrid(sec.main, ctx+'-main::'+st.active)}
+        ${kdeGrid(sec.main, ctx+'-main::'+st.active)}
         ${data.emissionHead ? `
           <div class="section-label">${data.emissionHead}</div>
           ${fieldGrid(sec.emission, ctx+'-emission::'+st.active)}
@@ -3462,7 +3522,7 @@ function renderGenericTab(data, ctx, subKey){
       ${bottomBar(data.metrics, data.checkbox, false, ctx)}
       ${sub}
       <div style="height:16px"></div>
-      ${fieldGrid(data.fields, ctx+'-main')}
+      ${kdeGrid(data.fields, ctx+'-main')}
       ${data.emissionHead ? `
         <div class="section-label">${data.emissionHead}</div>
         ${fieldGrid(data.emissionFields, ctx+'-emission')}
@@ -3537,7 +3597,7 @@ function renderProcessing(){
         ${subtabRow(CTE_DATA.processing.subtabs, sub, 'processingSub')}
         ${renderInstanceSubtabs('transformation', inner.instanceBase)}
         <div style="height:16px"></div>
-        ${fieldGrid(sec.main, 'transform-main::'+st.active)}
+        ${kdeGrid(sec.main, 'transform-main::'+st.active)}
 
         <button type="button" class="collapse-toggle" data-action="tf-dates-toggle">
           <span>Production &amp; Expiry Dates <span class="collapse-note">(optional)</span></span>
@@ -3610,7 +3670,7 @@ function renderProcessing(){
         ${subtabRow(CTE_DATA.processing.subtabs, sub, 'processingSub')}
         ${renderInstanceSubtabs('storage', inner.instanceBase)}
         <div style="height:16px"></div>
-        ${fieldGrid(sec.main, 'storage-main::'+st.active)}
+        ${kdeGrid(sec.main, 'storage-main::'+st.active)}
 
         <div class="field-grid" style="margin-top:2px;">
           <div class="field">
@@ -3784,7 +3844,6 @@ function renderShipReceive(){
   }
 
   const modeFieldsHTML = mode==='Sea' ? `
-    ${fieldGrid(wf.sea, 'ship-sea')}
     <div class="field-grid" style="margin-top:2px;">
       <div class="field">
         <label>Distance travelled <span class="req">*</span></label>
@@ -3816,7 +3875,6 @@ function renderShipReceive(){
       </div>
     </div>
   ` : `
-    ${fieldGrid(wf.air, 'ship-air')}
     <div class="field-grid" style="margin-top:2px;">
       <div class="field">
         <label>Distance travelled <span class="req">*</span></label>
@@ -3849,7 +3907,7 @@ function renderShipReceive(){
         <button class="subtab-btn ${mode==='Air'?'active':''}" data-action="subtab" data-group="shipSub" data-value="Air">Air</button>
       </div>
       <div style="height:16px"></div>
-      ${fieldGrid(wf.common, 'ship-common')}
+      ${kdeGrid(wf.common, 'ship-common', [mode==='Sea' ? {fields:wf.sea, ctx:'ship-sea'} : {fields:wf.air, ctx:'ship-air'}])}
       ${modeFieldsHTML}
       <div class="field-grid" style="margin-top:2px;">
         <div class="field"><label>Inner Unit</label><input type="text" value="${d.innerRow.inner}"></div>
@@ -4594,6 +4652,22 @@ function capturePillMemory(){
       pillMemory['seg-'+(el.dataset.pillKey||'default')] = { left: parseFloat(ind.style.left)||0, width: parseFloat(ind.style.width)||0 };
     }
   });
+  document.querySelectorAll(PILL_TOGGLES).forEach(el=>{
+    const ind = el.querySelector(':scope > .pill-indicator');
+    if(ind){
+      pillMemory[pillKeyFor(el)] = { left: parseFloat(ind.style.left)||0, width: parseFloat(ind.style.width)||0 };
+    }
+  });
+}
+
+// Small segmented toggles (KG/MT, At Port/At Sea, Sea/Air ...) get the same
+// sliding glass indicator as the main tabs. They have no explicit key, so
+// one is derived from what their first button does.
+const PILL_TOGGLES = '.seg-toggle-sm, .subtab-row';
+function pillKeyFor(el){
+  const b = el.querySelector('button');
+  const d = (b && b.dataset) || {};
+  return 'tg-' + (el.dataset.pillKey || [d.action||'', d.field||'', d.group||'', d.cte||''].join('|'));
 }
 
 function mountPillNav(container, memoryKey){
@@ -4605,7 +4679,7 @@ function mountPillNav(container, memoryKey){
     indicator.className = 'pill-indicator';
     container.prepend(indicator);
   }
-  const items = [...container.querySelectorAll('.nav-item, .tab-btn, .seg-opt')];
+  const items = [...container.querySelectorAll('.nav-item, .tab-btn, .seg-opt, .seg-opt-sm, .subtab-btn')];
 
   const place = (left, width)=>{
     indicator.style.left = left+'px';
@@ -4621,7 +4695,7 @@ function mountPillNav(container, memoryKey){
     place(r.left - c.left + container.scrollLeft, r.width);
   };
 
-  const getActive = ()=> container.querySelector('.nav-item.active, .tab-btn.active, .seg-opt.active') || items[0];
+  const getActive = ()=> container.querySelector('.nav-item.active, .tab-btn.active, .seg-opt.active, .seg-opt-sm.active, .subtab-btn.active') || items[0];
 
   if(isNew){
     const mem = memoryKey && pillMemory[memoryKey];
@@ -4640,6 +4714,27 @@ function mountPillNav(container, memoryKey){
 
   items.forEach(it=> it.addEventListener('mouseenter', ()=>moveTo(it)));
   container.addEventListener('mouseleave', ()=>moveTo(getActive()));
+  // lets a toggle that was hidden when mounted (e.g. inside a collapsed
+  // section) re-measure itself once it becomes visible
+  // Re-measure without sliding. Needed when the web font finishes loading
+  // (text gets wider/narrower after this ran), on resize, and when the
+  // toggle was hidden at mount time.
+  container._pillRefresh = ()=>{
+    indicator.style.transition = 'none';
+    moveTo(getActive());
+    void indicator.offsetWidth;
+    indicator.style.transition = '';
+  };
+  if(window.ResizeObserver && !container._pillRO){
+    container._pillRO = new ResizeObserver(()=>{ if(container.isConnected) container._pillRefresh(); });
+    container._pillRO.observe(container);
+    items.forEach(it=> container._pillRO.observe(it));
+  }
+}
+if(document.fonts && document.fonts.ready){
+  document.fonts.ready.then(()=>{
+    document.querySelectorAll('.nav-pill, .tab-strip-inner, .seg-toggle, .seg-toggle-sm, .subtab-row').forEach(c=>{ if(c._pillRefresh) c._pillRefresh(); });
+  });
 }
 
 /* ---------- ROOT RENDER + EVENTS ---------- */
@@ -4655,10 +4750,14 @@ function render(){
   else if(state.page==='reportScopeDetail') app.innerHTML = renderReportScopeDetail();
   else app.innerHTML = renderCalculator();
 
+  updateKdeCounts();
   mountPillNav(document.querySelector('.nav-pill'), 'topnav');
   mountPillNav(document.querySelector('.tab-strip-inner'), 'ctetabs');
   document.querySelectorAll('.seg-toggle').forEach(el=>{
     mountPillNav(el, 'seg-'+(el.dataset.pillKey||'default'));
+  });
+  document.querySelectorAll(PILL_TOGGLES).forEach(el=>{
+    mountPillNav(el, pillKeyFor(el));
   });
 
   if(state.page==='modal') startQuoteRotation(); else stopQuoteRotation();
