@@ -3255,6 +3255,47 @@ function updateKdeCounts(){
   });
 }
 document.addEventListener('toggle', e => { const d = e.target; if(d && d.matches && d.matches('details.kde-sec')){ state.kdeOpen[d.dataset.kde] = d.open; if(d.open) d.querySelectorAll('.seg-toggle-sm, .subtab-row').forEach(t=>{ if(t._pillRefresh) t._pillRefresh(); }); } }, true);
+// Smooth expand / collapse for the KDE section cards. A native <details>
+// jumps open and shut, so the click is taken over: the card's height is
+// animated between its closed and open size, and the body fades and
+// slides in step. Reduced-motion users keep the native instant toggle.
+document.addEventListener('click', e => {
+  const sum = e.target.closest && e.target.closest('details.kde-sec > summary');
+  if(!sum) return;
+  if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  if(!sum.parentElement.animate) return;
+  e.preventDefault();
+  const d = sum.parentElement;
+  if(d._kdeAnim){ d._kdeAnim.cancel(); d._kdeBody && d._kdeBody.forEach(b=>b.getAnimations().forEach(a=>a.cancel())); }
+  const opening = !d.open || d.classList.contains('is-closing');
+  const chrome = d.offsetHeight - d.clientHeight;            // the two 1px borders
+  const startH = d.getBoundingClientRect().height;
+  d.classList.remove('is-closing','is-opening');
+  d.style.overflow = 'hidden';
+  if(opening){ d.open = true; d.classList.add('is-opening'); }
+  else { d.classList.add('is-closing'); }
+  const endH = opening ? d.scrollHeight + chrome : sum.getBoundingClientRect().height + chrome;
+  if(d.dataset.kde) state.kdeOpen[d.dataset.kde] = opening;
+  const bodies = [...d.querySelectorAll(':scope > .kde-body')];
+  d._kdeBody = bodies;
+  const dur = opening ? 460 : 340;
+  const ease = opening ? 'cubic-bezier(.25,1.12,.4,1)' : 'cubic-bezier(.4,0,.2,1)';
+  bodies.forEach(b=> b.animate(
+    opening ? [{opacity:0, transform:'translateY(-8px)'},{opacity:1, transform:'none'}]
+            : [{opacity:1, transform:'none'},{opacity:0, transform:'translateY(-6px)'}],
+    {duration:dur*.8, easing:'ease-out', fill:'both'}));
+  const a = d.animate([{height:startH+'px'},{height:endH+'px'}], {duration:dur, easing:ease});
+  d._kdeAnim = a;
+  const done = ()=>{
+    d._kdeAnim = null;
+    d.style.overflow = '';
+    d.classList.remove('is-opening','is-closing');
+    bodies.forEach(b=>b.getAnimations().forEach(x=>x.cancel()));
+    if(!opening) d.open = false;
+  };
+  a.onfinish = done;
+  a.oncancel = ()=>{ d.style.overflow=''; };
+});
 document.addEventListener('input', () => setTimeout(updateKdeCounts, 0));
 document.addEventListener('change', () => setTimeout(updateKdeCounts, 0));
 

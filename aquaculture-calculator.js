@@ -403,6 +403,26 @@ function convertQty(path, newU) {
 function bindEvents(root) {
   root.addEventListener('input', () => setTimeout(updateMore, 0)); root.addEventListener('change', () => setTimeout(updateMore, 0));
   root.addEventListener('toggle', (e) => { const d = e.target; if (d.matches?.('details.sec-c')) UI.more[d.dataset.sec] = d.open; }, true);
+  /* smooth expand / collapse: a native <details> jumps, so the click is taken over and the card's height is
+     animated between its closed and open size while the fields fade and slide. Reduced motion keeps the native toggle. */
+  root.addEventListener('click', (e) => {
+    const sum = e.target.closest?.('details.sec-c > summary'); if (!sum) return;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches || !sum.parentElement.animate) return;
+    e.preventDefault();
+    const d = sum.parentElement;
+    if (d._anim) { d._anim.cancel(); (d._bodies || []).forEach((b) => b.getAnimations().forEach((a) => a.cancel())); }
+    const opening = !d.open || d.classList.contains('is-closing');
+    const chrome = d.offsetHeight - d.clientHeight, startH = d.getBoundingClientRect().height;
+    d.classList.remove('is-closing', 'is-opening'); d.style.overflow = 'hidden';
+    if (opening) { d.open = true; d.classList.add('is-opening'); } else d.classList.add('is-closing');
+    const endH = opening ? d.scrollHeight + chrome : sum.getBoundingClientRect().height + chrome;
+    UI.more[d.dataset.sec] = opening;
+    const bodies = d._bodies = [...d.querySelectorAll(':scope > .fields')], dur = opening ? 460 : 340;
+    bodies.forEach((b) => b.animate(opening ? [{ opacity: 0, transform: 'translateY(-8px)' }, { opacity: 1, transform: 'none' }] : [{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'translateY(-6px)' }], { duration: dur * .8, easing: 'ease-out', fill: 'both' }));
+    const a = d._anim = d.animate([{ height: startH + 'px' }, { height: endH + 'px' }], { duration: dur, easing: opening ? 'cubic-bezier(.25,1.12,.4,1)' : 'cubic-bezier(.4,0,.2,1)' });
+    a.onfinish = () => { d._anim = null; d.style.overflow = ''; d.classList.remove('is-opening', 'is-closing'); bodies.forEach((b) => b.getAnimations().forEach((x) => x.cancel())); if (!opening) d.open = false; };
+    a.oncancel = () => { d.style.overflow = ''; };
+  });
   root.addEventListener('input', (e) => {
     const el = e.target;
     if (el.dataset.p && el.tagName === 'INPUT') { setP(el.dataset.p, el.value === '' ? 0 : +el.value); refresh(); }
@@ -580,32 +600,48 @@ STAGES.push({
   cols: () => {
     const t = S.feedType, b = t === 'bait';
     return [[{
-      title: 'Section I', fields: [
-        T('org', 'Organization', { def: 'Farm' }), T('gln', 'Location GLN', { def: "Farm's GLN" }),
-        T('own', 'Product Ownership', { def: 'Farm' }), T('sku', 'Item/SKU/UPC/GTIN', { def: '--' }),
-        T('kde', 'Linking KDE (batch, lot, or serial)', { def: '--' }), { t: 'range', id: 'ev', label: 'Event Date(s)' },
+      title: 'Party and product', fields: [
+        T('org', 'Organization', { def: 'Farm' }),
+        T('own', 'Product Ownership', { def: 'Farm' }),
+        T('species', 'Species', { def: SPECIES }),
+        T('sku', 'Item/SKU/UPC/GTIN', { def: '--' })
+      ]
+    }, {
+      title: 'Traceability', fields: [
+        T('kde', 'Linking KDE (batch, lot, or serial number)', { def: '--' }),
         T('coc', 'Chain of Custody Certification', { def: '--' }),
-        CALC('qty', 'Quantity of feed required by net biomass', 'feed.mt', { unit: 'MT', tip: 'Net biomass gain × FCR. Net biomass gain = harvest quantity − towing yield.' }),
-        T('cert', 'Certification', { def: '--' })
+        T('hcert', 'Harvest Certification', { def: '', ph: 'Enter value' })
       ]
     }], [{
-      title: 'Section II', fields: [
+      title: 'Feed', fields: [
+        CALC('ftype', 'Feed Type', 'feed.typeName'),
         T('name_' + t, 'Feed name', { def: b ? 'Frozen Bait Fish' : 'Pellet' }),
+        T('prot', 'Source of Protein', { def: '', ph: 'Enter value' }),
+        CALC('qty', 'Quantity of feed required by net biomass', 'feed.mt', { unit: 'MT', tip: 'Net biomass gain × FCR. Net biomass gain = harvest quantity − towing yield. The unit of measure is MT.' }),
         NUM('fcr', 'Feed conversion ratio', 'fcr.{ft}', { step: 0.1, tip: 'Shared with the Farming stage.' }),
-        NUM('elec', 'Electricity consumption', 'feed.{ft}.elecKwh', { unit: 'kWh', tip: 'Optional extra energy, at the grid factor in Source Data.' }),
-        NUM('cool', 'Refrigeration energy', 'feed.{ft}.coolKwh', { unit: 'kWh', tip: 'Optional extra energy. Bait freezing is already included from Source Data.' }),
-        SEL('refrigerant', 'Refrigerant type', Object.keys(Calc.GWP), { ph: 'Select an option' }),
         CALC('prod', b ? 'Bait freezing emission' : 'Pellet raw-material emission', 'feed.prod', { unit: 'kg CO₂e', tip: b ? 'CF of freezing per kg tuna × net biomass gain.' : 'Composition-weighted CF × FCR × net biomass gain.' })
       ]
+    }, {
+      title: 'Storage', fields: [
+        SEL('stype', 'Storage type', ['Frozen', 'Chilled', 'Ambient', 'Other'], { ph: 'Select an option' }),
+        { t: 'mnum', id: 'sdur', label: 'Storage duration', unit: 'days', ph: 'Enter value', tip: 'Informational only. It does not change the result.' }
+      ]
     }], [{
-      title: 'Section III', fields: [
-        NUM('water', 'Water usage', 'feed.{ft}.waterL', { unit: 'L' }),
+      title: 'Energy and water', fields: [
+        NUM('elec', 'Electricity consumption', 'feed.{ft}.elecKwh', { unit: 'kWh', tip: 'Extra energy, at the grid factor in Source Data.' }),
+        NUM('cool', 'Refrigeration energy', 'feed.{ft}.coolKwh', { unit: 'kWh', tip: 'Extra energy. Bait freezing is already included from Source Data.' }),
+        SEL('refrigerant', 'Refrigerant type', Object.keys(Calc.GWP), { ph: 'Select an option' }),
+        NUM('water', 'Water usage', 'feed.{ft}.waterL', { unit: 'L' })
+      ]
+    }, {
+      title: 'Transport', fields: [
         NUM('dist', 'Distance', 'feed.{ft}.distKm', { unit: 'km', tip: 'Feed kg × distance × 0.0000542 kg CO₂e per kg·km.' }),
         SEL('fuel', 'Fuel type', FUELS, { def: 'Marine Diesel Oil' }),
         NUM('fuelL', 'Fuel consumption', 'feed.{ft}.fuelL', { unit: 'L per MT', tip: 'Litres × 0.85 × 3.026 × MT of feed.' })
       ]
     }]];
-  }
+  },
+  more: () => EVLOC('feedmill')
 });
 
 STAGES.push({
@@ -804,6 +840,7 @@ out('farm.gain', () => fmt(R.gainKg));
 out('farm.feedMT', () => fmt(R.feedMT[S.feedType]));
 out('farm.elec', () => fmt(R.stages.farming.elec));
 out('farm.misc', () => fmt(R.stages.farming.misc));
+out('feed.typeName', () => (S.feedType === 'bait' ? 'Bait Fish' : 'Pellet'));
 out('feed.mt', () => fmt(R.feedMT[S.feedType], 4));
 out('feed.prod', () => fmt(R.stages.feed.parts[0].value));
 out('harv.qty', () => fmt(R.harvestKg));
