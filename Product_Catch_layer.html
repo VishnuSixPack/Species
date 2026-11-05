@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MSC Canned Product · Packaging & Catch Type</title>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+* { box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+
+body { margin: 0; background: #f4f6fa; color: #202938; }
+
+.container { max-width: 1100px; margin: 40px auto; padding: 20px; }
+
+h1 { margin-bottom: 5px; }
+.subtitle { color: #778195; margin-bottom: 30px; }
+
+.card {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 3px 15px #0000000c;
+  margin-bottom: 20px;
+}
+.card h3 { margin-top: 0; }
+
+.search-box { display: flex; gap: 10px; margin-top: 15px; }
+
+input[type="text"], input[type="search"] {
+  flex: 1;
+  padding: 13px;
+  border: 1px solid #d9deea;
+  border-radius: 7px;
+  font-size: 15px;
+  min-width: 0;
+}
+input:focus { outline: none; border-color: #315eea; box-shadow: 0 0 0 3px #315eea22; }
+
+button {
+  border: none;
+  border-radius: 7px;
+  padding: 12px 20px;
+  background: #315eea;
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+}
+button:hover { background: #234bc5; }
+button:focus-visible { outline: 2px solid #315eea; outline-offset: 2px; }
+button[hidden] { display: none; }
+
+.secondary { background: #e9edfa; color: #315eea; }
+.secondary:hover { background: #dce3fa; }
+
+.hint { font-size: 12px; color: #7b8495; margin: 8px 0 0; }
+.hint.bad { color: #b4471c; }
+
+/* result */
+.result {
+  display: none;
+  padding: 16px 18px;
+  border-radius: 10px;
+  margin-top: 20px;
+  background: #edf8f1;
+  border: 1px solid #c8ebd4;
+}
+.result.notfound { background: #fff8ec; border-color: #f3dfb4; }
+.result h4 { margin: 0 0 10px; font-size: 15px; }
+.facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px 18px; margin: 0 0 12px; }
+.facts div span { display: block; font-size: 11px; color: #6b7588; text-transform: uppercase; letter-spacing: .04em; }
+.facts div b { font-weight: 500; font-size: 14px; }
+
+/* table */
+.table-tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+.table-tools input { flex: 0 1 320px; padding: 9px 12px; font-size: 13px; }
+.table-tools .count { margin-left: auto; font-size: 12px; color: #7b8495; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+th, td { padding: 11px 12px; text-align: left; border-bottom: 1px solid #edf0f5; font-size: 13.5px; }
+th { color: #788397; background: #f8f9fc; font-weight: 500; white-space: nowrap; }
+td.gtin { font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.group-start td { border-top: 2px solid #e3e8f2; }
+.na { color: #9aa3b2; font-style: italic; }
+
+.tag {
+  display: inline-block;
+  padding: 4px 9px;
+  border-radius: 20px;
+  font-size: 12px;
+  background: #e9edff;
+  color: #315eea;
+  white-space: nowrap;
+}
+.warning { background: #fff5df; color: #a66a00; }
+.success { background: #e4f7ec; color: #16834a; }
+.pack { background: #f1ecff; color: #6741d9; }
+/* catch types */
+.c-fad { background: #eef1f6; color: #4a5568; }
+.c-fadfree { background: #e3f4f7; color: #0f6e80; }
+.c-longline { background: #fdeee6; color: #b4471c; }
+.c-poleline { background: #e8f6e9; color: #2c7a35; }
+
+/* modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: #10182899;
+  justify-content: center;
+  align-items: center;
+  padding: 15px;
+  z-index: 10;
+}
+.modal {
+  background: white;
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100vh - 30px);
+  overflow-y: auto;
+  border-radius: 14px;
+  padding: 25px;
+  box-shadow: 0 15px 50px #0003;
+}
+.modal h2 { margin: 0 0 8px; }
+
+/* step trail: Product › Packaging › Catch type */
+.trail { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 14px; font-size: 12px; }
+.trail .t { padding: 4px 10px; border-radius: 20px; background: #f1f3f8; color: #7b8495; }
+.trail .t.done { background: #e4f7ec; color: #16834a; }
+.trail .t.now { background: #315eea; color: #fff; }
+.trail .sep { color: #b5bccb; }
+
+.option {
+  border: 1px solid #e0e5ef;
+  border-radius: 9px;
+  padding: 14px 15px;
+  margin: 10px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.option:hover { border-color: #315eea; background: #f5f7ff; }
+.option.selected { border: 2px solid #315eea; background: #f0f3ff; padding: 13px 14px; }
+.option input { flex: none; }
+.option-details { flex: 1; min-width: 0; }
+.option-details strong { display: block; margin-bottom: 4px; }
+
+small { color: #7b8495; }
+
+.modal-actions { display: flex; gap: 10px; margin-top: 20px; align-items: center; }
+.spacer { flex: 1; }
+
+@media(max-width:600px) {
+  .container { margin: 16px auto; padding: 16px; }
+  .search-box { flex-direction: column; }
+  th, td { padding: 9px 6px; font-size: 12px; }
+  .table-tools input { flex: 1 1 100%; }
+  .table-tools .count { margin-left: 0; }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>MSC Canned Product Identification</h1>
+<p class="subtitle">One Source GTIN, many variants: MSC canned product → packaging → catch type</p>
+
+<div class="card">
+  <h3>MSC Canned Product Search</h3>
+  <p>Search by Source GTIN. If several variants share it, you're asked only the questions needed to tell them apart. A 6-digit Internal ID or a product name also works.</p>
+
+  <div class="search-box">
+    <input type="text" id="searchInput" inputmode="search" autocomplete="off"
+      placeholder="Enter GTIN, Internal ID or name (e.g. 09520000010010)"
+      aria-label="GTIN, Internal ID or MSC canned product name">
+    <button type="button" id="searchBtn">Search MSC Canned Product</button>
+  </div>
+  <p class="hint" id="searchHint" aria-live="polite">GTIN-8, -12, -13 or -14, or a 6-digit Internal ID. Spaces are ignored.</p>
+
+  <div id="result" class="result" role="status"></div>
+</div>
+
+<div class="card">
+  <h3>MSC Canned Product Database</h3>
+  <div class="table-tools">
+    <input type="search" id="tableFilter" placeholder="Filter by product, packaging, catch type, GTIN or ID" aria-label="Filter the table">
+    <span class="count" id="tableCount"></span>
+  </div>
+  <div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>MSC Canned Product</th>
+        <th>Packaging</th>
+        <th>Catch Type</th>
+        <th>Source GTIN</th>
+        <th>Internal ID</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="productTable"></tbody>
+  </table>
+  </div>
+  <p class="hint">Sample data for demonstration. Source GTINs use the GS1 demo prefix (952); Internal IDs are 6-digit codes, one per variant.</p>
+</div>
+
+<div class="card">
+  <h3>Identification Rules</h3>
+  <p><span class="tag success">Unique GTIN</span> Automatically identify the MSC canned product.</p>
+  <p><span class="tag warning">Shared GTIN</span> Ask which MSC canned product.</p>
+  <p><span class="tag pack">Packaging</span> If that product comes in several case sizes (24 × 185g, 36 × 185g, 48 × 185g), ask which one.</p>
+  <p><span class="tag c-fadfree">Catch Type</span> If it still isn't unique, ask the catch type: FAD, FAD Free, Longline or Pole &amp; Line.</p>
+  <p><span class="tag">No Source GTIN</span> Identify using the Internal ID and MSC canned product name.</p>
+</div>
+
+</div>
+
+<!-- STEP-BY-STEP SELECTION POPUP -->
+
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+
+    <div class="trail" id="trail" aria-label="Selection steps"></div>
+    <h2 id="modalTitle">Select the MSC canned product</h2>
+    <p id="modalDescription"></p>
+
+    <div id="options" role="radiogroup" aria-labelledby="modalTitle"></div>
+    <p class="hint bad" id="modalError" hidden></p>
+
+    <div class="modal-actions">
+      <button type="button" class="secondary" id="backBtn" hidden>← Back</button>
+      <span class="spacer"></span>
+      <button type="button" class="secondary" id="cancelBtn">Cancel</button>
+      <button type="button" id="nextBtn">Next →</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+
+// SAMPLE MSC CANNED PRODUCT DATABASE
+// One row per variant (product + packaging + catch type), each with its own Internal ID.
+
+const SKJ = "MSC Skipjack (SKJ) Tuna Chunks in Olive Oil 185g";
+const YFT = "MSC Yellowfin (YFT) Tuna Steak in Olive Oil 185g";
+const SHARED = "09520000010010";
+
+const products = [];
+let nextId = 200001;
+const add = (name, sourceGTIN, packs, catchTypes) =>
+  packs.forEach(pack => catchTypes.forEach(catchType =>
+    products.push({ name, sourceGTIN, pack, catchType, internalID: String(nextId++), status: "Active" })));
+
+// Skipjack: three case sizes, purse seine (FAD / FAD Free) and pole & line
+add(SKJ, SHARED, ["24 × 185g", "36 × 185g", "48 × 185g"], ["FAD", "FAD Free", "Pole & Line"]);
+// Yellowfin: same Source GTIN, two case sizes, longline / pole & line / FAD Free
+add(YFT, SHARED, ["24 × 185g", "48 × 185g"], ["Longline", "Pole & Line", "FAD Free"]);
+// Unique Source GTIN
+add("MSC Albacore Tuna Solid in Brine 160g", "09520000010027", ["24 × 160g"], ["Longline"]);
+// No Source GTIN
+add("MSC Skipjack Tuna Flakes 95g", "", ["48 × 95g"], ["FAD Free"]);
+
+// QUESTIONS, asked in this order and only when the answer still differs
+
+const CATCH = {
+  "FAD":         { cls: "c-fad",      about: "Purse seine, set around Fish Aggregating Devices" },
+  "FAD Free":    { cls: "c-fadfree",  about: "Purse seine on free-swimming schools, no FADs" },
+  "Longline":    { cls: "c-longline", about: "Baited hooks on a long main line" },
+  "Pole & Line": { cls: "c-poleline", about: "Caught one by one with pole and line" }
+};
+const packInfo = pack => {
+  const m = pack.match(/^(\d+)\s*×\s*(\d+)g$/);
+  return m ? `${m[1]} cans per case · ${(m[1] * m[2] / 1000).toLocaleString("en", { maximumFractionDigits: 2 })} kg net` : "";
+};
+const STEPS = [
+  { key: "name",      label: "Product",    title: "Select the MSC canned product",
+    describe: (n, q, via) => via === "Source GTIN"
+      ? `Source GTIN <strong>${esc(q)}</strong> is shared by ${n} MSC canned products.`
+      : `${n} MSC canned products match <strong>${esc(q)}</strong>.`,
+    show: v => `<strong>${esc(v)}</strong>` },
+  { key: "pack",      label: "Packaging",  title: "Which packaging?",
+    describe: (n, q, via, picked) => `<strong>${esc(picked.name || "")}</strong> comes in ${n} case sizes.`,
+    show: v => `<strong>${esc(v)}</strong><small>${esc(packInfo(v))}</small>`, tag: v => `<span class="tag pack">${esc(v)}</span>` },
+  { key: "catchType", label: "Catch type", title: "Which catch type?",
+    describe: (n, q, via, picked) => `${n} catch types are available for <strong>${esc([picked.name, picked.pack].filter(Boolean).join(", "))}</strong>.`,
+    show: v => `<strong>${esc(v)}</strong><small>${esc(CATCH[v] ? CATCH[v].about : "")}</small>`, tag: v => catchTag(v) }
+];
+
+let lastFocus = null;
+let flow = null;   // { query, via, pool, picked, history: [{step, picked}], step, value }
+
+const $ = id => document.getElementById(id);
+const esc = v => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const catchTag = v => `<span class="tag ${CATCH[v] ? CATCH[v].cls : ""}">${esc(v)}</span>`;
+const uniq = a => [...new Set(a)];
+
+// GTIN HELPERS: compare GTIN-8/12/13/14 as 14 digits, and check the last digit
+
+const digitsOnly = v => String(v || "").replace(/[\s-]/g, "");
+const toGTIN14 = v => /^\d{8}$|^\d{12,14}$/.test(v) ? v.padStart(14, "0") : null;
+function checkDigitOK(gtin) {
+  const d = gtin.split("").map(Number), check = d.pop();
+  const sum = d.reverse().reduce((s, n, i) => s + n * (i % 2 === 0 ? 3 : 1), 0);
+  return (10 - (sum % 10)) % 10 === check;
+}
+
+// DISPLAY DATABASE
+
+function renderTable() {
+  const q = $("tableFilter").value.trim().toLowerCase();
+  const rows = products.filter(p => !q ||
+    [p.name, p.pack, p.catchType, p.sourceGTIN, p.internalID].some(v => String(v).toLowerCase().includes(q)));
+  let prev = "";
+  $("productTable").innerHTML = rows.map(p => {
+    const start = p.name !== prev; prev = p.name;
+    return `
+    <tr class="${start ? "group-start" : ""}">
+      <td>${start ? esc(p.name) : ""}</td>
+      <td><span class="tag pack">${esc(p.pack)}</span></td>
+      <td>${catchTag(p.catchType)}</td>
+      <td class="gtin">${p.sourceGTIN ? esc(p.sourceGTIN) : '<span class="na">Not Available</span>'}</td>
+      <td class="gtin">${esc(p.internalID)}</td>
+      <td><span class="tag success">${esc(p.status)}</span></td>
+    </tr>`;
+  }).join("") || `<tr><td colspan="6" class="na">No variants match “${esc(q)}”.</td></tr>`;
+  $("tableCount").textContent = `${rows.length} of ${products.length} variants`;
+}
+
+// SEARCH
+
+function showResult(html, notFound) {
+  const r = $("result");
+  r.innerHTML = html;
+  r.classList.toggle("notfound", !!notFound);
+  r.style.display = "block";
+}
+
+function identified(p, heading, via) {
+  showResult(`
+    <h4>${heading}</h4>
+    <div class="facts">
+      <div><span>MSC canned product</span><b>${esc(p.name)}</b></div>
+      <div><span>Packaging</span><b>${esc(p.pack)}</b></div>
+      <div><span>Catch type</span><b>${esc(p.catchType)}</b></div>
+      <div><span>Source GTIN</span><b>${p.sourceGTIN ? esc(p.sourceGTIN) : "Not Available"}</b></div>
+      <div><span>Internal ID</span><b>${esc(p.internalID)}</b></div>
+    </div>
+    <span class="tag success">Ready for processing</span>
+    ${via && via !== "Source GTIN" ? `<span class="tag">Found by ${esc(via)}</span>` : ""}
+  `);
+}
+
+function searchProduct() {
+  const raw = $("searchInput").value.trim();
+  const hint = $("searchHint");
+  hint.classList.remove("bad");
+  hint.textContent = "GTIN-8, -12, -13 or -14, or a 6-digit Internal ID. Spaces are ignored.";
+
+  if (!raw) {
+    hint.classList.add("bad");
+    hint.textContent = "Please enter a GTIN, an Internal ID or an MSC canned product name.";
+    $("searchInput").focus();
+    return;
+  }
+
+  const id = digitsOnly(raw), gtin = toGTIN14(id);
+  if (gtin && !checkDigitOK(gtin)) {
+    hint.classList.add("bad");
+    hint.textContent = `The last digit of ${id} doesn't match the GTIN check digit. Check for a typing mistake.`;
+  }
+
+  let matches = [], via = "Source GTIN";
+  if (gtin) matches = products.filter(p => p.sourceGTIN && toGTIN14(p.sourceGTIN) === gtin);
+  if (!matches.length && /^\d{6}$/.test(id)) { matches = products.filter(p => p.internalID === id); via = "Internal ID"; }
+  if (!matches.length && !/^\d+$/.test(id)) {
+    const words = raw.toLowerCase().split(/\s+/).filter(Boolean);   /* every word must appear, in any order */
+    matches = products.filter(p => words.every(w => [p.name, p.pack, p.catchType].join(" ").toLowerCase().includes(w)));
+    via = "MSC canned product name";
+  }
+
+  if (!matches.length) {
+    showResult(`<h4>No matching GTIN or Internal ID found.</h4><p>Try the Internal ID or the MSC canned product name.</p>`, true);
+    return;
+  }
+  if (matches.length === 1) { identified(matches[0], "MSC canned product identified successfully!", via); return; }
+
+  lastFocus = document.activeElement;
+  flow = { query: raw, via, pool: matches, picked: {}, history: [] };
+  $("modalOverlay").style.display = "flex";
+  nextQuestion();
+}
+
+// STEP-BY-STEP SELECTION
+
+// the variants still possible with the answers so far
+const remaining = () => flow.pool.filter(p => Object.entries(flow.picked).every(([k, v]) => p[k] === v));
+
+function nextQuestion() {
+  const left = remaining();
+  if (left.length === 1) { finish(left[0]); return; }
+  // first question whose answer still differs among the remaining variants
+  const step = STEPS.find(s => !(s.key in flow.picked) && uniq(left.map(p => p[s.key])).length > 1);
+  if (!step) { finish(left[0]); return; }   // identical rows: take the first
+  flow.step = step; flow.value = null;
+  renderStep(left);
+}
+
+function renderStep(left) {
+  const step = flow.step;
+  const values = uniq(left.map(p => p[step.key]));
+
+  // trail: answered steps, this one, and the ones that may still follow
+  const asked = flow.history.map(h => h.step);
+  const later = STEPS.filter(s => s !== step && !asked.includes(s) && uniq(left.map(p => p[s.key])).length > 1);
+  $("trail").innerHTML = [
+    ...asked.map(s => `<span class="t done">${esc(s.label)}: ${esc(flow.picked[s.key])}</span>`),
+    `<span class="t now">${esc(step.label)}</span>`,
+    ...later.map(s => `<span class="t">${esc(s.label)}</span>`)
+  ].join('<span class="sep">›</span>');
+
+  $("modalTitle").textContent = step.title;
+  $("modalDescription").innerHTML = step.describe(values.length, flow.query, flow.via, flow.picked);
+
+  $("options").innerHTML = values.map((v, i) => {
+    const n = left.filter(p => p[step.key] === v);
+    const sub = n.length === 1
+      ? `Internal ID ${esc(n[0].internalID)}`
+      : `${n.length} variants · ${later.map(s => `${uniq(n.map(p => p[s.key])).length} ${s.label.toLowerCase()}${uniq(n.map(p => p[s.key])).length > 1 ? "s" : ""}`).join(", ")}`;
+    return `
+    <label class="option" data-i="${i}">
+      <input type="radio" name="choice" value="${i}">
+      <div class="option-details">${step.show(v)}<small style="display:block">${sub}</small></div>
+      ${step.tag ? step.tag(v) : (flow.via === "Source GTIN" && !flow.history.length ? '<span class="tag warning">Shared GTIN</span>' : "")}
+    </label>`;
+  }).join("");
+  flow.values = values;
+
+  $("backBtn").hidden = !flow.history.length;
+  $("nextBtn").textContent = "Next →";
+  $("modalError").hidden = true;
+  $("options").querySelector("input").focus();
+}
+
+function choose(i) {
+  flow.value = flow.values[i];
+  $("modalError").hidden = true;
+  document.querySelectorAll(".option").forEach((o, j) => o.classList.toggle("selected", j === i));
+  // last question? then the button confirms
+  const after = remaining().filter(p => p[flow.step.key] === flow.value);
+  $("nextBtn").textContent = after.length === 1 ? "Confirm Selection" : "Next →";
+}
+
+function next() {
+  if (flow.value == null) {
+    $("modalError").textContent = `Please select the ${flow.step.label.toLowerCase()} first.`;
+    $("modalError").hidden = false;
+    return;
+  }
+  flow.history.push({ step: flow.step, picked: { ...flow.picked } });
+  flow.picked[flow.step.key] = flow.value;
+  nextQuestion();
+}
+
+function back() {
+  const h = flow.history.pop(); if (!h) return;
+  flow.picked = h.picked;
+  flow.step = h.step; flow.value = null;
+  renderStep(remaining());
+}
+
+function finish(p) {
+  closeModal();
+  identified(p, "Correct MSC canned product selected!", flow.via);
+}
+
+function closeModal() {
+  $("modalOverlay").style.display = "none";
+  if (lastFocus) lastFocus.focus();
+}
+
+// EVENTS
+
+$("searchBtn").addEventListener("click", searchProduct);
+$("searchInput").addEventListener("keydown", e => { if (e.key === "Enter") searchProduct(); });
+$("tableFilter").addEventListener("input", renderTable);
+$("options").addEventListener("change", e => { const o = e.target.closest(".option"); if (o) choose(+o.dataset.i); });
+$("nextBtn").addEventListener("click", next);
+$("backBtn").addEventListener("click", back);
+$("cancelBtn").addEventListener("click", closeModal);
+$("modalOverlay").addEventListener("click", e => { if (e.target === e.currentTarget) closeModal(); });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && $("modalOverlay").style.display === "flex") closeModal();
+});
+
+// INITIALIZE
+
+renderTable();
+
+</script>
+
+</body>
+</html>
