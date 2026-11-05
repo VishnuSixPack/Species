@@ -1473,8 +1473,13 @@ function addItem(spec) {
     // Pinned in place: nothing that changes where it sits or which way it
     // faces will touch it until it is unlocked.
     locked: !!spec.locked,
-    rot_y: 0, pos_x: 0, pos_y: 0, pos_z: 0, mesh: null,
+    rot_y: normaliseOrient(spec.rot_y), pos_x: 0, pos_y: 0, pos_z: 0, mesh: null,
     contents: spec.contents ? spec.contents.map(c => ({ ...c })) : null,
+    // What the levels are called, and the pallet it came off, if any. Both are
+    // stamped on by the builder after the fact, so they have to come through
+    // here too or a copy loses them.
+    terms: spec.terms ? { ...spec.terms } : undefined,
+    pallet_meta: spec.pallet_meta ? { ...spec.pallet_meta } : undefined,
     // What the carton builder made this from, so the plan can draw the real
     // contents. Small enough to store; the unit positions are derived.
     build_ref: spec.build_ref || null,
@@ -1783,6 +1788,21 @@ function movableSelection() {
   return items.filter(i => ids.has(i.id) && !i.locked);
 }
 
+// What an arrow key or a nudge button moves. The lock is there to stop a
+// carton being knocked out of place by the mouse while you orbit — but
+// picking a locked set and pressing an arrow is not an accident, it is an
+// instruction, so the whole set moves together, keeping its spacing.
+//
+// A mixed selection is the one ambiguous case, and there the locked ones stay
+// put: an arrow should never quietly shift a carton you pinned and forgot
+// about. Only when every carton picked is locked does the lock stand aside.
+function nudgeGroup() {
+  const ids = selectionIds();
+  const picked = items.filter(i => ids.has(i.id));
+  const free = picked.filter(i => !i.locked);
+  return free.length ? free : picked;
+}
+
 const lockedCount = () => items.filter(i => selectionIds().has(i.id) && i.locked).length;
 
 // The container size along one axis, in cm
@@ -1882,16 +1902,10 @@ function setIsolate(on) {
 }
 
 function nudgeSelected(axis, dir, step = nudgeStepCm) {
-  const group = movableSelection();
+  const group = nudgeGroup();
   const key = NUDGE_AXIS[axis];
   if (!key) return false;
-  if (!group.length) {
-    const blocked = lockedCount();
-    showToast(blocked
-      ? `${blocked === 1 ? 'That carton is' : `All ${blocked} are`} locked — unlock to move.`
-      : 'Nothing selected.');
-    return false;
-  }
+  if (!group.length) { showToast('Nothing selected.'); return false; }
 
   const origins = snapshotPositions(group);
   const allowed = clampGroupDelta(group, origins, axis, dir * step);
@@ -2163,7 +2177,7 @@ function renderCargoList() {
         ${extra ? `<small class="cargo-contents">${extra}</small>` : ''}
       </div>
       <span class="row-addr" title="${escapeHtml(addr.full)} — ${escapeHtml(addressLegend())}">${addr.text}</span>
-      ${i.locked ? '<span class="row-lock" title="Locked — cannot be moved">🔒</span>' : ''}
+      ${i.locked ? '<span class="row-lock" title="Locked — safe from a stray drag. The arrows still move it.">🔒</span>' : ''}
       ${i.issueLevel ? `<span class="row-warn lvl-${i.issueLevel}" title="${escapeHtml(i.issues.map(x => x.text).join(' · '))}">!</span>` : ''}
       <span class="focus-icon" title="Focus camera">⌖</span>
     </div>`;
@@ -5307,7 +5321,7 @@ function onPointerDown(e) {
   // it just refuses to be dragged, which is the whole point of the lock.
   const lead = items.find(i => i.id === hit.itemId);
   if (lead?.locked) {
-    showToast('That carton is locked. Unlock it to move it.');
+    showToast('That one is locked, so dragging is off. Nudge it with the arrows, or press <b>K</b> to unlock.');
     return;
   }
   canvas.setPointerCapture(e.pointerId);
@@ -6746,7 +6760,7 @@ function renderShortcuts() {
     { keys: ['Del'],        desc: 'Delete selected carton' },
     { keys: ['R'],          desc: 'Rotate selected item 90°' },
     { keys: ['F'],          desc: 'Flip selected item onto another face' },
-    { keys: ['K'],          desc: 'Lock or unlock what is picked — locked cartons cannot be moved' },
+    { keys: ['K'],          desc: 'Lock or unlock what is picked — a locked carton cannot be dragged, but the arrows still move it' },
     { keys: ['I'],          desc: 'Isolate — fade everything except what you pick, so only it can be clicked' },
     { keys: [modKey, 'D'],  desc: 'Duplicate selected carton' },
     { keys: ['L'],          desc: 'Toggle carton labels' },
@@ -8824,7 +8838,6 @@ function slipUnder(list, base = baseOption(baseChoice), mode = baseMode) {
   const groups = mode === 'each' ? list.map(i => [i]) : [list];
   const made = [];
   const tooTall = [];
-  const pinned = [];
   // A base is usually wider than the carton it was asked for, so it ends up
   // under the neighbours too. Without this, asking for one under each of two
   // touching cartons builds a tower: the second base goes under the first.
@@ -8865,10 +8878,11 @@ function slipUnder(list, base = baseOption(baseChoice), mode = baseMode) {
       return b.minY >= bottom - 0.5;
     });
 
-    // A locked carton in the column is somebody saying "this one does not
-    // move". Lifting it anyway would be exactly the accident the lock exists
-    // to prevent.
-    if (column.some(o => o.locked)) { pinned.push(group); return; }
+    // A locked carton used to stop this. It should not: sliding a base
+    // underneath lifts the whole column at once, so every carton keeps its
+    // place relative to every other — which is the thing the lock is there to
+    // protect. The lock guards against being knocked sideways by a stray
+    // drag, not against being put on a pallet.
 
     const columnTop = column.reduce((t, o) => Math.max(t, itemBounds(o).maxY), bottom);
     if (columnTop + base.height > roof + 0.01) { tooTall.push(group); return; }
@@ -8919,7 +8933,6 @@ function slipUnder(list, base = baseOption(baseChoice), mode = baseMode) {
 
   const skipped = [];
   if (tooTall.length) skipped.push(`${tooTall.length} already up at the roof`);
-  if (pinned.length)  skipped.push(`${pinned.length} with a locked carton above`);
   if (already) skipped.push(`${already} already standing on one`);
 
   const noun = base.kind === 'pallet' ? 'pallet' : 'sheet';
@@ -9008,19 +9021,41 @@ $('#btnFlip').addEventListener('click', () => {
   reorientSelected((item.rot_y + 2) % 6, 'flipped');
 });
 
+// What makes one carton a different carton from its copy: who it is, where it
+// stands, and whether somebody has pinned it. Everything else describes the
+// carton itself and has to come across.
+//
+// This used to be a hand-written list of fields to copy, and it drifted: the
+// build, the contents and the batch were all quietly left behind, so a copy
+// drew no units and traced to nothing — a container of twelve where only the
+// first was in the stowage list. Said the other way round, it cannot drift:
+// a new field is copied unless it is named here.
+const ITEM_OWN = ['id', 'mesh', 'build', 'issues', 'issueLevel',
+                  'pos_x', 'pos_y', 'pos_z', 'label', 'locked'];
+
+function duplicateItem(item) {
+  const spec = {};
+  Object.keys(item).forEach(k => { if (!ITEM_OWN.includes(k)) spec[k] = item[k]; });
+  spec.label = item.base_label + '·copy';
+  const copy = addItem(spec);
+  // Anything addItem does not know about is carried over as its own copy, so
+  // the two cartons never end up sharing a lot row.
+  Object.keys(spec).forEach(k => {
+    if (copy[k] !== undefined) return;
+    const v = spec[k];
+    copy[k] = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : v;
+  });
+  return copy;
+}
+
 $('#btnDuplicate').addEventListener('click', () => {
   const item = items.find(i => i.id === selectedItemId);
   if (!item) return;
-  const clone = addItem({
-    label: item.base_label + '·copy', base_label: item.base_label,
-    product_name: item.product_name,
-    kind: item.kind, shape: item.shape, max_stack_kg: item.max_stack_kg,
-    length_cm: item.length_cm, width_cm: item.width_cm, height_cm: item.height_cm,
-    weight_kg: item.weight_kg, handling: item.handling, color: item.color
-  });
+  const clone = duplicateItem(item);
   selectItem(clone.id);
   updateStats();
   renderCargoList();
+  refreshAllContents();          // the copy has units of its own to draw
   showToast(`Duplicated <b>${escapeHtml(item.label)}</b>.`);
 });
 
