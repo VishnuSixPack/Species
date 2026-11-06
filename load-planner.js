@@ -1272,6 +1272,16 @@ function createItemMesh(item) {
     mesh.add(wire);
   }
 
+  // a rebuilt mesh starts plain, so the lock mark goes back on
+  if (item.locked) {
+    const badge = makeLockBadge();
+    badge.scale.set(LOCK_BADGE, LOCK_BADGE, 1);
+    badge.position.set(0, itemExtent(item).h / 200 + 0.14, 0);
+    mesh.add(badge);
+    const w = mesh.children.find(c => c.userData.isEdge);
+    if (w) { w.material.color.setHex(EDGE_LOCKED); w.material.opacity = EDGE_LOCKED_OP; }
+  }
+
   const sprite = createLabelSprite(item);
   sprite.userData.isLabel = true;
   sprite.raycast = () => {};
@@ -1783,20 +1793,17 @@ const NUDGE_AXIS = { x: 'pos_x', y: 'pos_y', z: 'pos_z' };
 const AXIS_EXTENT = { x: 'l', y: 'h', z: 'w' };
 
 // Everything currently picked that is actually allowed to move
-function movableSelection() {
-  const ids = selectionIds();
-  return items.filter(i => ids.has(i.id) && !i.locked);
-}
 
-// What an arrow key or a nudge button moves. The lock is there to stop a
-// carton being knocked out of place by the mouse while you orbit — but
-// picking a locked set and pressing an arrow is not an accident, it is an
-// instruction, so the whole set moves together, keeping its spacing.
+// What a deliberate move acts on — an arrow key, a nudge button, or a drag
+// that started on a carton you had already picked. The lock is there to stop a
+// carton being knocked out of place by a stray grab while you orbit; choosing
+// a set and then moving it is not an accident, it is an instruction, so the
+// whole set travels together with its spacing kept.
 //
 // A mixed selection is the one ambiguous case, and there the locked ones stay
-// put: an arrow should never quietly shift a carton you pinned and forgot
+// put: a move should never quietly shift a carton you pinned and forgot
 // about. Only when every carton picked is locked does the lock stand aside.
-function nudgeGroup() {
+function moveGroup() {
   const ids = selectionIds();
   const picked = items.filter(i => ids.has(i.id));
   const free = picked.filter(i => !i.locked);
@@ -1902,7 +1909,7 @@ function setIsolate(on) {
 }
 
 function nudgeSelected(axis, dir, step = nudgeStepCm) {
-  const group = nudgeGroup();
+  const group = moveGroup();
   const key = NUDGE_AXIS[axis];
   if (!key) return false;
   if (!group.length) { showToast('Nothing selected.'); return false; }
@@ -5314,14 +5321,19 @@ function onPointerDown(e) {
   // block can be dragged. Grabbing anything else starts a fresh selection.
   // isSelected, not multiSelect: the inspector item counts as picked too, and
   // it is the one most likely to be grabbed.
-  if (!isSelected(hit.itemId)) { multiSelect.clear(); refreshMultiHighlights(); }
+  const wasPicked = isSelected(hit.itemId);
+  if (!wasPicked) { multiSelect.clear(); refreshMultiHighlights(); }
   selectItem(hit.itemId);
 
-  // A locked carton still selects, so it can be inspected or unlocked —
-  // it just refuses to be dragged, which is the whole point of the lock.
+  // What the lock is actually for is the stray grab — catching a carton while
+  // you meant to orbit. So a locked carton refuses to be dragged unless you
+  // had already picked it out: ticking it in the list, or Ctrl-clicking it, is
+  // you saying which cartons you mean, and dragging one of those is no
+  // accident. It then moves with the rest of the picked set, spacing kept.
   const lead = items.find(i => i.id === hit.itemId);
-  if (lead?.locked) {
-    showToast('That one is locked, so dragging is off. Nudge it with the arrows, or press <b>K</b> to unlock.');
+  if (lead?.locked && !wasPicked) {
+    showToast('<b>' + escapeHtml(lead.label) + '</b> is locked. Tick it in the list first to move it, ' +
+              'nudge it with the arrows, or press <b>K</b> to unlock.');
     return;
   }
   canvas.setPointerCapture(e.pointerId);
@@ -5331,8 +5343,10 @@ function onPointerDown(e) {
   const startWorld = raycastDragPlane(e, plane);
   if (!startWorld) return;
 
-  // Anything else ticked travels with it, as one rigid block
-  const group = movableSelection().filter(i => i.id !== hit.itemId);
+  // Anything else ticked travels with it, as one rigid block — including the
+  // locked ones when the whole picked set is locked, which is the case you are
+  // in when you lock a stack so it holds together and then want it elsewhere.
+  const group = moveGroup().filter(i => i.id !== hit.itemId);
 
   dragState = {
     itemId: hit.itemId,
@@ -8995,9 +9009,72 @@ function slipUnder(list, base = baseOption(baseChoice), mode = baseMode) {
 }
 
 // ---- lock ----
+// A locked carton has to look locked from across the container, not just
+// under the nose. An amber outline alone turned out to be invisible at any
+// normal working distance — a one-pixel line on a box 40 px wide — so the
+// mark is a padlock badge that hangs over the carton and keeps its size on
+// screen however far away you orbit. The outline goes amber as well, which
+// is what you see once you are in close.
+//
+// Neither touches the carton's own colour, because that is carrying the batch.
+const LOCK_BADGE = 0.34;          // metres on screen — big enough to pick out
+                                  // across a full container, small enough not to
+                                  // bury the carton it belongs to
+const EDGE_PLAIN  = 0x1a2536, EDGE_PLAIN_OP  = 0.45;
+const EDGE_LOCKED = 0xd98324, EDGE_LOCKED_OP = 0.95;
+
+function makeLockBadge() {
+  const cnv = document.createElement('canvas');
+  cnv.width = 128; cnv.height = 128;
+  const c = cnv.getContext('2d');
+  c.fillStyle = '#d98324';
+  c.beginPath(); c.arc(64, 64, 58, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = 'rgba(255,255,255,0.95)'; c.lineWidth = 6; c.stroke();
+  // the shackle
+  c.strokeStyle = '#fff'; c.lineWidth = 11; c.lineCap = 'round';
+  c.beginPath(); c.arc(64, 56, 20, Math.PI, 0); c.stroke();
+  // the body
+  c.fillStyle = '#fff';
+  c.beginPath(); c.roundRect(40, 56, 48, 40, 6); c.fill();
+  c.fillStyle = '#d98324';
+  c.beginPath(); c.arc(64, 72, 6, 0, Math.PI * 2); c.fill();
+  c.fillRect(61, 72, 6, 14);
+
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(cnv),
+    transparent: true, depthTest: false, depthWrite: false
+  }));
+  sprite.userData.isLockBadge = true;
+  sprite.raycast = () => {};
+  return sprite;
+}
+
+function markLocked(item) {
+  if (!item.mesh) return;
+  const wire = item.mesh.children.find(c => c.userData.isEdge);
+  if (wire) {
+    wire.material.color.setHex(item.locked ? EDGE_LOCKED : EDGE_PLAIN);
+    wire.material.opacity = item.locked ? EDGE_LOCKED_OP : EDGE_PLAIN_OP;
+    wire.material.needsUpdate = true;
+  }
+  const had = item.mesh.children.find(c => c.userData.isLockBadge);
+  if (item.locked && !had) {
+    const badge = makeLockBadge();
+    badge.scale.set(LOCK_BADGE, LOCK_BADGE, 1);
+    badge.position.set(0, itemExtent(item).h / 200 + 0.14, 0);
+    item.mesh.add(badge);
+  } else if (!item.locked && had) {
+    item.mesh.remove(had);
+    had.material.map?.dispose();
+    had.material.dispose();
+  } else if (had) {
+    had.position.set(0, itemExtent(item).h / 200 + 0.14, 0);
+  }
+}
+
 function setLocked(list, on) {
   if (!list.length) return;
-  list.forEach(i => { i.locked = on; });
+  list.forEach(i => { i.locked = on; markLocked(i); });
   renderCargoList();
   renderEditStrip();
   renderLockButton();
