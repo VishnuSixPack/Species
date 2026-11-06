@@ -7656,16 +7656,61 @@ $('#toggleRealistic').addEventListener('click', () => {
   showToast(realisticMode ? 'Realistic view <b>on</b>.' : 'Realistic view <b>off</b>.');
 });
 
-$('#fQtyMinus').addEventListener('click', () => {
-  if (selectedItemId) return;
-  quantity = Math.max(1, quantity - 1);
-  $('#fQty').textContent = quantity;
-});
-$('#fQtyPlus').addEventListener('click', () => {
-  if (selectedItemId) return;
-  quantity = Math.min(500, quantity + 1);
-  $('#fQty').textContent = quantity;
-});
+// A quantity you can type. The steppers are fine for one or two, but forty
+// clicks is not a way to enter forty — so the number itself is a field, and
+// the buttons just step it.
+//
+// Reading and writing go through one pair of functions so the field and the
+// variable behind it cannot drift apart, which is what happens when every
+// button writes textContent in its own way.
+const QTY_MAX = 500;
+
+function wireQty(sel, get, set, blocked = () => false) {
+  const input = $(sel);
+  if (!input) return;
+  const show = () => { input.value = String(get()); };
+
+  // Commit what was typed. An empty or nonsense box falls back to one rather
+  // than to zero: nobody means "add none" by clearing the field.
+  const commit = () => {
+    const n = Math.round(Number(input.value));
+    set(Number.isFinite(n) && n >= 1 ? Math.min(QTY_MAX, n) : 1);
+    show();
+  };
+  const step = d => {
+    if (blocked()) return;
+    set(Math.min(QTY_MAX, Math.max(1, get() + d)));
+    show();
+  };
+
+  // Typing replaces rather than appends. The box always has a number in it,
+  // so a caret landing beside the 1 and then "40" being typed gives 140,
+  // which is the opposite of the point.
+  //
+  // The caret is placed on mousedown, so that is where this has to be caught:
+  // the first click into the field is turned into focus-and-select, and only
+  // clicks once it already has focus move the caret about as usual.
+  input.addEventListener('mousedown', e => {
+    if (document.activeElement === input) return;
+    e.preventDefault();
+    input.focus();
+    input.select();
+  });
+  input.addEventListener('focus', () => input.select());
+  input.addEventListener('change', commit);
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); input.select(); }
+    if (e.key === 'Escape') { show(); input.blur(); }
+  });
+  $(sel + 'Minus')?.addEventListener('click', () => step(-1));
+  $(sel + 'Plus')?.addEventListener('click', () => step(1));
+  show();
+  return show;
+}
+
+const showCargoQty = wireQty('#fQty', () => quantity, v => { quantity = v; },
+                             () => !!selectedItemId);
 
 
 $('#primaryFormBtn').addEventListener('click', addNewItems);
@@ -7754,7 +7799,7 @@ function addNewItems() {
   setKind('carton');                     // back to Carton for the next add
   setShape('box', { mirror: false });
   quantity = 1;
-  $('#fQty').textContent = 1;
+  showCargoQty?.();                 // the field shows what the variable says
   $('#fLabel').focus();
 }
 
@@ -9581,14 +9626,7 @@ document.addEventListener('click', e => {
   if (!e.target.closest('.badd')) closeAddMenu();
 });
 
-$('#bQtyMinus').addEventListener('click', () => {
-  builderQty = Math.max(1, builderQty - 1);
-  $('#bQty').textContent = builderQty;
-});
-$('#bQtyPlus').addEventListener('click', () => {
-  builderQty = Math.min(500, builderQty + 1);
-  $('#bQty').textContent = builderQty;
-});
+const showBuilderQty = wireQty('#bQty', () => builderQty, v => { builderQty = v; });
 
 $('#bAddToPlan').addEventListener('click', addBuiltCartonToPlan);
 
