@@ -1245,7 +1245,7 @@ function updateContentsHint(wanted) {
   if (contentsBudgetHit) {
     el.textContent = `TOO MANY UNITS TO DRAW (${wanted.toLocaleString()}) — SHOWING PLAIN CARTONS`;
   } else {
-    el.textContent = 'DRAG CARTON TO MOVE · SHIFT-DRAG OR RIGHT-DRAG TO ORBIT · SCROLL TO ZOOM';
+    el.textContent = 'CLICK A CARTON TO PICK IT · DRAG A PICKED ONE TO MOVE · DRAG ANYWHERE ELSE TO ORBIT';
   }
 }
 
@@ -1564,7 +1564,13 @@ const isCargo = it => (it.kind || 'carton') === 'carton';
 // above the cargo stays where it was put.
 const settleRank = it => (isCargo(it) ? 1 : 0);
 
-function settleAll() {
+// `justMoved` is the set of ids somebody has this moment finished dragging.
+// They settle even if they are locked: the lock stops a carton being shifted
+// by things happening around it, not by you putting it somewhere. Without
+// this a locked block slid along the floor and would never climb onto
+// anything, because the drag plane is flat and the settle that normally does
+// the lifting skipped it.
+function settleAll(justMoved = null) {
   // Process bottom-up, only considering items already placed in this pass as
   // potential supports. Without this, a stacked pair finds each other as
   // "supports" and both end up climbing to the ceiling on every settle.
@@ -1577,8 +1583,9 @@ function settleAll() {
   const placed = [];
   for (const item of sorted) {
     // A locked carton is where somebody put it on purpose. It still counts as
-    // a support for anything above, it just never gets moved itself.
-    if (item.locked) { placed.push(item); continue; }
+    // a support for anything above, it just never gets moved itself — unless
+    // this settle is the one closing a drag of that very carton.
+    if (item.locked && !justMoved?.has(item.id)) { placed.push(item); continue; }
     const e = itemExtent(item);
     const minX = item.pos_x - e.l / 2, maxX = item.pos_x + e.l / 2;
     const minZ = item.pos_z - e.w / 2, maxZ = item.pos_z + e.w / 2;
@@ -5307,12 +5314,23 @@ function onPointerDown(e) {
     return;
   }
 
+  // Pick first, then drag. A carton only moves if it was already picked
+  // before this press; grabbing anything else picks it and leaves the drag to
+  // OrbitControls, so the view turns instead.
+  //
+  // This is the fix for orbiting a full container: when the floor is covered,
+  // almost every pixel is a carton, and left-drag used to mean "move the
+  // thing under the pointer". One attempt to turn the view and something was
+  // out of place, with no undo to put it back.
+  const alreadyPicked = isSelected(hit.itemId);
+  if (!alreadyPicked) {
+    multiSelect.clear();
+    refreshMultiHighlights();
+    selectItem(hit.itemId);
+    return;                              // no preventDefault: let the orbit run
+  }
+
   e.preventDefault();
-  // Grabbing something already in the picked set keeps the set, so the whole
-  // block can be dragged. Grabbing anything else starts a fresh selection.
-  // isSelected, not multiSelect: the inspector item counts as picked too, and
-  // it is the one most likely to be grabbed.
-  if (!isSelected(hit.itemId)) { multiSelect.clear(); refreshMultiHighlights(); }
   selectItem(hit.itemId);
   canvas.setPointerCapture(e.pointerId);
 
@@ -5504,7 +5522,8 @@ function onPointerUp(e) {
     }
     if (dragState.stackTargetId) restoreWireframe(dragState.stackTargetId);
     if (dragState.moved) {
-      settleAll();
+      // everything that travelled comes to rest on whatever is under it
+      settleAll(new Set([dragState.itemId, ...dragState.followers.map(f => f.id)]));
       updateStats();
       refreshPositionReadouts();
       markDirty();
@@ -6263,7 +6282,7 @@ function setSceneMode(mode) {
 
   // Hint text
   $('#viewportHint').textContent = mode === '3d'
-    ? 'DRAG CARTON TO MOVE · SHIFT-DRAG OR RIGHT-DRAG TO ORBIT · SCROLL TO ZOOM'
+    ? 'CLICK A CARTON TO PICK IT · DRAG A PICKED ONE TO MOVE · DRAG ANYWHERE ELSE TO ORBIT'
     : `2D ${viewName()} · DRAG CARTON · DRAG CORNERS/EDGES TO RESIZE · SCROLL TO ZOOM`;
 
   try { localStorage.setItem(SCENE_MODE_KEY, mode); } catch (e) {}
@@ -6771,8 +6790,9 @@ function renderShortcuts() {
     { keys: ['?'],          desc: 'Show this shortcuts guide' }
   ];
   const mouse = [
-    { keys: ['Left-drag empty'],     desc: 'Orbit scene (3D) or pan (2D)' },
-    { keys: ['Left-drag carton'],    desc: 'Move carton — top: X/Z · side: X/Y · front: Y/Z' },
+    { keys: ['Click a carton'],      desc: 'Pick it. A carton has to be picked before it will move' },
+    { keys: ['Left-drag a picked one'], desc: 'Move it — top: X/Z · side: X/Y · front: Y/Z' },
+    { keys: ['Left-drag anything else'], desc: 'Orbit, even with the floor covered' },
     { keys: ['Drag a picked one'],   desc: 'Drags the whole picked set as one block' },
     { keys: ['Vertical drag (2D)'],  desc: 'Lift a box to stack it (side/front views)' },
     { keys: ['Shift', '+', 'click'], desc: 'Measure the gap to the selected carton' },

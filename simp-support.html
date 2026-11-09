@@ -365,6 +365,20 @@
       .bob,.wave,.smoke circle,.hop,#lens{animation:none !important;}
       .stage[data-step="4"] #stamp{animation:none;opacity:1;transform:rotate(-10deg);}
     }
+
+    /* ── LOOKUPS FROM SMARTUNA MODULES ── */
+    .combo-pop{position:fixed;z-index:600;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 34px rgba(11,31,58,.16);max-height:280px;overflow-y:auto;padding:5px;display:none;}
+    .combo-pop.open{display:block;}
+    .combo-opt{display:flex;flex-direction:column;gap:1px;width:100%;text-align:left;border:none;background:none;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12.5px;color:var(--text);}
+    .combo-opt small{font-size:11px;color:var(--muted);}
+    .combo-opt.hl,.combo-opt:hover{background:var(--primary-soft);}
+    .combo-opt mark{background:none;color:var(--primary);font-weight:700;}
+    .combo-empty{padding:10px;font-size:12px;color:var(--muted);}
+    .combo-head{padding:6px 10px 4px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);}
+    .data-status{display:flex;align-items:center;gap:7px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:11px;}
+    .data-status i{width:7px;height:7px;border-radius:50%;background:#cbd5e1;flex-shrink:0;}
+    .data-status.ok i{background:var(--green);}
+    .data-status.bad i{background:var(--amber);}
   </style>
 </head>
 <body>
@@ -451,6 +465,7 @@
         <div class="rail-meta">
           <div>Role · <b id="roleBadge">Importer of record</b></div>
           <div>Harvest · <b id="filingLabel">Individual vessel</b></div>
+          <div class="data-status" id="dataStatus"><i></i><span>Connecting to SmarTuna data…</span></div>
           <div style="margin-top:10px;"><a href="#" style="color:var(--primary);font-weight:600;text-decoration:none;" onclick="event.preventDefault(); showView('viewLanding');">Change these <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a></div>
         </div>
       </aside>
@@ -516,8 +531,8 @@
           <div class="card">
             <div class="card-head"><div class="card-title"><span class="badge"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></span>Exporter</div></div>
             <div class="grid c3">
-              <div class="f"><label>Exporter name</label><input type="text" id="exporterName" data-f/></div>
-              <div class="f"><label>Country of export</label><input type="text" id="exporterCountry" data-f/></div>
+              <div class="f"><label>Exporter name</label><input type="text" id="exporterName" data-f data-combo="companies" autocomplete="off" placeholder="Search your companies"/></div>
+              <div class="f"><label>Country of export</label><input type="text" id="exporterCountry" data-f data-combo="countries" autocomplete="off" placeholder="Search countries"/></div>
               <div class="f"><label>Exporter address</label><input type="text" id="exporterAddress" data-f/></div>
             </div>
           </div>
@@ -766,6 +781,7 @@
 
   <div class="toast" id="toast"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
   const ICON = {"book": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z\"/><path d=\"M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z\"/></svg>", "save": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z\"/><polyline points=\"17 21 17 13 7 13 7 21\"/><polyline points=\"7 3 7 8 15 8\"/></svg>", "logout": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\"/><polyline points=\"16 17 21 12 16 7\"/><line x1=\"21\" y1=\"12\" x2=\"9\" y2=\"12\"/></svg>", "folder": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2\"/></svg>", "check": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"/></svg>", "x": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/></svg>", "building": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><path d=\"M9 22v-4h6v4\"/><path d=\"M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01\"/></svg>", "filecheck": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><polyline points=\"14 2 14 8 20 8\"/><path d=\"m9 15 2 2 4-4\"/></svg>", "globe": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/><path d=\"M2 12h20\"/></svg>", "ship": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1 .6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1\"/><path d=\"M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76\"/><path d=\"M19 13V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6\"/><path d=\"M12 10v4\"/><path d=\"M12 2v3\"/></svg>", "layers": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z\"/><path d=\"m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65\"/><path d=\"m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65\"/></svg>", "fish": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M6.5 12c.94-3.46 4.94-6 8.5-6 3.56 0 6.06 2.54 7 6-.94 3.47-3.44 6-7 6s-7.56-2.53-8.5-6Z\"/><path d=\"M18 12v.5\"/><path d=\"M16 17.93a9.77 9.77 0 0 1 0-11.86\"/><path d=\"M7 10.67C7 8 5.58 5.97 2.73 5.5c-1 1.5-1 5 .23 6.5-1.24 1.5-1.24 5-.23 6.5C5.58 18.03 7 16 7 13.33\"/></svg>", "info": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 16v-4\"/><path d=\"M12 8h.01\"/></svg>", "flag": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z\"/><line x1=\"4\" y1=\"22\" x2=\"4\" y2=\"15\"/></svg>", "package": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m7.5 4.27 9 5.15\"/><path d=\"M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z\"/><path d=\"m3.3 7 8.7 5 8.7-5\"/><path d=\"M12 22V12\"/></svg>", "archive": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"20\" height=\"5\" x=\"2\" y=\"3\" rx=\"1\"/><path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8\"/><path d=\"M10 12h4\"/></svg>", "search": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/></svg>", "file": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><polyline points=\"14 2 14 8 20 8\"/><line x1=\"16\" y1=\"13\" x2=\"8\" y2=\"13\"/><line x1=\"16\" y1=\"17\" x2=\"8\" y2=\"17\"/></svg>", "printer": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><polyline points=\"6 9 6 2 18 2 18 9\"/><path d=\"M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2\"/><rect x=\"6\" y=\"14\" width=\"12\" height=\"8\"/></svg>", "download": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\"/><polyline points=\"7 10 12 15 17 10\"/><line x1=\"12\" y1=\"15\" x2=\"12\" y2=\"3\"/></svg>", "waves": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1\"/><path d=\"M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1\"/><path d=\"M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1\"/></svg>", "anchor": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"5\" r=\"3\"/><line x1=\"12\" y1=\"22\" x2=\"12\" y2=\"8\"/><path d=\"M5 12H2a10 10 0 0 0 20 0h-3\"/></svg>", "copy": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"14\" height=\"14\" x=\"8\" y=\"8\" rx=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/></svg>", "trash": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 6h18\"/><path d=\"M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6\"/><path d=\"M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2\"/></svg>", "up": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m5 12 7-7 7 7\"/><path d=\"M12 19V5\"/></svg>", "down": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 5v14\"/><path d=\"m19 12-7 7-7-7\"/></svg>", "chevdown": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m6 9 6 6 6-6\"/></svg>", "chevright": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m9 18 6-6-6-6\"/></svg>", "right": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14\"/><path d=\"m12 5 7 7-7 7\"/></svg>", "left": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m12 19-7-7 7-7\"/><path d=\"M19 12H5\"/></svg>", "plus": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14\"/><path d=\"M12 5v14\"/></svg>"};
   const ic = n => ICON[n] || '';
@@ -899,13 +915,15 @@
     toast(`Copied vessel and area into event #${i + 2}`);
   }
   function toggleHv(i){ S.open[i] = !S.open[i]; $('hv-' + i).classList.toggle('open', !!S.open[i]); }
-  function setH(i, key, v){ S.harvests[i][key] = v; if (key === 'qty' || key === 'unit') updateTotal(); refreshSoon(); }
+  function setH(i, key, v){ if (key === 'vessel' && S.harvests[i].vesselRef && S.harvests[i].vesselRef.name !== v) S.harvests[i].vesselRef = null; S.harvests[i][key] = v; if (key === 'qty' || key === 'unit') updateTotal(); refreshSoon(); }
   function setHR(i, key, v){ S.harvests[i][key] = v; renderHarvests(); }
 
   const fld = (i, key, label, req, inner, hint, cls='') =>
     `<div class="f ${cls}" data-h="${i}-${key}"><label>${label}${req ? '<span class="req"></span>' : ''}</label>${inner}${hint ? `<small>${hint}</small>` : ''}</div>`;
   const inp = (i, key, type='text', ph='', mono=false) =>
     `<input type="${type}" ${mono ? 'class="mono"' : ''} value="${esc(S.harvests[i][key])}" placeholder="${esc(ph)}" oninput="setH(${i},'${key}',this.value)" onchange="setH(${i},'${key}',this.value)"/>`;
+  const inpC = (i, key, combo, ph='') =>
+    `<input type="text" value="${esc(S.harvests[i][key])}" placeholder="${esc(ph)}" data-combo="${combo}" data-hi="${i}" data-hk="${key}" autocomplete="off" oninput="setH(${i},'${key}',this.value)" onchange="setH(${i},'${key}',this.value)"/>`;
   const sel = (i, key, list, rer) => `<select onchange="${rer ? 'setHR' : 'setH'}(${i},'${key}',this.value)">${opts(list, S.harvests[i][key])}</select>`;
 
   function renderHarvests(){
@@ -919,13 +937,13 @@
           <div class="grid c4">
             ${fld(i,'aggVessels','Number of vessels',true, inp(i,'aggVessels','number'))}
             ${fld(i,'aggCollector','Collection point operator',true, inp(i,'aggCollector','text','Business that collected it'))}
-            ${fld(i,'flag','Flag state of vessels',true, inp(i,'flag','text','e.g. Indonesia'))}
+            ${fld(i,'flag','Flag state of vessels',true, inpC(i,'flag','countries','e.g. Indonesia'))}
             ${fld(i,'authNo','Authorisation no.',false, inp(i,'authNo','text','',true), 'If the vessels hold one')}
           </div></div>` : `
         <div class="hv-group"><div class="hv-group-title">${ic('ship')}Harvesting vessel</div>
           <div class="grid c3">
-            ${fld(i,'vessel','Vessel name',true, inp(i,'vessel'))}
-            ${fld(i,'flag','Flag state',true, inp(i,'flag','text','e.g. Ecuador'))}
+            ${fld(i,'vessel','Vessel name',true, inpC(i,'vessel','vessels','Search your vessels'), h.vesselRef ? 'Flag and IMO filled from your vessel register' : '')}
+            ${fld(i,'flag','Flag state',true, inpC(i,'flag','countries','e.g. Ecuador'))}
             ${fld(i,'idType','Vessel ID type',false, sel(i,'idType',VESSEL_ID_TYPES))}
             ${fld(i,'vesselId','Unique vessel ID',false, inp(i,'vesselId','text','',true), 'Required where one exists')}
             ${fld(i,'authType','Authorisation type',false, sel(i,'authType',AUTH_TYPES))}
@@ -947,7 +965,7 @@
         <div class="hv-body">
           <div class="hv-group"><div class="hv-group-title">${ic('fish')}Catch</div>
             <div class="grid c3">
-              ${fld(i,'species','Species',true, `<select onchange="setHR(${i},'species',this.value)">${opts(SPECIES.map(s => [s.code, `${s.code} — ${s.name}`]), h.species)}</select>`, sp ? `<em>${sp.sci}</em>` : '')}
+              ${fld(i,'species','Species',true, `<select onchange="setHR(${i},'species',this.value)">${opts(SPECIES.map(s => [s.code, `${s.code} — ${speciesName(s.code)}`]), h.species)}</select>`, sp ? `<em>${esc(speciesSci(sp.code))}</em>` : '')}
               ${fld(i,'gear','Gear type',true, sel(i,'gear', GEAR.map(([c,l]) => [c, `${c} — ${l}`])))}
               ${fld(i,'tripFrom','Fishing trip start',false, inp(i,'tripFrom','date'))}
             </div></div>
@@ -957,13 +975,13 @@
               ${fld(i,'fao','FAO major area',true, sel(i,'fao',FAO_AREAS), '', 'span2')}
               ${fld(i,'zone','Waters',false, `<div class="seg"><button type="button" class="${h.zone==='High seas'?'on':''}" onclick="setHR(${i},'zone','High seas')">High seas</button><button type="button" class="${h.zone==='EEZ'?'on':''}" onclick="setHR(${i},'zone','EEZ')">EEZ</button></div>`)}
               ${fld(i,'rfmo','RFMO',false, sel(i,'rfmo',RFMOS))}
-              ${h.zone === 'EEZ' ? fld(i,'eez','EEZ of',true, inp(i,'eez','text','Coastal state')) : ''}
+              ${h.zone === 'EEZ' ? fld(i,'eez','EEZ of',true, inpC(i,'eez','countries','Coastal state')) : ''}
             </div></div>
           <div class="hv-group"><div class="hv-group-title">${ic('anchor')}First landing</div>
             <div class="grid c3">
               ${fld(i,'landingDate','Date of landing',true, inp(i,'landingDate','date'))}
               ${fld(i,'landingPort','Point of first landing',true, inp(i,'landingPort','text','Port or landing site'))}
-              ${fld(i,'landingCountry','Country of landing',true, inp(i,'landingCountry'))}
+              ${fld(i,'landingCountry','Country of landing',true, inpC(i,'landingCountry','countries','Search countries'))}
               ${fld(i,'landedTo','Landed / delivered to',true, inp(i,'landedTo','text','Business that received the fish'))}
               ${fld(i,'productForm','Product form at landing',true, sel(i,'productForm',PRODUCT_FORMS))}
               ${fld(i,'qty','Weight at landing',true, `<div class="unit"><input type="number" step="0.01" min="0" value="${esc(h.qty)}" oninput="setH(${i},'qty',this.value)"/><select onchange="setH(${i},'unit',this.value)"><option ${h.unit==='kg'?'selected':''}>kg</option><option ${h.unit==='lb'?'selected':''}>lb</option></select></div>`)}
@@ -972,7 +990,7 @@
             <label class="toggle"><input type="checkbox" ${h.transship ? 'checked' : ''} onchange="setHR(${i},'transship',this.checked)"/><span class="sw"></span>Transhipped to another vessel before landing</label>
             ${h.transship ? `<div class="grid c3" style="margin-top:14px;">
               ${fld(i,'tsVessel','Receiving vessel',true, inp(i,'tsVessel'))}
-              ${fld(i,'tsFlag','Receiving vessel flag',true, inp(i,'tsFlag'))}
+              ${fld(i,'tsFlag','Receiving vessel flag',true, inpC(i,'tsFlag','countries'))}
               ${fld(i,'tsId','Receiving vessel ID',false, inp(i,'tsId','text','IMO / RFMO ID',true))}
               ${fld(i,'tsDate','Transhipment date',true, inp(i,'tsDate','date'))}
               ${fld(i,'tsPlace','At sea / in port',false, inp(i,'tsPlace','text','Position or port name'), '', 'span2')}
@@ -1190,7 +1208,7 @@
     `).join('') || '<p style="font-size:12.5px;color:var(--green);font-weight:600;display:flex;gap:6px;align-items:center;">' + ic('check') + 'Nothing missing. Every SIMP data element is filled in.</p>';
 
     const row = (k, v) => `<dt>${k}</dt><dd>${v ? esc(v) : '<span class="nil">—</span>'}</dd>`;
-    const sp = c => { const s = SPECIES.find(x => x.code === c); return s ? `${s.code} — ${s.name} (${s.sci})` : ''; };
+    const sp = c => { const s = SPECIES.find(x => x.code === c); return s ? `${s.code} — ${speciesName(c)} (${speciesSci(c)})` : ''; };
     const gear = c => { const g = GEAR.find(x => x[0] === c); return g ? `${c} — ${g[1]}` : ''; };
     const hs = $('htsHeading');
     $('summaryBox').innerHTML = `
@@ -1318,6 +1336,117 @@
   }
   function storyStart(){ storyStep = 0; storyPlaying = !reduceMotion || soundOn; storyRender(); storySchedule(); }
   function storyStop(){ storyPlaying = false; clearTimeout(storyTimer); stopVoice(); }
+
+  // ══════════════════════════════════════════
+  // SMARTUNA MODULE DATA — companies, countries, vessels, species
+  // Same Supabase project and public key as home-logged-in.html.
+  // Column names are picked defensively, so a renamed column doesn't break the page.
+  // ══════════════════════════════════════════
+  const SMARTUNA_URL = 'https://enbdaajcromxmhgcverp.supabase.co';
+  const SMARTUNA_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+  const DATA = { companies:[], countries:[], vessels:[], speciesByCode:{}, loaded:false, error:null };
+  const pick = (row, keys) => { for (const k of keys) if (row && row[k] != null && row[k] !== '') return row[k]; return ''; };
+  const live = rows => (rows || []).filter(r => !('deleted_at' in r) || r.deleted_at == null);
+
+  function speciesName(code){ const m = DATA.speciesByCode[code]; const b = SPECIES.find(s => s.code === code); return (m && m.name) || (b && b.name) || code; }
+  function speciesSci(code){ const m = DATA.speciesByCode[code]; const b = SPECIES.find(s => s.code === code); return (m && m.sci) || (b && b.sci) || ''; }
+
+  async function loadModuleData(){
+    const status = (cls, text) => { const el = $('dataStatus'); if (!el) return; el.className = 'data-status ' + cls; el.querySelector('span').textContent = text; };
+    if (!window.supabase){ status('bad', 'SmarTuna data unavailable. Type values in.'); return; }
+    const db = window.supabase.createClient(SMARTUNA_URL, SMARTUNA_KEY);
+    const get = async t => { const { data, error } = await db.from(t).select('*'); if (error) throw new Error(t + ': ' + error.message); return live(data); };
+    const results = await Promise.allSettled(['companies','countries','vessels','species'].map(get));
+    const [co, ct, ve, sp] = results.map(r => r.status === 'fulfilled' ? r.value : []);
+    results.forEach(r => { if (r.status === 'rejected') console.warn('[SIMP] lookup failed:', r.reason.message); });
+
+    DATA.companies = co.map(r => ({ label: pick(r, ['company_name','name','organisation_name','legal_name']),
+      country: pick(r, ['country','country_name','company_country']), address: pick(r, ['company_address','address','registered_address']) }))
+      .filter(x => x.label).map(x => ({ ...x, sub: [x.country, x.address].filter(Boolean).join(' · ') }));
+    DATA.countries = ct.map(r => ({ label: pick(r, ['country','country_name','name']), iso: pick(r, ['iso2','iso_code','iso','alpha_2','code']) }))
+      .filter(x => x.label).map(x => ({ ...x, sub: x.iso }));
+    DATA.vessels = ve.map(r => ({ label: pick(r, ['current_name','vessel_name','name']), imo: String(pick(r, ['imo','imo_number','imo_no'])),
+      flag: pick(r, ['vessel_flag','flag','flag_state','flag_country']), reg: pick(r, ['registration_number','national_registration_number','reg_no']),
+      callsign: pick(r, ['call_sign','callsign','ircs']), gear: pick(r, ['gear','gear_type','fishing_gear']) }))
+      .filter(x => x.label).map(x => ({ ...x, sub: [x.imo && 'IMO ' + x.imo, x.flag].filter(Boolean).join(' · ') }));
+    const simp = new Set(SPECIES.map(s => s.code));
+    sp.forEach(r => {
+      const code = String(pick(r, ['afsis_3a_code','fao_code','asfis_code','afsis_code','alpha3'])).toUpperCase().trim();
+      if (simp.has(code) && !DATA.speciesByCode[code]) DATA.speciesByCode[code] = { name: pick(r, ['species_name','common_name','name']), sci: pick(r, ['scientific_name']) };
+    });
+    [DATA.companies, DATA.countries, DATA.vessels].forEach(a => a.sort((x, y) => x.label.localeCompare(y.label)));
+    DATA.loaded = true;
+
+    const n = DATA.companies.length + DATA.countries.length + DATA.vessels.length + Object.keys(DATA.speciesByCode).length;
+    if (!n) status('bad', results.some(r => r.status === 'rejected') ? 'Couldn\'t read SmarTuna data. Are you logged in?' : 'No SmarTuna records found. Type values in.');
+    else status('ok', `Linked: ${DATA.vessels.length} vessels · ${DATA.companies.length} companies · ${DATA.countries.length} countries`);
+    if (!$('viewForm').classList.contains('hidden')) renderHarvests();
+  }
+
+  // ── Searchable suggestions for any input with data-combo ──
+  const comboPop = document.createElement('div'); comboPop.className = 'combo-pop'; document.body.appendChild(comboPop);
+  let comboInput = null, comboItems = [], comboHl = -1;
+  const COMBO_TITLES = { companies:'Your companies', countries:'Countries', vessels:'Your vessel register' };
+  const markMatch = (text, q) => { if (!q) return esc(text); const i = text.toLowerCase().indexOf(q.toLowerCase()); return i < 0 ? esc(text) : esc(text.slice(0, i)) + '<mark>' + esc(text.slice(i, i + q.length)) + '</mark>' + esc(text.slice(i + q.length)); };
+  function comboOpen(input){
+    comboInput = input;
+    const src = DATA[input.dataset.combo] || [];
+    const q = input.value.trim().toLowerCase();
+    comboItems = (q ? src.filter(x => x.label.toLowerCase().includes(q) || (x.sub || '').toLowerCase().includes(q) || (x.imo && x.imo.includes(q))) : src).slice(0, 40);
+    comboHl = comboItems.length ? 0 : -1;
+    if (!DATA.loaded && !src.length){ comboPop.innerHTML = '<div class="combo-empty">Loading your SmarTuna data…</div>'; }
+    else if (!comboItems.length){ comboPop.innerHTML = `<div class="combo-empty">${src.length ? 'No match. You can keep what you typed.' : 'Nothing in SmarTuna yet. Type it in.'}</div>`; }
+    else comboPop.innerHTML = `<div class="combo-head">${COMBO_TITLES[input.dataset.combo] || ''}</div>` + comboItems.map((x, k) =>
+      `<button type="button" class="combo-opt ${k === comboHl ? 'hl' : ''}" data-k="${k}"><span>${markMatch(x.label, q)}</span>${x.sub ? `<small>${esc(x.sub)}</small>` : ''}</button>`).join('');
+    const r = input.getBoundingClientRect();
+    const below = innerHeight - r.bottom > 220 || r.top < 240;
+    Object.assign(comboPop.style, { left: r.left + 'px', width: Math.max(r.width, 240) + 'px', top: below ? (r.bottom + 4) + 'px' : 'auto', bottom: below ? 'auto' : (innerHeight - r.top + 4) + 'px' });
+    comboPop.classList.add('open');
+  }
+  function comboClose(){ comboPop.classList.remove('open'); comboInput = null; }
+  function comboHighlight(d){
+    if (!comboItems.length) return;
+    comboHl = (comboHl + d + comboItems.length) % comboItems.length;
+    comboPop.querySelectorAll('.combo-opt').forEach((b, k) => b.classList.toggle('hl', k === comboHl));
+    comboPop.querySelectorAll('.combo-opt')[comboHl]?.scrollIntoView({ block:'nearest' });
+  }
+  function setInput(el, v){ if (!el) return; el.value = v; el.dispatchEvent(new Event('input', { bubbles:true })); el.dispatchEvent(new Event('change', { bubbles:true })); }
+  function comboChoose(k){
+    const x = comboItems[k], input = comboInput; if (!x || !input) return;
+    comboClose();
+    setInput(input, x.label);
+    const kind = input.dataset.combo;
+    if (input.id === 'exporterName'){
+      if (x.country) setInput($('exporterCountry'), x.country);
+      if (x.address) setInput($('exporterAddress'), x.address);
+    } else if (kind === 'vessels' && input.dataset.hi != null){
+      const h = S.harvests[+input.dataset.hi];
+      h.vessel = x.label;
+      if (x.flag) h.flag = x.flag;
+      if (x.imo){ h.idType = 'IMO number'; h.vesselId = x.imo; }
+      else if (x.reg){ h.idType = 'National registration no.'; h.vesselId = x.reg; }
+      else if (x.callsign){ h.idType = 'International radio call sign (IRCS)'; h.vesselId = x.callsign; }
+      h.vesselRef = { name: x.label };
+      renderHarvests();
+      toast(`Filled flag${x.imo || x.reg || x.callsign ? ' and vessel ID' : ''} from your vessel register`);
+    }
+  }
+  document.addEventListener('focusin', e => { if (e.target.matches('input[data-combo]')) comboOpen(e.target); });
+  document.addEventListener('input', e => { if (e.target.matches('input[data-combo]') && e.isTrusted) comboOpen(e.target); });
+  document.addEventListener('keydown', e => {
+    if (!comboInput || e.target !== comboInput || !comboPop.classList.contains('open')) return;
+    if (e.key === 'ArrowDown'){ e.preventDefault(); comboHighlight(1); }
+    else if (e.key === 'ArrowUp'){ e.preventDefault(); comboHighlight(-1); }
+    else if (e.key === 'Enter' && comboHl >= 0){ e.preventDefault(); comboChoose(comboHl); }
+    else if (e.key === 'Escape' || e.key === 'Tab') comboClose();
+  });
+  comboPop.addEventListener('mousedown', e => { const b = e.target.closest('.combo-opt'); if (b){ e.preventDefault(); comboChoose(+b.dataset.k); } });
+  document.addEventListener('mousedown', e => { if (comboInput && e.target !== comboInput && !comboPop.contains(e.target)) comboClose(); });
+  window.addEventListener('scroll', () => { if (comboInput) comboOpen(comboInput); }, true);
+  window.addEventListener('resize', comboClose);
+
+  loadModuleData().catch(err => { console.warn('[SIMP] module data:', err); const el = $('dataStatus'); if (el){ el.className = 'data-status bad'; el.querySelector('span').textContent = 'SmarTuna data unavailable. Type values in.'; } });
+
   // ══════════════════════════════════════════
   // SAVE / LOAD / EXPORT
   // ══════════════════════════════════════════
