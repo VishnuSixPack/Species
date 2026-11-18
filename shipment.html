@@ -12,7 +12,7 @@
 :root{
   --brand:#2059a8;
   --page:#f4f5f7; --surface:#ffffff; --border:#e6e8ec; --field-border:#cfd5de; --field-bg:#ffffff;
-  --text:#14161a; --label:#1c1f25; --muted:#79818f; --placeholder:#7b8494;
+  --text:#14161a; --label:#1c1f25; --muted:#79818f; --placeholder:#b3bac6;
   --accent:#2f6fed; --accent-soft:rgba(47,111,237,.12); --accent-ring:rgba(47,111,237,.18);
   --ok-bg:#d9f5e1; --ok-text:#1c7a43; --warn-bg:#fdf0d5; --warn-text:#8a5f0f;
   --neutral-bg:#eceef2; --neutral-text:#5f6775; --danger:#d14343; --danger-soft:rgba(209,67,67,.1);
@@ -23,7 +23,7 @@
   color-scheme:dark;
   --brand:#14305e;
   --page:#0f1115; --surface:#171a20; --border:#272b33; --field-border:#3a404b; --field-bg:#1c2027;
-  --text:#e8eaee; --label:#dfe2e8; --muted:#98a0ae; --placeholder:#8a92a0;
+  --text:#e8eaee; --label:#dfe2e8; --muted:#98a0ae; --placeholder:#626a78;
   --accent:#7aa2ff; --accent-soft:rgba(122,162,255,.16); --accent-ring:rgba(122,162,255,.26);
   --ok-bg:#14361f; --ok-text:#6ddc98; --warn-bg:#3a2d10; --warn-text:#e6bd63;
   --neutral-bg:#252a33; --neutral-text:#a3abb8; --danger:#ff7b7b; --danger-soft:rgba(255,123,123,.12);
@@ -898,6 +898,31 @@ body.dr-open{overflow:hidden}
   .viewseg{display:none}
   .cband.two{grid-template-columns:minmax(0,1fr)}
 }
+
+/* compact: smaller type, no "from order" tags */
+.lockbox .ph{color:var(--placeholder)}
+.page.compact{font-size:12px}
+.page.compact .ctl,.page.compact .lockbox,.page.compact .trigger,.page.compact .opt{font-size:12px}
+.page.compact .ctl,.page.compact .lockbox{height:32px}
+.page.compact .trigger{min-height:32px}
+.page.compact .plus{width:32px;height:32px;font-size:17px}
+.page.compact .with-plus{grid-template-columns:minmax(0,1fr) 32px}
+.page.compact .yesno,.page.compact .chain .linkbtn{height:32px}
+.page.compact .field > label{font-size:11px;min-height:17px;color:var(--neutral-text)}
+.page.compact .card-head h2{font-size:13.5px}
+.page.compact .page-head h1{font-size:18px}
+.page.compact .page-head .sub{font-size:11.5px}
+.page.compact .btn{height:32px;font-size:12px}
+.page.compact .viewseg{height:32px}
+.page.compact .viewseg button{font-size:12px}
+.page.compact .subhead span{font-size:10px}
+.page.compact .hint,.page.compact .after{font-size:10.5px}
+.page.compact .stat span{font-size:10.5px}
+.page.compact .stat b{font-size:14px}
+.page.compact .unit-wrap select{font-size:11.5px}
+.page.compact .side a{font-size:11px}
+.page.compact .side .progress{font-size:11px}
+.page.compact .field > label .tag,.page.compact .page-head .src-badge{display:none}
 </style>
 </head>
 <body>
@@ -1498,6 +1523,9 @@ async function boot(start){
 /* ---------- reference lists ---------- */
 const REFS = { portByLabel:new Map(), portById:new Map(), ports:[], countryByName:new Map(), countryById:new Map(),
                productByLabel:new Map(), productById:new Map(), orgByLabel:new Map(), orgById:new Map(), orgByName:new Map() };
+const PORT_COUNTRY = new Map();
+const portCountry = label => label ? (PORT_COUNTRY.get(label) || "") : "";
+const countryBox = path => { const c = portCountry(get(path)); return `<div class="lockbox" title="From the selected port">${LOCK}<span${c?"":" class=\"ph\""}>${esc(c || "Set by the port")}</span></div>`; };
 const portLabel = p => [p.main_port_name, p.country].filter(Boolean).join(", ") + (p.un_locode ? ` (${p.un_locode})` : "");
 const productLabel = p => p ? `${p.gtin ? p.gtin+" — " : ""}${p.name||""}` : "";
 async function loadRefs(){
@@ -1530,7 +1558,7 @@ async function loadRefs(){
   });
   OPT.countries = countries.map(c=>c.country); countries.forEach(c=>{ REFS.countryByName.set(c.country, c.id); REFS.countryById.set(c.id, c.country); });
   REFS.ports = ports;
-  OPT.ports = ports.map(p=>{ const l = portLabel(p); REFS.portByLabel.set(l, p.id); REFS.portById.set(p.id, l); return p.alternate_port_name ? {value:l, sub:p.alternate_port_name} : l; });
+  OPT.ports = ports.map(p=>{ const l = portLabel(p); REFS.portByLabel.set(l, p.id); PORT_COUNTRY.set(l, p.country||""); REFS.portById.set(p.id, l); return p.alternate_port_name ? {value:l, sub:p.alternate_port_name} : l; });
   OPT.products = products.map(p=>{ const l = productLabel(p); REFS.productByLabel.set(l, p); REFS.productById.set(p.id, p); return p.internal_id ? {value:l, sub:p.internal_id} : l; });
 }
 /* "+" buttons: save the new option so everyone sees it */
@@ -1962,8 +1990,10 @@ SECTIONS.push(
 
 { id:"dep", group:"Routing", title:"Departure",
   render(){ const d="dep", future = S.dep.actual && S.dep.actual > todayISO();
-    return `<div class="row wide1">
+    return `<div class="row two">
       ${field("Departure port", dropdown(`${d}.port`,"ports","Search ports"), {req:true, path:`${d}.port`, tag:tag(`${d}.port`), hint:"From the Port module"})}
+      ${field("Country", countryBox(`${d}.port`), {hint:"Country of the selected port"})}
+    </div><div class="row">
       ${field("Planned date", datePicker(`${d}.planned`,"Select date"), {req:true, path:`${d}.planned`, hint:"Originally planned departure"})}
       ${field("Scheduled date", datePicker(`${d}.scheduled`,"Select date"), {hint:"Carrier’s scheduled departure (ETD)"})}
       ${field("Actual date", datePicker(`${d}.actual`,"Select date"), {hint:"Actual departure (ATD)", after: future?`<p class="after alert">This date is in the future.</p>`:""})}
@@ -1973,8 +2003,10 @@ SECTIONS.push(
 { id:"arr", group:"Routing", title:"Arrival",
   render(){ const a="arr";
     const before = (k)=> S.arr[k] && S.dep[k] && S.arr[k] < S.dep[k] ? `<p class="after bad">Arrival is before departure (${fmtDate(S.dep[k])}).</p>` : "";
-    return `<div class="row wide1">
+    return `<div class="row two">
       ${field("Destination port", dropdown(`${a}.port`,"ports","Search ports"), {req:true, path:`${a}.port`, tag:tag(`${a}.port`), hint:"From the Port module"})}
+      ${field("Country", countryBox(`${a}.port`), {hint:"Country of the selected port"})}
+    </div><div class="row">
       ${field("Planned date", datePicker(`${a}.planned`,"Select date"), {hint:"Originally planned arrival", after:before("planned")})}
       ${field("Scheduled date", datePicker(`${a}.scheduled`,"Select date"), {hint:"Carrier’s estimated arrival (ETA)", after:before("scheduled")})}
       ${field("Actual date", datePicker(`${a}.actual`,"Select date"), {hint:"Actual arrival (ATA)", after:before("actual")})}
