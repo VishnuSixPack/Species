@@ -838,7 +838,9 @@ body.dr-open{overflow:hidden}
 .page.compact .section-head{display:none}
 .page.compact .card{margin:0;container-type:inline-size;scroll-margin-top:70px}
 .cband{display:flex;flex-direction:column;gap:14px;min-width:0}
-.cband.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+.cband.two,.cband.three{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+.cband.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cband.full > .ccol{gap:14px}
 .ccol{display:flex;flex-direction:column;gap:14px;min-width:0}
 
 /* smaller type and controls */
@@ -896,7 +898,7 @@ body.dr-open{overflow:hidden}
 }
 @media (max-width:980px){
   .viewseg{display:none}
-  .cband.two{grid-template-columns:minmax(0,1fr)}
+  .cband.two,.cband.three{grid-template-columns:minmax(0,1fr)}
 }
 
 /* compact: smaller type, no "from order" tags */
@@ -923,6 +925,42 @@ body.dr-open{overflow:hidden}
 .page.compact .side a{font-size:11px}
 .page.compact .side .progress{font-size:11px}
 .page.compact .field > label .tag,.page.compact .page-head .src-badge{display:none}
+
+/* compact logistics */
+.lg-tabs{display:inline-flex;background:var(--page);border:1px solid var(--border);border-radius:7px;padding:2px;gap:2px}
+.lg-tabs button{height:22px;padding:0 11px;border:0;background:transparent;border-radius:5px;font:inherit;font-size:11.5px;font-weight:500;color:var(--muted);cursor:pointer}
+.lg-tabs button:hover:not(.on){color:var(--text)}
+.lg-tabs button.on{background:var(--surface);color:var(--accent);font-weight:600;box-shadow:0 1px 2px rgba(16,24,40,.12)}
+.lg-tabs button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.lgc{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:10px 14px;margin-top:10px;align-items:start}
+.lgc .c3{grid-column:span 3}.lgc .c6{grid-column:span 6}.lgc .c12{grid-column:span 12}
+.lgc .field > label .seg{margin-left:auto}
+.lgc .pair{display:flex;gap:7px;align-items:center}
+.lgc .pair .clearwrap{flex:1;min-width:0}
+.lgc .linkbtn{height:32px;padding:0 11px;border:1px dashed var(--field-border);background:transparent;color:var(--accent);border-radius:7px;font:inherit;font-size:12px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.lgc .linkbtn:hover:not(:disabled){border-color:var(--accent)}
+.lgc .linkbtn.done{border-style:solid;border-color:var(--ok-bg);background:var(--ok-bg);color:var(--ok-text);cursor:default}
+.lgc .linkbtn svg{width:13px;height:13px}
+.strip{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:12px 10px 8px;background:var(--page);border:1px solid var(--border);border-radius:8px}
+.strip.via{background:transparent;border-style:dashed}
+.strip .lb{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-right:3px}
+.strip .leg{position:relative;width:170px}
+.strip .leg.wide{width:220px}
+.strip .leg .ctl{height:32px;background:var(--surface);padding-right:26px}
+.strip .leg .trigger{min-height:32px;background:var(--surface)}
+.strip .leg .cap{position:absolute;z-index:3;top:-8px;left:8px;font-size:9.5px;font-weight:500;color:var(--muted);background:var(--page);padding:0 4px;pointer-events:none;line-height:1.4}
+.strip.via .leg .cap{background:var(--surface)}
+.strip .leg .rm{position:absolute;right:4px;top:16px;transform:translateY(-50%);border:0;background:transparent;color:var(--placeholder);width:20px;height:20px;border-radius:4px;display:grid;place-items:center;cursor:pointer;padding:0;z-index:2}
+.strip .leg .rm:hover{color:var(--danger);background:var(--page)}
+.strip .leg:has(.rm) .clearbtn{right:24px}
+.strip .ar{color:var(--placeholder);user-select:none}
+.strip .addleg{width:28px;height:28px;border-radius:7px;border:1px dashed var(--field-border);background:transparent;color:var(--accent);display:grid;place-items:center;cursor:pointer;flex:none}
+.strip .addleg:hover:not(:disabled){border-color:var(--accent);background:var(--surface)}
+.strip .addleg:disabled{color:var(--placeholder);border-style:solid;cursor:not-allowed}
+.strip .addleg:focus-visible,.strip .rm:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.strip .hint-i{display:inline-grid;place-items:center;width:14px;height:14px;border-radius:50%;border:1px solid var(--field-border);color:var(--muted);font-size:9px;font-style:normal;cursor:help}
+@container (max-width:900px){ .lgc .c3{grid-column:span 6} .lgc .c6{grid-column:span 12} }
+@container (max-width:480px){ .lgc .c3{grid-column:span 12} .strip .leg,.strip .leg.wide{width:100%} .strip .ar{display:none} }
 </style>
 </head>
 <body>
@@ -1354,14 +1392,24 @@ function setView(v){
   $$(".viewseg [data-view]").forEach(b=>{ const on = b.dataset.view === (v==="compact"?"compact":"list"); b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
   store.set("ship-view", v === "compact" ? "compact" : "list");
   if(compact) layoutCompact(); else layoutList();
+  if($("#sec-logistics .card-body")?.childElementCount) renderSection("logistics", true);
 }
 document.addEventListener("click", e=>{ const b = e.target.closest(".viewseg [data-view]"); if(b) setView(b.dataset.view); });
 _narrow.addEventListener("change", ()=>setView(store.get("ship-view", "list")));
 
-/* Compact layout: two columns that each stack their cards, so a tall card never leaves a gap
-   beside it. Left: Details, Logistics. Right: Parties, Departure, Arrival. The short optional
-   cards go to whichever column is shorter. Product lines and Notes run full width below. */
-const CL = { left:["details","logistics"], right:["parties","dep","arr"], float:["com","courier","dest","pay"], after:["lines","notes"] };
+/* Compact layout, top to bottom:
+   1. Details | Parties side by side
+   2. Logistics, then Product lines, full width
+   3. Departure, Arrival, Commercial, Courier, Destination delivery, Payment term in three
+      columns; each card goes to the shortest column, so there are no gaps
+   4. Notes, full width
+   Columns stack their cards independently, so a tall card never leaves white space beside it. */
+const CL = [
+  { cls:"two",   cols:2, ids:[["details"],["parties"]] },
+  { cls:"full",  cols:1, ids:[["logistics","lines"]] },
+  { cls:"three", cols:3, flow:["dep","arr","com","courier","dest","pay"] },
+  { cls:"full",  cols:1, ids:[["notes"]], rest:true }
+];
 let _lcBusy = false, _lcTimer = 0;
 const _lcRO = typeof ResizeObserver!=="undefined" ? new ResizeObserver(()=>{ clearTimeout(_lcTimer); _lcTimer = setTimeout(layoutCompact, 120); }) : null;
 function _lcPlace(col, wanted){
@@ -1378,18 +1426,25 @@ function layoutCompact(){
   const root = $("#sections"); if(!root || !$(".page.compact") || _lcBusy) return;
   _lcBusy = true;
   try{
-    let two = root.querySelector(":scope > .cband.two"), after = root.querySelector(":scope > .cband.after");
-    if(!two){ two = document.createElement("div"); two.className = "cband two"; two.innerHTML = `<div class="ccol" data-col="L"></div><div class="ccol" data-col="R"></div>`; root.appendChild(two); }
-    if(!after){ after = document.createElement("div"); after.className = "cband after"; root.appendChild(after); }
-    if(root.lastElementChild!==after) root.appendChild(after);
-    const L = two.children[0], R = two.children[1], card = id => $(`#sec-${id}`);
-    const known = [...CL.left, ...CL.right, ...CL.float, ...CL.after];
-    const wl = CL.left.map(card), wr = CL.right.map(card);
-    let hL = wl.reduce((t,c)=>t+(c?c.offsetHeight+14:0),0), hR = wr.reduce((t,c)=>t+(c?c.offsetHeight+14:0),0);
-    CL.float.forEach(id=>{ const c = card(id); if(!c) return; const h = c.offsetHeight + 14;
-      if(hL <= hR){ wl.push(c); hL += h; } else { wr.push(c); hR += h; } });
-    const wa = CL.after.map(card).concat($$("#sections .card").filter(c=>!known.includes(c.dataset.sec)));
-    _lcPlace(L, wl); _lcPlace(R, wr); _lcPlace(after, wa);
+    const card = id => $(`#sec-${id}`);
+    const known = CL.flatMap(b=>b.flow || b.ids.flat());
+    CL.forEach((band, bi)=>{
+      let el = root.querySelector(`:scope > .cband[data-band="${bi}"]`);
+      if(!el){ el = document.createElement("div"); el.className = `cband ${band.cls}`; el.dataset.band = bi;
+        el.innerHTML = Array.from({length:band.cols}, ()=>`<div class="ccol"></div>`).join(""); }
+      const prev = bi ? root.querySelector(`:scope > .cband[data-band="${bi-1}"]`) : null;
+      if(!el.parentNode || (prev ? el.previousElementSibling!==prev : el.parentNode!==root)) root.appendChild(el);
+      const cols = [...el.children];
+      let wanted;
+      if(band.flow){
+        wanted = cols.map(()=>[]); const h = cols.map(()=>0);
+        band.flow.forEach(id=>{ const c = card(id); if(!c) return; const k = h.indexOf(Math.min(...h)); wanted[k].push(c); h[k] += c.offsetHeight + 14; });
+      } else {
+        wanted = band.ids.map(list=>list.map(card));
+        if(band.rest) wanted[0] = wanted[0].concat($$("#sections .card").filter(c=>!known.includes(c.dataset.sec)));
+      }
+      cols.forEach((c,i)=>_lcPlace(c, wanted[i]||[]));
+    });
     if(_lcRO) $$("#sections .card").forEach(c=>_lcRO.observe(c));
   } finally { _lcBusy = false; }
 }
@@ -1909,6 +1964,70 @@ function tsPanel(g, active){
     <div class="ts-body"><div class="chain">${fields}${arrow}
       <button class="linkbtn" type="button" data-action="addTs" data-grp="${g}" ${active&&!full?"":"disabled"} title="${full?`Add another ${cfg.noun} first: a handover needs a leg on each side.`:""}">${cfg.add}</button></div></div></div>`;
 }
+/* ---------- compact logistics: mode tabs in the header, one grid, route strip ---------- */
+const isCompact = () => !!document.querySelector(".page.compact");
+function lgTabs(){
+  const head = $("#sec-logistics .card-head"); if(!head) return;
+  head.querySelector(".lg-tabs")?.remove();
+  if(!isCompact()) return;
+  const m = S.lg.mode;
+  head.querySelector("h2").insertAdjacentHTML("afterend", `<div class="lg-tabs" role="group" aria-label="Shipment mode">${["Sea","Air","Truck"].map(x=>
+    `<button type="button" class="${m===x?"on":""}" data-action="setMode" data-mode="${x}" aria-pressed="${m===x}">${x}</button>`).join("")}</div>`);
+}
+const PLUSI = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+const XSM = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+function lgLegName(g, i, n){
+  if(g==="sea") return i===n-1 ? "Mother vessel" : (n>2 ? `Feeder ${i+1}` : "Feeder vessel");
+  return g==="air" ? `Flight ${i+1}` : `Truck ${i+1}`;
+}
+function lgRouteStrip(g){
+  const key = {sea:"vessels",air:"flights",truck:"trucks"}[g], arr = get(`lg.${g}.${key}`);
+  const ph = {sea:"Vessel name", air:"e.g. SQ 0711", truck:"e.g. KL 07 BX 4412"}[g];
+  const cells = arr.map((v,i)=>`<div class="leg"><span class="cap">${lgLegName(g,i,arr.length)}${(g==="sea"?i===arr.length-1:i===0)?'<span class="req">*</span>':""}</span>
+      <input class="ctl ${v?"strong":""}" type="text" data-bind="lg.${g}.${key}.${i}" value="${esc(v)}" placeholder="${ph}" aria-label="${lgLegName(g,i,arr.length)}">
+      ${arr.length>1?`<button class="rm" type="button" data-action="rmLeg" data-grp="${g}" data-i="${i}" aria-label="Remove ${lgLegName(g,i,arr.length)}">${XSM}</button>`:""}</div>`).join(`<span class="ar" aria-hidden="true">→</span>`);
+  return `<div class="strip"><span class="lb">Route</span>${cells}
+    <button class="addleg" type="button" data-action="addLeg" data-grp="${g}" title="Add ${TS[g].noun}" aria-label="Add ${TS[g].noun}">${PLUSI}</button></div>`;
+}
+function lgViaStrip(g){
+  const cfg = TS[g], list = get(cfg.path), full = tsFull(g), cap = tsCap(g), legs = legsOf(g);
+  const capName = {sea:"Port", air:"Airport", truck:"Transfer point"}[g];
+  const cells = list.map((v,i)=>`<div class="leg ${g==="sea"?"wide":""}"><span class="cap">${capName} ${i+1}${i===0?'<span class="req">*</span>':""}</span>
+      ${g==="sea" ? dropdown(`${cfg.path}.${i}`,"ports","Search ports") : `<input class="ctl ${v?"strong":""}" type="text" data-bind="${cfg.path}.${i}" value="${esc(v)}" placeholder="${esc(cfg.ph)}" aria-label="${capName} ${i+1}">`}
+      ${list.length>1?`<button class="rm" type="button" data-action="rmTs" data-grp="${g}" data-i="${i}" aria-label="Remove ${capName} ${i+1}">${XSM}</button>`:""}</div>`).join(`<span class="ar" aria-hidden="true">→</span>`);
+  return `<div class="strip via"><span class="lb">Via</span>${cells}
+    <button class="addleg" type="button" data-action="addTs" data-grp="${g}" ${full?"disabled":""} title="${full?`Add another ${cfg.noun} first: a handover needs a leg on each side.`:cfg.add}" aria-label="${esc(cfg.add)}">${PLUSI}</button>
+    <i class="hint-i" tabindex="0" title="${legs} ${cfg.noun} leg${legs>1?"s":""} allow${legs===1?"s":""} up to ${cap} handover${cap>1?"s":""}.">i</i></div>`;
+}
+function lgCompact(){
+  const L = S.lg, cfg = LOAD[L.mode];
+  if(!cfg) return `<p class="after" style="margin-top:12px">Pick Sea, Air or Truck in the header to fill in the logistics.</p>`;
+  const g = {Sea:"sea",Air:"air",Truck:"truck"}[L.mode], d = L[g], n = legsOf(g);
+  const seg = `<span class="seg" role="group" aria-label="Load basis">${cfg.basis.map(b=>`<button type="button" class="${L.loadBasis===b?"on":""}" data-action="setBasis" data-basis="${b}" aria-pressed="${L.loadBasis===b}">${b}</button>`).join("")}</span>`;
+  const load = field(cfg.label, dropdown("lg.loadType", cfg.types[L.loadBasis]||[], cfg.ph), {cls:"c3", extra:seg, hint:cfg.hint[L.loadBasis]||"", req: !(L.mode==="Sea" && L.loadBasis==="LCL"), path:"lg.loadType"});
+  const inco = field("Incoterm", dropdown("lg.incoterm", incotermsFor(L.mode), "Select incoterm"), {cls:"c3", req:true, path:"lg.incoterm",
+    hint: L.mode!=="Sea" ? `FAS, FOB, CFR and CIF are sea-only and hidden for ${L.mode}.` : "", after: incotermNote ? `<p class="after alert">${incotermNote}</p>` : ""});
+  const ship = field("Ship mode", dropdown(`lg.${g}.shipMode`,"shipModes","Select"), {cls:"c3", req:true, path:`lg.${g}.shipMode`,
+    hint: n>1 ? `Set automatically: ${n} ${TS[g].noun} legs means the cargo is transhipped.` : "Direct, or Transhipment when the cargo changes carrier on the way"});
+  let row = "";
+  if(L.mode==="Sea"){
+    const linked = isLinked(), o = sameBox();
+    row = field("Shipping line", dropdown("lg.sea.shippingLine","shippingLines","Select line",{plus:true}), {cls:"c3", req:true, path:"lg.sea.shippingLine"}) + ship
+      + field("BL No.", textIn("lg.sea.blNo","B/L number"), {cls:"c3", req:true, path:"lg.sea.blNo"})
+      + field("BL date", datePicker("lg.sea.blDate","Select date"), {cls:"c3", req:true, path:"lg.sea.blDate"})
+      + field("Traceable object", `<div class="pair">${textIn("lg.sea.container.containerNo","Container No.",{aria:"Container number"})}${textIn("lg.sea.container.sealNo","Seal No.",{aria:"Seal number"})}
+          ${linked ? `<button class="linkbtn done" type="button" disabled>${TICK}Linked</button>` : `<button class="linkbtn" type="button" data-action="addTraceable">${PLUSI}Link</button>`}</div>`,
+        {cls:"c6", req:true, path:"lg.sea.container.containerNo", hint:"The container and its seal are linked together as one traceable object",
+         after: o.length ? `<p class="after share-t">Mixed with ${o.map(s=>`<a href="shipment.html?order=${encodeURIComponent(s.orderRef)}&id=${encodeURIComponent(s.id)}">${esc(s.ref)}</a> (${esc(s.product)})`).join(", ")}: same customer order, container and seal.</p>` : ""});
+  } else if(L.mode==="Air"){
+    row = field("Airline", dropdown("lg.air.airline","airlines","Select airline",{plus:true}), {cls:"c3", req:true, path:"lg.air.airline"}) + ship
+      + field("AWB No.", textIn("lg.air.awbNo","618-12345678"), {cls:"c3", req:true, path:"lg.air.awbNo"})
+      + field("AWB date", datePicker("lg.air.awbDate","Select date"), {cls:"c3", req:true, path:"lg.air.awbDate"});
+  } else row = ship;
+  return `<div class="lgc">${load}${inco}${row}
+    <div class="c12">${lgRouteStrip(g)}</div>
+    ${d.shipMode==="Transhipment" ? `<div class="c12">${lgViaStrip(g)}</div>` : ""}</div>`;
+}
 function lgReq(){
   const L = S.lg;
   const optionalLoad = L.mode==="Sea" && L.loadBasis==="LCL";
@@ -1958,7 +2077,8 @@ SECTIONS.push(
   req:()=>[filled("parties.who.party"), filled("parties.who.role"), filled("parties.to.party"), filled("parties.to.role")] },
 
 { id:"logistics", group:"Logistics", title:"Logistics",
-  render(){ const m = S.lg.mode; return lgMain() + (m==="Sea" ? seaPanel() : m==="Air" ? airPanel() : m==="Truck" ? truckPanel() : `<p class="after" style="margin-top:14px">Pick a shipment mode to show its section.</p>`); },
+  after(){ lgTabs(); },
+  render(){ const m = S.lg.mode; if(isCompact()) return lgCompact(); return lgMain() + (m==="Sea" ? seaPanel() : m==="Air" ? airPanel() : m==="Truck" ? truckPanel() : `<p class="after" style="margin-top:14px">Pick a shipment mode to show its section.</p>`); },
   req:lgReq },
 
 { id:"lines", group:"Logistics", title:"Product lines",
@@ -2271,6 +2391,7 @@ HOOKS.onStatus = () => { const h = $("#headSub"); if(h && ORDER) h.innerHTML = `
 
 /* ---------- actions ---------- */
 Object.assign(ACTIONS, {
+  setMode(el){ const m = el.dataset.mode; if(S.lg.mode===m) return; set("lg.mode", m); changed("lg.mode"); renderSection("logistics"); updateStatus(); },
   setBasis(el){ S.lg.loadBasis = el.dataset.basis; const list = LOAD[S.lg.mode].types[S.lg.loadBasis].map(optVal); if(!list.includes(S.lg.loadType)) S.lg.loadType = ""; renderSection("logistics"); },
   addLeg(el){ const g = el.dataset.grp, key = {sea:"vessels",air:"flights",truck:"trucks"}[g];
     S.lg[g][key].push(""); S.lg[g].shipMode = S.lg[g][key].length>1 ? "Transhipment" : "Direct"; renderSection("logistics");
