@@ -42,8 +42,9 @@ a{color:var(--accent)}
 .brand-mark{width:28px;height:28px;border-radius:8px;background:rgba(255,255,255,.16);display:flex;align-items:center;justify-content:center}
 .brand-mark svg{width:20px;height:20px;display:none}
 .brand-mark.no-img svg{display:block}
-.brand-mark img{width:24px;height:24px;object-fit:contain;display:block}
-.brand-mark:not(.no-img){background:#fff}
+/* the logo PNG as it is: no tile, no white background */
+.brand-mark:not(.no-img){width:auto;height:32px;background:none;border-radius:0}
+.brand-mark img{height:32px;width:auto;max-width:140px;object-fit:contain;display:block;background:none}
 @font-face{font-family:"Bitsumis";src:url("BITSUMIS.TTF") format("truetype");font-display:swap}
 .brand-font{font-family:"Bitsumis",Poppins,sans-serif;font-weight:400!important;letter-spacing:.02em}
 .brand-name{font-size:16px;font-weight:600}
@@ -690,7 +691,7 @@ body.dr-open{overflow:hidden}
 .selbar span,.selbar .btn{white-space:nowrap}
 @media (max-width:760px){ .selbar{gap:10px;padding-left:14px} }
 .boot-brand .brand-mark:not(.no-img){background:transparent}
-.boot-brand .brand-mark img{width:28px;height:28px}
+.boot-brand .brand-mark img{height:32px;width:auto}
 
 /* ---- working notes ---- */
 .nt-list{display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
@@ -804,6 +805,90 @@ body.dr-open{overflow:hidden}
   .layout.collapsed .side [data-tip]:hover::after{display:none}
 }
 
+
+/* =====================================================================
+   Compact mode: sections side by side on a 12-column grid, menu + save
+   in one sticky bar, hints as (i) tooltips. List mode is unchanged.
+   ===================================================================== */
+.viewseg{display:inline-flex;padding:3px;border:1px solid var(--field-border);border-radius:9px;background:var(--surface);gap:2px;height:38px;box-sizing:border-box}
+.viewseg button{border:0;background:none;font:inherit;font-size:12.5px;color:var(--muted);padding:0 12px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.viewseg button svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.viewseg button.on{background:var(--accent);color:#fff}
+.viewseg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.hint-i{display:none}
+
+.page.compact{max-width:1640px}
+.page.compact .page-head{padding-bottom:14px;margin-bottom:0;border-bottom:0}
+.page.compact .layout,.page.compact .layout.collapsed{grid-template-columns:minmax(0,1fr);gap:0}
+/* the side menu becomes a sticky bar of section chips with Save at the end */
+.page.compact .side{position:sticky;top:0;z-index:80;background:var(--page);display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 14px;padding:10px 0;border-bottom:1px solid var(--border)}
+.page.compact .side-toggle,.page.compact .side hr,.page.compact .side .grp-label,.page.compact .progress-s{display:none!important}
+.page.compact #sidenav{display:flex;flex-wrap:wrap;gap:6px;flex:1;min-width:0}
+.page.compact .side .grp{display:contents}
+.page.compact .side a{margin:0;border:1px solid var(--border);border-radius:999px;padding:5px 12px;background:var(--surface);white-space:nowrap;font-size:12px}
+.page.compact .side a.active{border-color:var(--accent);border-left-color:var(--accent)}
+.page.compact .side .nl{display:inline!important}
+.page.compact .side [data-tip]:hover::after{display:none}
+.page.compact .side .progress{margin:0;font-size:11.5px;order:2}
+.page.compact .side .save{width:auto;margin:0;height:38px;order:3}
+.page.compact .side .save .nl{display:inline}
+
+/* sections on a grid */
+.page.compact #sections{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px;align-items:start;grid-auto-flow:row dense}
+.page.compact .section-head{display:none}
+.page.compact .card{margin:0;grid-column:span 12;container-type:inline-size;scroll-margin-top:76px}
+.page.compact #sec-details{grid-column:span 5}
+.page.compact #sec-parties{grid-column:span 7}
+.page.compact #sec-logistics{grid-column:span 7;grid-row:span 2}
+.page.compact #sec-dep,.page.compact #sec-arr{grid-column:span 5}
+.page.compact #sec-lines{grid-column:span 12}
+.page.compact #sec-com{grid-column:1 / span 4}
+.page.compact #sec-courier{grid-column:5 / span 4}
+.page.compact #sec-notes{grid-column:9 / span 4;grid-row:span 2}
+.page.compact #sec-dest{grid-column:1 / span 4}
+.page.compact #sec-pay{grid-column:5 / span 4}
+
+/* tighter cards */
+.page.compact .card-head{padding:10px 16px;gap:12px}
+.page.compact .card-head h2{font-size:15px}
+.page.compact .card-body{padding:2px 16px 16px}
+.page.compact .row{margin-top:10px;gap:10px 14px}
+.page.compact .subhead{margin-top:12px}
+.page.compact .field > .hint{display:none}
+.page.compact .hint-i{display:inline-grid;place-items:center;width:14px;height:14px;border-radius:50%;border:1px solid var(--field-border);color:var(--muted);font-size:9px;font-weight:500;font-style:normal;margin-left:5px;cursor:help;vertical-align:1px;line-height:1}
+.page.compact .hint-i:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.page.compact .stats{margin-top:10px;gap:10px}
+.page.compact .line{padding:2px 14px 12px;margin-top:10px}
+.page.compact .line-head{margin-top:8px}
+/* a switched-off section shrinks to its header, so it barely takes space */
+.page.compact .card.off .card-body{display:none}
+.page.compact .card.off{opacity:.85}
+
+/* field grids follow the card's own width */
+@container (max-width:760px){
+  .page.compact .row,.page.compact .row.four,.page.compact .row.wide1{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .page.compact .row.one{grid-template-columns:1fr}
+}
+@container (max-width:380px){
+  .page.compact .row,.page.compact .row.two,.page.compact .row.four,.page.compact .row.wide1{grid-template-columns:minmax(0,1fr)}
+}
+/* product lines: one lot per row on wide screens */
+@container (min-width:1100px){
+  .page.compact #sec-lines .line .row{grid-template-columns:minmax(0,1.5fr) repeat(6,minmax(0,1fr))}
+  .page.compact #sec-lines .line .row > .span2{grid-column:auto}
+}
+
+@media (max-width:1200px){
+  .page.compact #sec-details,.page.compact #sec-parties,.page.compact #sec-logistics,.page.compact #sec-com,.page.compact #sec-courier,.page.compact #sec-dest,.page.compact #sec-pay{grid-column:span 6}
+  .page.compact #sec-logistics{grid-row:auto;grid-column:span 12}
+  .page.compact #sec-dep,.page.compact #sec-arr{grid-column:span 6}
+  .page.compact #sec-notes{grid-column:span 12;grid-row:auto}
+}
+@media (max-width:980px){
+  .viewseg{display:none}
+  .page.compact #sections{display:block}
+  .page.compact .card{margin-bottom:14px}
+}
 </style>
 </head>
 <body>
@@ -811,7 +896,7 @@ body.dr-open{overflow:hidden}
 <nav class="crumbs" aria-label="Breadcrumb"><div class="crumbs-inner"><a href="orders.html">Master orders</a><span class="sep">›</span><a id="crumbOrder" href="order.html">Master order</a><span class="sep">›</span><span aria-current="page" id="crumbHere">Create shipment</span></div></nav>
 <main class="page">
   <div class="page-head"><div><h1><span id="pageTitle">Create shipment</span> <span class="src-badge">from master order</span></h1><p class="sub" id="headSub"></p></div>
-    <div class="head-actions"><button type="button" class="btn danger-ghost" id="delShipBtn" data-action="delShipment" hidden><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Delete shipment</button><button type="button" class="btn" data-action="changeSource"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><polyline points="21 3 21 8 16 8"/><polyline points="3 21 3 16 8 16"/></svg>Change master order</button></div></div>
+    <div class="head-actions"><div class="viewseg" role="group" aria-label="Layout"><button type="button" data-view="list" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>List</button><button type="button" data-view="compact" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/></svg>Compact</button></div><button type="button" class="btn danger-ghost" id="delShipBtn" data-action="delShipment" hidden><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Delete shipment</button><button type="button" class="btn" data-action="changeSource"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><polyline points="21 3 21 8 16 8"/><polyline points="3 21 3 16 8 16"/></svg>Change master order</button></div></div>
   <div class="layout">
     <aside class="side">
       <button type="button" class="side-toggle" id="sideToggle" aria-expanded="true" aria-label="Collapse section menu" title="Collapse menu"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg><span class="nl">Collapse</span></button>
@@ -867,7 +952,7 @@ const SEARCHI = `<svg class="sicon" width="16" height="16" viewBox="0 0 24 24" f
 function field(label, ctl, o={}){
   const err = SHOW_ERR && o.req && o.path && !filled(o.path) && !o.disabled;
   return `<div class="field ${o.cls||""} ${o.dim?"dim":""} ${err?"err":""}">
-    <label>${label}${o.req?'<span class="req">*</span>':""}${o.tag?`<span class="tag">${o.tag}</span>`:""}${o.extra||""}</label>
+    <label>${label}${o.req?'<span class="req">*</span>':""}${o.tag?`<span class="tag">${o.tag}</span>`:""}${o.hint?`<i class="hint-i" tabindex="0" role="note" title="${esc(String(o.hint).replace(/<[^>]*>/g,""))}" aria-label="${esc(String(o.hint).replace(/<[^>]*>/g,""))}">i</i>`:""}${o.extra||""}</label>
     ${o.hint?`<p class="hint">${o.hint}</p>`:""}${ctl}${o.after||""}</div>`;
 }
 const clearBtn = (path,multi) => `<button class="clearbtn" type="button" data-clear="${path}" ${multi?'data-multi="1"':""} aria-label="Clear">${XICON}</button>`;
@@ -1224,6 +1309,16 @@ function setSide(collapsed, animate){
 }
 document.addEventListener("click", e=>{ if(e.target.closest("#sideToggle")) setSide(!$(".layout").classList.contains("collapsed"), true); });
 document.addEventListener("DOMContentLoaded", ()=>setSide(!!store.get("side-collapsed", false), false));
+
+/* ---------- layout: list (default) or compact (remembered per browser) ---------- */
+function setView(v){
+  const compact = v === "compact", page = $(".page"); if(!page) return;
+  page.classList.toggle("compact", compact);
+  $$(".viewseg [data-view]").forEach(b=>{ const on = b.dataset.view === (compact?"compact":"list"); b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+  store.set("ship-view", compact ? "compact" : "list");
+}
+document.addEventListener("click", e=>{ const b = e.target.closest(".viewseg [data-view]"); if(b) setView(b.dataset.view); });
+document.addEventListener("DOMContentLoaded", ()=>setView(store.get("ship-view", "list")));
 
 /* ---------- theme + storage ---------- */
 const store = {
