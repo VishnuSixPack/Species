@@ -833,24 +833,39 @@ body.dr-open{overflow:hidden}
 .page.compact .side .save{width:auto;margin:0;height:38px;order:3}
 .page.compact .side .save .nl{display:inline}
 
-/* sections on a grid */
-.page.compact #sections{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px;align-items:start;grid-auto-flow:row dense}
+/* sections flow in two columns with no row gaps (cards are placed by layoutCompact) */
+.page.compact #sections{display:flex;flex-direction:column;gap:14px}
 .page.compact .section-head{display:none}
-.page.compact .card{margin:0;grid-column:span 12;container-type:inline-size;scroll-margin-top:76px}
-.page.compact #sec-details{grid-column:span 5}
-.page.compact #sec-parties{grid-column:span 7}
-.page.compact #sec-logistics{grid-column:span 7;grid-row:span 2}
-.page.compact #sec-dep,.page.compact #sec-arr{grid-column:span 5}
-.page.compact #sec-lines{grid-column:span 12}
-.page.compact #sec-com{grid-column:1 / span 4}
-.page.compact #sec-courier{grid-column:5 / span 4}
-.page.compact #sec-notes{grid-column:9 / span 4;grid-row:span 2}
-.page.compact #sec-dest{grid-column:1 / span 4}
-.page.compact #sec-pay{grid-column:5 / span 4}
+.page.compact .card{margin:0;container-type:inline-size;scroll-margin-top:70px}
+.cband{display:flex;flex-direction:column;gap:14px;min-width:0}
+.cband.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+.ccol{display:flex;flex-direction:column;gap:14px;min-width:0}
+
+/* smaller type and controls */
+.page.compact{font-size:12.5px}
+.page.compact .page-head h1{font-size:20px}
+.page.compact .ctl,.page.compact .lockbox,.page.compact .trigger,.page.compact .opt{font-size:12.5px}
+.page.compact .ctl,.page.compact .lockbox{height:34px}
+.page.compact .trigger{min-height:34px;padding:2px 10px}
+.page.compact .ctl{padding:0 10px}
+.page.compact .plus{width:34px;height:34px;font-size:18px}
+.page.compact .with-plus{grid-template-columns:minmax(0,1fr) 34px;gap:6px}
+.page.compact .yesno,.page.compact .chain .linkbtn{height:34px}
+.page.compact .field > label{font-size:11.5px;min-height:18px}
+.page.compact .btn{height:34px;font-size:12.5px;padding:0 12px}
+.page.compact .viewseg{height:34px}
+.page.compact .pill{font-size:10.5px;padding:2px 8px}
+.page.compact .stat{padding:8px 12px}
+.page.compact .stat b{font-size:15px}
+.page.compact .addbtn{height:32px;font-size:12px;margin-top:10px}
+.page.compact .side a{font-size:11.5px;padding:4px 11px}
+.page.compact .switch{width:34px;height:19px}
+.page.compact .switch span::after{width:13px;height:13px}
+.page.compact .switch input:checked + span::after{transform:translateX(15px)}
 
 /* tighter cards */
 .page.compact .card-head{padding:10px 16px;gap:12px}
-.page.compact .card-head h2{font-size:15px}
+.page.compact .card-head h2{font-size:14px}
 .page.compact .card-body{padding:2px 16px 16px}
 .page.compact .row{margin-top:10px;gap:10px 14px}
 .page.compact .subhead{margin-top:12px}
@@ -878,16 +893,10 @@ body.dr-open{overflow:hidden}
   .page.compact #sec-lines .line .row > .span2{grid-column:auto}
 }
 
-@media (max-width:1200px){
-  .page.compact #sec-details,.page.compact #sec-parties,.page.compact #sec-logistics,.page.compact #sec-com,.page.compact #sec-courier,.page.compact #sec-dest,.page.compact #sec-pay{grid-column:span 6}
-  .page.compact #sec-logistics{grid-row:auto;grid-column:span 12}
-  .page.compact #sec-dep,.page.compact #sec-arr{grid-column:span 6}
-  .page.compact #sec-notes{grid-column:span 12;grid-row:auto}
 }
 @media (max-width:980px){
   .viewseg{display:none}
-  .page.compact #sections{display:block}
-  .page.compact .card{margin-bottom:14px}
+  .cband.two{grid-template-columns:minmax(0,1fr)}
 }
 </style>
 </head>
@@ -1311,13 +1320,65 @@ document.addEventListener("click", e=>{ if(e.target.closest("#sideToggle")) setS
 document.addEventListener("DOMContentLoaded", ()=>setSide(!!store.get("side-collapsed", false), false));
 
 /* ---------- layout: list (default) or compact (remembered per browser) ---------- */
+const _narrow = matchMedia("(max-width:980px)");
 function setView(v){
-  const compact = v === "compact", page = $(".page"); if(!page) return;
+  const page = $(".page"); if(!page) return;
+  const compact = v === "compact" && !_narrow.matches;      // phones always get the list
+  if(v) page.dataset.view = v;
   page.classList.toggle("compact", compact);
-  $$(".viewseg [data-view]").forEach(b=>{ const on = b.dataset.view === (compact?"compact":"list"); b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
-  store.set("ship-view", compact ? "compact" : "list");
+  $$(".viewseg [data-view]").forEach(b=>{ const on = b.dataset.view === (v==="compact"?"compact":"list"); b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); });
+  store.set("ship-view", v === "compact" ? "compact" : "list");
+  if(compact) layoutCompact(); else layoutList();
 }
 document.addEventListener("click", e=>{ const b = e.target.closest(".viewseg [data-view]"); if(b) setView(b.dataset.view); });
+_narrow.addEventListener("change", ()=>setView(store.get("ship-view", "list")));
+
+/* Compact layout: two columns that each stack their cards, so a tall card never leaves a gap
+   beside it. Left: Details, Logistics. Right: Parties, Departure, Arrival. The short optional
+   cards go to whichever column is shorter. Product lines and Notes run full width below. */
+const CL = { left:["details","logistics"], right:["parties","dep","arr"], float:["com","courier","dest","pay"], after:["lines","notes"] };
+let _lcBusy = false, _lcTimer = 0;
+const _lcRO = typeof ResizeObserver!=="undefined" ? new ResizeObserver(()=>{ clearTimeout(_lcTimer); _lcTimer = setTimeout(layoutCompact, 120); }) : null;
+function _lcPlace(col, wanted){
+  wanted = wanted.filter(Boolean);
+  const now = [...col.children];
+  if(now.length===wanted.length && wanted.every((el,i)=>now[i]===el)) return;
+  const f = document.activeElement;
+  if(f && f!==document.body && wanted.some(el=>el.contains(f) && el.parentNode!==col)){   // the card being typed in would move
+    document.addEventListener("focusout", ()=>setTimeout(layoutCompact, 0), {once:true}); return;
+  }
+  wanted.forEach(el=>col.appendChild(el));
+}
+function layoutCompact(){
+  const root = $("#sections"); if(!root || !$(".page.compact") || _lcBusy) return;
+  _lcBusy = true;
+  try{
+    let two = root.querySelector(":scope > .cband.two"), after = root.querySelector(":scope > .cband.after");
+    if(!two){ two = document.createElement("div"); two.className = "cband two"; two.innerHTML = `<div class="ccol" data-col="L"></div><div class="ccol" data-col="R"></div>`; root.appendChild(two); }
+    if(!after){ after = document.createElement("div"); after.className = "cband after"; root.appendChild(after); }
+    if(root.lastElementChild!==after) root.appendChild(after);
+    const L = two.children[0], R = two.children[1], card = id => $(`#sec-${id}`);
+    const known = [...CL.left, ...CL.right, ...CL.float, ...CL.after];
+    const wl = CL.left.map(card), wr = CL.right.map(card);
+    let hL = wl.reduce((t,c)=>t+(c?c.offsetHeight+14:0),0), hR = wr.reduce((t,c)=>t+(c?c.offsetHeight+14:0),0);
+    CL.float.forEach(id=>{ const c = card(id); if(!c) return; const h = c.offsetHeight + 14;
+      if(hL <= hR){ wl.push(c); hL += h; } else { wr.push(c); hR += h; } });
+    const wa = CL.after.map(card).concat($$("#sections .card").filter(c=>!known.includes(c.dataset.sec)));
+    _lcPlace(L, wl); _lcPlace(R, wr); _lcPlace(after, wa);
+    if(_lcRO) $$("#sections .card").forEach(c=>_lcRO.observe(c));
+  } finally { _lcBusy = false; }
+}
+function layoutList(){
+  const root = $("#sections"); if(!root || !root.querySelector(":scope > .cband")) return;
+  const heads = $$("#sections > .section-head"); let hi = 0, last = null;
+  SECTIONS.forEach(sec=>{
+    if(sec.group!==last){ if(heads[hi]) root.appendChild(heads[hi++]); last = sec.group; }
+    const c = $(`#sec-${sec.id}`); if(c) root.appendChild(c);
+  });
+  $$("#sections > .cband").forEach(b=>b.remove());
+  if(_lcRO) _lcRO.disconnect();
+}
+new MutationObserver(()=>{ if($(".page.compact")) layoutCompact(); }).observe(document.getElementById("sections") || document.body, {childList:true});
 document.addEventListener("DOMContentLoaded", ()=>setView(store.get("ship-view", "list")));
 
 /* ---------- theme + storage ---------- */
