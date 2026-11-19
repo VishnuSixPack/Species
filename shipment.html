@@ -1007,6 +1007,16 @@ body.dr-open{overflow:hidden}
 .strip .endbox .nm{overflow:hidden;text-overflow:ellipsis;font-weight:500}
 .strip .endbox.empty .nm{color:var(--placeholder);font-weight:400}
 .strip .endbox .loc{font-family:Consolas,"SFMono-Regular",Menlo,monospace;font-size:10.5px;color:var(--muted);flex:none}
+
+/* vessel + voyage split box */
+.strip .leg.vessel{flex:1.4 1 230px}
+.strip .vsplit{display:flex;align-items:stretch;height:32px;border:1px solid var(--field-border);border-radius:7px;background:var(--surface);overflow:hidden;transition:border-color .12s,box-shadow .12s}
+.strip .vsplit:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-ring)}
+.strip .vsplit .ctl{border:0;border-radius:0;height:30px;box-shadow:none!important;background:transparent;min-width:0}
+.strip .vsplit .vname{flex:1 1 auto;padding:0 8px 0 10px}
+.strip .vsplit .vpre{display:grid;place-items:center;width:24px;flex:none;border-left:1px solid var(--field-border);background:var(--page);color:var(--muted);font-family:Consolas,"SFMono-Regular",Menlo,monospace;font-size:11.5px;font-weight:600}
+.strip .vsplit .vvoy{flex:0 0 84px;padding:0 8px;font-family:Consolas,"SFMono-Regular",Menlo,monospace;font-size:12px}
+.strip .leg.vessel:has(.rm) .vvoy{padding-right:26px}
 </style>
 </head>
 <body>
@@ -1440,6 +1450,8 @@ function setView(v){
   if(compact) layoutCompact(); else layoutList();
   if($("#sec-logistics .card-body")?.childElementCount) renderSection("logistics", true);
 }
+document.addEventListener("change", e=>{ const v = e.target.closest(".vvoy"); if(!v) return;
+  const clean = v.value.trim().replace(/^v[\s.:-]*/i,""); if(clean!==v.value){ v.value = clean; set(v.dataset.bind, clean); } });
 document.addEventListener("mouseover", e=>{ const t = e.target.closest(".trigger .txt"); if(t && !t.title && t.scrollWidth > t.clientWidth) t.title = t.textContent.trim(); });
 document.addEventListener("click", e=>{ const b = e.target.closest(".viewseg [data-view]"); if(b) setView(b.dataset.view); });
 _narrow.addEventListener("change", ()=>setView(store.get("ship-view", "list")));
@@ -1643,7 +1655,7 @@ async function loadRefs(){
   ]);
   lookups.forEach(l=>{ (OPT[l.list_key] = OPT[l.list_key] || []).push(l.sub ? {value:l.value, sub:l.sub} : l.value); });
   ["branches","species","catchMethods","certifications","receiptForms","fao","primaryPack","innerPack","outerPack","weightSpecs",
-   "schedules","partners","deliveryLocations","shipTypes","shipStatus","couriers","shippingLines","airlines"].forEach(k=>OPT[k] = OPT[k] || []);
+   "schedules","partners","deliveryLocations","shipTypes","shipStatus","couriers","shippingLines","airlines","vessels"].forEach(k=>OPT[k] = OPT[k] || []);
   const order = ["EXW","FCA","FAS","FOB","CFR","CIF","CPT","CIP","DAP","DPU","DDP"];
   const rank = c => { const i = order.indexOf(c); return i<0 ? 99 : i; };
   ALL_INCOTERMS = incos.sort((a,b)=>rank(a.code)-rank(b.code));
@@ -1811,7 +1823,7 @@ let incotermNote = "";
 /* ---------- state ---------- */
 const str = v => v==null ? "" : String(v);
 const blankLg = () => ({
-  sea:{shippingLine:"",vessels:[""],shipMode:"Direct",container:{containerNo:"",sealNo:""},traceableObject:null,blNo:"",blDate:"",transhipmentPorts:[""]},
+  sea:{shippingLine:"",vessels:[""],voyages:[""],shipMode:"Direct",container:{containerNo:"",sealNo:""},traceableObject:null,blNo:"",blDate:"",transhipmentPorts:[""]},
   air:{airline:"",flights:[""],shipMode:"Direct",awbNo:"",awbDate:"",transhipmentAirports:[""]},
   truck:{trucks:[""],shipMode:"Direct",transfers:[""]}});
 const PREFILL = {};
@@ -1838,7 +1850,7 @@ function fromShipment(x){
   const legs = k => { const v = (x.legs||[]).filter(l=>l.kind===k).map(l=>l.name); return v.length ? v : [""]; };
   const ts = x.transhipments||[], grp = {Sea:"sea", Air:"air", Truck:"truck"}[x.shipment_mode];
   const lg = Object.assign({mode:x.shipment_mode||"", loadBasis:x.load_basis || (LOAD[x.shipment_mode]?.basis[0]||""), loadType:x.load_type||"", incoterm:x.incoterm||""}, blankLg());
-  Object.assign(lg.sea, {shippingLine:x.shipping_line||"", vessels:legs("vessel"), container:{containerNo:x.container_no||"", sealNo:x.seal_no||""},
+  Object.assign(lg.sea, {shippingLine:x.shipping_line||"", vessels:legs("vessel"), voyages:(()=>{ const v = (x.legs||[]).filter(l=>l.kind==="vessel").map(l=>l.voyage_no||""); return v.length ? v : [""]; })(), container:{containerNo:x.container_no||"", sealNo:x.seal_no||""},
     traceableObject: x.traceable_linked_at ? {containerNo:x.container_no||"", sealNo:x.seal_no||"", linkedAt:x.traceable_linked_at} : null,
     blNo:x.bl_no||"", blDate:x.bl_date||"", transhipmentPorts: grp==="sea" && ts.length ? ts.map(t=>t.label||"") : [""]});
   Object.assign(lg.air, {airline:x.airline||"", flights:legs("flight"), awbNo:x.awb_no||"", awbDate:x.awb_date||"", transhipmentAirports: grp==="air" && ts.length ? ts.map(t=>t.location||"") : [""]});
@@ -1861,7 +1873,8 @@ function fromShipment(x){
 }
 function toPayload(){
   const L = S.lg, grp = {Sea:"sea", Air:"air", Truck:"truck"}[L.mode], G = L[grp] || {};
-  const legs = (grp==="sea" ? L.sea.vessels : grp==="air" ? L.air.flights : L.truck.trucks).map(n=>({kind:{sea:"vessel",air:"flight",truck:"truck"}[grp], name:n.trim()}));
+  const legs = (grp==="sea" ? L.sea.vessels : grp==="air" ? L.air.flights : L.truck.trucks).map((n,i)=>({kind:{sea:"vessel",air:"flight",truck:"truck"}[grp], name:n.trim(),
+    voyage_no: grp==="sea" ? String((L.sea.voyages||[])[i]||"").trim().replace(/^V\s*/i,"") : ""}));
   const tsOn = G.shipMode==="Transhipment";
   const ts = !tsOn ? [] : grp==="sea" ? L.sea.transhipmentPorts.map(l=>({port_id:REFS.portByLabel.get(l)||""}))
            : (grp==="air" ? L.air.transhipmentAirports : L.truck.transfers).map(v=>({location:v.trim()}));
@@ -2040,7 +2053,17 @@ function lgEnd(k){
 function lgRouteStrip(g){
   const key = {sea:"vessels",air:"flights",truck:"trucks"}[g], arr = get(`lg.${g}.${key}`);
   const ph = {sea:"Vessel name", air:"e.g. SQ 0711", truck:"e.g. KL 07 BX 4412"}[g];
-  const cells = arr.map((v,i)=>`<div class="leg"><span class="cap">${lgLegName(g,i,arr.length)}${(g==="sea"?i===arr.length-1:i===0)?'<span class="req">*</span>':""}</span>
+  if(g==="sea"){ const vy = S.lg.sea.voyages = S.lg.sea.voyages || []; while(vy.length < arr.length) vy.push(""); }
+  const names = [...new Set([...(OPT.vessels||[]).map(optVal), ...arr.filter(Boolean)])];
+  const dl = g==="sea" ? `<datalist id="vesselList">${names.map(n=>`<option value="${esc(n)}"></option>`).join("")}</datalist>` : "";
+  const cells = g==="sea" ? arr.map((v,i)=>`<div class="leg vessel"><span class="cap">${lgLegName(g,i,arr.length)}${i===arr.length-1?'<span class="req">*</span>':""}</span>
+      <div class="vsplit">
+        <input class="ctl vname ${v?"strong":""}" type="text" list="vesselList" data-bind="lg.sea.vessels.${i}" value="${esc(v)}" placeholder="Select vessel" aria-label="${lgLegName(g,i,arr.length)} name" autocomplete="off">
+        <span class="vpre" aria-hidden="true">V</span>
+        <input class="ctl vvoy" type="text" data-bind="lg.sea.voyages.${i}" value="${esc(S.lg.sea.voyages[i]||"")}" placeholder="Voyage" aria-label="${lgLegName(g,i,arr.length)} voyage number">
+      </div>
+      ${arr.length>1?`<button class="rm" type="button" data-action="rmLeg" data-grp="${g}" data-i="${i}" aria-label="Remove ${lgLegName(g,i,arr.length)}">${XSM}</button>`:""}</div>`).join(`<span class="ar" aria-hidden="true">→</span>`) + dl
+  : arr.map((v,i)=>`<div class="leg"><span class="cap">${lgLegName(g,i,arr.length)}${(g==="sea"?i===arr.length-1:i===0)?'<span class="req">*</span>':""}</span>
       <input class="ctl ${v?"strong":""}" type="text" data-bind="lg.${g}.${key}.${i}" value="${esc(v)}" placeholder="${ph}" aria-label="${lgLegName(g,i,arr.length)}">
       ${arr.length>1?`<button class="rm" type="button" data-action="rmLeg" data-grp="${g}" data-i="${i}" aria-label="Remove ${lgLegName(g,i,arr.length)}">${XSM}</button>`:""}</div>`).join(`<span class="ar" aria-hidden="true">→</span>`);
   return `<div class="strip"><span class="lb">Route</span>${lgEnd("dep")}<span class="ar" aria-hidden="true">→</span>${cells}
@@ -2453,10 +2476,10 @@ Object.assign(ACTIONS, {
   setMode(el){ const m = el.dataset.mode; if(S.lg.mode===m) return; set("lg.mode", m); changed("lg.mode"); renderSection("logistics"); updateStatus(); },
   setBasis(el){ S.lg.loadBasis = el.dataset.basis; const list = LOAD[S.lg.mode].types[S.lg.loadBasis].map(optVal); if(!list.includes(S.lg.loadType)) S.lg.loadType = ""; renderSection("logistics"); },
   addLeg(el){ const g = el.dataset.grp, key = {sea:"vessels",air:"flights",truck:"trucks"}[g];
-    S.lg[g][key].push(""); S.lg[g].shipMode = S.lg[g][key].length>1 ? "Transhipment" : "Direct"; renderSection("logistics");
+    S.lg[g][key].push(""); if(g==="sea"){ const v = S.lg.sea.voyages = S.lg.sea.voyages||[]; while(v.length < S.lg.sea.vessels.length) v.push(""); } S.lg[g].shipMode = S.lg[g][key].length>1 ? "Transhipment" : "Direct"; renderSection("logistics");
     const inputs = $$(`[data-bind^="lg.${g}.${key}."]`); inputs[inputs.length-1]?.focus(); },
   rmLeg(el){ const g = el.dataset.grp, key = {sea:"vessels",air:"flights",truck:"trucks"}[g];
-    S.lg[g][key].splice(+el.dataset.i,1); S.lg[g].shipMode = S.lg[g][key].length>1 ? "Transhipment" : "Direct";
+    S.lg[g][key].splice(+el.dataset.i,1); if(g==="sea" && S.lg.sea.voyages) S.lg.sea.voyages.splice(+el.dataset.i,1); S.lg[g].shipMode = S.lg[g][key].length>1 ? "Transhipment" : "Direct";
     const arr = get(TS[g].path), cap = tsCap(g); if(arr.length>cap) set(TS[g].path, arr.slice(0,cap)); renderSection("logistics"); },
   addTs(el){ const g = el.dataset.grp; if(tsFull(g)) return; get(TS[g].path).push(""); renderSection("logistics"); },
   rmTs(el){ get(TS[el.dataset.grp].path).splice(+el.dataset.i,1); renderSection("logistics"); },
