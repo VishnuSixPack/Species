@@ -1450,6 +1450,7 @@ function setView(v){
   if(compact) layoutCompact(); else layoutList();
   if($("#sec-logistics .card-body")?.childElementCount) renderSection("logistics", true);
 }
+document.addEventListener("change", e=>{ const n = e.target.closest(".vname"); if(n) rememberVessel(n.value); });
 document.addEventListener("change", e=>{ const v = e.target.closest(".vvoy"); if(!v) return;
   const clean = v.value.trim().replace(/^v[\s.:-]*/i,""); if(clean!==v.value){ v.value = clean; set(v.dataset.bind, clean); } });
 document.addEventListener("mouseover", e=>{ const t = e.target.closest(".trigger .txt"); if(t && !t.title && t.scrollWidth > t.clientWidth) t.title = t.textContent.trim(); });
@@ -2050,12 +2051,33 @@ function lgEnd(k){
       ${label ? `<span class="nm">${esc(name)}</span>${ctry?`<span class="ctry">${esc(ctry)}</span>`:""}${loc?`<span class="loc">${esc(loc)}</span>`:""}`
               : `<span class="nm">${k==="dep"?"Departure":"Destination"} port</span>`}</a></div>`;
 }
+/* vessel names: the "vessels" option list plus every vessel already used on a shipment;
+   a new name typed here is added to the option list so it shows next time */
+let VESSELS_SEEN = null, _vesselLoad = null;
+const vesselNames = () => [...new Set([...(OPT.vessels||[]).map(optVal), ...(VESSELS_SEEN||[]), ...(S.lg?.sea?.vessels||[])].map(v=>String(v||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+const vesselOptions = () => vesselNames().map(n=>`<option value="${esc(n)}"></option>`).join("");
+function loadVesselNames(){
+  if(_vesselLoad) return _vesselLoad;
+  _vesselLoad = (async()=>{
+    try{ const rows = await q(smt().from("shipment_legs").select("name").eq("kind","vessel").limit(5000)); VESSELS_SEEN = (rows||[]).map(r=>r.name); }
+    catch(e){ VESSELS_SEEN = []; }
+    const dl = document.getElementById("vesselList"); if(dl) dl.innerHTML = vesselOptions();
+  })();
+  return _vesselLoad;
+}
+async function rememberVessel(name){
+  name = String(name||"").trim(); if(!name) return;
+  if((OPT.vessels||[]).map(optVal).some(v=>v.toLowerCase()===name.toLowerCase())) return;
+  OPT.vessels = [...(OPT.vessels||[]), name];
+  try{ await q(smt().from("lookup_values").insert({list_key:"vessels", value:name})); }catch(e){ /* already listed or not allowed: keep it for this session */ }
+  const dl = document.getElementById("vesselList"); if(dl) dl.innerHTML = vesselOptions();
+}
 function lgRouteStrip(g){
   const key = {sea:"vessels",air:"flights",truck:"trucks"}[g], arr = get(`lg.${g}.${key}`);
   const ph = {sea:"Vessel name", air:"e.g. SQ 0711", truck:"e.g. KL 07 BX 4412"}[g];
   if(g==="sea"){ const vy = S.lg.sea.voyages = S.lg.sea.voyages || []; while(vy.length < arr.length) vy.push(""); }
-  const names = [...new Set([...(OPT.vessels||[]).map(optVal), ...arr.filter(Boolean)])];
-  const dl = g==="sea" ? `<datalist id="vesselList">${names.map(n=>`<option value="${esc(n)}"></option>`).join("")}</datalist>` : "";
+  if(g==="sea") loadVesselNames();
+  const dl = g==="sea" ? `<datalist id="vesselList">${vesselOptions()}</datalist>` : "";
   const cells = g==="sea" ? arr.map((v,i)=>`<div class="leg vessel"><span class="cap">${lgLegName(g,i,arr.length)}${i===arr.length-1?'<span class="req">*</span>':""}</span>
       <div class="vsplit">
         <input class="ctl vname ${v?"strong":""}" type="text" list="vesselList" data-bind="lg.sea.vessels.${i}" value="${esc(v)}" placeholder="Select vessel" aria-label="${lgLegName(g,i,arr.length)} name" autocomplete="off">
