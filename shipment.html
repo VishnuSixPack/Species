@@ -961,6 +961,52 @@ body.dr-open{overflow:hidden}
 .strip .hint-i{display:inline-grid;place-items:center;width:14px;height:14px;border-radius:50%;border:1px solid var(--field-border);color:var(--muted);font-size:9px;font-style:normal;cursor:help}
 @container (max-width:900px){ .lgc .c3{grid-column:span 6} .lgc .c6{grid-column:span 12} }
 @container (max-width:480px){ .lgc .c3{grid-column:span 12} .strip .leg,.strip .leg.wide{width:100%} .strip .ar{display:none} }
+
+/* compact: alignment fixes */
+.page.compact .field > label{margin-bottom:5px}
+.page.compact .field > label ~ :not(.after):not(.hint):not(.share-t){margin-top:0!important}
+.page.compact .ctl,.page.compact .lockbox,.page.compact .trigger,.page.compact .unit-wrap{box-sizing:border-box}
+.page.compact .trigger{height:32px;min-height:32px;padding-top:0;padding-bottom:0;align-items:center}
+.page.compact .trigger:has(.chips){height:auto;min-height:32px;padding-top:3px;padding-bottom:3px}
+.page.compact .unit-wrap{height:32px}
+.page.compact .unit-wrap .ctl{height:30px}
+.page.compact .clearbtn{top:16px;right:5px;width:24px;height:24px}
+.page.compact .clearwrap .trigger,.page.compact .clearwrap .ctl{padding-right:32px}
+.page.compact .with-plus{align-items:center}
+.page.compact .lgc .pair{align-items:stretch}
+.page.compact .lgc .linkbtn{height:32px;align-self:center}
+/* save button in the sticky bar: a proper pill even when the side menu was collapsed in list mode */
+.page.compact .layout .side .save,.page.compact .layout.collapsed .side .save{width:auto;height:34px;padding:0 16px;margin:0;border-radius:8px;white-space:nowrap;flex:none;font-size:12.5px}
+.page.compact .layout.collapsed .side .save svg{width:15px;height:15px}
+.page.compact .layout.collapsed .side a{justify-content:flex-start;padding:4px 11px;border:1px solid var(--border);border-radius:999px}
+.page.compact .layout.collapsed .side .progress{display:block}
+/* parties: give the organisation name the most room */
+@container (min-width:761px){
+  .page.compact #sec-parties .row{grid-template-columns:minmax(0,2.4fr) minmax(0,.85fr) minmax(0,.95fr) minmax(0,1.25fr)}
+}
+.page.compact .field > label{height:18px;min-height:18px;white-space:nowrap}
+.page.compact .field > label .seg{height:18px;padding:1px;box-sizing:border-box}
+.page.compact .field > label .seg button{height:14px;font-size:9.5px;padding:0 7px}
+
+/* compact: rows of equal-height cards */
+.cband.grid{display:grid;gap:14px;align-items:stretch}
+.cband.g2{grid-template-columns:minmax(0,1fr) minmax(0,1.35fr)}
+.cband.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cband.grid > .card{display:flex;flex-direction:column}
+.cband.grid > .card > .card-body{flex:1}
+.cband.grid > .card.off,.cband.grid > .card.collapsed{align-self:start}
+@media (max-width:1200px){ .cband.g3{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:980px){ .cband.grid,.cband.g2,.cband.g3{grid-template-columns:minmax(0,1fr)} }
+/* route strip fills the full width: From → legs → To */
+.strip .leg{flex:1 1 160px;width:auto;max-width:none}
+.strip .leg.end{flex:1.3 1 200px;max-width:none}
+.strip.via .leg{flex:0 1 240px}
+.strip .endbox{display:flex;align-items:center;gap:8px;height:32px;padding:0 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);font-size:12px;white-space:nowrap;overflow:hidden;text-decoration:none;color:var(--text)}
+.strip .endbox:hover{border-color:var(--accent)}
+.strip .endbox .ctry{color:var(--muted);font-size:11px;overflow:hidden;text-overflow:ellipsis}
+.strip .endbox .nm{overflow:hidden;text-overflow:ellipsis;font-weight:500}
+.strip .endbox.empty .nm{color:var(--placeholder);font-weight:400}
+.strip .endbox .loc{font-family:Consolas,"SFMono-Regular",Menlo,monospace;font-size:10.5px;color:var(--muted);flex:none}
 </style>
 </head>
 <body>
@@ -1394,6 +1440,7 @@ function setView(v){
   if(compact) layoutCompact(); else layoutList();
   if($("#sec-logistics .card-body")?.childElementCount) renderSection("logistics", true);
 }
+document.addEventListener("mouseover", e=>{ const t = e.target.closest(".trigger .txt"); if(t && !t.title && t.scrollWidth > t.clientWidth) t.title = t.textContent.trim(); });
 document.addEventListener("click", e=>{ const b = e.target.closest(".viewseg [data-view]"); if(b) setView(b.dataset.view); });
 _narrow.addEventListener("change", ()=>setView(store.get("ship-view", "list")));
 
@@ -1405,10 +1452,10 @@ _narrow.addEventListener("change", ()=>setView(store.get("ship-view", "list")));
    4. Notes, full width
    Columns stack their cards independently, so a tall card never leaves white space beside it. */
 const CL = [
-  { cls:"two",   cols:2, ids:[["details"],["parties"]] },
-  { cls:"full",  cols:1, ids:[["logistics","lines"]] },
-  { cls:"three", cols:3, flow:["dep","arr","com","courier","dest","pay"] },
-  { cls:"full",  cols:1, ids:[["notes"]], rest:true }
+  { cls:"grid g2", grid:["details","parties"] },
+  { cls:"full",    cols:1, ids:[["logistics","lines"]] },
+  { cls:"grid g3", grid:["dep","arr","com","courier","dest","pay"] },
+  { cls:"full",    cols:1, ids:[["notes"]], rest:true }
 ];
 let _lcBusy = false, _lcTimer = 0;
 const _lcRO = typeof ResizeObserver!=="undefined" ? new ResizeObserver(()=>{ clearTimeout(_lcTimer); _lcTimer = setTimeout(layoutCompact, 120); }) : null;
@@ -1427,13 +1474,14 @@ function layoutCompact(){
   _lcBusy = true;
   try{
     const card = id => $(`#sec-${id}`);
-    const known = CL.flatMap(b=>b.flow || b.ids.flat());
+    const known = CL.flatMap(b=>b.grid || b.flow || b.ids.flat());
     CL.forEach((band, bi)=>{
       let el = root.querySelector(`:scope > .cband[data-band="${bi}"]`);
       if(!el){ el = document.createElement("div"); el.className = `cband ${band.cls}`; el.dataset.band = bi;
-        el.innerHTML = Array.from({length:band.cols}, ()=>`<div class="ccol"></div>`).join(""); }
+        if(!band.grid) el.innerHTML = Array.from({length:band.cols}, ()=>`<div class="ccol"></div>`).join(""); }
       const prev = bi ? root.querySelector(`:scope > .cband[data-band="${bi-1}"]`) : null;
       if(!el.parentNode || (prev ? el.previousElementSibling!==prev : el.parentNode!==root)) root.appendChild(el);
+      if(band.grid){ _lcPlace(el, band.grid.map(card)); return; }
       const cols = [...el.children];
       let wanted;
       if(band.flow){
@@ -1980,14 +2028,24 @@ function lgLegName(g, i, n){
   if(g==="sea") return i===n-1 ? "Mother vessel" : (n>2 ? `Feeder ${i+1}` : "Feeder vessel");
   return g==="air" ? `Flight ${i+1}` : `Truck ${i+1}`;
 }
+function lgEnd(k){
+  const label = get(`${k}.port`) || "", ctry = portCountry(label), word = k==="dep" ? "From" : "To";
+  const m = label.match(/^(.*?)(?:,\s*[^,(]+)?\s*(?:\(([^)]+)\))?$/) || [];
+  const name = (m[1] || label).trim(), loc = m[2] || "";
+  return `<div class="leg end"><span class="cap">${word}</span>
+    <a class="endbox ${label?"":"empty"}" href="#sec-${k}" title="${label ? esc(label) : `Set the ${k==="dep"?"departure":"destination"} port`}">
+      ${label ? `<span class="nm">${esc(name)}</span>${ctry?`<span class="ctry">${esc(ctry)}</span>`:""}${loc?`<span class="loc">${esc(loc)}</span>`:""}`
+              : `<span class="nm">${k==="dep"?"Departure":"Destination"} port</span>`}</a></div>`;
+}
 function lgRouteStrip(g){
   const key = {sea:"vessels",air:"flights",truck:"trucks"}[g], arr = get(`lg.${g}.${key}`);
   const ph = {sea:"Vessel name", air:"e.g. SQ 0711", truck:"e.g. KL 07 BX 4412"}[g];
   const cells = arr.map((v,i)=>`<div class="leg"><span class="cap">${lgLegName(g,i,arr.length)}${(g==="sea"?i===arr.length-1:i===0)?'<span class="req">*</span>':""}</span>
       <input class="ctl ${v?"strong":""}" type="text" data-bind="lg.${g}.${key}.${i}" value="${esc(v)}" placeholder="${ph}" aria-label="${lgLegName(g,i,arr.length)}">
       ${arr.length>1?`<button class="rm" type="button" data-action="rmLeg" data-grp="${g}" data-i="${i}" aria-label="Remove ${lgLegName(g,i,arr.length)}">${XSM}</button>`:""}</div>`).join(`<span class="ar" aria-hidden="true">→</span>`);
-  return `<div class="strip"><span class="lb">Route</span>${cells}
-    <button class="addleg" type="button" data-action="addLeg" data-grp="${g}" title="Add ${TS[g].noun}" aria-label="Add ${TS[g].noun}">${PLUSI}</button></div>`;
+  return `<div class="strip"><span class="lb">Route</span>${lgEnd("dep")}<span class="ar" aria-hidden="true">→</span>${cells}
+    <button class="addleg" type="button" data-action="addLeg" data-grp="${g}" title="Add ${TS[g].noun}" aria-label="Add ${TS[g].noun}">${PLUSI}</button>
+    <span class="ar" aria-hidden="true">→</span>${lgEnd("arr")}</div>`;
 }
 function lgViaStrip(g){
   const cfg = TS[g], list = get(cfg.path), full = tsFull(g), cap = tsCap(g), legs = legsOf(g);
@@ -2382,6 +2440,7 @@ HOOKS.onChange = path => {
   if(path.startsWith("arr.")){ renderSection("dest", true); }
   if(path==="lg.mode") scheduleMixed();
 };
+{ const _oc = HOOKS.onChange; HOOKS.onChange = path => { _oc(path); if((path==="dep.port" || path==="arr.port") && isCompact()) renderSection("logistics", true); }; }
 HOOKS.onInput = path => {
   if(path==="lg.sea.container.containerNo" || path==="lg.sea.container.sealNo" || path==="details.custOrder") scheduleMixed();
   if(path.startsWith("lg.sea.container") && S.lg.sea.traceableObject && !isLinked()){ S.lg.sea.traceableObject = null; rerenderKeepFocus(path); }

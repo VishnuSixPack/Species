@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Logistics — Compact</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --page:#f4f5f7;--surface:#fff;--border:#e6e8ec;--line:#eef0f3;--fb:#d3d8e0;--fbg:#fff;
+  --text:#14161a;--label:#6b7383;--muted:#848c99;--ph:#9aa2b0;
+  --accent:#2f6fed;--soft:rgba(47,111,237,.12);--ring:rgba(47,111,237,.16);
+  --ok-bg:#dff5e7;--ok:#1c7a43;--warn-bg:#fdf0d5;--warn:#8a5f0f;
+  --sh:0 1px 2px rgba(16,24,40,.05);--msh:0 12px 30px rgba(16,24,40,.15);
+}
+:root:not([data-theme="light"]){@media (prefers-color-scheme:dark){
+  --page:#0f1115;--surface:#171a20;--border:#262a32;--line:#22262d;--fb:#353b45;--fbg:#1c2027;
+  --text:#e9ebef;--label:#99a1ae;--muted:#99a1ae;--ph:#79818e;
+  --accent:#7aa2ff;--soft:rgba(122,162,255,.16);--ring:rgba(122,162,255,.24);
+  --ok-bg:#13351e;--ok:#6ddc98;--warn-bg:#3a2d10;--warn:#e6bd63;
+  --sh:none;--msh:0 12px 30px rgba(0,0,0,.5);}}
+:root[data-theme="dark"]{--page:#0f1115;--surface:#171a20;--border:#262a32;--line:#22262d;--fb:#353b45;--fbg:#1c2027;
+  --text:#e9ebef;--label:#99a1ae;--muted:#99a1ae;--ph:#79818e;--accent:#7aa2ff;--soft:rgba(122,162,255,.16);
+  --ring:rgba(122,162,255,.24);--ok-bg:#13351e;--ok:#6ddc98;--warn-bg:#3a2d10;--warn:#e6bd63;--sh:none;--msh:0 12px 30px rgba(0,0,0,.5)}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--text);font-family:Poppins,-apple-system,"Segoe UI",sans-serif;
+  font-size:12.5px;line-height:1.45;-webkit-font-smoothing:antialiased;padding:20px 18px 40px}
+.wrap{max-width:1120px;margin:0 auto}
+
+.eyebrow{display:flex;align-items:center;gap:12px;margin-bottom:9px}
+.eyebrow span{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500}
+.eyebrow i{flex:1;height:1px;background:var(--border)}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:var(--sh)}
+.hd{display:flex;align-items:center;gap:12px;padding:9px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.hd h1{font-size:14px;font-weight:600;margin:0;letter-spacing:-.01em}
+.hd .sp{flex:1}
+.body{padding:12px 14px 14px}
+.card.off .body{opacity:.45;pointer-events:none}
+.card.min .body,.card.min .hd .tabs{display:none}
+
+.sw{position:relative;width:34px;height:19px;flex:none}
+.sw input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer;width:100%;height:100%}
+.sw i{position:absolute;inset:0;border-radius:99px;background:#c8cfd9;transition:background .15s}
+.sw i::after{content:"";position:absolute;top:2.5px;left:2.5px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .15s;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.sw input:checked + i{background:var(--accent)}
+.sw input:checked + i::after{transform:translateX(15px)}
+
+.tabs{display:inline-flex;background:var(--page);border:1px solid var(--border);border-radius:7px;padding:2px;gap:2px}
+.tabs button{height:22px;padding:0 11px;border:0;background:transparent;border-radius:5px;font:inherit;font-size:11.5px;
+  font-weight:500;color:var(--muted);cursor:pointer;transition:.13s}
+.tabs button:hover:not(.on){color:var(--text)}
+.tabs button.on{background:var(--surface);color:var(--accent);font-weight:600;box-shadow:0 1px 2px rgba(16,24,40,.12)}
+
+.pill{font-size:10.5px;font-weight:500;padding:3px 9px;border-radius:99px}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pill.no{background:var(--warn-bg);color:var(--warn)}
+.ico{border:0;background:transparent;color:var(--muted);width:24px;height:24px;border-radius:5px;display:grid;place-items:center;cursor:pointer}
+.ico:hover{background:var(--page);color:var(--text)}
+.card.min .ico svg{transform:rotate(180deg)}
+
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:10px 14px}
+.c3{grid-column:span 3}.c4{grid-column:span 4}.c6{grid-column:span 6}.c12{grid-column:span 12}
+.f{display:flex;flex-direction:column;gap:4px;min-width:0}
+.f > label{font-size:10.5px;font-weight:500;color:var(--label);display:flex;align-items:center;gap:5px;height:18px;white-space:nowrap}
+
+.ctl{width:100%;height:34px;border:1px solid var(--fb);background:var(--fbg);color:var(--text);border-radius:6px;
+  padding:0 10px;font:inherit;font-size:12.5px;outline:none;transition:border-color .12s,box-shadow .12s}
+.ctl::placeholder{color:var(--ph)}
+.ctl:hover:not(:disabled){border-color:#b6bec9}
+.ctl:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--ring)}
+.ctl:disabled{background:var(--page);color:var(--muted)}
+.ctl.on{font-weight:600}
+.wrapx{position:relative}
+.wrapx .ctl,.wrapx .tg{padding-right:30px}
+.x{position:absolute;right:5px;top:17px;transform:translateY(-50%);border:0;background:transparent;color:var(--muted);
+  width:22px;height:22px;border-radius:4px;display:none;place-items:center;cursor:pointer;z-index:2}
+.wrapx.has .x{display:grid}
+.x:hover{background:var(--page);color:#d14343}
+
+.dd,.dp{position:relative}
+.dd.open,.dp.open{z-index:40}
+.tg{width:100%;height:34px;border:1px solid var(--fb);background:var(--fbg);border-radius:6px;padding:0 9px 0 10px;
+  font:inherit;font-size:12.5px;color:var(--ph);display:flex;align-items:center;gap:8px;cursor:pointer;text-align:left;transition:.12s}
+.tg:hover:not(:disabled){border-color:#b6bec9}
+.tg.has{color:var(--text);font-weight:500}
+.tg:disabled{background:var(--page);cursor:not-allowed}
+.tg .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tg .c{color:var(--muted);flex:none;transition:transform .16s}
+.dd.open .tg,.dp.open .tg{border-color:var(--accent);box-shadow:0 0 0 3px var(--ring)}
+.dd.open .c{transform:rotate(180deg)}
+.wrapx.has .tg .c{display:none}
+
+.menu{position:absolute;top:calc(100% + 4px);left:0;min-width:100%;z-index:50;background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;box-shadow:var(--msh);padding:4px;max-height:240px;overflow-y:auto;display:none}
+.dd.open .menu,.dp.open .menu{display:block;animation:pop .12s ease-out}
+@keyframes pop{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
+.op{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:5px;cursor:pointer;font-size:12.5px;white-space:nowrap}
+.op:hover{background:var(--page)}
+.op.sel{background:var(--soft);color:var(--accent);font-weight:600}
+.op .s{margin-left:auto;font-size:10.5px;color:var(--muted);font-weight:400}
+.op.sel .s{color:var(--accent)}
+
+.dp .menu{width:250px;padding:10px}
+.ch{display:flex;align-items:center;gap:4px;margin-bottom:7px}
+.ch .t{flex:1;text-align:center;font-weight:600;font-size:12px}
+.nav{border:1px solid var(--border);background:transparent;color:var(--text);width:24px;height:24px;border-radius:5px;display:grid;place-items:center;cursor:pointer}
+.nav:hover{background:var(--page)}
+.cg{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
+.dw{font-size:9.5px;color:var(--muted);text-align:center;padding:2px 0 4px}
+.dy{height:28px;border:0;background:transparent;color:var(--text);border-radius:6px;cursor:pointer;font:inherit;font-size:11.5px}
+.dy:hover{background:var(--page)}
+.dy.td{box-shadow:inset 0 0 0 1px var(--accent);color:var(--accent);font-weight:600}
+.dy.sel{background:var(--accent);color:#fff;font-weight:600}
+.dy.bl{visibility:hidden}
+.cf{display:flex;justify-content:space-between;margin-top:7px;padding-top:7px;border-top:1px solid var(--line)}
+.cf button{border:0;background:transparent;color:var(--accent);font:inherit;font-size:11.5px;font-weight:500;cursor:pointer;padding:2px 4px;border-radius:4px}
+.cf button:hover{background:var(--page)}
+
+/* route strip */
+.strip{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:8px 10px;background:var(--page);border:1px solid var(--line);border-radius:7px}
+.strip .lb{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-right:3px}
+.leg{position:relative;width:148px}
+.leg .ctl{height:30px;font-size:12px;padding-right:24px;background:var(--surface)}
+.leg .cap{position:absolute;z-index:3;top:-7px;left:7px;font-size:8.5px;font-weight:500;color:var(--muted);background:var(--page);padding:0 4px;letter-spacing:.02em;pointer-events:none}
+.strip.via .leg .cap{background:var(--surface)}
+.leg .rm{position:absolute;right:4px;top:15px;transform:translateY(-50%);border:0;background:transparent;color:var(--ph);width:18px;height:18px;
+  border-radius:4px;display:grid;place-items:center;cursor:pointer;padding:0}
+.leg .rm:hover{color:#d14343;background:var(--page)}
+.leg .dd .tg{height:30px;font-size:12px;background:var(--surface)}
+.leg.stack{width:172px;display:flex;flex-direction:column;gap:4px}
+.leg .vy{height:26px;font-size:11.5px;padding:0 9px;background:var(--surface)}
+.leg .vy::placeholder{font-size:11px}
+.leg .dd + .rm,.leg .dd ~ .rm{right:3px}
+.leg:has(.rm) .dd .tg{padding-right:27px}
+.ar{color:var(--ph);font-size:12px;user-select:none}
+.add{width:26px;height:26px;border-radius:6px;border:1px dashed var(--fb);background:transparent;color:var(--accent);
+  display:grid;place-items:center;cursor:pointer;flex:none}
+.add:hover:not(:disabled){border-color:var(--accent);background:var(--surface)}
+.add:disabled{color:var(--ph);border-style:solid;cursor:not-allowed}
+.strip.via{background:transparent;border-style:dashed}
+
+.seg{margin-left:auto;display:inline-flex;align-items:center;height:18px;background:var(--page);border:1px solid var(--border);border-radius:5px;padding:1px;gap:1px}
+.seg button{height:14px;padding:0 7px;border:0;background:transparent;border-radius:4px;font:inherit;font-size:9.5px;font-weight:600;color:var(--muted);cursor:pointer}
+.seg button.on{background:var(--surface);color:var(--accent);box-shadow:0 1px 2px rgba(16,24,40,.12)}
+
+.i{width:13px;height:13px;border-radius:50%;background:var(--page);border:1px solid var(--border);color:var(--muted);
+  font-size:8.5px;font-weight:600;display:grid;place-items:center;cursor:help;flex:none;line-height:1}
+.i:hover{border-color:var(--accent);color:var(--accent)}
+
+.pair{display:flex;gap:7px;align-items:center}
+.pair .wrapx{flex:1;min-width:0}
+.link{height:34px;padding:0 11px;border:1px dashed var(--fb);background:transparent;color:var(--accent);border-radius:6px;
+  font:inherit;font-size:12px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.link:hover:not(:disabled){border-color:var(--accent);background:var(--page)}
+.link.done{border-style:solid;border-color:var(--ok-bg);background:var(--ok-bg);color:var(--ok);cursor:default}
+
+.ft{display:flex;align-items:center;gap:10px;margin-top:11px;padding-top:10px;border-top:1px solid var(--line)}
+.ghost{border:1px solid var(--fb);background:transparent;color:var(--text);font:inherit;font-size:11.5px;font-weight:500;height:28px;padding:0 10px;border-radius:6px;cursor:pointer}
+.ghost:hover{border-color:#b6bec9}
+.note{font-size:11px;color:var(--muted)}
+pre{background:var(--page);border:1px solid var(--line);border-radius:7px;padding:11px;margin:9px 0 0;
+  font-family:ui-monospace,Menlo,monospace;font-size:11px;line-height:1.5;overflow-x:auto}
+.hide{display:none!important}
+
+.ov{position:fixed;inset:0;z-index:200;display:grid;place-items:center;padding:20px;background:rgba(10,14,22,.46);
+  backdrop-filter:blur(4px);animation:fi .16s}
+.md{position:relative;width:min(340px,100%);background:var(--surface);border:1px solid var(--border);border-radius:14px;
+  padding:22px 20px 18px;text-align:center;box-shadow:0 24px 60px rgba(8,12,20,.35);animation:up .32s cubic-bezier(.19,1,.3,1)}
+.md .bd{width:44px;height:44px;border-radius:14px;margin:0 auto 12px;display:grid;place-items:center;color:#fff;
+  background:linear-gradient(145deg,#33c473,#0f8f4c);box-shadow:0 8px 20px rgba(15,143,76,.3)}
+.md.err .bd{background:linear-gradient(145deg,#f3a441,#d4761a);box-shadow:0 8px 20px rgba(212,118,26,.3)}
+.md .bd svg{stroke-dasharray:30;stroke-dashoffset:30;animation:dr .5s .15s cubic-bezier(.65,0,.35,1) forwards}
+.md h3{margin:0 0 5px;font-size:14px;font-weight:600}
+.md p{margin:0;font-size:12px;color:var(--muted);line-height:1.5}
+.md b{color:var(--text);font-weight:600}
+.md .go{margin-top:16px;width:100%;height:36px;border:0;border-radius:8px;background:var(--accent);color:#fff;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+.md .cl{position:absolute;top:8px;right:8px;border:0;background:transparent;color:var(--muted);width:26px;height:26px;border-radius:6px;display:grid;place-items:center;cursor:pointer}
+.md .cl:hover{background:var(--page);color:var(--text)}
+@keyframes fi{from{opacity:0}to{opacity:1}}
+@keyframes up{from{opacity:0;transform:translateY(14px) scale(.95)}to{opacity:1;transform:none}}
+@keyframes dr{to{stroke-dashoffset:0}}
+
+@media (max-width:900px){.c3{grid-column:span 6}.c4{grid-column:span 6}.c6{grid-column:span 12}}
+@media (max-width:560px){.c3,.c4,.c6{grid-column:span 12}body{padding:14px 12px 30px}.leg{width:100%}.ar{display:none}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow"><span>Logistics</span><i></i></div>
+  <div class="card" id="card">
+    <div class="hd">
+      <label class="sw"><input type="checkbox" id="en" checked aria-label="Enable logistics"><i></i></label>
+      <h1>Logistics</h1>
+      <div class="tabs" id="tabs"></div>
+      <div class="sp"></div>
+      <span class="pill no" id="pill">incomplete</span>
+      <button class="ico" id="min" aria-label="Collapse">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+      </button>
+    </div>
+    <div class="body" id="body"></div>
+  </div>
+</div>
+
+<script>
+const LOAD = {
+  Sea:{label:"Container type", basis:["FCL","LCL"], ph:"Select type",
+    types:{FCL:["20ft Dry","40ft Dry","45ft HC Dry","20ft Reefer","40ft Reefer","45ft HC Reefer"],
+           LCL:["20ft Dry","40ft Dry","45ft HC Dry","20ft Reefer","40ft Reefer","45ft HC Reefer"]},
+    hint:{FCL:"The whole container moves under this booking.",LCL:"The consolidator assigns the box, so the type is optional."}},
+  Air:{label:"Load type", basis:["ULD","Loose"], ph:"Select type",
+    types:{ULD:[{v:"AKH / LD3-45",s:"3.6 m³ · 1,135 kg"},{v:"AKE / LD-3",s:"4.3 m³ · 1,587 kg"},
+                {v:"DQF / LD-8",s:"7.2 m³ · 2,499 kg"},{v:"ALF / LD-6",s:"9 m³ · 3,175 kg"},
+                {v:"AAF / LD-26",s:"13 m³ · 4,626 kg"},{v:"AAU / LD-29",s:"14.5 m³ · 4,626 kg"},
+                {v:"PAG Pallet",s:"11.1 m³ · 4,626 kg"},{v:"PMC Pallet",s:"12.1 m³ · 5,035 kg"},
+                {v:"Unknown",s:"assigned by the airline"}],
+           Loose:["Cartons","Pallets","Crates","Drums","Unknown"]},
+    hint:{ULD:"IATA unit types. Pick Unknown if the airline has yet to assign one.",Loose:"Handed over loose and built up by the airline."}},
+  Truck:{label:"Vehicle type", basis:["FTL","LTL"], ph:"Select type",
+    types:{FTL:["20ft trailer","40ft trailer","Closed body","Open flatbed","Reefer truck","Tipper","Tanker"],
+           LTL:["Closed body","Open flatbed","Reefer truck"]},
+    hint:{FTL:"The full vehicle is booked for this shipment.",LTL:"Shared vehicle, charged by weight or volume."}}
+};
+const INCO = [["EXW",1,1,1],["FCA",1,1,1],["FAS",1,0,0],["FOB",1,0,0],["CFR",1,0,0],["CIF",1,0,0],
+              ["CPT",1,1,1],["CIP",1,1,1],["DAP",1,1,1],["DPU",1,1,1],["DDP",1,1,1]];
+const NAMES = {EXW:"Ex Works",FCA:"Free Carrier",FAS:"Free Alongside Ship",FOB:"Free on Board",CFR:"Cost and Freight",
+  CIF:"Cost, Insurance and Freight",CPT:"Carriage Paid To",CIP:"Carriage and Insurance Paid To",
+  DAP:"Delivered at Place",DPU:"Delivered at Place Unloaded",DDP:"Delivered Duty Paid"};
+const OPT = {
+  modes:["Sea","Air","Truck"], shipModes:["Direct","Transhipment"],
+  lines:["Maersk","MSC","CMA CGM","Hapag-Lloyd","Ocean Network Express","COSCO","Evergreen"],
+  airlines:["Emirates SkyCargo","Singapore Airlines Cargo","Qatar Airways Cargo","Lufthansa Cargo","Etihad Cargo","Air India Cargo"],
+  vessels:["OOCL BRISBANE","CMA CGM GRACE","MAERSK SELETAR","MSC ISABELLA","ONE OLYMPUS","EVER GIVEN","HAPAG BERLIN EXPRESS"],
+  ports:["Singapore","Port Klang","Colombo","Jebel Ali","Salalah","Rotterdam","Antwerp","Hong Kong","Busan"]
+};
+const TS = {
+  sea:{path:"sea.transhipmentPorts", cap:"Port", noun:"vessel", sel:true},
+  air:{path:"air.transhipmentAirports", cap:"Airport", noun:"flight", ph:"e.g. Dubai (DXB)"},
+  truck:{path:"truck.transfers", cap:"Transfer point", noun:"truck", ph:"e.g. Salem yard"}
+};
+
+const state = {
+  on:true, mode:"Sea", basis:"FCL", loadType:"", incoterm:"",
+  sea:{line:"",vessels:[{name:"",voyage:""}],shipMode:"Direct",containerNo:"",sealNo:"",traceable:null,blNo:"",blDate:"",transhipmentPorts:[""]},
+  air:{airline:"",flights:[""],shipMode:"Direct",awbNo:"",awbDate:"",transhipmentAirports:[""]},
+  truck:{trucks:[""],shipMode:"Direct",transfers:[""]}
+};
+let focusBack = null, note = "";
+
+const $ = q => document.querySelector(q);
+const esc = v => String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const get = p => p.split(".").reduce((o,k)=>o?.[k], state);
+const set = (p,v) => {const k=p.split("."), l=k.pop(); k.reduce((o,x)=>o[x],state)[l]=v;};
+const grp = () => ({Sea:"sea",Air:"air",Truck:"truck"})[state.mode];
+const legKey = () => ({Sea:"vessels",Air:"flights",Truck:"trucks"})[state.mode];
+const legs = () => get(grp()+"."+legKey());
+const tsCfg = () => TS[grp()];
+const tsList = () => get(tsCfg().path);
+const cap = () => Math.max(1, legs().length - 1);
+const isTS = () => get(grp()+".shipMode") === "Transhipment";
+
+const C = `<svg class="c" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>`;
+const CAL = `<svg class="c" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><rect x="3" y="4.5" width="18" height="16" rx="2.5"/><line x1="3" y1="9.5" x2="21" y2="9.5"/><line x1="8" y1="2.5" x2="8" y2="6"/><line x1="16" y1="2.5" x2="16" y2="6"/></svg>`;
+const XI = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+const PLUS = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+const TICK = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+const info = t => t ? `<span class="i" title="${esc(t)}">i</span>` : "";
+const clr = p => `<button class="x" data-act="clear" data-p="${p}" aria-label="Clear">${XI}</button>`;
+
+const txt = (p, ph, bold) => {
+  const v = get(p);
+  return `<div class="wrapx ${v?"has":""}"><input class="ctl ${bold&&v?"on":""}" type="text" data-bind="${p}" value="${esc(v)}" placeholder="${ph}">${clr(p)}</div>`;
+};
+const dd = (p, list, ph, o={}) => {
+  const v = get(p);
+  const items = list.map(x=>{
+    const val = x.v||x, sub = x.s?`<span class="s">${esc(x.s)}</span>`:"";
+    return `<div class="op ${val===v?"sel":""}" data-v="${esc(val)}">${esc(val)}${sub}</div>`;
+  }).join("");
+  const core = `<div class="dd" data-p="${p}" ${o.re?'data-re="1"':""}>
+    <button type="button" class="tg ${v?"has":""}"><span class="t">${v?esc(v):ph}</span>${C}</button>
+    <div class="menu">${items}</div></div>`;
+  return o.bare ? core : `<div class="wrapx ${v?"has":""}">${core}${clr(p)}</div>`;
+};
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const fmt = i => i ? `${i.slice(8)} ${MON[+i.slice(5,7)-1]} ${i.slice(0,4)}` : "";
+const dp = (p, ph) => {
+  const v = get(p);
+  return `<div class="wrapx ${v?"has":""}"><div class="dp" data-p="${p}">
+    <button type="button" class="tg ${v?"has":""}"><span class="t">${v?fmt(v):ph}</span>${CAL}</button>
+    <div class="menu"></div></div>${clr(p)}</div>`;
+};
+function cal(view, sel){
+  const [y,m] = view.split("-").map(Number);
+  const pad = (new Date(y,m-1,1).getDay()+6)%7, n = new Date(y,m,0).getDate();
+  const t = new Date(), ti = `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
+  let c = "";
+  for(let i=0;i<pad;i++) c += `<button class="dy bl"></button>`;
+  for(let d=1;d<=n;d++){
+    const iso = `${y}-${String(m).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    c += `<button class="dy ${iso===sel?"sel":""} ${iso===ti&&iso!==sel?"td":""}" data-d="${iso}">${d}</button>`;
+  }
+  return `<div class="ch">
+    <button class="nav" data-s="-1" aria-label="Previous"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
+    <div class="t">${["January","February","March","April","May","June","July","August","September","October","November","December"][m-1]} ${y}</div>
+    <button class="nav" data-s="1" aria-label="Next"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></button></div>
+  <div class="cg">${["M","T","W","T","F","S","S"].map(d=>`<div class="dw">${d}</div>`).join("")}${c}</div>
+  <div class="cf"><button data-d="${ti}">Today</button><button data-clear="1">Clear</button></div>`;
+}
+const fld = (label, inner, span="c3") => `<div class="f ${span}"><label>${label}</label>${inner}</div>`;
+
+/* ---- route strip ---- */
+function legName(i){
+  const n = legs().length;
+  if(state.mode==="Sea") return i===n-1 ? "Mother vessel" : (n>2 ? `Feeder ${i+1}` : "Feeder vessel");
+  if(state.mode==="Air") return `Flight ${i+1}`;
+  return `Truck ${i+1}`;
+}
+function routeStrip(){
+  const ph = {Air:"e.g. SQ 0711",Truck:"KL 07 BX 4412"}[state.mode];
+  const base = grp()+"."+legKey();
+  if(state.mode==="Sea"){
+    const n = state.sea.vessels.length;
+    const cells = state.sea.vessels.map((v,i)=>`<div class="leg stack">
+        <span class="cap">${legName(i)}</span>
+        ${dd(`sea.vessels.${i}.name`, OPT.vessels, "Select vessel", {bare:true})}
+        <input class="ctl vy ${v.voyage?"on":""}" type="text" data-bind="sea.vessels.${i}.voyage" value="${esc(v.voyage)}" placeholder="Voyage no.">
+        ${n>1?`<button class="rm" data-act="rmLeg" data-i="${i}" aria-label="Remove">${XI}</button>`:""}
+      </div>`).join(`<span class="ar">→</span>`);
+    return `<div class="strip">
+      <span class="lb">Route</span>${cells}
+      <button class="add" data-act="addLeg" title="Add vessel">${PLUS}</button>
+    </div>`;
+  }
+  const items = legs().map((v,i)=>`<div class="leg">
+      <span class="cap">${legName(i)}</span>
+      <input class="ctl ${v?"on":""}" type="text" data-bind="${base}.${i}" value="${esc(v)}" placeholder="${ph}">
+      ${legs().length>1?`<button class="rm" data-act="rmLeg" data-i="${i}" aria-label="Remove">${XI}</button>`:""}
+    </div>`).join(`<span class="ar">→</span>`);
+  return `<div class="strip">
+    <span class="lb">Route</span>${items}
+    <button class="add" data-act="addLeg" title="Add ${TS[grp()].noun}">${PLUS}</button>
+  </div>`;
+}
+function viaStrip(){
+  if(!isTS()) return "";
+  const c = tsCfg(), full = tsList().length >= cap();
+  const items = tsList().map((v,i)=>`<div class="leg">
+      <span class="cap">${c.cap} ${i+1}</span>
+      ${c.sel ? dd(`${c.path}.${i}`, OPT.ports, "Select port", {bare:true})
+              : `<input class="ctl ${v?"on":""}" type="text" data-bind="${c.path}.${i}" value="${esc(v)}" placeholder="${c.ph}">`}
+      ${tsList().length>1?`<button class="rm" data-act="rmVia" data-i="${i}" aria-label="Remove">${XI}</button>`:""}
+    </div>`).join(`<span class="ar">→</span>`);
+  return `<div class="strip via">
+    <span class="lb">Via</span>${items}
+    <button class="add" data-act="addVia" ${full?"disabled":""}
+      title="${full?`Add another ${c.noun} first — a handover needs a leg on each side.`:"Add "+c.cap.toLowerCase()}">${PLUS}</button>
+    ${info(`${legs().length} ${c.noun} legs allow up to ${cap()} handover${cap()>1?"s":""}.`)}
+  </div>`;
+}
+
+/* ---- rows ---- */
+function loadFld(){
+  const c = LOAD[state.mode];
+  const seg = c.basis.map(b=>`<button data-act="basis" data-b="${b}" class="${state.basis===b?"on":""}">${b}</button>`).join("");
+  return fld(`${c.label}${info(c.hint[state.basis])}<span class="seg">${seg}</span>`,
+             dd("loadType", c.types[state.basis], c.ph));
+}
+function incoFld(){
+  const i = state.mode==="Sea"?1:state.mode==="Air"?2:3;
+  const list = INCO.filter(t=>t[i]).map(t=>({v:t[0], s:NAMES[t[0]]}));
+  const tip = note || (state.mode!=="Sea" ? `FAS, FOB, CFR and CIF are sea-only and hidden for ${state.mode}.` : "");
+  return fld(`Incoterm${info(tip)}`, dd("incoterm", list, "Select"));
+}
+function shipFld(){
+  const n = legs().length;
+  return fld(`Ship mode${n>1?info(`Set automatically: ${n} ${tsCfg().noun} legs means the cargo is transhipped.`):""}`,
+             dd(grp()+".shipMode", OPT.shipModes, "Select", {re:true}));
+}
+function modeRow(){
+  if(state.mode==="Sea"){
+    const s = state.sea, linked = s.traceable && s.traceable.containerNo===s.containerNo.trim() && s.traceable.sealNo===s.sealNo.trim();
+    return fld("Shipping line", dd("sea.line", OPT.lines, "Select line")) + shipFld()
+      + fld("BL No.", txt("sea.blNo","B/L number")) + fld("BL date", dp("sea.blDate","Select date"))
+      + `<div class="f c6"><label>Traceable object${info("The container and its seal are linked together as one traceable object.")}</label>
+          <div class="pair">
+            ${txt("sea.containerNo","Container No.")}
+            ${txt("sea.sealNo","Seal No.")}
+            <button class="link ${linked?"done":""}" data-act="trace" ${linked?"disabled":""}
+              title="${linked?"Linked":"Add to Traceable Object"}">${linked?TICK+"Linked":PLUS+"Link"}</button>
+          </div></div>`;
+  }
+  if(state.mode==="Air"){
+    return fld("Airline", dd("air.airline", OPT.airlines, "Select airline")) + shipFld()
+      + fld("AWB No.", txt("air.awbNo","618-12345678")) + fld("AWB date", dp("air.awbDate","Select date"));
+  }
+  return shipFld();
+}
+function render(){
+  $("#tabs").innerHTML = OPT.modes.map(m=>`<button data-act="mode" data-m="${m}" class="${state.mode===m?"on":""}">${m}</button>`).join("");
+  $("#body").innerHTML = `<div class="grid">${loadFld()}${incoFld()}${modeRow()}
+      <div class="c12">${routeStrip()}</div>
+      ${isTS()?`<div class="c12">${viaStrip()}</div>`:""}
+    </div>
+    <div class="ft"><button class="ghost" id="dump">Show data</button>
+      <span class="note" id="n">${state.mode} shipment${isTS()?" · transhipped":""}</span></div>
+    <pre id="pre" class="hide"></pre>`;
+  status();
+  if(focusBack){ document.querySelector(`.dd[data-p="${focusBack}"] .tg`)?.focus(); focusBack = null; }
+}
+function status(){
+  const g = grp(), d = state[g], L = legs(), last = L[L.length-1];
+  const firstLeg = state.mode==="Sea" ? (!!last.name && !!last.voyage) : !!L[0];
+  const r = [!!state.basis, (state.mode==="Sea"&&state.basis==="LCL")||!!state.loadType, !!state.incoterm, firstLeg, !!d.shipMode];
+  if(state.mode==="Sea") r.push(!!d.line, !!d.containerNo, !!d.sealNo, !!d.blNo, !!d.blDate);
+  if(state.mode==="Air") r.push(!!d.airline, !!d.awbNo, !!d.awbDate);
+  if(isTS()) r.push(!!tsList()[0]);
+  const ok = state.on && r.every(Boolean);
+  const p = $("#pill"); p.textContent = ok?"completed":"incomplete"; p.className = "pill "+(ok?"ok":"no");
+}
+function dump(){
+  const o = {shipmentMode:state.mode, loadBasis:state.basis, loadType:state.loadType, incoterm:state.incoterm};
+  o[grp()] = state[grp()];
+  $("#pre").textContent = JSON.stringify(o,null,2);
+}
+function closeAll(x){ document.querySelectorAll(".dd.open,.dp.open").forEach(d=>{if(d!==x)d.classList.remove("open")}); }
+
+/* ---- modal ---- */
+function popup(ok, title, msg){
+  document.getElementById("ov")?.remove();
+  const ov = document.createElement("div"); ov.className="ov"; ov.id="ov";
+  ov.innerHTML = `<div class="md ${ok?"":"err"}" role="dialog" aria-modal="true">
+    <button class="cl" data-c="1" aria-label="Close">${XI}</button>
+    <div class="bd">${ok?`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`
+      :`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><line x1="12" y1="6" x2="12" y2="13"/><line x1="12" y1="17.5" x2="12" y2="17.5"/></svg>`}</div>
+    <h3>${esc(title)}</h3><p>${msg}</p>
+    <button class="go" data-c="1">${ok?"Done":"Got it"}</button></div>`;
+  document.body.appendChild(ov);
+  ov.querySelector(".go").focus();
+  ov.addEventListener("click", e=>{ if(e.target===ov||e.target.closest("[data-c]")) ov.remove(); });
+}
+
+/* ---- events ---- */
+document.addEventListener("input", e=>{
+  const el = e.target.closest("[data-bind]"); if(!el) return;
+  set(el.dataset.bind, el.value);
+  el.closest(".wrapx")?.classList.toggle("has", !!el.value);
+  el.classList.toggle("on", !!el.value && (el.closest(".leg")||/vessels|flights|trucks/.test(el.dataset.bind)));
+  status(); if(!$("#pre").classList.contains("hide")) dump();
+});
+
+document.addEventListener("click", e=>{
+  const t = e.target;
+  const tg = t.closest(".dd .tg,.dp .tg");
+  if(tg && !tg.disabled){
+    const box = tg.parentElement, open = box.classList.contains("open");
+    closeAll();
+    if(!open){
+      if(box.classList.contains("dp")){
+        box.dataset.v = (get(box.dataset.p)||new Date().toISOString().slice(0,10)).slice(0,7);
+        box.querySelector(".menu").innerHTML = cal(box.dataset.v, get(box.dataset.p));
+      }
+      box.classList.add("open");
+      box.querySelector(".op.sel")?.scrollIntoView({block:"nearest"});
+    }
+    return;
+  }
+  const op = t.closest(".op");
+  if(op){
+    const box = op.closest(".dd"), p = box.dataset.p;
+    set(p, op.dataset.v);
+    if(p==="incoterm") note = "";
+    closeAll(); focusBack = p; render(); return;
+  }
+  const nav = t.closest(".nav");
+  if(nav){
+    const box = nav.closest(".dp"); let [y,m] = box.dataset.v.split("-").map(Number);
+    m += +nav.dataset.s; if(m<1){m=12;y--} if(m>12){m=1;y++}
+    box.dataset.v = `${y}-${String(m).padStart(2,"0")}`;
+    box.querySelector(".menu").innerHTML = cal(box.dataset.v, get(box.dataset.p));
+    return;
+  }
+  const d = t.closest("[data-d],[data-clear]");
+  if(d && d.closest(".dp")){
+    const box = d.closest(".dp"); set(box.dataset.p, d.dataset.clear?"":d.dataset.d);
+    closeAll(); render(); return;
+  }
+  const a = t.closest("[data-act]");
+  if(a && !a.disabled){
+    const act = a.dataset.act, i = +a.dataset.i, g = grp(), base = g+"."+legKey();
+    if(act==="mode"){
+      state.mode = a.dataset.m; state.basis = LOAD[state.mode].basis[0]; state.loadType = "";
+      const idx = state.mode==="Sea"?1:state.mode==="Air"?2:3;
+      const row = INCO.find(x=>x[0]===state.incoterm);
+      if(row && !row[idx]){ note = `${state.incoterm} is sea-only, so it was cleared for ${state.mode}.`; state.incoterm=""; }
+      else note = "";
+    }
+    else if(act==="basis"){
+      state.basis = a.dataset.b;
+      const l = LOAD[state.mode].types[state.basis].map(x=>x.v||x);
+      if(!l.includes(state.loadType)) state.loadType = "";
+    }
+    else if(act==="addLeg" || act==="rmLeg"){
+      const arr = get(base);
+      act==="addLeg" ? arr.push(state.mode==="Sea"?{name:"",voyage:""}:"") : arr.splice(i,1);
+      set(g+".shipMode", arr.length>1 ? "Transhipment" : "Direct");
+      const v = tsList(); if(v.length > Math.max(1,arr.length-1)) set(tsCfg().path, v.slice(0, Math.max(1,arr.length-1)));
+    }
+    else if(act==="addVia"){ if(tsList().length>=cap()) return; tsList().push(""); }
+    else if(act==="rmVia"){ tsList().splice(i,1); }
+    else if(act==="clear"){ set(a.dataset.p, ""); if(a.dataset.p==="incoterm") note=""; }
+    else if(act==="trace"){
+      const s = state.sea, cn = s.containerNo.trim(), sn = s.sealNo.trim();
+      if(!cn || !sn){
+        popup(false,"Container and seal needed",
+          `Enter ${!cn&&!sn?"a container and seal number":!cn?"a container number":"a seal number"} before linking.`);
+        document.querySelector(`[data-bind="sea.${cn?"sealNo":"containerNo"}"]`)?.focus();
+        return;
+      }
+      s.traceable = {containerNo:cn, sealNo:sn, linkedAt:new Date().toISOString()};
+      popup(true,"Added to Traceable Object",`Container <b>${esc(cn)}</b> with seal <b>${esc(sn)}</b> is now linked.`);
+    }
+    render(); return;
+  }
+  if(t.closest("#dump")){
+    const pre = $("#pre"), show = pre.classList.contains("hide");
+    pre.classList.toggle("hide", !show);
+    $("#dump").textContent = show?"Hide data":"Show data";
+    if(show) dump();
+    return;
+  }
+  if(!t.closest(".dd,.dp")) closeAll();
+});
+
+document.addEventListener("keydown", e=>{ if(e.key==="Escape"){ closeAll(); document.getElementById("ov")?.remove(); } });
+$("#en").addEventListener("change", e=>{ state.on = e.target.checked; $("#card").classList.toggle("off", !state.on); status(); });
+$("#min").addEventListener("click", ()=>{ $("#card").classList.toggle("min"); });
+render();
+</script>
+</body>
+</html>
