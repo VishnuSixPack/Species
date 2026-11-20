@@ -363,6 +363,24 @@
     .vc *{animation:none!important}
     .steps li{opacity:1}.steps::after{height:calc(100% - 30px)}.g-fg{stroke-dashoffset:45}.bars em{width:var(--w)}
     .doc em{width:100%}.ck,.stamp,.sp{opacity:1;transform:none}.typed{width:4ch}}
+
+  /* mobile menu */
+  .menu-btn{display:none;width:40px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--white);cursor:pointer;place-items:center;padding:0}
+  .menu-btn svg{width:20px;height:20px;fill:none;stroke:var(--ink);stroke-width:1.8;stroke-linecap:round;transition:transform .25s}
+  .menu-btn path{transition:transform .25s,opacity .2s;transform-origin:12px 12px}
+  header.mopen .menu-btn .l1{transform:translateY(5px) rotate(45deg)}
+  header.mopen .menu-btn .l2{opacity:0}
+  header.mopen .menu-btn .l3{transform:translateY(-5px) rotate(-45deg)}
+  .menu-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .mnav{border-top:1px solid var(--line);background:rgba(255,255,255,.97)}
+  .mnav-in{display:flex;flex-direction:column;padding-top:8px;padding-bottom:14px}
+  .mnav a{padding:12px 4px;border-bottom:1px solid var(--line);font-size:15px;color:var(--ink);font-weight:300}
+  .mnav a:last-child{border-bottom:0}
+  .mnav a.on{color:var(--accent)}
+  .mnav-login{display:none}
+  @media (max-width:980px){ .menu-btn{display:grid} }
+  @media (min-width:981px){ .mnav{display:none!important} }
+  @media (max-width:620px){ .mnav-login{display:block} }
   /* reveal */
   .rv{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
   .rv.in{opacity:1;transform:none}
@@ -406,11 +424,33 @@
       <a href="contact.html">Contact</a>
       <a href="about.html">About</a>
     </nav>
-    <div style="display:flex;gap:10px">
+    <div style="display:flex;gap:10px;align-items:center">
       <a class="btn ghost" href="login.html">Login</a>
       <button class="btn primary" type="button" data-open-test>Take the test</button>
+      <button class="menu-btn" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="mnav" onclick="toggleMnav()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path class="l1" d="M4 7h16"/><path class="l2" d="M4 12h16"/><path class="l3" d="M4 17h16"/></svg></button>
     </div>
   </div>
+  <nav class="mnav" id="mnav" aria-label="Main menu" hidden>
+    <div class="wrap mnav-in">
+      <a href="index.html" class="on">Home</a>
+      <a href="teaser.html">Platform</a>
+      <a href="#what-we-do">What we do</a>
+      <a href="contact.html">Contact</a>
+      <a href="about.html">About</a>
+      <a href="login.html" class="mnav-login">Login</a>
+    </div>
+  </nav>
+  <script>
+    function toggleMnav(force){
+      const m = document.getElementById("mnav"), b = document.querySelector(".menu-btn"), open = force ?? m.hidden;
+      m.hidden = !open; b.setAttribute("aria-expanded", String(open)); b.setAttribute("aria-label", open ? "Close menu" : "Open menu");
+      document.querySelector("header").classList.toggle("mopen", open);
+    }
+    document.addEventListener("click", e => { if (e.target.closest("#mnav a") || (!e.target.closest("header") && !document.getElementById("mnav").hidden)) toggleMnav(false); });
+    document.addEventListener("keydown", e => { if (e.key === "Escape" && !document.getElementById("mnav").hidden) { toggleMnav(false); document.querySelector(".menu-btn").focus(); } });
+    matchMedia("(min-width:981px)").addEventListener("change", e => { if (e.matches) toggleMnav(false); });
+  </script>
 </header>
 
 <main id="top">
