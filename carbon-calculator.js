@@ -4310,7 +4310,7 @@ function renderOverview(){
   const confirmedCount = OVERVIEW_CTES.filter(c => state.confirmed[c.key]).length;
 
   return `
-  <div class="shell">
+  <div class="shell overview-page">
     <div class="pm-detail-topbar">
       <div class="pm-detail-left">
         <button class="pm-back" data-action="back-to-calculator">←</button>

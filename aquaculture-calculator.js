@@ -1370,19 +1370,21 @@ const DD = (() => {
   }
   function place() {
     if (!menu || !cur) return;
+    /* the page is zoomed (html { zoom }), so fixed-position values are given in zoomed px: measure on screen, then divide by the zoom */
+    const Z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1, px = (v) => (v / Z) + 'px';
     const r = cur.btn.getBoundingClientRect(), vw = innerWidth, vh = innerHeight;
-    const w = Math.min(Math.max(r.width, cur.btn.classList.contains('dd-add') ? 190 : 150), vw - 16);
+    const w = Math.min(Math.max(r.width, (cur.btn.classList.contains('dd-add') ? 190 : 150) * Z), vw - 16);
     let left = Math.min(Math.max(8, r.left), vw - w - 8);
-    menu.style.width = w + 'px'; menu.style.left = left + 'px';
+    menu.style.width = px(w); menu.style.left = px(left);
     const list = menu.querySelector('.dd-list'); list.style.maxHeight = '';
-    const need = Math.min(menu.scrollHeight, 340), below = vh - r.bottom - 12, above = r.top - 12;
-    const up = below < Math.min(need, 220) && above > below;
+    const need = Math.min(menu.scrollHeight * Z, 340 * Z), below = vh - r.bottom - 12, above = r.top - 12;
+    const up = below < Math.min(need, 220 * Z) && above > below;
     const room = Math.max(120, (up ? above : below));
-    list.style.maxHeight = Math.min(300, room - (menu.querySelector('.dd-search') ? 52 : 14)) + 'px';
+    list.style.maxHeight = Math.min(300, room / Z - (menu.querySelector('.dd-search') ? 52 : 14)) + 'px';
     menu.classList.toggle('up', up);
-    if (up) { menu.style.top = 'auto'; menu.style.bottom = (vh - r.top + 6) + 'px'; }
-    else { menu.style.bottom = 'auto'; menu.style.top = (r.bottom + 6) + 'px'; }
-    menu.style.setProperty('--ox', Math.min(Math.max(r.left + 22 - left, 14), w - 14) + 'px');
+    if (up) { menu.style.top = 'auto'; menu.style.bottom = px(vh - r.top + 6); }
+    else { menu.style.bottom = 'auto'; menu.style.top = px(r.bottom + 6); }
+    menu.style.setProperty('--ox', px(Math.min(Math.max(r.left + 22 - left, 14), w - 14)));
   }
   function open(btn) {
     const sel = btn.previousElementSibling; if (!sel || sel.tagName !== 'SELECT' || btn.disabled) return;
@@ -1534,14 +1536,15 @@ const DP = (() => {
 
   function place() {
     if (!pop || !cur) return;
+    const Z = parseFloat(getComputedStyle(document.documentElement).zoom) || 1, px = (v) => (v / Z) + 'px';
     const r = cur.btn.getBoundingClientRect(), vw = innerWidth, vh = innerHeight;
-    const w = Math.min(304, vw - 16), left = Math.min(Math.max(8, r.left), vw - w - 8);
-    pop.style.width = w + 'px'; pop.style.left = left + 'px';
-    const h = pop.offsetHeight, below = vh - r.bottom - 10, above = r.top - 10;
+    const w = Math.min(304 * Z, vw - 16), left = Math.min(Math.max(8, r.left), vw - w - 8);
+    pop.style.width = px(w); pop.style.left = px(left);
+    const h = pop.offsetHeight * Z, below = vh - r.bottom - 10, above = r.top - 10;
     const up = below < h && above > below;
     pop.classList.toggle('up', up);
-    if (up) { pop.style.top = 'auto'; pop.style.bottom = (vh - r.top + 6) + 'px'; } else { pop.style.bottom = 'auto'; pop.style.top = Math.max(8, r.bottom + 6) + 'px'; }
-    pop.style.setProperty('--ox', Math.min(Math.max(r.left + 24 - left, 16), w - 16) + 'px');
+    if (up) { pop.style.top = 'auto'; pop.style.bottom = px(vh - r.top + 6); } else { pop.style.bottom = 'auto'; pop.style.top = px(Math.max(8, r.bottom + 6)); }
+    pop.style.setProperty('--ox', px(Math.min(Math.max(r.left + 24 - left, 16), w - 16)));
   }
   function open(btn) {
     const inp = btn.previousElementSibling; if (!inp || inp.tagName !== 'INPUT' || btn.disabled) return;
