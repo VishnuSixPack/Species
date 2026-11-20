@@ -485,6 +485,10 @@ const SPECIES = 'Thunnus thynnus';
 const FEED_MODES = [['bait', 'Bait Fish'], ['pellet', 'Pellet']];
 
 const STAGES = [];
+const FARM_METHODS = ['Sea cage', 'Net pen', 'Pond', 'Raceway', 'Recirculating (RAS)', 'Longline', 'Other'];
+const HARVEST_METHODS = ['Brailing', 'Net lift', 'Pumping', 'Crowding and seine', 'Harpoon / spear', 'Other'];
+const STORAGE_TYPES = ['Frozen', 'Chilled', 'Ambient', 'Other'];
+const PROC_STAGES = ['Gutting', 'Filleting', 'Loining', 'Cooking', 'Canning', 'Freezing', 'Packing', 'Other'];
 
 /* GDST Event and Location data. Belong to the CTE, so the keys are shared by every stage under it.
    Informational only: they never change the result. */
@@ -519,6 +523,11 @@ STAGES.push({
         T('form', 'Product Form', { def: 'Live Juvenile Fish' }),
         T('sku', 'Item/SKU/UPC/GTIN', { def: '', ph: 'Enter value' })
       ]
+    }, {
+      title: 'Hatchery origin', fields: [
+        T('brood', 'Source of broodstock', { def: '', ph: 'Enter value' }),
+        { t: 'date', id: 'hvdate', label: 'Harvest date per tank', tip: 'Date on which fingerlings were transferred to the grow-out farm/pond.' }
+      ]
     }], [{
       title: 'Capture', fields: [
         SEL('coords', 'Availability of Catch Coordinates', ['Yes', 'No'], { def: 'No' }),
@@ -532,7 +541,8 @@ STAGES.push({
     }], [{
       title: 'Traceability', fields: [
         T('kde', 'Linking KDE (batch, lot, or serial)', { def: 'Unknown' }),
-        T('coc', 'Chain of Custody Certification', { def: 'Unknown' })
+        T('coc', 'Chain of Custody Certification', { def: 'Unknown' }),
+        T('hcert', 'Harvest Certification', { def: '', ph: 'Enter value' })
       ]
     }, {
       title: 'Calculation', fields: [
@@ -650,11 +660,18 @@ STAGES.push({
   modeKey: 'feedType', modes: FEED_MODES,
   cols: () => [[{
     title: 'General', fields: [
+      T('org', 'Organization', { def: 'Farm' }),
       T('gln', 'GLN of farm', { def: "Farm's GLN" }), T('cage', 'Cage ID', { def: '--' }),
-      T('cert', 'Farm Certification', { def: 'ASC or BAP Certification' }), T('own', 'Product Ownership', { def: 'Farm' }),
+      T('cert', 'Farm Certification', { def: 'ASC or BAP Certification' }),
+      T('hcert', 'Harvest Certification', { key: 'farm.hcert', def: '', ph: 'Enter value' }),
+      T('own', 'Product Ownership', { def: 'Farm' }),
+      SEL('fmethod', 'Farming method', FARM_METHODS, { key: 'farm.fmethod', ph: 'Select an option' }),
       T('species', 'Species', { def: SPECIES }), T('sku', 'Item/SKU/UPC/GTIN', { def: '--' }),
       T('kde', 'Linking KDE (batch, lot, or serial)', { def: '--' }),
-      { t: 'date', id: 'stock', label: 'Stocking date', def: '2026-10-12' }
+      { t: 'date', id: 'stock', label: 'Stocking date', def: '2026-10-12' },
+      { t: 'mnum', id: 'nfish', label: 'No. of fish stocked', ph: 'Enter value', tip: 'Informational only. It does not change the result.' },
+      { t: 'mnum', id: 'avgw', label: 'Average weight', unit: 'kg', ph: 'Enter value', tip: 'Informational only. It does not change the result.' },
+      { t: 'date', id: 'hvdate', label: 'Date of harvest', key: 'farm.hvdate' }
     ]
   }], [{
     title: 'Energy', fields: [
@@ -667,7 +684,8 @@ STAGES.push({
       NUM('fuelT', 'Fuel consumption for transport', 'farming.{ft}.fuelTPerMT', { unit: 't per MT feed', tip: 'Feed MT × tonnes of fuel per MT × 3,206 kg CO₂e per tonne of fuel.' }),
       CALC('misc', 'Misc fuel usage emission', 'farm.misc', { unit: 'kg CO₂e', tip: '0.10 L/kg × 2.64 kg CO₂e/L × net biomass gain. Generator and mooring inspection.' })
     ]
-  }]]
+  }]],
+  more: () => EVLOC('farm')
 });
 
 STAGES.push({
@@ -675,10 +693,13 @@ STAGES.push({
   desc: 'Captures emissions from final collection operations.',
   cols: () => [[{
     title: 'General', fields: [
+      T('org', 'Organization', { def: 'Farm' }),
       T('gln', 'Location GLN', { def: "Farm's GLN" }), T('own', 'Product Ownership', { def: 'Farm' }),
+      SEL('fmethod', 'Farming method', FARM_METHODS, { key: 'farm.fmethod', ph: 'Select an option' }),
       T('species', 'Species', { def: SPECIES }), T('form', 'Product form', { def: 'Whole fish live' }),
       T('sku', 'Item/SKU/UPC/GTIN', { def: 'N/A' }), T('kde', 'Linking KDE (batch, lot, or serial number)', { def: '--' }),
-      T('coc', 'Chain of Custody Certification', { def: '--' })
+      T('coc', 'Chain of Custody Certification', { def: '--' }),
+      T('hcert', 'Harvest Certification', { key: 'farm.hcert', def: '', ph: 'Enter value' })
     ]
   }], [{
     title: 'Energy', fields: [
@@ -686,15 +707,20 @@ STAGES.push({
       NUM('fuelLMT', 'Fuel consumption', 'harvest.fuelLPerMT', { unit: 'L/MT', tip: 'Litres per MT harvested × MT × 3.20 kg CO₂e per litre.' }),
       CALC('misc', 'Misc fuel usage emission', 'harv.misc', { unit: 'kg CO₂e', tip: '0.05 L/kg × 2.64 kg CO₂e/L × harvest quantity. Cage lifting and platform machinery.' }),
       CALC('refrig', 'Refrigeration emission', 'harv.refrig', { unit: 'kg CO₂e', tip: '0.10 kg CO₂e per kg harvested, for chilling at harvest.' }),
-      CALC('elec', 'Electricity emission', 'harv.elec', { unit: 'kg CO₂e', tip: '0.03 kWh/kg × 0.51 kg CO₂e/kWh × harvest quantity.' })
+      CALC('elec', 'Electricity emission', 'harv.elec', { unit: 'kg CO₂e', tip: '0.03 kWh/kg × 0.51 kg CO₂e/kWh × harvest quantity.' }),
+      { t: 'mnum', id: 'distKm', label: 'Distance', unit: 'km', ph: 'Enter value', tip: 'Informational only. It does not change the result.' }
     ]
   }], [{
     title: 'Collection', fields: [
       { t: 'range', id: 'dates', label: 'Harvesting date(s)' },
+      SEL('hmethod', 'Harvest method', HARVEST_METHODS, { ph: 'Select an option' }),
       NUM('growth', 'Growth Multiplier', 'harvest.growth', { step: 0.1, tip: 'Harvest quantity = towing yield × growth multiplier.' }),
-      CALC('qty', 'Total Harvest quantity', 'harv.qty', { unit: 'KG' })
+      CALC('qty', 'Total Harvest quantity', 'harv.qty', { unit: 'KG' }),
+      { t: 'mnum', id: 'mortr', label: 'Mortality rate', unit: '%', ph: 'Enter value', tip: 'Informational only. It does not change the result.' },
+      { t: 'mnum', id: 'avgw', label: 'Average fish weight', unit: 'kg', ph: 'Enter value', tip: 'Informational only. It does not change the result.' }
     ]
-  }]]
+  }]],
+  more: () => EVLOC('farm')
 });
 /* Stage definitions 6-10 + computed outputs */
 const DIST_UNITS = [['km', 'Kilometres'], ['mi', 'Miles']];
@@ -706,6 +732,7 @@ STAGES.push({
     title: 'Section I', fields: [
       T('org', 'Organization', { def: '--' }), T('gln', 'Location GLN', { def: '--' }), T('own', 'Product Ownership', { def: '--' }),
       T('species', 'Species', { def: SPECIES }), T('form', 'Product form', { def: 'Frozen' }), T('sku', 'Item/SKU/UPC/GTIN', { def: '--' }),
+      T('kde', 'Linking KDE (batch, lot, or serial number)', { def: '--' }),
       { t: 'range', id: 'ev', label: 'Event Date(s)' }
     ]
   }], [{
@@ -719,9 +746,11 @@ STAGES.push({
     title: 'Section III', fields: [
       NUM('elec', 'Electricity consumption', 'landing.elecKwh', { unit: 'kWh', tip: 'Optional, at 0.4999 kg CO₂e per kWh.' }),
       SEL('fuel', 'Fuel type', ['Diesel', 'Marine Diesel Oil'], { def: 'Diesel' }),
+      { t: 'mnum', id: 'fuelL', label: 'Fuel consumption', unit: 'Litre', ph: 'Enter value', tip: 'Informational only. Emissions use the refrigerated truck factor below.' },
       CALC('ef', 'Emission factor', 'land.ef', { unit: 'kg CO₂e / kg·km', tip: 'Refrigerated truck factor. Emissions = weight × distance × 0.0000542. Source: Climatiq refrigerated truck dataset.' })
     ]
-  }]]
+  }]],
+  more: () => EVLOC('shipin')
 });
 
 STAGES.push({
@@ -732,6 +761,7 @@ STAGES.push({
       T('org', 'Organization', { def: 'Storage Facility' }), T('gln', 'Location GLN', { def: '--' }), T('own', 'Product Ownership', { def: '--' }),
       T('species', 'Species', { def: SPECIES }), T('form', 'Product form', { def: 'Frozen' }), T('sku', 'Item/SKU/UPC/GTIN', { def: '--' }),
       T('kde', 'Linking KDE (batch, lot, or serial number)', { def: '--' }), T('coc', 'Chain of Custody Certification', { def: '--' }),
+      T('license', 'License', { def: '', ph: 'Enter value' }),
       { t: 'range', id: 'ev', label: 'Event Date(s)' }
     ]
   }], [{
@@ -747,9 +777,13 @@ STAGES.push({
       SEL('fuel', 'Fuel type', ['None', 'Diesel', 'Marine Diesel Oil'], { def: 'None' }),
       NUM('fuelL', 'Fuel consumption', 'agg.fuelL', { unit: 'Litre', tip: 'Handling equipment fuel, at 0.85 × 3.026 kg CO₂e per litre.' }),
       T('mode', 'Transport Mode', { def: '--' }),
-      NUM('dist', 'Distance to facility', 'agg.distKm', { unit: 'km' })
+      NUM('dist', 'Distance travelled', 'agg.distKm', { unit: 'km' }),
+      { t: 'mnum', id: 'coolKwh', label: 'Refrigeration energy', unit: 'kWh', ph: 'Enter value', tip: 'Informational only. Refrigeration emission is calculated from the weight and refrigerant above.' },
+      { t: 'mnum', id: 'elecKwh', label: 'Electricity consumption', unit: 'kWh', ph: 'Enter value', tip: 'Informational only. Electricity emission above is calculated from the weight.' },
+      { t: 'mnum', id: 'waterL', label: 'Water usage', unit: 'L', ph: 'Enter value', tip: 'Informational only. Water emission above is calculated from the weight.' }
     ]
-  }]]
+  }]],
+  more: () => EVLOC('agg')
 });
 
 const PRODUCTS = [['sashimi', 'Tuna Sashimi'], ['canned', 'Canned Tuna'], ['pellet', 'Pellet Processing']];
@@ -758,7 +792,7 @@ STAGES.push({
   desc: 'A stage where raw material is converted to product.', events: 'trans',
   cols: () => [[{
     title: 'Processing', fields: [
-      T('org', 'Processor', { def: 'AT Seafood Global Limited' }), T('gln', 'Location GLN', { def: '--' }),
+      T('org', 'Organization', { def: 'AT Seafood Global Limited' }), T('gln', 'Location GLN', { def: '--' }),
       T('own', 'Product Ownership', { def: '--' }), T('species', 'Species', { def: SPECIES }),
       T('kde', 'Linking KDE (batch, lot, or serial number)', { def: '--' }), { t: 'range', id: 'ev', label: 'Event Date(s)' }
     ]
@@ -776,7 +810,38 @@ STAGES.push({
       CALC('water', 'Water', 'trans.water', { unit: 'kg CO₂e', tip: '5 L/kg × 0.14 kg CO₂e/L × raw weight.' }),
       CALC('fuel', 'Fuel', 'trans.fuel', { unit: 'kg CO₂e', tip: '0.52 L/kg × 2.64 kg CO₂e/L × raw weight.' })
     ]
-  }]]
+  }]],
+  more: () => [
+    { title: 'Product and certification', fields: [
+      SEL('pstage', 'Processing stages', PROC_STAGES, { ph: 'Select an option' }),
+      T('form', 'Product form', { def: '', ph: 'Enter value' }),
+      { t: 'date', id: 'pdate', label: 'Production date' },
+      T('origin', 'Product origin', { def: '', ph: 'Enter value' }),
+      T('license', 'License', { def: '', ph: 'Enter value' }),
+      T('hcert', 'Harvest Certification', { def: '', ph: 'Enter value' }),
+      T('sku', 'Item/SKU/UPC/GTIN', { def: '', ph: 'Enter value' }),
+      T('coc', 'Chain of Custody Certification', { def: '', ph: 'Enter value' })
+    ] },
+    { title: 'Inputs and equipment', fields: [
+      T('rawmat', 'Purchased Raw Materials and services', { def: '', ph: 'Enter value' }),
+      T('equip', 'Equipment & machinery', { def: '', ph: 'Enter value' }),
+      T('ingr', 'Ingredients', { def: '', ph: 'Enter value' }),
+      T('leased', 'Leased assets', { def: '', ph: 'Enter value' })
+    ] },
+    { title: 'Energy, fuel and water', fields: [
+      SEL('fuelT', 'Fuel Type', FUELS, { ph: 'Select an option' }),
+      { t: 'mnum', id: 'fuelL', label: 'Fuel consumption', unit: 'Litre', ph: 'Enter value', tip: 'Informational only. The Fuel emission above is calculated from the raw weight.' },
+      SEL('cfuel', 'Combustion Fuel Type', FUELS, { ph: 'Select an option' }),
+      { t: 'mnum', id: 'cfuelV', label: 'Fuel Combustion', unit: 'Litre', ph: 'Enter value', tip: 'Informational only. It does not change the result.' },
+      { t: 'mnum', id: 'upe', label: 'Upstream Energy', unit: 'kWh', ph: 'Enter value', tip: 'Informational only. It does not change the result.' },
+      { t: 'mnum', id: 'fug', label: 'Fugitive emissions', unit: 'kg CO₂e', ph: 'Enter value', tip: 'Informational only. It does not change the result.' },
+      { t: 'mnum', id: 'elecKwh', label: 'Electricity consumption', unit: 'kWh', ph: 'Enter value', tip: 'Informational only. Electricity emission above is calculated from the raw weight.' },
+      { t: 'mnum', id: 'coolKwh', label: 'Refrigeration energy', unit: 'kWh', ph: 'Enter value', tip: 'Informational only. Refrigeration emission above is calculated from the raw weight.' },
+      { t: 'mnum', id: 'waterL', label: 'Water usage', unit: 'L', ph: 'Enter value', tip: 'Informational only. Water emission above is calculated from the raw weight.' },
+      { t: 'mnum', id: 'wwater', label: 'Waste water', unit: 'L', ph: 'Enter value', tip: 'Informational only. It does not change the result.' }
+    ] },
+    ...EVLOC('processor')
+  ]
 });
 
 STAGES.push({
@@ -793,7 +858,26 @@ STAGES.push({
       { t: 'qty', id: 'w', label: 'Weight or Quantity', p: 'storage.{ev:storage}.weight', link: 'storage', linkLabel: 'Transformation yield' },
       CALC('elec', 'Electricity emission', 'stor.elec', { unit: 'kg CO₂e', tip: 'Weight × 0.12 kWh/kg × 0.499 kg CO₂e/kWh.' })
     ]
-  }]]
+  }]],
+  more: () => [
+    { title: 'Product and certification', fields: [
+      T('own', 'Product Ownership', { def: '', ph: 'Enter value' }),
+      T('sku', 'Item/SKU/UPC/GTIN', { def: '', ph: 'Enter value' }),
+      { t: 'date', id: 'pdate', label: 'Production date' },
+      T('origin', 'Product origin', { def: '', ph: 'Enter value' }),
+      T('license', 'License', { def: '', ph: 'Enter value' }),
+      T('hcert', 'Harvest Certification', { def: '', ph: 'Enter value' }),
+      T('coc', 'Chain of Custody Certification', { def: '', ph: 'Enter value' })
+    ] },
+    { title: 'Storage details', fields: [
+      SEL('stype', 'Storage type', STORAGE_TYPES, { ph: 'Select an option' }),
+      { t: 'range', id: 'sdates', label: 'Storage Start/End Date' },
+      { t: 'mnum', id: 'sdur', label: 'Storage duration', unit: 'days', ph: 'Enter value', tip: 'Informational only. It does not change the result.' },
+      { t: 'mnum', id: 'elecKwh', label: 'Electricity consumption', unit: 'kWh', ph: 'Enter value', tip: 'Informational only. Electricity emission above is calculated from the weight.' },
+      { t: 'mnum', id: 'coolKwh', label: 'Refrigeration Energy', unit: 'kWh', ph: 'Enter value', tip: 'Informational only. It does not change the result.' }
+    ] },
+    ...EVLOC('processor')
+  ]
 });
 
 STAGES.push({
@@ -831,7 +915,26 @@ STAGES.push({
         })
       ]
     }]];
-  }
+  },
+  more: () => [
+    { title: 'Party and traceability', fields: [
+      T('org', 'Organization', { def: '', ph: 'Enter value' }),
+      T('own', 'Product Ownership', { def: '', ph: 'Enter value' }),
+      T('sku', 'Item / SKU / UPC / GTIN', { def: '', ph: 'Enter value' }),
+      T('kde', 'Linking KDE', { def: '', ph: 'Enter value' })
+    ] },
+    { title: 'Weights and packaging', fields: [
+      { t: 'mnum', id: 'wref', label: 'Weight or Quantity (Ref)', unit: 'kg', ph: 'Enter value', tip: 'Informational only. It does not change the result.' },
+      { t: 'mnum', id: 'drain', label: 'Drain weight', unit: 'g', ph: 'Enter value', tip: 'Informational only. It does not change the result.' },
+      T('inner', 'Inner unit', { def: '', ph: 'Enter value' })
+    ] },
+    { title: 'Fuel and storage', fields: [
+      SEL('fuelT', 'Fuel Type', FUELS, { ph: 'Select an option' }),
+      { t: 'mnum', id: 'fuelL', label: 'Fuel Consumption', unit: 'Litre', ph: 'Enter value', tip: 'Informational only. Emissions use the distance and gross weight above.' },
+      { t: 'mnum', id: 'sdur', label: 'Storage duration', unit: 'days', ph: 'Enter value', tip: 'Informational only. It does not change the result.' }
+    ] },
+    ...EVLOC('shipout')
+  ]
 });
 
 /* computed outputs */
