@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
 <script>try{if(localStorage.getItem('dash-theme')==='dark')document.documentElement.setAttribute('data-theme','dark');}catch(e){}</script>
 <style>
 :root{
@@ -1006,6 +1007,56 @@ table.xt{min-width:900px}
   .hist-tools,.hist-tools .search{width:100%}
   .hist-tools select.ctl{flex:1 1 calc(50% - 5px)}
 }
+
+/* ---- governance: templates, hold window, approvals ---- */
+.card-head .tpl-wrap{margin-left:auto;position:relative}
+.tpl-btn{height:34px;font-size:12.5px}
+.tpl-pop{position:absolute;right:0;top:calc(100% + 6px);z-index:60;width:min(360px,86vw);background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 18px 40px rgba(16,24,40,.18);padding:12px}
+.tpl-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:8px}
+.tpl-h b{font-size:13px;font-weight:600;white-space:nowrap}.tpl-h small{font-size:11px;color:var(--muted);text-align:right}
+.tpl-list{max-height:240px;overflow:auto;display:flex;flex-direction:column;gap:4px}
+.tpl-item{display:flex;align-items:stretch;border:1px solid var(--border);border-radius:9px;overflow:hidden}
+.tpl-item:hover{border-color:var(--accent)}
+.tpl-item.dim{opacity:.6}
+.tpl-apply{flex:1;min-width:0;text-align:left;border:0;background:transparent;padding:8px 10px;cursor:pointer;font:inherit;color:var(--text)}
+.tpl-apply:disabled{cursor:not-allowed}
+.tpl-apply b{display:block;font-size:12.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tpl-apply small{display:block;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tpl-del{border:0;border-left:1px solid var(--border);background:transparent;color:var(--muted);width:34px;cursor:pointer;display:grid;place-items:center}
+.tpl-del:hover{color:var(--danger);background:var(--danger-soft)}
+.tpl-del .ic{width:14px;height:14px}
+.tpl-empty{font-size:12px;color:var(--muted);margin:4px 0 6px;line-height:1.5}
+.tpl-save{border-top:1px solid var(--border);margin-top:10px;padding-top:10px}
+.tpl-save label{font-size:11.5px;color:var(--muted);display:block;margin-bottom:6px}
+.tpl-row{display:flex;gap:6px}.tpl-row .ctl{flex:1;min-width:0;height:34px}.tpl-row .btn{height:34px}
+.tpl-hint{font-size:11px;color:var(--muted);margin:6px 0 0}
+.bar.warn i{background:#e5a32b}
+.gq.held{border-color:rgba(209,67,67,.35);background:var(--danger-soft)}
+.gq-msg{font-size:12px;margin:8px 0 2px;color:var(--text)}
+.gq-acts{display:inline-flex;gap:10px}
+.linkbtn.danger{color:var(--danger)}
+.ch-ic.warn{background:var(--warn-bg);color:var(--warn-text)}
+.appr{margin-top:18px}
+.appr .card-head .sp{flex:1}
+.ap{display:flex;align-items:center;gap:14px;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;background:var(--page)}
+.ap.held{border-color:rgba(209,67,67,.35)}
+.ap-main{flex:1;min-width:0}
+.ap-main b{font-size:13px;font-weight:600}.ap-main .muted{font-size:12px;color:var(--muted)}
+.ap-main small{display:block;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ap-main small.bad-t{color:var(--danger)}
+.ap-side{display:flex;align-items:center;gap:10px;flex:none}
+.ap-t{font-variant-numeric:tabular-nums}
+.gov-form{text-align:left}
+.gov-form h3,.gov-form > p{text-align:center}
+.gov-form .gl{display:block;font-size:12px;color:var(--muted);margin:12px 0 5px}
+.gov-form .ctl{width:100%}
+.gov-form textarea.ctl{height:auto;padding:8px 10px;resize:vertical;font:inherit;font-size:13px}
+.gov-err{color:var(--danger);font-size:12px;margin:8px 0 0}
+.sheet.mail{width:min(640px,100%);max-height:86vh;overflow:auto;background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:0 34px 80px rgba(8,12,20,.38);padding:0}
+.mail-h{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--border)}
+.mail-h h3{margin:8px 0 4px;font-size:15px;font-weight:600}.mail-h small{font-size:12px;color:var(--muted)}
+.mail-b{padding:18px;background:#fff;color:#14161a;border-radius:0 0 16px 16px}
+@media (max-width:620px){ .ap{flex-direction:column;align-items:flex-start} .card-head .tpl-wrap{margin-left:0} }
 </style>
 </head>
 <body>
@@ -1022,7 +1073,7 @@ table.xt{min-width:900px}
 <main class="page">
   <div class="page-head">
     <div><h1>Data Export Centre</h1><p class="sub">Generate, manage and download data exports across your modules.</p></div>
-    <div class="head-actions"><span class="head-note"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Download links expire after 10 minutes</span></div>
+    <div class="head-actions"><span class="head-note"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Download links expire after 5 minutes</span></div>
   </div>
 
   <div class="xstats">
@@ -1040,7 +1091,19 @@ table.xt{min-width:900px}
     <!-- create export -->
     <section class="card" aria-labelledby="hNew">
       <div class="card-head"><span class="ch-ic"><svg class="ic" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
-        <div><h2 id="hNew">Create new export</h2><p class="ch-sub">Choose a module, which rows and columns you need, and a file format.</p></div></div>
+        <div><h2 id="hNew">Create new export</h2><p class="ch-sub">Choose a module, which rows and columns you need, and a file format.</p></div>
+        <div class="tpl-wrap">
+          <button type="button" class="btn tpl-btn" id="tplBtn" aria-haspopup="dialog" aria-expanded="false"><svg class="ic" viewBox="0 0 24 24"><path d="M6 3h9l4 4v14H6z"/><path d="M15 3v4h4M9 12h7M9 16h5"/></svg>Templates</button>
+          <div class="tpl-pop" id="tplPop" role="dialog" aria-label="Report templates" hidden>
+            <div class="tpl-h"><b>My templates</b><small id="tplWhere"></small></div>
+            <div class="tpl-list" id="tplList"></div>
+            <form class="tpl-save" id="tplSave">
+              <label for="tplName">Save current settings as a template</label>
+              <div class="tpl-row"><input class="ctl" id="tplName" maxlength="80" placeholder="e.g. Lamborghini since Jan 2026" autocomplete="off"><button type="submit" class="btn primary" id="tplSaveBtn">Save</button></div>
+              <p class="tpl-hint" id="tplHint">Saves the module, filters, fields and format. Only you can see your templates.</p>
+            </form>
+          </div>
+        </div></div>
       <div class="xbody" id="createBody">
         <div class="xstep">
           <div class="xstep-h"><span class="xstep-n">1</span><b>Module</b></div>
@@ -1095,7 +1158,7 @@ table.xt{min-width:900px}
         </div>
 
         <button type="button" class="btn primary gen" id="generateBtn"><svg class="ic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Generate export</button>
-        <p class="gen-note"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Generated in the background · download within 10 minutes</p>
+        <p class="gen-note"><svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Management is alerted · 2-minute hold window · download within 5 minutes</p>
       </div>
     </section>
 
@@ -1110,12 +1173,21 @@ table.xt{min-width:900px}
           <ol>
             <li><div><b>Request an export</b>Pick a module, filter the rows if needed, choose the fields and a format.</div></li>
             <li><div><b>Generated in the background</b>You can keep working; it appears here when it's ready.</div></li>
-            <li><div><b>Download within 10 minutes</b>After that the link expires; re-export with the same settings.</div></li>
+            <li><div><b>2-minute hold window</b>Management gets an e-mail with an overview and can hold the export before it starts.</div></li>
+            <li><div><b>Download within 5 minutes</b>After that the link expires; re-export with the same settings.</div></li>
           </ol>
         </div>
       </div>
     </section>
   </div>
+
+  <!-- management: exports waiting in the hold window -->
+  <section class="card appr" id="apprCard" aria-labelledby="hAppr" hidden>
+    <div class="card-head"><span class="ch-ic warn"><svg class="ic" viewBox="0 0 24 24"><path d="M12 3l9 4v5c0 5-4 8-9 9-5-1-9-4-9-9V7z"/><path d="M12 8v5M12 16v.01"/></svg></span>
+      <div><h2 id="hAppr">Exports awaiting release</h2><p class="ch-sub">You're management: you can hold an export during its 2-minute window.</p></div>
+      <span class="sp"></span><span class="st amber" id="apprCount">0</span></div>
+    <div class="xbody" id="apprList"></div>
+  </section>
 
   <!-- history -->
   <section class="hist" aria-labelledby="hHist">
@@ -1123,7 +1195,7 @@ table.xt{min-width:900px}
       <div><h2 id="hHist">Export history</h2><p>Audit trail of all requested data exports.</p></div>
       <div class="hist-tools">
         <div class="search"><div class="clearwrap"><svg class="sicon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.5" y2="16.5"/></svg><input class="ctl" id="historySearch" type="search" placeholder="Search user, module or export ID" aria-label="Search export history"></div></div>
-        <select class="ctl" id="statusFilter" aria-label="Status"><option value="all">All statuses</option><option>Ready</option><option>Processing</option><option>Downloaded</option><option>Expired</option><option>Failed</option></select>
+        <select class="ctl" id="statusFilter" aria-label="Status"><option value="all">All statuses</option><option>Waiting</option><option>Held</option><option>Cancelled</option><option>Ready</option><option>Processing</option><option>Downloaded</option><option>Expired</option><option>Failed</option></select>
         <select class="ctl" id="moduleFilter" aria-label="Module"></select>
       </div>
     </div>
@@ -1321,8 +1393,9 @@ let currentModule = null;   // nothing chosen until the user picks a module
 let currentFormat = "xlsx";
 let selectedFields = [];   // set by setModule()
 let jobs = [];
-const currentUser = "John Smith", currentUserInitials = "JS";
-const EXPIRY_MS = 10 * 60 * 1000;   // download window: 10 minutes
+let currentUser = "John Smith", currentUserInitials = "JS";
+const EXPIRY_MS = 5 * 60 * 1000;    // download window: 5 minutes
+const HOLD_MS = 2 * 60 * 1000;      // management hold window before generation starts
 const STORAGE_KEY = "demo_export_jobs_v1";
 const blobs = {};   // export id -> object URL (lost on reload)
 
@@ -1674,14 +1747,19 @@ function expireJob(job) {
 /* ======================================================
    EXPORT REQUEST / PROCESSING
    ====================================================== */
-$("generateBtn").addEventListener("click", () => {
+$("generateBtn").addEventListener("click", async () => {
   if (!currentModule) { toast("Please select the module first."); $("mpTrigger").focus(); return; }
+  if (!GOV.session) { openSignIn("Sign in to generate exports. Management is alerted for every export."); return; }
   const fields = withKeys(currentModule, selectedFields);   // safety net: keys always exported
   const job = { id: makeID(), user: currentUser, initials: currentUserInitials, module: currentModule, fields,
     filters: filters.map(f => ({...f})), filterText: filtersSummary(currentModule, filters),
-    format: currentFormat, status: "Processing", requestedAt: Date.now(), completedAt: null, expiresAt: null, downloadedAt: null, fileSize: 0, progress: 0 };
-  jobs.unshift(job); renderAll(); startProcessing(job);
-  toast(`${job.module} export requested.`);
+    format: currentFormat, status: "Waiting", requestedAt: Date.now(), completedAt: null, expiresAt: null, downloadedAt: null, fileSize: 0, progress: 0 };
+  $("generateBtn").disabled = true;
+  try { await govRequest(job); }
+  catch (err) { toast("Couldn't request the export: " + err.message); $("generateBtn").disabled = false; return; }
+  $("generateBtn").disabled = false;
+  jobs.unshift(job); renderAll();
+  toast(`${job.module} export requested. Management has 2 minutes to hold it.`);
 });
 function startProcessing(job) {
   const duration = 12000, started = Date.now();   // demo: 12 seconds
@@ -1696,9 +1774,10 @@ function startProcessing(job) {
       const blob = job.format === "csv" ? createCSV(recs, job.fields) : createExcel(recs, job.fields, job.module, job);
       blobs[job.id] = URL.createObjectURL(blob);
       Object.assign(job, { fileSize: blob.size, status: "Ready", progress: 100, completedAt: Date.now(), expiresAt: Date.now() + EXPIRY_MS, records: recs.length });
+      if (job.requestId) govFinish(job, true);
       renderAll(); toast(`${job.module} export is ready to download.`);
     } catch (err) {
-      job.status = "Failed"; job.error = err.message; renderAll(); toast("Export failed: " + err.message);
+      job.status = "Failed"; job.error = err.message; if (job.requestId) govFinish(job, false); renderAll(); toast("Export failed: " + err.message);
     }
   }, 300);
 }
@@ -1707,10 +1786,10 @@ function startProcessing(job) {
    QUEUE
    ====================================================== */
 function renderQueue() {
-  const active = jobs.filter(j => j.status === "Processing" || j.status === "Ready");
+  const active = jobs.filter(j => ["Waiting", "Held", "Processing", "Ready"].includes(j.status));
   $("processingArea").innerHTML = !active.length
     ? `<div class="q-empty">${IC.box}<span style="color:var(--text)">No active exports</span>Exports you request appear here while they're generated.</div>`
-    : active.slice(0, 4).map(j => `
+    : active.slice(0, 4).map(j => (j.status === "Waiting" || j.status === "Held") ? govQueueItem(j) : `
       <div class="q ${j.status === "Ready" ? "ready" : ""}">
         <div class="q-h"><div><b>${esc(j.module)} export</b><small>${esc(j.format.toUpperCase())} · ${j.fields.length} fields${j.filters && j.filters.length ? ` · ${j.filters.length} filter${j.filters.length > 1 ? "s" : ""}` : ""}${j.status === "Ready" ? ` · ${j.records} record${j.records === 1 ? "" : "s"} · ${fmtSize(j.fileSize)}` : ""}</small></div>
           ${j.status === "Ready" ? `<button type="button" class="btn primary" data-action="download" data-id="${esc(j.id)}">${IC.down}Download</button>` : `<span class="st blue dot">Processing</span>`}</div>
@@ -1732,9 +1811,12 @@ function expiryLabel(job) {
   if (job.status === "Downloaded") return "Downloaded " + fmtDate(job.downloadedAt);
   if (job.status === "Expired") return "Expired " + fmtDate(job.expiresAt || job.expiredAt);
   if (job.status === "Failed") return "Not available";
+  if (job.status === "Waiting") return "Starts in " + govLeft(job);
+  if (job.status === "Held") return "Held" + (job.heldBy ? " by " + job.heldBy : "");
+  if (job.status === "Cancelled") return "Cancelled";
   return expiryLeft(job) + " left";
 }
-const ST = { Ready: "green", Expired: "red", Downloaded: "", Processing: "blue", Failed: "amber" };
+const ST = { Ready: "green", Expired: "red", Downloaded: "", Processing: "blue", Failed: "amber", Waiting: "amber", Held: "red", Cancelled: "" };
 function renderHistory() {
   const q = $("historySearch").value.trim().toLowerCase(), status = $("statusFilter").value, module = $("moduleFilter").value;
   const rows = jobs.filter(j => (!q || [j.user, j.module, j.id, j.filterText || ""].some(v => v.toLowerCase().includes(q)))
@@ -1819,6 +1901,300 @@ setInterval(() => {
 
 setModule(null);
 renderAll();
+
+/* ======================================================
+   GOVERNANCE: templates, 2-minute management hold window, alert e-mail (demo)
+   Needs smartuna_report_governance.sql in Supabase.
+   ====================================================== */
+const SB_URL = "https://enbdaajcromxmhgcverp.supabase.co";
+const SB_KEY = "sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5";
+const GOV = { sb: null, session: null, manager: false, offset: 0, pending: [], templates: [], pollMgr: 0, tick: 0 };
+const srvNow = () => Date.now() + GOV.offset;
+const syncClock = t => { if (t) GOV.offset = new Date(t).getTime() - Date.now(); };
+async function rpc(fn, args = {}) {
+  const { data, error } = await GOV.sb.schema("smartuna").rpc(fn, args);
+  if (error) throw new Error(error.message);
+  return data;
+}
+const fmtLeft = ms => { ms = Math.max(0, ms); const m = Math.floor(ms / 60000), s = String(Math.floor(ms % 60000 / 1000)).padStart(2, "0"); return `${m}m ${s}s`; };
+function govLeft(job) { return fmtLeft((job.releaseAt || 0) - srvNow()); }
+const hhmm = ts => new Date(ts).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+
+/* ---------- session ---------- */
+async function govInit() {
+  if (!window.supabase) return;
+  GOV.sb = supabase.createClient(SB_URL, SB_KEY);
+  const { data: { session } } = await GOV.sb.auth.getSession();
+  await setSession(session);
+  GOV.sb.auth.onAuthStateChange((ev, s) => { if (ev === "SIGNED_IN" || ev === "SIGNED_OUT") setSession(s); });
+}
+async function setSession(s) {
+  GOV.session = s || null;
+  if (s) {
+    const email = s.user.email || "user";
+    const nm = email.split("@")[0].replace(/[._-]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
+    currentUser = nm; currentUserInitials = nm.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+    try { GOV.manager = !!(await rpc("is_report_manager")); } catch (e) { GOV.manager = false; }
+  } else { GOV.manager = false; }
+  $("apprCard").hidden = !GOV.manager;
+  clearInterval(GOV.pollMgr);
+  if (GOV.manager) { loadPending(true); GOV.pollMgr = setInterval(loadPending, 5000); }
+  await loadTemplates();
+  jobs.filter(j => (j.status === "Waiting" || j.status === "Held") && j.requestId).forEach(watchJob);
+}
+
+/* ---------- sign in ---------- */
+function openSignIn(msg) {
+  closeOverlay();
+  const ov = document.createElement("div"); ov.className = "overlay"; ov.id = "govOv";
+  ov.innerHTML = `<form class="modal ask gov-form" id="signForm">
+    <div class="badge"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+    <h3>Sign in</h3><p>${esc(msg || "Use your SmarTuna account.")}</p>
+    <label class="gl" for="siEmail">Email</label><input class="ctl" id="siEmail" type="email" autocomplete="username" required>
+    <label class="gl" for="siPass">Password</label><input class="ctl" id="siPass" type="password" autocomplete="current-password" required>
+    <p class="gov-err" id="siErr" hidden></p>
+    <div class="mbtns"><button type="button" class="btn" data-close>Cancel</button><button type="submit" class="btn primary">Sign in</button></div></form>`;
+  document.body.appendChild(ov); $("siEmail").focus();
+  $("signForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const { error } = await GOV.sb.auth.signInWithPassword({ email: $("siEmail").value.trim(), password: $("siPass").value });
+    if (error) { $("siErr").textContent = error.message; $("siErr").hidden = false; return; }
+    closeOverlay(); toast("Signed in.");
+  });
+}
+function closeOverlay() { document.getElementById("govOv")?.remove(); }
+document.addEventListener("click", e => { const ov = document.getElementById("govOv"); if (ov && (e.target === ov || e.target.closest("#govOv [data-close]"))) closeOverlay(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") { closeOverlay(); tplOpen(false); } });
+
+/* ---------- alert e-mail (demo: written to the outbox, not sent) ---------- */
+function mailFor(job) {
+  const rows = matching(job.module, job.filters).length;
+  const startAt = hhmm(srvNow() + HOLD_MS);
+  const row = (k, v) => `<tr><td style="padding:6px 12px 6px 0;color:#79818f;font-size:13px;vertical-align:top;white-space:nowrap">${k}</td><td style="padding:6px 0;font-size:13px;color:#14161a">${v}</td></tr>`;
+  const filterHtml = job.filters.length ? job.filters.map(f => esc(filterText(job.module, f))).join("<br>") : "None: all records";
+  const subject = `Export requested: ${job.module} by ${currentUser} (starts ${startAt})`;
+  const body = `<div style="font-family:Poppins,Segoe UI,Arial,sans-serif;max-width:560px;color:#14161a">
+  <p style="font-size:14px;margin:0 0 6px"><b style="font-weight:600">${esc(currentUser)}</b> requested a data export in the SmarTuna Data Export Centre.</p>
+  <p style="font-size:13px;color:#79818f;margin:0 0 16px">It starts automatically at <b style="color:#14161a">${startAt}</b> unless someone from management holds it.</p>
+  <table style="border-collapse:collapse;margin:0 0 18px">
+    ${row("Requested by", esc(currentUser) + " &lt;" + esc(GOV.session?.user?.email || "") + "&gt;")}
+    ${row("Module", esc(job.module))}
+    ${row("Filters", filterHtml)}
+    ${row("Fields", `${job.fields.length}: ${esc(job.fields.join(", "))}`)}
+    ${row("Format", job.format.toUpperCase())}
+    ${row("Records", rows.toLocaleString("en-US"))}
+    ${row("Requested at", esc(fmtDate(job.requestedAt)))}
+  </table>
+  <a href="{{HOLD_URL}}" style="display:inline-block;background:#2f6fed;color:#fff;text-decoration:none;padding:10px 18px;border-radius:8px;font-size:13px">Review or hold this export</a>
+  <p style="font-size:12px;color:#79818f;margin:16px 0 0">The hold window is 2 minutes. After that the file is generated and the download link lives 5 minutes.</p></div>`;
+  return { subject, body, rows };
+}
+async function govRequest(job) {
+  const m = mailFor(job);
+  const r = await rpc("request_report", { p: {
+    module: job.module, module_label: job.module, filters: job.filters, filter_summary: job.filterText,
+    fields: job.fields, format: job.format, row_estimate: m.rows, subject: m.subject, body_html: m.body,
+    hold_base: location.origin + location.pathname } });
+  syncClock(r.server_now);
+  Object.assign(job, { requestId: r.request.id, releaseAt: new Date(r.request.release_at).getTime(),
+    recipients: r.recipients || [], mail: { subject: m.subject, body: m.body.replace("{{HOLD_URL}}", location.pathname + "?hold=" + r.request.id) } });
+  watchJob(job);
+}
+function showMail(job) {
+  closeOverlay();
+  const ov = document.createElement("div"); ov.className = "overlay"; ov.id = "govOv";
+  ov.innerHTML = `<div class="sheet mail" role="dialog" aria-modal="true" aria-label="Alert e-mail preview">
+    <div class="mail-h"><div><span class="st amber">Demo · not delivered yet</span><h3>${esc(job.mail.subject)}</h3>
+      <small>To: ${job.recipients.length ? esc(job.recipients.join(", ")) : "no management users found"}</small></div>
+      <button type="button" class="iconbtn" data-close aria-label="Close"><svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="mail-b">${job.mail.body}</div></div>`;
+  document.body.appendChild(ov);
+}
+
+/* ---------- requester side: wait out the window, then generate ---------- */
+const watching = new Set();
+function watchJob(job) {
+  if (watching.has(job.id)) return; watching.add(job.id);
+  let lastPoll = 0;
+  const step = async () => {
+    if (!["Waiting", "Held"].includes(job.status)) { watching.delete(job.id); return; }
+    const due = job.status === "Waiting" && srvNow() >= job.releaseAt;
+    if (due || Date.now() - lastPoll > 5000) {
+      lastPoll = Date.now();
+      try {
+        const r = due ? await rpc("release_report", { p_id: job.requestId }) : await rpc("get_report_request", { p_id: job.requestId });
+        if (r) { syncClock(r.server_now); applyServer(job, r); }
+      } catch (e) { /* network hiccup: try again next tick */ }
+    }
+    renderQueue(); if (job.status !== "Waiting" && job.status !== "Held") renderAll();
+    if (["Waiting", "Held"].includes(job.status)) setTimeout(step, 1000); else watching.delete(job.id);
+  };
+  step();
+}
+function applyServer(job, r) {
+  const was = job.status;
+  if (r.status === "held") Object.assign(job, { status: "Held", heldBy: r.held_by_email || "management", holdReason: r.hold_reason || "" });
+  else if (r.status === "pending") Object.assign(job, { status: "Waiting", releaseAt: new Date(r.release_at).getTime() });
+  else if (r.status === "cancelled") job.status = "Cancelled";
+  else if (r.status === "released" && (was === "Waiting" || was === "Held")) { job.status = "Processing"; startProcessing(job); }
+  if (was !== job.status) {
+    if (job.status === "Held") toast(`${job.module} export was held by ${job.heldBy}.`);
+    if (was === "Held" && job.status === "Waiting") toast(`The hold on ${job.module} was lifted.`);
+    if (job.status === "Processing") toast(`${job.module} export is being generated.`);
+  }
+}
+async function govFinish(job, ok) { try { await rpc("finish_report", { p_id: job.requestId, p_ok: ok }); } catch (e) {} }
+async function govCancel(job) {
+  try { await rpc("cancel_report", { p_id: job.requestId }); job.status = "Cancelled"; renderAll(); toast("Export cancelled."); }
+  catch (e) { toast(e.message); }
+}
+function govQueueItem(j) {
+  const held = j.status === "Held";
+  const pct = held ? 100 : Math.min(100, Math.max(0, Math.round((1 - (j.releaseAt - srvNow()) / HOLD_MS) * 100)));
+  const n = (j.recipients || []).length;
+  return `<div class="q gq ${held ? "held" : ""}">
+    <div class="q-h"><div><b>${esc(j.module)} export</b><small>${esc(j.format.toUpperCase())} · ${j.fields.length} fields${j.filters.length ? ` · ${j.filters.length} filter${j.filters.length > 1 ? "s" : ""}` : ""}</small></div>
+      <span class="st ${held ? "red" : "amber"} dot">${held ? "On hold" : "Hold window"}</span></div>
+    ${held ? `<p class="gq-msg">Held by <b>${esc(j.heldBy)}</b>${j.holdReason ? `: “${esc(j.holdReason)}”` : ""}. It starts as soon as the hold is lifted.</p>`
+           : `<div class="bar warn"><i style="width:${pct}%"></i></div>`}
+    <div class="q-f"><span>${held ? "Waiting for management" : `Starts in ${govLeft(j)}`} · alert sent to ${n} manager${n === 1 ? "" : "s"}</span>
+      <span class="gq-acts"><button type="button" class="linkbtn" data-gov="mail" data-id="${esc(j.id)}">Preview e-mail</button>
+      <button type="button" class="linkbtn danger" data-gov="cancel" data-id="${esc(j.id)}">Cancel</button></span></div></div>`;
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-gov]"); if (!b) return;
+  const job = jobs.find(j => j.id === b.dataset.id);
+  if (b.dataset.gov === "mail" && job?.mail) showMail(job);
+  if (b.dataset.gov === "cancel" && job) govCancel(job);
+  if (b.dataset.gov === "hold") askHold(b.dataset.req);
+  if (b.dataset.gov === "unhold") doUnhold(b.dataset.req);
+});
+
+/* ---------- management side ---------- */
+async function loadPending(first) {
+  try {
+    const r = await rpc("pending_reports"); syncClock(r.server_now);
+    GOV.pending = r.items || [];
+  } catch (e) { GOV.pending = []; }
+  renderPending();
+  if (first) {
+    const id = new URLSearchParams(location.search).get("hold");
+    if (id) {
+      $("apprCard").scrollIntoView({ behavior: "smooth", block: "start" });
+      const it = GOV.pending.find(x => x.id === id);
+      if (it && it.status === "pending") askHold(id); else toast(it ? "This export is already on hold." : "Too late to hold: this export has already started or finished.");
+    }
+  }
+}
+function renderPending() {
+  const items = GOV.pending;
+  $("apprCount").textContent = items.length;
+  $("apprList").innerHTML = !items.length ? `<div class="q-empty">${IC.box}<span style="color:var(--text)">Nothing waiting</span>New export requests appear here for 2 minutes before they start.</div>`
+    : items.map(it => {
+      const held = it.status === "held", left = new Date(it.release_at).getTime() - srvNow();
+      return `<div class="ap ${held ? "held" : ""}">
+        <div class="ap-main"><b>${esc(it.module_label || it.module)}</b> <span class="muted">requested by ${esc(it.created_by_email || "")}</span>
+          <small>${esc((it.format || "").toUpperCase())} · ${(it.fields || []).length} fields · ${Number(it.row_estimate || 0).toLocaleString("en-US")} record${Number(it.row_estimate) === 1 ? "" : "s"} · ${esc(it.filter_summary || "No filters")}</small>
+          ${held ? `<small class="bad-t">Held by ${esc(it.held_by_email || "management")}${it.hold_reason ? `: “${esc(it.hold_reason)}”` : ""}</small>` : ""}</div>
+        <div class="ap-side">${held ? `<span class="st red dot">On hold</span><button type="button" class="btn" data-gov="unhold" data-req="${it.id}">Lift hold</button>`
+          : left > 0 ? `<span class="st amber dot ap-t">Starts in ${fmtLeft(left)}</span><button type="button" class="btn danger-ghost" data-gov="hold" data-req="${it.id}">Hold</button>`
+          : `<span class="st blue dot">Starting…</span>`}</div></div>`;
+    }).join("");
+}
+setInterval(() => { if (GOV.manager && GOV.pending.length) renderPending(); }, 1000);
+function askHold(id) {
+  const it = GOV.pending.find(x => x.id === id); if (!it) return;
+  closeOverlay();
+  const ov = document.createElement("div"); ov.className = "overlay"; ov.id = "govOv";
+  ov.innerHTML = `<form class="modal err gov-form" id="holdForm">
+    <div class="badge"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6v12M15 6v12"/></svg></div>
+    <h3>Hold this export?</h3><p><span class="obj">${esc(it.module_label || it.module)}</span> requested by ${esc(it.created_by_email || "")}. It won't start until someone lifts the hold.</p>
+    <label class="gl" for="holdWhy">Reason (shown to the requester)</label>
+    <textarea class="ctl" id="holdWhy" rows="2" maxlength="300" placeholder="e.g. Customer data, please check with me first"></textarea>
+    <p class="gov-err" id="holdErr" hidden></p>
+    <div class="mbtns"><button type="button" class="btn" data-close>Cancel</button><button type="submit" class="btn primary">Hold export</button></div></form>`;
+  document.body.appendChild(ov); $("holdWhy").focus();
+  $("holdForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    try { const r = await rpc("hold_report", { p_id: id, p_reason: $("holdWhy").value }); syncClock(r.server_now); closeOverlay(); toast("Export held."); loadPending(); }
+    catch (err) { $("holdErr").textContent = err.message; $("holdErr").hidden = false; }
+  });
+}
+async function doUnhold(id) {
+  try { await rpc("unhold_report", { p_id: id }); toast("Hold lifted. The export starts now."); loadPending(); }
+  catch (e) { toast(e.message); }
+}
+
+/* ---------- templates (personal) ---------- */
+const TPL_KEY = "rc_templates_v1";
+async function loadTemplates() {
+  if (GOV.session) {
+    try { const { data, error } = await GOV.sb.schema("smartuna").from("report_templates").select("*").order("name");
+      if (error) throw error; GOV.templates = data || []; }
+    catch (e) { GOV.templates = []; }
+  } else {
+    try { GOV.templates = JSON.parse(localStorage.getItem(TPL_KEY) || "[]"); } catch (e) { GOV.templates = []; }
+  }
+  renderTemplates();
+}
+function renderTemplates() {
+  $("tplWhere").textContent = GOV.session ? "Saved to your account" : "Saved in this browser · sign in to keep them";
+  $("tplList").innerHTML = !GOV.templates.length ? `<p class="tpl-empty">No templates yet. Set up an export below the way you like it, then save it here.</p>`
+    : GOV.templates.map(t => {
+      const ok = !!moduleOf(t.module);
+      return `<div class="tpl-item ${ok ? "" : "dim"}">
+        <button type="button" class="tpl-apply" data-tpl="${esc(t.id)}" ${ok ? "" : "disabled"}>
+          <b>${esc(t.name)}</b><small>${esc(t.module)} · ${(t.filters || []).length} filter${(t.filters || []).length === 1 ? "" : "s"} · ${(t.fields || []).length} fields · ${esc(String(t.format || "").toUpperCase())}${ok ? "" : " · module no longer available"}</small></button>
+        <button type="button" class="tpl-del" data-tpldel="${esc(t.id)}" aria-label="Delete template ${esc(t.name)}"><svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`;
+    }).join("");
+}
+function tplOpen(on) {
+  $("tplPop").hidden = !on; $("tplBtn").setAttribute("aria-expanded", String(on));
+  if (on) { $("tplName").value = ""; $("tplSaveBtn").disabled = !currentModule;
+    $("tplHint").textContent = currentModule ? "Saves the module, filters, fields and format. Only you can see your templates." : "Pick a module first, then save its settings as a template."; }
+}
+$("tplBtn").addEventListener("click", () => tplOpen($("tplPop").hidden));
+document.addEventListener("click", e => { if (!$("tplPop").hidden && !e.target.closest(".tpl-wrap")) tplOpen(false); });
+$("tplList").addEventListener("click", async e => {
+  const a = e.target.closest("[data-tpl]"), d = e.target.closest("[data-tpldel]");
+  if (a) {
+    const t = GOV.templates.find(x => x.id === a.dataset.tpl); if (!t) return;
+    setModule(t.module, t.fields); setFormat(t.format || "xlsx");
+    filters = (t.filters || []).map(f => ({ ...f })); renderFilters();
+    tplOpen(false); toast(`Template “${t.name}” applied. Check and click Generate export.`);
+  }
+  if (d) {
+    const t = GOV.templates.find(x => x.id === d.dataset.tpldel); if (!t || !confirm(`Delete the template “${t.name}”?`)) return;
+    if (GOV.session) { const { error } = await GOV.sb.schema("smartuna").from("report_templates").delete().eq("id", t.id); if (error) { toast(error.message); return; } }
+    GOV.templates = GOV.templates.filter(x => x !== t);
+    if (!GOV.session) localStorage.setItem(TPL_KEY, JSON.stringify(GOV.templates));
+    renderTemplates(); toast("Template deleted.");
+  }
+});
+$("tplSave").addEventListener("submit", async e => {
+  e.preventDefault();
+  const name = $("tplName").value.trim();
+  if (!currentModule) { toast("Pick a module first."); return; }
+  if (!name) { $("tplName").focus(); return; }
+  const rec = { name, module: currentModule, filters: filters.map(f => ({ ...f })), fields: withKeys(currentModule, selectedFields), format: currentFormat };
+  const same = GOV.templates.find(t => t.name.toLowerCase() === name.toLowerCase());
+  if (same && !confirm(`Replace your template “${same.name}”?`)) return;
+  try {
+    if (GOV.session) {
+      const tb = GOV.sb.schema("smartuna").from("report_templates");
+      const { error } = same ? await tb.update(rec).eq("id", same.id) : await tb.insert(rec);
+      if (error) throw error;
+      await loadTemplates();
+    } else {
+      if (same) Object.assign(same, rec); else GOV.templates.push({ id: "t" + Date.now(), ...rec });
+      GOV.templates.sort((a, b) => a.name.localeCompare(b.name));
+      localStorage.setItem(TPL_KEY, JSON.stringify(GOV.templates)); renderTemplates();
+    }
+    $("tplName").value = ""; toast(`Template “${name}” ${same ? "updated" : "saved"}.`);
+  } catch (err) { toast("Couldn't save the template: " + err.message); }
+});
+
+govInit();
 </script>
 </body>
 </html>
