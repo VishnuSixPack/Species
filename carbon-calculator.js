@@ -3242,9 +3242,14 @@ function kdeGrid(fields, ctx, extra){
   }));
   const air = (extra||[]).some(e => e.ctx === 'ship-air');
   const card = cat => buckets[cat] ? kdeCard(cat, ctx, buckets[cat].join(''), cat === 'origin' && air ? 'Carrier' : '') : '';
-  const main = ['party','trace','origin','storage','other','calc'].map(card).join('');
-  const pair = card('event') + card('location'), two = buckets.event && buckets.location;
-  return `<div class="kde-wrap">${main}${pair ? `<div class="kde-pair${two ? '' : ' single'}">${pair}</div>` : ''}</div>`;
+  /* Category cards sit side by side in up to three columns (like the Aquaculture calculator). Each card goes
+     to the currently shortest column, judged by its field count, so the layout is fixed at render time and
+     opening or closing a card never moves another card to a different column. */
+  const cards = ['party','trace','origin','storage','other','calc','event','location'].filter(c => buckets[c])
+    .map(c => ({ html: card(c), w: KDE_CLOSED.includes(c) ? 1.5 : buckets[c].length + 2 }));
+  const cols = Array.from({ length: Math.min(3, cards.length) }, () => ({ h: 0, html: '' }));
+  cards.forEach(c => { const t = cols.reduce((a, b) => (b.h < a.h ? b : a)); t.html += c.html; t.h += c.w; });
+  return `<div class="kde-wrap kde-cols-${cols.length}">${cols.map(c => `<div class="kde-col">${c.html}</div>`).join('')}</div>`;
 }
 function updateKdeCounts(){
   document.querySelectorAll('.kde-closable').forEach(d => {
