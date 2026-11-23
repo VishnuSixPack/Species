@@ -3751,8 +3751,8 @@ function pkgTable(data, isCirc){
             <td>${r.label}</td>
             ${r.span!==undefined
               ? `<td colspan="${cols.length}" style="text-align:${isCirc?'center':'left'};">${r.span}</td>`
-              : r.vals.map(v=>`<td ${r.bold?'style="font-weight:800;"':''}>${v}</td>`).join('')}
-            ${(!isCirc && i===0) ? `<td rowspan="${data.rows.length}" style="text-align:center;font-weight:700;">${data.scope}</td>` : ''}
+              : r.vals.map(v=>`<td ${r.bold?'style="font-weight:500;"':''}>${v}</td>`).join('')}
+            ${(!isCirc && i===0) ? `<td rowspan="${data.rows.length}" style="text-align:center;font-weight:500;">${data.scope}</td>` : ''}
           </tr>
         `).join('')}
         ${!isCirc ? `<tr><td colspan="${cols.length+2}" class="grand" style="text-align:center;">${data.grandTotal}</td></tr>` : ''}
@@ -4204,6 +4204,7 @@ function renderLanding(){
   <div class="page-wrap">
     <div class="page-header">
       <div>
+        <div class="eyebrow">Environmental impact assessment</div>
         <h1>Environmental Impact Calculator</h1>
         <div class="sub">Trace emissions across your seafood supply chain using GDST-compliant Critical Tracking Events (CTEs) and Key Data Elements (KDEs).</div>
       </div>
@@ -4310,7 +4311,7 @@ function renderOverview(){
   const confirmedCount = OVERVIEW_CTES.filter(c => state.confirmed[c.key]).length;
 
   return `
-  <div class="shell overview-page">
+  <div class="shell">
     <div class="pm-detail-topbar">
       <div class="pm-detail-left">
         <button class="pm-back" data-action="back-to-calculator">←</button>
@@ -4481,7 +4482,7 @@ function renderReportScopeDetail(){
           `).join('')}
         </div>
         <div class="overview-actions" style="justify-content:space-between;align-items:center;">
-          <div style="font-size:13px;font-weight:800;color:var(--ink-900);">${meta.label} Total: ${fmtNum(scopeTotal,2)} kg CO₂e</div>
+          <div style="font-size:13px;font-weight:500;color:var(--ink-900);">${meta.label} Total: ${fmtNum(scopeTotal,2)} kg CO₂e</div>
           <button class="btn btn-outline" data-action="go-report-summary">Back to Summary</button>
         </div>
       </div>
@@ -5089,7 +5090,7 @@ function renderMissingFieldsModal(){
           `).join('')}
         </div>
       ` : ''}
-      ${items.length ? `<div class="gdsn-group">${items.map(i=>`<div class="gdsn-row"><label style="width:auto;font-family:inherit;font-weight:600;color:var(--ink-700);">${i}</label></div>`).join('')}</div>` : ''}
+      ${items.length ? `<div class="gdsn-group">${items.map(i=>`<div class="gdsn-row"><label style="width:auto;font-family:inherit;font-weight:500;color:var(--ink-700);">${i}</label></div>`).join('')}</div>` : ''}
       <div class="gdsn-footer">
         <button type="button" class="btn btn-primary" style="padding:12px 40px;" data-action="submit-missing-modal">${questions.length?'Save & Continue':'Continue to Calculator'}</button>
       </div>
