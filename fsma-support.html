@@ -1,0 +1,2089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FDA FSMA 204 — SmarTuna concept</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <link rel="icon" type="image/png" href="sc-blue-logo.png" />
+  <style>
+
+    @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');font-display:swap;}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{
+      --ocean:#0b1f3a; --ocean-2:#12305a; --primary:#1a6fdb; --primary-soft:#e8f1fd; --teal:#0ea5a4;
+      --bg:#f3f6fa; --white:#fff; --text:#0f172a; --muted:#64748b; --line:#e3e8ef; --field:#f7f9fc;
+      --red:#dc2626; --red-soft:#fef2f2; --amber:#d97706; --amber-soft:#fffbeb; --green:#059669; --green-soft:#ecfdf5;
+      --r:14px; --shadow:0 1px 2px rgba(15,23,42,.04),0 4px 16px rgba(15,23,42,.06);
+      --mono:'JetBrains Mono',ui-monospace,monospace;
+    }
+    html,body{background:var(--bg);}
+    body{font-family:'Poppins',sans-serif;color:var(--text);font-size:13px;line-height:1.55;min-height:100vh;}
+    input,select,textarea,button{font-family:inherit;}
+    .hidden{display:none !important;}
+    a{color:inherit;}
+
+    /* ── TOP BAR ── */
+    .topbar{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:14px;padding:12px 24px;background:var(--ocean);color:#fff;}
+    .brand{display:flex;align-items:center;gap:9px;text-decoration:none;}
+    .brand img{width:30px;height:30px;object-fit:contain;background:#fff;border-radius:8px;padding:3px;flex-shrink:0;}
+    .wm{display:flex;flex-direction:column;line-height:1;}
+    .wm-top{font-family:'Bitsumis',sans-serif;font-weight:900;font-size:15px;letter-spacing:.04em;text-transform:uppercase;color:#fff;}
+    .wm-sub{font-family:'Bitsumis',sans-serif;font-size:7px;letter-spacing:.22em;text-transform:uppercase;color:#8fb3e6;margin-top:2px;}
+    .program-pill{display:inline-flex;align-items:center;gap:7px;padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);font-size:11px;font-weight:400;letter-spacing:.02em;}
+    .program-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 3px rgba(14,165,164,.25);}
+    .topbar-spacer{flex:1;}
+    .tb-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:12px;font-weight:400;cursor:pointer;border:1px solid rgba(255,255,255,.18);background:transparent;color:#dbe7f7;transition:.15s;}
+    .tb-btn:hover{background:rgba(255,255,255,.08);color:#fff;}
+    .tb-btn.primary{background:#fff;color:var(--ocean);border-color:#fff;}
+    .tb-btn.primary:hover{background:#e8f1fd;}
+
+    /* ── LANDING ── */
+    .hero{background:linear-gradient(180deg,var(--ocean) 0%,var(--ocean-2) 100%);color:#fff;padding:48px 24px 110px;position:relative;overflow:hidden;}
+    .hero::after{content:'';position:absolute;left:-10%;right:-10%;bottom:-60px;height:140px;background:var(--bg);border-radius:50% 50% 0 0/100% 100% 0 0;}
+    .hero-inner{max-width:980px;margin:0 auto;position:relative;z-index:1;display:flex;align-items:flex-start;justify-content:space-between;gap:32px;}
+    .hero-copy{flex:1;min-width:0;}
+    .noaa-badge{flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:10px;margin-top:6px;}
+    .noaa-badge .disc{width:132px;height:132px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 6px rgba(255,255,255,.08),0 12px 30px rgba(0,0,0,.25);}
+    .noaa-badge img{width:108px;height:108px;object-fit:contain;}
+    .noaa-badge span{font-size:10.5px;color:#8fa8cc;text-align:center;line-height:1.4;}
+    .eyebrow{font-size:11px;font-weight:400;letter-spacing:.14em;text-transform:uppercase;color:#7dd3d2;}
+    .hero h1{font-size:34px;font-weight:400;letter-spacing:-.02em;line-height:1.15;margin:10px 0 12px;max-width:640px;}
+    .hero p{font-size:14px;color:#b8cbe6;max-width:600px;}
+    .hero-links{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap;}
+    .hero-stats{display:flex;gap:28px;margin-top:30px;flex-wrap:wrap;}
+    .hero-stat b{display:block;font-size:20px;font-weight:400;}
+    .hero-stat span{font-size:11px;color:#8fa8cc;}
+
+    .landing{max-width:980px;margin:-70px auto 60px;padding:0 24px;position:relative;z-index:2;}
+    .panel{background:var(--white);border-radius:20px;box-shadow:var(--shadow);padding:26px 28px;margin-bottom:18px;}
+    .q-label{display:flex;align-items:baseline;gap:10px;margin-bottom:14px;}
+    .q-num{font-family:var(--mono);font-size:11px;color:var(--primary);font-weight:400;}
+    .q-title{font-size:15px;font-weight:400;}
+    .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+    .tile{position:relative;text-align:left;padding:16px 16px 16px 16px;border-radius:14px;border:1.5px solid var(--line);background:var(--white);cursor:pointer;transition:.15s;}
+    .tile:hover:not(:disabled){border-color:#9cc3f3;background:#fbfdff;}
+    .tile.on{border-color:var(--primary);background:var(--primary-soft);box-shadow:0 0 0 3px rgba(26,111,219,.12);}
+    .tile .ico{font-size:20px;margin-bottom:8px;display:block;}
+    .tile b{display:block;font-size:13px;font-weight:400;}
+    .tile small{display:block;font-size:11px;color:var(--muted);margin-top:3px;line-height:1.45;}
+    .tile .check{position:absolute;top:12px;right:12px;width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:10px;color:#fff;}
+    .tile.on .check{background:var(--primary);border-color:var(--primary);}
+    .tile:disabled{opacity:.5;cursor:not-allowed;}
+    .tile .soon{font-size:9px;font-weight:400;color:var(--amber);background:var(--amber-soft);padding:1px 7px;border-radius:999px;margin-left:6px;}
+    .species-strip{display:flex;flex-wrap:wrap;gap:8px;}
+    .sp-chip{display:inline-flex;align-items:center;gap:8px;padding:7px 12px 7px 8px;border-radius:999px;background:var(--field);border:1px solid var(--line);font-size:12px;}
+    .sp-code{font-family:var(--mono);font-size:11px;font-weight:400;color:#fff;padding:2px 7px;border-radius:999px;}
+    .sp-chip em{color:var(--muted);font-size:11px;}
+    .landing-cta{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+    .landing-cta p{font-size:12px;color:var(--muted);}
+
+    /* ── BUTTONS ── */
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:9px 18px;border-radius:10px;font-size:12px;font-weight:400;cursor:pointer;border:1px solid var(--line);background:var(--white);color:var(--text);transition:.15s;white-space:nowrap;}
+    .btn:hover{background:var(--field);}
+    .btn-primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+    .btn-primary:hover{background:#155cb8;}
+    .btn-ghost-light{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.2);color:#fff;}
+    .btn-ghost-light:hover{background:rgba(255,255,255,.16);}
+    .btn-lg{padding:12px 26px;font-size:13px;border-radius:12px;}
+    .btn-sm{padding:6px 12px;font-size:11px;border-radius:8px;}
+    .btn-icon{width:30px;height:30px;padding:0;border-radius:8px;}
+    .btn-danger{color:var(--red);}
+    .btn-danger:hover{background:var(--red-soft);border-color:#fecaca;}
+
+    /* ── WORKSPACE ── */
+    .workspace{display:grid;grid-template-columns:230px minmax(0,1fr) 280px;gap:24px;max-width:1360px;margin:0 auto;padding:24px;}
+    .rail{position:sticky;top:76px;align-self:start;}
+    .rail-head{font-size:11px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:4px 0 14px 4px;}
+    .steps{list-style:none;position:relative;}
+    .steps::before{content:'';position:absolute;left:19px;top:20px;bottom:20px;width:2px;background:var(--line);}
+    .step{position:relative;display:flex;align-items:center;gap:12px;width:100%;padding:9px 8px;border-radius:12px;border:none;background:none;cursor:pointer;text-align:left;margin-bottom:4px;}
+    .step:hover{background:var(--white);}
+    .step.active{background:var(--white);box-shadow:var(--shadow);}
+    .step-dot{position:relative;z-index:1;flex-shrink:0;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:400;background:var(--white);border:2px solid var(--line);color:var(--muted);}
+    .step.active .step-dot{border-color:var(--primary);color:var(--primary);}
+    .step.done .step-dot{background:var(--green);border-color:var(--green);color:#fff;}
+    .step-txt b{display:block;font-size:12.5px;font-weight:400;}
+    .step-txt small{font-size:11px;color:var(--muted);}
+    .step-txt small.bad{color:var(--red);}
+    .step-txt small.good{color:var(--green);}
+    .rail-meta{margin-top:18px;padding:14px;border-radius:12px;background:var(--white);border:1px solid var(--line);font-size:11px;color:var(--muted);}
+    .rail-meta b{color:var(--text);font-weight:400;}
+    .rail-meta div+div{margin-top:6px;}
+
+    .content{min-width:0;}
+    .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:18px;flex-wrap:wrap;}
+    .page-kicker{font-family:var(--mono);font-size:11px;color:var(--primary);font-weight:400;}
+    .page-title{font-size:22px;font-weight:400;letter-spacing:-.01em;}
+    .page-sub{font-size:12px;color:var(--muted);max-width:620px;margin-top:2px;}
+
+    .card{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);padding:20px 22px;margin-bottom:16px;}
+    .card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:16px;}
+    .card-title{display:flex;align-items:center;gap:10px;font-size:13.5px;font-weight:400;}
+    .card-title .badge{width:26px;height:26px;border-radius:8px;background:var(--primary-soft);display:flex;align-items:center;justify-content:center;font-size:13px;}
+    .callout{display:flex;gap:10px;padding:12px 14px;border-radius:12px;font-size:12px;margin-bottom:16px;line-height:1.5;}
+    .callout.info{background:var(--primary-soft);color:#1e3a5f;}
+    .callout.warn{background:var(--amber-soft);color:#92400e;}
+
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px;}
+    .grid.c3{grid-template-columns:repeat(3,minmax(0,1fr));}
+    .grid.c4{grid-template-columns:repeat(4,minmax(0,1fr));}
+    .f{display:flex;flex-direction:column;gap:6px;min-width:0;}
+    .f.full{grid-column:1/-1;}
+    .f.span2{grid-column:span 2;}
+    .f label{font-size:11.5px;font-weight:400;color:#334155;}
+    .f label .req{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--red);margin-left:5px;vertical-align:middle;}
+    .f small{font-size:11px;color:var(--muted);line-height:1.4;}
+    .f input,.f select,.f textarea{font-size:13px;color:var(--text);background:var(--field);border:1.5px solid transparent;border-radius:10px;padding:10px 12px;outline:none;width:100%;transition:.15s;}
+    .f input:hover,.f select:hover{border-color:var(--line);}
+    .f input:focus,.f select:focus,.f textarea:focus{background:#fff;border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,111,219,.12);}
+    .f select{appearance:none;-webkit-appearance:none;cursor:pointer;padding-right:32px;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;background-position:right 12px center;background-size:12px;}
+    .f input.mono{font-family:var(--mono);font-size:12.5px;}
+    .f.missing input,.f.missing select{border-color:var(--red);background:var(--red-soft);}
+    .unit{display:flex;background:var(--field);border-radius:10px;border:1.5px solid transparent;overflow:hidden;}
+    .unit:focus-within{background:#fff;border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,111,219,.12);}
+    .unit input{border:none !important;box-shadow:none !important;background:transparent !important;flex:1;min-width:0;}
+    .unit select{width:auto !important;border:none !important;box-shadow:none !important;border-left:1px solid var(--line) !important;border-radius:0 !important;background-color:transparent !important;font-weight:400;font-size:12px !important;}
+    .seg{display:inline-flex;background:var(--field);border-radius:10px;padding:3px;}
+    .seg button{border:none;background:none;padding:7px 14px;border-radius:8px;font-size:12px;font-weight:400;color:var(--muted);cursor:pointer;}
+    .seg button.on{background:#fff;color:var(--text);box-shadow:0 1px 3px rgba(15,23,42,.1);}
+    .toggle{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:12.5px;user-select:none;}
+    .toggle input{display:none;}
+    .toggle .sw{width:34px;height:20px;border-radius:999px;background:#cbd5e1;position:relative;transition:.15s;flex-shrink:0;}
+    .toggle .sw::after{content:'';position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.2);}
+    .toggle input:checked+.sw{background:var(--primary);}
+    .toggle input:checked+.sw::after{left:16px;}
+
+    /* Harvest event cards */
+    .hv{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden;border-left:4px solid var(--line);}
+    .hv-head{display:flex;align-items:center;gap:12px;padding:14px 18px;cursor:pointer;}
+    .hv-num{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--muted);}
+    .hv-name{font-size:13.5px;font-weight:400;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .hv-name em{font-weight:400;color:var(--muted);font-size:12px;}
+    .hv-status{font-size:10.5px;font-weight:400;padding:3px 9px;border-radius:999px;}
+    .hv-status.bad{background:var(--red-soft);color:var(--red);}
+    .hv-status.ok{background:var(--green-soft);color:var(--green);}
+    .hv-chev{color:var(--muted);transition:transform .15s;}
+    .hv.open .hv-chev{transform:rotate(180deg);}
+    .hv-body{display:none;padding:4px 18px 18px;}
+    .hv.open .hv-body{display:block;}
+    .hv-group{padding-top:16px;margin-top:16px;border-top:1px solid var(--line);}
+    .hv-group:first-child{border-top:none;margin-top:0;padding-top:6px;}
+    .hv-group-title{display:flex;align-items:center;gap:8px;font-size:10.5px;font-weight:400;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:12px;}
+    .hv-actions{display:flex;gap:6px;}
+    .add-row{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;border:1.5px dashed #c7d2e0;border-radius:var(--r);background:transparent;color:var(--primary);font-size:12.5px;font-weight:400;cursor:pointer;}
+    .add-row:hover{background:var(--white);border-color:var(--primary);}
+
+    /* Custody timeline */
+    .tl{list-style:none;position:relative;}
+    .tl::before{content:'';position:absolute;left:15px;top:16px;bottom:16px;width:2px;background:linear-gradient(var(--teal),var(--primary));opacity:.35;}
+    .tl-item{position:relative;display:grid;grid-template-columns:32px minmax(0,1fr);gap:14px;margin-bottom:12px;}
+    .tl-dot{position:relative;z-index:1;width:32px;height:32px;border-radius:50%;background:var(--white);border:2px solid var(--primary);display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:400;color:var(--primary);}
+    .tl-card{background:var(--field);border-radius:12px;padding:12px 14px;}
+    .tl-card .grid{gap:10px 12px;}
+    .tl-card .f input,.tl-card .f select{background:#fff;padding:8px 10px;font-size:12.5px;}
+    .tl-tools{display:flex;justify-content:flex-end;gap:4px;margin-top:8px;}
+
+    /* Live panel */
+    .live{position:sticky;top:76px;align-self:start;}
+    .ring-wrap{display:flex;align-items:center;gap:16px;}
+    .ring{position:relative;width:84px;height:84px;flex-shrink:0;}
+    .ring svg{transform:rotate(-90deg);}
+    .ring-num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+    .ring-num b{font-size:20px;font-weight:400;letter-spacing:-.02em;}
+    .ring-num span{font-size:9px;color:var(--muted);font-weight:400;letter-spacing:.06em;text-transform:uppercase;}
+    .live-title{font-size:12px;font-weight:400;}
+    .live-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+    .live-list{margin-top:14px;border-top:1px solid var(--line);padding-top:10px;}
+    .live-item{display:flex;gap:8px;align-items:flex-start;padding:6px 0;font-size:11.5px;cursor:pointer;border-radius:6px;}
+    .live-item:hover{color:var(--primary);}
+    .live-item i{flex-shrink:0;width:7px;height:7px;border-radius:50%;margin-top:6px;}
+    .live-item i.err{background:var(--red);}
+    .live-item i.warn{background:var(--amber);}
+    .live-more{font-size:11px;color:var(--primary);font-weight:400;cursor:pointer;margin-top:6px;display:inline-block;}
+
+    /* Review */
+    .issue{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--line);font-size:12.5px;}
+    .issue:last-child{border-bottom:none;}
+    .issue-tag{flex-shrink:0;font-size:9.5px;font-weight:400;padding:3px 9px;border-radius:999px;text-transform:uppercase;letter-spacing:.05em;margin-top:1px;}
+    .issue-tag.err{background:var(--red-soft);color:var(--red);}
+    .issue-tag.warn{background:var(--amber-soft);color:var(--amber);}
+    .issue > span:not(.issue-tag){flex:1;}
+    .issue-tag{flex:none !important;}
+    .issue a{color:var(--primary);cursor:pointer;font-size:11.5px;font-weight:400;white-space:nowrap;}
+    .sum-block{border-top:1px solid var(--line);padding-top:14px;margin-top:14px;}
+    .sum-block:first-child{border-top:none;padding-top:0;margin-top:0;}
+    .sum-head{font-size:11px;font-weight:400;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+    .sum{display:grid;grid-template-columns:170px 1fr;gap:6px 16px;font-size:12.5px;}
+    .sum dt{color:var(--muted);}
+    .sum dd{font-weight:400;word-break:break-word;}
+    .sum dd .nil{color:#cbd5e1;font-weight:400;}
+    .foot-actions{display:flex;gap:10px;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap;}
+
+    /* Modal */
+    .modal{display:none;position:fixed;inset:0;background:rgba(11,31,58,.55);backdrop-filter:blur(3px);z-index:400;align-items:center;justify-content:center;padding:20px;}
+    .modal.open{display:flex;}
+    .modal-box{background:#fff;border-radius:18px;width:100%;max-width:520px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(11,31,58,.3);}
+    .modal-box.wide{max-width:720px;}
+    #guideModal .modal-box.wide{max-width:1040px;}
+    .modal-head{padding:20px 24px 4px;font-size:16px;font-weight:400;}
+    .modal-body{padding:12px 24px 8px;overflow-y:auto;font-size:13px;}
+    .modal-foot{padding:16px 24px 20px;display:flex;justify-content:flex-end;gap:10px;}
+    .g-sec{padding:14px 0;border-bottom:1px solid var(--line);}
+    .g-sec:last-child{border-bottom:none;}
+    .g-sec h4{font-size:13px;font-weight:400;margin-bottom:4px;}
+    .g-sec p{color:#334155;line-height:1.65;}
+    .flow{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11px;margin-top:6px;}
+    .flow span{padding:5px 11px;border-radius:999px;background:var(--field);font-weight:400;}
+    .flow span.on{background:var(--primary);color:#fff;}
+    .flow i{color:var(--muted);font-style:normal;}
+    .bullets{list-style:none;margin:10px 0;}
+    .bullets li{position:relative;padding:4px 0 4px 18px;}
+    .bullets li::before{content:'';position:absolute;left:4px;top:12px;width:6px;height:6px;border-radius:50%;background:var(--teal);}
+
+    .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;pointer-events:none;z-index:500;background:var(--ocean);color:#fff;font-size:12.5px;padding:11px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(11,31,58,.3);transition:.25s;}
+    .toast.show{opacity:1;transform:translate(-50%,0);}
+
+    @media print{
+      .topbar,.rail,.live,.page-head .btn,.foot-actions,.pdf-btn,#viewLanding,.no-print{display:none !important;}
+      .workspace{display:block;padding:0;}
+      #stepEntry,#stepHarvest,#stepCustody{display:none !important;}
+      #stepReview{display:block !important;}
+      .card{box-shadow:none;border:1px solid var(--line);}
+      body{background:#fff;}
+    }
+    @media(max-width:1180px){
+      .workspace{grid-template-columns:210px minmax(0,1fr);}
+      .live{display:none;}
+    }
+    @media(max-width:820px){
+      .workspace{grid-template-columns:minmax(0,1fr);padding:16px;}
+      .step-txt b{white-space:nowrap;font-size:12px;}
+      .step{padding:7px 12px 7px 7px;}
+      .hv-head{flex-wrap:wrap;padding:12px 14px;gap:8px;}
+      .hv-name{flex-basis:calc(100% - 120px);}
+      .hv-body{padding:4px 14px 16px;}
+      .page-head > div:last-child{text-align:left !important;}
+      .rail{position:static;}
+      .steps{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;}
+      .steps::before,.rail-head,.rail-meta{display:none;}
+      .step{width:auto;flex-shrink:0;margin:0;background:var(--white);}
+      .step-txt small{display:none;}
+      .tiles{grid-template-columns:1fr;}
+      .grid.c3,.grid.c4{grid-template-columns:repeat(2,minmax(0,1fr));}
+      .hero h1{font-size:26px;}
+      .hero-inner{flex-direction:column-reverse;gap:18px;}
+      .noaa-badge{flex-direction:row;margin-top:0;}
+      .noaa-badge .disc{width:64px;height:64px;}
+      .noaa-badge img{width:52px;height:52px;}
+      .noaa-badge span{text-align:left;}
+      .noaa-badge span br{display:none;}
+      .tb-btn .lbl{display:none;}
+      .program-pill{display:none;}
+      .sum{grid-template-columns:1fr;gap:2px;}
+      .sum dd{margin-bottom:6px;}
+    }
+    @media(max-width:560px){
+      .topbar{padding:10px 16px;}
+      .landing,.hero{padding-left:16px;padding-right:16px;}
+      .panel{padding:20px 18px;}
+      .grid,.grid.c3,.grid.c4{grid-template-columns:1fr;}
+      .f.span2{grid-column:auto;}
+    }
+
+    /* ── LINE ICONS ── */
+    .ic{width:16px;height:16px;flex-shrink:0;display:inline-block;vertical-align:-3px;}
+    .btn .ic,.tb-btn .ic{width:15px;height:15px;}
+    .btn-icon .ic{width:14px;height:14px;}
+    .tile .ico{width:40px;height:40px;border-radius:11px;background:var(--primary-soft);color:var(--primary);display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:0;}
+    .tile .ico .ic{width:20px;height:20px;}
+    .tile.on .ico{background:var(--primary);color:#fff;}
+    .tile .check .ic{width:11px;height:11px;stroke-width:3.2;}
+    .card-title .badge{color:var(--primary);}
+    .card-title .badge .ic{width:15px;height:15px;}
+    .hv-group-title .ic{width:14px;height:14px;color:var(--primary);}
+    .hv-status{display:inline-flex;align-items:center;gap:4px;}
+    .hv-status .ic{width:11px;height:11px;stroke-width:3;}
+    .hv-chev{display:inline-flex;}
+    .callout .ic{margin-top:1px;}
+    .flow i{display:inline-flex;}
+    .flow .ic{width:13px;height:13px;}
+    .issue a .ic,.live-more .ic,.rail-meta a .ic{width:13px;height:13px;vertical-align:-2px;}
+    .add-row .ic{width:16px;height:16px;}
+
+    /* ── GUIDE STORY ANIMATION ── */
+    .story{margin:4px 0 6px;}
+    .story-kicker{font-size:11px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;color:var(--teal);margin-bottom:8px;}
+    .stage{position:relative;border-radius:16px;overflow:hidden;background:linear-gradient(#dff0ff,#f4f9ff 70%);border:1px solid var(--line);}
+    .stage svg{display:block;width:100%;height:auto;}
+    #cam,#traveler{transition:transform 1.3s cubic-bezier(.65,0,.35,1);}
+    .st-glow{opacity:0;transition:opacity .5s;}
+    .station.on .st-glow{opacity:1;}
+    .st-label{font:600 10px Poppins,sans-serif;letter-spacing:.08em;fill:#64748b;}
+    .station.on .st-label{fill:#1a6fdb;}
+    .bob{animation:bob 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center;}
+    @keyframes bob{50%{transform:translateY(3px) rotate(-1.2deg);}}
+    .wave{animation:wave 3s linear infinite;}
+    @keyframes wave{to{transform:translateX(-40px);}}
+    .smoke circle{animation:smoke 3s ease-out infinite;opacity:0;}
+    .smoke circle:nth-child(2){animation-delay:1s;}
+    .smoke circle:nth-child(3){animation-delay:2s;}
+    @keyframes smoke{0%{opacity:.7;transform:translate(0,0) scale(.6);}100%{opacity:0;transform:translate(10px,-34px) scale(1.6);}}
+    .hop{animation:hop 1.3s cubic-bezier(.4,0,.2,1);}
+    @keyframes hop{0%{transform:translateY(0);}45%{transform:translateY(-38px);}100%{transform:translateY(0);}}
+    #stamp{opacity:0;transform-box:fill-box;transform-origin:center;}
+    .stage[data-step="4"] #stamp{animation:stamp .6s 1.5s cubic-bezier(.2,1.6,.4,1) forwards;}
+    @keyframes stamp{0%{opacity:0;transform:scale(2.2) rotate(-14deg);}100%{opacity:1;transform:scale(1) rotate(-10deg);}}
+    #lens{transform-box:fill-box;transform-origin:center;}
+    .stage[data-step="5"] #lens{animation:peek 2.6s 1.3s ease-in-out infinite;}
+    @keyframes peek{0%,100%{transform:translate(0,0);}50%{transform:translate(-26px,8px);}}
+    #cargoShip{transition:transform 2.2s ease-in-out;}
+    .stage[data-step="3"] #cargoShip{transform:translateX(40px);}
+
+    .story-body{display:grid;grid-template-columns:minmax(0,1fr) 230px;gap:16px;margin-top:14px;align-items:start;}
+    .story-title{font-size:16px;font-weight:400;letter-spacing:-.01em;}
+    .story-text{font-size:13.5px;color:#334155;line-height:1.6;margin-top:4px;min-height:66px;}
+    .note-card{background:#fffdf5;border:1px solid #f1e3b5;border-radius:10px;padding:10px 12px;box-shadow:0 6px 16px rgba(120,90,20,.08);transform:rotate(1.2deg);animation:noteIn .5s .9s both;}
+    .note-card h5{font-size:10.5px;font-weight:400;letter-spacing:.08em;text-transform:uppercase;color:#a16207;margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+    .note-card h5 .ic{width:13px;height:13px;}
+    .note-card div{font-family:var(--mono);font-size:11px;color:#3f3f46;line-height:1.7;}
+    @keyframes noteIn{from{opacity:0;transform:translateY(10px) rotate(4deg);}to{opacity:1;transform:rotate(1.2deg);}}
+    .trail{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);min-height:40px;}
+    .trail-label{font-size:11px;font-weight:400;color:var(--muted);margin-right:4px;}
+    .chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:999px;background:var(--green-soft);color:var(--green);font-size:11px;font-weight:400;animation:chipIn .4s both;}
+    .chip .ic{width:12px;height:12px;stroke-width:2.6;}
+    @keyframes chipIn{from{opacity:0;transform:scale(.6);}to{opacity:1;transform:none;}}
+    .story-ctrl{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:14px;}
+    .dots{display:flex;gap:6px;}
+    .dots button{width:9px;height:9px;border-radius:999px;border:none;background:#cbd5e1;cursor:pointer;padding:0;transition:.25s;}
+    .dots button.on{width:26px;background:var(--primary);}
+    .story-btns{display:flex;gap:6px;}
+    .more-head{font-size:11px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:22px 0 2px;}
+    @media(max-width:620px){.story-body{grid-template-columns:1fr;}.note-card{transform:none;}}
+    @media(prefers-reduced-motion:reduce){
+      #cam,#traveler,#cargoShip{transition:none;}
+      .bob,.wave,.smoke circle,.hop,#lens{animation:none !important;}
+      .stage[data-step="4"] #stamp{animation:none;opacity:1;transform:rotate(-10deg);}
+    }
+
+    /* ── LOOKUPS FROM SMARTUNA MODULES ── */
+    .combo-pop{position:fixed;z-index:600;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 34px rgba(11,31,58,.16);max-height:280px;overflow-y:auto;padding:5px;display:none;}
+    .combo-pop.open{display:block;}
+    .combo-opt{display:flex;flex-direction:column;gap:1px;width:100%;text-align:left;border:none;background:none;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12.5px;color:var(--text);}
+    .combo-opt small{font-size:11px;color:var(--muted);}
+    .combo-opt.hl,.combo-opt:hover{background:var(--primary-soft);}
+    .combo-opt mark{background:none;color:var(--primary);font-weight:400;}
+    .combo-empty{padding:10px;font-size:12px;color:var(--muted);}
+    .combo-head{padding:6px 10px 4px;font-size:10px;font-weight:400;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);}
+    .data-status{display:flex;align-items:center;gap:7px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:11px;}
+    .data-status i{width:7px;height:7px;border-radius:50%;background:#cbd5e1;flex-shrink:0;}
+    .data-status.ok i{background:var(--green);}
+    .data-status.bad i{background:var(--amber);}
+
+    /* ── NOAA alignment ── */
+    .mono-sm{font-family:var(--mono);font-size:11px;font-weight:400;color:var(--text);}
+    .sp-lines{display:flex;flex-direction:column;gap:8px;}
+    .sp-line{display:grid;grid-template-columns:22px minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.3fr) 30px;gap:10px;align-items:start;}
+    .sp-line-n{font-family:var(--mono);font-size:11px;color:var(--muted);padding-top:12px;text-align:center;}
+    .sp-line .btn-icon{margin-top:5px;}
+    .hv-head .sp-code + .sp-code{margin-left:-6px;}
+    @media(max-width:820px){ .sp-line{grid-template-columns:22px minmax(0,1fr) 30px;} .sp-line .f:nth-of-type(2),.sp-line .f:nth-of-type(3){grid-column:2;} .sp-line .btn-icon{grid-column:3;grid-row:1;} }
+    @media(max-width:560px){ .topbar{gap:8px;} .tb-btn{padding:7px 10px;} .wm-sub{display:none;} .page-head .btn-lg{width:100%;} }
+
+    /* ── NOAA field-for-field ── */
+    .tiles.tiles-2{grid-template-columns:repeat(2,1fr);}
+    .fao-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;}
+    .fao-chip{display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:9px;background:var(--field);border:1.5px solid transparent;cursor:pointer;font-size:11px;line-height:1.25;color:var(--muted);user-select:none;}
+    .fao-chip input{display:none;}
+    .fao-chip b{font-family:var(--mono);font-size:12px;color:var(--text);min-width:18px;}
+    .fao-chip:hover{border-color:var(--line);}
+    .fao-chip.on{background:var(--primary-soft);border-color:var(--primary);color:#1e3a5f;}
+    .fao-chip.on b{color:var(--primary);}
+    .na-check{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);cursor:pointer;margin-top:2px;}
+    .unit.pre select{border-left:none !important;border-right:1px solid var(--line) !important;order:-1;}
+    .f input:disabled{color:var(--muted);font-style:italic;cursor:not-allowed;}
+    .method-pill{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:var(--primary-soft);color:#1e3a5f;font-size:12.5px;font-weight:400;}
+    .sp-head{display:grid;grid-template-columns:22px minmax(0,1.4fr) minmax(0,1fr) minmax(0,1.3fr) 30px;gap:10px;margin:16px 0 6px;font-size:11.5px;font-weight:400;color:#334155;}
+    .sec-head{display:flex;align-items:flex-end;justify-content:space-between;margin:4px 0 10px;}
+    .sec-head b{display:block;font-size:14px;}
+    .sec-head small{font-size:11.5px;color:var(--muted);}
+    .ref-chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:1px 8px;font-size:10.5px;font-family:var(--mono);color:var(--primary);cursor:pointer;margin:2px 2px 0 0;}
+    .ref-chip:hover{border-color:var(--primary);}
+    .empty-note{font-size:12px;color:var(--muted);padding:4px 2px 12px;}
+    .f.gap{visibility:hidden;}
+    @media(max-width:1100px){ .fao-grid{grid-template-columns:repeat(3,minmax(0,1fr));} }
+    @media(max-width:820px){ .tiles.tiles-2{grid-template-columns:1fr;} .sp-head{display:none;} .fao-grid{grid-template-columns:repeat(2,minmax(0,1fr));} .f.gap{display:none;} }
+
+    /* ── regular weights: titles medium, nothing bold ── */
+    b,strong,th,h1,h2,h3,h4,h5{font-weight:500;}
+    .hero h1,.page-title,.card-title,.q-title,.sec-head b,.hv-name,.live-title,.modal-head,.story-title,.ring-num b,.hero-stat b,.g-sec h4,.sum-head,.hv-group-title,.rail-head,.step-txt b,.tile b{font-weight:500;}
+    .tile b{font-weight:400;}
+    .wm-top{font-weight:400;}
+
+    /* ── roomier layout ── */
+    .workspace{grid-template-columns:268px minmax(0,1fr);gap:36px;max-width:1440px;padding:32px 40px 48px;}
+    .rail .live{margin:18px 0 0;padding:18px;}
+    .rail .live .ring{width:64px;height:64px;}
+    .rail .live .ring-num b{font-size:15px;}
+    .rail .live .ring-num span{font-size:8px;}
+    .rail .live .ring-wrap{gap:14px;}
+    .rail .live .live-list{margin-top:12px;}
+    .rail-meta{margin-top:14px;}
+    .content{max-width:1080px;}
+    .page-head{margin-bottom:26px;}
+    .page-title{font-size:26px;}
+    .page-sub{font-size:13px;line-height:1.6;max-width:720px;margin-top:6px;}
+    .card{padding:28px 32px;margin-bottom:22px;}
+    .card-head{margin-bottom:22px;}
+    .grid{gap:22px 26px;}
+    .f{gap:8px;}
+    .f label{font-size:12px;font-weight:400;color:#475569;line-height:1.4;}
+    .lbl-note{display:block;font-size:11px;color:var(--muted);margin-top:1px;}
+    .f input,.f select,.f textarea{padding:12px 14px;font-size:13.5px;}
+    .unit input{padding:12px 14px;}
+    .hv{margin-bottom:20px;}
+    .hv-head{padding:18px 28px;gap:14px;}
+    .hv-body{padding:4px 32px 32px;}
+    .hv-group{padding-top:26px;margin-top:26px;}
+    .hv-group-title{font-size:11px;margin-bottom:18px;color:#475569;}
+    .sp-lines{gap:12px;}
+    .sp-line,.sp-head{gap:16px;}
+    .sp-head{margin:24px 0 8px;font-weight:400;color:#475569;}
+    .fao-grid{gap:8px;}
+    .fao-chip{padding:9px 11px;}
+    .add-row{padding:16px;margin-bottom:6px;}
+    .sec-head{margin:6px 0 14px;}
+    .sec-head b{font-size:16px;}
+    .issue{padding:13px 0;}
+    .sum{gap:9px 24px;grid-template-columns:260px 1fr;}
+    .sum dd{font-weight:400;}
+    .sum-block{padding-top:20px;margin-top:20px;}
+    .foot-actions{margin-top:14px;}
+    .landing{max-width:1040px;}
+    .panel{padding:32px 36px;margin-bottom:22px;}
+    .tiles{gap:16px;}
+    .tile{padding:20px;}
+    .step{padding:11px 10px;}
+    @media(max-width:1180px){ .workspace{grid-template-columns:230px minmax(0,1fr);gap:26px;padding:24px;} .card{padding:24px;} .hv-body{padding:4px 22px 24px;} .hv-head{padding:16px 22px;} }
+    @media(max-width:820px){
+      .workspace{grid-template-columns:minmax(0,1fr);padding:16px;gap:16px;}
+      .rail .live{display:none;}
+      .card{padding:20px 18px;} .hv-body{padding:4px 16px 20px;} .hv-head{padding:14px 16px;}
+      .grid{gap:16px;} .sum{grid-template-columns:1fr;}
+    }
+
+    /* ── dropdown menu ── */
+    .f select{cursor:pointer;}
+    .f select.dd-open,.unit select.dd-open{border-color:var(--primary);background-color:#fff;box-shadow:0 0 0 3px rgba(26,111,219,.12);}
+    .dd-pop{position:fixed;z-index:600;display:none;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(11,31,58,.16);max-height:320px;overflow:hidden;}
+    .dd-pop.open{display:flex;}
+    .dd-search{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);color:var(--muted);}
+    .dd-search input{flex:1;border:none;outline:none;font-size:13px;background:transparent;color:var(--text);}
+    .dd-list{overflow-y:auto;padding:6px;}
+    .dd-group{padding:10px 10px 4px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);}
+    .dd-opt{display:flex;align-items:center;gap:10px;width:100%;text-align:left;border:none;background:none;padding:9px 10px;border-radius:9px;cursor:pointer;font-size:13px;color:var(--text);font-family:inherit;}
+    .dd-opt span:not(.dd-code){flex:1;line-height:1.35;}
+    .dd-opt i{width:14px;display:inline-flex;color:var(--primary);}
+    .dd-opt i .ic{width:14px;height:14px;}
+    .dd-opt:hover,.dd-opt.hl{background:var(--field);}
+    .dd-opt.on{background:var(--primary-soft);color:#1e3a5f;}
+    .dd-opt.blank{color:var(--muted);}
+    .dd-opt:disabled{opacity:.45;cursor:not-allowed;}
+    .dd-code{flex:none;font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:6px;background:var(--field);color:#334155;min-width:34px;text-align:center;}
+    .dd-opt.on .dd-code{background:#fff;color:var(--primary);}
+    .combo-pop{border-radius:14px;box-shadow:0 18px 40px rgba(11,31,58,.16);padding:6px;}
+    .combo-opt{border-radius:9px;padding:9px 10px;}
+    .combo-opt mark{font-weight:400;}
+    .na-check input{width:16px !important;height:16px;padding:0 !important;margin:0;flex:none;accent-color:var(--primary);cursor:pointer;}
+    .na-check{gap:8px;margin-top:4px;line-height:1.35;}
+    .unit select{min-width:70px;padding:0 30px 0 14px !important;background-position:right 11px center;}
+    .unit.pre select{min-width:78px;}
+    .toggle input{display:none !important;}
+
+    /* ── date picker ── */
+    .f input.date-in{cursor:pointer;padding-right:40px;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;background-position:right 14px center;background-size:16px;}
+    .f input.date-in.dp-open{border-color:var(--primary);background-color:#fff;box-shadow:0 0 0 3px rgba(26,111,219,.12);}
+    .dp-pop{position:fixed;z-index:600;display:none;width:296px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(11,31,58,.16);padding:12px;user-select:none;}
+    .dp-pop.open{display:block;}
+    .dp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+    .dp-titles{display:flex;gap:2px;}
+    .dp-title{border:none;background:none;font-family:inherit;font-size:13.5px;font-weight:500;color:var(--text);padding:6px 8px;border-radius:8px;cursor:pointer;}
+    .dp-title:hover{background:var(--field);}
+    .dp-title.static{cursor:default;}
+    .dp-nav{width:30px;height:30px;border:none;background:none;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#475569;cursor:pointer;}
+    .dp-nav:hover{background:var(--field);}
+    .dp-nav .ic{width:15px;height:15px;}
+    .dp-week{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:2px;}
+    .dp-week span{text-align:center;font-size:10.5px;color:var(--muted);padding:4px 0;letter-spacing:.04em;}
+    .dp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+    .dp-grid.dp-big{grid-template-columns:repeat(3,1fr);gap:6px;padding:4px 0;}
+    .dp-day,.dp-cell{border:none;background:none;font-family:inherit;font-size:12.5px;color:var(--text);height:34px;border-radius:9px;cursor:pointer;position:relative;}
+    .dp-cell{height:46px;font-size:13px;}
+    .dp-day:hover,.dp-cell:hover{background:var(--field);}
+    .dp-day.out{color:#cbd5e1;}
+    .dp-day.today::after{content:'';position:absolute;left:50%;bottom:5px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--primary);}
+    .dp-day.focus{box-shadow:inset 0 0 0 1.5px #9cc3f3;}
+    .dp-day.on,.dp-cell.on{background:var(--primary);color:#fff;}
+    .dp-day.on.today::after{background:#fff;}
+    .dp-foot{display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:10px;border-top:1px solid var(--line);}
+    .dp-link{border:none;background:none;font-family:inherit;font-size:12px;color:var(--primary);cursor:pointer;padding:4px 6px;border-radius:6px;}
+    .dp-link:hover{background:var(--primary-soft);}
+    .dp-sel{font-size:12px;color:var(--muted);}
+
+    /* ── info tips ── */
+    .lbl-tip{display:flex;align-items:center;gap:7px;}
+    .info-tip{flex:none;width:17px;height:17px;border-radius:50%;border:1.3px solid #94a3b8;background:#fff;color:#64748b;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:11px;line-height:1;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;transition:.15s;}
+    .info-tip:hover,.info-tip.on{border-color:var(--primary);background:var(--primary);color:#fff;}
+    .info-tip:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(26,111,219,.2);}
+    .tip-pop{position:fixed;z-index:650;display:none;background:var(--ocean);color:#dbe7f7;border-radius:12px;padding:14px 16px;font-size:12.5px;line-height:1.55;box-shadow:0 18px 40px rgba(11,31,58,.28);}
+    .tip-pop.open{display:block;}
+    .tip-pop::before{content:'';position:absolute;top:-6px;left:var(--arrow,20px);width:12px;height:12px;margin-left:-6px;background:var(--ocean);transform:rotate(45deg);border-radius:2px;}
+    .tip-pop.above::before{top:auto;bottom:-6px;}
+    .tip-pop b{display:block;color:#fff;font-weight:500;font-size:13px;margin-bottom:6px;}
+    .tip-pop p b{display:inline;font-size:inherit;margin:0;}
+    .tip-pop p{margin:0 0 8px;}
+    .tip-pop ul{margin:0 0 8px;padding-left:16px;}
+    .tip-pop li{margin:2px 0;}
+    .tip-pop .tip-eg{margin:0;color:#8fb3e6;font-size:11.5px;}
+    /* ── FSMA 204: own palette (same fonts and sizes as SIMP) ── */
+    :root{ --ocean:#0c2f2e; --ocean-2:#134e4a; --primary:#0f766e; --primary-soft:#e7f5f2; --teal:#0d9488; --bg:#f4f7f5; --field:#f5f8f7; --line:#e1e8e5; }
+    .f input:focus,.f select:focus,.f textarea:focus,.unit:focus-within,.f select.dd-open,.unit select.dd-open,.f input.date-in.dp-open{box-shadow:0 0 0 3px rgba(15,118,110,.14);}
+    .tile.on{box-shadow:0 0 0 3px rgba(15,118,110,.12);}
+    .btn-primary{background:var(--primary);border-color:var(--primary);}
+    .btn-primary:hover{background:#0b5f58;}
+    .dd-opt.on,.combo-opt.hl,.combo-opt:hover{background:var(--primary-soft);color:#134e4a;}
+    .dd-day.focus{box-shadow:inset 0 0 0 1.5px #99d5cc;}
+    .tip-pop,.tip-pop::before{background:#0c2f2e;}
+    /* light top bar */
+    .topbar{background:rgba(255,255,255,.92);backdrop-filter:blur(8px);color:var(--text);border-bottom:1px solid var(--line);}
+    .wm-top{color:#0c2f2e;} .wm-sub{color:var(--teal);}
+    .brand img{background:var(--primary-soft);}
+    .program-pill{background:var(--primary-soft);border-color:transparent;color:#134e4a;}
+    .program-pill .dot{background:var(--primary);box-shadow:0 0 0 3px rgba(15,118,110,.2);}
+    .tb-btn{color:#334155;border-color:var(--line);}
+    .tb-btn:hover{background:var(--field);color:var(--text);}
+    .tb-btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;}
+    .tb-btn.primary:hover{background:#0b5f58;}
+
+    /* setup screen */
+    .setup{display:grid;grid-template-columns:minmax(320px,420px) minmax(0,1fr);min-height:calc(100vh - 57px);}
+    .setup-intro{background:linear-gradient(165deg,#0c2f2e 0%,#134e4a 70%,#115e59 100%);color:#d5ebe6;position:relative;overflow:hidden;}
+    .setup-intro::after{content:'';position:absolute;right:-120px;bottom:-120px;width:340px;height:340px;border-radius:50%;border:56px solid rgba(255,255,255,.04);}
+    .setup-intro-inner{position:sticky;top:57px;padding:48px 40px;display:flex;flex-direction:column;gap:22px;}
+    .kicker{display:inline-flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#8fe0d2;}
+    .kicker i{width:22px;height:2px;background:#5eead4;border-radius:2px;}
+    .setup-intro h1{font-size:30px;font-weight:500;line-height:1.22;letter-spacing:-.015em;color:#fff;}
+    .setup-intro p{font-size:13.5px;line-height:1.65;color:#b4d6cf;}
+    .facts{list-style:none;display:flex;flex-direction:column;gap:2px;border-top:1px solid rgba(255,255,255,.1);}
+    .facts li{display:flex;gap:14px;align-items:center;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.1);}
+    .facts .fi{width:34px;height:34px;border-radius:10px;background:rgba(94,234,212,.1);color:#5eead4;display:flex;align-items:center;justify-content:center;flex:none;}
+    .facts b{display:block;font-weight:500;font-size:15px;color:#fff;}
+    .facts small{font-size:11.5px;color:#9cc8bf;}
+    .intro-links{display:flex;flex-direction:column;gap:6px;}
+    .lnk{display:inline-flex;align-items:center;gap:9px;border:none;background:none;color:#d5ebe6;font-family:inherit;font-size:13px;padding:6px 0;cursor:pointer;text-align:left;}
+    .lnk:hover{color:#fff;}
+    .lnk .ic{color:#5eead4;}
+    .intro-foot{font-size:11px !important;color:#7fb3a9 !important;}
+    .setup-main{padding:48px 56px 0;max-width:980px;width:100%;min-width:0;}
+    .setup-sec{margin-bottom:44px;}
+    .sec-num{font-family:var(--mono);font-size:11px;color:var(--primary);margin-bottom:6px;}
+    .setup-sec h2{font-size:22px;font-weight:500;letter-spacing:-.01em;}
+    .sec-sub{font-size:13px;color:var(--muted);margin:4px 0 20px;}
+    .cte-rows{display:flex;flex-direction:column;gap:10px;}
+    .cte-row{display:grid;grid-template-columns:44px minmax(0,1fr) auto 44px;gap:16px;align-items:center;width:100%;text-align:left;padding:16px 20px;border-radius:14px;border:1px solid var(--line);background:#fff;cursor:pointer;font-family:inherit;color:var(--text);position:relative;transition:.15s;}
+    .cte-row::before{content:'';position:absolute;left:-1px;top:14px;bottom:14px;width:3px;border-radius:0 3px 3px 0;background:transparent;transition:.15s;}
+    .cte-row:hover{border-color:#b9ddd5;}
+    .cte-row.on{border-color:#9fd3c8;background:#fbfefd;}
+    .cte-row.on::before{background:var(--primary);}
+    .cte-ico{width:44px;height:44px;border-radius:12px;background:var(--field);color:#64748b;display:flex;align-items:center;justify-content:center;}
+    .cte-ico .ic{width:20px;height:20px;}
+    .cte-row.on .cte-ico{background:var(--primary-soft);color:var(--primary);}
+    .cte-txt b{display:block;font-size:14px;font-weight:400;}
+    .cte-txt small{display:block;font-size:12px;color:var(--muted);line-height:1.5;margin-top:3px;}
+    .cte-cfr{font-family:var(--mono);font-size:11px;color:#94a3b8;}
+    .sw2{width:40px;height:23px;border-radius:999px;background:#d5dedb;position:relative;transition:.15s;justify-self:end;}
+    .sw2 i{position:absolute;top:3px;left:3px;width:17px;height:17px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.18);transition:.15s;}
+    .cte-row.on .sw2{background:var(--primary);}
+    .cte-row.on .sw2 i{left:20px;}
+    .chain-preview{margin-top:18px;padding:18px 20px;border-radius:14px;background:#fff;border:1px dashed #c9dbd6;}
+    .chain-label{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
+    .chain{display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding-bottom:4px;}
+    .cn{display:flex;flex-direction:column;align-items:center;gap:8px;min-width:86px;flex:none;opacity:.38;transition:.2s;}
+    .cn.on{opacity:1;}
+    .cn-dot{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--field);color:#64748b;border:1.5px solid var(--line);}
+    .cn.on .cn-dot{background:var(--primary-soft);color:var(--primary);border-color:#9fd3c8;}
+    .cn.end .cn-dot{background:#fff;border-style:dashed;color:#64748b;}
+    .cn-dot .ic{width:16px;height:16px;}
+    .cn-lbl{font-size:11px;color:#475569;text-align:center;line-height:1.3;max-width:96px;}
+    .cn-line{flex:1;min-width:18px;height:1.5px;background:#cfe0db;margin-top:19px;}
+    .fchips{display:flex;flex-wrap:wrap;gap:10px;}
+    .fchip{display:inline-flex;align-items:center;gap:7px;padding:10px 18px;border-radius:999px;border:1px solid var(--line);background:#fff;font-family:inherit;font-size:13px;color:#334155;cursor:pointer;transition:.15s;}
+    .fchip:hover{border-color:#b9ddd5;}
+    .fchip.on{background:var(--primary);border-color:var(--primary);color:#fff;}
+    .fchip.off-list:not(.on){border-style:dashed;}
+    .fchip .ic{width:14px;height:14px;}
+    .setup .ftl-result{margin-top:18px;padding:16px 18px;border-radius:14px;gap:14px;align-items:flex-start;}
+    .setup .ftl-result b{font-weight:500;}
+    .ftl-result .vd{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none;background:#fff;}
+    .ftl-result.in{background:#ecfdf5;color:#065f46;}
+    .ftl-result.out{background:#fffbeb;color:#92400e;}
+    .setup-bar{position:sticky;bottom:0;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 0 22px;margin-top:8px;background:var(--bg);border-top:1px solid var(--line);z-index:5;}
+    .setup-summary{font-size:12.5px;color:#334155;line-height:1.5;}
+    .setup-summary b{font-weight:500;}
+    .setup-summary span{color:var(--muted);font-size:11.5px;}
+    .setup-summary em{font-style:normal;}
+    @media(max-width:980px){
+      .setup{grid-template-columns:minmax(0,1fr);}
+      .setup-intro-inner{position:static;padding:32px 24px;}
+      .setup-intro h1{font-size:24px;}
+      .facts{flex-direction:row;flex-wrap:wrap;border:none;gap:10px;}
+      .facts li{flex:1 1 180px;border:none;padding:0;}
+      .setup-main{padding:32px 24px 0;}
+    }
+    @media(max-width:560px){
+      .setup-main{padding:26px 16px 0;}
+      .cte-row{grid-template-columns:40px minmax(0,1fr) 44px;padding:14px;}
+      .cte-cfr{display:none;}
+      .cte-ico{width:40px;height:40px;}
+      .setup-bar .btn-lg{padding:12px 18px;}
+      .ss-list{display:none;}
+      .setup-bar{padding:12px 0 14px;}
+    }
+
+    /* ── FSMA 204 page ── */
+    .sub-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 22px;padding:5px;background:#fff;border-radius:14px;box-shadow:var(--shadow);}
+    .sub-tab{display:inline-flex;align-items:center;gap:8px;border:none;background:none;padding:10px 14px;border-radius:10px;font-family:inherit;font-size:12.5px;color:var(--muted);cursor:pointer;}
+    .sub-tab:hover{background:var(--field);color:var(--text);}
+    .sub-tab.on{background:var(--primary-soft);color:#1e3a5f;}
+    .sub-tab .n{font-family:var(--mono);font-size:10.5px;padding:1px 7px;border-radius:999px;background:var(--field);color:var(--muted);}
+    .sub-tab.on .n{background:#fff;color:var(--primary);}
+    .sub-tab .ic{width:15px;height:15px;}
+    .cte-intro{display:flex;gap:14px;align-items:flex-start;padding:18px 20px;border-radius:14px;background:var(--primary-soft);color:#1e3a5f;font-size:12.5px;line-height:1.6;margin-bottom:20px;}
+    .cte-intro .ic{width:18px;height:18px;margin-top:2px;flex:none;}
+    .cte-intro b{font-weight:500;}
+    .tile-multi .tile .check{border-radius:6px;}
+    .ftl-result{margin-top:16px;padding:14px 16px;border-radius:12px;font-size:12.5px;line-height:1.55;display:flex;gap:10px;align-items:flex-start;}
+    .ftl-result .ic{flex:none;width:17px;height:17px;margin-top:1px;}
+    .ftl-result.in{background:var(--green-soft);color:#065f46;}
+    .ftl-result.out{background:var(--amber-soft);color:#92400e;}
+    .lib-table{width:100%;border-collapse:separate;border-spacing:0;font-size:12.5px;}
+    .lib-table th{text-align:left;font-weight:400;font-size:11px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;padding:0 12px 10px;}
+    .lib-table td{padding:12px;border-top:1px solid var(--line);vertical-align:top;}
+    .lib-table td .sub{display:block;font-size:11.5px;color:var(--muted);margin-top:2px;}
+    .lib-table tr:hover td{background:#fbfcfe;}
+    .lib-table .acts{white-space:nowrap;text-align:right;}
+    .pill{display:inline-block;font-size:10.5px;padding:2px 9px;border-radius:999px;background:var(--field);color:#475569;}
+    .pill.ours{background:var(--primary-soft);color:var(--primary);}
+    .pill.sup{background:#f0fdfa;color:var(--teal);}
+    .pill.cus{background:#faf5ff;color:#7c3aed;}
+    .pill.land{background:var(--amber-soft);color:var(--amber);}
+    .gen-row{display:flex;gap:8px;}
+    .gen-row input{flex:1;min-width:0;}
+    .gen-row .btn{flex:none;}
+    .pair-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 26px;}
+    .io-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+    .io-line{display:grid;grid-template-columns:22px minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,.8fr) minmax(0,.7fr) 30px;gap:14px;align-items:start;margin-bottom:12px;}
+    .io-line .n{font-family:var(--mono);font-size:11px;color:var(--muted);padding-top:12px;}
+    .io-line .btn-icon{margin-top:5px;}
+    .io-labels{display:grid;grid-template-columns:22px minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,.8fr) minmax(0,.7fr) 30px;gap:14px;font-size:12px;color:#475569;margin-bottom:8px;}
+    .loc-preview{font-size:11.5px;color:var(--muted);line-height:1.45;}
+    .share-box{margin-top:18px;padding:16px 18px;border-radius:12px;background:var(--field);font-size:12px;color:#475569;display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;}
+    .req-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px 22px;align-items:end;}
+    .count-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-top:22px;}
+    .count{padding:14px 16px;border-radius:12px;background:var(--field);}
+    .count b{display:block;font-size:22px;font-weight:500;font-family:var(--mono);}
+    .count span{font-size:11.5px;color:var(--muted);}
+    .trace-out{margin-top:18px;}
+    .trace-step{display:grid;grid-template-columns:34px minmax(0,1fr);gap:14px;position:relative;padding-bottom:16px;}
+    .trace-step::before{content:'';position:absolute;left:16px;top:34px;bottom:0;width:2px;background:var(--line);}
+    .trace-step:last-child::before{display:none;}
+    .trace-dot{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--primary-soft);color:var(--primary);}
+    .trace-dot .ic{width:16px;height:16px;}
+    .trace-card{padding:12px 16px;border-radius:12px;background:var(--field);font-size:12.5px;line-height:1.55;}
+    .trace-card b{font-weight:500;}
+    .trace-card .meta{color:var(--muted);font-size:11.5px;}
+    .mono-chip{font-family:var(--mono);font-size:11.5px;padding:1px 8px;border-radius:6px;background:#fff;border:1px solid var(--line);color:#334155;}
+    .modal-box .grid{gap:18px 22px;}
+    @media(max-width:1100px){ .req-grid{grid-template-columns:repeat(2,minmax(0,1fr));} .count-grid{grid-template-columns:repeat(3,minmax(0,1fr));} }
+    @media(max-width:820px){
+      .pair-grid,.req-grid{grid-template-columns:1fr;} .count-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+      .io-labels{display:none;} .io-line{grid-template-columns:22px minmax(0,1fr) 30px;} .io-line > .f{grid-column:2;} .io-line .btn-icon{grid-column:3;grid-row:1;}
+      .lib-table thead{display:none;} .lib-table tr{display:block;border-top:1px solid var(--line);padding:10px 0;} .lib-table td{display:block;border:none;padding:3px 0;} .lib-table .acts{text-align:left;}
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ═══════════ TOP BAR ═══════════ -->
+  <header class="topbar">
+    <a class="brand" href="home-logged-in.html" onclick="event.preventDefault(); openModal('exitModal');">
+      <img src="sc-blue-logo.png" alt="SmarTuna"/>
+      <span class="wm"><span class="wm-top">SmarTuna</span><span class="wm-sub">concept</span></span>
+    </a>
+    <span class="program-pill"><span class="dot"></span>FDA FSMA 204 · Food Traceability Rule</span>
+    <div class="topbar-spacer"></div>
+    <button class="tb-btn" onclick="openModal('guideModal')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><span class="lbl">Guide</span></button>
+    <button class="tb-btn primary hidden xlsx-btn" id="tbXlsx" onclick="exportSpreadsheet()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span class="lbl">FDA spreadsheet</span></button>
+    <button class="tb-btn hidden" id="tbSave" onclick="saveDraft()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg><span class="lbl">Save draft</span></button>
+    <button class="tb-btn" onclick="openModal('exitModal')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg><span class="lbl">Exit</span></button>
+  </header>
+
+  <!-- ═══════════ LANDING ═══════════ -->
+  <div id="viewLanding" class="setup">
+    <aside class="setup-intro">
+      <div class="setup-intro-inner">
+        <span class="kicker"><i></i>FDA Food Traceability Rule</span>
+        <h1>Trace every tuna lot in one place, ready for FDA within 24 hours.</h1>
+        <p>Record the Critical Tracking Events your firm performs, with FDA's Key Data Elements and Traceability Lot Codes. When FDA asks, export its electronic sortable spreadsheet in one click.</p>
+        <ul class="facts">
+          <li><span class="fi"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span><div><b>July 20, 2028</b><small>FDA won't enforce the rule before this date</small></div></li>
+          <li><span class="fi"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span><div><b>24 hours</b><small>to send records as a sortable spreadsheet</small></div></li>
+          <li><span class="fi"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg></span><div><b>2 years</b><small>how long records must be kept</small></div></li>
+        </ul>
+        <div class="intro-links">
+          <button class="lnk" onclick="openModal('guideModal')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>How FSMA 204 works</button>
+          <button class="lnk" onclick="loadDraft()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"/></svg>Open saved draft</button>
+        </div>
+        <p class="intro-foot">21 CFR Part 1, Subpart S · Nothing here is sent to FDA</p>
+      </div>
+    </aside>
+
+    <main class="setup-main">
+      <section class="setup-sec">
+        <div class="sec-num">Step A</div>
+        <h2>What does your firm do with the tuna?</h2>
+        <p class="sec-sub">Switch on each Critical Tracking Event you perform. You can change this later.</p>
+        <div class="cte-rows" id="cteTiles"></div>
+        <div class="chain-preview">
+          <div class="chain-label">Your traceability chain</div>
+          <div class="chain" id="chainPreview"></div>
+        </div>
+      </section>
+
+      <section class="setup-sec">
+        <div class="sec-num">Step B</div>
+        <h2>Which product forms do you handle?</h2>
+        <p class="sec-sub">This checks whether your tuna is on FDA's Food Traceability List.</p>
+        <div class="fchips" id="formTiles"></div>
+        <div id="ftlResult"></div>
+      </section>
+
+      <div class="setup-bar">
+        <div class="setup-summary" id="setupSummary"></div>
+        <button class="btn btn-primary btn-lg" onclick="startForm()">Start recording <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+      </div>
+    </main>
+  </div>
+
+  <!-- ═══════════ WORKSPACE ═══════════ -->
+  <div id="viewForm" class="hidden">
+    <div class="workspace">
+      <aside class="rail">
+        <div class="rail-head">Your records</div>
+        <ul class="steps">
+          <li><button class="step" data-tab="firm" onclick="switchTab('firm')"><span class="step-dot">1</span><span class="step-txt"><b>Firm &amp; contact</b><small id="st-firm"></small></span></button></li>
+          <li><button class="step" data-tab="library" onclick="switchTab('library')"><span class="step-dot">2</span><span class="step-txt"><b>Locations &amp; products</b><small id="st-library"></small></span></button></li>
+          <li><button class="step" data-tab="records" onclick="switchTab('records')"><span class="step-dot">3</span><span class="step-txt"><b>Tracking events</b><small id="st-records"></small></span></button></li>
+          <li><button class="step" data-tab="review" onclick="switchTab('review')"><span class="step-dot">4</span><span class="step-txt"><b>Review &amp; export</b><small>FDA spreadsheet</small></span></button></li>
+        </ul>
+        <div class="live card">
+          <div class="ring-wrap">
+            <div class="ring" id="liveRing"></div>
+            <div><div class="live-title">Record readiness</div><div class="live-sub" id="liveSub"></div></div>
+          </div>
+          <div class="live-list" id="liveList"></div>
+        </div>
+        <div class="rail-meta">
+          <div>Events · <b id="cteLabel"></b></div>
+          <div class="data-status" id="dataStatus"><i></i><span>Connecting to SmarTuna data…</span></div>
+          <div style="margin-top:10px;"><a href="#" style="color:var(--primary);text-decoration:none;" onclick="event.preventDefault(); showView('viewLanding');">Change these <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></a></div>
+        </div>
+      </aside>
+
+      <main class="content">
+        <!-- ── STEP 1 ── -->
+        <section id="stepFirm">
+          <div class="page-head"><div><div class="page-kicker">STEP 1 OF 4</div><div class="page-title">Firm &amp; contact</div><div class="page-sub">Who keeps these records, and who FDA should reach when it asks for them.</div></div></div>
+          <div class="card">
+            <div class="card-head"><div class="card-title"><span class="badge"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/></svg></span>Your firm</div></div>
+            <div class="grid c3">
+              <div class="f span2"><label>Firm name<span class="req"></span></label><input type="text" id="firmName" data-f data-combo="companies" autocomplete="off" placeholder="Search your companies"/></div>
+              <div class="f"><label class="lbl-tip">FDA Food Facility Registration No.<button type="button" class="info-tip" data-tip="<b>FDA Food Facility Registration Number</b><p>If your facility is registered with FDA, its number can be given as a Traceability Lot Code Source Reference instead of the full address. Optional.</p>">i</button></label><input type="text" id="firmFfrn" class="mono" data-f placeholder="Optional"/></div>
+              <div class="f"><label class="lbl-tip">Traceability Lot Code prefix<button type="button" class="info-tip" data-tip="<b>Your lot code prefix</b><p>Used by the Generate buttons to make codes like <b>PTE-260312-001</b>: prefix, date, then a running number. Any code works as long as it identifies one lot uniquely in your records.</p>">i</button></label><input type="text" id="tlcPrefix" class="mono" data-f maxlength="12" placeholder="e.g. PTE"/></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title"><span class="badge"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg></span>Traceability contact</div></div>
+            <div class="grid c3">
+              <div class="f"><label class="lbl-tip">Point of contact<span class="req"></span><button type="button" class="info-tip" data-tip="<b>Traceability point of contact</b><p>The person FDA can reach about these records. During an outbreak or recall, FDA can ask for them within 24 hours, including by phone, so pick someone who can respond quickly.</p>">i</button></label><input type="text" id="pocName" data-f placeholder="Name"/></div>
+              <div class="f"><label>Phone number<span class="req"></span></label><input type="tel" id="pocPhone" data-f/></div>
+              <div class="f"><label>Email</label><input type="email" id="pocEmail" data-f/></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title"><span class="badge"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg></span>Record keeping</div></div>
+            <div class="grid">
+              <div class="f"><label class="lbl-tip">Where records are stored<button type="button" class="info-tip" data-tip="<b>Where are the records kept?</b><p>The rule lets you keep paper, electronic or true-copy records, even off-site, as long as you can produce them within 24 hours of FDA's request. Note where they live so anyone can find them.</p><p class='tip-eg'>e.g. SharePoint › Food safety › FSMA 204 › 2026</p>">i</button></label><input type="text" id="recordsLocation" data-f placeholder="e.g. SharePoint › Food safety › FSMA 204"/></div>
+              <div class="f"><label class="lbl-tip">Records held by<button type="button" class="info-tip" data-tip="<b>Who looks after these records?</b><p>The person or team who keeps them up to date and would build the spreadsheet if FDA asks.</p>">i</button></label><input type="text" id="recordsHolder" data-f placeholder="Person or team"/></div>
+              <div class="f full"><label class="toggle" style="color:var(--text);font-size:12.5px;"><input type="checkbox" id="recordsConfirm" data-f/><span class="sw"></span>Records will be kept for 2 years and can be sent to FDA within 24 hours of a request<span class="req"></span></label></div>
+            </div>
+          </div>
+          <div class="foot-actions"><span></span><button class="btn btn-primary" onclick="switchTab('library')">Next: Locations &amp; products <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button></div>
+        </section>
+
+        <!-- ── STEP 2 ── -->
+        <section id="stepLibrary" class="hidden">
+          <div class="page-head"><div><div class="page-kicker">STEP 2 OF 4</div><div class="page-title">Locations &amp; products</div><div class="page-sub">Enter each place and product once. Every tracking event then picks them from a list, and the spreadsheet gets FDA's full location description and product description columns.</div></div></div>
+          <div class="card">
+            <div class="card-head"><div class="card-title"><span class="badge"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="3"/><line x1="12" y1="22" x2="12" y2="8"/><path d="M5 12H2a10 10 0 0 0 20 0h-3"/></svg></span><span class="lbl-tip">Location descriptions<button type="button" class="info-tip" data-tip="<b>Location description</b><p>FDA's term for key contact information for a place where food is handled: business name, phone number, street address or geographic coordinates, city, state or region, ZIP or postal code, and country.</p>">i</button></span></div><button class="btn btn-sm" onclick="editLocation(-1)"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add location</button></div>
+            <div id="locTable"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title"><span class="badge"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg></span><span class="lbl-tip">Product descriptions<button type="button" class="info-tip" data-tip="<b>Product description</b><p>A description of the food that includes the product name and, where applicable, brand name, commodity, variety, packaging size and packaging style.</p>">i</button></span></div><button class="btn btn-sm" onclick="editProduct(-1)"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="M12 5v14"/></svg>Add product</button></div>
+            <div id="prodTable"></div>
+          </div>
+          <div class="foot-actions"><button class="btn" onclick="switchTab('firm')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>Back</button><button class="btn btn-primary" onclick="switchTab('records')">Next: Tracking events <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button></div>
+        </section>
+
+        <!-- ── STEP 3 ── -->
+        <section id="stepRecords" class="hidden">
+          <div class="page-head"><div><div class="page-kicker">STEP 3 OF 4</div><div class="page-title">Critical Tracking Events</div><div class="page-sub">One record per traceability lot, for each event. Field names follow FDA's rule (21 CFR Part 1, Subpart S) and its sortable spreadsheet template.</div></div></div>
+          <div class="sub-tabs" id="cteTabs"></div>
+          <div id="cteIntro"></div>
+          <div id="recordList"></div>
+          <button class="add-row" id="addRecordBtn" onclick="addRecord()"></button>
+          <div class="foot-actions" style="margin-top:18px;"><button class="btn" onclick="switchTab('library')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>Back</button><button class="btn btn-primary" onclick="switchTab('review')">Next: Review &amp; export <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button></div>
+        </section>
+
+        <!-- ── STEP 4 ── -->
+        <section id="stepReview" class="hidden">
+          <div class="page-head">
+            <div><div class="page-kicker">STEP 4 OF 4</div><div class="page-title">Review &amp; export</div><div class="page-sub">Fix anything flagged, trace a lot, and build FDA's electronic sortable spreadsheet for a request.</div></div>
+            <button class="btn btn-primary btn-lg xlsx-btn" onclick="exportSpreadsheet()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>FDA spreadsheet</button>
+          </div>
+          <div class="card">
+            <div class="ring-wrap"><div class="ring" id="reviewRing"></div><div><div class="live-title" id="reviewHeadline"></div><div class="live-sub" id="reviewSub"></div></div></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title"><span class="badge"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></span><span class="lbl-tip">Prepare an FDA request<button type="button" class="info-tip" data-tip="<b>When FDA asks</b><p>During an outbreak, a recall or another threat to public health, FDA can ask for records as an electronic sortable spreadsheet within 24 hours. It usually asks about a product and a date range. Set the filter to match, then build the file.</p>">i</button></span></div></div>
+            <div class="req-grid">
+              <div class="f"><label>Event date from</label><input type="text" class="date-in" id="reqFrom" autocomplete="off" placeholder="Any date"/></div>
+              <div class="f"><label>Event date to</label><input type="text" class="date-in" id="reqTo" autocomplete="off" placeholder="Any date"/></div>
+              <div class="f"><label>Product</label><select id="reqProduct"></select></div>
+              <div class="f"><label>Traceability Lot Code contains</label><input type="text" id="reqTlc" class="mono" placeholder="Any lot"/></div>
+            </div>
+            <div class="count-grid" id="reqCounts"></div>
+            <div class="foot-actions" style="justify-content:flex-end;margin-top:20px;">
+              <button class="btn btn-primary xlsx-btn" onclick="exportSpreadsheet()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Build spreadsheet for these records</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title"><span class="badge"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>Trace a lot</div></div>
+            <div class="gen-row" style="max-width:520px;"><input type="text" id="traceTlc" class="mono" data-combo="lots" autocomplete="off" placeholder="Pick or type a Traceability Lot Code" style="font-size:13.5px;color:var(--text);background:var(--field);border:1.5px solid transparent;border-radius:10px;padding:12px 14px;outline:none;"/><button class="btn" onclick="renderTrace()">Trace</button></div>
+            <div class="trace-out" id="traceOut"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title"><span class="badge"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>What needs attention</div></div>
+            <div id="issuesList"></div>
+          </div>
+          <div class="foot-actions">
+            <button class="btn" onclick="switchTab('records')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>Back</button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn" onclick="saveDraft()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>Save draft</button>
+              <button class="btn" onclick="downloadJSON()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download JSON</button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <!-- ═══════════ MODALS ═══════════ -->
+  <div class="modal" id="exitModal">
+    <div class="modal-box">
+      <div class="modal-head">Leave FSMA 204 records?</div>
+      <div class="modal-body"><p style="color:#334155;">Anything you haven't saved as a draft will be lost.</p></div>
+      <div class="modal-foot">
+        <button class="btn" onclick="closeModal('exitModal')">Stay</button>
+        <button class="btn" style="background:var(--red);border-color:var(--red);color:#fff;" onclick="location.href='home-logged-in.html'">Leave</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="locModal">
+    <div class="modal-box wide">
+      <div class="modal-head" id="locModalHead">Location description</div>
+      <div class="modal-body">
+        <div class="grid c3">
+          <div class="f span2"><label>Business Name<span class="req"></span></label><input type="text" id="locName" data-combo="companies" autocomplete="off" placeholder="Search your companies or type"/></div>
+          <div class="f"><label>Kind of location</label><select id="locKind"></select></div>
+          <div class="f"><label>Phone Number<span class="req"></span></label><input type="tel" id="locPhone"/></div>
+          <div class="f span2"><label>Street Address or Geographic Coordinates<span class="req"></span></label><input type="text" id="locStreet" placeholder="Street address, or latitude/longitude"/></div>
+          <div class="f"><label>City<span class="req"></span></label><input type="text" id="locCity"/></div>
+          <div class="f"><label>State or Region<span class="req"></span></label><input type="text" id="locState"/></div>
+          <div class="f"><label>ZIP or Postal Code</label><input type="text" id="locZip"/></div>
+          <div class="f"><label>Country<span class="req"></span></label><input type="text" id="locCountry" data-combo="countries" autocomplete="off"/></div>
+          <div class="f span2"><label class="lbl-tip">Traceability Lot Code Source Reference (optional)<button type="button" class="info-tip" data-tip="<b>Traceability Lot Code Source Reference</b><p>An alternative way to give FDA the location where a lot code was assigned, without writing out the address, for example an FDA Food Facility Registration Number or a web address.</p>">i</button></label><input type="text" id="locRef" class="mono" placeholder="e.g. FDA Food Facility Registration No. or a web address"/></div>
+        </div>
+      </div>
+      <div class="modal-foot"><button class="btn" onclick="closeModal('locModal')">Cancel</button><button class="btn btn-primary" onclick="saveLocation()">Save location</button></div>
+    </div>
+  </div>
+
+  <div class="modal" id="prodModal">
+    <div class="modal-box wide">
+      <div class="modal-head" id="prodModalHead">Product description</div>
+      <div class="modal-body">
+        <div class="grid c3">
+          <div class="f"><label>Species</label><select id="prodSpecies" onchange="prodSpeciesChanged()"></select><small>Fills Commodity and Variety.</small></div>
+          <div class="f span2"><label>Product Name<span class="req"></span></label><input type="text" id="prodName" placeholder="e.g. Frozen yellowfin tuna loins"/></div>
+          <div class="f"><label>Brand Name (if applicable)</label><input type="text" id="prodBrand"/></div>
+          <div class="f"><label>Commodity (if applicable)</label><input type="text" id="prodCommodity" placeholder="e.g. Finfish, histamine-producing"/></div>
+          <div class="f"><label>Variety (if applicable)</label><input type="text" id="prodVariety" placeholder="e.g. Yellowfin tuna (Thunnus albacares)"/></div>
+          <div class="f"><label>Packaging Size<span class="req"></span></label><input type="text" id="prodSize" placeholder="e.g. 10 kg"/></div>
+          <div class="f span2"><label>Packaging Style<span class="req"></span></label><input type="text" id="prodStyle" data-combo="packstyles" autocomplete="off" placeholder="e.g. Vacuum-packed pieces in master carton"/></div>
+        </div>
+      </div>
+      <div class="modal-foot"><button class="btn" onclick="closeModal('prodModal')">Cancel</button><button class="btn btn-primary" onclick="saveProduct()">Save product</button></div>
+    </div>
+  </div>
+
+  <div class="modal" id="guideModal">
+    <div class="modal-box wide">
+      <div class="modal-head">How FSMA 204 works</div>
+      <div class="modal-body">
+        <div class="g-sec"><h4>What is it?</h4><p>FDA's Food Traceability Rule (Section 204 of the Food Safety Modernization Act) asks firms that manufacture, process, pack or hold foods on the <b>Food Traceability List</b> to keep extra records, so FDA can trace a food quickly during an outbreak or recall.</p></div>
+        <div class="g-sec"><h4>Is tuna covered?</h4><p>Yes. The list names histamine-producing finfish, including tuna, in fresh, frozen and previously frozen form, and smoked finfish too.</p></div>
+        <div class="g-sec"><h4>When?</h4><p>FDA will not enforce the rule before <b>July 20, 2028</b>. The original date was January 20, 2026.</p></div>
+        <div class="g-sec"><h4>The three ideas</h4><p><b>Critical Tracking Events</b>: the moments you must record, such as first land-based receiving, receiving, transformation and shipping.<br/><b>Key Data Elements</b>: the facts recorded at each event, such as the lot code, quantity, product description, the locations involved and the date.<br/><b>Traceability Lot Code</b>: the code that ties all of a lot's records together. You assign a new one only when you first receive fish from a vessel, transform a food, or receive from a firm that is exempt from the rule.</p></div>
+        <div class="g-sec"><h4>A tuna's path</h4><div class="flow"><span class="on">Fishing vessel</span><i><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></i><span>First land-based receiving</span><i><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></i><span>Shipping</span><i><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></i><span>Receiving</span><i><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></i><span>Transformation</span><i><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></i><span>Shipping to customer</span></div></div>
+        <div class="g-sec"><h4>When FDA asks</h4><p>Keep records for <b>2 years</b>. During an outbreak or recall, FDA can ask for them as an <b>electronic sortable spreadsheet within 24 hours</b>. This tool builds that spreadsheet with the same tabs and columns as FDA's template.</p></div>
+        <div class="g-sec"><h4>How is this different from SIMP?</h4><p>SIMP (NOAA) checks that imported fish was caught legally. FSMA 204 (FDA) is about food safety: tracing where a lot went, fast. Many details overlap, but they are separate records for separate agencies.</p></div>
+      </div>
+      <div class="modal-foot"><button class="btn btn-primary" onclick="closeModal('guideModal')">Got it</button></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+  const ICON = {"book": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z\"/><path d=\"M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z\"/></svg>", "save": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z\"/><polyline points=\"17 21 17 13 7 13 7 21\"/><polyline points=\"7 3 7 8 15 8\"/></svg>", "logout": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\"/><polyline points=\"16 17 21 12 16 7\"/><line x1=\"21\" y1=\"12\" x2=\"9\" y2=\"12\"/></svg>", "folder": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2\"/></svg>", "check": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M20 6 9 17l-5-5\"/></svg>", "x": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M18 6 6 18\"/><path d=\"m6 6 12 12\"/></svg>", "building": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect x=\"4\" y=\"2\" width=\"16\" height=\"20\" rx=\"2\"/><path d=\"M9 22v-4h6v4\"/><path d=\"M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01\"/></svg>", "filecheck": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><polyline points=\"14 2 14 8 20 8\"/><path d=\"m9 15 2 2 4-4\"/></svg>", "globe": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/><path d=\"M2 12h20\"/></svg>", "ship": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1 .6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1\"/><path d=\"M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76\"/><path d=\"M19 13V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6\"/><path d=\"M12 10v4\"/><path d=\"M12 2v3\"/></svg>", "layers": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z\"/><path d=\"m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65\"/><path d=\"m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65\"/></svg>", "fish": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M6.5 12c.94-3.46 4.94-6 8.5-6 3.56 0 6.06 2.54 7 6-.94 3.47-3.44 6-7 6s-7.56-2.53-8.5-6Z\"/><path d=\"M18 12v.5\"/><path d=\"M16 17.93a9.77 9.77 0 0 1 0-11.86\"/><path d=\"M7 10.67C7 8 5.58 5.97 2.73 5.5c-1 1.5-1 5 .23 6.5-1.24 1.5-1.24 5-.23 6.5C5.58 18.03 7 16 7 13.33\"/></svg>", "info": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 16v-4\"/><path d=\"M12 8h.01\"/></svg>", "flag": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z\"/><line x1=\"4\" y1=\"22\" x2=\"4\" y2=\"15\"/></svg>", "package": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m7.5 4.27 9 5.15\"/><path d=\"M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z\"/><path d=\"m3.3 7 8.7 5 8.7-5\"/><path d=\"M12 22V12\"/></svg>", "archive": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"20\" height=\"5\" x=\"2\" y=\"3\" rx=\"1\"/><path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8\"/><path d=\"M10 12h4\"/></svg>", "search": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/></svg>", "file": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z\"/><polyline points=\"14 2 14 8 20 8\"/><line x1=\"16\" y1=\"13\" x2=\"8\" y2=\"13\"/><line x1=\"16\" y1=\"17\" x2=\"8\" y2=\"17\"/></svg>", "printer": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><polyline points=\"6 9 6 2 18 2 18 9\"/><path d=\"M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2\"/><rect x=\"6\" y=\"14\" width=\"12\" height=\"8\"/></svg>", "download": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\"/><polyline points=\"7 10 12 15 17 10\"/><line x1=\"12\" y1=\"15\" x2=\"12\" y2=\"3\"/></svg>", "waves": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1\"/><path d=\"M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1\"/><path d=\"M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1\"/></svg>", "anchor": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"5\" r=\"3\"/><line x1=\"12\" y1=\"22\" x2=\"12\" y2=\"8\"/><path d=\"M5 12H2a10 10 0 0 0 20 0h-3\"/></svg>", "copy": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><rect width=\"14\" height=\"14\" x=\"8\" y=\"8\" rx=\"2\"/><path d=\"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2\"/></svg>", "trash": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M3 6h18\"/><path d=\"M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6\"/><path d=\"M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2\"/></svg>", "up": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m5 12 7-7 7 7\"/><path d=\"M12 19V5\"/></svg>", "down": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M12 5v14\"/><path d=\"m19 12-7 7-7-7\"/></svg>", "chevdown": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m6 9 6 6 6-6\"/></svg>", "chevright": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m9 18 6-6-6-6\"/></svg>", "right": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14\"/><path d=\"m12 5 7 7-7 7\"/></svg>", "left": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m12 19-7-7 7-7\"/><path d=\"M19 12H5\"/></svg>", "plus": "<svg class=\"ic\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M5 12h14\"/><path d=\"M12 5v14\"/></svg>"};
+  const ic = n => ICON[n] || '';
+
+  // ══════════════════════════════════════════
+  // REFERENCE DATA
+  // ══════════════════════════════════════════
+  const SPECIES = [
+    { code:'ALB', sci:'Thunnus alalunga',   name:'Albacore',         color:'#64748b' },
+    { code:'BET', sci:'Thunnus obesus',     name:'Bigeye',           color:'#7c3aed' },
+    { code:'BFT', sci:'Thunnus thynnus',    name:'Atlantic bluefin', color:'#1d4ed8' },
+    { code:'PBF', sci:'Thunnus orientalis', name:'Pacific bluefin',  color:'#0369a1' },
+    { code:'SBF', sci:'Thunnus maccoyii',   name:'Southern bluefin', color:'#0f766e' },
+    { code:'SKJ', sci:'Katsuwonus pelamis', name:'Skipjack',         color:'#0e7490' },
+    { code:'YFT', sci:'Thunnus albacares',  name:'Yellowfin',        color:'#ca8a04' },
+  ];
+  const FAO_AREAS = [
+    ['21','Atlantic, Northwest'], ['27','Atlantic, Northeast'], ['31','Atlantic, Western Central'], ['34','Atlantic, Eastern Central'],
+    ['37','Mediterranean and Black Sea'], ['41','Atlantic, Southwest'], ['47','Atlantic, Southeast'], ['51','Indian Ocean, Western'], ['57','Indian Ocean, Eastern'],
+    ['61','Pacific, Northwest'], ['67','Pacific, Northeast'], ['71','Pacific, Western Central'], ['77','Pacific, Eastern Central'], ['81','Pacific, Southwest'], ['87','Pacific, Southeast'],
+  ];
+  // Critical Tracking Events a tuna firm performs, with FDA's names and the rule section.
+  const CTES = {
+    flbr:  { name:'First Land-Based Receiving', short:'First land-based receiving', cfr:'§ 1.1335', icon:'anchor',
+             intro:'You took possession of the fish <b>for the first time on land, directly from a fishing vessel</b>. You assign the Traceability Lot Code here.' },
+    recv:  { name:'Receiving', short:'Receiving', cfr:'§ 1.1345', icon:'package',
+             intro:'A food on the list arrived at your location from another location. Keep the supplier\'s Traceability Lot Code; assign your own only if the supplier is exempt from the rule.' },
+    trans: { name:'Transformation', short:'Transformation', cfr:'§ 1.1350', icon:'layers',
+             intro:'You processed or changed the food, for example loining, steaking, freezing, smoking, repacking or relabeling. The result gets a <b>new Traceability Lot Code</b>.' },
+    ship:  { name:'Shipping', short:'Shipping', cfr:'§ 1.1340', icon:'ship',
+             intro:'You arranged for the food to be transported to another location, including another site of your own firm. You must send items 1 to 7 of this record to the recipient.' },
+  };
+  const CTE_ORDER = ['flbr','recv','trans','ship'];
+  const PRODUCT_FORMS = [
+    { v:'fresh', label:'Fresh / refrigerated', on:true }, { v:'frozen', label:'Frozen', on:true }, { v:'prevfrozen', label:'Previously frozen', on:true },
+    { v:'smoked', label:'Smoked (refrigerated or frozen)', on:true }, { v:'canned', label:'Canned or other shelf-stable', on:false },
+  ];
+  const LOC_KINDS = [['ours','Our location'],['supplier','Supplier'],['customer','Customer'],['landing','Landing site / dock'],['other','Other']];
+  const KG_PER_LB = 0.453592;
+  const DRAFT_KEY = 'smartuna_fsma_draft';
+  const TIP = {"tlc": "<b>Traceability Lot Code</b><p>A code, often letters and numbers, that uniquely identifies one lot in your records. You assign a new one only when you first receive fish from a vessel, transform a food, or receive from an exempt supplier. Press Generate for one.</p>", "tlcRecv": "<b>Keep the supplier's code</b><p>When you receive from a firm covered by the rule, record the Traceability Lot Code it sent you. Don't make a new one.</p>", "tlcShip": "<b>Ship under the existing code</b><p>Shipping never creates a new lot code. Pick the lot you landed, received or made, and its product and lot code source fill in.</p>", "srcref": "<b>Traceability Lot Code Source Reference</b><p>An alternative way to give FDA the location where a lot code was assigned, without writing out the address, for example an FDA Food Facility Registration Number or a web address.</p>", "refdoc": "<b>Reference document</b><p>The business document that carries this event's details, such as a bill of lading, invoice, purchase order, advance shipping notice or production record, with its number.</p>"};
+  const uid = () => Math.random().toString(36).slice(2, 9);
+
+  // ══════════════════════════════════════════
+  // STATE + HELPERS
+  // ══════════════════════════════════════════
+  const S = { ctes:['flbr','ship'], forms:['frozen'], locations:[], products:[], records:{ flbr:[], recv:[], trans:[], ship:[] }, tab:'firm', cte:'flbr', open:{} };
+  const $ = id => document.getElementById(id);
+  const esc = v => String(v ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+  const opts = (list, sel, blank='— select —') =>
+    `<option value="">${blank}</option>` + list.map(o => {
+      const [v, l] = Array.isArray(o) ? o : [o, o];
+      return `<option value="${esc(v)}" ${v === sel ? 'selected' : ''}>${esc(l)}</option>`;
+    }).join('');
+  const val = id => ($(id)?.type === 'checkbox' ? $(id).checked : ($(id)?.value || '').trim());
+  function openModal(id){ $(id).classList.add('open'); }
+  function closeModal(id){ $(id).classList.remove('open'); }
+  document.querySelectorAll('.modal').forEach(m => m.addEventListener('click', e => { if (e.target === m) closeModal(m.id); }));
+  let toastT;
+  function toast(msg){ const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 2800); }
+  function ring(pct, colour, size=84){
+    const r = (size - 10) / 2, c = 2 * Math.PI * r;
+    return `<svg width="${size}" height="${size}"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="#e3e8ef" stroke-width="8"/>
+      <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${colour}" stroke-width="8" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - pct/100)}" style="transition:stroke-dashoffset .4s"/></svg>
+      <div class="ring-num"><b style="color:${colour}">${pct}%</b><span>ready</span></div>`;
+  }
+  const locById = id => S.locations.find(l => l.id === id);
+  const prodById = id => S.products.find(p => p.id === id);
+  const locLabel = l => l ? [l.name, [l.city, l.country].filter(Boolean).join(', ')].filter(Boolean).join(' · ') : '';
+  const prodLabel = p => p ? [p.name, p.size, p.style].filter(Boolean).join(' · ') : '';
+  const fmtDate = iso => { const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? `${m[2]}/${m[3]}/${m[1]}` : (iso || ''); };
+  const toKg = (q, u) => /^(kg|kilograms?)$/i.test(u) ? parseFloat(q) || 0 : /^(lb|lbs|pounds?)$/i.test(u) ? (parseFloat(q) || 0) * KG_PER_LB : null;
+
+  // ISO 3166 two-letter codes (ACE needs these for flag states). Built from the browser's own country names.
+  const ISO = {};
+  (function(){
+    const norm = t => String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z]/g,'');
+    let dn; try { dn = new Intl.DisplayNames(['en'], { type:'region' }); } catch (e) { return; }
+    const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    for (const a of A) for (const b of A){
+      const c = a + b; let n; try { n = dn.of(c); } catch (e) { continue; }
+      if (n && n !== c && !/unknown/i.test(n)) ISO[norm(n)] = { code:c, name:n };
+    }
+    const alias = { unitedstatesofamerica:'US', usa:'US', korearepublicof:'KR', republicofkorea:'KR', korea:'KR', taiwanprovinceofchina:'TW', chinesetaipei:'TW',
+      russianfederation:'RU', vietnam:'VN', vietnamsocialistrepublic:'VN', cotedivoire:'CI', ivorycoast:'CI', micronesiafederatedstatesof:'FM', federatedstatesofmicronesia:'FM',
+      iranislamicrepublicof:'IR', tanzaniaunitedrepublicof:'TZ', unitedkingdomofgreatbritainandnorthernireland:'GB', uk:'GB', greatbritain:'GB', laopeoplesdemocraticrepublic:'LA',
+      bolivia:'BO', venezuela:'VE', syrianarabrepublic:'SY', capeverde:'CV', caboverde:'CV', turkey:'TR', turkiye:'TR', thenetherlands:'NL', holland:'NL', burma:'MM',
+      papuanewguinea:'PG', solomonislands:'SB', marshallislands:'MH', kiribati:'KI', tuvalu:'TV', vanuatu:'VU', fiji:'FJ' };
+    Object.entries(alias).forEach(([k, c]) => { const hit = Object.values(ISO).find(x => x.code === c); if (hit) ISO[k] = hit; });
+    window.__isoNorm = norm;
+  })();
+  function isoOf(name){
+    const t = String(name || '').trim(); if (!t) return '';
+    if (/^[A-Za-z]{2}$/.test(t)) return t.toUpperCase();
+    const m = DATA && DATA.countries && DATA.countries.find(c => c.label.toLowerCase() === t.toLowerCase() && /^[A-Z]{2}$/i.test(c.iso || ''));
+    if (m) return m.iso.toUpperCase();
+    const hit = window.__isoNorm && ISO[window.__isoNorm(t)];
+    return hit ? hit.code : '';
+  }
+  const isoList = v => String(v || '').split(/[,;/]+/).map(x => x.trim()).filter(Boolean).map(x => isoOf(x) || '?');
+  const isoHint = v => { const l = isoList(v); return l.length ? `ACE code: <b class="mono-sm">${l.join(', ')}</b>` + (l.includes('?') ? ' <span style="color:var(--amber)">(not recognised)</span>' : '') : ''; };
+
+
+  // ══════════════════════════════════════════
+  // SMARTUNA MODULE DATA — companies, countries, vessels, species
+  // Same Supabase project and public key as home-logged-in.html.
+  // Column names are picked defensively, so a renamed column doesn't break the page.
+  // ══════════════════════════════════════════
+  const SMARTUNA_URL = 'https://enbdaajcromxmhgcverp.supabase.co';
+  const SMARTUNA_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+  const DATA = { companies:[], countries:[], vessels:[], speciesByCode:{}, loaded:false, error:null };
+  DATA.units = ['kg','lb','cases','cartons','totes','tubs','containers','pallets','pieces','whole fish'].map(x => ({ label:x }));
+  DATA.reftypes = ['Bill of lading','Commercial invoice','Purchase order','Advance shipping notice','Receiving record','Landing receipt / fish ticket','Production record','Work order','Packing list','Other'].map(x => ({ label:x }));
+  DATA.packstyles = ['Whole round, iced in totes','Gilled and gutted, iced','Vacuum-packed loins in master carton','Individually vacuum-packed steaks','Frozen whole, brine','Frozen loins, CO-treated, vacuum-packed','Smoked, vacuum-packed'].map(x => ({ label:x }));
+  DATA.lots = [];
+  DATA.countries = [...new Map(Object.values(ISO).map(x => [x.code, x])).values()].map(x => ({ label:x.name, iso:x.code, sub:x.code })).sort((a, b) => a.label.localeCompare(b.label));
+  const pick = (row, keys) => { for (const k of keys) if (row && row[k] != null && row[k] !== '') return row[k]; return ''; };
+  const live = rows => (rows || []).filter(r => !('deleted_at' in r) || r.deleted_at == null);
+
+  function speciesName(code){ const m = DATA.speciesByCode[code]; const b = SPECIES.find(s => s.code === code); return (m && m.name) || (b && b.name) || code; }
+  function speciesSci(code){ const m = DATA.speciesByCode[code]; const b = SPECIES.find(s => s.code === code); return (m && m.sci) || (b && b.sci) || ''; }
+
+  async function loadModuleData(){
+    const status = (cls, text) => { const el = $('dataStatus'); if (!el) return; el.className = 'data-status ' + cls; el.querySelector('span').textContent = text; };
+    if (!window.supabase){ status('bad', 'SmarTuna data unavailable. Type values in.'); return; }
+    const db = window.supabase.createClient(SMARTUNA_URL, SMARTUNA_KEY);
+    const get = async t => { const { data, error } = await db.from(t).select('*'); if (error) throw new Error(t + ': ' + error.message); return live(data); };
+    const results = await Promise.allSettled(['companies','countries','vessels','species'].map(get));
+    const [co, ct, ve, sp] = results.map(r => r.status === 'fulfilled' ? r.value : []);
+    results.forEach(r => { if (r.status === 'rejected') console.warn('[SIMP] lookup failed:', r.reason.message); });
+
+    DATA.companies = co.map(r => ({ label: pick(r, ['company_name','name','organisation_name','legal_name']),
+      country: pick(r, ['country','country_name','company_country']), address: pick(r, ['company_address','address','registered_address']) }))
+      .filter(x => x.label).map(x => ({ ...x, sub: [x.country, x.address].filter(Boolean).join(' · ') }));
+    DATA.countries = ct.map(r => ({ label: pick(r, ['country','country_name','name']), iso: pick(r, ['iso2','iso_code','iso','alpha_2','code']) }))
+      .filter(x => x.label).map(x => ({ ...x, sub: x.iso }));
+    if (!DATA.countries.length) DATA.countries = [...new Map(Object.values(ISO).map(x => [x.code, x])).values()].map(x => ({ label:x.name, iso:x.code, sub:x.code }));
+    DATA.vessels = ve.map(r => ({ label: pick(r, ['current_name','vessel_name','name']), imo: String(pick(r, ['imo','imo_number','imo_no'])),
+      flag: pick(r, ['vessel_flag','flag','flag_state','flag_country']), reg: pick(r, ['registration_number','national_registration_number','reg_no']),
+      callsign: pick(r, ['call_sign','callsign','ircs']), gear: pick(r, ['gear','gear_type','fishing_gear']) }))
+      .filter(x => x.label).map(x => ({ ...x, sub: [x.imo && 'IMO ' + x.imo, x.flag].filter(Boolean).join(' · ') }));
+    const simp = new Set(SPECIES.map(s => s.code));
+    sp.forEach(r => {
+      const code = String(pick(r, ['afsis_3a_code','fao_code','asfis_code','afsis_code','alpha3'])).toUpperCase().trim();
+      if (simp.has(code) && !DATA.speciesByCode[code]) DATA.speciesByCode[code] = { name: pick(r, ['species_name','common_name','name']), sci: pick(r, ['scientific_name']) };
+    });
+    [DATA.companies, DATA.countries, DATA.vessels].forEach(a => a.sort((x, y) => x.label.localeCompare(y.label)));
+    DATA.loaded = true;
+
+    const n = DATA.companies.length + DATA.countries.length + DATA.vessels.length + Object.keys(DATA.speciesByCode).length;
+    if (!n) status('bad', results.some(r => r.status === 'rejected') ? 'Couldn\'t read SmarTuna data. Are you logged in?' : 'No SmarTuna records found. Type values in.');
+    else status('ok', `Linked: ${DATA.vessels.length} vessels · ${DATA.companies.length} companies · ${DATA.countries.length} countries`);
+    if (typeof onModuleData === 'function') onModuleData();
+  }
+
+  // ── Searchable suggestions for any input with data-combo ──
+  const comboPop = document.createElement('div'); comboPop.className = 'combo-pop'; document.body.appendChild(comboPop);
+  let comboInput = null, comboItems = [], comboHl = -1;
+  const COMBO_TITLES = { companies:'Your companies', countries:'Countries', vessels:'Your vessel register', units:'Units of measure', reftypes:'Reference documents', packstyles:'Packaging styles', lots:'Your Traceability Lot Codes' };
+  const markMatch = (text, q) => { if (!q) return esc(text); const i = text.toLowerCase().indexOf(q.toLowerCase()); return i < 0 ? esc(text) : esc(text.slice(0, i)) + '<mark>' + esc(text.slice(i, i + q.length)) + '</mark>' + esc(text.slice(i + q.length)); };
+  function comboOpen(input){
+    comboInput = input;
+    const src = DATA[input.dataset.combo] || [];
+    const q = input.value.trim().toLowerCase();
+    comboItems = (q ? src.filter(x => x.label.toLowerCase().includes(q) || (x.sub || '').toLowerCase().includes(q) || (x.imo && x.imo.includes(q))) : src).slice(0, 40);
+    comboHl = comboItems.length ? 0 : -1;
+    if (!DATA.loaded && !src.length && ['companies','countries','vessels'].includes(input.dataset.combo)){ comboPop.innerHTML = '<div class="combo-empty">Loading your SmarTuna data…</div>'; }
+    else if (!comboItems.length){ comboPop.innerHTML = `<div class="combo-empty">${src.length ? 'No match. You can keep what you typed.' : 'Nothing here yet. Type it in.'}</div>`; }
+    else comboPop.innerHTML = `<div class="combo-head">${COMBO_TITLES[input.dataset.combo] || ''}</div>` + comboItems.map((x, k) =>
+      `<button type="button" class="combo-opt ${k === comboHl ? 'hl' : ''}" data-k="${k}"><span>${markMatch(x.label, q)}</span>${x.sub ? `<small>${esc(x.sub)}</small>` : ''}</button>`).join('');
+    const r = input.getBoundingClientRect();
+    const below = innerHeight - r.bottom > 220 || r.top < 240;
+    Object.assign(comboPop.style, { left: r.left + 'px', width: Math.max(r.width, 240) + 'px', top: below ? (r.bottom + 4) + 'px' : 'auto', bottom: below ? 'auto' : (innerHeight - r.top + 4) + 'px' });
+    comboPop.classList.add('open');
+  }
+  function comboClose(){ comboPop.classList.remove('open'); comboInput = null; }
+  function comboHighlight(d){
+    if (!comboItems.length) return;
+    comboHl = (comboHl + d + comboItems.length) % comboItems.length;
+    comboPop.querySelectorAll('.combo-opt').forEach((b, k) => b.classList.toggle('hl', k === comboHl));
+    comboPop.querySelectorAll('.combo-opt')[comboHl]?.scrollIntoView({ block:'nearest' });
+  }
+  function setInput(el, v){ if (!el) return; el.value = v; el.dispatchEvent(new Event('input', { bubbles:true })); el.dispatchEvent(new Event('change', { bubbles:true })); }
+  function comboChoose(k){
+    const x = comboItems[k], input = comboInput; if (!x || !input) return;
+    comboClose();
+    setInput(input, x.label);
+    const kind = input.dataset.combo;
+    if (typeof onComboPick === 'function') onComboPick(input, x);
+  }
+  document.addEventListener('focusin', e => { if (e.target.matches('input[data-combo]')) comboOpen(e.target); });
+  document.addEventListener('input', e => { if (e.target.matches('input[data-combo]') && e.isTrusted) comboOpen(e.target); });
+  document.addEventListener('keydown', e => {
+    if (!comboInput || e.target !== comboInput || !comboPop.classList.contains('open')) return;
+    if (e.key === 'ArrowDown'){ e.preventDefault(); comboHighlight(1); }
+    else if (e.key === 'ArrowUp'){ e.preventDefault(); comboHighlight(-1); }
+    else if (e.key === 'Enter' && comboHl >= 0){ e.preventDefault(); comboChoose(comboHl); }
+    else if (e.key === 'Escape' || e.key === 'Tab') comboClose();
+  });
+  comboPop.addEventListener('mousedown', e => { const b = e.target.closest('.combo-opt'); if (b){ e.preventDefault(); comboChoose(+b.dataset.k); } });
+  document.addEventListener('mousedown', e => { if (comboInput && e.target !== comboInput && !comboPop.contains(e.target)) comboClose(); });
+  window.addEventListener('scroll', () => { if (comboInput) comboOpen(comboInput); }, true);
+  window.addEventListener('resize', comboClose);
+
+  loadModuleData().catch(err => { console.warn('[SIMP] module data:', err); const el = $('dataStatus'); if (el){ el.className = 'data-status bad'; el.querySelector('span').textContent = 'SmarTuna data unavailable. Type values in.'; } });
+
+
+
+
+  // ══════════════════════════════════════════
+  // LANDING
+  // ══════════════════════════════════════════
+  function renderLanding(){
+    $('cteTiles').innerHTML = CTE_ORDER.map(k => { const on = S.ctes.includes(k); return `
+      <button type="button" class="cte-row ${on ? 'on' : ''}" onclick="toggleCte('${k}')" aria-pressed="${on}">
+        <span class="cte-ico">${ic(CTES[k].icon)}</span>
+        <span class="cte-txt"><b>${CTES[k].name}</b><small>${CTES[k].intro.replace(/<[^>]+>/g, '')}</small></span>
+        <span class="cte-cfr">${CTES[k].cfr}</span>
+        <span class="sw2"><i></i></span>
+      </button>`; }).join('');
+    const node = (icon, label, on, end) => `<span class="cn ${on ? 'on' : ''} ${end ? 'end' : ''}"><span class="cn-dot">${ic(icon)}</span><span class="cn-lbl">${label}</span></span>`;
+    $('chainPreview').innerHTML = [node('ship', 'Fishing vessel', true, true), ...CTE_ORDER.map(k => node(CTES[k].icon, CTES[k].short, S.ctes.includes(k))), node('building', 'Your customer', true, true)]
+      .join(`<span class="cn-line"></span>`);
+    $('formTiles').innerHTML = PRODUCT_FORMS.map(f => `<button type="button" class="fchip ${S.forms.includes(f.v) ? 'on' : ''} ${f.on ? '' : 'off-list'}" onclick="toggleForm('${f.v}')">${S.forms.includes(f.v) ? ic('check') : ''}${f.label}</button>`).join('');
+    const covered = S.forms.some(v => PRODUCT_FORMS.find(f => f.v === v).on);
+    const onlyCanned = S.forms.length && !covered;
+    $('ftlResult').innerHTML = !S.forms.length ? '' : covered
+      ? `<div class="ftl-result in"><span class="vd">${ic('check')}</span><span><b>On the Food Traceability List.</b> Tuna is a histamine-producing finfish, which the list includes in fresh, frozen and previously frozen form, along with smoked finfish.${S.forms.includes('canned') ? ' Canned or shelf-stable lines aren\'t one of the listed forms; check FDA\'s exemptions before leaving them out.' : ''}</span></div>`
+      : onlyCanned ? `<div class="ftl-result out"><span class="vd">${ic('info')}</span><span><b>Not one of the listed forms.</b> Check FDA's Food Traceability List and its exemptions before deciding these records aren't needed. You can still use this tool.</span></div>` : '';
+    const n = S.ctes.length;
+    $('setupSummary').innerHTML = `<b>${n} event${n !== 1 ? 's' : ''}</b><em class="ss-list"> · ${S.ctes.map(k => CTES[k].short).join(', ')}</em><br/><span>${!S.forms.length ? 'Pick a product form' : covered ? 'Covered by the rule' : 'Check exemptions'}</span>`;
+  }
+  function toggleCte(k){ const a = S.ctes; const i = a.indexOf(k); if (i < 0) a.push(k); else if (a.length > 1) a.splice(i, 1); else toast('Pick at least one event.'); a.sort((x, y) => CTE_ORDER.indexOf(x) - CTE_ORDER.indexOf(y)); renderLanding(); }
+  function toggleForm(v){ const a = S.forms; const i = a.indexOf(v); if (i < 0) a.push(v); else a.splice(i, 1); renderLanding(); }
+  renderLanding();
+
+  function startForm(){
+    if (!S.ctes.includes(S.cte)) S.cte = S.ctes[0];
+    $('cteLabel').textContent = S.ctes.map(k => CTES[k].short).join(', ');
+    renderLibrary(); renderRecords();
+    showView('viewForm'); switchTab(S.tab || 'firm');
+  }
+  function showView(id){
+    ['viewLanding','viewForm'].forEach(v => $(v).classList.toggle('hidden', v !== id));
+    ['tbSave','tbXlsx'].forEach(b => $(b).classList.toggle('hidden', id !== 'viewForm'));
+    if (id === 'viewLanding') renderLanding();
+    window.scrollTo(0,0);
+  }
+  const SECTIONS = { firm:'stepFirm', library:'stepLibrary', records:'stepRecords', review:'stepReview' };
+  function switchTab(tab){
+    S.tab = tab;
+    document.querySelectorAll('.step').forEach(s => s.classList.toggle('active', s.dataset.tab === tab));
+    Object.entries(SECTIONS).forEach(([k, id]) => $(id).classList.toggle('hidden', k !== tab));
+    if (tab === 'records') renderRecords();
+    if (tab === 'review') renderReview();
+    refresh();
+    window.scrollTo(0,0);
+  }
+
+  // ══════════════════════════════════════════
+  // STEP 2 — LOCATIONS & PRODUCTS
+  // ══════════════════════════════════════════
+  let editLoc = -1, editProd = -1, pendingPick = null;
+  function renderLibrary(){
+    $('locTable').innerHTML = S.locations.length ? `<table class="lib-table"><thead><tr><th>Business</th><th>Address</th><th>Phone</th><th>Kind</th><th></th></tr></thead><tbody>${S.locations.map((l, i) => `
+      <tr><td>${esc(l.name)}${l.ref ? `<span class="sub mono-sm">${esc(l.ref)}</span>` : ''}</td>
+        <td>${esc(l.street)}<span class="sub">${esc([l.city, l.state, l.zip, l.country].filter(Boolean).join(', '))}</span></td>
+        <td>${esc(l.phone)}</td>
+        <td><span class="pill ${{ ours:'ours', supplier:'sup', customer:'cus', landing:'land' }[l.kind] || ''}">${esc((LOC_KINDS.find(k => k[0] === l.kind) || [, 'Other'])[1])}</span></td>
+        <td class="acts"><button class="btn btn-icon btn-sm" title="Edit" onclick="editLocation(${i})">${ic('file')}</button> <button class="btn btn-icon btn-sm btn-danger" title="Remove" onclick="removeLocation(${i})">${ic('trash')}</button></td></tr>`).join('')}</tbody></table>`
+      : '<p class="empty-note">No locations yet. Add your own sites first, then suppliers, customers and landing docks.</p>';
+    $('prodTable').innerHTML = S.products.length ? `<table class="lib-table"><thead><tr><th>Product Name</th><th>Commodity / Variety</th><th>Packaging</th><th>Brand</th><th></th></tr></thead><tbody>${S.products.map((p, i) => `
+      <tr><td>${esc(p.name)}</td><td>${esc(p.commodity)}<span class="sub">${esc(p.variety)}</span></td><td>${esc(p.size)}<span class="sub">${esc(p.style)}</span></td><td>${esc(p.brand)}</td>
+        <td class="acts"><button class="btn btn-icon btn-sm" title="Edit" onclick="editProduct(${i})">${ic('file')}</button> <button class="btn btn-icon btn-sm btn-danger" title="Remove" onclick="removeProduct(${i})">${ic('trash')}</button></td></tr>`).join('')}</tbody></table>`
+      : '<p class="empty-note">No products yet. Add each product as it is packed and labeled.</p>';
+    refresh();
+  }
+  const LOC_F = { locName:'name', locKind:'kind', locPhone:'phone', locStreet:'street', locCity:'city', locState:'state', locZip:'zip', locCountry:'country', locRef:'ref' };
+  const PROD_F = { prodSpecies:'species', prodName:'name', prodBrand:'brand', prodCommodity:'commodity', prodVariety:'variety', prodSize:'size', prodStyle:'style' };
+  function editLocation(i, pick){
+    editLoc = i; pendingPick = pick || null;
+    const l = i >= 0 ? S.locations[i] : { kind: pick && pick.kind || 'ours' };
+    $('locKind').innerHTML = opts(LOC_KINDS, l.kind || 'ours', 'Kind');
+    Object.entries(LOC_F).forEach(([id, k]) => { if (id !== 'locKind') $(id).value = l[k] || ''; });
+    $('locModalHead').textContent = i >= 0 ? 'Edit location description' : 'New location description';
+    openModal('locModal'); setTimeout(() => $('locName').focus(), 50);
+  }
+  function saveLocation(){
+    const l = editLoc >= 0 ? S.locations[editLoc] : { id: uid() };
+    Object.entries(LOC_F).forEach(([id, k]) => { l[k] = $(id).value.trim(); });
+    if (!l.name){ toast('Business Name is required.'); $('locName').focus(); return; }
+    if (editLoc < 0) S.locations.push(l);
+    closeModal('locModal');
+    if (pendingPick){ setRec(pendingPick.k, pendingPick.i, pendingPick.key, l.id, true); pendingPick = null; }
+    renderLibrary(); renderRecords();
+    toast(editLoc < 0 ? 'Location added' : 'Location updated');
+  }
+  function removeLocation(i){
+    const id = S.locations[i].id;
+    if (usedIn('loc', id) && !confirm('Some records use this location. Remove it anyway?')) return;
+    S.locations.splice(i, 1); renderLibrary(); renderRecords();
+  }
+  function editProduct(i, pick){
+    editProd = i; pendingPick = pick || null;
+    const p = i >= 0 ? S.products[i] : {};
+    $('prodSpecies').innerHTML = opts(SPECIES.map(s => [s.code, `${s.code} — ${speciesName(s.code)}`]), p.species || '', 'Species (optional)');
+    Object.entries(PROD_F).forEach(([id, k]) => { if (id !== 'prodSpecies') $(id).value = p[k] || ''; });
+    $('prodModalHead').textContent = i >= 0 ? 'Edit product description' : 'New product description';
+    openModal('prodModal'); setTimeout(() => $('prodName').focus(), 50);
+  }
+  function prodSpeciesChanged(){
+    const c = $('prodSpecies').value; if (!c) return;
+    if (!$('prodCommodity').value) $('prodCommodity').value = 'Finfish, histamine-producing (tuna)';
+    $('prodVariety').value = `${speciesName(c)} tuna (${speciesSci(c)})`.replace('tuna tuna', 'tuna');
+  }
+  function saveProduct(){
+    const p = editProd >= 0 ? S.products[editProd] : { id: uid() };
+    Object.entries(PROD_F).forEach(([id, k]) => { p[k] = $(id).value.trim(); });
+    if (!p.name){ toast('Product Name is required.'); $('prodName').focus(); return; }
+    if (editProd < 0) S.products.push(p);
+    closeModal('prodModal');
+    if (pendingPick){ setRec(pendingPick.k, pendingPick.i, pendingPick.key, p.id, true); pendingPick = null; }
+    renderLibrary(); renderRecords();
+    toast(editProd < 0 ? 'Product added' : 'Product updated');
+  }
+  function removeProduct(i){
+    const id = S.products[i].id;
+    if (usedIn('prod', id) && !confirm('Some records use this product. Remove it anyway?')) return;
+    S.products.splice(i, 1); renderLibrary(); renderRecords();
+  }
+  function usedIn(kind, id){
+    return CTE_ORDER.some(k => S.records[k].some(r => JSON.stringify(r).includes(`"${id}"`)));
+  }
+
+  // ══════════════════════════════════════════
+  // STEP 3 — CRITICAL TRACKING EVENT RECORDS
+  // ══════════════════════════════════════════
+  const newRef = () => ({ type:'', num:'' });
+  const NEW = {
+    flbr:  () => ({ id:uid(), tlc:'', packaged:false, market:'', species:'', prod:'', qty:'', unit:'kg', hStart:'', hEnd:'', fao:[], hOther:'', loc:'', srcRef:'', landed:'', refs:[newRef(), newRef()] }),
+    recv:  () => ({ id:uid(), exempt:false, tlc:'', qty:'', unit:'kg', prod:'', prev:'', at:'', date:'', srcLoc:'', srcRef:'', refs:[newRef(), newRef()] }),
+    trans: () => ({ id:uid(), inputs:[{ tlc:'', prod:'', qty:'', unit:'kg' }], tlc:'', loc:'', srcRef:'', date:'', prod:'', qty:'', unit:'kg', refs:[newRef(), newRef()] }),
+    ship:  () => ({ id:uid(), tlc:'', qty:'', unit:'kg', prod:'', to:'', from:'', date:'', srcLoc:'', srcRef:'', refs:[newRef(), newRef()] }),
+  };
+  const recs = k => S.records[k];
+  function addRecord(){ recs(S.cte).push(NEW[S.cte]()); S.open = { [S.cte + (recs(S.cte).length - 1)]: true }; renderRecords(); }
+  function removeRecord(k, i){ recs(k).splice(i, 1); S.open = {}; renderRecords(); }
+  function duplicateRecord(k, i){
+    const c = JSON.parse(JSON.stringify(recs(k)[i])); c.id = uid(); c.qty = ''; if (k !== 'recv' || c.exempt) c.tlc = '';
+    if (c.inputs) c.inputs.forEach(x => x.qty = '');
+    recs(k).splice(i + 1, 0, c); S.open = { [k + (i + 1)]: true }; renderRecords();
+    toast('Copied. Add the new lot code, quantity and dates.');
+  }
+  function toggleRec(k, i){ S.open[k + i] = !S.open[k + i]; $(`rv-${k}${i}`).classList.toggle('open', !!S.open[k + i]); }
+  function pickCte(k){ S.cte = k; renderRecords(); }
+  // Set a field; dotted keys reach into refs / inputs (e.g. "refs.0.type", "inputs.1.qty").
+  function setRec(k, i, key, v, rerender){
+    const r = recs(k)[i]; const path = key.split('.'); let o = r;
+    while (path.length > 1){ o = o[path.shift()]; }
+    // "+ New …" choices in location / product menus open the editor instead
+    if (v === '__newloc'){ editLocation(-1, { k, i, key, kind: /^(to)$/.test(key) ? 'customer' : /^(prev|srcLoc)$/.test(key) ? 'supplier' : key === 'loc' && k === 'flbr' ? 'ours' : 'ours' }); renderRecords(); return; }
+    if (v === '__newprod'){ editProduct(-1, { k, i, key }); renderRecords(); return; }
+    o[path[0]] = v;
+    if (k === 'flbr' && key === 'species' && v && !r.market) r.market = `${speciesName(v)} tuna`;
+    if (key === 'loc' || key === 'srcLoc'){ const l = locById(v); if (l && l.ref && !r.srcRef) r.srcRef = l.ref; }
+    if (rerender) renderRecords(); else refreshSoon();
+  }
+  function toggleFao(k, i, code){ const a = recs(k)[i].fao; const j = a.indexOf(code); if (j < 0) a.push(code); else a.splice(j, 1); a.sort(); renderRecords(); }
+  function addInput(i){ recs('trans')[i].inputs.push({ tlc:'', prod:'', qty:'', unit:'kg' }); renderRecords(); }
+  function removeInput(i, j){ const a = recs('trans')[i].inputs; if (a.length === 1){ toast('Keep at least one input lot, or leave it blank if none was on the list.'); return; } a.splice(j, 1); renderRecords(); }
+
+  // Traceability Lot Codes: generate PREFIX-YYMMDD-NNN, unique within this firm's records.
+  function allAssignedTlcs(){ return [...recs('flbr').map(r => r.tlc), ...recs('recv').filter(r => r.exempt).map(r => r.tlc), ...recs('trans').map(r => r.tlc)].filter(Boolean); }
+  function genTlc(k, i, dateKey){
+    const r = recs(k)[i];
+    const prefix = (val('tlcPrefix') || val('firmName').replace(/[^A-Za-z]/g, '').slice(0, 3) || 'LOT').toUpperCase();
+    const d = (r[dateKey] || new Date().toISOString().slice(0, 10)).replace(/-/g, '').slice(2);
+    const used = new Set(allAssignedTlcs()); let n = 1, code;
+    do { code = `${prefix}-${d}-${String(n++).padStart(3, '0')}`; } while (used.has(code));
+    r.tlc = code; renderRecords(); toast(`Assigned ${code}`);
+  }
+  // Every lot this firm knows about, with where its code came from — used to fill shipping and transformation inputs.
+  function knownLots(){
+    const out = [];
+    recs('flbr').forEach(r => r.tlc && out.push({ tlc:r.tlc, prod: r.packaged ? r.prod : '', label: r.packaged ? prodLabel(prodById(r.prod)) : (r.market || speciesName(r.species)), src:r.loc, srcRef:r.srcRef, unit:r.unit, qty:r.qty, via:'First land-based receiving', date:r.landed }));
+    recs('recv').forEach(r => r.tlc && out.push({ tlc:r.tlc, prod:r.prod, label: prodLabel(prodById(r.prod)), src: r.exempt ? r.at : r.srcLoc, srcRef:r.srcRef, unit:r.unit, qty:r.qty, via: r.exempt ? 'Received from exempt supplier' : 'Received', date:r.date }));
+    recs('trans').forEach(r => r.tlc && out.push({ tlc:r.tlc, prod:r.prod, label: prodLabel(prodById(r.prod)), src:r.loc, srcRef:r.srcRef, unit:r.unit, qty:r.qty, via:'Transformation', date:r.date }));
+    return out;
+  }
+  function syncLotData(){ DATA.lots = knownLots().map(l => ({ label:l.tlc, sub:[l.label, l.via, fmtDate(l.date)].filter(Boolean).join(' · ') })); }
+
+  // Field builders
+  const D = (k, i, key) => `data-k="${k}:${i}-${key}"`;
+  const R = req => req ? '<span class="req"></span>' : '';
+  function fText(k, i, key, label, req, o = {}){
+    const r = recs(k)[i]; const v = key.split('.').reduce((a, p) => a?.[p], r);
+    const tip = o.tip ? `<button type="button" class="info-tip" data-tip="${o.tip}">i</button>` : '';
+    const attrs = `${o.mono ? 'class="mono"' : o.date ? 'class="date-in"' : ''} ${o.combo ? `data-combo="${o.combo}" data-xk="${k}" data-xi="${i}" data-xkey="${key}"` : ''} autocomplete="off"`;
+    const input = `<input type="${o.type || 'text'}" ${attrs} value="${esc(v)}" placeholder="${esc(o.ph || (o.date ? 'Pick a date' : ''))}" oninput="setRec('${k}',${i},'${key}',this.value)" onchange="setRec('${k}',${i},'${key}',this.value)"/>`;
+    return `<div class="f ${o.cls || ''}" ${D(k, i, key)}>${label ? `<label ${tip ? 'class="lbl-tip"' : ''}>${label}${R(req)}${tip}</label>` : ''}${o.gen ? `<div class="gen-row">${input}<button type="button" class="btn btn-sm" onclick="genTlc('${k}',${i},'${o.gen}')">Generate</button></div>` : input}${o.hint ? `<small>${o.hint}</small>` : ''}</div>`;
+  }
+  function fLoc(k, i, key, label, req, o = {}){
+    const r = recs(k)[i]; const l = locById(r[key]);
+    const list = S.locations.map(x => [x.id, locLabel(x)]);
+    return `<div class="f ${o.cls || ''}" ${D(k, i, key)}><label>${label}${R(req)}</label>
+      <select onchange="setRec('${k}',${i},'${key}',this.value,true)">${opts(list, r[key], 'Pick a location')}<option value="__newloc">＋ New location…</option></select>
+      ${l ? `<small class="loc-preview">${esc([l.street, l.city, l.state, l.zip, l.country].filter(Boolean).join(', '))}${l.phone ? ' · ' + esc(l.phone) : ''}</small>` : o.hint ? `<small>${o.hint}</small>` : ''}</div>`;
+  }
+  function fProd(k, i, key, label, req, o = {}){
+    const r = recs(k)[i]; const v = key.split('.').reduce((a, p) => a?.[p], r);
+    return `<div class="f ${o.cls || ''}" ${D(k, i, key)}><label>${label}${R(req)}</label>
+      <select onchange="setRec('${k}',${i},'${key}',this.value,true)">${opts(S.products.map(p => [p.id, prodLabel(p)]), v, 'Pick a product')}<option value="__newprod">＋ New product…</option></select></div>`;
+  }
+  function fQty(k, i, qKey, uKey, label, req, o = {}){
+    const r = recs(k)[i]; const g = p => p.split('.').reduce((a, x) => a?.[x], r);
+    return `<div class="f ${o.cls || ''}" ${D(k, i, qKey)}><label>${label}${R(req)}</label><div class="unit"><input type="number" step="any" min="0" value="${esc(g(qKey))}" oninput="setRec('${k}',${i},'${qKey}',this.value)"/><input type="text" data-combo="units" autocomplete="off" value="${esc(g(uKey))}" style="max-width:110px;border-left:1px solid var(--line) !important;" oninput="setRec('${k}',${i},'${uKey}',this.value)" onchange="setRec('${k}',${i},'${uKey}',this.value)"/></div>${o.hint ? `<small>${o.hint}</small>` : ''}</div>`;
+  }
+  function fRefs(k, i){
+    const r = recs(k)[i];
+    return `<div class="pair-grid" style="grid-column:1/-1;">${r.refs.map((x, n) => `
+      ${fText(k, i, `refs.${n}.type`, `Reference Document Type${n ? ' 2' : ''}`, !n, { combo:'reftypes', ph: n ? 'Optional' : 'e.g. Bill of lading', tip: n ? '' : TIP.refdoc })}
+      ${fText(k, i, `refs.${n}.num`, `Reference Document Number${n ? ' 2' : ''}`, !n, { mono:true, ph: n ? 'Optional' : '' })}`).join('')}</div>`;
+  }
+  const srcRefField = (k, i, label) => fText(k, i, 'srcRef', label || 'Traceability Lot Code Source Reference (if applicable)', false, { mono:true, tip:TIP.srcref, ph:'e.g. FDA Food Facility Registration No.' });
+
+  function recordBody(k, r, i){
+    if (k === 'flbr') return `
+      <div class="hv-group"><div class="hv-group-title">${ic('anchor')}${CTES.flbr.name} · ${CTES.flbr.cfr}</div>
+        <div class="grid c3">
+          ${fText(k, i, 'tlc', 'Traceability Lot Code (you assigned)', true, { mono:true, gen:'landed', tip:TIP.tlc, cls:'span2' })}
+          <div class="f"><label>Is the food packaged?</label><div class="seg"><button type="button" class="${!r.packaged ? 'on' : ''}" onclick="setRec('flbr',${i},'packaged',false,true)">Unpackaged</button><button type="button" class="${r.packaged ? 'on' : ''}" onclick="setRec('flbr',${i},'packaged',true,true)">Packaged</button></div></div>
+          ${r.packaged ? fProd(k, i, 'prod', 'Product Description, If the Food is Packaged', true, { cls:'span2' })
+            : `<div class="f" ${D(k, i, 'species')}><label>Species</label><select onchange="setRec('flbr',${i},'species',this.value,true)">${opts(SPECIES.map(s => [s.code, `${s.code} — ${speciesName(s.code)}`]), r.species, 'Pick species')}</select></div>
+               ${fText(k, i, 'market', 'Species and/or Acceptable Market Name, If the Food is Unpackaged', true, { ph: r.species ? `${speciesName(r.species)} tuna` : 'e.g. Yellowfin tuna', hint: r.species ? `<em>${esc(speciesSci(r.species))}</em>` : '' })}`}
+          ${fQty(k, i, 'qty', 'unit', 'Quantity and Unit of Measure', true)}
+        </div></div>
+      <div class="hv-group"><div class="hv-group-title">${ic('waves')}Harvest</div>
+        <div class="grid c3">
+          ${fText(k, i, 'hStart', 'Harvest Date Start', true, { date:true })}
+          ${fText(k, i, 'hEnd', 'Harvest Date End', true, { date:true })}
+          ${fText(k, i, 'landed', 'Landing Date', true, { date:true })}
+          <div class="f full" ${D(k, i, 'fao')}><label>Harvest Locations For the Trip<span class="req"></span></label>
+            <div class="fao-grid">${FAO_AREAS.map(([c, l]) => `<label class="fao-chip ${r.fao.includes(c) ? 'on' : ''}"><input type="checkbox" ${r.fao.includes(c) ? 'checked' : ''} onchange="toggleFao('flbr',${i},'${c}')"/><b>${c}</b><span>${l}</span></label>`).join('')}</div>
+            <small>FAO Major Fishing Areas. Add another recognised system below if you use one.</small></div>
+          ${fText(k, i, 'hOther', 'Other harvest location detail', false, { cls:'full', ph:'e.g. NMFS Ocean Geographic Code, or a more precise area' })}
+        </div></div>
+      <div class="hv-group"><div class="hv-group-title">${ic('building')}Where you received it</div>
+        <div class="grid c3">
+          ${fLoc(k, i, 'loc', 'Location Description for the First Land-Based Receiver', true, { cls:'span2' })}
+          ${srcRefField(k, i)}
+          ${fRefs(k, i)}
+        </div></div>`;
+    if (k === 'recv') return `
+      <div class="hv-group"><div class="hv-group-title">${ic('package')}${r.exempt ? 'Receiving From Exempt · § 1.1345(b)' : 'Receiving · § 1.1345(a)'}</div>
+        <div class="grid c3">
+          <div class="f full"><label class="toggle" style="font-size:12.5px;color:var(--text);"><input type="checkbox" ${r.exempt ? 'checked' : ''} onchange="setRec('recv',${i},'exempt',this.checked,true)"/><span class="sw"></span>The supplier is not subject to the Food Traceability Rule (exempt)</label></div>
+          ${r.exempt ? fText(k, i, 'tlc', 'Traceability Lot Code (which you must assign if one has not already been assigned)', true, { mono:true, gen:'date', tip:TIP.tlc, cls:'span2' })
+                     : fText(k, i, 'tlc', 'Traceability Lot Code', true, { mono:true, tip:TIP.tlcRecv, cls:'span2', ph:'As sent by your supplier' })}
+          ${fQty(k, i, 'qty', 'unit', 'Quantity and Unit of Measure', true)}
+          ${fProd(k, i, 'prod', 'Product Description', true, { cls:'span2' })}
+          ${fText(k, i, 'date', r.exempt ? 'Receive Date' : 'Date you Received the Food', true, { date:true })}
+          ${fLoc(k, i, 'prev', 'Location Description for the Immediate Previous Source (other than a transporter)', true, { cls:'span2' })}
+          <div></div>
+          ${fLoc(k, i, 'at', r.exempt ? 'Location Description for where the Food was Received (i.e., the Traceability Lot Code Source)' : 'Location Description for where the Food was Received', true, { cls:'span2' })}
+          <div></div>
+          ${r.exempt ? srcRefField(k, i) : `${fLoc(k, i, 'srcLoc', 'Location Description for the Traceability Lot Code Source', false, { cls:'span2', hint:'Where the supplier assigned the lot code. You may give the reference instead.' })}
+            ${srcRefField(k, i, 'Traceability Lot Code Source Reference')}`}
+          ${fRefs(k, i)}
+        </div></div>`;
+    if (k === 'trans') return `
+      <div class="hv-group"><div class="hv-group-title">${ic('layers')}Food on the list used in transformation (if applicable)</div>
+        <div class="io-labels"><span></span><span>Traceability Lot Code</span><span>Product Description</span><span>Quantity used</span><span>Unit</span><span></span></div>
+        ${r.inputs.map((x, j) => `<div class="io-line"><span class="n">${j + 1}.</span>
+          ${fText(k, i, `inputs.${j}.tlc`, '', false, { mono:true, combo:'lots', ph:'Pick a known lot or type' })}
+          ${fProd(k, i, `inputs.${j}.prod`, '', false).replace(/<label>.*?<\/label>/, '')}
+          <div class="f" ${D(k, i, `inputs.${j}.qty`)}><input type="number" step="any" min="0" value="${esc(x.qty)}" oninput="setRec('trans',${i},'inputs.${j}.qty',this.value)"/></div>
+          <div class="f"><input type="text" data-combo="units" autocomplete="off" value="${esc(x.unit)}" oninput="setRec('trans',${i},'inputs.${j}.unit',this.value)" onchange="setRec('trans',${i},'inputs.${j}.unit',this.value)"/></div>
+          <button class="btn btn-icon btn-sm btn-danger" title="Remove" onclick="removeInput(${i},${j})">${ic('trash')}</button></div>`).join('')}
+        <button class="btn btn-sm" onclick="addInput(${i})">${ic('plus')}Add input lot</button>
+      </div>
+      <div class="hv-group"><div class="hv-group-title">${ic('package')}Food produced through transformation</div>
+        <div class="grid c3">
+          ${fText(k, i, 'tlc', 'New Traceability Lot Code you assigned', true, { mono:true, gen:'date', tip:TIP.tlc, cls:'span2' })}
+          ${fText(k, i, 'date', 'Transformation Completion Date', true, { date:true })}
+          ${fProd(k, i, 'prod', 'Product Description for the Food Produced through Transformation', true, { cls:'span2' })}
+          ${fQty(k, i, 'qty', 'unit', 'Quantity and Unit of Measure', true)}
+          ${fLoc(k, i, 'loc', 'Location Description for where you Transformed the Food (i.e., the Traceability Lot Code Source)', true, { cls:'span2' })}
+          ${srcRefField(k, i)}
+          ${fRefs(k, i)}
+        </div></div>`;
+    if (k === 'ship') { const l = knownLots().find(x => x.tlc === r.tlc); return `
+      <div class="hv-group"><div class="hv-group-title">${ic('ship')}${CTES.ship.name} · ${CTES.ship.cfr}</div>
+        <div class="grid c3">
+          ${fText(k, i, 'tlc', 'Traceability Lot Code', true, { mono:true, combo:'lots', cls:'span2', ph:'Pick a lot you received, landed or made', tip:TIP.tlcShip, hint: l ? `${esc(l.via)} · ${esc(l.label)}` : '' })}
+          ${fQty(k, i, 'qty', 'unit', 'Quantity and Unit of Measure', true)}
+          ${fProd(k, i, 'prod', 'Product Description', true, { cls:'span2' })}
+          ${fText(k, i, 'date', 'Shipping Date', true, { date:true })}
+          ${fLoc(k, i, 'to', 'Location Description for the Immediate Subsequent Recipient (other than a transporter)', true, { cls:'span2' })}
+          <div></div>
+          ${fLoc(k, i, 'from', 'Location Description for the Location from which you Shipped the Food', true, { cls:'span2' })}
+          <div></div>
+          ${fLoc(k, i, 'srcLoc', 'Location Description for the Traceability Lot Code Source', false, { cls:'span2' })}
+          ${srcRefField(k, i, 'Traceability Lot Code Source Reference (may be provided instead of the location description for the TLC Source)')}
+          ${fRefs(k, i)}
+        </div>
+        <div class="share-box"><span>FDA requires you to send items 1 to 7 of this record (everything except the reference document) to the recipient.</span><button class="btn btn-sm" onclick="copyForRecipient(${i})">${ic('copy')}Copy for the recipient</button></div>
+      </div>`; }
+  }
+  function recordTitle(k, r){
+    const p = prodById(r.prod);
+    if (k === 'flbr') return `${r.tlc ? `<span class="mono-chip">${esc(r.tlc)}</span> ` : ''}${esc(r.packaged ? prodLabel(p) : (r.market || (r.species ? speciesName(r.species) : '')) ) || 'New first land-based receiving'}`;
+    if (k === 'recv') return `${r.tlc ? `<span class="mono-chip">${esc(r.tlc)}</span> ` : ''}${esc(p ? p.name : '') || 'New receiving'}${r.exempt ? ' · exempt supplier' : ''}`;
+    if (k === 'trans') return `${r.tlc ? `<span class="mono-chip">${esc(r.tlc)}</span> ` : ''}${esc(p ? p.name : '') || 'New transformation'}`;
+    return `${r.tlc ? `<span class="mono-chip">${esc(r.tlc)}</span> ` : ''}${esc(locLabel(locById(r.to))) || 'New shipment'}`;
+  }
+  const recordDate = (k, r) => k === 'flbr' ? r.landed : r.date;
+  function renderRecords(){
+    syncLotData();
+    if (!S.ctes.includes(S.cte)) S.cte = S.ctes[0];
+    const { issues } = collectIssues();
+    $('cteTabs').innerHTML = S.ctes.map(k => `<button class="sub-tab ${S.cte === k ? 'on' : ''}" onclick="pickCte('${k}')">${ic(CTES[k].icon)}${CTES[k].name}<span class="n">${recs(k).length}</span></button>`).join('');
+    const c = CTES[S.cte];
+    $('cteIntro').innerHTML = `<div class="cte-intro">${ic('info')}<span>${c.intro} <span style="color:#64748b;">21 CFR ${c.cfr}</span></span></div>`;
+    $('recordList').innerHTML = recs(S.cte).map((r, i) => {
+      const k = S.cte, missing = issues.filter(x => x.level === 'err' && x.target && x.target.startsWith(`${k}:${i}-`)).length;
+      return `<div class="hv ${S.open[k + i] ? 'open' : ''}" id="rv-${k}${i}" style="border-left-color:var(--primary)">
+        <div class="hv-head" onclick="toggleRec('${k}',${i})">
+          <span class="hv-num">${String(i + 1).padStart(2,'0')}</span>
+          <span class="hv-name">${recordTitle(k, r)} <em>${esc(fmtDate(recordDate(k, r)))}</em></span>
+          <span class="hv-status ${missing ? 'bad' : 'ok'}">${missing ? missing + ' missing' : ic('check') + 'Complete'}</span>
+          <span class="hv-actions" onclick="event.stopPropagation()">
+            <button class="btn btn-icon btn-sm" title="Duplicate" onclick="duplicateRecord('${k}',${i})">${ic('copy')}</button>
+            <button class="btn btn-icon btn-sm btn-danger" title="Remove" onclick="removeRecord('${k}',${i})">${ic('trash')}</button>
+          </span>
+          <span class="hv-chev">${ic('chevdown')}</span>
+        </div>
+        <div class="hv-body">${recordBody(k, r, i)}</div>
+      </div>`;
+    }).join('') || `<p class="empty-note">No ${c.name.toLowerCase()} records yet.</p>`;
+    $('addRecordBtn').innerHTML = `${ic('plus')}Add ${c.name.toLowerCase()} record`;
+    refresh();
+  }
+  function copyForRecipient(i){
+    const r = recs('ship')[i], p = prodById(r.prod), L = l => l ? [l.name, l.phone, l.street, l.city, l.state, l.zip, l.country].filter(Boolean).join(', ') : '—';
+    const txt = [
+      'FSMA 204 shipping information (21 CFR 1.1340(b))',
+      `1. Traceability Lot Code: ${r.tlc || '—'}`,
+      `2. Quantity and Unit of Measure: ${[r.qty, r.unit].filter(Boolean).join(' ') || '—'}`,
+      `3. Product Description: ${p ? [p.name, p.brand, p.commodity, p.variety, p.size, p.style].filter(Boolean).join(', ') : '—'}`,
+      `4. Immediate Subsequent Recipient: ${L(locById(r.to))}`,
+      `5. Shipped From: ${L(locById(r.from))}`,
+      `6. Shipping Date: ${fmtDate(r.date) || '—'}`,
+      `7. Traceability Lot Code Source: ${locById(r.srcLoc) ? L(locById(r.srcLoc)) : (r.srcRef ? 'Reference: ' + r.srcRef : '—')}`,
+    ].join('\n');
+    (navigator.clipboard ? navigator.clipboard.writeText(txt) : Promise.reject()).then(() => toast('Copied. Paste it into your invoice, ASN or email.'), () => { prompt('Copy this text:', txt); });
+  }
+
+  // When a known lot is picked, fill product, unit and lot-code source from where it came from.
+  function onComboPick(input, x){
+    const k = input.dataset.xk, i = +input.dataset.xi, key = input.dataset.xkey;
+    if (input.id === 'firmName' && !val('tlcPrefix')) $('tlcPrefix').value = x.label.replace(/[^A-Za-z]/g, '').slice(0, 3).toUpperCase();
+    if (input.id === 'locName'){ const c = DATA.companies.find(c => c.label === x.label); if (c){ if (c.country && !$('locCountry').value) $('locCountry').value = c.country; if (c.address && !$('locStreet').value) $('locStreet').value = c.address; } }
+    if (input.id === 'traceTlc'){ renderTrace(); return; }
+    if (input.dataset.combo !== 'lots' || !k) return;
+    const lot = knownLots().find(l => l.tlc === x.label); if (!lot) return;
+    const r = recs(k)[i];
+    if (k === 'ship'){ r.tlc = lot.tlc; if (lot.prod && !r.prod) r.prod = lot.prod; if (!r.unit || r.unit === 'kg') r.unit = lot.unit || r.unit; if (lot.src && !r.srcLoc) r.srcLoc = lot.src; if (lot.srcRef && !r.srcRef) r.srcRef = lot.srcRef; }
+    if (k === 'trans'){ const j = +key.split('.')[1]; const inp = r.inputs[j]; inp.tlc = lot.tlc; if (lot.prod && !inp.prod) inp.prod = lot.prod; if (lot.unit) inp.unit = lot.unit; }
+    if (k === 'ship' || k === 'trans'){ renderRecords(); toast('Filled from the lot\'s first record'); }
+  }
+  function onModuleData(){ if (!$('viewForm').classList.contains('hidden')) { renderLibrary(); renderRecords(); } }
+
+  // ══════════════════════════════════════════
+  // VALIDATION
+  // ══════════════════════════════════════════
+  const REQ = {
+    flbr:  r => [['tlc','Traceability Lot Code'], ...(r.packaged ? [['prod','Product Description']] : [['market','Species and/or Acceptable Market Name']]), ['qty','Quantity'], ['unit','Unit of Measure'],
+                 ['hStart','Harvest Date Start'], ['hEnd','Harvest Date End'], ['fao','Harvest Locations For the Trip'], ['loc','Location Description for the First Land-Based Receiver'], ['landed','Landing Date'], ['refs.0.type','Reference Document Type'], ['refs.0.num','Reference Document Number']],
+    recv:  r => [['tlc','Traceability Lot Code'], ['qty','Quantity'], ['unit','Unit of Measure'], ['prod','Product Description'], ['prev','Immediate Previous Source'], ['at','Where the Food was Received'], ['date','Date Received'],
+                 ...(r.exempt ? [] : [['srcLoc|srcRef','Traceability Lot Code Source or its reference']]), ['refs.0.type','Reference Document Type'], ['refs.0.num','Reference Document Number']],
+    trans: r => [['tlc','New Traceability Lot Code'], ['loc','Where you Transformed the Food'], ['date','Transformation Completion Date'], ['prod','Product Description'], ['qty','Quantity'], ['unit','Unit of Measure'], ['refs.0.type','Reference Document Type'], ['refs.0.num','Reference Document Number']],
+    ship:  r => [['tlc','Traceability Lot Code'], ['qty','Quantity'], ['unit','Unit of Measure'], ['prod','Product Description'], ['to','Immediate Subsequent Recipient'], ['from','Location you Shipped From'], ['date','Shipping Date'],
+                 ['srcLoc|srcRef','Traceability Lot Code Source or its reference'], ['refs.0.type','Reference Document Type'], ['refs.0.num','Reference Document Number']],
+  };
+  const getPath = (o, p) => p.split('.').reduce((a, x) => a?.[x], o);
+  const filled = v => Array.isArray(v) ? v.length > 0 : String(v ?? '').trim() !== '';
+  function collectIssues(){
+    const issues = []; let total = 0, ok = 0;
+    const need = (cond, tab, text, target, level='err') => { if (level === 'err'){ total++; if (cond) ok++; } if (!cond) issues.push({ tab, level, text, target }); };
+    need(!!val('firmName'), 'firm', 'Firm name', 'firmName');
+    need(!!val('pocName'), 'firm', 'Traceability point of contact', 'pocName');
+    need(!!val('pocPhone'), 'firm', 'Point of contact phone number', 'pocPhone');
+    need(val('recordsConfirm') === true, 'firm', 'Confirm records are kept for 2 years and available within 24 hours', 'recordsConfirm');
+    need(S.locations.some(l => l.kind === 'ours'), 'library', 'At least one of your own locations', null);
+    S.locations.forEach((l, i) => {
+      const miss = [['phone','Phone Number'],['street','Street Address or Geographic Coordinates'],['city','City'],['country','Country']].filter(([k]) => !l[k]).map(x => x[1]);
+      if (miss.length) issues.push({ tab:'library', level:'err', text:`Location "${l.name}": ${miss.join(', ')}`, target:null });
+      total++; if (!miss.length) ok++;
+    });
+    S.products.forEach(p => { const miss = [['size','Packaging Size'],['style','Packaging Style']].filter(([k]) => !p[k]).map(x => x[1]); total++; if (!miss.length) ok++; else issues.push({ tab:'library', level:'err', text:`Product "${p.name}": ${miss.join(', ')}`, target:null }); });
+
+    const assigned = {};
+    S.ctes.forEach(k => recs(k).forEach((r, i) => {
+      const n = `${CTES[k].name} #${i + 1}`;
+      REQ[k](r).forEach(([key, label]) => {
+        const ok2 = key.split('|').some(p => filled(getPath(r, p)));
+        need(ok2, 'records', `${n}: ${label}`, `${k}:${i}-${key.split('|')[0]}`);
+      });
+      if ((k === 'flbr' || k === 'trans' || (k === 'recv' && r.exempt)) && r.tlc){
+        if (assigned[r.tlc]) issues.push({ tab:'records', level:'err', text:`${n}: Traceability Lot Code ${r.tlc} is already used by ${assigned[r.tlc]}. Each lot needs its own code.`, target:`${k}:${i}-tlc` });
+        else assigned[r.tlc] = n;
+      }
+      if (k === 'flbr'){
+        if (r.hStart && r.hEnd && r.hStart > r.hEnd) issues.push({ tab:'records', level:'err', text:`${n}: Harvest Date Start is after Harvest Date End.`, target:`${k}:${i}-hStart` });
+        if (r.hEnd && r.landed && r.hEnd > r.landed) issues.push({ tab:'records', level:'err', text:`${n}: harvest ends after the Landing Date.`, target:`${k}:${i}-hEnd` });
+      }
+      if (k === 'trans'){
+        r.inputs.forEach((x, j) => { if (x.tlc && !x.qty) issues.push({ tab:'records', level:'warn', text:`${n}: input lot ${x.tlc} has no quantity used.`, target:`${k}:${i}-inputs.${j}.qty` }); });
+        const inKg = r.inputs.reduce((s, x) => s + (toKg(x.qty, x.unit) ?? 0), 0), outKg = toKg(r.qty, r.unit);
+        if (inKg > 0 && outKg && outKg > inKg * 1.001) issues.push({ tab:'records', level:'warn', text:`${n}: more product out (${outKg.toFixed(1)} kg) than went in (${inKg.toFixed(1)} kg). Check the quantities.`, target:`${k}:${i}-qty` });
+      }
+    }));
+    // Shipments should refer to lots this firm has a record for, and not ship more than it has.
+    if (S.ctes.includes('ship')){
+      const lots = knownLots();
+      recs('ship').forEach((r, i) => {
+        if (!r.tlc) return;
+        const lot = lots.find(l => l.tlc === r.tlc);
+        if (!lot && lots.length) issues.push({ tab:'records', level:'warn', text:`Shipping #${i + 1}: lot ${r.tlc} has no receiving, landing or transformation record here.`, target:`ship:${i}-tlc` });
+        if (lot && lot.date && r.date && r.date < lot.date) issues.push({ tab:'records', level:'err', text:`Shipping #${i + 1}: shipped before the lot was ${lot.via.toLowerCase()} (${fmtDate(lot.date)}).`, target:`ship:${i}-date` });
+      });
+      lots.forEach(l => {
+        const inKg = toKg(l.qty, l.unit); if (!inKg) return;
+        const outKg = recs('ship').filter(r => r.tlc === l.tlc).reduce((s, r) => s + (toKg(r.qty, r.unit) ?? 0), 0);
+        if (outKg > inKg * 1.001) issues.push({ tab:'records', level:'warn', text:`Lot ${l.tlc}: ${outKg.toFixed(1)} kg shipped, but only ${inKg.toFixed(1)} kg recorded in.`, target:null });
+      });
+    }
+    if (!S.ctes.some(k => recs(k).length)) issues.push({ tab:'records', level:'warn', text:'No tracking event records yet.', target:null });
+    return { issues, score: total ? Math.round(ok / total * 100) : 0 };
+  }
+  const scoreColour = (score, errs) => !errs ? 'var(--green)' : score >= 70 ? 'var(--amber)' : 'var(--red)';
+  function refresh(){
+    const { issues, score } = collectIssues();
+    const errs = issues.filter(x => x.level === 'err'), warns = issues.filter(x => x.level === 'warn');
+    ['firm','library','records'].forEach(tab => {
+      const n = errs.filter(x => x.tab === tab).length, el = $('st-' + tab);
+      el.textContent = n ? `${n} to complete` : 'Complete'; el.className = n ? 'bad' : 'good';
+      document.querySelector(`.step[data-tab="${tab}"]`).classList.toggle('done', !n);
+    });
+    $('liveRing').innerHTML = ring(score, scoreColour(score, errs.length), 64);
+    $('liveSub').textContent = errs.length ? `${errs.length} missing · ${warns.length} to check` : (warns.length ? `${warns.length} to check` : 'Ready for an FDA request');
+    $('liveList').innerHTML = [...errs, ...warns].slice(0, 5).map(x => `<div class="live-item" onclick="goToIssue(${issues.indexOf(x)})"><i class="${x.level}"></i><span>${esc(x.text)}</span></div>`).join('')
+      + (issues.length > 5 ? `<span class="live-more" onclick="switchTab('review')">See all ${issues.length} ${ic('right')}</span>` : '')
+      || `<div style="font-size:12px;color:var(--green);display:flex;gap:6px;align-items:center;">${ic('check')}All Key Data Elements filled in</div>`;
+    window.__issues = issues;
+  }
+  let refreshT;
+  function refreshSoon(){
+    clearTimeout(refreshT);
+    refreshT = setTimeout(() => {
+      refresh(); syncLotData();
+      const { issues } = collectIssues();
+      if (S.tab === 'records') recs(S.cte).forEach((r, i) => {
+        const el = document.querySelector(`#rv-${S.cte}${i} .hv-status`); if (!el) return;
+        const m = issues.filter(x => x.level === 'err' && x.target && x.target.startsWith(`${S.cte}:${i}-`)).length;
+        el.className = 'hv-status ' + (m ? 'bad' : 'ok'); el.innerHTML = m ? m + ' missing' : ic('check') + 'Complete';
+        const nm = document.querySelector(`#rv-${S.cte}${i} .hv-name`); if (nm) nm.innerHTML = `${recordTitle(S.cte, r)} <em>${esc(fmtDate(recordDate(S.cte, r)))}</em>`;
+      });
+      if (S.tab === 'review') renderCounts();
+    }, 150);
+  }
+  document.addEventListener('input', e => { if (e.target.hasAttribute('data-f')) refreshSoon(); e.target.closest('.f.missing')?.classList.remove('missing'); });
+  document.addEventListener('change', e => { if (e.target.hasAttribute('data-f')) refreshSoon(); });
+  function goToIssue(idx){ const x = window.__issues[idx]; if (x) goTo(x.tab, x.target); }
+  function goTo(tab, target){
+    if (target && /^(flbr|recv|trans|ship):/.test(target)){
+      const k = target.split(':')[0], i = parseInt(target.split(':')[1]);
+      S.cte = k; S.open[k + i] = true; switchTab('records');
+      const wrap = document.querySelector(`[data-k="${target}"]`);
+      const el = wrap && wrap.querySelector('input:not([disabled]),select');
+      wrap?.classList.add('missing');
+      if (el){ el.scrollIntoView({ behavior:'smooth', block:'center' }); setTimeout(() => el.focus({ preventScroll:true }), 350); }
+      return;
+    }
+    switchTab(tab);
+    if (!target) return;
+    const el = $(target); el?.closest('.f')?.classList.add('missing');
+    if (el){ el.scrollIntoView({ behavior:'smooth', block:'center' }); setTimeout(() => el.focus({ preventScroll:true }), 350); }
+  }
+
+  // ══════════════════════════════════════════
+  // STEP 4 — REVIEW, REQUEST FILTER, TRACE
+  // ══════════════════════════════════════════
+  function renderReview(){
+    const { issues, score } = collectIssues(); window.__issues = issues;
+    const errs = issues.filter(i => i.level === 'err'), warns = issues.filter(i => i.level === 'warn');
+    $('reviewRing').innerHTML = ring(score, scoreColour(score, errs.length));
+    $('reviewHeadline').textContent = errs.length ? 'Some Key Data Elements are missing' : (warns.length ? 'Ready, with a few things to check' : 'Ready for an FDA request');
+    $('reviewSub').textContent = `${errs.length} missing · ${warns.length} warning${warns.length !== 1 ? 's' : ''} · ${S.ctes.reduce((s, k) => s + recs(k).length, 0)} records`;
+    const tabName = { firm:'Firm', library:'Locations & products', records:'Tracking events' };
+    $('issuesList').innerHTML = [...errs, ...warns].map(x => `<div class="issue"><span class="issue-tag ${x.level}">${x.level === 'err' ? 'Missing' : 'Check'}</span><span>${esc(x.text)}</span><a onclick="goToIssue(${issues.indexOf(x)})">Fix in ${tabName[x.tab]} ${ic('right')}</a></div>`).join('')
+      || `<p style="font-size:12.5px;color:var(--green);display:flex;gap:6px;align-items:center;">${ic('check')}Nothing missing.</p>`;
+    const cur = $('reqProduct').value;
+    $('reqProduct').innerHTML = opts(S.products.map(p => [p.id, prodLabel(p)]), cur, 'Any product');
+    renderCounts();
+  }
+  // Rows that match the request filter, per event
+  function requestRecords(){
+    const from = val('reqFrom'), to = val('reqTo'), prod = val('reqProduct'), q = val('reqTlc').toLowerCase();
+    const out = {};
+    S.ctes.forEach(k => {
+      out[k] = recs(k).filter(r => {
+        const d = recordDate(k, r);
+        if (from && d && d < from) return false;
+        if (to && d && d > to) return false;
+        if (prod && r.prod !== prod && !(r.inputs || []).some(x => x.prod === prod)) return false;
+        if (q && !String(r.tlc).toLowerCase().includes(q) && !(r.inputs || []).some(x => String(x.tlc).toLowerCase().includes(q))) return false;
+        return true;
+      });
+    });
+    return out;
+  }
+  function renderCounts(){
+    const rr = requestRecords();
+    $('reqCounts').innerHTML = S.ctes.map(k => `<div class="count"><b>${rr[k].length}</b><span>${CTES[k].name}${k === 'recv' && rr.recv.some(r => r.exempt) ? ` (${rr.recv.filter(r => r.exempt).length} from exempt)` : ''}</span></div>`).join('');
+  }
+  ['reqFrom','reqTo','reqProduct','reqTlc'].forEach(id => { $(id).addEventListener('input', renderCounts); $(id).addEventListener('change', renderCounts); });
+
+  function renderTrace(){
+    const code = val('traceTlc'); const box = $('traceOut');
+    if (!code){ box.innerHTML = ''; return; }
+    const steps = [];
+    const add = (icon, title, meta, date) => steps.push({ icon, title, meta, date });
+    recs('flbr').filter(r => r.tlc === code).forEach(r => add('anchor', `Landed and assigned at ${esc(locLabel(locById(r.loc)) || '—')}`, `${esc(r.packaged ? prodLabel(prodById(r.prod)) : r.market)} · ${esc([r.qty, r.unit].filter(Boolean).join(' '))} · harvest ${fmtDate(r.hStart)}–${fmtDate(r.hEnd)}, FAO ${r.fao.join(', ') || '—'}`, r.landed));
+    recs('recv').filter(r => r.tlc === code).forEach(r => add('package', `Received at ${esc(locLabel(locById(r.at)) || '—')} from ${esc(locLabel(locById(r.prev)) || '—')}${r.exempt ? ' (exempt supplier)' : ''}`, `${esc(prodLabel(prodById(r.prod)))} · ${esc([r.qty, r.unit].filter(Boolean).join(' '))}`, r.date));
+    recs('trans').filter(r => r.inputs.some(x => x.tlc === code)).forEach(r => add('layers', `Used in transformation → new lot <span class="mono-chip">${esc(r.tlc || '—')}</span>`, `${esc(prodLabel(prodById(r.prod)))} at ${esc(locLabel(locById(r.loc)) || '—')}`, r.date));
+    recs('trans').filter(r => r.tlc === code).forEach(r => add('layers', `Made by transformation at ${esc(locLabel(locById(r.loc)) || '—')}`, `From ${r.inputs.filter(x => x.tlc).map(x => `<span class="mono-chip">${esc(x.tlc)}</span>`).join(' ') || 'no listed input'} · ${esc([r.qty, r.unit].filter(Boolean).join(' '))}`, r.date));
+    recs('ship').filter(r => r.tlc === code).forEach(r => add('ship', `Shipped to ${esc(locLabel(locById(r.to)) || '—')}`, `${esc([r.qty, r.unit].filter(Boolean).join(' '))} from ${esc(locLabel(locById(r.from)) || '—')} · ${esc(r.refs[0].type)} ${esc(r.refs[0].num)}`, r.date));
+    steps.sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+    box.innerHTML = steps.length ? steps.map(s => `<div class="trace-step"><span class="trace-dot">${ic(s.icon)}</span><div class="trace-card"><b>${s.title}</b><div class="meta">${fmtDate(s.date) || 'No date'} · ${s.meta}</div></div></div>`).join('')
+      : `<p class="empty-note">No records mention lot ${esc(code)}.</p>`;
+  }
+  $('traceTlc').addEventListener('keydown', e => { if (e.key === 'Enter') renderTrace(); });
+
+  // ══════════════════════════════════════════
+  // EXPORT — FDA's electronic sortable spreadsheet.
+  // Tab and column names follow FDA's downloadable template (one tab per CTE,
+  // location and product descriptions split into separate columns).
+  // ══════════════════════════════════════════
+  const XLSX_URL = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  function loadXlsx(){
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    return new Promise((ok, fail) => { const s = document.createElement('script'); s.src = XLSX_URL; s.onload = () => window.XLSX ? ok(window.XLSX) : fail(new Error('Spreadsheet tool did not load')); s.onerror = () => fail(new Error('Could not load the spreadsheet tool. Check your internet connection.')); document.head.appendChild(s); });
+  }
+  const LOC_COLS = ['Business Name','Phone Number','Street Address or Geographic Coordinates','City','State or Region','ZIP or Postal Code','Country'];
+  const LOC_COLS_SRC = ['Business Name','Phone Number','Street Address or Geographic Coordinates','City','State/Region','ZIP/Postal Code','Country'];
+  const PROD_COLS = ['Product Name','Brand Name (if applicable)','Commodity (if applicable)','Variety (if applicable)','Packaging Size','Packaging Style'];
+  const REF_COLS = ['Reference Document Type','Reference Document Number','Reference Document Type2','Reference Document Number2'];
+  const locVals = id => { const l = locById(id); return l ? [l.name, l.phone, l.street, l.city, l.state, l.zip, l.country] : ['', '', '', '', '', '', '']; };
+  const prodVals = id => { const p = prodById(id); return p ? [p.name, p.brand, p.commodity, p.variety, p.size, p.style] : ['', '', '', '', '', '']; };
+  const num = v => (v === '' || v == null || isNaN(+v)) ? (v ?? '') : +v;   // numbers sort as numbers in Excel
+  const refVals = r => [r.refs[0].type, r.refs[0].num, r.refs[1].type, r.refs[1].num];
+  // Each column is [group, label]; a group spans the columns of one multi-part KDE.
+  const G = (group, labels) => labels.map(l => [group, l]);
+  const one = l => [[null, l]];
+  const SHEETS = {
+    flbr: { name:'First Land-Based Receiving',
+      cols: [...one('Traceability Lot Code (you assigned)'), ...one('Species and/or Acceptable Market Name, If the Food is Unpackaged'),
+             ...G('Product Description, If the Food is Packaged', PROD_COLS), ...one('Quantity'), ...one('Unit of Measure'),
+             ...one('Harvest Date Start (mm/dd/yyyy)'), ...one('Harvest Date End (mm/dd/yyyy)'), ...one('Harvest Locations For the Trip'),
+             ...G('Location Description for the First Land Based Receiver', LOC_COLS), ...one('Traceability Lot Code Source Reference (if applicable)'),
+             ...one('Landing Date (mm/dd/yyyy)'), ...REF_COLS.map(l => [null, l])],
+      rows: r => [[r.tlc, r.packaged ? '' : (r.market || (r.species ? `${speciesName(r.species)} tuna` : '')), ...(r.packaged ? prodVals(r.prod) : ['', '', '', '', '', '']), num(r.qty), r.unit,
+             fmtDate(r.hStart), fmtDate(r.hEnd), [r.fao.length ? 'FAO Major Fishing Area ' + r.fao.join(', ') : '', r.hOther].filter(Boolean).join('; '),
+             ...locVals(r.loc), r.srcRef, fmtDate(r.landed), ...refVals(r)]] },
+    ship: { name:'Shipping',
+      cols: [...one('Traceability Lot Code'), ...one('Quantity'), ...one('Unit of Measure'), ...G('Product Description', PROD_COLS),
+             ...G('Location Description for the Immediate Subsequent Recipient (other than a transporter)', LOC_COLS),
+             ...G('Location Description for the Location from which you Shipped the Food', LOC_COLS), ...one('Shipping Date (mm/dd/yyyy)'),
+             ...G('Location Description for the Traceability Lot Code Source', LOC_COLS_SRC),
+             ...one('Traceability Lot Code Source Reference (may be provided instead of the location description for the TLC Source)'), ...REF_COLS.map(l => [null, l])],
+      rows: r => [[r.tlc, num(r.qty), r.unit, ...prodVals(r.prod), ...locVals(r.to), ...locVals(r.from), fmtDate(r.date), ...locVals(r.srcLoc), r.srcRef, ...refVals(r)]] },
+    recv: { name:'Receiving',
+      cols: [...one('Traceability Lot Code'), ...one('Quantity'), ...one('Unit of Measure'), ...G('Product Description', PROD_COLS),
+             ...G('Location Description for the Immediate Previous Source (other than a transporter)', LOC_COLS),
+             ...G('Location Description for where the Food was Received', LOC_COLS), ...one('Date you Received the Food (mm/dd/yyyy)'),
+             ...G('Location Description for the Traceability Lot Code Source', LOC_COLS_SRC),
+             ...one('Traceability Lot Code Source Reference (may be provided instead of the location description for the TLC Source)'), ...REF_COLS.map(l => [null, l])],
+      rows: r => [[r.tlc, num(r.qty), r.unit, ...prodVals(r.prod), ...locVals(r.prev), ...locVals(r.at), fmtDate(r.date), ...locVals(r.srcLoc), r.srcRef, ...refVals(r)]] },
+    recvx: { name:'Receiving From Exempt',
+      cols: [...one('Traceability Lot Code (which you must assign if one has not already been assigned)'), ...one('Quantity'), ...one('Unit of Measure'), ...G('Product Description', PROD_COLS),
+             ...G('Location Description for the Immediate Previous Source (other than a transporter)', LOC_COLS),
+             ...G('Location Description for where the Food was Received (i.e., the Traceability Lot Code Source)', LOC_COLS_SRC),
+             ...one('Traceability Lot Code Source Reference (if applicable)'), ...one('Receive Date (mm/dd/yyyy)'), ...REF_COLS.map(l => [null, l])],
+      rows: r => [[r.tlc, num(r.qty), r.unit, ...prodVals(r.prod), ...locVals(r.prev), ...locVals(r.at), r.srcRef, fmtDate(r.date), ...refVals(r)]] },
+    trans: { name:'Transformation',
+      cols: [...one('Traceability Lot Code for the FTL Food used in Transformation (if applicable)'),
+             ...G('Product Description for the Incoming FTL Food used in Transformation (if applicable)', PROD_COLS),
+             ...one('Quantity of the food from this traceability lot that was used in the transformation (if applicable)'),
+             ...one('Unit of measure for the food from this traceability lot that was used in the transformation (if applicable)'),
+             ...one('New Traceability Lot Code you assigned to the Food Produced Through Transformation'),
+             ...G('Location Description for where you Transformed the Food (i.e., the Traceability Lot Code Source)', LOC_COLS_SRC),
+             ...one('Traceability Lot Code Source Reference (if applicable)'), ...one('Transformation Completion Date (mm/dd/yyyy)'),
+             ...G('Product Description for the Food Produced through Transformation', PROD_COLS),
+             ...one('Quantity of the Food Produced through Transformation'), ...one('Unit of Measure for the Food Produced through Transformation'), ...REF_COLS.map(l => [null, l])],
+      // FDA's template repeats the produced lot on one row per incoming lot.
+      rows: r => (r.inputs.filter(x => x.tlc || x.prod || x.qty).length ? r.inputs.filter(x => x.tlc || x.prod || x.qty) : [{ tlc:'', prod:'', qty:'', unit:'' }]).map(x =>
+             [x.tlc, ...prodVals(x.prod), num(x.qty), x.tlc || x.qty ? x.unit : '', r.tlc, ...locVals(r.loc), r.srcRef, fmtDate(r.date), ...prodVals(r.prod), num(r.qty), r.unit, ...refVals(r)]) },
+  };
+  function buildSheet(XLSX, def, rows){
+    const top = def.cols.map(([g, l]) => g || l), sub = def.cols.map(([g, l]) => g ? l : '');
+    const ws = XLSX.utils.aoa_to_sheet([top, sub, ...rows]);
+    const merges = [];
+    for (let c = 0; c < def.cols.length; c++){
+      const g = def.cols[c][0];
+      if (!g){ merges.push({ s:{ r:0, c }, e:{ r:1, c } }); continue; }
+      let e = c; while (e + 1 < def.cols.length && def.cols[e + 1][0] === g) e++;
+      merges.push({ s:{ r:0, c }, e:{ r:0, c:e } }); c = e;
+    }
+    ws['!merges'] = merges;
+    ws['!cols'] = def.cols.map(([g, l]) => ({ wch: Math.min(48, Math.max(14, Math.round((g ? l : l).length * 0.75))) }));
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({ s:{ r:1, c:0 }, e:{ r:Math.max(1, rows.length + 1), c:def.cols.length - 1 } }) };
+    return ws;
+  }
+  async function exportSpreadsheet(){
+    const btns = [...document.querySelectorAll('.xlsx-btn')], labels = btns.map(b => b.innerHTML);
+    btns.forEach(b => { b.disabled = true; b.innerHTML = b.id === 'tbXlsx' ? 'Building…' : 'Building spreadsheet…'; });
+    try {
+      const XLSX = await loadXlsx();
+      const rr = S.tab === 'review' ? requestRecords() : Object.fromEntries(S.ctes.map(k => [k, recs(k)]));
+      const wb = XLSX.utils.book_new();
+      const filt = [val('reqFrom') && 'from ' + fmtDate(val('reqFrom')), val('reqTo') && 'to ' + fmtDate(val('reqTo')), val('reqProduct') && 'product ' + prodLabel(prodById(val('reqProduct'))), val('reqTlc') && 'lot code contains "' + val('reqTlc') + '"'].filter(Boolean).join(', ');
+      const groups = [['flbr', rr.flbr || []], ['ship', rr.ship || []], ['recv', (rr.recv || []).filter(r => !r.exempt)], ['recvx', (rr.recv || []).filter(r => r.exempt)], ['trans', rr.trans || []]];
+      const counts = [];
+      // Summary tab first: who sent it, what it covers, how to read it.
+      const summary = [
+        ['FDA Food Traceability Rule (21 CFR Part 1, Subpart S): electronic sortable spreadsheet'], [],
+        ['Firm', val('firmName')], ['FDA Food Facility Registration No.', val('firmFfrn')],
+        ['Traceability point of contact', [val('pocName'), val('pocPhone'), val('pocEmail')].filter(Boolean).join(' · ')],
+        ['Prepared', new Date().toLocaleString()], ['Records included', filt || 'All records'], [],
+        ['Tab', 'Rows'],
+      ];
+      groups.forEach(([k, list]) => {
+        if (!list.length) return;
+        const def = SHEETS[k], rows = list.flatMap(def.rows);
+        XLSX.utils.book_append_sheet(wb, buildSheet(XLSX, def, rows), def.name);
+        counts.push([def.name, rows.length]);
+      });
+      if (!counts.length){ toast('No records match. Add records or widen the filter.'); return; }
+      summary.push(...counts, [], ['Dates are mm/dd/yyyy. Location and product descriptions are split into separate columns, following FDA\'s template.']);
+      const ws0 = XLSX.utils.aoa_to_sheet(summary); ws0['!cols'] = [{ wch:34 }, { wch:70 }];
+      XLSX.utils.book_append_sheet(wb, ws0, 'Summary');
+      wb.SheetNames.unshift(wb.SheetNames.pop());   // Summary first
+      const name = `FSMA204-traceability-${(val('firmName') || 'firm').replace(/[^\w-]+/g,'_')}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+      XLSX.writeFile(wb, name);
+      toast(`Spreadsheet ready: ${counts.map(c => `${c[1]} ${c[0]}`).join(', ')}`);
+    } catch (e) { console.error('[FSMA] export', e); toast(e.message || 'Could not build the spreadsheet'); }
+    finally { btns.forEach((b, k) => { b.disabled = false; b.innerHTML = labels[k]; }); }
+  }
+
+  // ══════════════════════════════════════════
+  // DROPDOWNS — every <select> opens the same menu as the search suggestions,
+  // instead of the browser's default list. The <select> stays the source of truth.
+  // ══════════════════════════════════════════
+  const ddPop = document.createElement('div'); ddPop.className = 'dd-pop'; document.body.appendChild(ddPop);
+  let ddSel = null, ddItems = [], ddHl = -1;
+  function ddOpen(sel){
+    if (sel.disabled) return;
+    if (ddSel === sel){ ddClose(); return; }
+    comboClose && comboClose();
+    ddSel = sel; sel.classList.add('dd-open');
+    const all = [...sel.options];
+    const searchable = all.length > 9;
+    ddPop.innerHTML = (searchable ? `<div class="dd-search">${ic('search')}<input type="text" placeholder="Search…" autocomplete="off"/></div>` : '') + '<div class="dd-list"></div>';
+    ddRender('');
+    ddPop.classList.add('open');
+    ddPlace();
+    const q = ddPop.querySelector('.dd-search input');
+    if (q){ q.addEventListener('input', () => ddRender(q.value)); q.addEventListener('keydown', ddKey); setTimeout(() => q.focus({ preventScroll:true }), 0); }
+    ddPop.querySelector('.dd-opt.on')?.scrollIntoView({ block:'nearest' });
+  }
+  function ddPlace(){
+    const sel = ddSel; if (!sel) return;
+    const r = sel.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > innerHeight){ ddClose(); return; }
+    const h = Math.min(320, ddPop.scrollHeight + 2);
+    const below = innerHeight - r.bottom > h + 8 || r.top < h + 8;
+    const w = Math.max(r.width, Math.min(320, innerWidth - 24));
+    Object.assign(ddPop.style, { left: Math.max(12, Math.min(r.left, innerWidth - w - 12)) + 'px', width: w + 'px',
+      top: below ? (r.bottom + 6) + 'px' : 'auto', bottom: below ? 'auto' : (innerHeight - r.top + 6) + 'px' });
+  }
+  function ddRender(q){
+    const sel = ddSel; if (!sel) return;
+    q = q.trim().toLowerCase();
+    let html = '', lastGroup = null; ddItems = [];
+    [...sel.options].forEach(o => {
+      const blank = o.value === '';
+      if (blank && q) return;
+      if (q && !o.text.toLowerCase().includes(q)) return;
+      const g = o.parentElement.tagName === 'OPTGROUP' ? o.parentElement.label : null;
+      if (g && g !== lastGroup){ html += `<div class="dd-group">${esc(g)}</div>`; lastGroup = g; }
+      const k = ddItems.push(o) - 1;
+      const parts = o.text.split(/\s+—\s+/);
+      const main = parts.length > 1 && /^[A-Z0-9. ]{2,13}$/.test(parts[0]) ? `<span class="dd-code">${esc(parts[0])}</span><span>${esc(parts.slice(1).join(' — '))}</span>` : `<span>${esc(o.text)}</span>`;
+      html += `<button type="button" class="dd-opt ${o.selected && !blank ? 'on' : ''} ${blank ? 'blank' : ''}" data-k="${k}" ${o.disabled ? 'disabled' : ''}>${main}<i>${o.selected && !blank ? ic('check') : ''}</i></button>`;
+    });
+    ddPop.querySelector('.dd-list').innerHTML = html || '<div class="combo-empty">No match</div>';
+    ddHl = q ? ddItems.findIndex(o => !o.disabled) : ddItems.findIndex(o => o.selected && o.value !== '');
+    ddPop.querySelectorAll('.dd-opt').forEach(b => b.classList.toggle('hl', +b.dataset.k === ddHl && !!q));
+  }
+  function ddChoose(k){
+    const o = ddItems[k], sel = ddSel; if (!o || !sel) return;
+    ddClose();
+    if (sel.value !== o.value){ sel.value = o.value; sel.dispatchEvent(new Event('input', { bubbles:true })); sel.dispatchEvent(new Event('change', { bubbles:true })); }
+    sel.focus({ preventScroll:true });
+  }
+  function ddClose(){ ddPop.classList.remove('open'); ddSel?.classList.remove('dd-open'); ddSel = null; }
+  function ddMove(d){
+    const opts = [...ddPop.querySelectorAll('.dd-opt:not([disabled])')]; if (!opts.length) return;
+    let cur = opts.findIndex(b => +b.dataset.k === ddHl); cur = (cur + d + opts.length) % opts.length;
+    ddHl = +opts[cur].dataset.k; opts.forEach(b => b.classList.toggle('hl', +b.dataset.k === ddHl)); opts[cur].scrollIntoView({ block:'nearest' });
+  }
+  function ddKey(e){
+    if (e.key === 'ArrowDown'){ e.preventDefault(); ddMove(1); }
+    else if (e.key === 'ArrowUp'){ e.preventDefault(); ddMove(-1); }
+    else if (e.key === 'Enter'){ e.preventDefault(); if (ddHl >= 0) ddChoose(ddHl); }
+    else if (e.key === 'Escape' || e.key === 'Tab'){ const s0 = ddSel; ddClose(); if (e.key === 'Escape') s0?.focus(); }
+  }
+  document.addEventListener('mousedown', e => {
+    const sel = e.target.closest('select');
+    if (sel && !sel.disabled){ e.preventDefault(); sel.focus({ preventScroll:true }); ddOpen(sel); return; }
+    if (ddSel && !ddPop.contains(e.target)) ddClose();
+  }, true);
+  document.addEventListener('keydown', e => {
+    if (ddSel){ if (!ddPop.contains(e.target)) ddKey(e); return; }
+    if (e.target.tagName === 'SELECT' && [' ','Enter','ArrowDown','ArrowUp'].includes(e.key)){ e.preventDefault(); ddOpen(e.target); }
+  });
+  ddPop.addEventListener('mousedown', e => { const b = e.target.closest('.dd-opt'); if (b && !b.disabled){ e.preventDefault(); ddChoose(+b.dataset.k); } });
+  window.addEventListener('scroll', e => { if (ddSel && !ddPop.contains(e.target)) ddPlace(); }, true);
+  window.addEventListener('resize', () => ddClose());
+
+
+  // ══════════════════════════════════════════
+  // DATE PICKER — replaces the browser's calendar on every .date-in field.
+  // Values stay ISO (YYYY-MM-DD), the format ACE and NOAA's forms use.
+  // ══════════════════════════════════════════
+  const dpPop = document.createElement('div'); dpPop.className = 'dp-pop'; document.body.appendChild(dpPop);
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const WEEKDAYS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+  let dpIn = null, dpView = null, dpMode = 'days', dpFocus = null, dpMoved = false;
+  const pad2 = n => String(n).padStart(2, '0');
+  const isoOfDate = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  const todayIso = () => isoOfDate(new Date());
+  function parseDate(t){
+    t = String(t || '').trim(); if (!t) return null;
+    let m = t.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+    if (m) return mk(+m[1], +m[2], +m[3]);
+    m = t.match(/^(\d{1,2})[\s-/.]+([A-Za-z]{3,})[\s-/.,]+(\d{4})$/);           // 12 Mar 2026
+    if (m){ const mo = MONTHS.findIndex(x => x.toLowerCase().startsWith(m[2].toLowerCase().slice(0, 3))); if (mo >= 0) return mk(+m[3], mo + 1, +m[1]); }
+    m = t.match(/^([A-Za-z]{3,})\s+(\d{1,2}),?\s+(\d{4})$/);                    // Mar 12, 2026
+    if (m){ const mo = MONTHS.findIndex(x => x.toLowerCase().startsWith(m[1].toLowerCase().slice(0, 3))); if (mo >= 0) return mk(+m[3], mo + 1, +m[2]); }
+    m = t.match(/^(\d{1,2})[/.](\d{1,2})[/.](\d{4})$/);                          // 12/03/2026 = day first
+    if (m) return mk(+m[3], +m[2], +m[1]);
+    return null;
+    function mk(y, mo, d){ const x = new Date(y, mo - 1, d); return x.getMonth() === mo - 1 && x.getDate() === d ? x : null; }
+  }
+  const niceDate = iso => { const d = parseDate(iso); return d ? `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}` : ''; };
+
+  function dpOpen(input){
+    if (dpIn === input && dpPop.classList.contains('open')) return;
+    ddClose(); comboClose();
+    dpIn = input; input.classList.add('dp-open');
+    const cur = parseDate(input.value) || new Date();
+    dpView = new Date(cur.getFullYear(), cur.getMonth(), 1); dpFocus = isoOfDate(cur); dpMode = 'days'; dpMoved = false;
+    dpRender(); dpPop.classList.add('open'); dpPlace();
+  }
+  function dpClose(){ dpPop.classList.remove('open'); dpIn?.classList.remove('dp-open'); dpIn = null; }
+  function dpPlace(){
+    if (!dpIn) return;
+    const r = dpIn.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > innerHeight){ dpClose(); return; }
+    const w = 296, h = dpPop.offsetHeight || 330;
+    const below = innerHeight - r.bottom > h + 8 || r.top < h + 8;
+    Object.assign(dpPop.style, { left: Math.max(12, Math.min(r.left, innerWidth - w - 12)) + 'px',
+      top: below ? (r.bottom + 6) + 'px' : 'auto', bottom: below ? 'auto' : (innerHeight - r.top + 6) + 'px' });
+  }
+  function dpSet(iso){
+    const input = dpIn; if (!input) return;
+    dpClose();
+    input.value = iso;
+    input.dispatchEvent(new Event('input', { bubbles:true })); input.dispatchEvent(new Event('change', { bubbles:true }));
+    input.focus({ preventScroll:true });
+  }
+  function dpRender(){
+    const y = dpView.getFullYear(), m = dpView.getMonth(), sel = dpIn && parseDate(dpIn.value) ? isoOfDate(parseDate(dpIn.value)) : '', today = todayIso();
+    let body;
+    if (dpMode === 'days'){
+      const first = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate(), prevDays = new Date(y, m, 0).getDate();
+      let cells = '';
+      for (let k = 0; k < 42; k++){
+        const dnum = k - first + 1;
+        const d = dnum < 1 ? new Date(y, m - 1, prevDays + dnum) : dnum > days ? new Date(y, m + 1, dnum - days) : new Date(y, m, dnum);
+        const iso = isoOfDate(d), out = d.getMonth() !== m;
+        cells += `<button type="button" class="dp-day${out ? ' out' : ''}${iso === sel ? ' on' : ''}${iso === today ? ' today' : ''}${iso === dpFocus ? ' focus' : ''}" data-iso="${iso}">${d.getDate()}</button>`;
+      }
+      body = `<div class="dp-week">${WEEKDAYS.map(w => `<span>${w}</span>`).join('')}</div><div class="dp-grid">${cells}</div>`;
+    } else if (dpMode === 'months'){
+      body = `<div class="dp-grid dp-big">${MONTHS.map((mn, k) => `<button type="button" class="dp-cell${k === m ? ' on' : ''}" data-month="${k}">${mn.slice(0, 3)}</button>`).join('')}</div>`;
+    } else {
+      const start = Math.floor(y / 12) * 12;
+      body = `<div class="dp-grid dp-big">${Array.from({ length: 12 }, (_, k) => start + k).map(yr => `<button type="button" class="dp-cell${yr === y ? ' on' : ''}" data-year="${yr}">${yr}</button>`).join('')}</div>`;
+    }
+    const title = dpMode === 'days' ? `<button type="button" class="dp-title" data-act="months">${MONTHS[m]}</button><button type="button" class="dp-title" data-act="years">${y}</button>`
+      : dpMode === 'months' ? `<button type="button" class="dp-title" data-act="years">${y}</button>`
+      : `<span class="dp-title static">${Math.floor(y / 12) * 12} – ${Math.floor(y / 12) * 12 + 11}</span>`;
+    dpPop.innerHTML = `
+      <div class="dp-head"><button type="button" class="dp-nav" data-act="prev" aria-label="Previous">${ic('left')}</button><div class="dp-titles">${title}</div><button type="button" class="dp-nav" data-act="next" aria-label="Next">${ic('right')}</button></div>
+      ${body}
+      <div class="dp-foot"><button type="button" class="dp-link" data-act="clear">Clear</button><span class="dp-sel">${sel ? niceDate(sel) : 'No date'}</span><button type="button" class="dp-link" data-act="today">Today</button></div>`;
+  }
+  dpPop.addEventListener('mousedown', e => {
+    e.preventDefault(); e.stopPropagation();   // the redraw below detaches the clicked button
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.iso){ dpSet(b.dataset.iso); return; }
+    if (b.dataset.month){ dpView = new Date(dpView.getFullYear(), +b.dataset.month, 1); dpMode = 'days'; }
+    else if (b.dataset.year){ dpView = new Date(+b.dataset.year, dpView.getMonth(), 1); dpMode = 'months'; }
+    else {
+      const a = b.dataset.act, step = dpMode === 'days' ? 1 : dpMode === 'months' ? 12 : 144;
+      if (a === 'prev') dpView = new Date(dpView.getFullYear(), dpView.getMonth() - step, 1);
+      else if (a === 'next') dpView = new Date(dpView.getFullYear(), dpView.getMonth() + step, 1);
+      else if (a === 'months' || a === 'years') dpMode = a;
+      else if (a === 'today'){ dpSet(todayIso()); return; }
+      else if (a === 'clear'){ dpSet(''); return; }
+    }
+    dpRender(); dpPlace();
+  });
+  document.addEventListener('focusin', e => { if (e.target.matches('input.date-in')) dpOpen(e.target); });
+  document.addEventListener('mousedown', e => {
+    if (e.target.matches('input.date-in')){ dpOpen(e.target); return; }
+    if (dpIn && !dpPop.contains(e.target)) dpClose();
+  });
+  document.addEventListener('keydown', e => {
+    if (!dpIn || e.target !== dpIn) return;
+    const move = { ArrowLeft:-1, ArrowRight:1, ArrowUp:-7, ArrowDown:7 }[e.key];
+    if (move && dpMode === 'days'){
+      e.preventDefault();
+      const f = parseDate(dpFocus) || new Date(); f.setDate(f.getDate() + move); dpFocus = isoOfDate(f); dpMoved = true;
+      dpView = new Date(f.getFullYear(), f.getMonth(), 1); dpRender(); dpPlace();
+    } else if (e.key === 'Enter'){ e.preventDefault(); const typed = parseDate(dpIn.value); dpSet(!dpMoved && typed ? isoOfDate(typed) : dpFocus); }
+    else if (e.key === 'Escape' || e.key === 'Tab') dpClose();
+  });
+  // Typed dates (12 Mar 2026, 2026-03-12, 12/03/2026) are tidied to ISO when the field is left.
+  document.addEventListener('blur', e => {
+    const t = e.target; if (!t.matches || !t.matches('input.date-in') || !t.value) return;
+    const d = parseDate(t.value);
+    if (d && isoOfDate(d) !== t.value){ t.value = isoOfDate(d); t.dispatchEvent(new Event('input', { bubbles:true })); t.dispatchEvent(new Event('change', { bubbles:true })); }
+  }, true);
+  document.addEventListener('input', e => { if (dpIn && e.target === dpIn && e.isTrusted){ const d = parseDate(dpIn.value); if (d){ dpView = new Date(d.getFullYear(), d.getMonth(), 1); dpFocus = isoOfDate(d); dpMoved = false; dpRender(); } } });
+  window.addEventListener('scroll', e => { if (dpIn && !dpPop.contains(e.target)) dpPlace(); }, true);
+  window.addEventListener('resize', () => dpClose());
+
+
+  // ══════════════════════════════════════════
+  // INFO TIPS — any button.info-tip shows its data-tip text in a small card.
+  // Click (or tap) to open; click outside or press Escape to close.
+  // ══════════════════════════════════════════
+  const tipPop = document.createElement('div'); tipPop.className = 'tip-pop'; tipPop.setAttribute('role', 'tooltip'); document.body.appendChild(tipPop);
+  let tipBtn = null;
+  function tipPlace(){
+    if (!tipBtn) return;
+    const r = tipBtn.getBoundingClientRect(), w = Math.min(320, innerWidth - 24), h = tipPop.offsetHeight;
+    if (r.bottom < 0 || r.top > innerHeight){ tipClose(); return; }
+    const below = innerHeight - r.bottom > h + 12 || r.top < h + 12;
+    tipPop.style.width = w + 'px';
+    tipPop.style.left = Math.max(12, Math.min(r.left + r.width / 2 - 28, innerWidth - w - 12)) + 'px';
+    tipPop.style.top = (below ? r.bottom + 8 : r.top - h - 8) + 'px';
+    tipPop.classList.toggle('above', !below);
+    tipPop.style.setProperty('--arrow', Math.max(14, Math.min(r.left + r.width / 2 - parseFloat(tipPop.style.left), w - 14)) + 'px');
+  }
+  function tipOpen(btn){ tipBtn = btn; btn.classList.add('on'); tipPop.innerHTML = btn.dataset.tip; tipPop.classList.add('open'); tipPlace(); }
+  function tipClose(){ tipPop.classList.remove('open'); tipBtn?.classList.remove('on'); tipBtn = null; }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('.info-tip');
+    if (b){ e.preventDefault(); if (tipBtn === b) tipClose(); else { tipClose(); tipOpen(b); } return; }
+    if (tipBtn && !tipPop.contains(e.target)) tipClose();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && tipBtn){ const b = tipBtn; tipClose(); b.focus(); } });
+  window.addEventListener('scroll', () => tipPlace(), true);
+  window.addEventListener('resize', () => tipClose());
+
+
+
+  // ══════════════════════════════════════════
+  // SAVE / LOAD
+  // ══════════════════════════════════════════
+  const FIELD_IDS = ['firmName','firmFfrn','tlcPrefix','pocName','pocPhone','pocEmail','recordsLocation','recordsHolder','recordsConfirm'];
+  function snapshot(){
+    const fields = {}; FIELD_IDS.forEach(id => { fields[id] = $(id).type === 'checkbox' ? $(id).checked : $(id).value; });
+    return { savedAt:new Date().toISOString(), program:'FDA FSMA 204', version:1, ctes:S.ctes, forms:S.forms, fields, locations:S.locations, products:S.products, records:S.records };
+  }
+  function saveDraft(){ try { localStorage.setItem(DRAFT_KEY, JSON.stringify(snapshot())); toast('Draft saved in this browser'); } catch (e) { toast('This browser blocks saving. Use Download JSON instead.'); } }
+  function loadDraft(){
+    let d = null; try { d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch (e) {}
+    if (!d){ toast('No saved draft in this browser yet'); return; }
+    S.ctes = d.ctes || S.ctes; S.forms = d.forms || S.forms; S.locations = d.locations || []; S.products = d.products || [];
+    S.records = { flbr:[], recv:[], trans:[], ship:[], ...(d.records || {}) }; S.open = {}; S.tab = 'firm';
+    Object.entries(d.fields || {}).forEach(([id, v]) => { const el = $(id); if (!el) return; if (el.type === 'checkbox') el.checked = !!v; else el.value = v; });
+    startForm(); toast('Draft from ' + new Date(d.savedAt).toLocaleString() + ' loaded');
+  }
+  function downloadJSON(){
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(snapshot(), null, 2)], { type:'application/json' }));
+    a.download = `fsma204-${(val('firmName') || 'draft').replace(/[^\w-]+/g,'_')}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+  </script>
+</body>
+</html>
