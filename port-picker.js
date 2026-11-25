@@ -12,62 +12,69 @@ if(!document.getElementById('pp-css')){
   const s=document.createElement('style'); s.id='pp-css';
   s.textContent=`
 .pp{display:flex;flex-direction:column;gap:5px}
-.pp-lbl{font-size:12px;font-weight:600;color:var(--muted,#6b7280)}
-.pp-lbl .req{color:var(--bad-fg,#e63946)}
+.pp-lbl{font-family:Consolas,"SFMono-Regular",Menlo,monospace;font-size:11px;font-weight:400;color:var(--faint,#9aa1ad)}
+.pp-lbl .req{color:var(--crit,#d64545)}
 .pp-trigger{position:relative}
-.pp-inp{width:100%;height:var(--ctl-h,40px);padding:0 32px 0 12px;border:1.5px solid var(--border,#e8eaf0);
-  border-radius:10px;font:inherit;font-size:13px;color:var(--text,#1a1a2e);background:var(--surface,#fff);
-  outline:none;cursor:pointer;transition:.14s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pp-inp:focus{border-color:var(--primary,#1a6fdb);box-shadow:0 0 0 3px rgba(26,111,219,.12)}
-.pp-inp::placeholder{color:var(--dim,#c0c4d0)}
-.pp-chev{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--dim);pointer-events:none;transition:.2s}
-.pp-trigger.open .pp-chev{transform:translateY(-50%) rotate(180deg);color:var(--primary)}
-.pp-clr{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:17px;height:17px;border-radius:50%;
-  background:var(--bg,#eef0f5);border:none;cursor:pointer;display:none;align-items:center;justify-content:center;
-  color:var(--dim);font-size:10px;padding:0;transition:.14s}
-.pp-clr:hover{background:var(--bad-bg,#fff0f1);color:var(--bad-fg,#e63946)}
+.pp-inp{width:100%;height:var(--ctl-h,40px);padding:0 34px 0 13px;border:1px solid var(--line,#e6e8ec);border-radius:10px;font:inherit;font-size:13px;font-weight:300;color:var(--ink,#14161a);background:#fff;outline:none;cursor:pointer;transition:border-color .2s,box-shadow .2s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pp-inp:focus,.pp-trigger.open .pp-inp{border-color:var(--accent,#2f6fed);box-shadow:0 0 0 4px rgba(47,111,237,.10)}
+.pp-inp::placeholder{color:#b3bac6}
+.pp-chev{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--faint,#9aa1ad);pointer-events:none;transition:transform .2s,color .2s}
+.pp-trigger.open .pp-chev{transform:translateY(-50%) rotate(180deg);color:var(--accent,#2f6fed)}
+.pp-clr{position:absolute;right:9px;top:50%;transform:translateY(-50%);width:20px;height:20px;border-radius:50%;background:#f3f4f6;border:none;cursor:pointer;display:none;align-items:center;justify-content:center;color:#6b7380;font-size:14px;line-height:1;padding:0;transition:background .2s,color .2s}
+.pp-clr:hover{background:#fdeceb;color:#d64545}
 .pp-has-val .pp-clr{display:flex}
 .pp-has-val .pp-chev{display:none}
-/* cascade container */
-.pp-cascade{position:absolute;top:calc(100% + 5px);left:0;display:none;z-index:9999;flex-direction:row;gap:0}
+.pp-cascade{position:absolute;top:calc(100% + 6px);left:0;display:none;z-index:9999;flex-direction:row;gap:6px}
 .pp-trigger.open .pp-cascade{display:flex}
-.pp-col{width:260px;background:var(--surface,#fff);border:1px solid var(--border,#eef0f5);border-radius:14px;
-  box-shadow:var(--shadow-1,0 4px 12px rgba(20,24,45,.07),0 16px 40px rgba(20,24,45,.1));overflow:hidden;
-  animation:ppIn .14s ease-out}
-.pp-col+.pp-col{margin-left:-1px;border-top-left-radius:4px;border-bottom-left-radius:4px}
+.pp-col{width:270px;background:#fff;border:1px solid var(--line,#e6e8ec);border-radius:16px;box-shadow:0 14px 34px rgba(16,24,40,.12);overflow:hidden;animation:ppIn .18s ease-out}
 @keyframes ppIn{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:none}}
-.pp-sch{padding:7px 7px 3px;position:sticky;top:0;background:var(--surface,#fff);z-index:1}
-.pp-sch input{width:100%;height:34px;border:1.5px solid var(--border);border-radius:9px;padding:0 10px;
-  font:inherit;font-size:12.5px;outline:none;color:var(--text);background:var(--surface)}
-.pp-sch input:focus{border-color:var(--primary)}
-.pp-list{max-height:260px;overflow-y:auto;padding:3px 5px 5px}
+.pp-sch{padding:8px 8px 4px;position:sticky;top:0;background:#fff;z-index:1}
+.pp-sch input{width:100%;height:34px;border:1px solid var(--line,#e6e8ec);border-radius:999px;padding:0 13px;font:inherit;font-size:12.5px;font-weight:300;outline:none;color:var(--ink,#14161a);background:#fff}
+.pp-sch input:focus{border-color:var(--accent,#2f6fed)}
+.pp-list{max-height:270px;overflow-y:auto;padding:3px 6px 6px}
 .pp-list::-webkit-scrollbar{width:4px}
-.pp-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}
-.pp-o{padding:9px 11px;border-radius:9px;cursor:pointer;transition:background .08s;display:flex;align-items:center;gap:6px}
-.pp-o:hover,.pp-o.hov{background:var(--hover,#f0f4fa)}
-.pp-o.on{background:var(--primary,#1a6fdb);color:#fff}
+.pp-list::-webkit-scrollbar-thumb{background:#e6e8ec;border-radius:99px}
+.pp-o{padding:8px 11px;border-radius:10px;cursor:pointer;transition:background .12s;display:flex;align-items:center;gap:9px;border:0;background:none;font:inherit;text-align:left}
+.pp-o:hover,.pp-o.hov{background:#f3f6fb}
+.pp-o.on{background:var(--accent,#2f6fed);color:#fff}
+.pp-o-ic{width:28px;height:28px;border-radius:9px;background:#edf3fe;color:var(--accent,#2f6fed);display:grid;place-items:center;flex:none}
+.pp-o.on .pp-o-ic{background:rgba(255,255,255,.2);color:#fff}
 .pp-o-body{flex:1;min-width:0}
-.pp-o-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pp-o-meta{font-size:11px;color:var(--muted,#6b7280);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pp-o.on .pp-o-meta{color:rgba(255,255,255,.7)}
-.pp-o-arrow{color:var(--dim);font-size:14px;flex-shrink:0;line-height:1}
-.pp-o.on .pp-o-arrow{color:rgba(255,255,255,.5)}
-.pp-col-head{padding:9px 12px 6px;font-size:10px;font-weight:700;color:var(--dim,#9aa0b4);
-  text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border)}
-.pp-empty{padding:14px;text-align:center;color:var(--dim);font-size:12.5px}
-.pp-berth-row{padding:8px 10px;border-top:1px solid var(--border)}
-.pp-berth-inp{width:100%;height:34px;border:1.5px solid var(--border);border-radius:9px;padding:0 10px;
-  font:inherit;font-size:12.5px;color:var(--text);background:var(--surface);outline:none}
-.pp-berth-inp:focus{border-color:var(--primary)}
-/* summary chip under the input */
-.pp-sum{display:none;align-items:center;gap:5px;padding:6px 10px;background:var(--primary-soft,#e8f1fc);
-  border:1px solid var(--border);border-radius:9px;margin-top:4px;font-size:11.5px;flex-wrap:wrap}
+.pp-o-name{font-size:13px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pp-o-meta{font-size:11px;font-weight:300;color:#6b7380;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pp-o.on .pp-o-meta{color:rgba(255,255,255,.8)}
+.pp-o-arrow{color:#b3bac6;flex-shrink:0;display:flex}
+.pp-o.on .pp-o-arrow{color:rgba(255,255,255,.7)}
+.pp-col-head{padding:10px 13px 8px;font-family:Consolas,"SFMono-Regular",Menlo,monospace;font-size:11px;font-weight:400;color:var(--accent,#2f6fed);border-bottom:1px solid #eef0f3}
+.pp-empty{padding:16px;text-align:center;color:#9aa1ad;font-size:12.5px;font-weight:300}
+.pp-berth-row{padding:10px}
+.pp-berth-inp{width:100%;height:36px;border:1px solid var(--line,#e6e8ec);border-radius:10px;padding:0 12px;font:inherit;font-size:12.5px;font-weight:300;color:var(--ink,#14161a);background:#fff;outline:none}
+.pp-berth-inp:focus{border-color:var(--accent,#2f6fed)}
+.pp-confirm{width:100%;height:34px;border:0;border-radius:999px;background:var(--accent,#2f6fed);color:#fff;font:inherit;font-size:12.5px;font-weight:300;cursor:pointer}
+.pp-sum{display:none;align-items:center;gap:6px;padding:5px 12px;background:#edf3fe;border:1px solid #cddcf8;border-radius:999px;margin-top:4px;font-size:11.5px;flex-wrap:wrap;align-self:flex-start}
 .pp-sum.vis{display:flex}
-.pp-sum b{color:var(--primary,#1558b0);font-weight:600;font-size:12px}
-.pp-sum .dim{color:var(--dim);font-size:10px}
+.pp-sum b{color:var(--accent,#2f6fed);font-weight:400;font-size:12px}
+.pp-sum .dim{color:#9aa1ad;font-size:11px}
 `;
   document.head.appendChild(s);
 }
+
+
+/* line icons per facility type (replaces the emoji set) */
+const _FAC=(function(){
+  const s=p=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">'+p+'</svg>';
+  const anchor=s('<circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 13H3a9 9 0 0018 0h-2"/>');
+  const pier=s('<path d="M2 18h20M6 18V9M12 18V9M18 18V9M4 9h16"/>');
+  return {'Port Area':s('<path d="M3 21h18M5 21V10l5 3v-3l5 3V5h4v16"/>'),
+    'Terminal':s('<rect x="3" y="7" width="8" height="5" rx="1"/><rect x="13" y="7" width="8" height="5" rx="1"/><rect x="8" y="12" width="8" height="5" rx="1"/><path d="M2 21h20"/>'),
+    'Berth':anchor,'Anchorage':anchor,'Jetty':pier,'Pier':pier,
+    'Wharf':s('<path d="M2 15h20M4 15v5M20 15v5M8 15V4l7 3.5L8 11"/>'),
+    'Dock':s('<path d="M3 6v12h18V6M3 12h18"/>'),
+    'Marina':s('<path d="M12 3v12M12 3l7 10h-7M3 19c2 1.5 4 1.5 6 0s4-1.5 6 0 4 1.5 6 0"/>'),
+    'Offshore Platform':s('<path d="M4 10h16M6 10l-2 11M18 10l2 11M9 10V4h6v6M2 21h20"/>'),
+    'Other':s('<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>')};
+})();
+const _facIcon=t=>_FAC[t]||_FAC.Other;
 
 const _e=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let _ppN=0;
@@ -78,7 +85,7 @@ class PortPicker{
     this.sb=opts.supabase||null;
     this.o={label:opts.label||'Port',required:!!opts.required,
       showTerminal:opts.showTerminal!==false,showBerth:!!opts.showBerth,
-      placeholder:opts.placeholder||'Search port by name, country or LOCODE…',
+      placeholder:opts.placeholder||'Search port by name, country or LOCODE...',
       onChange:opts.onChange||null,
       filterCountry:opts.filterCountry||null};  // function that returns country name or null
     this.v={port_id:null,port_name:'',terminal_id:null,terminal_name:'',berth:''};
@@ -97,10 +104,10 @@ class PortPicker{
       <div class="pp-trigger" data-t="${u}">
         <input class="pp-inp" data-in="${u}" placeholder="${_e(o.placeholder)}" readonly autocomplete="off"/>
         <svg class="pp-chev" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
-        <button class="pp-clr" data-clr="${u}" type="button" title="Clear">✕</button>
+        <button class="pp-clr" data-clr="${u}" type="button" title="Clear">&times;</button>
         <div class="pp-cascade" data-cas="${u}">
           <div class="pp-col" data-col="${u}-1">
-            <div class="pp-sch"><input data-sch="${u}" placeholder="Search…" autocomplete="off"/></div>
+            <div class="pp-sch"><input data-sch="${u}" placeholder="Search..." autocomplete="off"/></div>
             <div class="pp-list" data-list="${u}-1"></div>
           </div>
         </div>
@@ -139,7 +146,7 @@ class PortPicker{
       return `<div class="pp-o${this.v.port_id===p.id?' on':''}" data-pid="${p.id}" data-pname="${_e(p.main_port_name)}" data-has="${hasFac?1:0}">
         <div class="pp-o-body"><div class="pp-o-name">${_e(p.main_port_name)}</div>
           <div class="pp-o-meta">${[p.country,p.un_locode,p.port_type].filter(Boolean).map(_e).join(' · ')}</div></div>
-        ${hasFac?'<span class="pp-o-arrow">›</span>':''}
+        ${hasFac?'<span class="pp-o-arrow"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>':''}
       </div>`;
     }).join('');
     el.querySelectorAll('.pp-o').forEach(opt=>{
@@ -166,8 +173,8 @@ class PortPicker{
     /* create L2 column */
     const col=document.createElement('div');
     col.className='pp-col'; col.setAttribute('data-col',this._uid+'-2');
-    col.innerHTML=`<div class="pp-col-head">${_e(portName)} — Facilities</div>
-      <div class="pp-list" data-list="${this._uid}-2"><div class="pp-empty">Loading…</div></div>`;
+    col.innerHTML=`<div class="pp-col-head">${_e(portName)} / facilities</div>
+      <div class="pp-list" data-list="${this._uid}-2"><div class="pp-empty">Loading...</div></div>`;
     cas.appendChild(col);
 
     /* load facilities */
@@ -189,11 +196,10 @@ class PortPicker{
       list.innerHTML=`<div class="pp-empty">No facilities registered</div>`;
       return;
     }
-    const IC={'Terminal':'🚢','Port Area':'🏭','Berth':'⚓','Jetty':'🪝','Wharf':'🏗','Pier':'🛳','Dock':'🔧','Marina':'⛵'};
     list.innerHTML=facs.map(f=>`<div class="pp-o${this.v.terminal_id===f.id?' on':''}" data-fid="${f.id}" data-fname="${_e(f.name)}">
-      <div class="pp-o-body"><div class="pp-o-name">${IC[f.facility_type]||'📍'} ${_e(f.name)}</div>
+      <span class="pp-o-ic">${_facIcon(f.facility_type)}</span><div class="pp-o-body"><div class="pp-o-name">${_e(f.name)}</div>
         <div class="pp-o-meta">${_e(f.facility_type||'')}</div></div>
-      ${this.o.showBerth?'<span class="pp-o-arrow">›</span>':''}
+      ${this.o.showBerth?'<span class="pp-o-arrow"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>':''}
     </div>`).join('');
     list.querySelectorAll('.pp-o').forEach(opt=>{
       opt.addEventListener('click',e=>{
@@ -222,10 +228,9 @@ class PortPicker{
     cas?.querySelectorAll('[data-col$="-3"]').forEach(c=>c.remove());
     const col=document.createElement('div');
     col.className='pp-col'; col.setAttribute('data-col',this._uid+'-3');
-    col.innerHTML=`<div class="pp-col-head">${_e(facName)} — Berth</div>
+    col.innerHTML=`<div class="pp-col-head">${_e(facName)} / berth</div>
       <div class="pp-berth-row"><input class="pp-berth-inp" placeholder="Berth number or name" autocomplete="off"/></div>
-      <div style="padding:6px 10px;"><button class="pp-o" style="justify-content:center;font-weight:600;font-size:12px;color:var(--primary);width:100%;" data-confirm="1">
-        Confirm berth</button></div>`;
+      <div style="padding:0 10px 10px;"><button class="pp-confirm" data-confirm="1">Confirm berth</button></div>`;
     cas.appendChild(col);
     const berthInp=col.querySelector('.pp-berth-inp');
     berthInp.focus();
@@ -259,7 +264,7 @@ class PortPicker{
   _done(){
     const inp=this.$(`[data-in="${this._uid}"]`);
     const parts=[this.v.port_name,this.v.terminal_name,this.v.berth?'Berth '+this.v.berth:null].filter(Boolean);
-    if(inp){ inp.value=parts.join(' → ');
+    if(inp){ inp.value=parts.join(' / ');
       inp.closest('.pp-trigger')?.classList.add('pp-has-val'); }
     this._close(); this._updateSum(); this._fire();
   }
@@ -301,8 +306,8 @@ class PortPicker{
     const s=this.$(`[data-sum="${this._uid}"]`); if(!s) return;
     if(!this.v.port_name){ s.classList.remove('vis'); s.innerHTML=''; return; }
     const parts=[`<b>${_e(this.v.port_name)}</b>`];
-    if(this.v.terminal_name) parts.push(`<span class="dim">›</span> ${_e(this.v.terminal_name)}`);
-    if(this.v.berth) parts.push(`<span class="dim">›</span> Berth ${_e(this.v.berth)}`);
+    if(this.v.terminal_name) parts.push(`<span class="dim">/</span> ${_e(this.v.terminal_name)}`);
+    if(this.v.berth) parts.push(`<span class="dim">/</span> Berth ${_e(this.v.berth)}`);
     s.innerHTML=parts.join(' ');
     s.classList.add('vis');
   }
@@ -318,7 +323,7 @@ class PortPicker{
       terminal_id:val.terminal_id||null,terminal_name:val.terminal_name||'',berth:val.berth||''};
     const parts=[this.v.port_name,this.v.terminal_name,this.v.berth?'Berth '+this.v.berth:null].filter(Boolean);
     const inp=this.$(`[data-in="${this._uid}"]`);
-    if(inp&&parts.length){ inp.value=parts.join(' → ');
+    if(inp&&parts.length){ inp.value=parts.join(' / ');
       inp.closest('.pp-trigger')?.classList.add('pp-has-val'); }
     this._updateSum();
   }

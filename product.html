@@ -1,161 +1,438 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Add Product — SmarTuna concept</title>
-  <link rel="icon" type="image/png" href="sc-blue-logo.png" />
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="product.css" />
-  <style>
-    /* ── SMARTUNA WORDMARK ── */
-    @font-face {
-      font-family: 'Bitsumis';
-      src: url('BITSUMIS.TTF') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-      font-display: swap;
-    }
-    .sc-wm {
-      display: inline-flex;
-      flex-direction: column;
-      align-items: flex-start;
-      line-height: 1;
-      gap: 0;
-      text-decoration: none;
-    }
-    .sc-wm-top {
-      font-family: 'Bitsumis', sans-serif !important;
-      font-weight: 900 !important;
-      font-size: 16px;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      line-height: 1;
-      background: linear-gradient(90deg, #1a6fdb, #1a6fdb) !important;
-      -webkit-background-clip: text !important;
-      -webkit-text-fill-color: transparent !important;
-      background-clip: text !important;
-    }
-    .sc-wm-sub {
-      font-family: 'Bitsumis', sans-serif !important;
-      font-weight: 700 !important;
-      font-size: 7px;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: #1a1a2e;
-      -webkit-text-fill-color: #1a1a2e !important;
-      margin-top: 2px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Add Product · SmarTuna concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="sc-blue-logo.png">
+<style>
+
+  @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');font-weight:normal;font-style:normal;font-display:swap}
+  :root{
+    --accent:#2f6fed; --accent-soft:rgba(47,111,237,.10); --accent-line:#cddcf8;
+    --ink:#14161a; --muted:#6b7380; --faint:#9aa1ad; --line:#e6e8ec; --line2:#eef0f3; --page:#f6f7f9; --white:#fff;
+    --mono:Consolas,"SFMono-Regular",Menlo,monospace;
+    --ok:#178a4c; --ok-bg:#e8f6ee; --ok-line:#c7e8d4;
+    --low:#2f6fed; --low-bg:#edf3fe; --low-line:#cddcf8;
+    --med:#b7791f; --med-bg:#fdf4e3; --med-line:#f1dcae;
+    --crit:#d64545; --crit-bg:#fdeceb; --crit-line:#f5c9c6;
+    --ease:cubic-bezier(.16,1,.3,1); --spring:cubic-bezier(.34,1.56,.64,1);
+  }
+  *{box-sizing:border-box}
+  html,body{overflow-x:clip}
+  body{margin:0;font-family:Poppins,system-ui,sans-serif;font-weight:400;font-size:14px;font-synthesis:none;color:var(--ink);background:var(--page);line-height:1.55;-webkit-font-smoothing:antialiased}
+  b,strong,h1,h2,h3,h4,th,[style*="font-weight"]{font-weight:400!important}
+  a{color:inherit;text-decoration:none}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .wrap{max-width:1680px;margin:0 auto;padding:0 clamp(16px,3vw,48px)}
+  .mono{font-family:var(--mono)}
+  .hidden{display:none!important}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* shared pieces */
+  .eyebrow{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.04em;display:flex;align-items:center;gap:10px}
+  .lbl{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.03em}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:18px 20px;min-width:0}
+  .card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border:1px solid var(--line);border-radius:999px;background:var(--white);font-size:13px;font-weight:300;color:var(--ink);white-space:nowrap;cursor:pointer;transition:border-color .2s,color .2s,background .2s,transform .2s,box-shadow .2s}
+  .btn svg{flex:none}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.25)}
+  .btn.primary:hover{background:#2560d6;color:#fff;transform:translateY(-1px)}
+  .btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+  .btn:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .badge{font-family:var(--mono);font-size:10.5px;padding:1px 8px;border-radius:999px;border:1px solid;line-height:1.5}
+  .badge.new{color:var(--accent);border-color:var(--accent-line);background:#f3f7ff}
+  .badge.beta{color:#9a6a12;border-color:#efdcae;background:#fdf7e7}
+  .cnt{font-family:var(--mono);font-size:10.5px;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;display:inline-grid;place-items:center}
+
+  .mri-status-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:999px;font-size:12px;border:1px solid transparent;white-space:nowrap}
+  .mri-status-pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .mri-status-pill.transparent{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .mri-status-pill.low{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .mri-status-pill.medium{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .mri-status-pill.critical{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+  .kde-weight{display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;font-family:var(--mono);font-size:10.5px;border:1px solid transparent;white-space:nowrap}
+  .kde-weight.w5{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .kde-weight.w10{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .kde-weight.w30{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .kde-weight.w50{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+
+  .rv{animation:up .55s var(--ease) both;animation-delay:calc(var(--i,0) * 50ms)}
+  @keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .toast-wrap{position:fixed;right:20px;bottom:20px;z-index:3000;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  .toast{display:flex;align-items:center;gap:10px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;font-weight:300;box-shadow:0 14px 34px rgba(16,24,40,.2);animation:up .3s var(--ease)}
+  .toast i{width:8px;height:8px;border-radius:50%;background:#4ade80;flex:none}
+  .toast.error i{background:#f87171}
+
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
+
+  .sc-wm{display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1}
+  .sc-wm-top{font-family:'Bitsumis',sans-serif;font-size:17px;letter-spacing:.04em;text-transform:uppercase;line-height:1;color:var(--ink)}
+  .sc-wm-top span{color:var(--accent)}
+  .sc-wm-sub{font-family:'Bitsumis',sans-serif;font-size:8px;letter-spacing:.32em;text-transform:uppercase;color:#6b7380;margin-top:2px}
+  .topbar{position:sticky;top:0;z-index:1000;display:flex;align-items:center;gap:20px;padding:10px 28px;background:rgba(255,255,255,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .topbar-brand{display:flex;align-items:center;gap:8px;flex-shrink:0;line-height:1.1}
+  .topbar-brand img{width:28px;height:28px;object-fit:contain}
+  .topbar-nav{flex:1;display:flex;justify-content:center;min-width:0}
+  .nav-pill{display:inline-flex;align-items:center;gap:2px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:4px}
+  .topbar .nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:300;color:#6b7380;white-space:nowrap;transition:background .15s,color .15s}
+  .topbar .nav-item img,.topbar .nav-item svg{width:15px;height:15px;object-fit:contain;opacity:.45;flex-shrink:0}
+  .topbar .nav-item:hover{background:#f3f6fb;color:var(--ink)}
+  .topbar .nav-item:hover img,.topbar .nav-item:hover svg{opacity:1}
+  .topbar .nav-item.active{background:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.28)}
+  .topbar .nav-item.active img{filter:brightness(0) invert(1);opacity:1}
+  .topbar .nav-item.active svg{opacity:1}
+  .topbar .nav-item-wrap{position:relative}
+  .topbar .nav-item-wrap::after{content:'';position:absolute;top:100%;left:0;width:100%;height:12px}
+  .topbar .nav-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:160px;z-index:500;padding:6px}
+  .topbar .nav-item-wrap:hover .nav-dropdown{display:block}
+  .topbar .nav-dropdown-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;font-size:13px;font-weight:300;color:var(--ink);border-radius:8px;white-space:nowrap;cursor:pointer;position:relative;transition:background .15s}
+  .topbar .nav-dropdown-item:hover{background:#f6f7f9;color:var(--accent)}
+  .topbar .nav-dropdown-sub{display:block;visibility:hidden;opacity:0;position:absolute;left:100%;top:0;margin-left:6px;transform:translateX(-4px);background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:160px;padding:6px;z-index:501;transition:opacity .15s ease,transform .15s ease,visibility 0s linear .35s}
+  .topbar .nav-dropdown-sub::before{content:"";position:absolute;top:-10px;bottom:-10px;left:-16px;width:16px}
+  .topbar .nav-dropdown-item:hover > .nav-dropdown-sub,.topbar .nav-dropdown-item:focus-within > .nav-dropdown-sub{visibility:visible;opacity:1;transform:none;transition-delay:0s}
+  .topbar .nav-dropdown-item:has(> .nav-dropdown-sub:hover){background:#f6f7f9;color:var(--accent)}
+  .topbar .tag-new,.topbar .tag-beta{font-size:9px;padding:1px 7px;border-radius:999px}
+  .topbar .tag-new{color:#2f6fed;background:#eef3fc} .topbar .tag-beta{color:#a9721f;background:#fdf3df}
+  #devNav[hidden]{display:none!important}
+  .topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .search-pill{display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:12px;font-weight:300;color:#b3bac6;min-width:150px;cursor:text}
+  .notif-btn{width:36px;height:36px;border-radius:50%;background:var(--white);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;flex-shrink:0}
+  .notif-btn img{width:17px;height:17px;object-fit:contain;opacity:.65}
+  .notif-dot{position:absolute;top:5px;right:5px;width:8px;height:8px;background:#e63946;border-radius:50%;border:2px solid #fff}
+  .avatar-wrap{position:relative;flex-shrink:0}
+  .avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;flex-shrink:0}
+  .avatar-btn img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+  .avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:176px;overflow:hidden;z-index:999}
+  .avatar-menu.open{display:block;animation:drop .18s ease}
+  @keyframes drop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .avatar-menu-name{padding:11px 15px 7px;font-family:var(--mono);font-size:11.5px;color:#6b7380;border-bottom:1px solid var(--line)}
+  .avatar-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;font-weight:300;color:var(--ink)}
+  .avatar-menu a:hover{background:#f6f7f9;color:var(--accent)}
+  .avatar-menu button{width:100%;padding:9px 15px;background:none;border:0;border-top:1px solid var(--line);text-align:left;font-size:13px;font-weight:300;color:#e63946;cursor:pointer}
+  .avatar-menu button:hover{background:#fff0f1}
+  @media (max-width:1280px){ .search-pill{display:none} }
+  @media (max-width:1080px){ .topbar-nav{visibility:hidden} }
+  @media (max-width:600px){ .topbar{padding:10px 16px} .topbar-nav{display:none} .topbar{justify-content:space-between} }
+
+  .phead{background:linear-gradient(180deg,#eef3fc 0%,var(--page) 100%);border-bottom:1px solid var(--line2)}
+  .crumbs{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;color:var(--faint)}
+  .crumbs a{color:var(--muted);display:inline-flex;align-items:center;gap:6px;transition:color .2s}
+  .crumbs a:hover{color:var(--accent)}
+  h1{font-size:clamp(26px,2.8vw,38px);font-weight:300;letter-spacing:-.02em;line-height:1.12;margin:6px 0 2px}
+  .lead{margin:0;color:var(--muted);font-weight:300;font-size:14px}
+
+  .loading-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:90px 20px;color:var(--faint);font-size:13px;font-weight:300}
+  .spinner{width:30px;height:30px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* modals (shared by all three pages) */
+  .modal-overlay{position:fixed;inset:0;z-index:2000;background:rgba(20,22,26,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px}
+  .modal-box{background:var(--white);border-radius:18px;padding:28px;max-width:400px;width:100%;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;box-shadow:0 30px 80px rgba(16,24,40,.25);animation:up .3s var(--ease)}
+  .modal-box > div{width:100%}
+  .modal-icon{width:52px;height:52px;border-radius:50%;background:var(--low-bg);display:grid;place-items:center}
+  .modal-icon.danger{background:var(--crit-bg)}
+  .modal-title{margin:0 0 6px;font-size:17px;font-weight:300}
+  .modal-body{margin:0;font-size:13px;font-weight:300;color:var(--muted);line-height:1.6}
+  .modal-body strong{color:var(--ink)}
+  .modal-actions{display:flex;gap:8px;width:100%;margin-top:14px}
+  .modal-cancel-btn,.modal-delete-btn,.modal-remind-btn,.modal-no-remind-btn,.modal-ok-btn,.modal-discard-btn{flex:1;height:40px;padding:0 16px;border-radius:999px;font-size:13px;font-weight:300;cursor:pointer;border:1px solid var(--line);background:var(--white);color:var(--ink);transition:background .2s,color .2s,border-color .2s}
+  .modal-cancel-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .modal-delete-btn,.modal-discard-btn{background:var(--crit);border-color:var(--crit);color:#fff}
+  .modal-delete-btn:hover,.modal-discard-btn:hover{background:#c23a3a}
+  .modal-remind-btn,.modal-ok-btn{background:var(--accent);border-color:var(--accent);color:#fff}
+  .modal-remind-btn:hover,.modal-ok-btn:hover{background:#2560d6}
+  .modal-ok-btn{flex:none;margin-top:8px;padding:0 28px}
+  .modal-no-remind-btn{color:var(--crit);border-color:var(--crit-line)}
+  .modal-no-remind-btn:hover{background:var(--crit);color:#fff;border-color:var(--crit)}
+  .modal-remind-btn,.modal-no-remind-btn,.modal-actions[style*="column"] .modal-cancel-btn{flex:none;width:100%}
+
+  /* toasts created by the page scripts carry their own colours; keep our type */
+  body > .toast,body > div[style*="position:fixed; bottom:28px"],body > div[style*="position: fixed; bottom: 28px"]{border-radius:12px!important;font-size:13px!important;box-shadow:0 14px 34px rgba(16,24,40,.2)!important}
+
+  .pill,.cert-pill{display:inline-flex;align-items:center;padding:2px 10px;border-radius:999px;font-size:12px;border:1px solid}
+  .pill{color:var(--accent);background:var(--low-bg);border-color:var(--accent-line)}
+  .cert-pill{color:var(--ok);background:var(--ok-bg);border-color:var(--ok-line)}
+
+  .phead .wrap{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-top:18px;padding-bottom:16px}
+
+  .formbar{position:sticky;top:63px;z-index:60;background:rgba(246,247,249,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--line2)}
+  .formbar .wrap{display:flex;align-items:center;justify-content:space-between;gap:14px;padding-top:10px;padding-bottom:10px}
+  .tab-nav{display:flex;gap:4px;padding:4px;border:1px solid var(--line);border-radius:999px;background:var(--white);overflow-x:auto;scrollbar-width:none;min-width:0}
+  .tab-pill{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border:0;border-radius:999px;background:none;font-size:13px;font-weight:300;color:var(--muted);white-space:nowrap;cursor:pointer;transition:background .25s,color .25s,box-shadow .25s}
+  .tab-pill:hover{color:var(--ink);background:#f3f6fb}
+  .tab-pill.active{background:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.28)}
+  .tab-check{display:none;width:16px;height:16px;border-radius:50%;align-items:center;justify-content:center;flex:none}
+  .tab-pill.completed{color:var(--accent)}
+  .tab-pill.completed .tab-check{display:inline-flex;background:var(--accent)}
+  .tab-pill.invalid{color:var(--crit)}
+  .tab-pill.invalid .tab-check{display:inline-flex;background:var(--crit);position:relative}
+  .tab-pill.invalid .tab-check svg{display:none}
+  .tab-pill.invalid .tab-check::before,.tab-pill.invalid .tab-check::after{content:"";position:absolute;width:8px;height:1.6px;background:#fff;border-radius:2px;transform:rotate(45deg)}
+  .tab-pill.invalid .tab-check::after{transform:rotate(-45deg)}
+  .top-actions{display:flex;gap:8px;flex:none}
+  .btn-save,.btn-cancel{position:relative;height:38px;padding:0 20px;border-radius:999px;font-size:13px;font-weight:300;cursor:pointer;transition:background .2s,color .2s,border-color .2s,transform .2s}
+  .btn-save{border:1px solid var(--accent);background:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.25)}
+  .btn-save:hover:not(:disabled){background:#2560d6;transform:translateY(-1px)}
+  .btn-save:disabled{cursor:not-allowed;box-shadow:none}
+  .btn-cancel{border:1px solid var(--line);background:var(--white);color:var(--ink)}
+  .btn-cancel:hover{border-color:var(--crit);color:var(--crit)}
+  .btn-save::after{content:attr(data-tooltip);position:absolute;top:calc(100% + 8px);right:0;background:var(--ink);color:#fff;font-size:11.5px;padding:6px 10px;border-radius:8px;white-space:nowrap;opacity:0;pointer-events:none;transform:translateY(-4px);transition:opacity .2s,transform .2s}
+  .btn-save:disabled:hover::after{opacity:1;transform:none}
+  .btn-save[data-tooltip=""]::after{display:none}
+
+  main{padding:16px 0 56px}
+  .page-wrapper{display:grid;grid-template-columns:280px minmax(0,1fr);gap:16px;align-items:start}
+  .left-panel{position:sticky;top:128px;display:flex;flex-direction:column;gap:12px;background:var(--white);border:1px solid var(--line);border-radius:16px;padding:14px;max-height:calc(100vh - 144px);overflow:auto;scrollbar-width:thin}
+  .product-photo-block{display:flex;flex-direction:column;gap:8px}
+  .photo-placeholder{width:100%;aspect-ratio:4/3;border-radius:12px;background:linear-gradient(135deg,#f3f5f8,#e9edf3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#c3cad6;font-family:var(--mono);font-size:11px;overflow:hidden}
+  .photo-placeholder img{width:100%;height:100%;object-fit:cover}
+  .btn-upload-photo,.btn-bulk-upload{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:36px;border-radius:999px;font-size:12.5px;font-weight:300;cursor:pointer;transition:background .2s,color .2s,border-color .2s}
+  .btn-upload-photo{border:1px dashed #c3cad6;background:var(--white);color:var(--ink)}
+  .btn-upload-photo:hover{border-color:var(--accent);color:var(--accent)}
+  .summary-fields{display:flex;flex-direction:column;gap:6px}
+  .summary-field{display:flex;flex-direction:column;gap:1px;background:var(--page);border:1px solid var(--line2);border-radius:12px;padding:7px 8px 7px 12px;transition:border-color .2s,background .2s}
+  .summary-field:hover{border-color:var(--accent-line);background:#f3f7ff}
+  .summary-label{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .summary-value-row{display:flex;align-items:center;justify-content:space-between;gap:6px}
+  .summary-value{flex:1;font-size:13px;color:#b3bac6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pencil-btn{width:26px;height:26px;border:0;border-radius:50%;background:none;color:var(--faint);cursor:pointer;display:grid;place-items:center;flex:none;transition:color .2s,background .2s}
+  .pencil-btn:hover{color:var(--accent);background:var(--white)}
+  .bulk-upload-block{display:flex;flex-direction:column;gap:6px;padding-top:10px;border-top:1px solid var(--line2)}
+  .btn-bulk-upload{border:1px solid var(--accent-line);background:var(--low-bg);color:var(--accent)}
+  .btn-bulk-upload:hover{background:var(--accent);color:#fff}
+  .bulk-hint{margin:0;font-size:11.5px;font-weight:300;color:var(--faint);line-height:1.5}
+  .left-panel-footer{display:none}
+
+  .tab-panel{display:none}
+  .tab-panel.active{display:block;animation:up .35s var(--ease)}
+  .form-section,.card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:14px}
+  .card{display:flex;flex-direction:column;gap:14px;margin-bottom:0}
+  .section-header,.card-header{margin:-2px 0 14px;padding-bottom:12px;border-bottom:1px solid var(--line2)}
+  .card-header{margin-bottom:0}
+  .section-header h2,.card-header h2{margin:0;font-size:16px;font-weight:300;letter-spacing:-.005em}
+  .section-header p,.card-header p{margin:2px 0 0;font-size:12.5px;font-weight:300;color:var(--muted)}
+
+  .form-grid{display:grid;gap:14px 16px;margin-bottom:14px}
+  .form-grid:last-child{margin-bottom:0}
+  .grid-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .form-field{display:flex;flex-direction:column;gap:4px;min-width:0}
+  .form-grid .form-field{display:flex;flex-direction:column;gap:4px}
+  .form-grid .form-field > .field-hint:first-of-type{min-height:2.9em}
+  .form-field.full-width{grid-column:1/-1}
+  .form-field > label:not(.checkbox-label){font-size:13px;color:var(--ink)}
+  .field-hint{font-size:11.5px;font-weight:300;color:var(--faint);line-height:1.45}
+  .required{color:var(--crit)}
+  input[type=text],input[type=number],select,textarea{width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px;font-weight:300;color:var(--ink);background:var(--white);outline:none;transition:border-color .2s,box-shadow .2s}
+  input[type=text],input[type=number],select{height:38px}
+  input::placeholder,textarea::placeholder{color:#b3bac6}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(47,111,237,.10)}
+  select{appearance:none;-webkit-appearance:none;padding-right:30px;background:var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%239aa1ad' stroke-width='2.4'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 12px center}
+  textarea{resize:vertical;min-height:76px;line-height:1.55}
+  input[readonly]{background:var(--page);color:var(--muted)}
+  select:disabled,input:disabled{background-color:var(--page);color:#b3bac6;border-color:var(--line2);cursor:not-allowed}
+  .field-invalid{border-color:var(--crit)!important;background-color:#fff8f7!important}
+  .field-error{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:300;color:var(--crit)}
+
+  .dual-mode-toggle{display:flex;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--page);margin-bottom:6px}
+  .mode-btn{flex:1;height:28px;border:0;border-radius:999px;background:none;font-size:12px;font-weight:300;color:var(--muted);cursor:pointer;transition:background .25s,color .25s,box-shadow .25s;white-space:nowrap}
+  .mode-btn.active{background:var(--white);color:var(--accent);box-shadow:0 1px 4px rgba(16,24,40,.08)}
+  .dual-mode-content{display:flex;flex-direction:column}
+  .shelf-life-combo{display:flex;gap:8px}
+  .shelf-life-combo input{flex:1}
+  .shelf-life-combo select{width:110px;flex:none;background-color:var(--low-bg);border-color:var(--accent-line);color:var(--accent)}
+  .checkbox-label{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:12.5px;font-weight:300;color:var(--ink);cursor:pointer}
+  .checkbox-label input{width:15px;height:15px;accent-color:var(--accent);margin:0}
+
+  .two-col-cards{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .allergen-row{position:relative;background:var(--page);border:1px solid var(--line2);border-radius:14px;padding:14px 16px;margin-bottom:10px;animation:up .35s var(--ease)}
+  .allergen-row-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:12px;padding-right:30px}
+  .allergen-row-grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .allergen-row .form-field > label{font-size:13px}
+  .btn-remove-row{position:absolute;top:10px;right:10px;width:28px;height:28px;border:1px solid var(--line);border-radius:50%;background:var(--white);color:var(--faint);font-size:16px;line-height:1;cursor:pointer;transition:color .2s,border-color .2s}
+  .btn-remove-row:hover{color:var(--crit);border-color:var(--crit)}
+  .containment-contain{border-color:var(--crit)!important;color:var(--crit)!important}
+  .containment-free_from{border-color:var(--ok)!important;color:var(--ok)!important}
+  .containment-may_contain{border-color:var(--med)!important;color:var(--med)!important}
+  .btn-add-row{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;height:40px;margin-top:6px;border:1px dashed var(--accent-line);border-radius:999px;background:none;color:var(--accent);font-size:13px;font-weight:300;cursor:pointer;transition:background .2s,border-color .2s}
+  .btn-add-row:hover{background:var(--low-bg);border-color:var(--accent)}
+
+  .nutrition-cards .card{gap:0}
+  .nutrition-cards .card-header{margin-bottom:6px}
+  .nutrition-row{display:grid;grid-template-columns:minmax(0,1fr) 96px 72px 30px;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line2)}
+  .nutrition-row:last-child{border-bottom:0}
+  .nutrition-row input{height:34px!important;font-size:12.5px!important}
+  .nutrition-row input.nutrient-name{border-color:transparent;background:transparent;padding-left:4px}
+  .nutrition-row input.nutrient-name:hover{border-color:var(--line)}
+  .btn-delete-nutrient{width:30px;height:30px;border:0;border-radius:50%;background:none;color:#c3cad6;cursor:pointer;display:grid;place-items:center;transition:color .2s,background .2s}
+  .btn-delete-nutrient:hover{color:var(--crit);background:var(--crit-bg)}
+  .nutrition-rows{margin-bottom:6px}
+
+  .custom-multiselect{position:relative}
+  .multiselect-trigger{display:flex;align-items:center;justify-content:space-between;gap:8px;height:38px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--white);cursor:pointer;user-select:none;transition:border-color .2s}
+  .multiselect-trigger:hover{border-color:var(--accent-line)}
+  .multiselect-trigger svg{color:var(--faint)}
+  .multiselect-placeholder{font-size:13px;font-weight:300;color:var(--muted)}
+  .multiselect-dropdown{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:200;max-height:240px;overflow-y:auto;background:var(--white);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 34px rgba(16,24,40,.12);padding:4px}
+  .multi-option{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:8px;font-size:13px;font-weight:300;cursor:pointer}
+  .multi-option:hover{background:var(--page)}
+  .multi-option input{accent-color:var(--accent);width:15px;height:15px;margin:0}
+  .multiselect-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .multiselect-tags:empty{display:none}
+  .tag-chip{display:inline-flex;align-items:center;gap:4px;padding:1px 4px 1px 10px;border-radius:999px;background:var(--low-bg);border:1px solid var(--accent-line);color:var(--accent);font-family:var(--mono);font-size:11.5px}
+  .tag-chip button{width:18px;height:18px;border:0;border-radius:50%;background:none;color:var(--accent);cursor:pointer;font-size:13px;line-height:1}
+  .tag-chip button:hover{background:var(--white)}
+
+  .upload-hint-center{margin:0 0 10px;text-align:center;font-size:12.5px;font-weight:300;color:var(--muted)}
+  .dropzone{max-width:700px;margin:0 auto;padding:28px;border:1px dashed #c3cad6;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--faint);font-size:13px;font-weight:300;cursor:pointer;transition:border-color .2s,background .2s}
+  .dropzone:hover{border-color:var(--accent);background:var(--low-bg);color:var(--accent)}
+  .dropzone-actions{display:flex;justify-content:center;gap:8px;max-width:700px;margin:12px auto 0}
+  .btn-browse,.btn-upload-file,.btn-artwork-browse{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 18px;border-radius:999px;font-size:12.5px;font-weight:300;cursor:pointer;transition:background .2s,color .2s,border-color .2s}
+  .btn-browse,.btn-artwork-browse{border:1px solid var(--line);background:var(--white);color:var(--ink)}
+  .btn-browse:hover,.btn-artwork-browse:hover{border-color:var(--accent);color:var(--accent)}
+  .btn-upload-file{border:1px solid var(--accent);background:var(--accent);color:#fff}
+  .btn-artwork-browse{align-self:flex-start;height:32px;padding:0 14px}
+  .file-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .file-list:empty{display:none}
+  .file-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 8px;border:1px solid var(--line);border-radius:10px;background:var(--white);font-size:12px;font-weight:300;max-width:100%}
+  .file-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .file-chip button{width:20px;height:20px;border:0;border-radius:50%;background:none;color:var(--crit);cursor:pointer;font-size:14px;line-height:1;flex:none}
+  .file-thumb{width:36px;height:36px;object-fit:cover;border-radius:6px}
+  .artwork-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+  .artwork-card{display:flex;flex-direction:column;gap:10px;background:var(--page);border:1px solid var(--line2);border-radius:14px;padding:13px 14px;transition:border-color .2s,background .2s}
+  .artwork-card:hover{border-color:var(--accent-line);background:#f3f7ff}
+  .artwork-card-info{display:flex;align-items:center;gap:10px}
+  .artwork-card-info > svg{width:34px;height:34px;padding:8px;border-radius:10px;background:var(--white);border:1px solid var(--line2);flex:none}
+  .artwork-card-info > div{display:flex;flex-direction:column}
+  .artwork-card-title{font-size:13.5px}
+  .artwork-card-hint{font-family:var(--mono);font-size:11px;color:var(--faint)}
+
+  .auth-overlay{position:fixed;inset:0;background:rgba(255,255,255,.8);z-index:9999;display:flex;align-items:center;justify-content:center}
+
+  @media (max-width:1400px){ .grid-4{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  @media (max-width:1180px){ .grid-3{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  @media (max-width:1000px){
+    .page-wrapper{grid-template-columns:1fr}
+    .left-panel{position:static;max-height:none;display:grid;grid-template-columns:200px 1fr;gap:12px 16px}
+    .bulk-upload-block{grid-column:1/-1}
+    .summary-fields{display:grid;grid-template-columns:1fr 1fr}
+    .two-col-cards{grid-template-columns:1fr}
+    .formbar .wrap{flex-direction:column;align-items:stretch}
+    .top-actions{justify-content:flex-end}
+    .left-panel{top:auto}
+  }
+  @media (max-width:640px){
+    .grid-4,.grid-3,.grid-2,.allergen-row-grid,.allergen-row-grid-2{grid-template-columns:1fr}
+    .left-panel{display:flex} .summary-fields{grid-template-columns:1fr}
+    .formbar{top:57px}
+  }
+
+</style>
 </head>
 <body>
 
-  <!-- Auth check overlay -->
-  <div id="authOverlay" class="auth-overlay hidden"></div>
-
-  <div class="page-wrapper">
-
-    <!-- LEFT PANEL -->
-    <aside class="left-panel">
-      <div class="product-photo-block">
-        <div class="photo-placeholder" id="photoPreview">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
-            <polyline points="21 15 16 10 5 21"/>
-          </svg>
-          <span>No image available</span>
+  <!-- TOP BAR (same as home-logged-in.html) -->
+  <div class="topbar">
+    <a href="home-logged-in.html" class="topbar-brand">
+      <img src="sc-blue-logo.png" alt="SmarTuna"/>
+      <span class="sc-wm"><span class="sc-wm-top">Smar<span>Tuna</span></span><span class="sc-wm-sub">concept</span></span>
+    </a>
+    <div class="topbar-nav">
+      <div class="nav-pill">
+        <a href="home-logged-in.html" class="nav-item"><img src="home.png" alt=""/>Home</a>
+        <div class="nav-item-wrap">
+          <a href="modules.html#my-studio" class="nav-item active"><img src="my-studio.png" alt=""/>My Studio</a>
+          <div class="nav-dropdown">
+            <a href="product-list.html" class="nav-dropdown-item">Product</a>
+            <a href="evidence-list.html" class="nav-dropdown-item">Evidence</a>
+            <a href="raw-material-list.html" class="nav-dropdown-item">Raw Materials</a>
+            <a href="shipment-list.html" class="nav-dropdown-item">Shipments</a>
+            <a href="organisation.html" class="nav-dropdown-item">Your Company</a>
+            <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('carbon-calculator.html','Carbon Footprint Calculator','carbon-icon.png','Carbon','green');">Carbon Calculator</a>
+            <a href="modules.html#my-studio" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all My Studio</a>
+          </div>
         </div>
-        <button class="btn-upload-photo" onclick="document.getElementById('photoInput').click()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Upload the photo
-        </button>
-        <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhotoUpload(event)" />
+        <div class="nav-item-wrap">
+          <a href="modules.html#atlas" class="nav-item"><img src="atlas.png" alt=""/>Atlas</a>
+          <div class="nav-dropdown">
+            <a href="Species.html" class="nav-dropdown-item">Species</a>
+            <a href="cold-storage-list.html" class="nav-dropdown-item">Cold Storage</a>
+            <a href="port-list.html" class="nav-dropdown-item">Ports</a>
+            <a href="vessel-list.html" class="nav-dropdown-item">Vessels</a>
+            <a href="country.html" class="nav-dropdown-item">Country</a>
+            <div class="nav-dropdown-item" style="position:relative;">
+              Others <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+              <div class="nav-dropdown-sub">
+                <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('fishery.html','MSC Fishery Module')">MSC Fisheries</a>
+                <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('asc-farms.html','ASC Farm Standard Module','ASC_ecolabel.png','ASC')">ASC Farms</a>
+              </div>
+            </div>
+            <a href="modules.html#atlas" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all Atlas</a>
+          </div>
+        </div>
+        <div class="nav-item-wrap">
+          <a href="modules.html#features" class="nav-item">Features</a>
+          <div class="nav-dropdown">
+            <a href="smartuna-ai.html" class="nav-dropdown-item">SmarTuna A.I <span class="tag-new">New</span></a>
+            <a href="smartuna-assistant.html" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('smartuna-assistant.html','SmarTuna Assistant');">SmarTuna Assistant <span class="tag-beta">Beta</span></a>
+            <div class="nav-dropdown-item" style="position:relative;">
+              Compliance <span style="font-size:11px;color:#6b7280;">&rsaquo;</span>
+              <div class="nav-dropdown-sub">
+                <a href="eu-catch-support.html" class="nav-dropdown-item">EU CATCH Form</a>
+                <a href="simp-support.html" class="nav-dropdown-item">NOAA SIMP <span class="tag-new">New</span></a>
+                <a href="fsma-support.html" class="nav-dropdown-item">FSMA Act 204 <span class="tag-new">New</span></a>
+              </div>
+            </div>
+            <a href="load-planner.html" class="nav-dropdown-item">Load Planner</a>
+            <a href="modules.html#features" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all Features</a>
+          </div>
+        </div>
+        <a href="modules.html#messages" class="nav-item"><img src="messages.png" alt=""/>Messages</a>
+        <a href="modules.html#reports" class="nav-item"><img src="report.png" alt=""/>Reports</a>
+        <a href="modules.html#support" class="nav-item"><img src="support.png" alt=""/>Support</a>
+        <a href="developer.html" class="nav-item" id="devNav" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 6 2 12 8 18"/><polyline points="16 6 22 12 16 18"/></svg>Developer</a>
+        <script>try{if(localStorage.getItem('smartuna_dev_unlocked')==='1')document.getElementById('devNav').hidden=false;}catch(e){}</script>
       </div>
-
-      <div class="summary-fields">
-        <div class="summary-field">
-          <span class="summary-label">Product :</span>
-          <div class="summary-value-row">
-            <span class="summary-value" id="sumProduct">Enter value</span>
-            <button class="pencil-btn" onclick="focusField('productName')">&#9998;</button>
-          </div>
-        </div>
-        <div class="summary-field">
-          <span class="summary-label">Brand :</span>
-          <div class="summary-value-row">
-            <span class="summary-value" id="sumBrand">Enter value</span>
-            <button class="pencil-btn" onclick="focusField('brand')">&#9998;</button>
-          </div>
-        </div>
-        <div class="summary-field">
-          <span class="summary-label">Species :</span>
-          <div class="summary-value-row">
-            <span class="summary-value" id="sumSpecies">Enter value</span>
-            <button class="pencil-btn" onclick="switchTab(1); setTimeout(()=>focusField('commercialName'),200)">&#9998;</button>
-          </div>
-        </div>
-        <div class="summary-field">
-          <span class="summary-label">EAN/GTIN/UID :</span>
-          <div class="summary-value-row">
-            <span class="summary-value" id="sumEan">Enter value</span>
-            <button class="pencil-btn" onclick="focusField('eanGtin')">&#9998;</button>
-          </div>
-        </div>
-        <div class="summary-field">
-          <span class="summary-label">Allergen :</span>
-          <div class="summary-value-row">
-            <span class="summary-value" id="sumAllergen">Enter value</span>
-            <button class="pencil-btn" onclick="switchTab(2)">&#9998;</button>
-          </div>
-        </div>
-        <div class="summary-field">
-          <span class="summary-label">Product's form :</span>
-          <div class="summary-value-row">
-            <span class="summary-value" id="sumForm">Enter value</span>
-            <button class="pencil-btn" onclick="focusField('productForm')">&#9998;</button>
-          </div>
-        </div>
+    </div>
+    <div class="topbar-right">
+      <div class="search-pill">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search here...
       </div>
-
-      <div class="bulk-upload-block">
-        <button class="btn-bulk-upload" onclick="document.getElementById('bulkUploadModal').classList.remove('hidden')">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Upload
-        </button>
-        <p class="bulk-hint">Instead of filling all fields manually, you can upload an .xlsx or .csv file containing your product data.</p>
-      </div>
-
-      <div class="left-panel-footer">
-        <div class="user-avatar" id="userAvatar">VV</div>
-        <div class="user-info">
-          <span class="user-name" id="userName"></span>
-          <span class="user-email" id="userEmail"></span>
-        </div>
-        <div class="profile-menu-wrapper">
-          <button class="profile-menu-btn" onclick="toggleProfileMenu()">&#8942;</button>
-          <div class="profile-dropdown hidden" id="profileDropdown">
-          <div class="nav-profile-name" id="profileFirstName">Hello!</div>
-          <a href="profile.html" class="nav-dropdown-link">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-            Profile
-          </a>
+      <div class="notif-btn"><img src="notification.png" alt=""/><div class="notif-dot"></div></div>
+      <div class="avatar-wrap">
+        <div class="avatar-btn" id="navAvatar" onclick="toggleNavDropdown()" role="button" tabindex="0" aria-label="Account menu"></div>
+        <div class="avatar-menu" id="navDropdown">
+          <div class="avatar-menu-name" id="navFirstName">Hello!</div>
+          <span id="navEmail" hidden></span>
+          <a href="profile.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Profile</a>
           <button onclick="handleLogout()">Logout</button>
         </div>
-        </div>
       </div>
-    </aside>
+    </div>
+  </div>
 
-    <!-- RIGHT PANEL -->
-    <main class="right-panel">
+<div id="authOverlay" class="auth-overlay hidden"></div>
 
-      <!-- Top action buttons -->
-      <div class="top-actions">
-        <button class="btn-save" id="btnSave" onclick="saveProduct()">Save</button>
-        <button class="btn-cancel" id="btnCancel" onclick="cancelProduct()">Cancel</button>
-      </div>
+<section class="phead">
+  <div class="wrap">
+    <div>
+      <div class="crumbs"><a href="product-list.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>Products</a><span>/</span><span id="crumbMode">new product</span></div>
+      <h1 id="formTitle">Add product</h1>
+      <p class="lead">Fill in each tab. Tabs turn blue when complete and red when something required is missing.</p>
+    </div>
+  </div>
+</section>
 
-      <!-- Tab Pills -->
-      <nav class="tab-nav">
+<div class="formbar">
+  <div class="wrap">
+    <nav class="tab-nav">
 <button class="tab-pill active" data-tab="0" onclick="switchTab(0)">
   <span class="tab-check"><svg width="9" height="9" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
   1. Product Information
@@ -180,9 +457,106 @@
   <span class="tab-check"><svg width="9" height="9" viewBox="0 0 12 12" fill="none"><polyline points="2,6 5,9 10,3" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
   6. Art Work
 </button>
-      </nav>
+    </nav>
+    <div class="top-actions">
+      <button class="btn-cancel" id="btnCancel" onclick="cancelProduct()">Cancel</button>
+      <button class="btn-save" id="btnSave" onclick="saveProduct()">Save</button>
+    </div>
+  </div>
+</div>
 
-      <!-- TAB PANELS -->
+<main><div class="wrap">
+  <div class="page-wrapper">
+    <aside class="left-panel">
+      <div class="product-photo-block">
+        <div class="photo-placeholder" id="photoPreview">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+          <span>no image</span>
+        </div>
+        <button class="btn-upload-photo" onclick="document.getElementById('photoInput').click()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Upload photo
+        </button>
+        <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhotoUpload(event)" />
+      </div>
+
+      <div class="summary-fields">
+        <div class="summary-field">
+          <span class="summary-label">product</span>
+          <div class="summary-value-row">
+            <span class="summary-value" id="sumProduct">Enter value</span>
+            <button class="pencil-btn" onclick="focusField('productName')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+          </div>
+        </div>
+        <div class="summary-field">
+          <span class="summary-label">brand</span>
+          <div class="summary-value-row">
+            <span class="summary-value" id="sumBrand">Enter value</span>
+            <button class="pencil-btn" onclick="focusField('brand')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+          </div>
+        </div>
+        <div class="summary-field">
+          <span class="summary-label">species</span>
+          <div class="summary-value-row">
+            <span class="summary-value" id="sumSpecies">Enter value</span>
+            <button class="pencil-btn" onclick="switchTab(1); setTimeout(()=>focusField('commercialName'),200)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+          </div>
+        </div>
+        <div class="summary-field">
+          <span class="summary-label">EAN/GTIN/UID</span>
+          <div class="summary-value-row">
+            <span class="summary-value" id="sumEan">Enter value</span>
+            <button class="pencil-btn" onclick="focusField('eanGtin')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+          </div>
+        </div>
+        <div class="summary-field">
+          <span class="summary-label">allergen</span>
+          <div class="summary-value-row">
+            <span class="summary-value" id="sumAllergen">Enter value</span>
+            <button class="pencil-btn" onclick="switchTab(2)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+          </div>
+        </div>
+        <div class="summary-field">
+          <span class="summary-label">product's form</span>
+          <div class="summary-value-row">
+            <span class="summary-value" id="sumForm">Enter value</span>
+            <button class="pencil-btn" onclick="focusField('productForm')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="bulk-upload-block">
+        <button class="btn-bulk-upload" onclick="document.getElementById('bulkUploadModal').classList.remove('hidden')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Bulk upload (.xlsx / .csv)
+        </button>
+        <p class="bulk-hint">Instead of filling all fields manually, you can upload an .xlsx or .csv file containing your product data.</p>
+      </div>
+
+      <div class="left-panel-footer">
+        <div class="user-avatar" id="userAvatar">VV</div>
+        <div class="user-info">
+          <span class="user-name" id="userName"></span>
+          <span class="user-email" id="userEmail"></span>
+        </div>
+        <div class="profile-menu-wrapper">
+          <button class="profile-menu-btn" onclick="toggleProfileMenu()">&#8942;</button>
+          <div class="profile-dropdown hidden" id="profileDropdown">
+          <div class="nav-profile-name" id="profileFirstName">Hello!</div>
+          <a href="profile.html" class="nav-dropdown-link">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            Profile
+          </a>
+          <button onclick="handleLogout()">Logout</button>
+        </div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="right-panel">
       <div class="tab-panels">
 
         <!-- ===== TAB 0: PRODUCT INFORMATION ===== -->
@@ -196,51 +570,51 @@
             </div>
             <div class="form-grid grid-4">
               <div class="form-field">
-                <label>• Product Name</label>
+                <label>Product Name</label>
                 <span class="field-hint">Full name of the product as it should appear on listings or packaging</span>
                 <input type="text" id="productName" placeholder="Enter value" oninput="updateSummary('sumProduct', this.value)" />
               </div>
               <div class="form-field">
-                <label>• Brand</label>
+                <label>Brand</label>
                 <span class="field-hint">Specify the official brand name</span>
                 <input type="text" id="brand" placeholder="Enter value" oninput="updateSummary('sumBrand', this.value)" />
               </div>
               <div class="form-field">
-                <label>• Functional Product Name</label>
+                <label>Functional Product Name</label>
                 <span class="field-hint">Describe what the product actually is or does</span>
                 <input type="text" id="functionalName" placeholder="Enter value" />
               </div>
               <div class="form-field">
-                <label>• GS1 Product Name</label>
+                <label>GS1 Product Name</label>
                 <span class="field-hint">If available. Leave blank if not applicable.</span>
                 <input type="text" id="gs1Name" placeholder="Enter value" />
               </div>
             </div>
             <div class="form-grid grid-3">
               <div class="form-field">
-                <label>• Short Description</label>
+                <label>Short Description</label>
                 <span class="field-hint">A short or abbreviated form of the product name</span>
                 <input type="text" id="shortDesc" placeholder="Enter value" />
               </div>
               <div class="form-field">
-                <label>• EAN/GTIN</label>
+                <label>EAN/GTIN</label>
                 <span class="field-hint">Unique identifier code, such as EAN, GTIN</span>
                 <input type="text" id="eanGtin" placeholder="Enter value" oninput="updateSummary('sumEan', this.value)" />
               </div>
               <div class="form-field span-1">
-                <label>• Description</label>
+                <label>Description</label>
                 <span class="field-hint">A detailed description of the product</span>
                 <textarea id="description" placeholder="Enter value" rows="4"></textarea>
               </div>
             </div>
             <div class="form-grid grid-2">
               <div class="form-field">
-                <label>• Brand Item ID</label>
+                <label>Brand Item ID</label>
                 <span class="field-hint">Unique item identifier assigned by the brand</span>
                 <input type="text" id="brandItemId" placeholder="Enter value" />
               </div>
               <div class="form-field">
-                <label>• Product Code</label>
+                <label>Product Code</label>
                 <span class="field-hint">Company's internal reference or SKU</span>
                 <input type="text" id="productCode" placeholder="Enter value" />
               </div>
@@ -255,32 +629,32 @@
             </div>
             <div class="form-grid grid-3">
               <div class="form-field">
-                <label>• Depth (mm)</label>
+                <label>Depth (mm)</label>
                 <span class="field-hint">Enter the product's depth</span>
                 <input type="number" id="depth" placeholder="Enter value" />
               </div>
               <div class="form-field">
-                <label>• Height (mm)</label>
+                <label>Height (mm)</label>
                 <span class="field-hint">Enter the product's height</span>
                 <input type="number" id="height" placeholder="Enter value" />
               </div>
               <div class="form-field">
-                <label>• Width (mm)</label>
+                <label>Width (mm)</label>
                 <span class="field-hint">Enter the product's width</span>
                 <input type="number" id="width" placeholder="Enter value" />
               </div>
               <div class="form-field">
-                <label>• Gross Weight (g)</label>
+                <label>Gross Weight (g)</label>
                 <span class="field-hint">The total product weight</span>
                 <input type="number" id="grossWeight" placeholder="Enter value" />
               </div>
               <div class="form-field">
-                <label>• Net Weight (g)</label>
+                <label>Net Weight (g)</label>
                 <span class="field-hint">Product weight excluding packaging</span>
                 <input type="number" id="netWeight" placeholder="Enter value" />
               </div>
               <div class="form-field">
-                <label>• Drained Weight (g)</label>
+                <label>Drained Weight (g)</label>
                 <span class="field-hint">Enter the actual weight of the raw product</span>
                 <input type="number" id="drainedWeight" placeholder="Enter value" />
               </div>
@@ -296,7 +670,7 @@
             <div class="form-grid grid-3">
               <!-- Product Form — dual mode -->
               <div class="form-field">
-                <label>• Product Form <span class="required">*</span></label>
+                <label>Product Form <span class="required">*</span></label>
                 <span class="field-hint">Select the product form, e.g., Canned, Frozen, Fresh, or Pouched</span>
                 <div class="dual-mode-toggle" data-field="productForm">
                   <button class="mode-btn active" data-mode="select">Select from the list</button>
@@ -319,7 +693,7 @@
 
               <!-- Pack Style — dual mode -->
               <div class="form-field">
-                <label>• Pack Style <span class="required">*</span></label>
+                <label>Pack Style <span class="required">*</span></label>
                 <span class="field-hint">Choose the product style, e.g., Chunks, Flakes, Steaks, or Loins</span>
                 <div class="dual-mode-toggle" data-field="packStyle">
                   <button class="mode-btn" data-mode="select">Select from the list</button>
@@ -341,7 +715,7 @@
 
               <!-- Pack Medium — dual mode -->
               <div class="form-field">
-                <label>• Pack Medium <span class="required">*</span></label>
+                <label>Pack Medium <span class="required">*</span></label>
                 <span class="field-hint">Enter the packing medium (e.g., Olive Oil, Brine, Vacuum Packed)</span>
                 <div class="dual-mode-toggle" data-field="packMedium">
                   <button class="mode-btn active" data-mode="select">Select from the list</button>
@@ -364,7 +738,7 @@
 
               <!-- Primary Packaging -->
               <div class="form-field">
-                <label>• Primary Packaging <span class="required">*</span></label>
+                <label>Primary Packaging <span class="required">*</span></label>
                 <span class="field-hint">Direct contact with product</span>
                 <select id="primaryPackaging">
                   <option value="">Select an option</option>
@@ -380,7 +754,7 @@
 
               <!-- Inner Packaging -->
               <div class="form-field">
-                <label>• Inner Packaging <span class="required">*</span></label>
+                <label>Inner Packaging <span class="required">*</span></label>
                 <span class="field-hint">Product's Inner Packaging (Secondary Packaging)</span>
                 <select id="innerPackaging">
                   <option value="">Select an option</option>
@@ -398,7 +772,7 @@
 
               <!-- Inner Unit -->
               <div class="form-field">
-                <label>• Inner Unit</label>
+                <label>Inner Unit</label>
                 <span class="field-hint">Number of individual units per inner pack (e.g. 24 cans per tray). Enable only when the product is sold in multi-unit inner packs.</span>
                 <label class="checkbox-label" style="margin-bottom:8px;">
                   <input type="checkbox" id="enableInnerUnit" onchange="toggleInnerUnit(this)" />
@@ -411,14 +785,14 @@
               </div>
 <!-- Packaging Material Type Code -->
               <div class="form-field">
-                <label>• Packaging Material Type Code</label>
+                <label>Packaging Material Type Code</label>
                 <span class="field-hint">GS1 or internal material type code (e.g., PET, ALU, HDPE)</span>
                 <input type="text" id="packagingMaterialCode" placeholder="e.g. PET, ALU, HDPE" />
               </div>
 
               <!-- Packaging Material Quantity -->
               <div class="form-field">
-                <label>• Packaging Material Quantity</label>
+                <label>Packaging Material Quantity</label>
                 <span class="field-hint">Weight of packaging material used</span>
                 <div class="shelf-life-combo">
                   <input type="number" id="packagingMaterialQty" placeholder="Enter quantity" step="0.001" min="0" />
@@ -440,17 +814,17 @@
             </div>
             <div class="form-grid grid-3">
               <div class="form-field">
-                <label>• Min Temperature (°C)</label>
+                <label>Min Temperature (°C)</label>
                 <span class="field-hint">Minimum recommended temperature</span>
                 <input type="number" id="minTemp" placeholder="Enter value" />
               </div>
               <div class="form-field">
-                <label>• Max Temperature (°C)</label>
+                <label>Max Temperature (°C)</label>
                 <span class="field-hint">Maximum recommended temperature</span>
                 <input type="number" id="maxTemp" placeholder="Enter value" />
               </div>
               <div class="form-field">
-                <label>• Shelf Life</label>
+                <label>Shelf Life</label>
                 <span class="field-hint">Specify the product's shelf life and select the unit</span>
                 <div class="shelf-life-combo">
                   <input type="number" id="shelfLifeValue" placeholder="Enter value" />
@@ -488,7 +862,7 @@
                 <p>Enter raw materials and capture/harvest methods</p>
               </div>
               <div class="form-field">
-                <label>• Commercial Name <span class="required">*</span></label>
+                <label>Commercial Name <span class="required">*</span></label>
                 <span class="field-hint">Select the species from the list</span>
                 <select id="commercialName" onchange="onSpeciesSelect(this.value)">
                   <option value="">Select an option</option>
@@ -499,21 +873,21 @@
                 </span>
               </div>
               <div class="form-field">
-                <label>• Scientific Name</label>
+                <label>Scientific Name</label>
                 <span class="field-hint">Species' scientific (Latin) name</span>
                 <select id="scientificName" disabled>
                   <option value="">Select an option</option>
                 </select>
               </div>
               <div class="form-field">
-                <label>• AFSIS Code</label>
+                <label>AFSIS Code</label>
                 <span class="field-hint">Standardized AFSIS species code</span>
                 <select id="afisisCode" disabled>
                   <option value="">Select an option</option>
                 </select>
               </div>
               <div class="form-field">
-                <label>• Taxon Code</label>
+                <label>Taxon Code</label>
                 <span class="field-hint">Taxonomic code that uniquely identifies the species</span>
                 <input type="text" id="taxonCode" placeholder="Auto-populated" readonly />
               </div>
@@ -526,7 +900,7 @@
                 <p>Enter raw materials and capture/harvest methods</p>
               </div>
               <div class="form-field">
-                <label>• Type of Catch <span class="required">*</span></label>
+                <label>Type of Catch <span class="required">*</span></label>
                 <span class="field-hint">Select the type of catch</span>
                 <select id="typeOfCatch" disabled>
                   <option value="">Select an option</option>
@@ -537,7 +911,7 @@
                 </span>
               </div>
               <div class="form-field">
-                <label>• Harvest Method <span class="required">*</span></label>
+                <label>Harvest Method <span class="required">*</span></label>
                 <span class="field-hint">Select the harvest methods from the list</span>
                 <select id="harvestMethod" disabled>
                   <option value="">Select an option</option>
@@ -627,7 +1001,7 @@
             </div>
             <div class="form-grid grid-2">
 <div class="form-field">
-                <label>• Raw Material Origin <span class="required">*</span></label>
+                <label>Raw Material Origin <span class="required">*</span></label>
                 <span class="field-hint">Where the seafood was actually caught or farmed</span>
                 <div class="custom-multiselect" id="rawMaterialOriginMulti">
                   <div class="multiselect-trigger" onclick="toggleMultiselect('rawMaterialOriginMulti')">
@@ -662,7 +1036,7 @@
                 <div class="multiselect-tags" id="rawMaterialOriginTags"></div>
               </div>
               <div class="form-field">
-                <label>• Certification</label>
+                <label>Certification</label>
                 <span class="field-hint">Select the sustainability or compliance certification applicable</span>
                 <div class="custom-multiselect" id="certificationMulti">
                   <div class="multiselect-trigger" onclick="toggleMultiselect('certificationMulti')">
@@ -814,8 +1188,9 @@
         </div><!-- /tab-5 -->
 
       </div><!-- /tab-panels -->
-    </main>
-  </div><!-- /page-wrapper -->
+    </section>
+  </div>
+</div></main>
 
 <!-- Bulk Upload Coming Soon Modal -->
   <div class="modal-overlay hidden" id="bulkUploadModal" onclick="closeBulkModal(event)">
@@ -844,9 +1219,47 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="utils.js"></script>
-  <script src="product.js"></script>
-</body>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="utils.js"></script>
+<script src="product.js"></script>
+
+<script>
+(function(){
+  const URL_='https://enbdaajcromxmhgcverp.supabase.co', KEY_='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+  const db = window._sharedSupabase || (window._sharedSupabase = supabase.createClient(URL_, KEY_));
+  window.toggleNavDropdown = function(){ document.getElementById('navDropdown').classList.toggle('open'); };
+  window.handleLogout = async function(){ await db.auth.signOut(); window.location.href = 'login.html'; };
+  document.addEventListener('click', e => { if (!e.target.closest('.topbar-right')) document.getElementById('navDropdown')?.classList.remove('open'); });
+  window.addEventListener('load', async () => {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    const { data: p } = await db.from('profiles').select('first_name,last_name,avatar_color,photo_url').eq('id', session.user.id).single();
+    const email = session.user.email || '';
+    const first = p?.first_name || email.split('@')[0];
+    const initials = (first.charAt(0) + (p?.last_name ? p.last_name.charAt(0) : '')).toUpperCase();
+    const av = document.getElementById('navAvatar');
+    if (p?.photo_url) { av.innerHTML = `<img src="${p.photo_url}" alt="" style="width:100%;height:100%;object-fit:cover">`; av.style.background = 'transparent'; }
+    else { av.textContent = initials; av.style.background = p?.avatar_color || '#2f6fed'; }
+    document.getElementById('navEmail').textContent = email;
+    document.getElementById('navFirstName').textContent = `Hello, ${first}`;
+  });
+})();
+</script>
+
+<script>
+  // title follows add / edit mode
+  if (new URLSearchParams(location.search).get('id')) {
+    document.getElementById('formTitle').textContent = 'Edit product';
+    document.getElementById('crumbMode').textContent = 'edit product';
+    document.title = 'Edit Product · SmarTuna concept';
+  }
+  // keep the active tab pill in view inside the scrolling tab bar
+  new MutationObserver(() => document.querySelector('.tab-pill.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }))
+    .observe(document.querySelector('.tab-nav'), { attributes: true, subtree: true, attributeFilter: ['class'] });
+</script>
+
+<script>
+if (typeof window.launchModule !== 'function') { window.launchModule = function(url){ window.location.href = url; }; }
+</script>
 </body>
 </html>

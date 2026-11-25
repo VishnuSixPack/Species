@@ -11,10 +11,10 @@ let currentProductName = '';
 
 function getGreeting(name) {
   const hour = new Date().getHours();
-  if (hour < 12) return `Good Morning, ${name}! ☀️`;
-  if (hour < 17) return `Good Afternoon, ${name}! 👋`;
-  if (hour < 21) return `Good Evening, ${name}! 🌆`;
-  return `Good Night, ${name}! 🌙`;
+  if (hour < 12) return `Good Morning, ${name}`;
+  if (hour < 17) return `Good Afternoon, ${name}`;
+  if (hour < 21) return `Good Evening, ${name}`;
+  return `Good Night, ${name}`;
 }
 
 // ── AUTH ──────────────────────────────────────────────────────
@@ -39,12 +39,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-document.addEventListener('click', (e) => {
-  const dropdown = document.getElementById('navDropdown');
-  if (dropdown && !dropdown.classList.contains('hidden')) {
-    if (!e.target.closest('.nav-profile')) dropdown.classList.add('hidden');
-  }
-});
 
 // ── INIT ──────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
@@ -130,7 +124,7 @@ async function loadProduct(id) {
 // ── RENDER ────────────────────────────────────────────────────
 function renderProduct(p, allergens, nutrition, artwork) {
   currentProductName = p.product_name || 'Untitled Product';
-  document.title = `${currentProductName} — Project Manhattan`;
+  document.title = `${currentProductName} · SmarTuna concept`;
 
   // ── Left Panel ──
   const photoEl = document.getElementById('detailPhoto');

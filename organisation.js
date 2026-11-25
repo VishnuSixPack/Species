@@ -63,12 +63,6 @@ document.addEventListener('click', (e) => {
   }
 });
 
-document.addEventListener('click', (e) => {
-  const dropdown = document.getElementById('navDropdown');
-  if (dropdown && !dropdown.classList.contains('hidden')) {
-    if (!e.target.closest('.nav-profile')) dropdown.classList.add('hidden');
-  }
-});
 
 // ── INIT ──────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
@@ -86,9 +80,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   currentProfile = profile;
 
   const email = currentUser.email || '';
-  const initials = email.substring(0, 2).toUpperCase();
-  const avatarColor = profile?.avatar_color || '#1a6fdb';
+  const avatarColor = profile?.avatar_color || '#2f6fed';
   const firstName = profile?.first_name || email.split('@')[0];
+  const initials = (firstName.charAt(0) + (profile?.last_name ? profile.last_name.charAt(0) : '')).toUpperCase();
 
   setNavAvatar(document.getElementById('navAvatar'), profile?.photo_url, initials, avatarColor);
   document.getElementById('navEmail').textContent = email;
@@ -130,7 +124,7 @@ async function loadAllCompanies() {
 
   allCompanies = data || [];
   document.getElementById('pageSubtitle').textContent = `${allCompanies.length} organisation${allCompanies.length !== 1 ? 's' : ''}`;
-  renderCompaniesGrid(allCompanies);
+  applyCompanyFilters();
 }
 
 function renderCompaniesGrid(companies) {
@@ -139,11 +133,11 @@ function renderCompaniesGrid(companies) {
     grid.innerHTML = '<p class="no-data">No organisations found. Add one to get started.</p>';
     return;
   }
-  grid.innerHTML = companies.map(c => `
-    <div class="company-card" onclick="openCompanyDetail('${c.id}')">
+  grid.innerHTML = companies.map((c, i) => `
+    <div class="company-card" style="animation-delay:${Math.min(i,20)*30}ms" onclick="openCompanyDetail('${c.id}')">
       <div class="company-card-header">
         ${c.photo_url
-          ? `<img src="${c.photo_url}" style="width:44px; height:44px; border-radius:50%; object-fit:cover; border:2px solid #e8eaf0;" />`
+          ? `<img src="${c.photo_url}" alt="" style="width:46px; height:46px; border-radius:50%; object-fit:cover;" />`
           : `<div class="company-card-icon">${(c.company_name || 'O').charAt(0).toUpperCase()}</div>`
         }
         <span class="status-badge ${c.status || 'pending'}">${c.status || 'pending'}</span>
@@ -155,28 +149,28 @@ function renderCompaniesGrid(companies) {
         </div>
       </div>
       <div class="company-card-meta">
-        ${c.company_code ? `<span class="meta-chip" style="font-weight:700; color:#1a6fdb; background:#eef4fd; border-color:#c7dcf8; cursor:pointer;" onclick="event.stopPropagation(); navigator.clipboard.writeText('${c.company_code}'); showToast('Copied!', 'success')" title="Click to copy">🔑 ${c.company_code} 📋</span>` : ''}
-        ${c.country ? `<span class="meta-chip">📍 ${c.country}</span>` : ''}
+        ${c.company_code ? `<span class="meta-chip code" onclick="event.stopPropagation(); navigator.clipboard.writeText('${c.company_code}'); showToast('Company code copied', 'success')" title="Click to copy">${c.company_code}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1"/></svg></span>` : ''}
+        ${c.country ? `<span class="meta-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${c.country}</span>` : ''}
         ${c.gln ? `<span class="meta-chip">GLN: ${c.gln}</span>` : ''}
-        ${c.email ? `<span class="meta-chip">✉ ${c.email}</span>` : ''}
+        ${c.email ? `<span class="meta-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>${c.email}</span>` : ''}
       </div>
     </div>
   `).join('');
 }
 
-function filterCompanies(query) {
-  const q = query.toLowerCase();
+let _orgQuery = '', _orgStatus = '';
+function applyCompanyFilters() {
+  const q = _orgQuery;
   renderCompaniesGrid(allCompanies.filter(c =>
+    (!_orgStatus || c.status === _orgStatus) && (!q ||
     (c.company_name || '').toLowerCase().includes(q) ||
     (c.industry || '').toLowerCase().includes(q) ||
     (c.country || '').toLowerCase().includes(q) ||
-    (c.gln || '').toLowerCase().includes(q)
+    (c.gln || '').toLowerCase().includes(q))
   ));
 }
-
-function filterCompaniesByStatus(status) {
-  renderCompaniesGrid(status ? allCompanies.filter(c => c.status === status) : allCompanies);
-}
+function filterCompanies(query) { _orgQuery = (query || '').toLowerCase(); applyCompanyFilters(); }
+function filterCompaniesByStatus(status) { _orgStatus = status || ''; applyCompanyFilters(); }
 
 // ── COUNTRIES ─────────────────────────────────────────────────
 async function loadCountries() {
@@ -345,7 +339,7 @@ async function loadUserOrganisation(profile) {
   document.getElementById('userOrgInfo').innerHTML = `
     <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
       ${company.photo_url
-        ? `<img src="${company.photo_url}" style="width:52px; height:52px; border-radius:50%; object-fit:cover; border:2px solid #e8eaf0;" />`
+        ? `<img src="${company.photo_url}" alt="" style="width:56px; height:56px; border-radius:50%; object-fit:cover;" />`
         : `<div class="company-card-icon" style="width:52px; height:52px; font-size:22px;">${company.company_name.charAt(0).toUpperCase()}</div>`
       }
       <div>
@@ -358,7 +352,7 @@ async function loadUserOrganisation(profile) {
     ${company.pgln ? `<div class="org-info-row"><span class="org-info-label">PGLN</span><span class="org-info-value">${company.pgln}</span></div>` : ''}
     ${company.email ? `<div class="org-info-row"><span class="org-info-label">Email</span><span class="org-info-value">${company.email}</span></div>` : ''}
     ${company.phone ? `<div class="org-info-row"><span class="org-info-label">Phone</span><span class="org-info-value">${company.phone}</span></div>` : ''}
-    ${company.website ? `<div class="org-info-row"><span class="org-info-label">Website</span><span class="org-info-value"><a href="${company.website}" target="_blank" style="color:#1a6fdb;">${company.website}</a></span></div>` : ''}
+    ${company.website ? `<div class="org-info-row"><span class="org-info-label">Website</span><span class="org-info-value"><a href="${company.website}" target="_blank" >${company.website}</a></span></div>` : ''}
     ${company.address ? `<div class="org-info-row"><span class="org-info-label">Address</span><span class="org-info-value">${company.address}</span></div>` : ''}
     ${company.country ? `<div class="org-info-row"><span class="org-info-label">Country</span><span class="org-info-value">${company.country}</span></div>` : ''}
     ${company.coordinates ? `<div class="org-info-row"><span class="org-info-label">Coordinates</span><span class="org-info-value">${company.coordinates.lat}, ${company.coordinates.lng}</span></div>` : ''}
@@ -391,7 +385,7 @@ async function loadMembers(companyId) {
     const name = [p?.first_name, p?.last_name].filter(Boolean).join(' ') || 'Unknown';
     return `
       <div class="member-row">
-        <div class="member-avatar" style="background:${p?.photo_url ? 'transparent' : (p?.avatar_color || '#1a6fdb')}; overflow:hidden;">
+        <div class="member-avatar" style="background:${p?.photo_url ? 'transparent' : (p?.avatar_color || '#2f6fed')}; overflow:hidden;">
           ${p?.photo_url 
             ? `<img src="${p.photo_url}" style="width:100%; height:100%; object-fit:cover; border-radius:50%;" />`
             : name.substring(0,2).toUpperCase()}
@@ -437,12 +431,12 @@ async function openCompanyDetail(companyId) {
   const company = allCompanies.find(c => c.id === companyId);
   if (!company) return;
 
-  document.getElementById('companyDetailTitle').textContent = company.company_name;
+  document.getElementById('companyDetailTitle').textContent = 'Organisation details';
 
   // Build company avatar/photo
   const photoHtml = company.photo_url
-    ? `<img src="${company.photo_url}" style="width:48px; height:48px; border-radius:50%; object-fit:cover; border:2px solid #e8eaf0;" />`
-    : `<div style="width:48px; height:48px; border-radius:50%; background:#eef4fd; display:flex; align-items:center; justify-content:center; font-size:20px; font-weight:800; color:#1a6fdb; flex-shrink:0;">${(company.company_name || 'O').charAt(0).toUpperCase()}</div>`;
+    ? `<img src="${company.photo_url}" alt="" />`
+    : `<div class="davatar">${(company.company_name || 'O').charAt(0).toUpperCase()}</div>`;
 
 // Load members
   const { data: rawMembers } = await dbClient
@@ -474,7 +468,7 @@ const membersList = members?.length
         const p = m.profile;
         const name = [p?.first_name, p?.last_name].filter(Boolean).join(' ') || 'Unknown';
         return `<div class="member-row">
-          <div class="member-avatar" style="background:${p?.avatar_color || '#1a6fdb'}; width:32px; height:32px; font-size:11px;">${name.substring(0,2).toUpperCase()}</div>
+          <div class="member-avatar" style="background:${p?.avatar_color || '#2f6fed'}; width:32px; height:32px; font-size:11px;">${name.substring(0,2).toUpperCase()}</div>
           <div class="member-info"><div class="member-name">${name}</div></div>
           <span class="member-role-badge ${m.company_role}">${formatRole(m.company_role)}</span>
         </div>`;
@@ -484,10 +478,10 @@ const membersList = members?.length
   const certsList = certs?.length
     ? certs.map(cert => {
         const certLabel = CERT_TYPES.find(c => c.key === cert.cert_type)?.label || cert.cert_type;
-        return `<div style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid #f0f2f8;">
-          <div>
-            <div style="font-size:13px; font-weight:600; color:#1a1a2e;">${certLabel}</div>
-            <div style="font-size:11px; color:#9aa0b4;">${cert.cert_number || ''} · ${formatCertDate(cert.start_date)} → ${formatCertDate(cert.end_date)}</div>
+        return `<div class="dcert">
+          <div style="min-width:0;">
+            <div class="dcert-t">${certLabel}</div>
+            <div class="dcert-m">${cert.cert_number ? cert.cert_number + ' · ' : ''}${formatCertDate(cert.start_date)} → ${formatCertDate(cert.end_date)}</div>
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
             <span class="status-badge active">Active</span>
@@ -497,53 +491,44 @@ const membersList = members?.length
       }).join('')
     : '<p class="no-data">No certifications recorded.</p>';
 
+  const contact = [
+    company.email ? `<div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg><span>${company.email}</span></div>` : '',
+    company.phone ? `<div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1 1 .4 1.9.7 2.8a2 2 0 01-.5 2.1L8 9.9a16 16 0 006 6l1.3-1.3a2 2 0 012.1-.4c.9.3 1.8.6 2.8.7a2 2 0 011.7 2z"/></svg><span>${company.phone}</span></div>` : '',
+    company.website ? `<div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7l1.7-1.7"/></svg><a href="${company.website}" target="_blank" rel="noopener">${company.website}</a></div>` : '',
+    company.address ? `<div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><span>${company.address}</span></div>` : '',
+    company.coordinates ? `<div><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20"/></svg><span style="font-family:var(--mono);font-size:12px;">${company.coordinates.lat}, ${company.coordinates.lng}</span></div>` : '',
+  ].join('');
+
   document.getElementById('companyDetailContent').innerHTML = `
-    <div style="display:flex; flex-direction:column; gap:16px;">
-      <div style="display:flex; gap:12px; align-items:center;">
-        ${photoHtml}
-        <div>
-          <div style="font-size:18px; font-weight:800; color:#1a1a2e;">${company.company_name}</div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:6px;">
-            <span class="status-badge ${company.status}">${company.status}</span>
-            ${company.industry ? `<span class="meta-chip">${company.industry}</span>` : ''}
-            ${company.country ? `<span class="meta-chip">📍 ${company.country}</span>` : ''}
-            ${company.company_code ? `
-              <span class="meta-chip" style="font-weight:700; color:#1a6fdb; background:#eef4fd; border-color:#c7dcf8; cursor:pointer;" 
-                onclick="navigator.clipboard.writeText('${company.company_code}'); showToast('Company code copied!', 'success')" 
-                title="Click to copy">
-                🔑 ${company.company_code} 📋
-              </span>` : ''}
-            ${company.gln ? `<span class="meta-chip">GLN: ${company.gln}</span>` : ''}
-            ${company.pgln ? `<span class="meta-chip">PGLN: ${company.pgln}</span>` : ''}
-          </div>
+    <div class="dhead">
+      ${photoHtml}
+      <div style="min-width:0;">
+        <div class="dname">${company.company_name}</div>
+        <div class="dchips">
+          <span class="status-badge ${company.status}">${company.status}</span>
+          ${company.industry ? `<span class="meta-chip">${company.industry}</span>` : ''}
+          ${company.country ? `<span class="meta-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>${company.country}</span>` : ''}
+          ${company.company_code ? `<span class="meta-chip code" onclick="navigator.clipboard.writeText('${company.company_code}'); showToast('Company code copied', 'success')" title="Click to copy">${company.company_code}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1"/></svg></span>` : ''}
+          ${company.gln ? `<span class="meta-chip" style="font-family:var(--mono);">GLN ${company.gln}</span>` : ''}
+          ${company.pgln ? `<span class="meta-chip" style="font-family:var(--mono);">PGLN ${company.pgln}</span>` : ''}
         </div>
       </div>
-      ${company.email ? `<p style="font-size:13px; color:#4a4e69;">✉ ${company.email}</p>` : ''}
-      ${company.phone ? `<p style="font-size:13px; color:#4a4e69;">📞 ${company.phone}</p>` : ''}
-      ${company.website ? `<p style="font-size:13px;"><a href="${company.website}" target="_blank" style="color:#1a6fdb;">${company.website}</a></p>` : ''}
-      ${company.address ? `<p style="font-size:13px; color:#4a4e69;">📍 ${company.address}</p>` : ''}
-      ${company.coordinates ? `<p style="font-size:13px; color:#4a4e69;">🌍 ${company.coordinates.lat}, ${company.coordinates.lng}</p>` : ''}
-      ${company.notes ? `<div style="background:#f9fafc; border-radius:8px; padding:10px; font-size:12px; color:#6b7280;">${company.notes}</div>` : ''}
-
-      <div>
-        <h4 style="font-size:13px; font-weight:700; margin-bottom:10px; color:#1a1a2e;">Members</h4>
-        ${membersList}
-      </div>
-
-      <div>
-        <h4 style="font-size:13px; font-weight:700; margin-bottom:10px; color:#1a1a2e;">Certifications & Compliance</h4>
-        ${certsList}
-      </div>
+    </div>
+    ${contact ? `<div class="dcontact">${contact}</div>` : ''}
+    ${company.notes ? `<div class="dnotes">${company.notes}</div>` : ''}
+    <div class="dsec">
+      <div><h4>Members</h4>${membersList}</div>
+      <div><h4>Certifications &amp; compliance</h4>${certsList}</div>
     </div>
   `;
 
   const suspendBtn = document.getElementById('btnSuspendCompany');
   if (company.status === 'suspended') {
     suspendBtn.textContent = 'Activate';
-    suspendBtn.style.background = '#22c55e';
+    suspendBtn.className = 'btn-save-modal activate';
   } else {
     suspendBtn.textContent = 'Suspend';
-    suspendBtn.style.background = '#e63946';
+    suspendBtn.className = 'btn-save-modal suspend';
   }
 
   document.getElementById('companyDetailModal').classList.remove('hidden');
@@ -595,9 +580,9 @@ async function viewCertHistory(companyId, certType, certLabel) {
           <span class="cert-history-status ${cert.is_active ? 'active' : 'expired'}">${cert.is_active ? 'Active' : 'Expired'}</span>
         </div>
         ${cert.cert_number ? `<div class="cert-history-number">Cert No: ${cert.cert_number}</div>` : ''}
-        ${cert.cert_body ? `<div style="font-size:11px;color:#6b7280;margin-top:2px;">Issued by: ${cert.cert_body}</div>` : ''}
-        ${cert.scope ? `<div style="font-size:11px;color:#9aa0b4;margin-top:2px;">Scope: ${cert.scope}</div>` : ''}
-        ${cert.url ? `<a href="${cert.url}" target="_blank" style="font-size:11px; color:#1a6fdb;">View Certificate ↗</a>` : ''}
+        ${cert.cert_body ? `<div class="cert-history-number">Issued by ${cert.cert_body}</div>` : ''}
+        ${cert.scope ? `<div class="cert-history-number">Scope: ${cert.scope}</div>` : ''}
+        ${cert.url ? `<a href="${cert.url}" target="_blank" rel="noopener" style="font-size:12px;">View certificate</a>` : ''}
       </div>
     `).join('');
   }
@@ -656,13 +641,13 @@ function renderCapabilitiesPanel(existingCaps) {
             <div class="cap-toggle-group" id="capToggle_${item.key}">
               <button type="button"
                 class="cap-btn cap-btn-yes ${val === true ? 'active' : ''}"
-                onclick="setCapability('${item.key}', true)">✓ Yes</button>
+                onclick="setCapability('${item.key}', true)">Yes</button>
               <button type="button"
                 class="cap-btn cap-btn-no ${val === false ? 'active' : ''}"
-                onclick="setCapability('${item.key}', false)">✗ No</button>
+                onclick="setCapability('${item.key}', false)">No</button>
               <button type="button"
                 class="cap-btn cap-btn-unknown ${val === null || val === undefined ? 'active' : ''}"
-                onclick="setCapability('${item.key}', null)">— Unknown</button>
+                onclick="setCapability('${item.key}', null)">Unknown</button>
             </div>
           </div>
         `;
@@ -674,20 +659,20 @@ function renderCapabilitiesPanel(existingCaps) {
   container.innerHTML += `
     <div class="cert-group">
       <div class="cert-group-label">Additional Identifiers</div>
-      <div class="cert-details-grid" style="padding:12px 0 0;">
+      <div class="cert-details-grid" style="padding:4px 0 0;">
         <div class="form-group">
           <label>DUNS Number</label>
           <input type="text" id="cap_duns" placeholder="e.g. 12-345-6789"
             value="${existingCaps?.duns_number || ''}" />
         </div>
         <div class="form-group">
-          <label>LEI Code <span style="font-weight:400;color:#9aa0b4;">(Legal Entity Identifier)</span></label>
+          <label>LEI code (Legal Entity Identifier)</label>
           <input type="text" id="cap_lei" placeholder="20-digit LEI code"
             value="${existingCaps?.lei_code || ''}" />
         </div>
         <div class="form-group" style="grid-column:1/-1;">
           <label>Capabilities Notes</label>
-          <textarea id="cap_notes" rows="2" style="width:100%;padding:8px;border:1.5px solid #e0e3ed;border-radius:7px;font-family:inherit;font-size:12px;resize:none;"
+          <textarea id="cap_notes" rows="2"
             placeholder="Any additional capability notes...">${existingCaps?.notes || ''}</textarea>
         </div>
       </div>
@@ -792,7 +777,7 @@ document.getElementById('companyFormTitle').textContent = isEditMode ? 'Edit Org
   document.getElementById('mapPlaceholder').classList.remove('hidden');
   document.getElementById('fcIndustryOther').classList.add('hidden');
   document.getElementById('companyPhotoPreview').innerHTML = `
-    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#9aa0b4" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#9aa1ad" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`;
   renderCertFormList();
 
   if (isEditMode) {
@@ -1030,7 +1015,7 @@ function renderCertFormList() {
                   <input type="date" id="cert_end_${cert.key}" />
                 </div>
                 <div class="form-group" style="grid-column:1/-1;">
-                  <label>Scope <span style="font-weight:400;color:#9aa0b4;">(optional)</span></label>
+                  <label>Scope (optional)</label>
                   <input type="text" id="cert_scope_${cert.key}" placeholder="e.g. Frozen seafood processing, canning" />
                 </div>
                 <div class="form-group" style="grid-column:1/-1;">
@@ -1172,7 +1157,7 @@ async function loadFormMembers(companyId) {
 
     return `
       <div class="form-member-row">
-        <div class="form-member-avatar" style="background:${p?.avatar_color || '#1a6fdb'}">${initials}</div>
+        <div class="form-member-avatar" style="background:${p?.avatar_color || '#2f6fed'}">${initials}</div>
         <div class="form-member-info">
           <div class="form-member-name">${name}</div>
           <div class="form-member-email">${p?.email || '—'}</div>
@@ -1180,7 +1165,7 @@ async function loadFormMembers(companyId) {
         ${canEdit ? `
           <select class="form-member-role-select"
             onchange="changeMemberRole('${m.id}', this.value, '${name}')"
-            ${isAdmin ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
+            ${isAdmin ? 'disabled style="opacity:0.55; cursor:not-allowed;"' : ''}>
             <option value="company_admin" ${isAdmin ? 'selected' : ''}>Administrator</option>
             <option value="contributor" ${m.company_role === 'contributor' ? 'selected' : ''}>Contributor</option>
             <option value="member" ${m.company_role === 'member' ? 'selected' : ''}>Member</option>
@@ -1323,7 +1308,7 @@ body: JSON.stringify({
 }
 
 async function removeMember(memberId, name) {
-  if (!confirm(`Remove ${name} from this organisation?`)) return;
+  if (!(await askConfirm(`Remove ${name}?`, 'They lose access to this organisation. You can add them back later.', 'Remove'))) return;
 
   const { error } = await dbClient.from('company_members').delete().eq('id', memberId);
   if (error) { showToast('Failed to remove member.', 'error'); return; }
@@ -1382,48 +1367,4 @@ async function changeMemberRole(memberId, newRole, name) {
   showToast(`${name} is now ${newRole === 'company_admin' ? 'Administrator' : newRole === 'contributor' ? 'Contributor' : 'Member'}.`, 'success');
   await loadFormMembers(selectedCompanyId);
 }
-// ── CAPABILITIES CSS (injected once) ──────────────────────────
-(function injectCapCSS() {
-  if (document.getElementById('cap-styles')) return;
-  const s = document.createElement('style');
-  s.id = 'cap-styles';
-  s.textContent = `
-    /* Cert groups */
-    .cert-group { margin-bottom: 20px; }
-    .cert-group-label {
-      font-size: 10px; font-weight: 700; color: #9aa0b4;
-      text-transform: uppercase; letter-spacing: 0.7px;
-      padding: 0 0 8px; margin-bottom: 6px;
-      border-bottom: 1px solid #f0f2f7;
-    }
-
-    /* Cert body + scope fields */
-    .cert-details-grid {
-      grid-template-columns: 1fr 1fr;
-    }
-
-    /* Capabilities */
-    .cap-item {
-      display: flex; align-items: flex-start;
-      justify-content: space-between; gap: 16px;
-      padding: 11px 0; border-bottom: 1px solid #f4f6fb;
-    }
-    .cap-item:last-child { border-bottom: none; }
-    .cap-item-info { flex: 1; }
-    .cap-item-label { font-size: 13px; font-weight: 600; color: #1a1a2e; }
-    .cap-item-hint  { font-size: 11px; color: #9aa0b4; margin-top: 2px; line-height: 1.5; }
-    .cap-toggle-group { display: flex; gap: 5px; flex-shrink: 0; }
-    .cap-btn {
-      height: 28px; padding: 0 10px;
-      border-radius: 6px; border: 1.5px solid #e0e3ed;
-      font-family: inherit; font-size: 11px; font-weight: 600;
-      cursor: pointer; background: #fff; color: #9aa0b4;
-      transition: all 0.12s;
-    }
-    .cap-btn:hover { border-color: #1a1a2e; color: #1a1a2e; }
-    .cap-btn-yes.active  { background: #f0fdf4; border-color: #86efac; color: #166534; }
-    .cap-btn-no.active   { background: #fff5f5; border-color: #fca5a5; color: #991b1b; }
-    .cap-btn-unknown.active { background: #f8f9fc; border-color: #c8ccd8; color: #6b7280; }
-  `;
-  document.head.appendChild(s);
-})();
+// Capability styles live in organisation.html.

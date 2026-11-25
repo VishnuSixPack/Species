@@ -1,512 +1,412 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Add new Cold Storage · SmarTuna concept</title>
-<link rel="icon" type="image/png" href="sc-blue-logo.png" />
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-function updateCertTag(prefix, tagId) {
-  const fields = {
-    msc: ['msc_coc_cert','msc_coc_number','msc_certifier'],
-    uk:  ['uk_approval','uk_approval_date','uk_activities'],
-    eu:  ['eu_approval','eu_approval_date','eu_activities'],
-  };
-  const filled = (fields[prefix]||[]).some(id => {
-    const el = document.getElementById(id);
-    return el && el.value.trim();
-  });
-  const tag = document.getElementById(tagId);
-  if (tag) tag.style.display = filled ? 'inline-flex' : 'none';
-}
-</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cold Storage · SmarTuna concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="sc-blue-logo.png">
 <style>
-    /* ── SMARTUNA WORDMARK ── */
-    @font-face {
-      font-family: 'Bitsumis';
-      src: url('BITSUMIS.TTF') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-      font-display: swap;
-    }
-    .sc-wm { display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1;gap:0;text-decoration:none; }
-    .sc-wm-top { font-family:'Bitsumis',sans-serif !important;font-weight:900 !important;font-size:15px;letter-spacing:.04em;text-transform:uppercase;background:linear-gradient(90deg,#1a6fdb,#1a6fdb) !important;-webkit-background-clip:text !important;-webkit-text-fill-color:transparent !important;background-clip:text !important; }
-    .sc-wm-sub { font-family:'Bitsumis',sans-serif !important;font-weight:700 !important;font-size:7px;letter-spacing:.22em;text-transform:uppercase;color:#1a1a2e;-webkit-text-fill-color:#1a1a2e !important;margin-top:2px; }
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --primary:#1a6fdb; --primary-ink:#1558b0; --primary-soft:#e8f1fc;
-  --bg:#f0f2f7; --white:#ffffff; --surface:#ffffff;
-  --text:#1a1a2e; --muted:#6b7280; --soft:#8a90a2;
-  --border:#e8eaf0; --line:#eef0f5; --line-strong:#dfe3ec;
-  --ok:#1f9d6b; --ok-soft:#e6f6ef; --off:#9aa0b4; --off-soft:#eef0f4;
-  --danger:#e63946; --danger-soft:#fff0f1;
-  --radius:16px; --radius-sm:11px; --field-h:44px;
-  --shadow-sm:0 1px 3px rgba(20,24,45,.05);
-  --shadow:0 1px 2px rgba(20,24,45,.04),0 10px 30px rgba(20,24,45,.06);
-  --shadow-lg:0 6px 14px rgba(20,24,45,.07),0 24px 48px rgba(20,24,45,.10);
-  --font:'Poppins','DM Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-}
-body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
 
-/* ===== TOP NAV (matched to home-logged-in.html) ===== */
-.topbar{display:flex;align-items:center;padding:14px 28px;gap:20px;flex-shrink:0}
-.topbar-brand{text-decoration:none;flex-shrink:0;line-height:1.1}
-.topbar-brand-project{display:block;font-size:8px;font-weight:700;letter-spacing:2px;color:#9aa0b4}
-.topbar-brand-name{display:block;font-size:16px;font-weight:800;color:var(--text)}
-.topbar-nav{flex:1;display:flex;justify-content:center}
-.nav-pill{display:inline-flex;align-items:center;gap:2px;background:var(--white);border-radius:999px;padding:5px 7px;box-shadow:0 1px 6px rgba(0,0,0,.07)}
-.nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:400;color:var(--muted);text-decoration:none;transition:background .15s,color .15s;white-space:nowrap}
-.nav-item img{width:15px;height:15px;object-fit:contain;opacity:.5;flex-shrink:0}
-.nav-item:hover{background:var(--bg);color:var(--text)}
-.nav-item.active{background:var(--bg);color:var(--text);font-weight:600}
-.nav-item:hover img,.nav-item.active img{opacity:1}
-.nav-item-wrap{position:relative}
-.nav-item-wrap::after{content:'';position:absolute;top:100%;left:0;width:100%;height:12px;background:transparent}
-.nav-item-wrap:hover .nav-dropdown{display:block}
-.topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
-.search-pill{display:flex;align-items:center;gap:8px;background:var(--white);border-radius:999px;padding:8px 16px;font-size:12px;color:#c0c4d0;box-shadow:0 1px 4px rgba(0,0,0,.06);min-width:150px;cursor:text}
-.notif-btn{width:36px;height:36px;border-radius:50%;background:var(--white);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.07);position:relative;flex-shrink:0}
-.notif-btn img{width:17px;height:17px;object-fit:contain;opacity:.65}
-.notif-dot{position:absolute;top:5px;right:5px;width:8px;height:8px;background:#e63946;border-radius:50%;border:2px solid var(--bg)}
-.avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:var(--white);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;box-shadow:0 1px 4px rgba(0,0,0,.12);flex-shrink:0;overflow:hidden}
-.avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:176px;overflow:hidden;z-index:999}
-.avatar-menu.open{display:block}
-.avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;color:var(--text);border-bottom:1px solid var(--border)}
-.avatar-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;color:#4a4e69;text-decoration:none;font-weight:500}
-.avatar-menu a:hover{background:var(--bg);color:var(--primary)}
-.avatar-menu button{width:100%;padding:9px 15px;background:none;border:none;border-top:1px solid var(--border);text-align:left;font-family:var(--font);font-size:13px;color:#e63946;cursor:pointer}
-.avatar-menu button:hover{background:#fff0f1}
-.nav-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:170px;overflow:visible;z-index:500;padding:6px}
-.nav-dropdown-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;font-size:13px;color:#4a4e69;text-decoration:none;border-radius:8px;font-weight:500;transition:background .15s;white-space:nowrap;cursor:pointer}
-.nav-dropdown-item:hover{background:var(--bg);color:var(--primary)}
-.nav-dropdown-item.active{background:var(--primary-soft);color:var(--primary-ink);font-weight:600}
-.nav-dropdown-sub{display:none;position:absolute;left:calc(100% + 4px);top:0;background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:160px;padding:6px;z-index:501}
-.nav-dropdown-item:hover .nav-dropdown-sub{display:block}
+  @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');font-weight:normal;font-style:normal;font-display:swap}
+  :root{
+    --accent:#2f6fed; --accent-soft:rgba(47,111,237,.10); --accent-line:#cddcf8;
+    --ink:#14161a; --muted:#6b7380; --faint:#9aa1ad; --line:#e6e8ec; --line2:#eef0f3; --page:#f6f7f9; --white:#fff;
+    --mono:Consolas,"SFMono-Regular",Menlo,monospace;
+    --ok:#178a4c; --ok-bg:#e8f6ee; --ok-line:#c7e8d4;
+    --low:#2f6fed; --low-bg:#edf3fe; --low-line:#cddcf8;
+    --med:#b7791f; --med-bg:#fdf4e3; --med-line:#f1dcae;
+    --crit:#d64545; --crit-bg:#fdeceb; --crit-line:#f5c9c6;
+    --ease:cubic-bezier(.16,1,.3,1); --spring:cubic-bezier(.34,1.56,.64,1);
+  }
+  *{box-sizing:border-box}
+  html,body{overflow-x:clip}
+  body{margin:0;font-family:Poppins,system-ui,sans-serif;font-weight:400;font-size:14px;font-synthesis:none;color:var(--ink);background:var(--page);line-height:1.55;-webkit-font-smoothing:antialiased}
+  b,strong,h1,h2,h3,h4,th,[style*="font-weight"]{font-weight:400!important}
+  a{color:inherit;text-decoration:none}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .wrap{max-width:1680px;margin:0 auto;padding:0 clamp(16px,3vw,48px)}
+  .mono{font-family:var(--mono)}
+  .hidden{display:none!important}
+  .num{font-variant-numeric:tabular-nums}
 
-.wrap{max-width:1080px;margin:0 auto;padding:8px 28px 90px}
-.page-head{margin:6px 0 4px}
-.page-head .crumb{font-size:12px;color:var(--soft);font-weight:500;margin-bottom:6px}
-.page-head h1{font-size:26px;font-weight:700;letter-spacing:-.4px;margin:0}
-.page-head p{color:var(--muted);margin:7px 0 0;max-width:640px;font-size:13px}
+  /* shared pieces */
+  .eyebrow{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.04em;display:flex;align-items:center;gap:10px}
+  .lbl{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.03em}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:18px 20px;min-width:0}
+  .card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border:1px solid var(--line);border-radius:999px;background:var(--white);font-size:13px;font-weight:300;color:var(--ink);white-space:nowrap;cursor:pointer;transition:border-color .2s,color .2s,background .2s,transform .2s,box-shadow .2s}
+  .btn svg{flex:none}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.25)}
+  .btn.primary:hover{background:#2560d6;color:#fff;transform:translateY(-1px)}
+  .btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+  .btn:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .badge{font-family:var(--mono);font-size:10.5px;padding:1px 8px;border-radius:999px;border:1px solid;line-height:1.5}
+  .badge.new{color:var(--accent);border-color:var(--accent-line);background:#f3f7ff}
+  .badge.beta{color:#9a6a12;border-color:#efdcae;background:#fdf7e7}
+  .cnt{font-family:var(--mono);font-size:10.5px;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;display:inline-grid;place-items:center}
 
-.gate{background:var(--danger-soft);border:1px solid #f3cdd5;color:#8a2436;padding:14px 16px;border-radius:12px;margin:18px 0;display:none;font-weight:500}
+  .mri-status-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:999px;font-size:12px;border:1px solid transparent;white-space:nowrap}
+  .mri-status-pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .mri-status-pill.transparent{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .mri-status-pill.low{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .mri-status-pill.medium{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .mri-status-pill.critical{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+  .kde-weight{display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;font-family:var(--mono);font-size:10.5px;border:1px solid transparent;white-space:nowrap}
+  .kde-weight.w5{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .kde-weight.w10{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .kde-weight.w30{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .kde-weight.w50{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
 
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px 26px 26px;margin-top:18px;transition:border-color .18s,box-shadow .18s}
-.card:focus-within{border-color:#dbe6f6}
-.card>h2{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--soft);margin:0 0 20px;display:flex;align-items:center;gap:9px}
-.card>h2::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 4px var(--primary-soft)}
+  .rv{animation:up .55s var(--ease) both;animation-delay:calc(var(--i,0) * 50ms)}
+  @keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .toast-wrap{position:fixed;right:20px;bottom:20px;z-index:3000;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  .toast{display:flex;align-items:center;gap:10px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;font-weight:300;box-shadow:0 14px 34px rgba(16,24,40,.2);animation:up .3s var(--ease)}
+  .toast i{width:8px;height:8px;border-radius:50%;background:#4ade80;flex:none}
+  .toast.error i{background:#f87171}
 
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px 24px}
-.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px 24px}
-.full{grid-column:1/-1}
-@media(max-width:720px){.grid,.grid-3{grid-template-columns:1fr}}
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
 
-label.field{display:flex;flex-direction:column;gap:7px;font-weight:500;font-size:12.5px;color:var(--text)}
-label.field .hint{font-weight:400;color:var(--soft);font-size:11.5px;line-height:1.5}
-input,select,textarea{font-family:inherit;font-size:13.5px;color:var(--text);background:#fff;border:1.5px solid var(--border);border-radius:10px;height:var(--field-h);padding:0 13px;width:100%;transition:border-color .14s,box-shadow .14s}
-textarea{height:auto;min-height:84px;padding:11px 13px;resize:vertical}
-input::placeholder,textarea::placeholder{color:#b6bcca}
-input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3.5px rgba(26,111,219,.13)}
-select{appearance:none;-webkit-appearance:none;-moz-appearance:none;cursor:pointer;padding-right:42px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 15px center;background-size:15px}
-select:hover{border-color:var(--line-strong)}
-select:focus{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%231a6fdb' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")}
-select option{color:var(--text)}
+  .sc-wm{display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1}
+  .sc-wm-top{font-family:'Bitsumis',sans-serif;font-size:17px;letter-spacing:.04em;text-transform:uppercase;line-height:1;color:var(--ink)}
+  .sc-wm-top span{color:var(--accent)}
+  .sc-wm-sub{font-family:'Bitsumis',sans-serif;font-size:8px;letter-spacing:.32em;text-transform:uppercase;color:#6b7380;margin-top:2px}
+  .topbar{position:sticky;top:0;z-index:1000;display:flex;align-items:center;gap:20px;padding:10px 28px;background:rgba(255,255,255,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .topbar-brand{display:flex;align-items:center;gap:8px;flex-shrink:0;line-height:1.1}
+  .topbar-brand img{width:28px;height:28px;object-fit:contain}
+  .topbar-nav{flex:1;display:flex;justify-content:center;min-width:0}
+  .nav-pill{display:inline-flex;align-items:center;gap:2px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:4px}
+  .topbar .nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:300;color:#6b7380;white-space:nowrap;transition:background .15s,color .15s}
+  .topbar .nav-item img,.topbar .nav-item svg{width:15px;height:15px;object-fit:contain;opacity:.45;flex-shrink:0}
+  .topbar .nav-item:hover{background:#f3f6fb;color:var(--ink)}
+  .topbar .nav-item:hover img,.topbar .nav-item:hover svg{opacity:1}
+  .topbar .nav-item.active{background:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.28)}
+  .topbar .nav-item.active img{filter:brightness(0) invert(1);opacity:1}
+  .topbar .nav-item.active svg{opacity:1}
+  .topbar .nav-item-wrap{position:relative}
+  .topbar .nav-item-wrap::after{content:'';position:absolute;top:100%;left:0;width:100%;height:12px}
+  .topbar .nav-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:160px;z-index:500;padding:6px}
+  .topbar .nav-item-wrap:hover .nav-dropdown{display:block}
+  .topbar .nav-dropdown-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;font-size:13px;font-weight:300;color:var(--ink);border-radius:8px;white-space:nowrap;cursor:pointer;position:relative;transition:background .15s}
+  .topbar .nav-dropdown-item:hover{background:#f6f7f9;color:var(--accent)}
+  .topbar .nav-dropdown-sub{display:block;visibility:hidden;opacity:0;position:absolute;left:100%;top:0;margin-left:6px;transform:translateX(-4px);background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:160px;padding:6px;z-index:501;transition:opacity .15s ease,transform .15s ease,visibility 0s linear .35s}
+  .topbar .nav-dropdown-sub::before{content:"";position:absolute;top:-10px;bottom:-10px;left:-16px;width:16px}
+  .topbar .nav-dropdown-item:hover > .nav-dropdown-sub,.topbar .nav-dropdown-item:focus-within > .nav-dropdown-sub{visibility:visible;opacity:1;transform:none;transition-delay:0s}
+  .topbar .nav-dropdown-item:has(> .nav-dropdown-sub:hover){background:#f6f7f9;color:var(--accent)}
+  .topbar .tag-new,.topbar .tag-beta{font-size:9px;padding:1px 7px;border-radius:999px}
+  .topbar .tag-new{color:#2f6fed;background:#eef3fc} .topbar .tag-beta{color:#a9721f;background:#fdf3df}
+  #devNav[hidden]{display:none!important}
+  .topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .search-pill{display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:12px;font-weight:300;color:#b3bac6;min-width:150px;cursor:text}
+  .notif-btn{width:36px;height:36px;border-radius:50%;background:var(--white);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;flex-shrink:0}
+  .notif-btn img{width:17px;height:17px;object-fit:contain;opacity:.65}
+  .notif-dot{position:absolute;top:5px;right:5px;width:8px;height:8px;background:#e63946;border-radius:50%;border:2px solid #fff}
+  .avatar-wrap{position:relative;flex-shrink:0}
+  .avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;flex-shrink:0}
+  .avatar-btn img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+  .avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:176px;overflow:hidden;z-index:999}
+  .avatar-menu.open{display:block;animation:drop .18s ease}
+  @keyframes drop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .avatar-menu-name{padding:11px 15px 7px;font-family:var(--mono);font-size:11.5px;color:#6b7380;border-bottom:1px solid var(--line)}
+  .avatar-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;font-weight:300;color:var(--ink)}
+  .avatar-menu a:hover{background:#f6f7f9;color:var(--accent)}
+  .avatar-menu button{width:100%;padding:9px 15px;background:none;border:0;border-top:1px solid var(--line);text-align:left;font-size:13px;font-weight:300;color:#e63946;cursor:pointer}
+  .avatar-menu button:hover{background:#fff0f1}
+  @media (max-width:1280px){ .search-pill{display:none} }
+  @media (max-width:1080px){ .topbar-nav{visibility:hidden} }
+  @media (max-width:600px){ .topbar{padding:10px 16px} .topbar-nav{display:none} .topbar{justify-content:space-between} }
 
-.chips{display:flex;flex-wrap:wrap;gap:8px;border:1.5px solid var(--border);border-radius:10px;padding:9px;min-height:var(--field-h);background:#fff;align-items:center}
-.chip{display:inline-flex;align-items:center;gap:7px;background:var(--primary-soft);color:var(--primary-ink);border-radius:8px;padding:5px 10px;font-size:12.5px;font-weight:600}
-.chip button{border:none;background:none;color:inherit;cursor:pointer;font-size:15px;line-height:1;padding:0;opacity:.7}
-.chip button:hover{opacity:1}
-.chips select{border:none;height:auto;padding:5px;width:auto;flex:1;min-width:170px;box-shadow:none!important;background-image:none;-webkit-appearance:auto;appearance:auto;padding-right:5px}
+  body *{font-weight:400!important}
+  body h1,body .port-name,body .card-name,body .modal-h,body .stat-val,body .help-term{font-weight:300!important}
+  .page{padding-top:24px;padding-bottom:70px}
+  .crumb{font-family:var(--mono);font-size:12px;color:var(--faint);margin-bottom:6px}
+  .crumb a{color:var(--muted)} .crumb a:hover{color:var(--accent)}
+  h1{margin:0;font-size:clamp(26px,2.6vw,36px);letter-spacing:-.02em;line-height:1.15}
+  .sub{font-size:13.5px;color:var(--muted);font-weight:300!important;margin-top:3px}
+  .lbl{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .pill-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 17px;border-radius:999px;border:1px solid var(--line);background:var(--white);color:var(--ink);font:inherit;font-size:13px;font-weight:300!important;cursor:pointer;white-space:nowrap;transition:border-color .2s,color .2s,background .2s,transform .2s}
+  .pill-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .pill-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.22)}
+  .pill-btn.primary:hover{background:#2560d6;color:#fff;transform:translateY(-1px)}
+  .pill-btn.sm{height:32px;padding:0 13px;font-size:12px}
+  .pill-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .icon-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--white);color:var(--muted);display:grid;place-items:center;cursor:pointer;transition:border-color .2s,color .2s,background .2s;flex:none;font-size:16px;line-height:1}
+  .icon-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .icon-btn.danger:hover{border-color:var(--crit-line);color:var(--crit);background:var(--crit-bg)}
+  .icon-btn svg{width:13px;height:13px}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:20px 22px;margin-bottom:14px}
+  .card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .card-t{font-size:17px;letter-spacing:-.005em;font-weight:300!important}
+  .ptag{font-size:11.5px;padding:1px 10px;border-radius:999px;border:1px solid var(--accent-line);background:var(--low-bg);color:var(--accent);white-space:nowrap}
+  .ptag.fishing{border-color:var(--ok-line);background:var(--ok-bg);color:var(--ok)}
+  .ptag.cargo{border-color:var(--med-line);background:var(--med-bg);color:var(--med)}
+  .ptag.private{border-color:#ddd2f5;background:#f5f1fd;color:#7c5cd6}
+  .locode{font-family:var(--mono);font-size:12px;letter-spacing:.06em}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(12px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:12px;font-size:13px;opacity:0;visibility:hidden;transition:opacity .25s,transform .3s var(--ease),visibility .25s;z-index:3000;box-shadow:0 14px 34px rgba(16,24,40,.2);animation:none}
+  .toast.show{opacity:1;visibility:visible;transform:translateX(-50%)}
+  .toast.ok{background:var(--ok)} .toast.err{background:var(--crit)}
+  .ovl{position:fixed;inset:0;background:rgba(20,22,26,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
+  .ovl.open{display:flex}
+  .mbox{background:var(--white);border-radius:20px;box-shadow:0 30px 80px rgba(16,24,40,.25);width:600px;max-width:100%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;animation:up .3s var(--ease)}
+  .mhead{padding:20px 24px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .modal-h{font-size:20px;letter-spacing:-.01em;margin:0}
+  .mbody{padding:6px 24px 20px;overflow-y:auto;flex:1}
+  .mfoot{padding:14px 24px;border-top:1px solid var(--line2);background:var(--page);display:flex;justify-content:flex-end;gap:8px}
+  .x-btn{width:36px;height:36px;border-radius:50%;border:0;background:none;color:var(--muted);font-size:22px;cursor:pointer;flex:none;transition:background .2s,color .2s}
+  .x-btn:hover{background:var(--page);color:var(--ink)}
+  .lightbox{position:fixed;inset:0;background:rgba(10,12,16,.9);z-index:2000;display:none;align-items:center;justify-content:center;cursor:zoom-out}
+  .lightbox img{max-width:92vw;max-height:90vh;border-radius:14px;object-fit:contain;pointer-events:none}
+  .lightbox .x-btn{position:fixed;top:18px;right:22px;background:rgba(255,255,255,.14);color:#fff}
+  .tile{background:var(--page);border:1px solid var(--line2);border-radius:12px;padding:10px 13px;min-width:0}
+  .tile .v{font-size:13.5px;word-break:break-word}
+  .tile .v.mono{font-family:var(--mono);font-size:13px;color:var(--accent);letter-spacing:.04em}
+  .tile .v.empty{color:#c3c9d3}
+  .fac{display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--line);border-radius:14px;background:var(--white);margin-bottom:8px;transition:border-color .2s,background .2s,box-shadow .2s;animation:up .4s var(--ease) both}
+  .fac:hover{border-color:var(--accent-line)}
+  .fac-ic{width:38px;height:38px;border-radius:12px;background:var(--low-bg);color:var(--accent);display:grid;place-items:center;flex:none;overflow:hidden}
+  .fac-ic img{width:100%;height:100%;object-fit:cover}
+  .fac-main{flex:1;min-width:0}
+  .fac-name{font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .fac-type{font-size:11.5px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 8px}
+  .fac-meta{font-size:12px;color:var(--muted);font-weight:300!important;display:flex;gap:10px;flex-wrap:wrap;margin-top:1px}
+  .fac-meta .co{font-family:var(--mono);font-size:11.5px;color:var(--accent)}
+  .fac-kids{margin-left:19px;padding-left:14px;border-left:1px dashed var(--accent-line)}
+  .empty-note{padding:26px;text-align:center;color:var(--muted);font-size:13px;font-weight:300!important;background:var(--page);border:1px dashed var(--line);border-radius:14px}
+  .map-box{height:260px;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--page);position:relative}
+  .map-box iframe{display:block;width:100%;height:100%;border:0}
+  .map-ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--faint);font-size:12.5px}
+  .map-ph p{margin:0}
+  .hero{position:relative;height:230px;border-radius:22px;overflow:hidden;background:linear-gradient(120deg,#e9f0fd 0%,#f4f7fd 55%,#eef3fc 100%);border:1px solid var(--line);background-size:cover;background-position:center}
 
-.repeat-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:14px;align-items:end;padding:16px 0;border-top:1px dashed var(--line-strong)}
-.repeat-row:first-of-type{border-top:none;padding-top:0}
-@media(max-width:720px){.repeat-row{grid-template-columns:1fr 1fr}}
-.icon-btn{height:var(--field-h);width:var(--field-h);border:1.5px solid var(--border);background:#fff;border-radius:10px;cursor:pointer;color:var(--soft);font-size:15px;display:grid;place-items:center;transition:.14s}
-.icon-btn:hover{color:var(--danger);border-color:#f3c2c8;background:var(--danger-soft)}
+  .status{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:2px 11px;border-radius:999px;border:1px solid}
+  .status::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+  .status.on{color:var(--ok);background:var(--ok-bg);border-color:var(--ok-line)}
+  .status.off{color:var(--muted);background:var(--page);border-color:var(--line)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .count{font-family:var(--mono);font-size:11.5px;color:var(--accent);background:var(--low-bg);border:1px solid var(--accent-line);border-radius:999px;padding:1px 9px}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:var(--low-bg);color:var(--accent);border:1px solid var(--accent-line);border-radius:999px;padding:2px 11px;font-size:12.5px}
+  .chip button{border:0;background:none;color:inherit;cursor:pointer;font-size:15px;line-height:1;padding:0;opacity:.6}
+  .chip button:hover{opacity:1}
+  .cert-badge{font-family:var(--mono);font-size:11px;letter-spacing:.04em;padding:1px 9px;border-radius:999px;border:1px solid;flex:none}
+  .cert-badge-msc{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .cert-badge-uk{background:var(--low-bg);color:var(--accent);border-color:var(--accent-line)}
+  .cert-badge-eu{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .album-card,.detail-album-card{border-radius:16px;overflow:hidden;border:1px solid var(--line);background:var(--white);cursor:pointer;transition:transform .25s var(--ease),box-shadow .25s,border-color .2s;animation:up .4s var(--ease) both}
+  .album-card:hover,.detail-album-card:hover{transform:translateY(-2px);border-color:var(--accent-line);box-shadow:0 14px 34px rgba(16,24,40,.08)}
+  .album-cover,.detail-album-cover{position:relative;width:100%;aspect-ratio:4/3;background:linear-gradient(120deg,#e9f0fd,#f4f7fd);overflow:hidden}
+  .album-cover img,.detail-album-cover img{width:100%;height:100%;object-fit:cover;display:block}
+  .album-cover-grid,.detail-album-cover-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;width:100%;height:100%;gap:2px}
+  .album-cover-grid img,.detail-album-cover-grid img{width:100%;height:100%;object-fit:cover}
+  .album-cover-placeholder{width:100%;height:100%;display:grid;place-items:center;color:#b8c8ea}
+  .album-info,.detail-album-info{padding:10px 13px 12px}
+  .album-name,.detail-album-name{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .album-count,.detail-album-count{font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:1px}
+  .albums-grid,.detail-albums-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  #detailAlbumLightbox{display:none;position:fixed;inset:0;background:rgba(10,12,16,.92);z-index:2000;flex-direction:column}
+  #detailAlbumLightbox.open{display:flex}
+  .lightbox-header{display:flex;align-items:center;gap:14px;padding:16px 24px;border-bottom:1px solid rgba(255,255,255,.08);color:#fff}
+  .lightbox-header button{width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:none;color:#fff;cursor:pointer;display:grid;place-items:center}
+  .lightbox-grid{flex:1;overflow-y:auto;padding:20px 24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;align-content:start}
+  .lightbox-img-item{aspect-ratio:1;border-radius:12px;overflow:hidden;cursor:pointer;transition:transform .2s}
+  .lightbox-img-item:hover{transform:scale(1.03)}
+  .lightbox-img-item img{width:100%;height:100%;object-fit:cover}
+  .lightbox-pdf-item{aspect-ratio:1;border-radius:12px;border:1px solid rgba(255,255,255,.15);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;color:rgba(255,255,255,.75);padding:8px;transition:background .2s}
+  .lightbox-pdf-item:hover{background:rgba(255,255,255,.06)}
+  .lightbox-pdf-item span{font-size:11px;text-align:center;word-break:break-word}
 
-.add-link{margin-top:16px;background:#fff;border:1.5px dashed var(--line-strong);color:var(--primary);font-weight:600;border-radius:10px;height:var(--field-h);padding:0 18px;cursor:pointer;font-family:inherit;font-size:13px;transition:.14s}
-.add-link:hover{border-color:var(--primary);background:var(--primary-soft)}
+  .actionbar{position:sticky;top:63px;z-index:60;display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;background:rgba(246,247,249,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);margin:0 calc(-1 * clamp(16px,3vw,48px)) 16px;padding:14px clamp(16px,3vw,48px) 14px;border-bottom:1px solid var(--line2)}
+  .actionbar .acts{display:flex;gap:8px}
+  .gate{display:none;background:var(--crit-bg);border:1px solid var(--crit-line);color:var(--crit);padding:12px 16px;border-radius:14px;margin-bottom:14px;font-size:13px}
+  .main-grid{display:grid;grid-template-columns:1fr 420px;gap:14px;align-items:start}
+  .side{position:sticky;top:160px}
+  .grid,.grid-3{display:grid;gap:12px}
+  .grid{grid-template-columns:1fr 1fr} .grid-3{grid-template-columns:1fr 1fr 1fr}
+  .full{grid-column:1/-1}
+  label.field,.field{display:flex;flex-direction:column;gap:5px;font-family:var(--mono);font-size:11px;color:var(--faint);min-width:0}
+  .field .hint{font-family:Poppins,sans-serif;font-size:12px;color:var(--muted);font-weight:300!important;line-height:1.5}
+  input,select,textarea{font:inherit;font-family:Poppins,sans-serif;font-size:13px;font-weight:300!important;color:var(--ink);background:var(--white);border:1px solid var(--line);border-radius:10px;height:40px;padding:0 13px;width:100%;outline:0;transition:border-color .2s,box-shadow .2s}
+  textarea{height:auto;min-height:84px;padding:10px 13px;resize:vertical;line-height:1.55}
+  input::placeholder,textarea::placeholder{color:#b3bac6}
+  input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(47,111,237,.10)}
+  input[type=file]{display:none}
+  select{-webkit-appearance:none;appearance:none;cursor:pointer;padding-right:34px;background:var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239aa1ad' stroke-width='2.4'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 13px center}
+  .csel{position:relative;font-family:Poppins,sans-serif}
+  .csel>select{position:absolute;opacity:0;height:0;width:0;padding:0;border:0;pointer-events:none}
+  .csel-trigger,.behalf-trigger{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;height:40px;padding:0 13px;border:1px solid var(--line);border-radius:10px;background:var(--white);cursor:pointer;font:inherit;font-family:Poppins,sans-serif;font-size:13px;font-weight:300!important;color:var(--ink);text-align:left;transition:border-color .2s,box-shadow .2s}
+  .csel-trigger:hover,.behalf-trigger:hover{border-color:#d6dbe3}
+  .csel.open .csel-trigger,.behalf-csel.open .behalf-trigger{border-color:var(--accent);box-shadow:0 0 0 4px rgba(47,111,237,.10)}
+  .csel-trigger .lbl,.behalf-trigger .lbl{font-family:Poppins,sans-serif;font-size:13px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:0}
+  .csel-trigger .lbl.ph,.behalf-trigger .lbl.ph{color:#b3bac6}
+  .csel-trigger svg,.behalf-trigger svg{color:var(--faint);flex:none;transition:transform .2s,color .2s;width:13px;height:13px}
+  .csel.open .csel-trigger svg,.behalf-csel.open .behalf-trigger svg{transform:rotate(180deg);color:var(--accent)}
+  .csel-panel{position:absolute;top:calc(100% + 6px);left:0;width:100%;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 34px rgba(16,24,40,.12);padding:6px;z-index:90;max-height:290px;overflow:auto;opacity:0;visibility:hidden;transform:translateY(-4px);transition:opacity .15s,transform .15s,visibility .15s}
+  .csel.open .csel-panel{opacity:1;visibility:visible;transform:none}
+  .csel-search{position:sticky;top:-6px;background:var(--white);padding:2px 0 6px;z-index:1}
+  .csel-search input{height:34px;border-radius:999px;font-size:12.5px}
+  .csel-opt,.behalf-opt{display:flex;align-items:center;gap:8px;padding:8px 11px;border-radius:9px;font-family:Poppins,sans-serif;font-size:13px;color:var(--ink);cursor:pointer;transition:background .12s;letter-spacing:0}
+  .csel-opt:hover,.behalf-opt:hover{background:#f3f6fb}
+  .csel-opt.sel{background:var(--accent);color:#fff}
+  .behalf-opt.selected{color:var(--accent)}
+  .behalf-opt.selected::after{content:"";margin-left:auto;width:14px;height:14px;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232f6fed' stroke-width='2.4'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") no-repeat center/contain}
+  .csel-empty{padding:14px;text-align:center;color:var(--faint);font-size:12.5px;font-family:Poppins,sans-serif}
+  .behalf-csel{position:relative}
+  .behalf-panel{display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 34px rgba(16,24,40,.12);z-index:90;max-height:280px;overflow:hidden;flex-direction:column;padding:6px}
+  .behalf-csel.open .behalf-panel{display:flex}
+  .behalf-panel #behalfOpts,.behalf-panel #speciesOpts{overflow-y:auto;flex:1}
+  .field .chip{font-family:Poppins,sans-serif;letter-spacing:0}
+  .chips.box{border:1px dashed var(--line);border-radius:12px;padding:8px;min-height:40px;align-items:center}
+  .chips.box:empty::before{content:"None selected";font-family:Poppins,sans-serif;font-size:12.5px;color:#b3bac6;padding-left:4px}
+  .repeat-row{display:grid;grid-template-columns:1fr 1fr 1fr 1.2fr auto;gap:10px;align-items:end;padding:12px 0;border-top:1px dashed var(--line)}
+  .repeat-row:first-child{border-top:0;padding-top:0}
+  .kv-row{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-bottom:8px}
+  .row-x{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--white);color:var(--muted);cursor:pointer;font-size:17px;display:grid;place-items:center;transition:color .2s,border-color .2s,background .2s}
+  .row-x:hover{color:var(--crit);border-color:var(--crit-line);background:var(--crit-bg)}
+  .add-link{margin-top:12px;display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 15px;border-radius:999px;border:1px dashed var(--accent-line);background:var(--white);color:var(--accent);font:inherit;font-size:12.5px;cursor:pointer;transition:background .2s}
+  .add-link:hover{background:var(--low-bg)}
+  #parentCompanyDropdown{display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 14px 34px rgba(16,24,40,.12);z-index:90;max-height:220px;overflow-y:auto;padding:6px}
+  .pc-opt{padding:8px 11px;border-radius:9px;cursor:pointer;font-family:Poppins,sans-serif;font-size:13px;color:var(--ink)}
+  .pc-opt:hover{background:#f3f6fb}
+  .pc-opt small{display:block;font-size:11.5px;color:var(--muted)}
+  /* temperature */
+  .temp-picker{border:1px solid var(--line);border-radius:16px;padding:16px 20px 12px;background:linear-gradient(120deg,#f4f8ff,#fbfcff);font-family:Poppins,sans-serif}
+  .temp-picker-display{display:flex;align-items:center;gap:18px}
+  .temp-val-wrap{display:flex;flex-direction:column;align-items:center;gap:1px;flex:none;min-width:64px}
+  .temp-label{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .temp-val{font-size:30px;letter-spacing:-.02em;color:var(--accent);line-height:1.1;min-width:56px;text-align:center;font-weight:300!important;border-radius:8px;transition:background .2s}
+  .temp-val:hover{background:rgba(47,111,237,.06)}
+  .temp-unit{font-size:11px;color:var(--muted)}
+  .temp-range-bar-wrap{flex:1}
+  .temp-range-track{position:relative;height:6px;background:linear-gradient(90deg,#d8e4fb,#b6cdf7 50%,#fde5c8);border-radius:999px;margin:14px 0 8px}
+  .temp-range-fill{position:absolute;height:100%;background:var(--accent);border-radius:999px;pointer-events:none}
+  .temp-thumb{position:absolute;top:50%;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:var(--white);border:2px solid var(--accent);box-shadow:0 4px 12px rgba(47,111,237,.3);cursor:grab;z-index:2;touch-action:none;transition:box-shadow .15s}
+  .temp-thumb:active{cursor:grabbing;box-shadow:0 0 0 8px rgba(47,111,237,.12)}
+  .temp-thumb-max{background:var(--accent)}
+  .temp-scale{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  /* unit switch */
+  .unit-toggle{position:relative;display:inline-flex;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:3px;flex:none}
+  .unit-btn{position:relative;z-index:1;width:44px;height:32px;border:0;background:none;border-radius:999px;font-family:Poppins,sans-serif;font-size:12px;color:var(--muted);cursor:pointer;transition:color .25s}
+  .unit-btn.active{color:#fff}
+  .unit-toggle::before{content:"";position:absolute;top:3px;left:3px;width:44px;height:32px;border-radius:999px;background:var(--accent);box-shadow:0 6px 16px rgba(47,111,237,.25);transition:transform .35s var(--spring)}
+  .unit-toggle:has(#unitMt.active)::before{transform:translateX(44px)}
+  /* cover */
+  .cover{position:relative;height:200px;border-radius:16px;overflow:hidden;background:linear-gradient(120deg,#e9f0fd,#f4f7fd);border:1px dashed var(--accent-line);cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .cover.has-photo{border-style:solid;border-color:var(--line)}
+  #coverPhotoImg{display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  #coverPhotoPlaceholder{text-align:center;color:var(--accent);pointer-events:none;font-family:Poppins,sans-serif;font-size:13px}
+  #coverPhotoPlaceholder small{display:block;font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:3px}
+  .cover-btn{position:absolute;bottom:10px;right:10px;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 13px;border-radius:999px;background:rgba(255,255,255,.92);border:1px solid var(--line);font:inherit;font-size:12px;color:var(--ink);cursor:pointer}
+  .cover-btn:hover{color:var(--accent);border-color:var(--accent)}
+  /* certs */
+  .cert-card{border:1px solid var(--line);border-radius:16px;padding:16px 18px;background:var(--white)}
+  .cert-card + .cert-two-col,.cert-two-col + .custom-cert{margin-top:10px}
+  .cert-card-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .cert-card-head h3{margin:0;font-size:14.5px;font-weight:400!important;font-family:Poppins,sans-serif;color:var(--ink)}
+  .cert-optional-tag{margin-left:auto;font-family:Poppins,sans-serif;font-size:11.5px;color:var(--ok);background:var(--ok-bg);border:1px solid var(--ok-line);padding:1px 10px;border-radius:999px}
+  .cert-body-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .cert-body-grid-2{grid-template-columns:1fr 1fr}
+  .cert-two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .custom-cert{border:1px dashed var(--line);border-radius:16px;padding:16px 18px}
+  /* gallery */
+  .btn-gallery-add{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 13px;border-radius:999px;border:1px solid var(--accent-line);background:var(--low-bg);color:var(--accent);font:inherit;font-size:12px;cursor:pointer;transition:background .2s,color .2s}
+  .btn-gallery-add:hover{background:var(--accent);color:#fff}
+  .btn-gallery-pdf{border-color:#ddd2f5;background:#f5f1fd;color:#7c5cd6}
+  .btn-gallery-pdf:hover{background:#7c5cd6;color:#fff}
+  .album-actions{display:none;position:absolute;top:6px;right:6px}
+  .album-card:hover .album-actions{display:flex}
+  .album-action-btn{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.92);border:0;cursor:pointer;display:grid;place-items:center;color:var(--muted)}
+  .album-action-btn:hover{color:var(--crit)}
+  .album-empty-state{grid-column:1/-1;text-align:center;padding:36px 10px;color:var(--muted);font-size:13px;display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--page);border:1px dashed var(--line);border-radius:14px}
+  .album-empty-state svg{color:#c3c9d3}
+  .album-empty-state small{font-size:12px;color:var(--faint);font-weight:300!important}
+  .albums-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+  .gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px}
+  .gallery-item,.gallery-pdf-item{position:relative;border-radius:12px;overflow:hidden;aspect-ratio:1;border:1px solid var(--line);cursor:pointer;transition:transform .2s,box-shadow .2s}
+  .gallery-item:hover,.gallery-pdf-item:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(16,24,40,.1)}
+  .gallery-item img{width:100%;height:100%;object-fit:cover;display:block}
+  .gallery-pdf-item{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;background:#f8f5fe;color:#7c5cd6}
+  .gallery-pdf-item span{font-size:11px;color:var(--muted);text-align:center;padding:0 8px;word-break:break-word}
+  .gallery-del{position:absolute;top:5px;right:5px;width:24px;height:24px;border-radius:50%;background:rgba(20,22,26,.6);border:0;color:#fff;font-size:14px;cursor:pointer;display:none;align-items:center;justify-content:center}
+  .gallery-item:hover .gallery-del,.gallery-pdf-item:hover .gallery-del{display:flex}
+  .album-back{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--white);font:inherit;font-size:12px;color:var(--muted);cursor:pointer}
+  .album-back:hover{color:var(--accent);border-color:var(--accent)}
+  #mapPickerEl{height:440px;width:100%}
+  .upload-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-size:13px;z-index:3000;box-shadow:0 14px 34px rgba(16,24,40,.2)}
+  @media (max-width:1150px){ .main-grid{grid-template-columns:1fr} .side{position:static} }
+  @media (max-width:760px){
+    .grid,.grid-3,.cert-two-col,.cert-body-grid,.cert-body-grid-2{grid-template-columns:1fr}
+    .repeat-row{grid-template-columns:1fr 1fr} .repeat-row .row-x{grid-column:2;justify-self:end}
+    .actionbar .acts{width:100%} .actionbar .acts .pill-btn{flex:1}
+    .temp-picker-display{gap:8px} .temp-val{font-size:24px}
+  }
 
-.cert-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
-@media(max-width:900px){.cert-grid{grid-template-columns:1fr}}
-.cert-card{border:1px solid var(--line);border-radius:14px;padding:18px;background:linear-gradient(180deg,#fbfcfe,#fff)}
-.cert-card h3{font-size:13px;margin:0 0 16px;text-align:center;font-weight:600}
-.cert-card .field{margin-bottom:13px}
-.approval-card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;min-height:210px;border:1.5px dashed var(--line-strong);background:#fbfcfe;text-align:center}
-.approval-card strong{font-weight:600}
-
-.custom-cert{border-top:1px solid var(--line);margin-top:20px;padding-top:18px}
-.kv-row{display:grid;grid-template-columns:1fr 1fr auto;gap:12px;margin-bottom:11px}
-
-.bar{display:flex;justify-content:flex-end;gap:12px;margin-top:26px;padding-top:22px;border-top:1px solid var(--line)}
-.btn{height:46px;padding:0 26px;border-radius:12px;font-weight:600;font-size:14px;cursor:pointer;border:1.5px solid transparent;font-family:inherit;transition:.15s}
-.btn-ghost{background:#fff;border-color:var(--border);color:var(--text)}
-.btn-ghost:hover{border-color:var(--line-strong);background:#fafbfd}
-.btn-primary{background:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(26,111,219,.28)}
-.btn-primary:hover{background:var(--primary-ink)}
-.btn-primary:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
-
-.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(12px);background:var(--text);color:#fff;padding:13px 20px;border-radius:11px;font-weight:600;opacity:0;visibility:hidden;box-shadow:none;transition:opacity .25s,transform .28s cubic-bezier(.2,.8,.2,1),visibility .25s;z-index:1000}
-.toast.show{transform:translateX(-50%) translateY(0);opacity:1;visibility:visible;box-shadow:var(--shadow-lg)}
-.toast.err{background:var(--danger)}
-
-/* ===== premium custom dropdown (overlays the native <select>) ===== */
-.csel{position:relative}
-.csel>select{position:absolute;opacity:0;height:0;width:0;padding:0;border:0;pointer-events:none}
-.csel-trigger{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;height:var(--field-h);padding:0 14px;border:1.5px solid var(--border);border-radius:10px;background:#fff;cursor:pointer;font-family:inherit;font-size:13.5px;color:var(--text);transition:border-color .14s,box-shadow .14s}
-.csel-trigger:hover{border-color:var(--line-strong)}
-.csel.open .csel-trigger{border-color:var(--primary);box-shadow:0 0 0 3.5px rgba(26,111,219,.13)}
-.csel-trigger .lbl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.csel-trigger .lbl.ph{color:#b6bcca}
-.csel-trigger svg{color:var(--soft);flex-shrink:0;transition:transform .2s,color .2s}
-.csel.open .csel-trigger svg{transform:rotate(180deg);color:var(--primary)}
-.csel-panel{position:absolute;top:calc(100% + 8px);left:0;width:100%;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow-lg);padding:6px;z-index:80;max-height:300px;overflow:auto;opacity:0;visibility:hidden;transform:translateY(-6px) scale(.985);transform-origin:top center;transition:opacity .16s,transform .16s,visibility .16s}
-.csel.open .csel-panel{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
-.csel-search{position:sticky;top:0;background:#fff;padding:4px 4px 8px;z-index:1}
-.csel-search input{height:38px;width:100%;border:1.5px solid var(--border);border-radius:9px;padding:0 12px;font:inherit;font-size:13px}
-.csel-search input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(26,111,219,.12)}
-.csel-opt{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:9px;font-size:13.5px;color:var(--text);cursor:pointer;transition:background .12s,color .12s}
-.csel-opt:hover{background:var(--primary-soft);color:var(--primary-ink)}
-.csel-opt.sel{background:var(--primary);color:#fff;font-weight:600}
-.csel-opt.sel::after{content:"✓";margin-left:auto;font-size:12px}
-.csel-opt.sel:hover{background:var(--primary-ink);color:#fff}
-.csel-empty{padding:14px;text-align:center;color:var(--soft);font-size:12.5px}
-.csel-panel::-webkit-scrollbar{width:10px}
-.csel-panel::-webkit-scrollbar-thumb{background:#e2e6ee;border-radius:6px;border:3px solid #fff}
-.csel-panel::-webkit-scrollbar-track{background:transparent}
-
-
-    /* ── CERTIFICATION REDESIGN ── */
-    .cert-msc { margin-bottom: 16px; }
-    .cert-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-    .cert-card {
-      border: 1.5px solid var(--line);
-      border-radius: 14px;
-      padding: 20px;
-      background: linear-gradient(180deg, #fbfcfe, #fff);
-    }
-    .cert-card-head {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 16px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--line);
-    }
-    .cert-badge {
-      font-size: 10px;
-      font-weight: 800;
-      letter-spacing: .06em;
-      padding: 3px 8px;
-      border-radius: 6px;
-      flex-shrink: 0;
-    }
-    .cert-badge-msc { background: #e8f4ec; color: #1a7a3c; border: 1px solid #b8dfc4; }
-    .cert-badge-uk  { background: #eef1fd; color: #1a3a7a; border: 1px solid #b8c4df; }
-    .cert-badge-eu  { background: #fdf3e8; color: #7a4a1a; border: 1px solid #dfccb8; }
-    .cert-optional-tag {
-      margin-left: auto;
-      font-size: 11px;
-      font-weight: 600;
-      color: #16a34a;
-      background: #dcfce7;
-      padding: 2px 8px;
-      border-radius: 999px;
-    }
-    .cert-body-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 12px;
-    }
-    .cert-body-grid-2 {
-      grid-template-columns: 1fr 1fr;
-    }
-    @media(max-width:700px) {
-      .cert-two-col { grid-template-columns: 1fr; }
-      .cert-body-grid { grid-template-columns: 1fr; }
-      .cert-body-grid-2 { grid-template-columns: 1fr; }
-    }
-    
-    /* ── BEHALF CSEL ── */
-    .behalf-csel { position: relative; }
-    .behalf-trigger {
-      display: flex; align-items: center; justify-content: space-between; gap: 10px;
-      width: 100%; height: var(--field-h); padding: 0 14px;
-      border: 1.5px solid var(--border); border-radius: 10px;
-      background: #fff; cursor: pointer; font-family: inherit;
-      font-size: 13.5px; color: var(--text); transition: border-color .14s, box-shadow .14s;
-    }
-    .behalf-trigger:hover { border-color: var(--line-strong); }
-    .behalf-trigger .lbl.ph { color: var(--muted); }
-    .behalf-csel.open .behalf-trigger { border-color: var(--primary); box-shadow: 0 0 0 3.5px rgba(26,111,219,.13); }
-    .behalf-panel {
-      display: none; position: absolute; top: calc(100% + 6px); left: 0; right: 0;
-      background: #fff; border: 1.5px solid var(--border); border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 80;
-      max-height: 260px; overflow: hidden; flex-direction: column;
-    }
-    .behalf-csel.open .behalf-panel { display: flex; }
-    .behalf-panel #behalfOpts { overflow-y: auto; flex: 1; padding: 4px; }
-    .behalf-opt {
-      padding: 9px 12px; border-radius: 8px; cursor: pointer;
-      font-size: 13px; color: var(--text); transition: background .12s;
-    }
-    .behalf-opt:hover { background: var(--primary-soft); color: var(--primary); }
-    .behalf-opt.selected { color: var(--primary); font-weight: 600; }
-    .behalf-opt.selected::after { content: ' ✓'; }
-
-    /* ── TEMPERATURE PICKER ── */
-    .temp-picker {
-      margin-top: 10px;
-      border: 1.5px solid var(--border);
-      border-radius: 14px;
-      padding: 20px 20px 14px;
-      background: linear-gradient(135deg, #f0f7ff 0%, #e8f4ff 100%);
-    }
-    .temp-picker-display {
-      display: flex; align-items: center; gap: 16px; margin-bottom: 16px;
-    }
-    .temp-val-wrap { display: flex; flex-direction: column; align-items: center; gap: 2px; flex-shrink: 0; }
-    .temp-label { font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-    .temp-val {
-      font-size: 28px; font-weight: 800; color: var(--primary);
-      min-width: 56px; text-align: center; line-height: 1;
-    }
-    .temp-unit { font-size: 11px; color: var(--muted); }
-    .temp-range-bar-wrap { flex: 1; }
-    .temp-range-track {
-      position: relative; height: 8px;
-      background: linear-gradient(90deg, #bfdbfe 0%, #93c5fd 40%, #60a5fa 70%, #3b82f6 100%);
-      border-radius: 999px; margin: 16px 0 8px;
-    }
-    .temp-range-fill {
-      position: absolute; height: 100%; background: var(--primary);
-      border-radius: 999px; pointer-events: none;
-    }
-    .temp-thumb {
-      position: absolute; top: 50%; transform: translate(-50%,-50%);
-      width: 22px; height: 22px; border-radius: 50%;
-      background: #fff; border: 3px solid var(--primary);
-      box-shadow: 0 2px 8px rgba(26,111,219,.3);
-      cursor: grab; z-index: 2; touch-action: none;
-      transition: box-shadow .15s, transform .1s;
-    }
-    .temp-thumb:active { cursor: grabbing; transform: translate(-50%,-50%) scale(1.2); box-shadow: 0 4px 16px rgba(26,111,219,.4); }
-    .temp-thumb-max { background: var(--primary); border-color: #1558b0; }
-    .temp-scale {
-      display: flex; justify-content: space-between;
-      font-size: 10px; color: var(--muted); padding: 0 2px;
-    }
-    
-    /* ── UNIT TOGGLE ── */
-    .unit-toggle {
-      display: inline-flex;
-      border: 1.5px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
-      flex-shrink: 0;
-    }
-    .unit-btn {
-      padding: 0 13px;
-      height: var(--field-h);
-      border: none;
-      background: #fff;
-      font-family: 'Poppins', sans-serif;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--muted);
-      cursor: pointer;
-      transition: all .14s;
-      border-right: 1px solid var(--border);
-    }
-    .unit-btn:last-child { border-right: none; }
-    .unit-btn.active {
-      background: var(--primary);
-      color: #fff;
-    }
-    .unit-btn:not(.active):hover {
-      background: var(--primary-soft);
-      color: var(--primary);
-    }
-    
-    /* ── GALLERY ── */
-    .gallery-tabs { display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap; }
-    .gallery-tab {
-      padding:6px 14px;border-radius:999px;border:1.5px solid var(--border);
-      background:#fff;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;
-      color:#6b7280;cursor:pointer;transition:all .14s;
-    }
-    .gallery-tab:hover { border-color:var(--primary);color:var(--primary); }
-    .gallery-tab.active { background:var(--primary);border-color:var(--primary);color:#fff; }
-    .gallery-grid {
-      display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;
-    }
-    .gallery-item {
-      position:relative;border-radius:10px;overflow:hidden;
-      aspect-ratio:1;background:#f4f6fb;border:1.5px solid var(--border);
-      cursor:pointer;transition:transform .15s,box-shadow .15s;
-    }
-    .gallery-item:hover { transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.12); }
-    .gallery-item img { width:100%;height:100%;object-fit:cover;display:block; }
-    .gallery-item .gallery-del {
-      position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;
-      background:rgba(0,0,0,0.55);border:none;color:#fff;font-size:12px;
-      cursor:pointer;display:none;align-items:center;justify-content:center;
-    }
-    .gallery-item:hover .gallery-del { display:flex; }
-    .gallery-item .gallery-label {
-      position:absolute;bottom:0;left:0;right:0;padding:4px 7px;
-      background:linear-gradient(to top,rgba(0,0,0,0.6),transparent);
-      font-size:10px;font-weight:600;color:#fff;font-family:'Poppins',sans-serif;
-    }
-    .gallery-pdf-item {
-      display:flex;flex-direction:column;align-items:center;justify-content:center;
-      border-radius:10px;border:1.5px solid var(--border);aspect-ratio:1;
-      background:#fdf4ff;cursor:pointer;position:relative;gap:6px;
-      transition:transform .15s,box-shadow .15s;
-    }
-    .gallery-pdf-item:hover { transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.12); }
-    .gallery-pdf-item span { font-size:11px;font-weight:600;color:#6b7280;font-family:'Poppins',sans-serif;text-align:center;padding:0 8px;word-break:break-word; }
-    .gallery-pdf-item .gallery-del { position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,0.55);border:none;color:#fff;font-size:12px;cursor:pointer;display:none;align-items:center;justify-content:center; }
-    .gallery-pdf-item:hover .gallery-del { display:flex; }
-    .gallery-upload-loading {
-      display:flex;flex-direction:column;align-items:center;justify-content:center;
-      border-radius:10px;border:1.5px dashed var(--primary);aspect-ratio:1;
-      background:#eef4fd;color:var(--primary);font-size:11px;
-      font-family:'Poppins',sans-serif;font-weight:600;gap:6px;
-    }
-    .btn-gallery-add {
-      display:inline-flex;align-items:center;gap:6px;padding:8px 14px;
-      border-radius:8px;border:1.5px solid var(--primary);background:#eef4fd;
-      color:var(--primary);font-family:'Poppins',sans-serif;font-size:12px;
-      font-weight:600;cursor:pointer;transition:all .14s;
-    }
-    .btn-gallery-add:hover { background:var(--primary);color:#fff; }
-    .btn-gallery-pdf { border-color:#7c3aed;background:#f5f3ff;color:#7c3aed; }
-    .btn-gallery-pdf:hover { background:#7c3aed;color:#fff; }
-    .album-choice {
-      padding:12px 16px;border-radius:10px;border:1.5px solid var(--border);
-      background:#fff;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;
-      cursor:pointer;text-align:left;color:#1a1a2e;transition:all .14s;
-    }
-    .album-choice:hover { border-color:var(--primary);background:#eef4fd;color:var(--primary); }
-    
-    /* ── ALBUMS VIEW ── */
-    .albums-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: 14px;
-    }
-    .album-card {
-      border-radius: 14px;
-      overflow: hidden;
-      border: 1.5px solid var(--border);
-      background: #fff;
-      cursor: pointer;
-      transition: transform .15s, box-shadow .15s;
-    }
-    .album-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.10); }
-    .album-cover {
-      width: 100%;
-      aspect-ratio: 4/3;
-      background: linear-gradient(135deg, #e8f0fe, #f0f4ff);
-      position: relative;
-      overflow: hidden;
-    }
-    .album-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
-    .album-cover-placeholder {
-      width: 100%; height: 100%;
-      display: flex; align-items: center; justify-content: center;
-      color: #b0b6c4;
-    }
-    .album-cover-grid {
-      display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
-      width: 100%; height: 100%; gap: 2px;
-    }
-    .album-cover-grid img { width: 100%; height: 100%; object-fit: cover; }
-    .album-info {
-      padding: 10px 12px 12px;
-    }
-    .album-name {
-      font-size: 13px; font-weight: 700; color: #1a1a2e;
-      font-family: 'Poppins', sans-serif;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .album-count {
-      font-size: 11px; color: #9aa0b4;
-      font-family: 'Poppins', sans-serif; margin-top: 2px;
-    }
-    .album-actions {
-      display: none; position: absolute; top: 6px; right: 6px; gap: 4px;
-    }
-    .album-card:hover .album-actions { display: flex; }
-    .album-action-btn {
-      width: 26px; height: 26px; border-radius: 50%;
-      background: rgba(255,255,255,0.9); border: none;
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      color: #6b7280; font-size: 13px; backdrop-filter: blur(4px);
-      transition: background .12s, color .12s;
-    }
-    .album-action-btn:hover { background: #fff; color: #e63946; }
-    .album-empty-state {
-      grid-column: 1/-1; text-align: center; padding: 48px 0;
-      color: #9aa0b4; font-size: 13px; font-weight: 600;
-      font-family: 'Poppins', sans-serif; display: flex;
-      flex-direction: column; align-items: center; gap: 10px;
-    }
-    </style>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</style>
 </head>
 <body>
-  <!-- TOP BAR (shared) -->
+
+  <!-- TOP BAR (same as home-logged-in.html) -->
   <div class="topbar">
-    <a href="index.html" class="topbar-brand" style="display:flex;align-items:center;gap:9px;">
-      <img src="sc-blue-logo.png" alt="SmarTuna" style="width:26px;height:26px;object-fit:contain;flex-shrink:0;"/>
-      <span class="sc-wm">
-        <span class="sc-wm-top">SmarTuna</span>
-        <span class="sc-wm-sub">concept</span>
-      </span>
+    <a href="home-logged-in.html" class="topbar-brand">
+      <img src="sc-blue-logo.png" alt="SmarTuna"/>
+      <span class="sc-wm"><span class="sc-wm-top">Smar<span>Tuna</span></span><span class="sc-wm-sub">concept</span></span>
     </a>
     <div class="topbar-nav">
       <div class="nav-pill">
-        <a href="home-logged-in.html" class="nav-item">
-          <img src="home.png" alt="" /> Home
-        </a>
+        <a href="home-logged-in.html" class="nav-item"><img src="home.png" alt=""/>Home</a>
         <div class="nav-item-wrap">
-          <a href="organisation.html" class="nav-item">
-            <img src="my-studio.png" alt="" /> My Studio
-          </a>
+          <a href="modules.html#my-studio" class="nav-item"><img src="my-studio.png" alt=""/>My Studio</a>
           <div class="nav-dropdown">
             <a href="product-list.html" class="nav-dropdown-item">Product</a>
+            <a href="evidence-list.html" class="nav-dropdown-item">Evidence</a>
+            <a href="raw-material-list.html" class="nav-dropdown-item">Raw Materials</a>
+            <a href="shipment-list.html" class="nav-dropdown-item">Shipments</a>
             <a href="organisation.html" class="nav-dropdown-item">Your Company</a>
+            <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('carbon-calculator.html','Carbon Footprint Calculator','carbon-icon.png','Carbon','green');">Carbon Calculator</a>
+            <a href="modules.html#my-studio" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all My Studio</a>
           </div>
         </div>
         <div class="nav-item-wrap">
-          <a href="Species.html" class="nav-item active">
-            <img src="atlas.png" alt="" /> Atlas
-          </a>
+          <a href="modules.html#atlas" class="nav-item active"><img src="atlas.png" alt=""/>Atlas</a>
           <div class="nav-dropdown">
             <a href="Species.html" class="nav-dropdown-item">Species</a>
-            <a href="cold-storage-list.html" class="nav-dropdown-item active">Cold Storage</a>
-            <a href="#" class="nav-dropdown-item">Ports</a>
-            <a href="#" class="nav-dropdown-item">Vessels</a>
+            <a href="cold-storage-list.html" class="nav-dropdown-item">Cold Storage</a>
+            <a href="port-list.html" class="nav-dropdown-item">Ports</a>
+            <a href="vessel-list.html" class="nav-dropdown-item">Vessels</a>
             <a href="country.html" class="nav-dropdown-item">Country</a>
             <div class="nav-dropdown-item" style="position:relative;">
-              Others
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+              Others <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
               <div class="nav-dropdown-sub">
-                <a href="#" class="nav-dropdown-item">MSC Fisheries</a>
-                <a href="#" class="nav-dropdown-item">ASC Farms</a>
+                <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('fishery.html','MSC Fishery Module')">MSC Fisheries</a>
+                <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('asc-farms.html','ASC Farm Standard Module','ASC_ecolabel.png','ASC')">ASC Farms</a>
               </div>
             </div>
+            <a href="modules.html#atlas" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all Atlas</a>
           </div>
         </div>
-        <a href="#" class="nav-item"><img src="features.png" alt="" /> Features</a>
-        <a href="#" class="nav-item"><img src="messages.png" alt="" /> Messages</a>
-        <a href="#" class="nav-item"><img src="report.png" alt="" /> Reports</a>
-        <a href="report.html" class="nav-item"><img src="support.png" alt="" /> Support</a>
+        <div class="nav-item-wrap">
+          <a href="modules.html#features" class="nav-item">Features</a>
+          <div class="nav-dropdown">
+            <a href="smartuna-ai.html" class="nav-dropdown-item">SmarTuna A.I <span class="tag-new">New</span></a>
+            <a href="smartuna-assistant.html" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('smartuna-assistant.html','SmarTuna Assistant');">SmarTuna Assistant <span class="tag-beta">Beta</span></a>
+            <div class="nav-dropdown-item" style="position:relative;">
+              Compliance <span style="font-size:11px;color:#6b7280;">&rsaquo;</span>
+              <div class="nav-dropdown-sub">
+                <a href="eu-catch-support.html" class="nav-dropdown-item">EU CATCH Form</a>
+                <a href="simp-support.html" class="nav-dropdown-item">NOAA SIMP <span class="tag-new">New</span></a>
+                <a href="fsma-support.html" class="nav-dropdown-item">FSMA Act 204 <span class="tag-new">New</span></a>
+              </div>
+            </div>
+            <a href="load-planner.html" class="nav-dropdown-item">Load Planner</a>
+            <a href="modules.html#features" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all Features</a>
+          </div>
+        </div>
+        <a href="modules.html#messages" class="nav-item"><img src="messages.png" alt=""/>Messages</a>
+        <a href="modules.html#reports" class="nav-item"><img src="report.png" alt=""/>Reports</a>
+        <a href="modules.html#support" class="nav-item"><img src="support.png" alt=""/>Support</a>
+        <a href="developer.html" class="nav-item" id="devNav" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 6 2 12 8 18"/><polyline points="16 6 22 12 16 18"/></svg>Developer</a>
+        <script>try{if(localStorage.getItem('smartuna_dev_unlocked')==='1')document.getElementById('devNav').hidden=false;}catch(e){}</script>
       </div>
     </div>
     <div class="topbar-right">
@@ -514,351 +414,275 @@ select option{color:var(--text)}
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         Search here...
       </div>
-      <div class="notif-btn">
-        <img src="notification.png" alt="" />
-        <div class="notif-dot"></div>
-      </div>
-      <div style="position:relative;flex-shrink:0;">
-        <div class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()"><span id="avatarInitials">··</span></div>
+      <div class="notif-btn"><img src="notification.png" alt=""/><div class="notif-dot"></div></div>
+      <div class="avatar-wrap">
+        <div class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()" role="button" tabindex="0" aria-label="Account menu"><span id="avatarInitials">··</span></div>
         <div class="avatar-menu" id="avatarMenu">
           <div class="avatar-menu-name" id="avatarGreeting">Hello!</div>
-          <a href="profile.html">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-            Profile
-          </a>
+                    <a href="profile.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Profile</a>
           <button onclick="handleLogout()">Logout</button>
         </div>
       </div>
     </div>
   </div>
 
-
-<div class="wrap">
-
-  <div class="page-head">
+<div class="wrap page" style="padding-top:0">
+  <form id="csForm" autocomplete="off">
+  <div class="actionbar">
     <div>
-      <h1 id="pageTitle">Add new Cold Storage</h1>
-      <p>Ensure product quality, traceability, and compliance while streamlining stock-in, stock-out, transfers, and dispatch.</p>
+      <div class="crumb" style="margin-bottom:4px"><a href="cold-storage-list.html">Cold storage</a> / <span id="crumbNow">Add</span></div>
+      <h1 id="pageTitle">Add cold storage</h1>
+      <div class="sub">Product quality, traceability and compliance for stock in, stock out, transfers and dispatch.</div>
+    </div>
+    <div class="acts">
+      <button type="button" class="pill-btn" id="cancelBtn">Cancel</button>
+      <button type="submit" class="pill-btn primary" id="saveBtn">Save facility</button>
     </div>
   </div>
 
   <div class="gate" id="gate">Only SmarTuna concept admins can create or edit cold storage facilities.</div>
 
-  <form id="csForm" autocomplete="off">
-
-    <!-- COVER PHOTO -->
-    <section class="card" style="padding:0;overflow:hidden;position:relative;margin-bottom:0;">
-      <div id="coverPhotoWrap" style="width:100%;height:220px;background:linear-gradient(135deg,#e8f0fe,#f0f4ff);display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer;" onclick="triggerCoverUpload()">
-        <img id="coverPhotoImg" src="" alt="" style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;inset:0;"/>
-        <div id="coverPhotoPlaceholder" style="text-align:center;color:#9aa0b4;pointer-events:none;">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:10px;"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-          <div style="font-size:13px;font-weight:600;font-family:'Poppins',sans-serif;">Add Cover Photo</div>
-          <div style="font-size:11px;margin-top:4px;font-family:'Poppins',sans-serif;">Recommended: 1200 × 400px · JPG or PNG</div>
-        </div>
-        <div style="position:absolute;bottom:12px;right:12px;">
-          <button type="button" onclick="event.stopPropagation();triggerCoverUpload()" style="display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:rgba(255,255,255,0.92);border:1.5px solid rgba(255,255,255,0.6);border-radius:8px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;color:#1a1a2e;cursor:pointer;backdrop-filter:blur(4px);">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Change Cover
-          </button>
-        </div>
-        <input type="file" id="coverPhotoInput" accept="image/*" style="display:none;" onchange="handleCoverPhoto(this)"/>
-      </div>
-      <input type="hidden" id="cover_photo_url"/>
-    </section>
-
-    <!-- GENERAL -->
-    <section class="card">
-      <h2>General Information</h2>
-      <div class="grid">
-        <label class="field">Name of Storage
-          <input id="name" required placeholder="e.g. FrostPeak Cold Store" />
-        </label>
-        <label class="field">Storage type
-          <select id="storage_type">
-            <option value="">Select type…</option>
-            <option>Blast Freezer</option>
-            <option>Cold Room</option>
-            <option>Chiller Room</option>
-            <option>Frozen Storage</option>
-            <option>Controlled Atmosphere</option>
-            <option>Ice Storage</option>
-            <option>Refrigerated Warehouse</option>
-          </select>
-        </label>
-        <label class="field">Status
-          <select id="status">
-            <option>Active</option>
-            <option>Inactive</option>
-          </select>
-        </label>
-        <label class="field">Parent Company
-          <div style="position:relative;">
-            <input id="parent_company_search" placeholder="Search cold storage facilities…" autocomplete="off"
-              oninput="searchParentCompany(this.value)"
-              onfocus="searchParentCompany(this.value)"
-              style="width:100%;"/>
-            <div id="parentCompanyDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#fff;border:1.5px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.10);z-index:80;max-height:200px;overflow-y:auto;">
+  <div class="main-grid">
+    <div>
+      <section class="card">
+        <div class="card-h"><div class="card-t">General information</div></div>
+        <div class="grid">
+          <label class="field">Name of storage<input id="name" required placeholder="e.g. FrostPeak Cold Store"/></label>
+          <label class="field">Storage type
+            <select id="storage_type">
+              <option value="">Select type...</option>
+              <option>Blast Freezer</option><option>Cold Room</option><option>Chiller Room</option><option>Frozen Storage</option>
+              <option>Controlled Atmosphere</option><option>Ice Storage</option><option>Refrigerated Warehouse</option>
+            </select>
+          </label>
+          <label class="field">Status<select id="status"><option>Active</option><option>Inactive</option></select></label>
+          <div class="field">Parent company
+            <div style="position:relative">
+              <input id="parent_company_search" placeholder="Search cold storage facilities..." autocomplete="off" oninput="searchParentCompany(this.value)" onfocus="searchParentCompany(this.value)"/>
+              <div id="parentCompanyDropdown"></div>
             </div>
+            <input type="hidden" id="parent_company_id"/>
+            <div id="parentCompanyChip"></div>
           </div>
-          <input type="hidden" id="parent_company_id"/>
-          <div id="parentCompanyChip" style="margin-top:6px;"></div>
-        </label>
-        <label class="field full" id="behalfWrap">On behalf of
-          <span class="hint">Attach the organisations that use this facility. Granting access here is what lets an org see this cold storage. Admins see every attached org; each org only sees its own name.</span>
-          <div class="behalf-csel" id="behalfCsel">
-            <button type="button" class="behalf-trigger" id="behalfTrigger" onclick="toggleBehalfPanel(event)">
-              <span class="lbl ph" id="behalfTriggerLbl">Add organisation…</span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <div class="behalf-panel" id="behalfPanel">
-              <div class="csel-search"><input type="text" id="behalfSearch" placeholder="Search organisations…" oninput="filterBehalfPanel(this.value)" onclick="event.stopPropagation()"/></div>
-              <div id="behalfOpts"></div>
-            </div>
-            <select id="behalfSelect" style="display:none"><option value="">Add organisation…</option></select>
-          </div>
-          <div class="chips" id="behalfChips" style="margin-top:8px;"></div>
-        </label>
-      </div>
-    </section>
-
-    <!-- LOCATION -->
-    <section class="card">
-      <h2>Location Details</h2>
-      <div class="grid">
-        <label class="field full">Address<input id="address" /></label>
-        <label class="field">State / Province<input id="state_province" /></label>
-        <label class="field">City<input id="city" placeholder="from Country module" /></label>
-        <label class="field">Country
-          <select id="country"><option value="">Select country…</option></select>
-        </label>
-        <label class="field">Postal Code<input id="postal_code" /></label>
-        <label class="field">GLN<input id="gln" /></label>
-        <label class="field">Latitude<input id="latitude" type="number" step="any" placeholder="e.g. 51.5074" /></label>
-        <label class="field">Longitude<input id="longitude" type="number" step="any" placeholder="e.g. -0.1278" /></label>
-        <!-- Pick from Map -->
-        <div style="grid-column:1/-1;display:flex;align-items:center;gap:10px;padding-top:2px;">
-          <button type="button" onclick="openMapPicker()" style="display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border-radius:8px;border:1.5px solid var(--primary,#1a6fdb);background:#eef4fd;color:#1a6fdb;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;" onmouseover="this.style.background='#ddeeff'" onmouseout="this.style.background='#eef4fd'">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            Pick from Map
-          </button>
-          <span id="mapPickerCoords" style="font-size:12px;color:#9aa0b4;"></span>
-        </div>
-      </div>
-    </section>
-
-    <!-- CONTACT -->
-    <section class="card">
-      <h2>Contact Information</h2>
-      <div id="contacts"></div>
-      <button type="button" class="add-link" id="addContact">+ Add contact</button>
-    </section>
-
-    <!-- OPERATIONAL + CAPACITY -->
-    <section class="card">
-      <h2>Operational &amp; Capacity</h2>
-      <div class="grid-3">
-        <!-- Temperature Picker -->
-        <label class="field" style="grid-column:1/-1">
-          Temperature Range (°C)
-          <div class="temp-picker" id="tempPicker">
-            <div class="temp-picker-display">
-              <div class="temp-val-wrap">
-                <span class="temp-label">Min</span>
-                <div class="temp-val" id="tempMinDisplay" title="Click to type" onclick="editTempVal('min')" style="cursor:text;">--</div>
-                <span class="temp-unit">°C</span>
+          <div class="field full" id="behalfWrap">On behalf of
+            <span class="hint">Attach the organisations that use this facility. Granting access here is what lets an organisation see it. Admins see every attached organisation; each organisation only sees its own name.</span>
+            <div class="behalf-csel" id="behalfCsel">
+              <button type="button" class="behalf-trigger" id="behalfTrigger" onclick="toggleBehalfPanel(event)"><span class="lbl ph" id="behalfTriggerLbl">Add organisation...</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button>
+              <div class="behalf-panel" id="behalfPanel">
+                <div class="csel-search"><input type="text" id="behalfSearch" placeholder="Search organisations..." oninput="filterBehalfPanel(this.value)" onclick="event.stopPropagation()"/></div>
+                <div id="behalfOpts"></div>
               </div>
-              <div class="temp-range-bar-wrap">
-                <div class="temp-range-track" id="tempTrack">
-                  <div class="temp-range-fill" id="tempFill"></div>
-                  <div class="temp-thumb" id="tempThumbMin" onmousedown="startTempDrag(event,'min')" ontouchstart="startTempDrag(event,'min')"></div>
-                  <div class="temp-thumb temp-thumb-max" id="tempThumbMax" onmousedown="startTempDrag(event,'max')" ontouchstart="startTempDrag(event,'max')"></div>
+              <select id="behalfSelect" style="display:none"><option value="">Add organisation...</option></select>
+            </div>
+            <div class="chips box" id="behalfChips"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-h"><div class="card-t">Location details</div>
+          <div style="display:flex;align-items:center;gap:10px"><span id="mapPickerCoords" class="lbl"></span>
+          <button type="button" class="pill-btn sm" onclick="openMapPicker()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>Pick from map</button></div></div>
+        <div class="grid">
+          <label class="field full">Address<input id="address"/></label>
+          <label class="field">State / province<input id="state_province"/></label>
+          <label class="field">City<input id="city" placeholder="City"/></label>
+          <label class="field">Country<select id="country"><option value="">Select country...</option></select></label>
+          <label class="field">Postal code<input id="postal_code"/></label>
+          <label class="field">GLN<input id="gln"/></label>
+          <div class="grid" style="grid-column:auto">
+            <label class="field">Latitude<input id="latitude" type="number" step="any" placeholder="e.g. 51.5074"/></label>
+            <label class="field">Longitude<input id="longitude" type="number" step="any" placeholder="e.g. -0.1278"/></label>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-h"><div class="card-t">Contact information</div></div>
+        <div id="contacts"></div>
+        <button type="button" class="add-link" id="addContact"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add contact</button>
+      </section>
+
+      <section class="card">
+        <div class="card-h"><div class="card-t">Operational &amp; capacity</div></div>
+        <div class="grid">
+          <div class="field full">Temperature range (°C)
+            <div class="temp-picker" id="tempPicker">
+              <div class="temp-picker-display">
+                <div class="temp-val-wrap"><span class="temp-label">Min</span><div class="temp-val" id="tempMinDisplay" title="Click to type" onclick="editTempVal('min')" style="cursor:text">--</div><span class="temp-unit">°C</span></div>
+                <div class="temp-range-bar-wrap">
+                  <div class="temp-range-track" id="tempTrack">
+                    <div class="temp-range-fill" id="tempFill"></div>
+                    <div class="temp-thumb" id="tempThumbMin" onmousedown="startTempDrag(event,'min')" ontouchstart="startTempDrag(event,'min')"></div>
+                    <div class="temp-thumb temp-thumb-max" id="tempThumbMax" onmousedown="startTempDrag(event,'max')" ontouchstart="startTempDrag(event,'max')"></div>
+                  </div>
+                  <div class="temp-scale"><span>-40°</span><span>-20°</span><span>0°</span><span>+20°</span><span>+40°</span></div>
                 </div>
-                <div class="temp-scale">
-                  <span>-40°</span><span>-20°</span><span>0°</span><span>+20°</span><span>+40°</span>
-                </div>
-              </div>
-              <div class="temp-val-wrap">
-                <span class="temp-label">Max</span>
-                <div class="temp-val" id="tempMaxDisplay" title="Click to type" onclick="editTempVal('max')" style="cursor:text;">--</div>
-                <span class="temp-unit">°C</span>
+                <div class="temp-val-wrap"><span class="temp-label">Max</span><div class="temp-val" id="tempMaxDisplay" title="Click to type" onclick="editTempVal('max')" style="cursor:text">--</div><span class="temp-unit">°C</span></div>
               </div>
             </div>
+            <input type="hidden" id="min_temp_c"/><input type="hidden" id="max_temp_c"/>
           </div>
-          <input type="hidden" id="min_temp_c"/>
-          <input type="hidden" id="max_temp_c"/>
-        </label>
-        <label class="field">Storage Capacity
-          <div style="display:flex;gap:6px;align-items:center;">
-            <input id="storage_capacity" type="number" step="any" min="0" placeholder="e.g. 500" style="flex:1;min-width:0;"/>
-            <div class="unit-toggle" id="capacityUnitToggle">
-              <button type="button" class="unit-btn active" id="unitKg" onclick="setCapacityUnit('KG')">KG</button>
-              <button type="button" class="unit-btn" id="unitMt" onclick="setCapacityUnit('MT')">MT</button>
+          <div class="field">Storage capacity
+            <div style="display:flex;gap:8px;align-items:center">
+              <input id="storage_capacity" type="number" step="any" min="0" placeholder="e.g. 500" style="flex:1;min-width:0"/>
+              <div class="unit-toggle" id="capacityUnitToggle">
+                <button type="button" class="unit-btn" id="unitKg" onclick="setCapacityUnit('KG')">KG</button>
+                <button type="button" class="unit-btn active" id="unitMt" onclick="setCapacityUnit('MT')">MT</button>
+              </div>
+            </div>
+            <input type="hidden" id="capacity_unit" value="MT"/>
+          </div>
+          <label class="field full">Additional details<textarea id="remarks"></textarea></label>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-h"><div class="card-t">Certification</div></div>
+        <div class="cert-card cert-msc">
+          <div class="cert-card-head"><span class="cert-badge cert-badge-msc">MSC</span><h3>MSC Chain of Custody certification</h3><span class="cert-optional-tag" id="mscTag" style="display:none">Filled</span></div>
+          <div class="cert-body-grid">
+            <label class="field">CoC certificate number<input id="msc_coc_cert" placeholder="e.g. MSC-C-12345" oninput="updateCertTag('msc','mscTag')"/></label>
+            <label class="field">CoC certificate name<input id="msc_coc_number" placeholder="Certificate name" oninput="updateCertTag('msc','mscTag')"/></label>
+            <label class="field">Certifier / CB<input id="msc_certifier" placeholder="Certification body" oninput="updateCertTag('msc','mscTag')"/></label>
+            <label class="field">Certifier website<input id="msc_website" placeholder="https://..."/></label>
+            <label class="field">Main activity<input id="msc_activity" placeholder="e.g. Storage, Processing"/></label>
+            <label class="field">Certificate URL<input id="msc_url" placeholder="Link to certificate"/></label>
+          </div>
+          <div class="field" style="margin-top:10px">Certified species
+            <div class="behalf-csel" id="speciesCsel">
+              <button type="button" class="behalf-trigger" id="speciesTrigger" onclick="toggleSpeciesPanel(event)"><span class="lbl ph" id="speciesTriggerLbl">Add species...</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></button>
+              <div class="behalf-panel" id="speciesPanel">
+                <div class="csel-search"><input type="text" id="speciesSearch" placeholder="Search species..." oninput="filterSpeciesPanel(this.value)" onclick="event.stopPropagation()"/></div>
+                <div id="speciesOpts"></div>
+              </div>
+              <select id="speciesSelect" style="display:none"><option value="">Add species...</option></select>
+            </div>
+            <div class="chips box" id="speciesChips"></div>
+          </div>
+        </div>
+        <div class="cert-two-col">
+          <div class="cert-card cert-approval">
+            <div class="cert-card-head"><span class="cert-badge cert-badge-uk">UK</span><h3>UK approval</h3><span class="cert-optional-tag" id="ukTag" style="display:none">Filled</span></div>
+            <div class="cert-body-grid cert-body-grid-2">
+              <label class="field">Approval number<input id="uk_approval" placeholder="e.g. UK-AB-1234" oninput="updateCertTag('uk','ukTag')"/></label>
+              <label class="field">Approval date<input id="uk_approval_date" type="date" oninput="updateCertTag('uk','ukTag')"/></label>
+              <label class="field" style="grid-column:1/-1">Authorised activities<input id="uk_activities" placeholder="e.g. Freezing, Cold Storage" oninput="updateCertTag('uk','ukTag')"/></label>
             </div>
           </div>
-          <input type="hidden" id="capacity_unit" value="MT"/>
-        </label>
-        <label class="field full">Additional Details<textarea id="remarks"></textarea></label>
-      </div>
-    </section>
-
-    <!-- GALLERY -->
-    <section class="card">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
-        <div>
-          <h2 style="margin:0;">Gallery</h2>
-          <div style="font-size:12px;color:#9aa0b4;margin-top:3px;">Organised into albums — photos and documents</div>
-        </div>
-        <button type="button" onclick="openCreateAlbum()" class="btn-gallery-add">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          New Album
-        </button>
-      </div>
-
-      <!-- Album grid view (default) -->
-      <div id="albumsView">
-        <div id="albumsGrid" class="albums-grid">
-          <div class="album-empty-state" id="albumsEmpty">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
-            <div>No albums yet</div>
-            <div style="font-size:12px;margin-top:4px;font-weight:400;color:#b0b6c4;">Click "New Album" to create your first album</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Single album view (when album is open) -->
-      <div id="albumDetailView" style="display:none;">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;">
-          <button onclick="closeAlbumDetail()" style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;border:1.5px solid var(--border);background:#fff;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;color:#6b7280;cursor:pointer;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-            Albums
-          </button>
-          <div>
-            <div style="font-size:15px;font-weight:700;color:#1a1a2e;" id="albumDetailName"></div>
-            <div style="font-size:11px;color:#9aa0b4;" id="albumDetailCount"></div>
-          </div>
-          <div style="margin-left:auto;display:flex;gap:8px;">
-            <button type="button" onclick="triggerAlbumUpload('image')" class="btn-gallery-add">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-              Add Photos
-            </button>
-            <button type="button" onclick="triggerAlbumUpload('pdf')" class="btn-gallery-add btn-gallery-pdf">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              Add PDF
-            </button>
-          </div>
-        </div>
-        <div id="albumDetailGrid" class="gallery-grid"></div>
-      </div>
-
-      <input type="file" id="galleryImageInput" accept="image/*" multiple style="display:none;" onchange="handleAlbumFiles(this,'image')"/>
-      <input type="file" id="galleryPdfInput" accept=".pdf" multiple style="display:none;" onchange="handleAlbumFiles(this,'pdf')"/>
-
-      <!-- Create album modal -->
-      <div id="createAlbumModal" onclick="if(event.target===this)closeCreateAlbum()" style="display:none;position:fixed;inset:0;background:rgba(20,24,45,.5);backdrop-filter:blur(4px);z-index:700;align-items:center;justify-content:center;">
-        <div style="background:#fff;border-radius:16px;padding:28px;width:340px;box-shadow:0 8px 32px rgba(0,0,0,0.15);">
-          <div style="font-size:15px;font-weight:700;color:#1a1a2e;margin-bottom:6px;">Create Album</div>
-          <div style="font-size:12px;color:#9aa0b4;margin-bottom:18px;">Give this album a name — e.g. "Interior", "Certificates 2024"</div>
-          <input id="newAlbumName" type="text" placeholder="Album name…"
-            style="width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:'Poppins',sans-serif;font-size:13px;outline:none;margin-bottom:14px;box-sizing:border-box;"
-            onkeydown="if(event.key==='Enter')confirmCreateAlbum()"
-            onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'"/>
-          <div style="display:flex;gap:8px;">
-            <button onclick="closeCreateAlbum()" style="flex:1;padding:10px;border:1.5px solid #e8eaf0;border-radius:8px;background:#fff;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;color:#6b7280;">Cancel</button>
-            <button onclick="confirmCreateAlbum()" style="flex:1;padding:10px;border:none;border-radius:8px;background:var(--primary);color:#fff;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Create</button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- CERTIFICATION -->
-    <section class="card">
-      <h2>Certification</h2>
-
-      <!-- ROW 1: MSC (full width) -->
-      <div class="cert-card cert-msc">
-        <div class="cert-card-head">
-          <div class="cert-badge cert-badge-msc">MSC</div>
-          <h3 style="margin:0;font-size:15px;font-weight:700;color:var(--text)">MSC Chain of Custody Certification</h3>
-          <span class="cert-optional-tag" id="mscTag" style="display:none">Filled</span>
-        </div>
-        <div class="cert-body-grid">
-          <label class="field">CoC Certificate Number<input id="msc_coc_cert" placeholder="e.g. MSC-C-12345" oninput="updateCertTag('msc','mscTag')"/></label>
-          <label class="field">CoC Certificate Name<input id="msc_coc_number" placeholder="Certificate name" /></label>
-          <label class="field">Certifier / CB<input id="msc_certifier" placeholder="Certification body" /></label>
-          <label class="field">Certifier Website<input id="msc_website" placeholder="https://..." /></label>
-          <label class="field">Main Activity<input id="msc_activity" placeholder="e.g. Storage, Processing" /></label>
-          <label class="field">Certificate URL<input id="msc_url" placeholder="Link to certificate" /></label>
-        </div>
-        <label class="field" style="margin-top:10px">Certified Species
-          <div class="behalf-csel" id="speciesCsel" style="margin-bottom:8px;">
-            <button type="button" class="behalf-trigger" id="speciesTrigger" onclick="toggleSpeciesPanel(event)">
-              <span class="lbl ph" id="speciesTriggerLbl">Add species…</span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            <div class="behalf-panel" id="speciesPanel">
-              <div class="csel-search"><input type="text" id="speciesSearch" placeholder="Search species…" oninput="filterSpeciesPanel(this.value)" onclick="event.stopPropagation()"/></div>
-              <div id="speciesOpts"></div>
+          <div class="cert-card cert-approval">
+            <div class="cert-card-head"><span class="cert-badge cert-badge-eu">EU</span><h3>EU approval</h3><span class="cert-optional-tag" id="euTag" style="display:none">Filled</span></div>
+            <div class="cert-body-grid cert-body-grid-2">
+              <label class="field">Approval number<input id="eu_approval" placeholder="e.g. IE 1234 EC" oninput="updateCertTag('eu','euTag')"/></label>
+              <label class="field">Approval date<input id="eu_approval_date" type="date" oninput="updateCertTag('eu','euTag')"/></label>
+              <label class="field" style="grid-column:1/-1">Activities / scope<input id="eu_activities" placeholder="e.g. Freezing, Cold Storage" oninput="updateCertTag('eu','euTag')"/></label>
             </div>
-            <select id="speciesSelect" style="display:none"><option value="">Add species…</option></select>
-          </div>
-          <div class="chips" id="speciesChips"></div>
-        </label>
-      </div>
-
-      <!-- ROW 2: UK + EU side by side -->
-      <div class="cert-two-col">
-
-        <!-- UK Approval -->
-        <div class="cert-card cert-approval">
-          <div class="cert-card-head">
-            <div class="cert-badge cert-badge-uk">UK</div>
-            <h3 style="margin:0;font-size:15px;font-weight:700;color:var(--text)">UK Approval</h3>
-            <span class="cert-optional-tag" id="ukTag" style="display:none">Filled</span>
-          </div>
-          <div class="cert-body-grid cert-body-grid-2">
-            <label class="field">Approval Number<input id="uk_approval" placeholder="e.g. UK-AB-1234" oninput="updateCertTag('uk','ukTag')"/></label>
-            <label class="field">Approval Date<input id="uk_approval_date" type="date"/></label>
-            <label class="field" style="grid-column:1/-1">Authorised Activities<input id="uk_activities" placeholder="e.g. Freezing, Cold Storage" /></label>
           </div>
         </div>
-
-        <!-- EU Approval -->
-        <div class="cert-card cert-approval">
-          <div class="cert-card-head">
-            <div class="cert-badge cert-badge-eu">EU</div>
-            <h3 style="margin:0;font-size:15px;font-weight:700;color:var(--text)">EU Approval</h3>
-            <span class="cert-optional-tag" id="euTag" style="display:none">Filled</span>
+        <div class="custom-cert">
+          <div class="field">Add your own certification
+            <span class="hint">Define any certification with your own fields. They are stored flexibly, so a new scheme never needs a database change.</span>
           </div>
-          <div class="cert-body-grid cert-body-grid-2">
-            <label class="field">Approval Number<input id="eu_approval" placeholder="e.g. IE 1234 EC" oninput="updateCertTag('eu','euTag')"/></label>
-            <label class="field">Approval Date<input id="eu_approval_date" type="date"/></label>
-            <label class="field" style="grid-column:1/-1">Activities / Scope<input id="eu_activities" placeholder="e.g. Freezing, Cold Storage" /></label>
-          </div>
+          <input id="custom_title" placeholder="Certification name (e.g. ASC CoC)" style="margin:10px 0"/>
+          <div id="customKV"></div>
+          <button type="button" class="add-link" id="addKV"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add field</button>
         </div>
-
-      </div>
-      <div class="cert-grid" style="display:none">
-
-      <!-- Custom certs: arbitrary key/value, stored as JSONB, no schema change -->
-      <div class="custom-cert">
-        <label class="field">Add your own certification
-          <span class="hint">Define any certification with your own fields — no developer needed. Stored flexibly so new schemes never require a database change.</span>
-        </label>
-        <input id="custom_title" placeholder="Certification name (e.g. ASC CoC)" style="margin:10px 0" />
-        <div id="customKV"></div>
-        <button type="button" class="add-link" id="addKV">+ Add field</button>
-      </div>
-    </section>
-
-    <div class="bar">
-      <button type="button" class="btn btn-ghost" id="cancelBtn">Cancel</button>
-      <button type="submit" class="btn btn-primary" id="saveBtn">Save facility</button>
+      </section>
     </div>
+
+    <div class="side">
+      <section class="card">
+        <div class="card-h"><div class="card-t">Cover photo</div></div>
+        <div class="cover" id="coverPhotoWrap" onclick="triggerCoverUpload()">
+          <img id="coverPhotoImg" src="" alt=""/>
+          <div id="coverPhotoPlaceholder"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><div>Add a cover photo</div><small>1200 x 400 px, JPG or PNG</small></div>
+          <button type="button" class="cover-btn" onclick="event.stopPropagation();triggerCoverUpload()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Change cover</button>
+          <input type="file" id="coverPhotoInput" accept="image/*" onchange="handleCoverPhoto(this)"/>
+        </div>
+        <input type="hidden" id="cover_photo_url"/>
+      </section>
+
+      <section class="card">
+        <div class="card-h"><div><div class="card-t">Gallery</div><div class="sub" style="font-size:12px;margin-top:0">Albums of photos and documents</div></div>
+          <button type="button" onclick="openCreateAlbum()" class="btn-gallery-add"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>New album</button></div>
+        <div id="albumsView">
+          <div id="albumsGrid" class="albums-grid">
+            <div class="album-empty-state" id="albumsEmpty"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg><div>No albums yet</div><small>Use New album to create the first one</small></div>
+          </div>
+        </div>
+        <div id="albumDetailView" style="display:none">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+            <button type="button" class="album-back" onclick="closeAlbumDetail()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>Albums</button>
+            <div style="min-width:0;flex:1"><div style="font-size:14.5px" id="albumDetailName"></div><div class="lbl" id="albumDetailCount"></div></div>
+          </div>
+          <div style="display:flex;gap:6px;margin-bottom:12px">
+            <button type="button" onclick="triggerAlbumUpload('image')" class="btn-gallery-add"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>Add photos</button>
+            <button type="button" onclick="triggerAlbumUpload('pdf')" class="btn-gallery-add btn-gallery-pdf"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>Add PDF</button>
+          </div>
+          <div id="albumDetailGrid" class="gallery-grid"></div>
+        </div>
+        <input type="file" id="galleryImageInput" accept="image/*" multiple onchange="handleAlbumFiles(this,'image')"/>
+        <input type="file" id="galleryPdfInput" accept=".pdf" multiple onchange="handleAlbumFiles(this,'pdf')"/>
+      </section>
+    </div>
+  </div>
   </form>
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- CREATE ALBUM -->
+<div class="ovl" id="createAlbumModal" onclick="if(event.target===this)closeCreateAlbum()">
+  <div class="mbox" style="width:400px">
+    <div class="mhead"><div><h3 class="modal-h">Create album</h3><div class="sub" style="font-size:12.5px">Give it a name, e.g. "Interior" or "Certificates 2024".</div></div>
+      <button class="x-btn" type="button" onclick="closeCreateAlbum()" aria-label="Close">&times;</button></div>
+    <div class="mbody"><input id="newAlbumName" type="text" placeholder="Album name..." onkeydown="if(event.key==='Enter'){event.preventDefault();confirmCreateAlbum()}" style="height:40px;width:100%;border:1px solid var(--line);border-radius:10px;padding:0 13px;font:inherit;font-size:13px;font-weight:300;outline:0"/></div>
+    <div class="mfoot"><button type="button" class="pill-btn" onclick="closeCreateAlbum()">Cancel</button><button type="button" class="pill-btn primary" onclick="confirmCreateAlbum()">Create</button></div>
+  </div>
+</div>
+
+<!-- MAP PICKER -->
+<div class="ovl" id="mapPickerModal" onclick="if(event.target===this)closeMapPicker()">
+  <div class="mbox" style="width:720px">
+    <div class="mhead"><div><h3 class="modal-h">Pick location</h3><div class="sub" style="font-size:12.5px" id="mapPickerHint">Click anywhere on the map to place a pin.</div></div>
+      <button class="x-btn" type="button" onclick="closeMapPicker()" aria-label="Close">&times;</button></div>
+    <div id="mapPickerEl"></div>
+    <div class="mfoot" style="justify-content:space-between;align-items:center">
+      <div class="lbl" id="mapPickerSelected">No location selected</div>
+      <div style="display:flex;gap:8px"><button type="button" class="pill-btn" onclick="closeMapPicker()">Cancel</button><button type="button" class="pill-btn primary" onclick="confirmMapPick()" id="mapPickerConfirm" disabled>Use this location</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div class="ovl" id="confirmModal">
+  <div class="mbox" style="width:420px;text-align:center">
+    <div class="mbody" style="padding:30px 28px 22px">
+      <div style="width:52px;height:52px;border-radius:50%;background:var(--crit-bg);color:var(--crit);display:grid;place-items:center;margin:0 auto 14px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg></div>
+      <h3 class="modal-h" id="confirmTitle">Delete?</h3><p class="sub" id="confirmText" style="font-size:13px;margin:8px 0 0"></p>
+    </div>
+    <div class="mfoot" style="justify-content:center"><button type="button" class="pill-btn" id="confirmNo">Cancel</button><button type="button" class="pill-btn primary" id="confirmYes" style="background:var(--crit);border-color:var(--crit);box-shadow:none">Delete</button></div>
+  </div>
+</div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+/* defined in the original inside the supabase <script src> tag, where browsers ignore it */
+function updateCertTag(prefix, tagId){
+  const fields={msc:['msc_coc_cert','msc_coc_number','msc_certifier'],uk:['uk_approval','uk_approval_date','uk_activities'],eu:['eu_approval','eu_approval_date','eu_activities']};
+  const filled=(fields[prefix]||[]).some(id=>{ const el=document.getElementById(id); return el&&el.value.trim(); });
+  const tag=document.getElementById(tagId); if(tag) tag.style.display=filled?'inline-flex':'none';
+}
+function askConfirm(title,text,ok){ return new Promise(res=>{ const m=document.getElementById('confirmModal');
+  document.getElementById('confirmTitle').textContent=title; document.getElementById('confirmText').textContent=text||''; document.getElementById('confirmYes').textContent=ok||'Delete';
+  const done=v=>{ m.classList.remove('open'); document.removeEventListener('keydown',k); res(v); }; const k=e=>{ if(e.key==='Escape') done(false); };
+  document.getElementById('confirmYes').onclick=()=>done(true); document.getElementById('confirmNo').onclick=()=>done(false);
+  document.addEventListener('keydown',k); m.classList.add('open'); }); }
+const escH=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+
 /* =====================================================================
    SET YOUR PROJECT VALUES HERE (same as your other Manhattan pages)
    ===================================================================== */
@@ -874,7 +698,7 @@ const selectedOrgs = new Map();      // org_id -> name
 const selectedSpecies = new Map();   // species_id -> name
 
 function toast(msg, err=false){
-  const t=$('toast'); t.textContent=msg; t.className='toast show'+(err?' err':'');
+  const t=$('toast'); t.textContent=msg; t.className='toast show'+(err===true?' err':err==='ok'?' ok':'');
   setTimeout(()=>t.className='toast',2600);
 }
 
@@ -884,17 +708,17 @@ function enhanceSelect(sel, opts={}){
   const wrap=document.createElement('div'); wrap.className='csel';
   sel.parentNode.insertBefore(wrap, sel); wrap.appendChild(sel);
   const trigger=document.createElement('button'); trigger.type='button'; trigger.className='csel-trigger';
-  trigger.innerHTML='<span class="lbl"></span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+  trigger.innerHTML='<span class="lbl"></span><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
   const panel=document.createElement('div'); panel.className='csel-panel';
   wrap.appendChild(trigger); wrap.appendChild(panel);
   const lbl=trigger.querySelector('.lbl');
-  const placeholder=(sel.options[0]&&sel.options[0].value==='')?sel.options[0].textContent:(opts.placeholder||'Select…');
+  const placeholder=(sel.options[0]&&sel.options[0].value==='')?sel.options[0].textContent:(opts.placeholder||'Select...');
 
   function build(filter=''){
     panel.innerHTML='';
     if(opts.search){
       const box=document.createElement('div'); box.className='csel-search';
-      box.innerHTML='<input type="text" placeholder="Search…" />';
+      box.innerHTML='<input type="text" placeholder="Search..." />';
       panel.appendChild(box);
       const inp=box.querySelector('input'); inp.value=filter;
       inp.addEventListener('input',()=>build(inp.value));
@@ -937,7 +761,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySele
   isAdmin = prof && ['admin','operator'].includes(prof.role);
   applyAvatar(prof, user.email);
   if(!isAdmin){
-    $('gate').style.display='block';
+    $('gate').style.display='block'; $('saveBtn').disabled=true; setTimeout(()=>{ $('cancelBtn').disabled=false; });
     $('csForm').querySelectorAll('input,select,textarea,button').forEach(el=>el.disabled=true);
     return;
   }
@@ -952,7 +776,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySele
   addKVRow();
 
   if(editId){
-    $('pageTitle').textContent='Edit Cold Storage';
+    $('pageTitle').textContent='Edit cold storage'; $('crumbNow').textContent='Edit';
     $('saveBtn').textContent='Save changes';
     await loadFacility(editId);
     syncCustomSelects();
@@ -981,7 +805,7 @@ async function loadCountries(){
 function addOrgChip(id,name){
   if(selectedOrgs.has(id))return; selectedOrgs.set(id,name);
   const c=document.createElement('span'); c.className='chip'; c.dataset.id=id;
-  c.innerHTML=`${name} <button type="button">×</button>`;
+  c.innerHTML=`${escH(name)} <button type="button" aria-label="Remove">&times;</button>`;
   c.querySelector('button').onclick=()=>{ selectedOrgs.delete(id); c.remove(); if(typeof updateBehalfTriggerLabel==='function') updateBehalfTriggerLabel(); };
   $('behalfChips').appendChild(c);
   if(typeof updateBehalfTriggerLabel==='function') updateBehalfTriggerLabel();
@@ -989,8 +813,8 @@ function addOrgChip(id,name){
 function addSpeciesChip(id,name){
   if(selectedSpecies.has(id))return; selectedSpecies.set(id,name);
   const c=document.createElement('span'); c.className='chip'; c.dataset.id=id;
-  c.innerHTML=`${name} <button type="button">×</button>`;
-  c.querySelector('button').onclick=()=>{ selectedSpecies.delete(id); c.remove(); };
+  c.innerHTML=`${escH(name)} <button type="button" aria-label="Remove">&times;</button>`;
+  c.querySelector('button').onclick=()=>{ selectedSpecies.delete(id); c.remove(); if(typeof updateSpeciesTriggerLabel==='function') updateSpeciesTriggerLabel(); };
   $('speciesChips').appendChild(c);
   if(typeof updateSpeciesTriggerLabel==='function') updateSpeciesTriggerLabel();
 }
@@ -999,12 +823,12 @@ function addSpeciesChip(id,name){
 function addContactRow(v={}){
   const row=document.createElement('div'); row.className='repeat-row';
   row.innerHTML=`
-    <label class="field">Contact Person<input class="c-name" value="${v.contact_name||''}"></label>
-    <label class="field">Designation<input class="c-desig" value="${v.designation||''}"></label>
-    <label class="field">Phone<input class="c-phone" value="${v.phone||''}"></label>
-    <label class="field">Email<input class="c-email" value="${v.email||''}"></label>
-    <button type="button" class="icon-btn" title="Remove">✕</button>`;
-  row.querySelector('.icon-btn').onclick=()=>row.remove();
+    <label class="field">Contact person<input class="c-name" value="${escH(v.contact_name||'')}"></label>
+    <label class="field">Designation<input class="c-desig" value="${escH(v.designation||'')}"></label>
+    <label class="field">Phone<input class="c-phone" value="${escH(v.phone||'')}"></label>
+    <label class="field">Email<input class="c-email" value="${escH(v.email||'')}"></label>
+    <button type="button" class="row-x" title="Remove">&times;</button>`;
+  row.querySelector('.row-x').onclick=()=>row.remove();
   $('contacts').appendChild(row);
 }
 $('addContact').onclick=()=>addContactRow();
@@ -1013,10 +837,10 @@ $('addContact').onclick=()=>addContactRow();
 function addKVRow(v={}){
   const row=document.createElement('div'); row.className='kv-row';
   row.innerHTML=`
-    <input class="kv-k" placeholder="Field name" value="${v.k||''}">
-    <input class="kv-v" placeholder="Value" value="${v.v||''}">
-    <button type="button" class="icon-btn" title="Remove">✕</button>`;
-  row.querySelector('.icon-btn').onclick=()=>row.remove();
+    <input class="kv-k" placeholder="Field name" value="${escH(v.k||'')}">
+    <input class="kv-v" placeholder="Value" value="${escH(v.v||'')}">
+    <button type="button" class="row-x" title="Remove">&times;</button>`;
+  row.querySelector('.row-x').onclick=()=>row.remove();
   $('customKV').appendChild(row);
 }
 $('addKV').onclick=()=>addKVRow();
@@ -1027,6 +851,7 @@ async function loadFacility(id){
   if(!f){ toast('Facility not found',true); return; }
   ['name','storage_type','status','address','state_province','city','country','postal_code','gln','latitude','longitude','remarks']
     .forEach(k=>{ if($(k)!=null && f[k]!=null) $(k).value=f[k]; });
+  if(f.additional_details!=null) $('remarks').value=f.additional_details;  /* saved as additional_details */
   // Load storage capacity + unit
   if (f.storage_capacity) {
     const parts = String(f.storage_capacity).trim().split(' ');
@@ -1042,10 +867,10 @@ async function loadFacility(id){
     document.getElementById('parent_company_id').value = f.parent_company_id;
     document.getElementById('parent_company_search').value = f.parent_company_name;
     document.getElementById('parentCompanyChip').innerHTML =
-      `<span style="display:inline-flex;align-items:center;gap:6px;background:#eef4fd;border:1.5px solid #b8d0f8;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600;color:#1a6fdb;font-family:Poppins,sans-serif;">${f.parent_company_name}<button type="button" onclick="clearParent()" style="background:none;border:none;cursor:pointer;color:#9aa0b4;font-size:13px;line-height:1;">×</button></span>`;
+      `<span class="chip">${escH(f.parent_company_name)}<button type="button" onclick="clearParent()" aria-label="Clear">&times;</button></span>`;
   }
   if (f.gallery_items) {
-    try { loadGalleryItems(JSON.parse(f.gallery_items)); } catch(e) {}
+    try { loadGalleryItems(f.gallery_items); } catch(e) {}
   }
 
   const { data:grants } = await sb.from('cold_storage_access')
@@ -1062,6 +887,7 @@ async function loadFacility(id){
       $('msc_certifier').value=d.certifier||''; $('msc_website').value=d.website||'';
       $('msc_activity').value=d.main_activity||''; $('msc_url').value=d.url||'';
       (d.species||[]).forEach(s=>addSpeciesChip(s.id,s.name));
+      updateCertTag('msc','mscTag');
     } else if(c.cert_type==='UK Approval'){
       $('uk_approval').value=(c.data||{}).number||'';
       $('uk_approval_date').value=(c.data||{}).date||'';
@@ -1150,7 +976,7 @@ $('csForm').addEventListener('submit', async e=>{
       certs.push({facility_id:facilityId,cert_type:'Custom',title:$('custom_title').value,data:kv});
     if(certs.length) await sb.from('cold_storage_certifications').insert(certs);
 
-    toast('Cold storage saved');
+    toast('Cold storage saved','ok');
     setTimeout(()=>location.href='cold-storage-list.html',900);
   }catch(err){
     console.error(err); toast(err.message||'Something went wrong',true); $('saveBtn').disabled=false;
@@ -1159,51 +985,25 @@ $('csForm').addEventListener('submit', async e=>{
 
 /* ---- shared nav behaviour ---- */
 function toggleAvatarMenu(){ document.getElementById('avatarMenu').classList.toggle('open'); }
-document.addEventListener('click', e=>{ if(!e.target.closest('.avatar-btn')) document.getElementById('avatarMenu')?.classList.remove('open'); });
+document.addEventListener('click', e=>{ if(!e.target.closest('.avatar-wrap')) document.getElementById('avatarMenu')?.classList.remove('open'); });
 async function handleLogout(){ await sb.auth.signOut(); location.href='index.html'; }
-function applyAvatar(p, email){
+function applyAvatar(p,email){
   const first=(p&&p.first_name)||(email?email.split('@')[0]:'')||'User';
   const last=(p&&p.last_name)||'';
-  const initials=((first.charAt(0)||'')+(last.charAt(0)||'')).toUpperCase()||'··';
   const btn=document.getElementById('avatarBtn');
-  if(p&&p.photo_url){ btn.innerHTML=`<img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover" />`; }
-  else { btn.style.background=(p&&p.avatar_color)||'#1a6fdb'; document.getElementById('avatarInitials').textContent=initials; }
-  const g=document.getElementById('avatarGreeting'); if(g) g.textContent=`Hello, ${first}!`;
+  if(p&&p.photo_url){ btn.innerHTML=`<img src="${String(p.photo_url).replace(/"/g,'&quot;')}" alt="" style="width:100%;height:100%;object-fit:cover"/>`; }
+  else{ btn.style.background=(p&&p.avatar_color)||'#2f6fed'; document.getElementById('avatarInitials').textContent=((first.charAt(0)||'')+(last.charAt(0)||'')).toUpperCase()||'··'; }
+  const g=document.getElementById('avatarGreeting'); if(g) g.textContent=`Hello, ${first}`;
 }
 
+
 </script>
-
-<!-- MAP PICKER MODAL -->
-<div id="mapPickerModal" onclick="if(event.target===this)closeMapPicker()" style="display:none;position:fixed;inset:0;background:rgba(20,24,45,.55);backdrop-filter:blur(5px);z-index:900;align-items:center;justify-content:center;">
-  <div style="background:#fff;border-radius:20px;box-shadow:0 8px 40px rgba(20,24,45,.18);width:680px;max-width:95vw;overflow:hidden;display:flex;flex-direction:column;">
-    <!-- Header -->
-    <div style="padding:18px 22px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #e8eaf0;">
-      <div>
-        <div style="font-size:15px;font-weight:700;color:#1a1a2e;">Pick Location</div>
-        <div style="font-size:12px;color:#9aa0b4;margin-top:2px;" id="mapPickerHint">Click anywhere on the map to place a pin</div>
-      </div>
-      <button onclick="closeMapPicker()" style="width:30px;height:30px;border-radius:50%;border:1.5px solid #e8eaf0;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#9aa0b4;">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <!-- Map -->
-    <div id="mapPickerEl" style="height:420px;width:100%;"></div>
-    <!-- Footer -->
-    <div style="padding:14px 22px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid #e8eaf0;gap:12px;">
-      <div style="font-size:13px;color:#4a4e69;" id="mapPickerSelected">No location selected</div>
-      <div style="display:flex;gap:8px;">
-        <button onclick="closeMapPicker()" style="padding:8px 18px;border-radius:8px;border:1.5px solid #e8eaf0;background:#fff;font:600 13px/1 inherit;cursor:pointer;color:#6b7280;">Cancel</button>
-        <button onclick="confirmMapPick()" id="mapPickerConfirm" disabled style="padding:8px 18px;border-radius:8px;border:none;background:#1a6fdb;color:#fff;font:600 13px/1 inherit;cursor:pointer;opacity:.4;">Use this location</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <script>
+
 let _mapPicker = null, _mapMarker = null, _pickedLat = null, _pickedLon = null;
 
 function openMapPicker() {
-  document.getElementById('mapPickerModal').style.display = 'flex';
+  document.getElementById('mapPickerModal').classList.add('open');
 
   // Init map once
   if (!_mapPicker) {
@@ -1222,10 +1022,9 @@ function openMapPicker() {
       else _mapMarker = L.marker([_pickedLat, _pickedLon]).addTo(_mapPicker);
 
       document.getElementById('mapPickerSelected').textContent =
-        `📍 ${_pickedLat}, ${_pickedLon}`;
+        `${_pickedLat}, ${_pickedLon}`;
       const btn = document.getElementById('mapPickerConfirm');
       btn.disabled = false;
-      btn.style.opacity = '1';
     });
   }
 
@@ -1238,9 +1037,9 @@ function openMapPicker() {
     if (_mapMarker) _mapMarker.setLatLng([existLat, existLon]);
     else _mapMarker = L.marker([existLat, existLon]).addTo(_mapPicker);
     document.getElementById('mapPickerSelected').textContent =
-      `📍 ${existLat}, ${existLon}`;
+      `${existLat}, ${existLon}`;
     const btn = document.getElementById('mapPickerConfirm');
-    btn.disabled = false; btn.style.opacity = '1';
+    btn.disabled = false;
   }
 
   // Leaflet needs a size refresh after display:flex
@@ -1248,7 +1047,7 @@ function openMapPicker() {
 }
 
 function closeMapPicker() {
-  document.getElementById('mapPickerModal').style.display = 'none';
+  document.getElementById('mapPickerModal').classList.remove('open');
 }
 
 function confirmMapPick() {
@@ -1256,12 +1055,12 @@ function confirmMapPick() {
   document.getElementById('latitude').value  = _pickedLat;
   document.getElementById('longitude').value = _pickedLon;
   document.getElementById('mapPickerCoords').textContent =
-    `📍 ${_pickedLat}, ${_pickedLon}`;
+    `${_pickedLat}, ${_pickedLon}`;
   closeMapPicker();
 }
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape' && document.getElementById('mapPickerModal').style.display === 'flex')
+  if (e.key === 'Escape' && document.getElementById('mapPickerModal').classList.contains('open'))
     closeMapPicker();
 });
 
@@ -1374,7 +1173,7 @@ function filterBehalfPanel(val) { renderBehalfOpts(val); }
 function updateBehalfTriggerLabel() {
   const lbl = document.getElementById('behalfTriggerLbl');
   const count = selectedOrgs.size;
-  if (count === 0) { lbl.textContent = 'Add organisation…'; lbl.className = 'lbl ph'; }
+  if (count === 0) { lbl.textContent = 'Add organisation...'; lbl.className = 'lbl ph'; }
   else { lbl.textContent = count === 1 ? '1 organisation selected' : count + ' organisations selected'; lbl.className = 'lbl'; }
 }
 
@@ -1398,7 +1197,7 @@ function editTempVal(which) {
   const inp = document.createElement('input');
   inp.type = 'number'; inp.step = '1';
   inp.value = current ?? '';
-  inp.style.cssText = 'width:60px;font-size:26px;font-weight:800;font-family:inherit;border:none;border-bottom:2px solid var(--primary);background:transparent;color:var(--primary);text-align:center;outline:none;';
+  inp.style.cssText = 'width:64px;height:auto;padding:0;font-size:26px;font-weight:300;font-family:Poppins,sans-serif;border:none;border-bottom:2px solid var(--accent);border-radius:0;background:transparent;color:var(--accent);text-align:center;outline:none;box-shadow:none;';
   disp.replaceWith(inp);
   inp.focus(); inp.select();
   function commit() {
@@ -1474,7 +1273,7 @@ function filterSpeciesPanel(val) { renderSpeciesOpts(val); }
 function updateSpeciesTriggerLabel() {
   const lbl = document.getElementById('speciesTriggerLbl');
   const count = selectedSpecies.size;
-  if (count === 0) { lbl.textContent = 'Add species…'; lbl.className = 'lbl ph'; }
+  if (count === 0) { lbl.textContent = 'Add species...'; lbl.className = 'lbl ph'; }
   else { lbl.textContent = count === 1 ? '1 species selected' : count + ' species selected'; lbl.className = 'lbl'; }
 }
 
@@ -1502,13 +1301,14 @@ function triggerCoverUpload() {
 async function handleCoverPhoto(input) {
   const file = input.files[0];
   if (!file) return;
-  const toast = showUploadToast('Uploading cover photo…');
+  const toast = showUploadToast('Uploading cover photo...');
   const url = await uploadToStorage(file, 'covers');
   if (url) {
     document.getElementById('cover_photo_url').value = url;
     const img = document.getElementById('coverPhotoImg');
     img.src = url; img.style.display = 'block';
     document.getElementById('coverPhotoPlaceholder').style.display = 'none';
+    document.getElementById('coverPhotoWrap').classList.add('has-photo');
   }
   toast.remove();
 }
@@ -1519,11 +1319,12 @@ function loadCoverPhoto(url) {
   const img = document.getElementById('coverPhotoImg');
   img.src = url; img.style.display = 'block';
   document.getElementById('coverPhotoPlaceholder').style.display = 'none';
+  document.getElementById('coverPhotoWrap').classList.add('has-photo');
 }
 
 function showUploadToast(msg) {
   const t = document.createElement('div');
-  t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a2e;color:#fff;padding:10px 20px;border-radius:999px;font-family:"Poppins",sans-serif;font-size:13px;font-weight:600;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
+  t.className = 'upload-toast';
   t.textContent = msg;
   document.body.appendChild(t);
   return t;
@@ -1543,20 +1344,18 @@ async function searchParentCompany(query) {
       .limit(8);
     dd.innerHTML = '';
     if (!data || !data.length) {
-      dd.innerHTML = '<div style="padding:10px 14px;font-size:13px;color:#9aa0b4;font-family:Poppins,sans-serif;">No matches</div>';
+      dd.innerHTML = '<div class="csel-empty">No matches</div>';
     } else {
       data.forEach(cs => {
         const div = document.createElement('div');
-        div.style.cssText = 'padding:10px 14px;cursor:pointer;font-size:13px;font-family:Poppins,sans-serif;color:#1a1a2e;transition:background .12s;border-bottom:1px solid #f0f2f7;';
-        div.onmouseover = () => div.style.background = '#f4f8ff';
-        div.onmouseout  = () => div.style.background = '';
-        div.innerHTML = `<div style="font-weight:600">${cs.name}</div><div style="font-size:11px;color:#9aa0b4;">${[cs.city,cs.country].filter(Boolean).join(', ')}</div>`;
+        div.className = 'pc-opt';
+        div.innerHTML = `${escH(cs.name)}<small>${escH([cs.city,cs.country].filter(Boolean).join(', '))}</small>`;
         div.onclick = () => {
           document.getElementById('parent_company_search').value = cs.name;
           document.getElementById('parent_company_id').value = cs.id;
           dd.style.display = 'none';
           const chip = document.getElementById('parentCompanyChip');
-          chip.innerHTML = `<span style="display:inline-flex;align-items:center;gap:6px;background:#eef4fd;border:1.5px solid #b8d0f8;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600;color:#1a6fdb;font-family:Poppins,sans-serif;">${cs.name}<button type="button" onclick="clearParent()" style="background:none;border:none;cursor:pointer;color:#9aa0b4;font-size:13px;line-height:1;">×</button></span>`;
+          chip.innerHTML = `<span class="chip">${escH(cs.name)}<button type="button" onclick="clearParent()" aria-label="Clear">&times;</button></span>`;
         };
         dd.appendChild(div);
       });
@@ -1583,11 +1382,11 @@ let _activeAlbumId = null;
 // ─ Album CRUD ─
 function openCreateAlbum() {
   document.getElementById('newAlbumName').value = '';
-  document.getElementById('createAlbumModal').style.display = 'flex';
+  document.getElementById('createAlbumModal').classList.add('open');
   setTimeout(() => document.getElementById('newAlbumName').focus(), 80);
 }
 function closeCreateAlbum() {
-  document.getElementById('createAlbumModal').style.display = 'none';
+  document.getElementById('createAlbumModal').classList.remove('open');
 }
 function confirmCreateAlbum() {
   const name = document.getElementById('newAlbumName').value.trim();
@@ -1597,8 +1396,8 @@ function confirmCreateAlbum() {
   renderAlbumsGrid();
 }
 
-function deleteAlbum(id) {
-  if (!confirm('Delete this album and all its contents?')) return;
+async function deleteAlbum(id) {
+  if (!(await askConfirm('Delete album?', 'The album and everything in it will be removed when you save.', 'Delete'))) return;
   _albums = _albums.filter(a => a.id !== id);
   renderAlbumsGrid();
 }
@@ -1609,35 +1408,35 @@ function renderAlbumsGrid() {
   const empty = document.getElementById('albumsEmpty');
   if (!_albums.length) {
     grid.innerHTML = '';
-    grid.appendChild(empty || createEmptyState());
+    if (empty) grid.appendChild(empty);
     return;
   }
-  grid.innerHTML = _albums.map(album => {
+  grid.innerHTML = _albums.map((album, ai) => {
     const imgs = album.items.filter(i => i.type === 'image');
     const count = album.items.length;
     let cover = '';
     if (imgs.length >= 4) {
       cover = `<div class="album-cover-grid">
-        ${imgs.slice(0,4).map(i => `<img src="${i.url}" alt="" loading="lazy"/>`).join('')}
+        ${imgs.slice(0,4).map(i => `<img src="${escH(i.url)}" alt="" loading="lazy"/>`).join('')}
       </div>`;
     } else if (imgs.length > 0) {
-      cover = `<img src="${imgs[0].url}" alt="" style="width:100%;height:100%;object-fit:cover;"/>`;
+      cover = `<img src="${escH(imgs[0].url)}" alt=""/>`;
     } else {
       cover = `<div class="album-cover-placeholder">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
       </div>`;
     }
-    return `<div class="album-card" onclick="openAlbumDetail('${album.id}')">
-      <div class="album-cover" style="position:relative;">
+    return `<div class="album-card" style="animation-delay:${ai*40}ms" onclick="openAlbumDetail('${escH(album.id)}')">
+      <div class="album-cover">
         ${cover}
         <div class="album-actions">
-          <button class="album-action-btn" onclick="event.stopPropagation();deleteAlbum('${album.id}')" title="Delete album">
+          <button type="button" class="album-action-btn" onclick="event.stopPropagation();deleteAlbum('${escH(album.id)}')" title="Delete album">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
           </button>
         </div>
       </div>
       <div class="album-info">
-        <div class="album-name">${album.name}</div>
+        <div class="album-name">${escH(album.name)}</div>
         <div class="album-count">${count} item${count !== 1 ? 's' : ''}</div>
       </div>
     </div>`;
@@ -1667,22 +1466,18 @@ function renderAlbumDetail(album) {
   const count = album.items.length;
   document.getElementById('albumDetailCount').textContent = `${count} item${count !== 1 ? 's' : ''}`;
   if (!count) {
-    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:48px 0;color:#9aa0b4;">
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:10px;"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-      <div style="font-size:13px;font-weight:600;font-family:'Poppins',sans-serif;">Album is empty</div>
-      <div style="font-size:12px;margin-top:4px;font-family:'Poppins',sans-serif;">Use the buttons above to add photos or documents</div>
-    </div>`;
+    grid.innerHTML = `<div class="album-empty-state"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><div>Album is empty</div><small>Use the buttons above to add photos or documents</small></div>`;
     return;
   }
   grid.innerHTML = album.items.map(item => item.type === 'pdf' ? `
-    <div class="gallery-pdf-item" onclick="window.open('${item.url}','_blank')">
-      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-      <span>${item.name.replace(/\.pdf$/i,'')}</span>
-      <button class="gallery-del" onclick="event.stopPropagation();deleteAlbumItem('${item.id}')">×</button>
+    <div class="gallery-pdf-item" onclick="window.open('${escH(item.url)}','_blank')">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span>${escH(item.name.replace(/\.pdf$/i,''))}</span>
+      <button type="button" class="gallery-del" onclick="event.stopPropagation();deleteAlbumItem('${escH(item.id)}')">&times;</button>
     </div>` : `
-    <div class="gallery-item" onclick="window.open('${item.url}','_blank')">
-      <img src="${item.url}" alt="${item.name}" loading="lazy"/>
-      <button class="gallery-del" onclick="event.stopPropagation();deleteAlbumItem('${item.id}')">×</button>
+    <div class="gallery-item" onclick="window.open('${escH(item.url)}','_blank')">
+      <img src="${escH(item.url)}" alt="${escH(item.name)}" loading="lazy"/>
+      <button type="button" class="gallery-del" onclick="event.stopPropagation();deleteAlbumItem('${escH(item.id)}')">&times;</button>
     </div>`).join('');
 }
 
@@ -1699,7 +1494,7 @@ async function handleAlbumFiles(input, type) {
   input.value = '';
   const album = _albums.find(a => a.id === _activeAlbumId);
   if (!album) return;
-  const toast = showUploadToast(`Uploading ${files.length} file${files.length > 1 ? 's' : ''}…`);
+  const toast = showUploadToast(`Uploading ${files.length} file${files.length > 1 ? 's' : ''}...`);
   for (const file of files) {
     const url = await uploadToStorage(file, `gallery/${album.name.toLowerCase().replace(/\s+/g,'-')}`);
     if (url) {
@@ -1729,4 +1524,15 @@ function loadGalleryItems(data) {
   renderAlbumsGrid();
 }
 
->
+// Esc closes the album dialog too
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCreateAlbum(); });
+// keep the KG / MT switch in step with the stored unit (MT by default)
+setCapacityUnit(document.getElementById('capacity_unit').value || 'MT');
+
+</script>
+
+<script>
+if (typeof window.launchModule !== 'function') { window.launchModule = function(url){ window.location.href = url; }; }
+</script>
+</body>
+</html>

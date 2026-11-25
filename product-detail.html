@@ -1,201 +1,386 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Product Detail — SmarTuna concept</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="icon" type="image/png" href="sc-blue-logo.png" />
-  <link rel="stylesheet" href="product-detail.css" />
-  <style>
-    /* ── SMARTUNA WORDMARK ── */
-    @font-face {
-      font-family: 'Bitsumis';
-      src: url('BITSUMIS.TTF') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-      font-display: swap;
-    }
-    .sc-wm {
-      display: inline-flex;
-      flex-direction: column;
-      align-items: flex-start;
-      line-height: 1;
-      gap: 0;
-      text-decoration: none;
-    }
-    .sc-wm-top {
-      font-family: 'Bitsumis', sans-serif !important;
-      font-weight: 900 !important;
-      font-size: 16px;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      line-height: 1;
-      background: linear-gradient(90deg, #1a6fdb, #1a6fdb) !important;
-      -webkit-background-clip: text !important;
-      -webkit-text-fill-color: transparent !important;
-      background-clip: text !important;
-    }
-    .sc-wm-sub {
-      font-family: 'Bitsumis', sans-serif !important;
-      font-weight: 700 !important;
-      font-size: 7px;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: #1a1a2e;
-      -webkit-text-fill-color: #1a1a2e !important;
-      margin-top: 2px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product Detail · SmarTuna concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="sc-blue-logo.png">
+<style>
+
+  @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');font-weight:normal;font-style:normal;font-display:swap}
+  :root{
+    --accent:#2f6fed; --accent-soft:rgba(47,111,237,.10); --accent-line:#cddcf8;
+    --ink:#14161a; --muted:#6b7380; --faint:#9aa1ad; --line:#e6e8ec; --line2:#eef0f3; --page:#f6f7f9; --white:#fff;
+    --mono:Consolas,"SFMono-Regular",Menlo,monospace;
+    --ok:#178a4c; --ok-bg:#e8f6ee; --ok-line:#c7e8d4;
+    --low:#2f6fed; --low-bg:#edf3fe; --low-line:#cddcf8;
+    --med:#b7791f; --med-bg:#fdf4e3; --med-line:#f1dcae;
+    --crit:#d64545; --crit-bg:#fdeceb; --crit-line:#f5c9c6;
+    --ease:cubic-bezier(.16,1,.3,1); --spring:cubic-bezier(.34,1.56,.64,1);
+  }
+  *{box-sizing:border-box}
+  html,body{overflow-x:clip}
+  body{margin:0;font-family:Poppins,system-ui,sans-serif;font-weight:400;font-size:14px;font-synthesis:none;color:var(--ink);background:var(--page);line-height:1.55;-webkit-font-smoothing:antialiased}
+  b,strong,h1,h2,h3,h4,th,[style*="font-weight"]{font-weight:400!important}
+  a{color:inherit;text-decoration:none}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .wrap{max-width:1680px;margin:0 auto;padding:0 clamp(16px,3vw,48px)}
+  .mono{font-family:var(--mono)}
+  .hidden{display:none!important}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* shared pieces */
+  .eyebrow{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.04em;display:flex;align-items:center;gap:10px}
+  .lbl{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.03em}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:18px 20px;min-width:0}
+  .card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border:1px solid var(--line);border-radius:999px;background:var(--white);font-size:13px;font-weight:300;color:var(--ink);white-space:nowrap;cursor:pointer;transition:border-color .2s,color .2s,background .2s,transform .2s,box-shadow .2s}
+  .btn svg{flex:none}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.25)}
+  .btn.primary:hover{background:#2560d6;color:#fff;transform:translateY(-1px)}
+  .btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+  .btn:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .badge{font-family:var(--mono);font-size:10.5px;padding:1px 8px;border-radius:999px;border:1px solid;line-height:1.5}
+  .badge.new{color:var(--accent);border-color:var(--accent-line);background:#f3f7ff}
+  .badge.beta{color:#9a6a12;border-color:#efdcae;background:#fdf7e7}
+  .cnt{font-family:var(--mono);font-size:10.5px;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;display:inline-grid;place-items:center}
+
+  .mri-status-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:999px;font-size:12px;border:1px solid transparent;white-space:nowrap}
+  .mri-status-pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .mri-status-pill.transparent{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .mri-status-pill.low{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .mri-status-pill.medium{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .mri-status-pill.critical{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+  .kde-weight{display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;font-family:var(--mono);font-size:10.5px;border:1px solid transparent;white-space:nowrap}
+  .kde-weight.w5{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .kde-weight.w10{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .kde-weight.w30{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .kde-weight.w50{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+
+  .rv{animation:up .55s var(--ease) both;animation-delay:calc(var(--i,0) * 50ms)}
+  @keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .toast-wrap{position:fixed;right:20px;bottom:20px;z-index:3000;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  .toast{display:flex;align-items:center;gap:10px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;font-weight:300;box-shadow:0 14px 34px rgba(16,24,40,.2);animation:up .3s var(--ease)}
+  .toast i{width:8px;height:8px;border-radius:50%;background:#4ade80;flex:none}
+  .toast.error i{background:#f87171}
+
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
+
+  .sc-wm{display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1}
+  .sc-wm-top{font-family:'Bitsumis',sans-serif;font-size:17px;letter-spacing:.04em;text-transform:uppercase;line-height:1;color:var(--ink)}
+  .sc-wm-top span{color:var(--accent)}
+  .sc-wm-sub{font-family:'Bitsumis',sans-serif;font-size:8px;letter-spacing:.32em;text-transform:uppercase;color:#6b7380;margin-top:2px}
+  .topbar{position:sticky;top:0;z-index:1000;display:flex;align-items:center;gap:20px;padding:10px 28px;background:rgba(255,255,255,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .topbar-brand{display:flex;align-items:center;gap:8px;flex-shrink:0;line-height:1.1}
+  .topbar-brand img{width:28px;height:28px;object-fit:contain}
+  .topbar-nav{flex:1;display:flex;justify-content:center;min-width:0}
+  .nav-pill{display:inline-flex;align-items:center;gap:2px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:4px}
+  .topbar .nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:300;color:#6b7380;white-space:nowrap;transition:background .15s,color .15s}
+  .topbar .nav-item img,.topbar .nav-item svg{width:15px;height:15px;object-fit:contain;opacity:.45;flex-shrink:0}
+  .topbar .nav-item:hover{background:#f3f6fb;color:var(--ink)}
+  .topbar .nav-item:hover img,.topbar .nav-item:hover svg{opacity:1}
+  .topbar .nav-item.active{background:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.28)}
+  .topbar .nav-item.active img{filter:brightness(0) invert(1);opacity:1}
+  .topbar .nav-item.active svg{opacity:1}
+  .topbar .nav-item-wrap{position:relative}
+  .topbar .nav-item-wrap::after{content:'';position:absolute;top:100%;left:0;width:100%;height:12px}
+  .topbar .nav-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:160px;z-index:500;padding:6px}
+  .topbar .nav-item-wrap:hover .nav-dropdown{display:block}
+  .topbar .nav-dropdown-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;font-size:13px;font-weight:300;color:var(--ink);border-radius:8px;white-space:nowrap;cursor:pointer;position:relative;transition:background .15s}
+  .topbar .nav-dropdown-item:hover{background:#f6f7f9;color:var(--accent)}
+  .topbar .nav-dropdown-sub{display:block;visibility:hidden;opacity:0;position:absolute;left:100%;top:0;margin-left:6px;transform:translateX(-4px);background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:160px;padding:6px;z-index:501;transition:opacity .15s ease,transform .15s ease,visibility 0s linear .35s}
+  .topbar .nav-dropdown-sub::before{content:"";position:absolute;top:-10px;bottom:-10px;left:-16px;width:16px}
+  .topbar .nav-dropdown-item:hover > .nav-dropdown-sub,.topbar .nav-dropdown-item:focus-within > .nav-dropdown-sub{visibility:visible;opacity:1;transform:none;transition-delay:0s}
+  .topbar .nav-dropdown-item:has(> .nav-dropdown-sub:hover){background:#f6f7f9;color:var(--accent)}
+  .topbar .tag-new,.topbar .tag-beta{font-size:9px;padding:1px 7px;border-radius:999px}
+  .topbar .tag-new{color:#2f6fed;background:#eef3fc} .topbar .tag-beta{color:#a9721f;background:#fdf3df}
+  #devNav[hidden]{display:none!important}
+  .topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .search-pill{display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:12px;font-weight:300;color:#b3bac6;min-width:150px;cursor:text}
+  .notif-btn{width:36px;height:36px;border-radius:50%;background:var(--white);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;flex-shrink:0}
+  .notif-btn img{width:17px;height:17px;object-fit:contain;opacity:.65}
+  .notif-dot{position:absolute;top:5px;right:5px;width:8px;height:8px;background:#e63946;border-radius:50%;border:2px solid #fff}
+  .avatar-wrap{position:relative;flex-shrink:0}
+  .avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;flex-shrink:0}
+  .avatar-btn img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+  .avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:176px;overflow:hidden;z-index:999}
+  .avatar-menu.open{display:block;animation:drop .18s ease}
+  @keyframes drop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .avatar-menu-name{padding:11px 15px 7px;font-family:var(--mono);font-size:11.5px;color:#6b7380;border-bottom:1px solid var(--line)}
+  .avatar-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;font-weight:300;color:var(--ink)}
+  .avatar-menu a:hover{background:#f6f7f9;color:var(--accent)}
+  .avatar-menu button{width:100%;padding:9px 15px;background:none;border:0;border-top:1px solid var(--line);text-align:left;font-size:13px;font-weight:300;color:#e63946;cursor:pointer}
+  .avatar-menu button:hover{background:#fff0f1}
+  @media (max-width:1280px){ .search-pill{display:none} }
+  @media (max-width:1080px){ .topbar-nav{visibility:hidden} }
+  @media (max-width:600px){ .topbar{padding:10px 16px} .topbar-nav{display:none} .topbar{justify-content:space-between} }
+
+  .phead{background:linear-gradient(180deg,#eef3fc 0%,var(--page) 100%);border-bottom:1px solid var(--line2)}
+  .crumbs{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;color:var(--faint)}
+  .crumbs a{color:var(--muted);display:inline-flex;align-items:center;gap:6px;transition:color .2s}
+  .crumbs a:hover{color:var(--accent)}
+  h1{font-size:clamp(26px,2.8vw,38px);font-weight:300;letter-spacing:-.02em;line-height:1.12;margin:6px 0 2px}
+  .lead{margin:0;color:var(--muted);font-weight:300;font-size:14px}
+
+  .loading-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:90px 20px;color:var(--faint);font-size:13px;font-weight:300}
+  .spinner{width:30px;height:30px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* modals (shared by all three pages) */
+  .modal-overlay{position:fixed;inset:0;z-index:2000;background:rgba(20,22,26,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px}
+  .modal-box{background:var(--white);border-radius:18px;padding:28px;max-width:400px;width:100%;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;box-shadow:0 30px 80px rgba(16,24,40,.25);animation:up .3s var(--ease)}
+  .modal-box > div{width:100%}
+  .modal-icon{width:52px;height:52px;border-radius:50%;background:var(--low-bg);display:grid;place-items:center}
+  .modal-icon.danger{background:var(--crit-bg)}
+  .modal-title{margin:0 0 6px;font-size:17px;font-weight:300}
+  .modal-body{margin:0;font-size:13px;font-weight:300;color:var(--muted);line-height:1.6}
+  .modal-body strong{color:var(--ink)}
+  .modal-actions{display:flex;gap:8px;width:100%;margin-top:14px}
+  .modal-cancel-btn,.modal-delete-btn,.modal-remind-btn,.modal-no-remind-btn,.modal-ok-btn,.modal-discard-btn{flex:1;height:40px;padding:0 16px;border-radius:999px;font-size:13px;font-weight:300;cursor:pointer;border:1px solid var(--line);background:var(--white);color:var(--ink);transition:background .2s,color .2s,border-color .2s}
+  .modal-cancel-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .modal-delete-btn,.modal-discard-btn{background:var(--crit);border-color:var(--crit);color:#fff}
+  .modal-delete-btn:hover,.modal-discard-btn:hover{background:#c23a3a}
+  .modal-remind-btn,.modal-ok-btn{background:var(--accent);border-color:var(--accent);color:#fff}
+  .modal-remind-btn:hover,.modal-ok-btn:hover{background:#2560d6}
+  .modal-ok-btn{flex:none;margin-top:8px;padding:0 28px}
+  .modal-no-remind-btn{color:var(--crit);border-color:var(--crit-line)}
+  .modal-no-remind-btn:hover{background:var(--crit);color:#fff;border-color:var(--crit)}
+  .modal-remind-btn,.modal-no-remind-btn,.modal-actions[style*="column"] .modal-cancel-btn{flex:none;width:100%}
+
+  /* toasts created by the page scripts carry their own colours; keep our type */
+  body > .toast,body > div[style*="position:fixed; bottom:28px"],body > div[style*="position: fixed; bottom: 28px"]{border-radius:12px!important;font-size:13px!important;box-shadow:0 14px 34px rgba(16,24,40,.2)!important}
+
+  .pill,.cert-pill{display:inline-flex;align-items:center;padding:2px 10px;border-radius:999px;font-size:12px;border:1px solid}
+  .pill{color:var(--accent);background:var(--low-bg);border-color:var(--accent-line)}
+  .cert-pill{color:var(--ok);background:var(--ok-bg);border-color:var(--ok-line)}
+
+  .detail-topbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:14px 0}
+  .detail-actions{display:flex;gap:8px}
+  .btn-edit,.btn-delete{display:inline-flex;align-items:center;gap:7px;height:38px;padding:0 16px;border-radius:999px;font-size:13px;font-weight:300;cursor:pointer;transition:background .2s,color .2s,border-color .2s,transform .2s}
+  .btn-edit{border:1px solid var(--accent);background:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.22)}
+  .btn-edit:hover{background:#2560d6;transform:translateY(-1px)}
+  .btn-delete{border:1px solid var(--crit-line);background:var(--white);color:var(--crit)}
+  .btn-delete:hover{background:var(--crit);border-color:var(--crit);color:#fff}
+  .btn-back{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 16px;border:1px solid var(--line);border-radius:999px;background:var(--white);font-size:13px;font-weight:300;color:var(--muted)}
+  .btn-back:hover{color:var(--accent);border-color:var(--accent)}
+
+  .error-state{display:flex;flex-direction:column;align-items:center;gap:10px;padding:80px 20px;text-align:center}
+  .error-state h3{margin:0;font-size:17px;font-weight:300}
+  .error-state p{margin:0;font-size:13px;font-weight:300;color:var(--muted)}
+
+  .detail-wrapper{padding-bottom:56px}
+  .detail-layout{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;align-items:start}
+  .detail-left{position:sticky;top:78px;display:flex;flex-direction:column;gap:12px;background:var(--white);border:1px solid var(--line);border-radius:16px;padding:14px;animation:up .5s var(--ease)}
+  .detail-photo{width:100%;aspect-ratio:4/3;border-radius:12px;background:linear-gradient(135deg,#f3f5f8,#e9edf3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#c3cad6;font-family:var(--mono);font-size:11px;overflow:hidden}
+  .detail-photo img{width:100%;height:100%;object-fit:cover;animation:kb 18s ease-in-out infinite alternate}
+  @keyframes kb{from{transform:scale(1)}to{transform:scale(1.06)}}
+  .detail-left-name{margin:2px 4px 0;font-size:22px;font-weight:300;letter-spacing:-.015em;line-height:1.25}
+  .detail-left-brand{margin:-8px 4px 0;font-size:13px;font-weight:300;color:var(--muted)}
+  .detail-key-info{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .key-info-row{display:flex;flex-direction:column;gap:1px;background:var(--page);border:1px solid var(--line2);border-radius:12px;padding:8px 11px;min-width:0}
+  .key-info-label{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .key-info-value{font-size:13px;overflow-wrap:anywhere}
+  .detail-certs{display:flex;flex-wrap:wrap;gap:6px}
+  .detail-certs:empty{display:none}
+
+  .jump{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .jump a{font-size:12.5px;font-weight:300;color:var(--muted);padding:5px 12px;border:1px solid var(--line);border-radius:999px;background:var(--white);transition:color .2s,border-color .2s}
+  .jump a:hover{color:var(--accent);border-color:var(--accent)}
+  .detail-right{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-content:start}
+  .detail-section{grid-column:1/-1;background:var(--white);border:1px solid var(--line);border-radius:16px;min-width:0;scroll-margin-top:80px;animation:up .5s var(--ease) both}
+  .detail-section.half{grid-column:span 1}
+  .detail-section-header{display:flex;align-items:center;gap:10px;padding:13px 18px;border-bottom:1px solid var(--line2)}
+  .detail-section-header svg{width:28px;height:28px;padding:6px;border-radius:9px;background:var(--accent-soft);stroke:var(--accent);flex:none}
+  .detail-section-header h2{margin:0;font-size:15px;font-weight:300}
+  .detail-fields-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;padding:14px 18px 18px}
+  .detail-field{display:flex;flex-direction:column;gap:2px;background:var(--page);border:1px solid var(--line2);border-radius:12px;padding:10px 13px;min-width:0;transition:background .2s,border-color .2s}
+  .detail-field:hover{background:#f3f7ff;border-color:var(--accent-line)}
+  .detail-field.full{grid-column:1/-1}
+  .detail-label{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .detail-value{font-size:13.5px;line-height:1.55;color:var(--ink);overflow-wrap:anywhere}
+  .pill-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+  .ingredients-text{padding:16px 18px 18px;font-size:13.5px;font-weight:300;line-height:1.75;color:var(--ink);white-space:pre-line}
+  .two-col-cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:14px 18px 18px}
+  .info-card{background:var(--page);border:1px solid var(--line2);border-radius:12px;padding:12px 14px}
+  .info-card-title{margin:0 0 6px;font-family:var(--mono);font-size:11px;font-weight:400;color:var(--accent)}
+  .detail-fields-list{display:flex;flex-direction:column}
+  .detail-field-row{display:flex;justify-content:space-between;align-items:baseline;gap:14px;padding:7px 0;border-bottom:1px solid var(--line)}
+  .detail-field-row:last-child{border-bottom:0}
+  .detail-field-row .detail-value{text-align:right}
+  .allergen-table{display:flex;flex-direction:column;gap:8px;padding:14px 18px 18px}
+  .allergen-card{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;background:var(--page);border:1px solid var(--line2);border-radius:12px;padding:11px 14px}
+  .allergen-card-field{display:flex;flex-direction:column;gap:3px;min-width:0}
+  .containment-badge{display:inline-flex;width:fit-content;padding:1px 10px;border-radius:999px;font-size:12px;border:1px solid}
+  .containment-badge.contain{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+  .containment-badge.free_from{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .containment-badge.may_contain{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .nutrition-table{display:flex;flex-direction:column}
+  .nutrition-table > p{font-size:12.5px!important;font-weight:300;color:var(--faint)!important}
+  .nutrition-row-detail{display:grid;grid-template-columns:1fr auto 36px;gap:8px;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--line)}
+  .nutrition-row-detail:last-child{border-bottom:0}
+  .nutrition-row-detail .nutrient-name{font-size:13px;font-weight:300}
+  .nutrition-row-detail .nutrient-value{font-family:var(--mono);font-size:13px;text-align:right}
+  .nutrition-row-detail .nutrient-unit{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .artwork-grid-detail{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;padding:14px 18px 18px}
+  .artwork-item{display:flex;flex-direction:column;gap:8px;background:var(--page);border:1px solid var(--line2);border-radius:12px;padding:10px;transition:border-color .2s,transform .2s}
+  .artwork-item:hover{border-color:var(--accent-line);transform:translateY(-2px)}
+  .artwork-item-label{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .artwork-thumb{width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--line2)}
+  .artwork-file-chip{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:300;overflow-wrap:anywhere}
+  .artwork-item a{font-family:var(--mono);font-size:11px!important;color:var(--accent)!important}
+  .no-data{margin:0;padding:16px 18px 18px;font-size:13px;font-weight:300;color:var(--faint)}
+
+  @media (max-width:1300px){ .allergen-card{grid-template-columns:repeat(3,minmax(0,1fr))} }
+  @media (max-width:1000px){
+    .detail-layout{grid-template-columns:1fr}
+    .detail-left{position:static;display:grid;grid-template-columns:minmax(0,240px) 1fr;align-items:start}
+    .detail-photo-wrap{grid-row:span 4}
+  }
+  @media (max-width:700px){
+    .detail-right{grid-template-columns:1fr} .detail-section.half{grid-column:1/-1}
+    .detail-left{display:flex} .two-col-cards{grid-template-columns:1fr} .allergen-card{grid-template-columns:1fr 1fr}
+  }
+
+</style>
 </head>
 <body>
 
-  <!-- NAV -->
+  <!-- TOP BAR (same as home-logged-in.html) -->
   <div class="topbar">
     <a href="home-logged-in.html" class="topbar-brand">
-      <div>
-        <span class="topbar-brand-project">CONCEPT</span>
-        <span class="topbar-brand-name">SMARTUNA</span>
-      </div>
+      <img src="sc-blue-logo.png" alt="SmarTuna"/>
+      <span class="sc-wm"><span class="sc-wm-top">Smar<span>Tuna</span></span><span class="sc-wm-sub">concept</span></span>
     </a>
     <div class="topbar-nav">
       <div class="nav-pill">
-        <a href="home-logged-in.html" class="nav-pill-item">Home</a>
-        <div class="nav-pill-item active" style="cursor:default;">
-          My Studio
-          <div class="nav-pill-dropdown">
-            <a href="product-list.html">Products</a>
-            <a href="organisation.html">Your Company</a>
+        <a href="home-logged-in.html" class="nav-item"><img src="home.png" alt=""/>Home</a>
+        <div class="nav-item-wrap">
+          <a href="modules.html#my-studio" class="nav-item active"><img src="my-studio.png" alt=""/>My Studio</a>
+          <div class="nav-dropdown">
+            <a href="product-list.html" class="nav-dropdown-item">Product</a>
+            <a href="evidence-list.html" class="nav-dropdown-item">Evidence</a>
+            <a href="raw-material-list.html" class="nav-dropdown-item">Raw Materials</a>
+            <a href="shipment-list.html" class="nav-dropdown-item">Shipments</a>
+            <a href="organisation.html" class="nav-dropdown-item">Your Company</a>
+            <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('carbon-calculator.html','Carbon Footprint Calculator','carbon-icon.png','Carbon','green');">Carbon Calculator</a>
+            <a href="modules.html#my-studio" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all My Studio</a>
           </div>
         </div>
-        <div class="nav-pill-item" style="cursor:default;">
-          Atlas
-          <div class="nav-pill-dropdown">
-            <a href="Species.html">Species</a>
-            <a href="country.html">Country</a>
-            <a href="#">Ports</a>
-            <a href="#">Vessels</a>
+        <div class="nav-item-wrap">
+          <a href="modules.html#atlas" class="nav-item"><img src="atlas.png" alt=""/>Atlas</a>
+          <div class="nav-dropdown">
+            <a href="Species.html" class="nav-dropdown-item">Species</a>
+            <a href="cold-storage-list.html" class="nav-dropdown-item">Cold Storage</a>
+            <a href="port-list.html" class="nav-dropdown-item">Ports</a>
+            <a href="vessel-list.html" class="nav-dropdown-item">Vessels</a>
+            <a href="country.html" class="nav-dropdown-item">Country</a>
+            <div class="nav-dropdown-item" style="position:relative;">
+              Others <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+              <div class="nav-dropdown-sub">
+                <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('fishery.html','MSC Fishery Module')">MSC Fisheries</a>
+                <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('asc-farms.html','ASC Farm Standard Module','ASC_ecolabel.png','ASC')">ASC Farms</a>
+              </div>
+            </div>
+            <a href="modules.html#atlas" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all Atlas</a>
           </div>
         </div>
-        <a href="#" class="nav-pill-item">Reports</a>
-        <div class="nav-pill-item" style="cursor:default;">
-          Support
-          <div class="nav-pill-dropdown">
-            <a href="contact.html">Contact</a>
-            <a href="report.html">Report an Issue</a>
-            <a href="about.html">About</a>
+        <div class="nav-item-wrap">
+          <a href="modules.html#features" class="nav-item">Features</a>
+          <div class="nav-dropdown">
+            <a href="smartuna-ai.html" class="nav-dropdown-item">SmarTuna A.I <span class="tag-new">New</span></a>
+            <a href="smartuna-assistant.html" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('smartuna-assistant.html','SmarTuna Assistant');">SmarTuna Assistant <span class="tag-beta">Beta</span></a>
+            <div class="nav-dropdown-item" style="position:relative;">
+              Compliance <span style="font-size:11px;color:#6b7280;">&rsaquo;</span>
+              <div class="nav-dropdown-sub">
+                <a href="eu-catch-support.html" class="nav-dropdown-item">EU CATCH Form</a>
+                <a href="simp-support.html" class="nav-dropdown-item">NOAA SIMP <span class="tag-new">New</span></a>
+                <a href="fsma-support.html" class="nav-dropdown-item">FSMA Act 204 <span class="tag-new">New</span></a>
+              </div>
+            </div>
+            <a href="load-planner.html" class="nav-dropdown-item">Load Planner</a>
+            <a href="modules.html#features" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all Features</a>
           </div>
         </div>
+        <a href="modules.html#messages" class="nav-item"><img src="messages.png" alt=""/>Messages</a>
+        <a href="modules.html#reports" class="nav-item"><img src="report.png" alt=""/>Reports</a>
+        <a href="modules.html#support" class="nav-item"><img src="support.png" alt=""/>Support</a>
+        <a href="developer.html" class="nav-item" id="devNav" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 6 2 12 8 18"/><polyline points="16 6 22 12 16 18"/></svg>Developer</a>
+        <script>try{if(localStorage.getItem('smartuna_dev_unlocked')==='1')document.getElementById('devNav').hidden=false;}catch(e){}</script>
       </div>
     </div>
-    <div class="topbar-right" onclick="toggleNavDropdown()" style="cursor:pointer;">
-      <div class="topbar-avatar" id="navAvatar"></div>
-      <span class="topbar-email" id="navEmail"></span>
-      <div class="topbar-settings">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-        <div class="topbar-profile-dropdown" id="navDropdown">
-          <div class="topbar-profile-name" id="navFirstName">Hello!</div>
-          <a href="profile.html">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-            Profile
-          </a>
+    <div class="topbar-right">
+      <div class="search-pill">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search here...
+      </div>
+      <div class="notif-btn"><img src="notification.png" alt=""/><div class="notif-dot"></div></div>
+      <div class="avatar-wrap">
+        <div class="avatar-btn" id="navAvatar" onclick="toggleNavDropdown()" role="button" tabindex="0" aria-label="Account menu"></div>
+        <div class="avatar-menu" id="navDropdown">
+          <div class="avatar-menu-name" id="navFirstName">Hello!</div>
+          <span id="navEmail" hidden></span>
+          <a href="profile.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Profile</a>
           <button onclick="handleLogout()">Logout</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- LOADING STATE -->
-  <div class="loading-state" id="loadingState">
-    <div class="spinner"></div>
-    <p>Loading product...</p>
-  </div>
+<div class="wrap">
+  <div class="loading-state" id="loadingState"><div class="spinner"></div><p>Loading product...</p></div>
 
-  <!-- ERROR STATE -->
   <div class="error-state hidden" id="errorState">
-    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d0d4e0" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r="1"/></svg>
+    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#c3cad6" stroke-width="1.3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r=".6" fill="#c3cad6"/></svg>
     <h3>Product not found</h3>
     <p>It may have been deleted.</p>
-    <a href="product-list.html" class="btn-back">← Back to Products</a>
+    <a href="product-list.html" class="btn-back"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>Back to products</a>
   </div>
 
-  <!-- MAIN CONTENT -->
   <div class="detail-wrapper hidden" id="detailContent">
-
-    <!-- BACK + ACTIONS -->
     <div class="detail-topbar">
-      <a href="product-list.html" class="btn-back">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-        Back to Products
-      </a>
+      <div class="crumbs"><a href="product-list.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>Products</a><span>/</span><span id="crumbName">detail</span></div>
       <div class="detail-actions">
-        <button class="btn-edit" id="btnEdit" onclick="editProduct()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          Edit Product
-        </button>
         <button class="btn-delete" id="btnDelete" onclick="deleteProduct()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
           Delete
+        </button>
+        <button class="btn-edit" id="btnEdit" onclick="editProduct()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+          Edit product
         </button>
       </div>
     </div>
 
-    <!-- DETAIL LAYOUT -->
     <div class="detail-layout">
-
-      <!-- LEFT PANEL -->
       <aside class="detail-left">
-
-        <!-- Photo -->
         <div class="detail-photo-wrap">
           <div class="detail-photo" id="detailPhoto">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d0d4e0" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            <span>No photo</span>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <span>no photo</span>
           </div>
         </div>
-
-        <!-- Product Name & Brand -->
         <div class="detail-left-name" id="leftName">—</div>
         <div class="detail-left-brand" id="leftBrand">—</div>
-
-        <!-- Key Info Cards -->
         <div class="detail-key-info">
-          <div class="key-info-row">
-            <span class="key-info-label">Species</span>
-            <span class="key-info-value" id="leftSpecies">—</span>
-          </div>
-          <div class="key-info-row">
-            <span class="key-info-label">EAN / GTIN</span>
-            <span class="key-info-value" id="leftEan">—</span>
-          </div>
-          <div class="key-info-row">
-            <span class="key-info-label">Product Form</span>
-            <span class="key-info-value" id="leftForm">—</span>
-          </div>
-          <div class="key-info-row">
-            <span class="key-info-label">Pack Style</span>
-            <span class="key-info-value" id="leftPack">—</span>
-          </div>
-          <div class="key-info-row">
-            <span class="key-info-label">Pack Medium</span>
-            <span class="key-info-value" id="leftMedium">—</span>
-          </div>
-          <div class="key-info-row">
-            <span class="key-info-label">Product Code</span>
-            <span class="key-info-value" id="leftCode">—</span>
-          </div>
+          <div class="key-info-row"><span class="key-info-label">species</span><span class="key-info-value" id="leftSpecies">—</span></div>
+          <div class="key-info-row"><span class="key-info-label">EAN / GTIN</span><span class="key-info-value" id="leftEan">—</span></div>
+          <div class="key-info-row"><span class="key-info-label">product form</span><span class="key-info-value" id="leftForm">—</span></div>
+          <div class="key-info-row"><span class="key-info-label">pack style</span><span class="key-info-value" id="leftPack">—</span></div>
+          <div class="key-info-row"><span class="key-info-label">pack medium</span><span class="key-info-value" id="leftMedium">—</span></div>
+          <div class="key-info-row"><span class="key-info-label">product code</span><span class="key-info-value" id="leftCode">—</span></div>
         </div>
-
-        <!-- Certifications -->
         <div class="detail-certs" id="detailCerts"></div>
-
       </aside>
 
-      <!-- RIGHT PANEL -->
-      <div class="detail-right">
-
+      <div>
+        <nav class="jump" aria-label="Sections"><a href="#sec-general">General</a><a href="#sec-packaging">Packaging</a><a href="#sec-raw">Raw material</a><a href="#sec-allergens">Allergens</a><a href="#sec-nutrition">Nutrition</a><a href="#sec-sustain">Sustainability</a><a href="#sec-artwork">Art work</a></nav>
+        <div class="detail-right">
         <!-- SECTION: General Information -->
-        <div class="detail-section">
+        <div class="detail-section" id="sec-general" style="--i:1">
           <div class="detail-section-header">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
             <h2>General Information</h2>
@@ -214,7 +399,7 @@
         </div>
 
         <!-- SECTION: Physical Measurement -->
-        <div class="detail-section">
+        <div class="detail-section half" id="sec-physical" style="--i:2">
           <div class="detail-section-header">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>
             <h2>Physical Measurement</h2>
@@ -229,8 +414,21 @@
           </div>
         </div>
 
+        <!-- SECTION: Storage & Temperature -->
+        <div class="detail-section half" id="sec-storage" style="--i:4">
+          <div class="detail-section-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z"/></svg>
+            <h2>Storage &amp; Temperature</h2>
+          </div>
+          <div class="detail-fields-grid">
+            <div class="detail-field"><span class="detail-label">Min Temperature</span><span class="detail-value" id="d-min_temp">—</span></div>
+            <div class="detail-field"><span class="detail-label">Max Temperature</span><span class="detail-value" id="d-max_temp">—</span></div>
+            <div class="detail-field"><span class="detail-label">Shelf Life</span><span class="detail-value" id="d-shelf_life">—</span></div>
+          </div>
+        </div>
+
         <!-- SECTION: Packaging -->
-        <div class="detail-section">
+        <div class="detail-section" id="sec-packaging" style="--i:3">
           <div class="detail-section-header">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
             <h2>Packaging Information</h2>
@@ -247,21 +445,8 @@
           </div>
         </div>
 
-        <!-- SECTION: Storage & Temperature -->
-        <div class="detail-section">
-          <div class="detail-section-header">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M14 14.76V3.5a2.5 2.5 0 00-5 0v11.26a4.5 4.5 0 105 0z"/></svg>
-            <h2>Storage &amp; Temperature</h2>
-          </div>
-          <div class="detail-fields-grid">
-            <div class="detail-field"><span class="detail-label">Min Temperature</span><span class="detail-value" id="d-min_temp">—</span></div>
-            <div class="detail-field"><span class="detail-label">Max Temperature</span><span class="detail-value" id="d-max_temp">—</span></div>
-            <div class="detail-field"><span class="detail-label">Shelf Life</span><span class="detail-value" id="d-shelf_life">—</span></div>
-          </div>
-        </div>
-
         <!-- SECTION: Ingredients -->
-        <div class="detail-section">
+        <div class="detail-section half" id="sec-ingredients" style="--i:5">
           <div class="detail-section-header">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
             <h2>Ingredients</h2>
@@ -269,8 +454,20 @@
           <div class="ingredients-text" id="d-ingredients">—</div>
         </div>
 
+        <!-- SECTION: Sustainability -->
+        <div class="detail-section half" id="sec-sustain" style="--i:9">
+          <div class="detail-section-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <h2>Sustainability</h2>
+          </div>
+          <div class="detail-fields-grid">
+            <div class="detail-field full"><span class="detail-label">Raw Material Origin</span><div class="detail-value pill-wrap" id="d-raw_origin">—</div></div>
+            <div class="detail-field full"><span class="detail-label">Certifications</span><div class="detail-value pill-wrap" id="d-certifications">—</div></div>
+          </div>
+        </div>
+
         <!-- SECTION: Raw Material -->
-        <div class="detail-section">
+        <div class="detail-section" id="sec-raw" style="--i:6">
           <div class="detail-section-header">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/></svg>
             <h2>Raw Material Information</h2>
@@ -297,7 +494,7 @@
         </div>
 
         <!-- SECTION: Allergens -->
-        <div class="detail-section">
+        <div class="detail-section" id="sec-allergens" style="--i:7">
           <div class="detail-section-header">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             <h2>Allergen Specification</h2>
@@ -308,7 +505,7 @@
         </div>
 
         <!-- SECTION: Nutrition -->
-        <div class="detail-section">
+        <div class="detail-section" id="sec-nutrition" style="--i:8">
           <div class="detail-section-header">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M18 8h1a4 4 0 010 8h-1"/><path d="M2 8h16v9a4 4 0 01-4 4H6a4 4 0 01-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
             <h2>Nutrition</h2>
@@ -325,20 +522,8 @@
           </div>
         </div>
 
-        <!-- SECTION: Sustainability -->
-        <div class="detail-section">
-          <div class="detail-section-header">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            <h2>Sustainability</h2>
-          </div>
-          <div class="detail-fields-grid">
-            <div class="detail-field full"><span class="detail-label">Raw Material Origin</span><div class="detail-value pill-wrap" id="d-raw_origin">—</div></div>
-            <div class="detail-field full"><span class="detail-label">Certifications</span><div class="detail-value pill-wrap" id="d-certifications">—</div></div>
-          </div>
-        </div>
-
         <!-- SECTION: Art Work -->
-        <div class="detail-section">
+        <div class="detail-section" id="sec-artwork" style="--i:10">
           <div class="detail-section-header">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
             <h2>Art Work &amp; Documents</h2>
@@ -347,10 +532,11 @@
             <p class="no-data">No files uploaded.</p>
           </div>
         </div>
-
-      </div><!-- /detail-right -->
-    </div><!-- /detail-layout -->
-  </div><!-- /detail-wrapper -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- DELETE MODAL -->
   <div class="modal-overlay hidden" id="deleteModal">
@@ -385,8 +571,23 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="utils.js"></script>
-  <script src="product-detail.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="utils.js"></script>
+<script src="product-detail.js"></script>
+<script>
+  // breadcrumb follows the product name once product-detail.js fills it
+  new MutationObserver(() => {
+    const n = document.getElementById('leftName').textContent.trim();
+    if (n && n !== '—') document.getElementById('crumbName').textContent = n;
+  }).observe(document.getElementById('leftName'), { childList: true, characterData: true, subtree: true });
+  document.addEventListener('click', e => {
+    const a = e.target.closest('.jump a'); if (!a) return;
+    e.preventDefault(); document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+</script>
+
+<script>
+if (typeof window.launchModule !== 'function') { window.launchModule = function(url){ window.location.href = url; }; }
+</script>
 </body>
 </html>

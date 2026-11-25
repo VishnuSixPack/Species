@@ -1,248 +1,332 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cold Storage · SmarTuna concept</title>
-<link rel="icon" type="image/png" href="sc-blue-logo.png" />
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="sc-blue-logo.png">
 <style>
-    /* ── SMARTUNA WORDMARK ── */
-    @font-face {
-      font-family: 'Bitsumis';
-      src: url('BITSUMIS.TTF') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-      font-display: swap;
-    }
-    .sc-wm { display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1;gap:0;text-decoration:none; }
-    .sc-wm-top { font-family:'Bitsumis',sans-serif !important;font-weight:900 !important;font-size:15px;letter-spacing:.04em;text-transform:uppercase;background:linear-gradient(90deg,#1a6fdb,#1a6fdb) !important;-webkit-background-clip:text !important;-webkit-text-fill-color:transparent !important;background-clip:text !important; }
-    .sc-wm-sub { font-family:'Bitsumis',sans-serif !important;font-weight:700 !important;font-size:7px;letter-spacing:.22em;text-transform:uppercase;color:#1a1a2e;-webkit-text-fill-color:#1a1a2e !important;margin-top:2px; }
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --primary:#1a6fdb; --primary-ink:#1558b0; --primary-soft:#e8f1fc;
-  --bg:#f0f2f7; --white:#ffffff; --surface:#ffffff;
-  --text:#1a1a2e; --muted:#6b7280; --soft:#8a90a2;
-  --border:#e8eaf0; --line:#eef0f5; --line-strong:#dfe3ec;
-  --ok:#1f9d6b; --ok-soft:#e6f6ef; --off:#9aa0b4; --off-soft:#eef0f4;
-  --danger:#e63946; --danger-soft:#fff0f1;
-  --radius:16px; --radius-sm:11px; --field-h:44px;
-  --shadow-sm:0 1px 3px rgba(20,24,45,.05);
-  --shadow:0 1px 2px rgba(20,24,45,.04),0 10px 30px rgba(20,24,45,.06);
-  --shadow-lg:0 6px 14px rgba(20,24,45,.07),0 24px 48px rgba(20,24,45,.10);
-  --font:'Poppins','DM Sans',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
-}
-body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
 
-/* ===== TOP NAV (matched to home-logged-in.html) ===== */
-.topbar{display:flex;align-items:center;padding:14px 28px;gap:20px;flex-shrink:0}
-.topbar-brand{text-decoration:none;flex-shrink:0;line-height:1.1}
-.topbar-brand-project{display:block;font-size:8px;font-weight:700;letter-spacing:2px;color:#9aa0b4}
-.topbar-brand-name{display:block;font-size:16px;font-weight:800;color:var(--text)}
-.topbar-nav{flex:1;display:flex;justify-content:center}
-.nav-pill{display:inline-flex;align-items:center;gap:2px;background:var(--white);border-radius:999px;padding:5px 7px;box-shadow:0 1px 6px rgba(0,0,0,.07)}
-.nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:400;color:var(--muted);text-decoration:none;transition:background .15s,color .15s;white-space:nowrap}
-.nav-item img{width:15px;height:15px;object-fit:contain;opacity:.5;flex-shrink:0}
-.nav-item:hover{background:var(--bg);color:var(--text)}
-.nav-item.active{background:var(--bg);color:var(--text);font-weight:600}
-.nav-item:hover img,.nav-item.active img{opacity:1}
-.nav-item-wrap{position:relative}
-.nav-item-wrap::after{content:'';position:absolute;top:100%;left:0;width:100%;height:12px;background:transparent}
-.nav-item-wrap:hover .nav-dropdown{display:block}
-.topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
-.search-pill{display:flex;align-items:center;gap:8px;background:var(--white);border-radius:999px;padding:8px 16px;font-size:12px;color:#c0c4d0;box-shadow:0 1px 4px rgba(0,0,0,.06);min-width:150px;cursor:text}
-.notif-btn{width:36px;height:36px;border-radius:50%;background:var(--white);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.07);position:relative;flex-shrink:0}
-.notif-btn img{width:17px;height:17px;object-fit:contain;opacity:.65}
-.notif-dot{position:absolute;top:5px;right:5px;width:8px;height:8px;background:#e63946;border-radius:50%;border:2px solid var(--bg)}
-.avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:var(--white);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;box-shadow:0 1px 4px rgba(0,0,0,.12);flex-shrink:0;overflow:hidden}
-.avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:176px;overflow:hidden;z-index:999}
-.avatar-menu.open{display:block}
-.avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;color:var(--text);border-bottom:1px solid var(--border)}
-.avatar-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;color:#4a4e69;text-decoration:none;font-weight:500}
-.avatar-menu a:hover{background:var(--bg);color:var(--primary)}
-.avatar-menu button{width:100%;padding:9px 15px;background:none;border:none;border-top:1px solid var(--border);text-align:left;font-family:var(--font);font-size:13px;color:#e63946;cursor:pointer}
-.avatar-menu button:hover{background:#fff0f1}
-.nav-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:170px;overflow:visible;z-index:500;padding:6px}
-.nav-dropdown-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;font-size:13px;color:#4a4e69;text-decoration:none;border-radius:8px;font-weight:500;transition:background .15s;white-space:nowrap;cursor:pointer}
-.nav-dropdown-item:hover{background:var(--bg);color:var(--primary)}
-.nav-dropdown-item.active{background:var(--primary-soft);color:var(--primary-ink);font-weight:600}
-.nav-dropdown-sub{display:none;position:absolute;left:calc(100% + 4px);top:0;background:var(--white);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:160px;padding:6px;z-index:501}
-.nav-dropdown-item:hover .nav-dropdown-sub{display:block}
+  @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');font-weight:normal;font-style:normal;font-display:swap}
+  :root{
+    --accent:#2f6fed; --accent-soft:rgba(47,111,237,.10); --accent-line:#cddcf8;
+    --ink:#14161a; --muted:#6b7380; --faint:#9aa1ad; --line:#e6e8ec; --line2:#eef0f3; --page:#f6f7f9; --white:#fff;
+    --mono:Consolas,"SFMono-Regular",Menlo,monospace;
+    --ok:#178a4c; --ok-bg:#e8f6ee; --ok-line:#c7e8d4;
+    --low:#2f6fed; --low-bg:#edf3fe; --low-line:#cddcf8;
+    --med:#b7791f; --med-bg:#fdf4e3; --med-line:#f1dcae;
+    --crit:#d64545; --crit-bg:#fdeceb; --crit-line:#f5c9c6;
+    --ease:cubic-bezier(.16,1,.3,1); --spring:cubic-bezier(.34,1.56,.64,1);
+  }
+  *{box-sizing:border-box}
+  html,body{overflow-x:clip}
+  body{margin:0;font-family:Poppins,system-ui,sans-serif;font-weight:400;font-size:14px;font-synthesis:none;color:var(--ink);background:var(--page);line-height:1.55;-webkit-font-smoothing:antialiased}
+  b,strong,h1,h2,h3,h4,th,[style*="font-weight"]{font-weight:400!important}
+  a{color:inherit;text-decoration:none}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .wrap{max-width:1680px;margin:0 auto;padding:0 clamp(16px,3vw,48px)}
+  .mono{font-family:var(--mono)}
+  .hidden{display:none!important}
+  .num{font-variant-numeric:tabular-nums}
 
-.wrap{max-width:1000px;margin:0 auto;padding:8px 28px 90px}
-a{color:var(--primary)}
-.back{display:inline-flex;align-items:center;gap:7px;color:var(--soft);text-decoration:none;font-size:13px;font-weight:500;margin-bottom:16px}
-.back:hover{color:var(--text)}
-.head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px 26px}
-.head h1{font-size:24px;font-weight:700;letter-spacing:-.3px;margin:0}
-.head .type{color:var(--muted);margin-top:5px;font-size:13px}
-.head .right{display:flex;align-items:center;gap:11px}
-.pill{font-size:10.5px;font-weight:700;padding:5px 12px;border-radius:999px;letter-spacing:.02em}
-.pill.on{background:var(--ok-soft);color:var(--ok)} .pill.off{background:var(--off-soft);color:var(--off)}
-.btn{height:42px;padding:0 20px;border-radius:11px;font-weight:600;border:1.5px solid var(--border);background:#fff;color:var(--text);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:7px;font:inherit;transition:.15s}
-.btn:hover{background:#fafbfd}
-.btn.primary{background:var(--primary);border-color:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(26,111,219,.28)}
-.btn.primary:hover{background:var(--primary-ink)}
+  /* shared pieces */
+  .eyebrow{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.04em;display:flex;align-items:center;gap:10px}
+  .lbl{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.03em}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:18px 20px;min-width:0}
+  .card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border:1px solid var(--line);border-radius:999px;background:var(--white);font-size:13px;font-weight:300;color:var(--ink);white-space:nowrap;cursor:pointer;transition:border-color .2s,color .2s,background .2s,transform .2s,box-shadow .2s}
+  .btn svg{flex:none}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.25)}
+  .btn.primary:hover{background:#2560d6;color:#fff;transform:translateY(-1px)}
+  .btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+  .btn:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .badge{font-family:var(--mono);font-size:10.5px;padding:1px 8px;border-radius:999px;border:1px solid;line-height:1.5}
+  .badge.new{color:var(--accent);border-color:var(--accent-line);background:#f3f7ff}
+  .badge.beta{color:#9a6a12;border-color:#efdcae;background:#fdf7e7}
+  .cnt{font-family:var(--mono);font-size:10.5px;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;display:inline-grid;place-items:center}
 
-.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:22px 26px;margin-top:18px}
-.card h2{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--soft);margin:0 0 18px;display:flex;align-items:center;gap:9px}
-.card h2::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--primary);box-shadow:0 0 0 4px var(--primary-soft)}
+  .mri-status-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:999px;font-size:12px;border:1px solid transparent;white-space:nowrap}
+  .mri-status-pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .mri-status-pill.transparent{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .mri-status-pill.low{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .mri-status-pill.medium{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .mri-status-pill.critical{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+  .kde-weight{display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;font-family:var(--mono);font-size:10.5px;border:1px solid transparent;white-space:nowrap}
+  .kde-weight.w5{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .kde-weight.w10{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .kde-weight.w30{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .kde-weight.w50{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
 
-.dl{display:grid;grid-template-columns:1fr 1fr;gap:18px 28px}
-@media(max-width:640px){.dl{grid-template-columns:1fr}}
-.dl .full{grid-column:1/-1}
-.term{font-size:11px;color:var(--soft);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
-.val{font-size:14px;margin-top:4px;word-break:break-word;color:var(--text)}
+  .rv{animation:up .55s var(--ease) both;animation-delay:calc(var(--i,0) * 50ms)}
+  @keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .toast-wrap{position:fixed;right:20px;bottom:20px;z-index:3000;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  .toast{display:flex;align-items:center;gap:10px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;font-weight:300;box-shadow:0 14px 34px rgba(16,24,40,.2);animation:up .3s var(--ease)}
+  .toast i{width:8px;height:8px;border-radius:50%;background:#4ade80;flex:none}
+  .toast.error i{background:#f87171}
 
-.contact{display:grid;grid-template-columns:1.2fr 1fr 1fr 1.3fr;gap:16px;padding:14px 0;border-top:1px solid var(--line)}
-.contact:first-child{border-top:none}
-@media(max-width:640px){.contact{grid-template-columns:1fr 1fr}}
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
 
-.chips{display:flex;flex-wrap:wrap;gap:8px}
-.chip{background:var(--primary-soft);color:var(--primary-ink);border-radius:8px;padding:5px 10px;font-size:12.5px;font-weight:600}
+  .sc-wm{display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1}
+  .sc-wm-top{font-family:'Bitsumis',sans-serif;font-size:17px;letter-spacing:.04em;text-transform:uppercase;line-height:1;color:var(--ink)}
+  .sc-wm-top span{color:var(--accent)}
+  .sc-wm-sub{font-family:'Bitsumis',sans-serif;font-size:8px;letter-spacing:.32em;text-transform:uppercase;color:#6b7380;margin-top:2px}
+  .topbar{position:sticky;top:0;z-index:1000;display:flex;align-items:center;gap:20px;padding:10px 28px;background:rgba(255,255,255,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .topbar-brand{display:flex;align-items:center;gap:8px;flex-shrink:0;line-height:1.1}
+  .topbar-brand img{width:28px;height:28px;object-fit:contain}
+  .topbar-nav{flex:1;display:flex;justify-content:center;min-width:0}
+  .nav-pill{display:inline-flex;align-items:center;gap:2px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:4px}
+  .topbar .nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:300;color:#6b7380;white-space:nowrap;transition:background .15s,color .15s}
+  .topbar .nav-item img,.topbar .nav-item svg{width:15px;height:15px;object-fit:contain;opacity:.45;flex-shrink:0}
+  .topbar .nav-item:hover{background:#f3f6fb;color:var(--ink)}
+  .topbar .nav-item:hover img,.topbar .nav-item:hover svg{opacity:1}
+  .topbar .nav-item.active{background:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.28)}
+  .topbar .nav-item.active img{filter:brightness(0) invert(1);opacity:1}
+  .topbar .nav-item.active svg{opacity:1}
+  .topbar .nav-item-wrap{position:relative}
+  .topbar .nav-item-wrap::after{content:'';position:absolute;top:100%;left:0;width:100%;height:12px}
+  .topbar .nav-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:160px;z-index:500;padding:6px}
+  .topbar .nav-item-wrap:hover .nav-dropdown{display:block}
+  .topbar .nav-dropdown-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;font-size:13px;font-weight:300;color:var(--ink);border-radius:8px;white-space:nowrap;cursor:pointer;position:relative;transition:background .15s}
+  .topbar .nav-dropdown-item:hover{background:#f6f7f9;color:var(--accent)}
+  .topbar .nav-dropdown-sub{display:block;visibility:hidden;opacity:0;position:absolute;left:100%;top:0;margin-left:6px;transform:translateX(-4px);background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:160px;padding:6px;z-index:501;transition:opacity .15s ease,transform .15s ease,visibility 0s linear .35s}
+  .topbar .nav-dropdown-sub::before{content:"";position:absolute;top:-10px;bottom:-10px;left:-16px;width:16px}
+  .topbar .nav-dropdown-item:hover > .nav-dropdown-sub,.topbar .nav-dropdown-item:focus-within > .nav-dropdown-sub{visibility:visible;opacity:1;transform:none;transition-delay:0s}
+  .topbar .nav-dropdown-item:has(> .nav-dropdown-sub:hover){background:#f6f7f9;color:var(--accent)}
+  .topbar .tag-new,.topbar .tag-beta{font-size:9px;padding:1px 7px;border-radius:999px}
+  .topbar .tag-new{color:#2f6fed;background:#eef3fc} .topbar .tag-beta{color:#a9721f;background:#fdf3df}
+  #devNav[hidden]{display:none!important}
+  .topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .search-pill{display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:12px;font-weight:300;color:#b3bac6;min-width:150px;cursor:text}
+  .notif-btn{width:36px;height:36px;border-radius:50%;background:var(--white);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;flex-shrink:0}
+  .notif-btn img{width:17px;height:17px;object-fit:contain;opacity:.65}
+  .notif-dot{position:absolute;top:5px;right:5px;width:8px;height:8px;background:#e63946;border-radius:50%;border:2px solid #fff}
+  .avatar-wrap{position:relative;flex-shrink:0}
+  .avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;flex-shrink:0}
+  .avatar-btn img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+  .avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:176px;overflow:hidden;z-index:999}
+  .avatar-menu.open{display:block;animation:drop .18s ease}
+  @keyframes drop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .avatar-menu-name{padding:11px 15px 7px;font-family:var(--mono);font-size:11.5px;color:#6b7380;border-bottom:1px solid var(--line)}
+  .avatar-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;font-weight:300;color:var(--ink)}
+  .avatar-menu a:hover{background:#f6f7f9;color:var(--accent)}
+  .avatar-menu button{width:100%;padding:9px 15px;background:none;border:0;border-top:1px solid var(--line);text-align:left;font-size:13px;font-weight:300;color:#e63946;cursor:pointer}
+  .avatar-menu button:hover{background:#fff0f1}
+  @media (max-width:1280px){ .search-pill{display:none} }
+  @media (max-width:1080px){ .topbar-nav{visibility:hidden} }
+  @media (max-width:600px){ .topbar{padding:10px 16px} .topbar-nav{display:none} .topbar{justify-content:space-between} }
 
-.cert{border:1px solid var(--line);border-radius:14px;padding:18px;margin-top:14px;background:linear-gradient(180deg,#fbfcfe,#fff)}
-.cert:first-of-type{margin-top:0}
-.cert h3{font-size:13.5px;margin:0 0 14px;font-weight:600}
-.org-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line)}
-.org-row:first-child{border-top:none}
-.org-row span:first-child{font-weight:500}
-.org-row .when{font-size:12px;color:var(--soft);font-weight:400}
+  body *{font-weight:400!important}
+  body h1,body .port-name,body .card-name,body .modal-h,body .stat-val,body .help-term{font-weight:300!important}
+  .page{padding-top:24px;padding-bottom:70px}
+  .crumb{font-family:var(--mono);font-size:12px;color:var(--faint);margin-bottom:6px}
+  .crumb a{color:var(--muted)} .crumb a:hover{color:var(--accent)}
+  h1{margin:0;font-size:clamp(26px,2.6vw,36px);letter-spacing:-.02em;line-height:1.15}
+  .sub{font-size:13.5px;color:var(--muted);font-weight:300!important;margin-top:3px}
+  .lbl{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .pill-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 17px;border-radius:999px;border:1px solid var(--line);background:var(--white);color:var(--ink);font:inherit;font-size:13px;font-weight:300!important;cursor:pointer;white-space:nowrap;transition:border-color .2s,color .2s,background .2s,transform .2s}
+  .pill-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .pill-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.22)}
+  .pill-btn.primary:hover{background:#2560d6;color:#fff;transform:translateY(-1px)}
+  .pill-btn.sm{height:32px;padding:0 13px;font-size:12px}
+  .pill-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .icon-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--white);color:var(--muted);display:grid;place-items:center;cursor:pointer;transition:border-color .2s,color .2s,background .2s;flex:none;font-size:16px;line-height:1}
+  .icon-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .icon-btn.danger:hover{border-color:var(--crit-line);color:var(--crit);background:var(--crit-bg)}
+  .icon-btn svg{width:13px;height:13px}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:20px 22px;margin-bottom:14px}
+  .card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .card-t{font-size:17px;letter-spacing:-.005em;font-weight:300!important}
+  .ptag{font-size:11.5px;padding:1px 10px;border-radius:999px;border:1px solid var(--accent-line);background:var(--low-bg);color:var(--accent);white-space:nowrap}
+  .ptag.fishing{border-color:var(--ok-line);background:var(--ok-bg);color:var(--ok)}
+  .ptag.cargo{border-color:var(--med-line);background:var(--med-bg);color:var(--med)}
+  .ptag.private{border-color:#ddd2f5;background:#f5f1fd;color:#7c5cd6}
+  .locode{font-family:var(--mono);font-size:12px;letter-spacing:.06em}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(12px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:12px;font-size:13px;opacity:0;visibility:hidden;transition:opacity .25s,transform .3s var(--ease),visibility .25s;z-index:3000;box-shadow:0 14px 34px rgba(16,24,40,.2);animation:none}
+  .toast.show{opacity:1;visibility:visible;transform:translateX(-50%)}
+  .toast.ok{background:var(--ok)} .toast.err{background:var(--crit)}
+  .ovl{position:fixed;inset:0;background:rgba(20,22,26,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
+  .ovl.open{display:flex}
+  .mbox{background:var(--white);border-radius:20px;box-shadow:0 30px 80px rgba(16,24,40,.25);width:600px;max-width:100%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;animation:up .3s var(--ease)}
+  .mhead{padding:20px 24px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .modal-h{font-size:20px;letter-spacing:-.01em;margin:0}
+  .mbody{padding:6px 24px 20px;overflow-y:auto;flex:1}
+  .mfoot{padding:14px 24px;border-top:1px solid var(--line2);background:var(--page);display:flex;justify-content:flex-end;gap:8px}
+  .x-btn{width:36px;height:36px;border-radius:50%;border:0;background:none;color:var(--muted);font-size:22px;cursor:pointer;flex:none;transition:background .2s,color .2s}
+  .x-btn:hover{background:var(--page);color:var(--ink)}
+  .lightbox{position:fixed;inset:0;background:rgba(10,12,16,.9);z-index:2000;display:none;align-items:center;justify-content:center;cursor:zoom-out}
+  .lightbox img{max-width:92vw;max-height:90vh;border-radius:14px;object-fit:contain;pointer-events:none}
+  .lightbox .x-btn{position:fixed;top:18px;right:22px;background:rgba(255,255,255,.14);color:#fff}
+  .tile{background:var(--page);border:1px solid var(--line2);border-radius:12px;padding:10px 13px;min-width:0}
+  .tile .v{font-size:13.5px;word-break:break-word}
+  .tile .v.mono{font-family:var(--mono);font-size:13px;color:var(--accent);letter-spacing:.04em}
+  .tile .v.empty{color:#c3c9d3}
+  .fac{display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--line);border-radius:14px;background:var(--white);margin-bottom:8px;transition:border-color .2s,background .2s,box-shadow .2s;animation:up .4s var(--ease) both}
+  .fac:hover{border-color:var(--accent-line)}
+  .fac-ic{width:38px;height:38px;border-radius:12px;background:var(--low-bg);color:var(--accent);display:grid;place-items:center;flex:none;overflow:hidden}
+  .fac-ic img{width:100%;height:100%;object-fit:cover}
+  .fac-main{flex:1;min-width:0}
+  .fac-name{font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .fac-type{font-size:11.5px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 8px}
+  .fac-meta{font-size:12px;color:var(--muted);font-weight:300!important;display:flex;gap:10px;flex-wrap:wrap;margin-top:1px}
+  .fac-meta .co{font-family:var(--mono);font-size:11.5px;color:var(--accent)}
+  .fac-kids{margin-left:19px;padding-left:14px;border-left:1px dashed var(--accent-line)}
+  .empty-note{padding:26px;text-align:center;color:var(--muted);font-size:13px;font-weight:300!important;background:var(--page);border:1px dashed var(--line);border-radius:14px}
+  .map-box{height:260px;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--page);position:relative}
+  .map-box iframe{display:block;width:100%;height:100%;border:0}
+  .map-ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--faint);font-size:12.5px}
+  .map-ph p{margin:0}
+  .hero{position:relative;height:230px;border-radius:22px;overflow:hidden;background:linear-gradient(120deg,#e9f0fd 0%,#f4f7fd 55%,#eef3fc 100%);border:1px solid var(--line);background-size:cover;background-position:center}
 
-.inv-teaser{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-.inv-flow{display:flex;align-items:center;gap:9px;font-weight:600;color:var(--muted)}
-.inv-flow span{background:#fff;border:1.5px solid var(--border);border-radius:9px;padding:7px 13px;color:var(--text)}
-.soon{font-size:11px;font-weight:700;color:var(--primary-ink);background:var(--primary-soft);padding:4px 11px;border-radius:999px}
+  .status{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:2px 11px;border-radius:999px;border:1px solid}
+  .status::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+  .status.on{color:var(--ok);background:var(--ok-bg);border-color:var(--ok-line)}
+  .status.off{color:var(--muted);background:var(--page);border-color:var(--line)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .count{font-family:var(--mono);font-size:11.5px;color:var(--accent);background:var(--low-bg);border:1px solid var(--accent-line);border-radius:999px;padding:1px 9px}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:var(--low-bg);color:var(--accent);border:1px solid var(--accent-line);border-radius:999px;padding:2px 11px;font-size:12.5px}
+  .chip button{border:0;background:none;color:inherit;cursor:pointer;font-size:15px;line-height:1;padding:0;opacity:.6}
+  .chip button:hover{opacity:1}
+  .cert-badge{font-family:var(--mono);font-size:11px;letter-spacing:.04em;padding:1px 9px;border-radius:999px;border:1px solid;flex:none}
+  .cert-badge-msc{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .cert-badge-uk{background:var(--low-bg);color:var(--accent);border-color:var(--accent-line)}
+  .cert-badge-eu{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .album-card,.detail-album-card{border-radius:16px;overflow:hidden;border:1px solid var(--line);background:var(--white);cursor:pointer;transition:transform .25s var(--ease),box-shadow .25s,border-color .2s;animation:up .4s var(--ease) both}
+  .album-card:hover,.detail-album-card:hover{transform:translateY(-2px);border-color:var(--accent-line);box-shadow:0 14px 34px rgba(16,24,40,.08)}
+  .album-cover,.detail-album-cover{position:relative;width:100%;aspect-ratio:4/3;background:linear-gradient(120deg,#e9f0fd,#f4f7fd);overflow:hidden}
+  .album-cover img,.detail-album-cover img{width:100%;height:100%;object-fit:cover;display:block}
+  .album-cover-grid,.detail-album-cover-grid{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;width:100%;height:100%;gap:2px}
+  .album-cover-grid img,.detail-album-cover-grid img{width:100%;height:100%;object-fit:cover}
+  .album-cover-placeholder{width:100%;height:100%;display:grid;place-items:center;color:#b8c8ea}
+  .album-info,.detail-album-info{padding:10px 13px 12px}
+  .album-name,.detail-album-name{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .album-count,.detail-album-count{font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:1px}
+  .albums-grid,.detail-albums-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  #detailAlbumLightbox{display:none;position:fixed;inset:0;background:rgba(10,12,16,.92);z-index:2000;flex-direction:column}
+  #detailAlbumLightbox.open{display:flex}
+  .lightbox-header{display:flex;align-items:center;gap:14px;padding:16px 24px;border-bottom:1px solid rgba(255,255,255,.08);color:#fff}
+  .lightbox-header button{width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:none;color:#fff;cursor:pointer;display:grid;place-items:center}
+  .lightbox-grid{flex:1;overflow-y:auto;padding:20px 24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;align-content:start}
+  .lightbox-img-item{aspect-ratio:1;border-radius:12px;overflow:hidden;cursor:pointer;transition:transform .2s}
+  .lightbox-img-item:hover{transform:scale(1.03)}
+  .lightbox-img-item img{width:100%;height:100%;object-fit:cover}
+  .lightbox-pdf-item{aspect-ratio:1;border-radius:12px;border:1px solid rgba(255,255,255,.15);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;color:rgba(255,255,255,.75);padding:8px;transition:background .2s}
+  .lightbox-pdf-item:hover{background:rgba(255,255,255,.06)}
+  .lightbox-pdf-item span{font-size:11px;text-align:center;word-break:break-word}
 
-.muted{color:var(--soft)}
-.skel{height:130px;border-radius:var(--radius);background:linear-gradient(90deg,#eef1f6,#f7f9fc,#eef1f6);background-size:200% 100%;animation:sh 1.3s infinite;margin-top:18px}
-@keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
-.err{background:var(--danger-soft);border:1px solid #f3cdd5;color:#8a2436;padding:16px 18px;border-radius:14px;margin-top:18px;font-weight:500}
+  .crumb{margin-bottom:12px}
+  .hero{height:220px}
+  .hero:not(.has-photo){display:none}
+  .head{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:16px 0}
+  .head-ic{width:64px;height:64px;border-radius:20px;background:var(--white);border:1px solid var(--line);display:grid;place-items:center;color:var(--accent);flex:none;box-shadow:0 10px 30px rgba(16,24,40,.06)}
+  .head-ic svg{width:28px;height:28px}
+  .head-t{flex:1;min-width:220px}
+  .head-t .sub{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px}
+  .head .right{display:flex;gap:8px}
+  .facts{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
+  .fact{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:12px 16px;animation:up .45s var(--ease) both;min-width:0}
+  .fact:nth-child(2){animation-delay:.05s}.fact:nth-child(3){animation-delay:.1s}.fact:nth-child(4){animation-delay:.15s}
+  .fact .v{font-size:19px;letter-spacing:-.01em;font-weight:300!important;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fact .v.empty{color:#c3c9d3}
+  .main-grid{display:grid;grid-template-columns:1fr 400px;gap:14px;align-items:start}
+  .side{position:sticky;top:79px}
+  .dl{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+  .dl .full{grid-column:1/-1}
+  .tile a{color:var(--accent);word-break:break-all}
+  .contact{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:10px 0;border-top:1px solid var(--line2)}
+  .contact:first-child{border-top:0;padding-top:0}
+  .cert{border:1px solid var(--line);border-radius:16px;padding:14px 16px;background:var(--white)}
+  .cert + .cert,.cert-two-col{margin-top:10px}
+  .cert-two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .cert-two-col .cert{margin-top:0}
+  .cert-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .cert-head h3{margin:0;font-size:14.5px;font-weight:400!important}
+  .cert-tag{margin-left:auto;font-size:11.5px;padding:1px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:var(--page)}
+  .cert-tag.ok{color:var(--ok);background:var(--ok-bg);border-color:var(--ok-line)}
+  .cert-na{font-size:12.5px;color:var(--faint);font-weight:300!important;margin-top:-4px}
+  .cert-off{background:var(--page)}
+  .org-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line2);font-size:13.5px}
+  .org-row:first-child{border-top:0;padding-top:0}
+  .org-row .when{font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+  .inv-flow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px}
+  .inv-flow span{border:1px solid var(--line);border-radius:999px;padding:4px 13px;background:var(--page)}
+  .inv-flow i{color:var(--faint);font-style:normal}
+  .soon{font-family:var(--mono);font-size:11px;color:var(--accent);background:var(--low-bg);border:1px solid var(--accent-line);border-radius:999px;padding:1px 9px}
+  .err{background:var(--crit-bg);border:1px solid var(--crit-line);color:var(--crit);padding:14px 18px;border-radius:16px;font-size:13.5px}
+  .muted{color:var(--faint);font-weight:300!important;font-size:13px}
+  .skel{height:130px;border-radius:18px;margin-bottom:14px;background:linear-gradient(90deg,#eef0f3 0%,#f6f7f9 50%,#eef0f3 100%);background-size:200% 100%;animation:sh 1.4s infinite}
+  @keyframes sh{to{background-position:-200% 0}}
+  @media (max-width:1100px){ .main-grid{grid-template-columns:1fr} .side{position:static} }
+  @media (max-width:760px){ .facts{grid-template-columns:1fr 1fr} .cert-two-col{grid-template-columns:1fr} .contact{grid-template-columns:1fr 1fr} }
 
-
-    /* ── CERT DETAIL ── */
-    .cert-detail-head {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 14px;
-      padding-bottom: 10px;
-      border-bottom: 1px solid var(--line);
-    }
-    .cert-detail-two-col {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-      margin-top: 14px;
-    }
-    .cert-badge {
-      font-size: 10px;
-      font-weight: 800;
-      letter-spacing: .06em;
-      padding: 3px 8px;
-      border-radius: 6px;
-      flex-shrink: 0;
-    }
-    .cert-badge-msc { background:#e8f4ec;color:#1a7a3c;border:1px solid #b8dfc4; }
-    .cert-badge-uk  { background:#eef1fd;color:#1a3a7a;border:1px solid #b8c4df; }
-    .cert-badge-eu  { background:#fdf3e8;color:#7a4a1a;border:1px solid #dfccb8; }
-    .cert-filled-tag {
-      margin-left: auto;
-      font-size: 11px;
-      font-weight: 600;
-      color: #16a34a;
-      background: #dcfce7;
-      padding: 2px 8px;
-      border-radius: 999px;
-    }
-    .cert-na-tag {
-      margin-left: auto;
-      font-size: 11px;
-      font-weight: 500;
-      color: #9aa0b4;
-      background: #f4f6fb;
-      padding: 2px 8px;
-      border-radius: 999px;
-    }
-    .cert-na-body {
-      font-size: 12.5px;
-      color: #9aa0b4;
-      font-style: italic;
-      padding: 4px 0 6px;
-    }
-    @media(max-width:600px){ .cert-detail-two-col { grid-template-columns:1fr; } }
-    
-    .detail-albums-grid { gap: 12px; }
-    .detail-album-card { border-radius:12px;overflow:hidden;border:1.5px solid var(--border);background:#fff;cursor:pointer;transition:transform .15s,box-shadow .15s; }
-    .detail-album-card:hover { transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.10); }
-    .detail-album-cover { width:100%;aspect-ratio:4/3;background:linear-gradient(135deg,#e8f0fe,#f0f4ff);overflow:hidden; }
-    .detail-album-cover img { width:100%;height:100%;object-fit:cover; }
-    .detail-album-cover-grid { display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;width:100%;height:100%;gap:2px; }
-    .detail-album-cover-grid img { width:100%;height:100%;object-fit:cover; }
-    .detail-album-info { padding:10px 12px 12px; }
-    .detail-album-name { font-size:13px;font-weight:700;color:#1a1a2e;font-family:'Poppins',sans-serif; }
-    .detail-album-count { font-size:11px;color:#9aa0b4;font-family:'Poppins',sans-serif;margin-top:2px; }
-    #detailAlbumLightbox { display:none;position:fixed;inset:0;background:rgba(10,12,30,0.92);z-index:800;flex-direction:column; }
-    #detailAlbumLightbox.open { display:flex; }
-    .lightbox-header { display:flex;align-items:center;gap:14px;padding:16px 24px;border-bottom:1px solid rgba(255,255,255,0.08); }
-    .lightbox-grid { flex:1;overflow-y:auto;padding:20px 24px;display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px; }
-    .lightbox-img-item { aspect-ratio:1;border-radius:10px;overflow:hidden;cursor:pointer;transition:transform .15s; }
-    .lightbox-img-item:hover { transform:scale(1.03); }
-    .lightbox-img-item img { width:100%;height:100%;object-fit:cover; }
-    .lightbox-pdf-item { aspect-ratio:1;border-radius:10px;border:1.5px solid rgba(255,255,255,0.12);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;cursor:pointer;color:rgba(255,255,255,0.7);padding:8px;transition:background .15s; }
-    .lightbox-pdf-item:hover { background:rgba(255,255,255,0.06); }
-    .lightbox-pdf-item span { font-size:10px;font-family:'Poppins',sans-serif;font-weight:600;text-align:center;word-break:break-word; }
-    </style>
+</style>
 </head>
 <body>
-  <!-- TOP BAR (shared) -->
+
+  <!-- TOP BAR (same as home-logged-in.html) -->
   <div class="topbar">
-    <a href="index.html" class="topbar-brand" style="display:flex;align-items:center;gap:9px;">
-      <img src="sc-blue-logo.png" alt="SmarTuna" style="width:26px;height:26px;object-fit:contain;flex-shrink:0;"/>
-      <span class="sc-wm">
-        <span class="sc-wm-top">SmarTuna</span>
-        <span class="sc-wm-sub">concept</span>
-      </span>
+    <a href="home-logged-in.html" class="topbar-brand">
+      <img src="sc-blue-logo.png" alt="SmarTuna"/>
+      <span class="sc-wm"><span class="sc-wm-top">Smar<span>Tuna</span></span><span class="sc-wm-sub">concept</span></span>
     </a>
     <div class="topbar-nav">
       <div class="nav-pill">
-        <a href="home-logged-in.html" class="nav-item">
-          <img src="home.png" alt="" /> Home
-        </a>
+        <a href="home-logged-in.html" class="nav-item"><img src="home.png" alt=""/>Home</a>
         <div class="nav-item-wrap">
-          <a href="organisation.html" class="nav-item">
-            <img src="my-studio.png" alt="" /> My Studio
-          </a>
+          <a href="modules.html#my-studio" class="nav-item"><img src="my-studio.png" alt=""/>My Studio</a>
           <div class="nav-dropdown">
             <a href="product-list.html" class="nav-dropdown-item">Product</a>
+            <a href="evidence-list.html" class="nav-dropdown-item">Evidence</a>
+            <a href="raw-material-list.html" class="nav-dropdown-item">Raw Materials</a>
+            <a href="shipment-list.html" class="nav-dropdown-item">Shipments</a>
             <a href="organisation.html" class="nav-dropdown-item">Your Company</a>
+            <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('carbon-calculator.html','Carbon Footprint Calculator','carbon-icon.png','Carbon','green');">Carbon Calculator</a>
+            <a href="modules.html#my-studio" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all My Studio</a>
           </div>
         </div>
         <div class="nav-item-wrap">
-          <a href="Species.html" class="nav-item active">
-            <img src="atlas.png" alt="" /> Atlas
-          </a>
+          <a href="modules.html#atlas" class="nav-item active"><img src="atlas.png" alt=""/>Atlas</a>
           <div class="nav-dropdown">
             <a href="Species.html" class="nav-dropdown-item">Species</a>
-            <a href="cold-storage-list.html" class="nav-dropdown-item active">Cold Storage</a>
-            <a href="#" class="nav-dropdown-item">Ports</a>
-            <a href="#" class="nav-dropdown-item">Vessels</a>
+            <a href="cold-storage-list.html" class="nav-dropdown-item">Cold Storage</a>
+            <a href="port-list.html" class="nav-dropdown-item">Ports</a>
+            <a href="vessel-list.html" class="nav-dropdown-item">Vessels</a>
             <a href="country.html" class="nav-dropdown-item">Country</a>
             <div class="nav-dropdown-item" style="position:relative;">
-              Others
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+              Others <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
               <div class="nav-dropdown-sub">
-                <a href="#" class="nav-dropdown-item">MSC Fisheries</a>
-                <a href="#" class="nav-dropdown-item">ASC Farms</a>
+                <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('fishery.html','MSC Fishery Module')">MSC Fisheries</a>
+                <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('asc-farms.html','ASC Farm Standard Module','ASC_ecolabel.png','ASC')">ASC Farms</a>
               </div>
             </div>
+            <a href="modules.html#atlas" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all Atlas</a>
           </div>
         </div>
-        <a href="#" class="nav-item"><img src="features.png" alt="" /> Features</a>
-        <a href="#" class="nav-item"><img src="messages.png" alt="" /> Messages</a>
-        <a href="#" class="nav-item"><img src="report.png" alt="" /> Reports</a>
-        <a href="report.html" class="nav-item"><img src="support.png" alt="" /> Support</a>
+        <div class="nav-item-wrap">
+          <a href="modules.html#features" class="nav-item">Features</a>
+          <div class="nav-dropdown">
+            <a href="smartuna-ai.html" class="nav-dropdown-item">SmarTuna A.I <span class="tag-new">New</span></a>
+            <a href="smartuna-assistant.html" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('smartuna-assistant.html','SmarTuna Assistant');">SmarTuna Assistant <span class="tag-beta">Beta</span></a>
+            <div class="nav-dropdown-item" style="position:relative;">
+              Compliance <span style="font-size:11px;color:#6b7280;">&rsaquo;</span>
+              <div class="nav-dropdown-sub">
+                <a href="eu-catch-support.html" class="nav-dropdown-item">EU CATCH Form</a>
+                <a href="simp-support.html" class="nav-dropdown-item">NOAA SIMP <span class="tag-new">New</span></a>
+                <a href="fsma-support.html" class="nav-dropdown-item">FSMA Act 204 <span class="tag-new">New</span></a>
+              </div>
+            </div>
+            <a href="load-planner.html" class="nav-dropdown-item">Load Planner</a>
+            <a href="modules.html#features" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all Features</a>
+          </div>
+        </div>
+        <a href="modules.html#messages" class="nav-item"><img src="messages.png" alt=""/>Messages</a>
+        <a href="modules.html#reports" class="nav-item"><img src="report.png" alt=""/>Reports</a>
+        <a href="modules.html#support" class="nav-item"><img src="support.png" alt=""/>Support</a>
+        <a href="developer.html" class="nav-item" id="devNav" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 6 2 12 8 18"/><polyline points="16 6 22 12 16 18"/></svg>Developer</a>
+        <script>try{if(localStorage.getItem('smartuna_dev_unlocked')==='1')document.getElementById('devNav').hidden=false;}catch(e){}</script>
       </div>
     </div>
     <div class="topbar-right">
@@ -250,284 +334,170 @@ a{color:var(--primary)}
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
         Search here...
       </div>
-      <div class="notif-btn">
-        <img src="notification.png" alt="" />
-        <div class="notif-dot"></div>
-      </div>
-      <div style="position:relative;flex-shrink:0;">
-        <div class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()"><span id="avatarInitials">··</span></div>
+      <div class="notif-btn"><img src="notification.png" alt=""/><div class="notif-dot"></div></div>
+      <div class="avatar-wrap">
+        <div class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()" role="button" tabindex="0" aria-label="Account menu"><span id="avatarInitials">··</span></div>
         <div class="avatar-menu" id="avatarMenu">
           <div class="avatar-menu-name" id="avatarGreeting">Hello!</div>
-          <a href="profile.html">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-            Profile
-          </a>
+                    <a href="profile.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Profile</a>
           <button onclick="handleLogout()">Logout</button>
         </div>
       </div>
     </div>
   </div>
 
-
-<div class="wrap">
-  <a class="back" href="cold-storage-list.html">← Cold Storage</a>
-  <div id="content">
-    <div class="skel"></div><div class="skel"></div>
-  </div>
+<div class="wrap page">
+  <div class="crumb"><a href="cold-storage-list.html">Cold storage</a> / <span id="crumbName">Loading...</span></div>
+  <div id="content"><div class="skel"></div><div class="skel"></div></div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
 const SUPABASE_ANON='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON);
-
 const $=id=>document.getElementById(id);
 const id=new URLSearchParams(location.search).get('id');
-const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const val=v=>v==null||v===''?'<span class="muted">—</span>':esc(v);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const tile=(l,v,opt={})=>`<div class="tile${opt.full?' full':''}"><div class="lbl">${esc(l)}</div><div class="v${(v==null||v==='')?' empty':''}${opt.mono?' mono':''}">${opt.html?(v||'—'):esc(v==null||v===''?'—':v)}</div></div>`;
+const link=u=>u?`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u)}</a>`:'';
 
 (async function(){
-  const { data:{ user } } = await sb.auth.getUser();
+  const {data:{user}}=await sb.auth.getUser();
   if(!user){ location.href='login.html'; return; }
-  if(!id){ $('content').innerHTML='<div class="err">No facility specified.</div>'; return; }
-
-  const { data:prof } = await sb.from('profiles').select('role, first_name, last_name, avatar_color, photo_url').eq('id',user.id).single();
-  const isAdmin = prof && ['admin','operator'].includes(prof.role);
-  applyAvatar(prof, user.email);
-
-  // RLS lets this through only for admins or orgs granted access
-  const { data:f, error } = await sb.from('cold_storage_facilities').select('*').eq('id',id).single();
-  if(error || !f){
-    $('content').innerHTML='<div class="err">This facility doesn’t exist, or your organisation doesn’t have access to it.</div>';
-    return;
-  }
-
-  const [{ data:contacts }, { data:certs }] = await Promise.all([
+  if(!id){ $('content').innerHTML='<div class="err">No facility specified.</div>'; $('crumbName').textContent='Not found'; return; }
+  const {data:prof}=await sb.from('profiles').select('role, first_name, last_name, avatar_color, photo_url').eq('id',user.id).single();
+  const isAdmin=prof&&['admin','operator'].includes(prof.role);
+  applyAvatar(prof,user.email);
+  /* RLS lets this through only for admins or orgs granted access */
+  const {data:f,error}=await sb.from('cold_storage_facilities').select('*').eq('id',id).single();
+  if(error||!f){ $('content').innerHTML='<div class="err">This facility does not exist, or your organisation does not have access to it.</div>'; $('crumbName').textContent='Not found'; return; }
+  const [{data:contacts},{data:certs}]=await Promise.all([
     sb.from('cold_storage_contacts').select('*').eq('facility_id',id),
     sb.from('cold_storage_certifications').select('*').eq('facility_id',id)
   ]);
-
   let grants=[];
   if(isAdmin){
-    const r = await sb.from('cold_storage_access')
-      .select('company_id, granted_at, companies(company_name)').eq('facility_id',id);
-    grants = r.data||[];
+    const r=await sb.from('cold_storage_access').select('company_id, granted_at, companies(company_name)').eq('facility_id',id);
+    grants=r.data||[];
   }
-
-  render(f, contacts||[], certs||[], grants, isAdmin);
+  render(f,contacts||[],certs||[],grants,isAdmin);
 })();
 
-function render(f, contacts, certs, grants, isAdmin){
-  const on = f.status==='Active';
-  const coords = (f.latitude!=null&&f.longitude!=null) ? `${f.latitude}, ${f.longitude}` : null;
-  const temp = (f.min_temp_c!=null||f.max_temp_c!=null) ? `${f.min_temp_c??'–'}°C to ${f.max_temp_c??'–'}°C` : null;
-
-  const msc = certs.find(c=>c.cert_type==='MSC');
-  const uk  = certs.find(c=>c.cert_type==='UK Approval');
-  const eu  = certs.find(c=>c.cert_type==='EU Approval');
-  const customs = certs.filter(c=>c.cert_type==='Custom');
-
-  $('content').innerHTML = `
-    ${f.cover_photo_url?`<div style="width:100%;height:220px;border-radius:14px;overflow:hidden;margin-bottom:20px;"><img src="${esc(f.cover_photo_url)}" style="width:100%;height:100%;object-fit:cover;" alt=""/></div>`:''}
-    <div class="head">
-      <div>
-        <h1>${esc(f.name)}</h1>
-        <div class="type">${esc(f.storage_type||'Cold storage facility')}</div>
-      </div>
-      <div class="right">
-        <span class="pill ${on?'on':'off'}">${on?'Active':'Inactive'}</span>
-        ${isAdmin?`<a class="btn primary" href="cold-storage.html?id=${f.id}">Edit</a>`:''}
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Location</h2>
-      <div class="dl">
-        <div class="full"><div class="term">Address</div><div class="val">${val(f.address)}</div></div>
-        <div><div class="term">City</div><div class="val">${val(f.city)}</div></div>
-        <div><div class="term">State / Province</div><div class="val">${val(f.state_province)}</div></div>
-        <div><div class="term">Country</div><div class="val">${val(f.country)}</div></div>
-        <div><div class="term">Postal Code</div><div class="val">${val(f.postal_code)}</div></div>
-        <div><div class="term">GLN</div><div class="val">${val(f.gln)}</div></div>
-        <div><div class="term">Coordinates</div><div class="val">${coords?esc(coords):'<span class="muted">—</span>'}</div></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Operational &amp; Capacity</h2>
-      <div class="dl">
-        <div><div class="term">Temperature range</div><div class="val">${temp?esc(temp):'<span class="muted">—</span>'}</div></div>
-        <div><div class="term">Storage capacity</div><div class="val">${val(f.storage_capacity)}</div></div>
-        ${f.parent_company_name?`<div><div class="term">Parent Company</div><div class="val">${esc(f.parent_company_name)}</div></div>`:''}
-        <div class="full"><div class="term">Additional Details</div><div class="val">${val(f.additional_details||f.remarks)}</div></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Contacts</h2>
-      ${contacts.length ? contacts.map(c=>`
-        <div class="contact">
-          <div><div class="term">Person</div><div class="val">${val(c.contact_name)}</div></div>
-          <div><div class="term">Designation</div><div class="val">${val(c.designation)}</div></div>
-          <div><div class="term">Phone</div><div class="val">${val(c.phone)}</div></div>
-          <div><div class="term">Email</div><div class="val">${c.email?`<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>`:'<span class="muted">—</span>'}</div></div>
-        </div>`).join('') : '<div class="muted">No contacts listed.</div>'}
-    </div>
-
-    <div class="card">
-      <h2>Certification</h2>
-
-      <!-- MSC -->
-      <div class="cert">
-        <div class="cert-detail-head">
-          <span class="cert-badge cert-badge-msc">MSC</span>
-          <h3 style="margin:0;font-size:14px;font-weight:700;">MSC Chain of Custody</h3>
-          ${msc ? '<span class="cert-filled-tag">Certified</span>' : '<span class="cert-na-tag">Not applicable</span>'}
-        </div>
-        ${msc ? `<div class="dl">
-          <div><div class="term">CoC Certificate</div><div class="val">${val(msc.data.coc_cert)}</div></div>
-          <div><div class="term">CoC Name</div><div class="val">${val(msc.data.coc_number)}</div></div>
-          <div><div class="term">Certifier / CB</div><div class="val">${val(msc.data.certifier)}</div></div>
-          <div><div class="term">Main Activity</div><div class="val">${val(msc.data.main_activity)}</div></div>
-          <div><div class="term">Website</div><div class="val">${msc.data.website?`<a href="${esc(msc.data.website)}" target="_blank" rel="noopener">${esc(msc.data.website)}</a>`:`<span class="muted">—</span>`}</div></div>
-          <div><div class="term">Certificate URL</div><div class="val">${msc.data.url?`<a href="${esc(msc.data.url)}" target="_blank" rel="noopener">${esc(msc.data.url)}</a>`:`<span class="muted">—</span>`}</div></div>
-          <div class="full"><div class="term">Certified Species</div><div class="val">${(msc.data.species&&msc.data.species.length)?`<div class="chips">${msc.data.species.map(s=>`<span class="chip">${esc(s.name)}</span>`).join(``)}</div>`:`<span class="muted">—</span>`}</div></div>
-        </div>` : `<div class="cert-na-body">No MSC Chain of Custody certification recorded for this facility.</div>`}
-      </div>
-
-      <!-- UK + EU side by side -->
-      <div class="cert-detail-two-col">
-
-        <!-- UK -->
-        <div class="cert">
-          <div class="cert-detail-head">
-            <span class="cert-badge cert-badge-uk">UK</span>
-            <h3 style="margin:0;font-size:14px;font-weight:700;">UK Approval</h3>
-            ${uk ? '<span class="cert-filled-tag">Approved</span>' : '<span class="cert-na-tag">Not applicable</span>'}
-          </div>
-          ${uk ? `<div class="dl">
-            <div><div class="term">Approval Number</div><div class="val">${val(uk.data.number)}</div></div>
-            <div><div class="term">Approval Date</div><div class="val">${val(uk.data.date)}</div></div>
-            <div class="full"><div class="term">Authorised Activities</div><div class="val">${val(uk.data.activities)}</div></div>
-          </div>` : `<div class="cert-na-body">No UK approval number recorded for this facility.</div>`}
-        </div>
-
-        <!-- EU -->
-        <div class="cert">
-          <div class="cert-detail-head">
-            <span class="cert-badge cert-badge-eu">EU</span>
-            <h3 style="margin:0;font-size:14px;font-weight:700;">EU Approval</h3>
-            ${eu ? '<span class="cert-filled-tag">Approved</span>' : '<span class="cert-na-tag">Not applicable</span>'}
-          </div>
-          ${eu ? `<div class="dl">
-            <div><div class="term">Approval Number</div><div class="val">${val(eu.data.number)}</div></div>
-            <div><div class="term">Approval Date</div><div class="val">${val(eu.data.date)}</div></div>
-            <div class="full"><div class="term">Activities / Scope</div><div class="val">${val(eu.data.activities)}</div></div>
-          </div>` : `<div class="cert-na-body">No EU approval number recorded for this facility.</div>`}
-        </div>
-
-      </div>
-
-      <!-- Custom certs -->
-      ${customs.length ? `<div style="margin-top:16px">${customs.map(c=>`<div class="cert"><h3 style="font-size:13.5px;margin:0 0 10px;font-weight:600">${val(c.title||'Certification')}</h3>
-        <div class="dl">${Object.entries(c.data||{}).map(([k,v])=>`<div><div class="term">${esc(k)}</div><div class="val">${val(v)}</div></div>`).join('')||'<span class="muted">—</span>'}</div></div>`).join('')}</div>` : ''}
-    </div>
-
-    ${isAdmin?`<div class="card">
-      <h2>Organisations using this facility</h2>
-      ${grants.length ? grants.map(g=>`
-        <div class="org-row">
-          <span>${esc(g.companies?.company_name||'Company')}</span>
-          <span class="when">granted ${g.granted_at?new Date(g.granted_at).toLocaleDateString():''}</span>
-        </div>`).join('') : '<div class="muted">No organisations attached yet. Use Edit → “On behalf of” to grant access.</div>'}
-    </div>`:''}
-
-    ${f.gallery_items?`
-    <div class="card">
-      <h2>Gallery</h2>
-      <div id="detailAlbumsGrid" class="albums-grid detail-albums-grid"></div>
-    </div>`:''}
-    <div class="card">
-      <h2>Inventory</h2>
-      <div class="inv-teaser">
-        <div class="inv-flow"><span>Stock In</span> → <span>Store</span> → <span>Stock Out</span></div>
-        <span class="soon">Coming soon</span>
-      </div>
-    </div>
-  `;
-  // Render gallery if present
-  if (f.gallery_items) {
-    try { renderDetailAlbums(JSON.parse(f.gallery_items)); } catch(e) {}
-  }
+function certBlock(badge,cls,title,c,okLabel,body,naText){
+  return `<div class="cert${c?'':' cert-off'}">
+    <div class="cert-head"><span class="cert-badge ${cls}">${badge}</span><h3>${title}</h3>
+      <span class="cert-tag${c?' ok':''}">${c?okLabel:'Not applicable'}</span></div>
+    ${c?`<div class="dl">${body}</div>`:`<div class="cert-na">${naText}</div>`}
+  </div>`;
 }
 
-/* ---- shared nav behaviour ---- */
-function toggleAvatarMenu(){ document.getElementById('avatarMenu').classList.toggle('open'); }
-document.addEventListener('click', e=>{ if(!e.target.closest('.avatar-btn')) document.getElementById('avatarMenu')?.classList.remove('open'); });
+function render(f,contacts,certs,grants,isAdmin){
+  const on=f.status==='Active';
+  const lat=f.latitude!=null&&f.latitude!==''?parseFloat(f.latitude):null, lon=f.longitude!=null&&f.longitude!==''?parseFloat(f.longitude):null;
+  const hasCoords=lat!=null&&lon!=null&&!isNaN(lat)&&!isNaN(lon);
+  const temp=(f.min_temp_c!=null||f.max_temp_c!=null)?`${f.min_temp_c??'–'}°C to ${f.max_temp_c??'–'}°C`:null;
+  const loc=[f.city,f.country].filter(Boolean).join(', ');
+  const msc=certs.find(c=>c.cert_type==='MSC'), uk=certs.find(c=>c.cert_type==='UK Approval'), eu=certs.find(c=>c.cert_type==='EU Approval');
+  const customs=certs.filter(c=>c.cert_type==='Custom');
+  document.title=`${f.name} · SmarTuna concept`; $('crumbName').textContent=f.name;
+  const fact=(l,v)=>`<div class="fact"><div class="lbl">${l}</div><div class="v${v?'':' empty'}">${esc(v||'—')}</div></div>`;
+  const md=msc?.data||{}, ud=uk?.data||{}, ed=eu?.data||{};
+
+  $('content').innerHTML=`
+    ${f.cover_photo_url?`<div class="hero has-photo" style="background-image:url('${esc(f.cover_photo_url).replace(/'/g,'%27')}')"></div>`:''}
+    <div class="head">
+      <div class="head-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 2v20M4.9 6l14.2 12M4.9 18L19.1 6"/><path d="M9 4l3 2 3-2M9 20l3-2 3 2M3.5 9.5l3.5 0.5-1 3.4M20.5 14.5l-3.5-.5 1-3.4M3.5 14.5L7 14l-1-3.4M20.5 9.5L17 10l1 3.4"/></svg></div>
+      <div class="head-t"><h1>${esc(f.name)}</h1>
+        <div class="sub"><span>${esc(f.storage_type||'Cold storage facility')}</span><span class="status ${on?'on':'off'}">${on?'Active':'Inactive'}</span></div></div>
+      <div class="right">${isAdmin?`<a class="pill-btn primary" href="cold-storage.html?id=${encodeURIComponent(f.id)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>Edit</a>`:''}</div>
+    </div>
+    <div class="facts">${fact('Location',loc)}${fact('Temperature range',temp)}${fact('Storage capacity',f.storage_capacity)}${fact('GLN',f.gln)}</div>
+
+    <div class="main-grid">
+      <div>
+        <div class="card"><div class="card-h"><div class="card-t">Location</div></div>
+          <div class="dl">${tile('Address',f.address,{full:true})}${tile('City',f.city)}${tile('State / province',f.state_province)}${tile('Country',f.country)}${tile('Postal code',f.postal_code)}${tile('GLN',f.gln,{mono:true})}${tile('Coordinates',hasCoords?`${lat}, ${lon}`:null,{mono:true})}</div>
+        </div>
+        <div class="card"><div class="card-h"><div class="card-t">Operational &amp; capacity</div></div>
+          <div class="dl">${tile('Temperature range',temp)}${tile('Storage capacity',f.storage_capacity)}${f.parent_company_name?tile('Parent company',f.parent_company_name):''}${tile('Additional details',f.additional_details||f.remarks,{full:true})}</div>
+        </div>
+        <div class="card"><div class="card-h"><div class="card-t">Contacts</div>${contacts.length?`<span class="count">${contacts.length}</span>`:''}</div>
+          ${contacts.length?contacts.map(c=>`<div class="contact">${tile('Person',c.contact_name)}${tile('Designation',c.designation)}${tile('Phone',c.phone)}${tile('Email',c.email?`<a href="mailto:${esc(c.email)}">${esc(c.email)}</a>`:null,{html:true})}</div>`).join(''):'<div class="muted">No contacts listed.</div>'}
+        </div>
+        <div class="card"><div class="card-h"><div class="card-t">Certification</div></div>
+          ${certBlock('MSC','cert-badge-msc','MSC Chain of Custody',msc,'Certified',
+            tile('CoC certificate',md.coc_cert,{mono:true})+tile('CoC name',md.coc_number)+tile('Certifier / CB',md.certifier)+tile('Main activity',md.main_activity)+tile('Website',link(md.website),{html:true})+tile('Certificate URL',link(md.url),{html:true})+
+            `<div class="tile full"><div class="lbl">Certified species</div>${(md.species&&md.species.length)?`<div class="chips" style="margin-top:5px">${md.species.map(s=>`<span class="chip">${esc(s.name)}</span>`).join('')}</div>`:'<div class="v empty">—</div>'}</div>`,
+            'No MSC Chain of Custody certification recorded for this facility.')}
+          <div class="cert-two-col">
+            ${certBlock('UK','cert-badge-uk','UK approval',uk,'Approved',tile('Approval number',ud.number,{mono:true})+tile('Approval date',ud.date)+tile('Authorised activities',ud.activities,{full:true}),'No UK approval number recorded.')}
+            ${certBlock('EU','cert-badge-eu','EU approval',eu,'Approved',tile('Approval number',ed.number,{mono:true})+tile('Approval date',ed.date)+tile('Activities / scope',ed.activities,{full:true}),'No EU approval number recorded.')}
+          </div>
+          ${customs.map(c=>`<div class="cert" style="margin-top:10px"><div class="cert-head"><h3>${esc(c.title||'Certification')}</h3><span class="cert-tag ok">Custom</span></div>
+            <div class="dl">${Object.entries(c.data||{}).map(([k,v])=>tile(k,v)).join('')||'<div class="muted">—</div>'}</div></div>`).join('')}
+        </div>
+      </div>
+      <div class="side">
+        <div class="card"><div class="card-h"><div class="card-t">Map</div>${hasCoords?`<span class="lbl">${lat.toFixed(4)}, ${lon.toFixed(4)}</span>`:''}</div>
+          <div class="map-box">${hasCoords?`<iframe loading="lazy" allowfullscreen src="https://www.openstreetmap.org/export/embed.html?bbox=${lon-.02}%2C${lat-.015}%2C${lon+.02}%2C${lat+.015}&layer=mapnik&marker=${lat}%2C${lon}"></iframe>`:`<div class="map-ph"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><p>No coordinates recorded</p></div>`}</div>
+        </div>
+        ${isAdmin?`<div class="card"><div class="card-h"><div class="card-t">Organisations using this facility</div>${grants.length?`<span class="count">${grants.length}</span>`:''}</div>
+          ${grants.length?grants.map(g=>`<div class="org-row"><span>${esc(g.companies?.company_name||'Company')}</span><span class="when">${g.granted_at?new Date(g.granted_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}):''}</span></div>`).join('')
+            :'<div class="muted">No organisations attached yet. Use Edit, then "On behalf of", to grant access.</div>'}</div>`:''}
+        ${f.gallery_items?`<div class="card"><div class="card-h"><div class="card-t">Gallery</div></div><div id="detailAlbumsGrid" class="detail-albums-grid"></div></div>`:''}
+        <div class="card"><div class="card-h"><div class="card-t">Inventory</div><span class="soon">Coming soon</span></div>
+          <div class="inv-flow"><span>Stock in</span><i>/</i><span>Store</span><i>/</i><span>Stock out</span></div></div>
+      </div>
+    </div>`;
+  if(f.gallery_items){ try{ renderDetailAlbums(typeof f.gallery_items==='string'?JSON.parse(f.gallery_items):f.gallery_items); }catch(e){} }
+}
+
+function toggleAvatarMenu(){ $('avatarMenu').classList.toggle('open'); }
+document.addEventListener('click',e=>{ if(!e.target.closest('.avatar-wrap')) $('avatarMenu')?.classList.remove('open'); });
 async function handleLogout(){ await sb.auth.signOut(); location.href='index.html'; }
-function applyAvatar(p, email){
+function applyAvatar(p,email){
   const first=(p&&p.first_name)||(email?email.split('@')[0]:'')||'User';
   const last=(p&&p.last_name)||'';
-  const initials=((first.charAt(0)||'')+(last.charAt(0)||'')).toUpperCase()||'··';
   const btn=document.getElementById('avatarBtn');
-  if(p&&p.photo_url){ btn.innerHTML=`<img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover" />`; }
-  else { btn.style.background=(p&&p.avatar_color)||'#1a6fdb'; document.getElementById('avatarInitials').textContent=initials; }
-  const g=document.getElementById('avatarGreeting'); if(g) g.textContent=`Hello, ${first}!`;
+  if(p&&p.photo_url){ btn.innerHTML=`<img src="${String(p.photo_url).replace(/"/g,'&quot;')}" alt="" style="width:100%;height:100%;object-fit:cover"/>`; }
+  else{ btn.style.background=(p&&p.avatar_color)||'#2f6fed'; document.getElementById('avatarInitials').textContent=((first.charAt(0)||'')+(last.charAt(0)||'')).toUpperCase()||'··'; }
+  const g=document.getElementById('avatarGreeting'); if(g) g.textContent=`Hello, ${first}`;
 }
 
-
-function renderDetailAlbums(albums) {
-  const grid = document.getElementById('detailAlbumsGrid');
-  if (!grid || !albums.length) return;
-  const albumsJson = JSON.stringify(albums).replace(/'/g,"&#39;").replace(/\\/g,"\\\\").replace(/`/g,"\\`");
-  grid.innerHTML = albums.map(album => {
-    const imgs = album.items.filter(i => i.type === 'image');
-    let cover = '';
-    if (imgs.length >= 4) {
-      cover = '<div class="detail-album-cover-grid">' + imgs.slice(0,4).map(i=>'<img src="'+i.url+'" loading="lazy"/>').join('') + '</div>';
-    } else if (imgs.length > 0) {
-      cover = '<img src="'+imgs[0].url+'" style="width:100%;height:100%;object-fit:cover;"/>';
-    } else {
-      cover = '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#b0b6c4;"><svg width=28 height=28 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x=2 y=7 width=20 height=14 rx=2/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg></div>';
-    }
-    const count = album.items.length;
-    return '<div class="detail-album-card" onclick="openDetailAlbum(\'' + album.id + '\')">'
-      + '<div class="detail-album-cover">' + cover + '</div>'
-      + '<div class="detail-album-info"><div class="detail-album-name">' + album.name + '</div>'
-      + '<div class="detail-album-count">' + count + ' item' + (count!==1?'s':'') + '</div></div></div>';
+const FOLDER='<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>';
+const PDF_IC='<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+function renderDetailAlbums(albums){
+  const grid=$('detailAlbumsGrid'); if(!grid||!albums||!albums.length) return;
+  window._detailAlbums=albums;
+  grid.innerHTML=albums.map((album,i)=>{
+    const imgs=(album.items||[]).filter(x=>x.type==='image');
+    const cover=imgs.length>=4?`<div class="detail-album-cover-grid">${imgs.slice(0,4).map(x=>`<img src="${esc(x.url)}" loading="lazy" alt=""/>`).join('')}</div>`
+      :imgs.length?`<img src="${esc(imgs[0].url)}" alt=""/>`:`<div class="album-cover-placeholder">${FOLDER}</div>`;
+    const n=(album.items||[]).length;
+    return `<div class="detail-album-card" style="animation-delay:${i*40}ms" onclick="openDetailAlbum('${esc(album.id)}')"><div class="detail-album-cover">${cover}</div>
+      <div class="detail-album-info"><div class="detail-album-name">${esc(album.name)}</div><div class="detail-album-count">${n} item${n!==1?'s':''}</div></div></div>`;
   }).join('');
-  // store albums for lightbox
-  window._detailAlbums = albums;
-  // inject lightbox once
-  if (!document.getElementById('detailAlbumLightbox')) {
-    const lb = document.createElement('div');
-    lb.id = 'detailAlbumLightbox';
-    lb.innerHTML = '<div class="lightbox-header"><button onclick="closeDetailAlbum()" style="width:32px;height:32px;border-radius:50%;border:1.5px solid rgba(255,255,255,0.2);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;"><svg width=14 height=14 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg></button><div style="font-size:15px;font-weight:700;color:#fff;" id="lbAlbumName"></div><div style="font-size:12px;color:rgba(255,255,255,0.5);margin-left:8px;" id="lbAlbumCount"></div></div><div class="lightbox-grid" id="lbGrid"></div>';
+  if(!$('detailAlbumLightbox')){
+    const lb=document.createElement('div'); lb.id='detailAlbumLightbox';
+    lb.innerHTML='<div class="lightbox-header"><button onclick="closeDetailAlbum()" aria-label="Back"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button><div style="font-size:16px" id="lbAlbumName"></div><div style="font-family:Consolas,monospace;font-size:12px;color:rgba(255,255,255,.55)" id="lbAlbumCount"></div></div><div class="lightbox-grid" id="lbGrid"></div>';
     document.body.appendChild(lb);
   }
 }
-
-function openDetailAlbum(albumId) {
-  const album = (window._detailAlbums||[]).find(a => a.id === albumId);
-  if (!album) return;
-  document.getElementById('lbAlbumName').textContent = album.name;
-  document.getElementById('lbAlbumCount').textContent = album.items.length + ' items';
-  document.getElementById('lbGrid').innerHTML = album.items.map(item =>
-    item.type === 'pdf'
-      ? '<div class="lightbox-pdf-item" onclick="window.open(\''+item.url+'\',\'_blank\')"><svg width=28 height=28 viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>'+item.name.replace(/\.pdf$/i,'')+'</span></div>'
-      : '<div class="lightbox-img-item" onclick="window.open(\''+item.url+'\',\'_blank\')"><img src="'+item.url+'" loading="lazy"/></div>'
-  ).join('');
-  document.getElementById('detailAlbumLightbox').classList.add('open');
-  document.body.style.overflow = 'hidden';
+function openDetailAlbum(albumId){
+  const album=(window._detailAlbums||[]).find(a=>a.id===albumId); if(!album) return;
+  $('lbAlbumName').textContent=album.name; $('lbAlbumCount').textContent=album.items.length+' items';
+  $('lbGrid').innerHTML=album.items.map(item=>item.type==='pdf'
+    ?`<div class="lightbox-pdf-item" onclick="window.open('${esc(item.url)}','_blank')">${PDF_IC}<span>${esc(item.name.replace(/\.pdf$/i,''))}</span></div>`
+    :`<div class="lightbox-img-item" onclick="window.open('${esc(item.url)}','_blank')"><img src="${esc(item.url)}" loading="lazy" alt=""/></div>`).join('');
+  $('detailAlbumLightbox').classList.add('open'); document.body.style.overflow='hidden';
 }
+function closeDetailAlbum(){ $('detailAlbumLightbox')?.classList.remove('open'); document.body.style.overflow=''; }
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeDetailAlbum(); });
+</script>
 
-function closeDetailAlbum() {
-  document.getElementById('detailAlbumLightbox').classList.remove('open');
-  document.body.style.overflow = '';
-}
-
-document.addEventListener('keydown', function(e) {
-  if (e.key === 'Escape') closeDetailAlbum();
-});
+<script>
+if (typeof window.launchModule !== 'function') { window.launchModule = function(url){ window.location.href = url; }; }
 </script>
 </body>
 </html>
