@@ -873,7 +873,7 @@ function renderHeader(){
   const backBtn=`<a href="vessel-list.html" class="btn secondary"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>Vessels</a>`;
   const editBtn=`<a class="btn primary" href="vessel.html?id=${encodeURIComponent(v.id)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>Edit vessel</a>`;
   const delBtn=`<button class="btn danger" onclick="confirmDelete('${esc(v.id)}')">Delete</button>`;
-  $('hdrActions').innerHTML=backBtn+editBtn+delBtn;
+  $('hdrActions').innerHTML=backBtn+editBtn+(isAdmin?delBtn:'');
   document.title=`${v.current_name} · SmarTuna concept`;
 }
 
@@ -2474,17 +2474,14 @@ async function confirmDelete(vesselId){
   const ok=await showConfirm(
     'Delete this vessel?',
     'This will permanently remove all vessel data including history, VOSI, and compliance records. This cannot be undone.',
-    'Continue to delete'
+    'Delete vessel'
   );
   if(!ok) return;
-  // Step 2: password gate
-  await new Promise(r=>setTimeout(r,220));
-  const pwd=await showConfirm('Enter the deletion password','Type the deletion password to permanently delete this vessel.','Delete vessel',null,true);
-  if(pwd===null) return;
-  if(pwd!=='369123'){ toast('Incorrect password. Deletion cancelled.',true); return; }
+
   // Delete
-  const {error}=await sb.from('vessels').delete().eq('id',vesselId);
+  const {data:gone,error}=await sb.from('vessels').delete().eq('id',vesselId).select('id');
   if(error){ toast('Delete failed: '+error.message,true); return; }
+  if(!gone||!gone.length){ toast('You do not have permission to delete this vessel',true); return; }
   toast('Vessel deleted');
   setTimeout(()=>location.href='vessel-list.html',1000);
 }

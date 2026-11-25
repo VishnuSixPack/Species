@@ -123,6 +123,27 @@
   .rv.in{opacity:1;transform:none}
   @media (prefers-reduced-motion:reduce){ .rv{opacity:1;transform:none;transition:none} html{scroll-behavior:auto} }
 
+
+  @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');font-weight:normal;font-style:normal;font-display:swap}
+  .sc-wm{display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1}
+  .sc-wm-top{font-family:'Bitsumis',sans-serif;font-size:17px;letter-spacing:.04em;text-transform:uppercase;line-height:1;color:var(--ink)}
+  .sc-wm-top span{color:var(--accent)}
+  .sc-wm-sub{font-family:'Bitsumis',sans-serif;font-size:8px;letter-spacing:.32em;text-transform:uppercase;color:#6b7380;margin-top:2px}
+  .brand img{height:28px}
+  .links{position:relative;gap:2px;padding:4px;background:var(--white);border:1px solid var(--line);border-radius:999px}
+  .links a{position:relative;z-index:1;padding:6px 15px;border-radius:999px;font-size:13px;transition:color .25s}
+  .links a.on{color:#fff}
+  .links .ind{position:absolute;top:4px;bottom:4px;left:0;width:0;border-radius:999px;background:var(--accent);box-shadow:0 6px 16px rgba(47,111,237,.25);transition:transform .45s cubic-bezier(.34,1.56,.64,1),width .45s cubic-bezier(.34,1.56,.64,1),opacity .3s;opacity:0}
+  .links.has .ind{opacity:1}
+  .btn.primary{box-shadow:0 6px 16px rgba(47,111,237,.25)}
+  .btn.primary:hover{transform:translateY(-1px)}
+  .trace li.now .d{animation:ping 2s ease-out infinite}
+  @keyframes ping{0%{box-shadow:0 0 0 0 rgba(47,111,237,.35)}100%{box-shadow:0 0 0 10px rgba(47,111,237,0)}}
+  .card{transition:transform .4s cubic-bezier(.16,1,.3,1),box-shadow .4s}
+  .card:hover{transform:translateY(-3px);box-shadow:0 36px 80px rgba(18,58,114,.16)}
+  .step{transition:border-color .2s,transform .25s}
+  .step:hover{border-color:#cdd9f2;transform:translateY(-2px)}
+
   @media (max-width:980px){
     .hero .wrap,.api{grid-template-columns:1fr}
     .features{grid-template-columns:1fr 1fr}
@@ -147,13 +168,13 @@
   <div class="wrap nav">
     <a class="brand" href="#top" aria-label="SmarTuna home">
       <img src="sc-blue-logo.png" alt="" onerror="this.outerHTML='<span class=&quot;dot&quot;><svg viewBox=&quot;0 0 24 24&quot;><path d=&quot;M3 13c3-5 9-7 14-4l4-3v12l-4-3c-5 3-11 1-14-2z&quot; fill=&quot;#fff&quot;/><circle cx=&quot;15&quot; cy=&quot;11&quot; r=&quot;1.2&quot; fill=&quot;#2059a8&quot;/></svg></span>'">
-      SmarTuna
+      <span class="sc-wm"><span class="sc-wm-top">Smar<span>Tuna</span></span><span class="sc-wm-sub">concept</span></span>
     </a>
     <nav class="links" aria-label="Sections">
-      <a href="#features">Features</a><a href="#how">How it works</a><a href="#numbers">Numbers</a><a href="#api">API</a>
+      <span class="ind"></span><a href="#features">Features</a><a href="#how">How it works</a><a href="#numbers">Numbers</a><a href="#api">API</a>
     </nav>
     <div style="display:flex;gap:10px">
-      <a class="btn ghost" href="#">Sign in</a>
+      <a class="btn ghost" href="login.html">Sign in</a>
       <a class="btn primary" href="#start">Request a demo</a>
     </div>
   </div>
@@ -278,7 +299,7 @@
     <div class="wrap">
       <div class="final rv">
         <div><h2>See SmarTuna with your own data.</h2><p>Send one order template and we'll show you the full trace.</p></div>
-        <div class="cta"><a class="btn primary" href="#">Request a demo</a><a class="btn ghost" href="#features">Explore features</a></div>
+        <div class="cta"><a class="btn primary" href="mailto:?subject=SmarTuna%20demo%20request">Request a demo</a><a class="btn ghost" href="#features">Explore features</a></div>
       </div>
     </div>
   </section>
@@ -310,6 +331,19 @@
   document.querySelectorAll("[data-count]").forEach(el => counter.observe(el));
 
   document.getElementById("yr").textContent = new Date().getFullYear();
+
+  // section nav: a sliding pill follows the section in view
+  (function(){
+    const nav = document.querySelector(".links"), ind = nav.querySelector(".ind"), links = [...nav.querySelectorAll("a")];
+    const move = a => { if (!a) { nav.classList.remove("has"); links.forEach(l => l.classList.remove("on")); return; }
+      links.forEach(l => l.classList.toggle("on", l === a)); nav.classList.add("has");
+      ind.style.width = a.offsetWidth + "px"; ind.style.transform = "translateX(" + (a.offsetLeft - 4) + "px)"; };
+    const spy = () => { const y = scrollY + 140; let cur = null;
+      links.forEach(a => { const s = document.querySelector(a.getAttribute("href")); if (s && s.offsetTop <= y) cur = a; });
+      if (scrollY + innerHeight >= document.documentElement.scrollHeight - 4) cur = links[links.length - 1];
+      move(cur); };
+    addEventListener("scroll", spy, { passive: true }); addEventListener("resize", spy); spy();
+  })();
 </script>
 </body>
 </html>

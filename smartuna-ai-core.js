@@ -42,6 +42,7 @@ const SmarTunaAI = (function () {
   let GK = null;
   const MODEL = 'openai/gpt-oss-120b';
   const MAX_TOOL_ITERATIONS = 5; // hard ceiling on chained tool calls per question
+  const MAX_TOOL_RESULT_CHARS = 24000; // cap on one tool result sent back to the model
 
   function requireInit() {
     if (!db || !GK) throw new Error('SmarTunaAI.init() must be called before use.');
@@ -52,7 +53,14 @@ const SmarTunaAI = (function () {
      never left to the model. The model never sees or controls this value;
      it isn't a parameter on any tool schema. */
   function orgScoped(query) {
-    return query.eq('organisation_id', ORG_ID);
+    // No organisation id on the profile: rely on Supabase RLS instead of filtering on organisation_id = null
+    // (which matched nothing and made every org-scoped tool come back empty).
+    return ORG_ID ? query.eq('organisation_id', ORG_ID) : query;
+  }
+
+  // Text the model passes into PostgREST filters: strip characters that break or widen .or()/.ilike() filters.
+  function clean(v) {
+    return String(v == null ? '' : v).replace(/[,()%*\\]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
   }
 
   /* ==================================================================
@@ -75,7 +83,7 @@ const SmarTunaAI = (function () {
     // Direct field match (ref, destination, origin, exporter) first.
     let hits = all.filter((s) =>
       [s.shipment_ref, s.destination_name, s.destination_country, s.origin_name, s.exporter_name]
-        .some((f) => f && qNorm.includes(norm(f)))
+        .some((f) => { const n = norm(f); return n.length >= 3 && qNorm.includes(n); })
     );
 
     // Reverse lookup: does the query name a fishing or transport vessel?
@@ -108,11 +116,13 @@ const SmarTunaAI = (function () {
   }
 
   async function getShipmentDetail({ shipment_ref }) {
+    shipment_ref = String(shipment_ref || '').trim();
+    if (!shipment_ref) return { error: 'No shipment reference given.' };
     const { data: s, error } = await orgScoped(
       db.from('shipments').select(
         'id,shipment_ref,shipment_date,shipment_type,transport_mode,status,exporter_name,exporter_org_id,country_of_export,destination_country,incoterms,origin_name,origin_port_id,destination_name,destination_port_id,container_no,seal_number,vessel_name,voyage_no,bl_no,on_board_date,container_discharge_date,departure_date,arrival_date,processor_name,processor_org_id,processing_country,importer_name'
       ).eq('shipment_ref', shipment_ref).is('deleted_at', null)
-    ).single();
+    ).maybeSingle();
     if (error || !s) return { error: `No shipment found with reference "${shipment_ref}" in this organisation.` };
 
     const [{ data: items }, { data: batches }, legsRes, vesselsRes, ccRes] = await Promise.all([
@@ -226,6 +236,8 @@ const SmarTunaAI = (function () {
   }
 
   async function searchVessels({ query }) {
+    query = clean(query);
+    if (!query) return { found: 0, note: 'No search text given.' };
     const { data } = await db.from('vessels').select(
       'id,imo,current_name,vessel_flag,vessel_category,iuu_listed,eu_approved,pna_vds_active,vds_valid_from,vds_valid_until,rfmo_wcpfc,rfmo_iattc,rfmo_iotc,rfmo_iccat'
     ).ilike('current_name', `%${query}%`).limit(10);
@@ -234,6 +246,8 @@ const SmarTunaAI = (function () {
   }
 
   async function getVesselComplianceHistory({ vessel_name_or_imo }) {
+    vessel_name_or_imo = clean(vessel_name_or_imo);
+    if (!vessel_name_or_imo) return { error: 'No vessel name or IMO given.' };
     const { data: vessels } = await db.from('vessels').select('id,current_name,imo,vessel_flag')
       .or(`current_name.ilike.%${vessel_name_or_imo}%,imo.eq.${vessel_name_or_imo}`).limit(1);
     const vessel = vessels && vessels[0];
@@ -254,12 +268,16 @@ const SmarTunaAI = (function () {
   }
 
   async function searchCompanies({ query }) {
+    query = clean(query);
+    if (!query) return { found: 0, note: 'No search text given.' };
     const { data } = await db.from('companies').select('id,company_name,country,industry,status').ilike('company_name', `%${query}%`).limit(10);
     if (!data || !data.length) return { found: 0, note: `No company matching "${query}" found.` };
     return { found: data.length, companies: data };
   }
 
   async function getCompanyCertifications({ company_name }) {
+    company_name = clean(company_name);
+    if (!company_name) return { error: 'No company name given.' };
     const { data: companies } = await db.from('companies').select('*').ilike('company_name', `%${company_name}%`).limit(1);
     const company = companies && companies[0];
     if (!company) return { error: `No company matching "${company_name}" found.` };
@@ -268,6 +286,8 @@ const SmarTunaAI = (function () {
   }
 
   async function searchProducts({ query }) {
+    query = clean(query);
+    if (!query) return { found: 0, note: 'No search text given.' };
     const { data } = await db.from('products').select('id,product_name,brand,product_form,species_id,ean_gtin').is('deleted_at', null)
       .or(`product_name.ilike.%${query}%,brand.ilike.%${query}%`).limit(10);
     if (!data || !data.length) return { found: 0, note: `No product matching "${query}" found.` };
@@ -275,6 +295,8 @@ const SmarTunaAI = (function () {
   }
 
   async function searchRawMaterials({ query }) {
+    query = clean(query);
+    if (!query) return { found: 0, note: 'No search text given.' };
     const { data } = await orgScoped(
       db.from('raw_materials').select('id,rm_ref,name,species_name,source_type,origin_country,quantity_kg,harvest_date').is('deleted_at', null)
         .or(`rm_ref.ilike.%${query}%,name.ilike.%${query}%,species_name.ilike.%${query}%`)
@@ -284,6 +306,8 @@ const SmarTunaAI = (function () {
   }
 
   async function searchPorts({ query }) {
+    query = clean(query);
+    if (!query) return { found: 0, note: 'No search text given.' };
     const { data } = await db.from('ports').select('id,main_port_name,country,un_locode,psma_party').ilike('main_port_name', `%${query}%`).limit(10);
     if (!data || !data.length) return { found: 0, note: `No port matching "${query}" found.` };
     return { found: data.length, ports: data };
@@ -416,15 +440,17 @@ This response may be read aloud via text-to-speech — keep it concise (2-4 sent
       if (!message) throw new Error('Unexpected Groq response shape.');
 
       if (!message.tool_calls || !message.tool_calls.length) {
-        return { answer: message.content, iterations: iteration };
+        return { answer: message.content || 'Sorry, I could not put an answer together for that. Try asking it another way.', iterations: iteration };
       }
 
-      messages.push(message);
+      messages.push({ role: 'assistant', content: message.content || '', tool_calls: message.tool_calls });
       for (const call of message.tool_calls) {
         let args = {};
         try { args = JSON.parse(call.function.arguments || '{}'); } catch (e) { /* malformed args from the model */ }
         const result = await executeTool(call.function.name, args);
-        messages.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(result) });
+        let content = JSON.stringify(result);
+        if (content.length > MAX_TOOL_RESULT_CHARS) content = content.slice(0, MAX_TOOL_RESULT_CHARS) + '... [truncated: result too large, ask for something narrower]';
+        messages.push({ role: 'tool', tool_call_id: call.id, content });
       }
     }
     return { answer: "I wasn't able to fully resolve that within the allowed number of lookups — try rephrasing, or asking about one thing at a time.", iterations: MAX_TOOL_ITERATIONS };
