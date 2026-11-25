@@ -166,13 +166,9 @@ document.addEventListener('click', (e) => {
 function showToast(message, type = 'success') {
   const container = document.getElementById('toastContainer');
   const toast = document.createElement('div');
-  toast.style.cssText = `
-    background:${type === 'success' ? '#22c55e' : '#e63946'};
-    color:#fff; padding:12px 20px; border-radius:10px;
-    font-family:'Poppins',sans-serif; font-size:13px; font-weight:600;
-    box-shadow:0 4px 20px rgba(0,0,0,0.15);
-  `;
-  toast.textContent = message;
+  toast.className = `toast ${type === 'success' ? '' : 'error'}`;
+  toast.innerHTML = '<i></i>';
+  toast.appendChild(document.createTextNode(message));
   container.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
 }
@@ -198,7 +194,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   const email = currentUser.email || '';
-  setNavAvatar(document.getElementById('navAvatar'), profile?.photo_url, email.substring(0, 2).toUpperCase(), profile?.avatar_color || '#1a6fdb');
+  setNavAvatar(document.getElementById('navAvatar'), profile?.photo_url, email.substring(0, 2).toUpperCase(), profile?.avatar_color || '#2f6fed');
   document.getElementById('navEmail').textContent = email;
   document.getElementById('navFirstName').textContent = getGreeting(profile?.first_name || email.split('@')[0]);
 
@@ -248,7 +244,7 @@ async function loadOrgProducts() {
     data.forEach(p => {
       const opt = document.createElement('option');
       opt.value = p.id;
-      opt.textContent = `${p.product_name}${p.brand ? ` — ${p.brand}` : ''}`;
+      opt.textContent = `${p.product_name}${p.brand ? ` · ${p.brand}` : ''}`;
       select.appendChild(opt);
     });
   }
@@ -257,7 +253,8 @@ async function loadOrgProducts() {
 // ── LOAD EXISTING ─────────────────────────────────────────────
 async function loadExistingAssessment(id) {
   existingAssessmentId = id;
-  document.querySelector('.assessment-header-left h1').textContent = 'Edit MRI Assessment';
+  const title = document.getElementById('assessTitle');
+  if (title) title.textContent = 'Edit SRI assessment';
 
   const { data: assessment } = await dbClient
     .from('mri_assessments')
@@ -272,7 +269,6 @@ async function loadExistingAssessment(id) {
   document.getElementById('selectProduct').value = assessment.product_id;
   document.getElementById('assessmentNotes').value = assessment.notes || '';
 
-  // Load stage responsibility
   if (assessment.stage_responsibility) {
     Object.assign(stageResponsibility, assessment.stage_responsibility);
     Object.keys(stageResponsibility).forEach(code => {
@@ -302,7 +298,10 @@ async function loadExistingAssessment(id) {
       const evidenceInput = document.getElementById(`evidence-${key}`);
       const sevBtn = document.getElementById(`sevBtn-${key}`);
       if (toggle) toggle.checked = kdeState[key].response;
-      if (naCheck) naCheck.checked = kdeState[key].na;
+      if (naCheck) {
+        naCheck.checked = kdeState[key].na;
+        if (kdeState[key].na) onNaChange(key, true);
+      }
       if (evidenceInput) evidenceInput.value = kdeState[key].evidence;
       if (sevBtn && kdeState[key].points > 0) {
         selectSeverity(key, kdeState[key].points);
@@ -314,6 +313,12 @@ async function loadExistingAssessment(id) {
 }
 
 // ── RESPONSIBILITY ────────────────────────────────────────────
+const RESP_CONFIGS = {
+  seller: { label: 'Seller', bg: '#edf3fe', color: '#2f6fed' },
+  buyer:  { label: 'Buyer',  bg: '#e8f6ee', color: '#178a4c' },
+  both:   { label: 'Both',   bg: '#fdf4e3', color: '#b7791f' },
+};
+
 function onResponsibilityChange(stageCode, value) {
   stageResponsibility[stageCode] = value;
   updateStageResponsibilityBadge(stageCode, value);
@@ -322,12 +327,7 @@ function onResponsibilityChange(stageCode, value) {
 function updateStageResponsibilityBadge(stageCode, value) {
   const badge = document.getElementById(`respBadge-${stageCode}`);
   if (!badge) return;
-  const configs = {
-    seller: { label: 'Seller', bg: '#dbeafe', color: '#1d4ed8' },
-    buyer:  { label: 'Buyer',  bg: '#dcfce7', color: '#16a34a' },
-    both:   { label: 'Both',   bg: '#fef3c7', color: '#d97706' },
-  };
-  const cfg = configs[value] || configs.seller;
+  const cfg = RESP_CONFIGS[value] || RESP_CONFIGS.seller;
   badge.textContent = cfg.label;
   badge.style.background = cfg.bg;
   badge.style.color = cfg.color;
@@ -347,55 +347,44 @@ function selectResp(stageCode, value) {
 }
 
 // ── RENDER KDE STAGES ─────────────────────────────────────────
+const CHEVRON = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg>';
+
 function renderKDEStages() {
   const container = document.getElementById('kdeStages');
   let html = '';
   let globalIndex = 1;
 
-  Object.entries(KDE_DATA).forEach(([stageCode, stage]) => {
+  Object.entries(KDE_DATA).forEach(([stageCode, stage], si) => {
     const maxStageScore = stage.kdes.reduce((sum, k) => sum + k.weight, 0);
-    const defaultResp = stageResponsibility[stageCode] || 'seller';
 
     html += `
-      <div class="stage-section" id="stage-${stageCode}">
+      <section class="stage-section rv" style="--i:${si}" id="stage-${stageCode}">
         <div class="stage-header" onclick="toggleStage('${stageCode}')">
           <div class="stage-header-left">
             <div class="stage-code">${stageCode}</div>
-            <div>
+            <div style="min-width:0">
               <div class="stage-name">${stage.label}</div>
-              <div class="stage-desc">${stage.desc} · ${stage.kdes.length} KDEs · Max ${maxStageScore} pts</div>
+              <div class="stage-desc">${stage.desc} · ${stage.kdes.length} KDEs · max ${maxStageScore} pts</div>
             </div>
           </div>
           <div class="stage-header-right">
-            <!-- Responsibility selector -->
             <div class="resp-custom" id="respWrap-${stageCode}" onclick="event.stopPropagation(); toggleRespDropdown('${stageCode}')">
-              <span style="font-size:11px; color:#9aa0b4; font-weight:500;">Responsible:</span>
+              <span class="k">responsible</span>
               <span class="resp-badge" id="respBadge-${stageCode}">Seller</span>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:#9aa0b4;"><polyline points="6 9 12 15 18 9"/></svg>
+              ${CHEVRON}
               <div class="resp-dropdown" id="respDropdown-${stageCode}">
-                <div class="resp-option" onclick="event.stopPropagation(); selectResp('${stageCode}', 'seller')">
-                  <span class="resp-opt-dot" style="background:#1d4ed8;"></span> Seller
-                </div>
-                <div class="resp-option" onclick="event.stopPropagation(); selectResp('${stageCode}', 'buyer')">
-                  <span class="resp-opt-dot" style="background:#16a34a;"></span> Buyer
-                </div>
-                <div class="resp-option" onclick="event.stopPropagation(); selectResp('${stageCode}', 'both')">
-                  <span class="resp-opt-dot" style="background:#d97706;"></span> Both
-                </div>
+                <div class="resp-option" onclick="event.stopPropagation(); selectResp('${stageCode}', 'seller')"><span class="resp-opt-dot" style="background:#2f6fed"></span>Seller</div>
+                <div class="resp-option" onclick="event.stopPropagation(); selectResp('${stageCode}', 'buyer')"><span class="resp-opt-dot" style="background:#178a4c"></span>Buyer</div>
+                <div class="resp-option" onclick="event.stopPropagation(); selectResp('${stageCode}', 'both')"><span class="resp-opt-dot" style="background:#b7791f"></span>Both</div>
               </div>
             </div>
             <div class="stage-score-badge" id="stageScore-${stageCode}">0 / ${maxStageScore}</div>
-            <svg class="stage-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+            <svg class="stage-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
         </div>
         <div class="stage-kdes">
-          <div class="kde-row" style="background:#fafbfc; padding:8px 32px; border-bottom:1px solid #f0f2f8;">
-            <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px;">#</span>
-            <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Key Data Element</span>
-            <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Data Available</span>
-            <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Points</span>
-            <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Severity</span>
-            <span style="font-size:10px; font-weight:700; color:#9aa0b4; letter-spacing:0.8px; text-transform:uppercase;">Evidence</span>
+          <div class="kde-row head">
+            <span>#</span><span>key data element</span><span>data available</span><span>risk points</span><span>max</span><span>evidence</span>
           </div>
           ${stage.kdes.map(kde => {
             const idx = globalIndex++;
@@ -403,75 +392,67 @@ function renderKDEStages() {
               <div class="kde-row" id="row-${kde.key}">
                 <span class="kde-number">${String(idx).padStart(2, '0')}</span>
                 <div>
-                  <span class="kde-label">${kde.label}</span>
-                  <label style="margin-top:6px; display:flex; align-items:center; gap:6px; font-size:11px; color:#9aa0b4; cursor:pointer;">
-                    <input type="checkbox" id="na-${kde.key}"
-                      onchange="onNaChange('${kde.key}', this.checked)"
-                      style="width:13px; height:13px; accent-color:#1a6fdb; cursor:pointer;" />
-                    Not Applicable — exclude from scoring
+                  <div class="kde-label">${kde.label}</div>
+                  <label class="kde-na">
+                    <input type="checkbox" id="na-${kde.key}" onchange="onNaChange('${kde.key}', this.checked)" />
+                    Not applicable, exclude from scoring
                   </label>
                 </div>
-                <div class="kde-toggle">
-                  <label class="toggle-switch">
-                    <input type="checkbox" id="toggle-${kde.key}" checked
-                      onchange="onToggleChange('${kde.key}', this.checked)" />
-                    <span class="toggle-slider"></span>
-                  </label>
-                  <span class="toggle-label" id="toggleLabel-${kde.key}">YES</span>
+                <div>
+                  <span class="cell-k">data available</span>
+                  <div class="kde-toggle">
+                    <label class="toggle-switch">
+                      <input type="checkbox" id="toggle-${kde.key}" checked onchange="onToggleChange('${kde.key}', this.checked)" aria-label="Data available for ${kde.label}" />
+                      <span class="toggle-slider"></span>
+                    </label>
+                    <span class="toggle-label" id="toggleLabel-${kde.key}">YES</span>
+                  </div>
                 </div>
-                <div class="kde-severity-select" id="sevSelect-${kde.key}">
-                  <button class="kde-severity-btn none" id="sevBtn-${kde.key}"
-                    onclick="toggleSeverityDropdown('${kde.key}')">
-                    — pts
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
-                  </button>
-                  <div class="kde-severity-dropdown" id="sevDropdown-${kde.key}">
-                    <div class="kde-severity-option" onclick="selectSeverity('${kde.key}', 0)">
-                      <span style="display:flex; align-items:center; gap:8px;"><span class="opt-dot w0"></span> No risk</span>
-                      <span style="font-family:'DM Mono',monospace; font-size:12px; color:#9aa0b4;">0 pts</span>
-                    </div>
-                    <div class="kde-severity-option" onclick="selectSeverity('${kde.key}', 10)">
-                      <span style="display:flex; align-items:center; gap:8px;"><span class="opt-dot w10"></span> Low</span>
-                      <span style="font-family:'DM Mono',monospace; font-size:12px; color:#1d4ed8;">10 pts</span>
-                    </div>
-                    <div class="kde-severity-option" onclick="selectSeverity('${kde.key}', 30)">
-                      <span style="display:flex; align-items:center; gap:8px;"><span class="opt-dot w30"></span> High</span>
-                      <span style="font-family:'DM Mono',monospace; font-size:12px; color:#d97706;">30 pts</span>
-                    </div>
-                    <div class="kde-severity-option" onclick="selectSeverity('${kde.key}', 50)">
-                      <span style="display:flex; align-items:center; gap:8px;"><span class="opt-dot w50"></span> Critical</span>
-                      <span style="font-family:'DM Mono',monospace; font-size:12px; color:#e63946;">50 pts</span>
+                <div>
+                  <span class="cell-k">risk points</span>
+                  <div class="kde-severity-select" id="sevSelect-${kde.key}">
+                    <button type="button" class="kde-severity-btn none" id="sevBtn-${kde.key}" onclick="toggleSeverityDropdown('${kde.key}')">— pts ${CHEVRON}</button>
+                    <div class="kde-severity-dropdown" id="sevDropdown-${kde.key}">
+                      <div class="kde-severity-option" onclick="selectSeverity('${kde.key}', 0)"><span><span class="opt-dot w0"></span>No risk</span><span class="pts">0 pts</span></div>
+                      <div class="kde-severity-option" onclick="selectSeverity('${kde.key}', 10)"><span><span class="opt-dot w10"></span>Low</span><span class="pts">10 pts</span></div>
+                      <div class="kde-severity-option" onclick="selectSeverity('${kde.key}', 30)"><span><span class="opt-dot w30"></span>High</span><span class="pts">30 pts</span></div>
+                      <div class="kde-severity-option" onclick="selectSeverity('${kde.key}', 50)"><span><span class="opt-dot w50"></span>Critical</span><span class="pts">50 pts</span></div>
                     </div>
                   </div>
                 </div>
-                <div style="font-size:12px; color:#6b7280; padding-top:6px;">
-                  Max: <span style="font-family:'DM Mono',monospace; font-weight:600; color:#1a1a2e;">${kde.weight} pts</span>
-                </div>
+                <div class="kde-max"><span class="cell-k">max</span><b>${kde.weight}</b> pts</div>
                 <div class="kde-evidence-col">
-                  <input type="text" id="evidence-${kde.key}"
-                    placeholder="Connected documents..."
-                    oninput="kdeState['${kde.key}'].evidence = this.value" />
+                  <span class="cell-k">evidence</span>
+                  <input type="text" id="evidence-${kde.key}" placeholder="Connected documents..." oninput="kdeState['${kde.key}'].evidence = this.value" />
                 </div>
               </div>`;
           }).join('')}
         </div>
-      </div>`;
+      </section>`;
   });
 
   container.innerHTML = html;
   document.getElementById('stage-FV')?.classList.add('open');
 
-  // Init badges
   Object.entries(stageResponsibility).forEach(([code, val]) => {
     updateStageResponsibilityBadge(code, val);
   });
 }
 
-
-
-// ── TOGGLE STAGE ──────────────────────────────────────────────
+// ── TOGGLE / JUMP ─────────────────────────────────────────────
 function toggleStage(code) {
   document.getElementById(`stage-${code}`)?.classList.toggle('open');
+}
+
+function setAllStages(open) {
+  document.querySelectorAll('.stage-section').forEach(s => s.classList.toggle('open', open));
+}
+
+function jumpToStage(code) {
+  const el = document.getElementById(`stage-${code}`);
+  if (!el) return;
+  el.classList.add('open');
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // ── KDE HANDLERS ─────────────────────────────────────────────
@@ -488,17 +469,10 @@ function onNaChange(key, checked) {
   const toggle = document.getElementById(`toggle-${key}`);
   const evidence = document.getElementById(`evidence-${key}`);
   const sevBtn = document.getElementById(`sevBtn-${key}`);
-  if (checked) {
-    row.classList.add('na');
-    if (toggle) toggle.disabled = true;
-    if (evidence) evidence.disabled = true;
-    if (sevBtn) sevBtn.disabled = true;
-  } else {
-    row.classList.remove('na');
-    if (toggle) toggle.disabled = false;
-    if (evidence) evidence.disabled = false;
-    if (sevBtn) sevBtn.disabled = false;
-  }
+  row.classList.toggle('na', checked);
+  if (toggle) toggle.disabled = checked;
+  if (evidence) evidence.disabled = checked;
+  if (sevBtn) sevBtn.disabled = checked;
   updateLiveScore();
 }
 
@@ -518,14 +492,16 @@ function selectSeverity(key, pts) {
   kdeState[key].points = pts;
   const btn = document.getElementById(`sevBtn-${key}`);
   const classes = { 0: 'none', 10: 'w10', 30: 'w30', 50: 'w50' };
-  const labels = { 0: '— pts', 10: 'Low — 10', 30: 'High — 30', 50: 'Critical — 50' };
+  const labels = { 0: '— pts', 10: 'Low · 10', 30: 'High · 30', 50: 'Critical · 50' };
   btn.className = `kde-severity-btn ${classes[pts]}`;
-  btn.innerHTML = `${labels[pts]} <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>`;
+  btn.innerHTML = `${labels[pts]} ${CHEVRON}`;
   document.getElementById(`sevSelect-${key}`)?.classList.remove('open');
   updateLiveScore();
 }
 
 // ── LIVE SCORE ────────────────────────────────────────────────
+const STATUS_COLORS = { transparent: '#178a4c', low: '#2f6fed', medium: '#b7791f', critical: '#d64545' };
+
 function updateLiveScore() {
   let totalScore = 0;
   let totalMax = 0;
@@ -552,6 +528,8 @@ function updateLiveScore() {
   Object.entries(stageScores).forEach(([code, s]) => {
     const chip = document.getElementById(`scoreChip-${code}`);
     if (chip) chip.textContent = s.score;
+    const bar = document.getElementById(`scoreBar-${code}`);
+    if (bar) bar.style.width = s.max ? `${Math.min(100, s.score / s.max * 100)}%` : '0%';
     const badge = document.getElementById(`stageScore-${code}`);
     if (badge) badge.textContent = `${s.score} / ${s.max}`;
   });
@@ -561,6 +539,12 @@ function updateLiveScore() {
   const label = document.getElementById('liveStatusLabel');
   pill.className = `mri-status-pill ${status.cls}`;
   label.textContent = status.label;
+
+  const meter = document.getElementById('liveMeter');
+  if (meter) {
+    meter.style.width = totalMax ? `${Math.min(100, totalScore / totalMax * 100)}%` : '0%';
+    meter.style.background = STATUS_COLORS[status.cls];
+  }
 }
 
 function getMriStatus(score) {
@@ -571,13 +555,15 @@ function getMriStatus(score) {
 }
 
 // ── SAVE ─────────────────────────────────────────────────────
+const SAVE_LABEL = document.getElementById('btnSaveAssessment')?.innerHTML || 'Save assessment';
+
 async function saveAssessment() {
   const orgId = document.getElementById('selectOrg').value;
   const productId = document.getElementById('selectProduct').value;
   const notes = document.getElementById('assessmentNotes').value.trim();
 
-  if (!orgId) { showToast('Please select an organisation.', 'error'); return; }
-  if (!productId) { showToast('Please select a product.', 'error'); return; }
+  if (!orgId) { showToast('Please select an organisation.', 'error'); document.getElementById('selectOrg').focus(); return; }
+  if (!productId) { showToast('Please select a product.', 'error'); document.getElementById('selectProduct').focus(); return; }
 
   const btn = document.getElementById('btnSaveAssessment');
   btn.textContent = 'Saving...';
@@ -635,13 +621,13 @@ async function saveAssessment() {
     }
 
     await logActivity('create', 'mri_assessment', existingAssessmentId, `MRI assessment saved — Score: ${totalScore}/${totalMax}`);
-    showToast(`Assessment saved! Score: ${totalScore} / ${totalMax}`, 'success');
+    showToast(`Assessment saved. Score: ${totalScore} / ${totalMax}`, 'success');
     setTimeout(() => { window.location.href = 'mri.html'; }, 1500);
 
   } catch (err) {
     console.error('Save error:', err);
     showToast('Failed to save assessment.', 'error');
-    btn.textContent = 'Save Assessment';
+    btn.innerHTML = SAVE_LABEL;
     btn.disabled = false;
   }
 }

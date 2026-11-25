@@ -1,352 +1,477 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SRI Dashboard — SmarTuna concept</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="icon" type="image/png" href="sc-blue-logo.png" />
-  <link rel="stylesheet" href="mri.css" />
-  <link rel="stylesheet" href="mri-dashboard.css" />
-  <style>
-    /* ── SMARTUNA WORDMARK ── */
-    @font-face {
-      font-family: 'Bitsumis';
-      src: url('BITSUMIS.TTF') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-      font-display: swap;
-    }
-    .sc-wm {
-      display: inline-flex;
-      flex-direction: column;
-      align-items: flex-start;
-      line-height: 1;
-      gap: 0;
-      text-decoration: none;
-    }
-    .sc-wm-top {
-      font-family: 'Bitsumis', sans-serif !important;
-      font-weight: 900 !important;
-      font-size: 16px;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
-      line-height: 1;
-      background: linear-gradient(90deg, #1a6fdb, #1a6fdb) !important;
-      -webkit-background-clip: text !important;
-      -webkit-text-fill-color: transparent !important;
-      background-clip: text !important;
-    }
-    .sc-wm-sub {
-      font-family: 'Bitsumis', sans-serif !important;
-      font-weight: 700 !important;
-      font-size: 7px;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: #1a1a2e;
-      -webkit-text-fill-color: #1a1a2e !important;
-      margin-top: 2px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SRI Dashboard · SmarTuna concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="sc-blue-logo.png">
+<style>
+
+  @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');font-weight:normal;font-style:normal;font-display:swap}
+  :root{
+    --accent:#2f6fed; --accent-soft:rgba(47,111,237,.10); --accent-line:#cddcf8;
+    --ink:#14161a; --muted:#6b7380; --faint:#9aa1ad; --line:#e6e8ec; --line2:#eef0f3; --page:#f6f7f9; --white:#fff;
+    --mono:Consolas,"SFMono-Regular",Menlo,monospace;
+    --ok:#178a4c; --ok-bg:#e8f6ee; --ok-line:#c7e8d4;
+    --low:#2f6fed; --low-bg:#edf3fe; --low-line:#cddcf8;
+    --med:#b7791f; --med-bg:#fdf4e3; --med-line:#f1dcae;
+    --crit:#d64545; --crit-bg:#fdeceb; --crit-line:#f5c9c6;
+    --ease:cubic-bezier(.16,1,.3,1); --spring:cubic-bezier(.34,1.56,.64,1);
+  }
+  *{box-sizing:border-box}
+  html,body{overflow-x:clip}
+  body{margin:0;font-family:Poppins,system-ui,sans-serif;font-weight:400;font-size:14px;font-synthesis:none;color:var(--ink);background:var(--page);line-height:1.55;-webkit-font-smoothing:antialiased}
+  b,strong,h1,h2,h3,h4,th,[style*="font-weight"]{font-weight:400!important}
+  a{color:inherit;text-decoration:none}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .wrap{max-width:1680px;margin:0 auto;padding:0 clamp(16px,3vw,48px)}
+  .mono{font-family:var(--mono)}
+  .hidden{display:none!important}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* header */
+  header.top{position:sticky;top:0;z-index:1000;background:rgba(255,255,255,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .nav{display:flex;align-items:center;justify-content:space-between;height:62px;gap:20px}
+  .brand{display:flex;align-items:center;gap:10px;flex:none}
+  .brand img{height:30px;width:auto;display:block}
+  .wm{display:inline-flex;flex-direction:column;line-height:1}
+  .wm-top{font-family:'Bitsumis',Poppins,sans-serif;font-size:17px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink)}
+  .wm-top span{color:var(--accent)}
+  .wm-sub{font-family:'Bitsumis',Poppins,sans-serif;font-size:8.5px;letter-spacing:.32em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+  .links{position:relative;display:flex;align-items:center;gap:2px;padding:4px;border:1px solid var(--line);border-radius:999px;background:var(--white);font-size:13px;color:var(--muted)}
+  .links .ind{position:absolute;z-index:0;top:4px;bottom:4px;left:0;width:0;border-radius:999px;background:var(--accent);box-shadow:0 6px 16px rgba(47,111,237,.3);opacity:0;transition:left .45s var(--spring),width .45s var(--spring),opacity .2s}
+  .nav-item{position:relative;z-index:1;display:block;padding:6px 15px;border-radius:999px;font-weight:300;white-space:nowrap;transition:color .25s}
+  .nav-item:hover{color:var(--ink)}
+  .nav-item.hl,.nav-item.hl:hover{color:#fff}
+  .nav-item-wrap{position:relative;z-index:1}
+  .nav-item-wrap::after{content:"";position:absolute;top:100%;left:0;width:100%;height:14px}
+  .nav-dropdown{position:absolute;top:calc(100% + 10px);left:0;min-width:200px;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);padding:6px;visibility:hidden;opacity:0;transform:translateY(-4px);transition:opacity .15s,transform .15s,visibility 0s linear .3s}
+  .nav-item-wrap:hover .nav-dropdown,.nav-item-wrap:focus-within .nav-dropdown{visibility:visible;opacity:1;transform:none;transition-delay:0s}
+  .nav-dropdown a{display:block;padding:8px 12px;font-size:13px;font-weight:300;color:var(--ink);border-radius:9px;white-space:nowrap}
+  .nav-dropdown a:hover{background:var(--page);color:var(--accent)}
+  .nav-dropdown .all{border-top:1px solid var(--line);margin-top:4px;padding-top:9px;color:var(--accent);font-family:var(--mono);font-size:12px}
+  .topbar-right{position:relative;display:flex;align-items:center;gap:10px;cursor:pointer;padding:3px 3px 3px 14px;border:1px solid var(--line);border-radius:999px;background:var(--white);transition:border-color .2s}
+  .topbar-right:hover{border-color:var(--accent-line)}
+  .topbar-email{font-size:12.5px;font-weight:300;color:var(--muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .topbar-avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;font-size:11.5px;display:grid;place-items:center;overflow:hidden;flex:none}
+  .topbar-profile-dropdown{position:absolute;top:calc(100% + 10px);right:0;min-width:200px;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);padding:6px;display:none;cursor:default}
+  .topbar-profile-dropdown.open{display:block;animation:drop .18s ease}
+  @keyframes drop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .topbar-profile-name{padding:8px 12px 10px;font-size:13px;color:var(--ink);border-bottom:1px solid var(--line);margin-bottom:4px}
+  .topbar-profile-dropdown a,.topbar-profile-dropdown button{display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;font-size:13px;font-weight:300;border-radius:9px;border:0;background:none;text-align:left;cursor:pointer}
+  .topbar-profile-dropdown a:hover{background:var(--page);color:var(--accent)}
+  .topbar-profile-dropdown button{color:var(--crit)}
+  .topbar-profile-dropdown button:hover{background:var(--crit-bg)}
+
+  /* shared pieces */
+  .eyebrow{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.04em;display:flex;align-items:center;gap:10px}
+  .lbl{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.03em}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:18px 20px;min-width:0}
+  .card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border:1px solid var(--line);border-radius:999px;background:var(--white);font-size:13px;font-weight:300;color:var(--ink);white-space:nowrap;cursor:pointer;transition:border-color .2s,color .2s,background .2s,transform .2s,box-shadow .2s}
+  .btn svg{flex:none}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.25)}
+  .btn.primary:hover{background:#2560d6;color:#fff;transform:translateY(-1px)}
+  .btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+  .btn:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .badge{font-family:var(--mono);font-size:10.5px;padding:1px 8px;border-radius:999px;border:1px solid;line-height:1.5}
+  .badge.new{color:var(--accent);border-color:var(--accent-line);background:#f3f7ff}
+  .badge.beta{color:#9a6a12;border-color:#efdcae;background:#fdf7e7}
+  .cnt{font-family:var(--mono);font-size:10.5px;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;display:inline-grid;place-items:center}
+
+  .mri-status-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:999px;font-size:12px;border:1px solid transparent;white-space:nowrap}
+  .mri-status-pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .mri-status-pill.transparent{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .mri-status-pill.low{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .mri-status-pill.medium{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .mri-status-pill.critical{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+  .kde-weight{display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;font-family:var(--mono);font-size:10.5px;border:1px solid transparent;white-space:nowrap}
+  .kde-weight.w5{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .kde-weight.w10{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .kde-weight.w30{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .kde-weight.w50{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+
+  .rv{animation:up .55s var(--ease) both;animation-delay:calc(var(--i,0) * 50ms)}
+  @keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .toast-wrap{position:fixed;right:20px;bottom:20px;z-index:3000;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  .toast{display:flex;align-items:center;gap:10px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;font-weight:300;box-shadow:0 14px 34px rgba(16,24,40,.2);animation:up .3s var(--ease)}
+  .toast i{width:8px;height:8px;border-radius:50%;background:#4ade80;flex:none}
+  .toast.error i{background:#f87171}
+
+  @media (max-width:1180px){ .links{display:none} }
+  @media (max-width:640px){ .topbar-email{display:none} .topbar-right{padding:3px} .wm-sub{display:none} }
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
+
+  .phead{background:linear-gradient(180deg,#eef3fc 0%,var(--page) 100%);border-bottom:1px solid var(--line2)}
+  .phead .wrap{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;padding-top:20px;padding-bottom:18px}
+  .crumbs{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;color:var(--faint)}
+  .crumbs a{color:var(--muted);display:inline-flex;align-items:center;gap:6px;transition:color .2s}
+  .crumbs a:hover{color:var(--accent)}
+  .ptitle{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:6px}
+  .ptitle h1{font-size:clamp(24px,2.4vw,32px);font-weight:300;letter-spacing:-.02em;line-height:1.15;margin:0}
+
+  main{padding:18px 0 48px}
+  .dash{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px}
+  .c-score{grid-column:span 3} .c-stages{grid-column:span 6} .c-orgs{grid-column:span 3}
+  .c-top{grid-column:span 6} .c-pie{grid-column:span 3} .c-kde{grid-column:span 3}
+  .c-prod{grid-column:span 9} .c-last{grid-column:span 3}
+
+  /* gauge */
+  .c-score{display:flex;flex-direction:column}
+  .gauge-wrap{position:relative;width:100%;max-width:260px;margin:4px auto 0}
+  .gauge-svg{width:100%;height:auto;overflow:visible;display:block}
+  .gauge-center{position:absolute;left:0;right:0;bottom:4px;text-align:center}
+  .gauge-score{font-size:40px;font-weight:300;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums}
+  .gauge-max{font-family:var(--mono);font-size:12px;color:var(--faint);margin-top:4px}
+  .gauge-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--faint);max-width:260px;width:100%;margin:6px auto 0;padding:0 6px}
+  .gauge-foot{margin-top:auto;padding-top:14px;display:flex;justify-content:center}
+
+  /* stages */
+  .stages-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+  .stage-mini-card{position:relative;background:var(--page);border:1px solid var(--line2);border-radius:12px;padding:12px 14px;transition:background .2s,border-color .2s,transform .2s,box-shadow .2s}
+  .stage-mini-card:hover{background:#f3f7ff;border-color:var(--accent-line);transform:translateY(-2px);box-shadow:0 10px 24px rgba(47,111,237,.10)}
+  .stage-mini-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  .stage-mini-code{font-family:var(--mono);font-size:11.5px;color:var(--accent)}
+  .stage-mini-name{font-size:11.5px;font-weight:300;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .stage-mini-score{font-size:22px;font-weight:300;letter-spacing:-.01em;margin:6px 0 8px;font-variant-numeric:tabular-nums}
+  .stage-mini-score span{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .stage-mini-bar{height:4px;background:var(--line);border-radius:999px;overflow:hidden}
+  .stage-mini-fill{height:100%;width:0;background:var(--crit);border-radius:999px;transition:width .9s var(--ease)}
+  .stage-mini-card::after{content:"View details";position:absolute;top:12px;right:14px;font-family:var(--mono);font-size:10.5px;color:var(--accent);opacity:0;transform:translateX(-4px);transition:opacity .2s,transform .2s}
+  .stage-mini-card:hover::after{opacity:1;transform:none}
+  .stage-mini-card:hover .stage-mini-name{opacity:0}
+  .stage-mini-card.clear{background:var(--ok-bg);border-color:var(--ok-line)}
+  .stage-mini-card.na{opacity:.45;pointer-events:none}
+  .stage-flag{font-family:var(--mono);font-size:10.5px;margin-top:8px;display:flex;align-items:center;gap:6px}
+  .stage-flag.ok{color:var(--ok)} .stage-flag.na{color:var(--faint)}
+
+  /* organisations */
+  .org-list{display:flex;flex-direction:column;gap:8px}
+  .org-list-item{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--page);border:1px solid var(--line2);border-radius:12px}
+  .org-list-avatar{width:32px;height:32px;border-radius:50%;color:#fff;font-size:12px;display:grid;place-items:center;flex:none}
+  .org-list-info{min-width:0}
+  .org-list-name{font-size:13.5px}
+  .org-list-role{font-size:11.5px;font-weight:300;color:var(--muted);line-height:1.4}
+  .org-list-score{margin-left:auto;font-family:var(--mono);font-size:11.5px;padding:2px 8px;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+  .org-list-score.transparent{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .org-list-score.low{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .org-list-score.medium{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .org-list-score.critical{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+  .threshold-mini-list{display:grid;gap:6px;margin-top:10px}
+  .threshold-mini{display:flex;align-items:center;gap:9px;font-size:12.5px;font-weight:300;color:var(--muted)}
+  .tdot{width:8px;height:8px;border-radius:50%;flex:none}
+  .tdot.transparent{background:var(--ok)} .tdot.low{background:var(--low)} .tdot.medium{background:var(--med)} .tdot.critical{background:var(--crit)}
+  .sep{height:1px;background:var(--line2);margin:16px 0 12px}
+
+  /* top 10 */
+  .t10{display:grid;gap:2px}
+  .t10-row{display:grid;grid-template-columns:22px minmax(0,1fr) 44px;gap:12px;align-items:center;padding:5px 0;border-bottom:1px solid var(--line2);animation:up .45s var(--ease) both;animation-delay:calc(var(--i,0) * 40ms)}
+  .t10-row:last-child{border-bottom:0}
+  .t10-rank{font-family:var(--mono);font-size:11px;color:var(--faint);text-align:right}
+  .t10-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:5px}
+  .t10-label{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .t10-tags{display:flex;gap:6px;flex:none}
+  .stag{font-family:var(--mono);font-size:10.5px;padding:1px 7px;border-radius:999px;border:1px solid}
+  .t10-bar{height:4px;background:var(--line2);border-radius:999px;overflow:hidden}
+  .t10-bar i{display:block;height:100%;width:0;border-radius:999px;transition:width .8s var(--ease)}
+  .t10-score{font-family:var(--mono);font-size:13px;text-align:right}
+  .empty-note{text-align:center;padding:22px 10px;font-size:13px;font-weight:300;color:var(--faint)}
+  .empty-note.ok{color:var(--ok);display:flex;align-items:center;justify-content:center;gap:8px}
+  .empty-note .ic{width:44px;height:44px;border-radius:12px;background:var(--page);color:var(--faint);display:grid;place-items:center;margin:0 auto 10px}
+  .empty-note p{margin:0;color:var(--ink);font-size:13.5px;font-weight:400}
+
+  /* donut */
+  .c-pie{display:flex;flex-direction:column}
+  .pie-box{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+  #stagePieChart{width:190px;height:190px}
+  .pie-legend{display:grid;grid-template-columns:repeat(3,auto);gap:5px 14px;font-size:11.5px;font-weight:300;color:var(--muted)}
+  .pie-legend span{display:flex;align-items:center;gap:6px;white-space:nowrap}
+  .pie-legend i{width:8px;height:8px;border-radius:50%}
+  .pie-legend em{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+
+  /* coverage */
+  .kde-coverage-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:14px}
+  .kde-cov-item{background:var(--page);border:1px solid var(--line2);border-radius:12px;padding:10px 12px}
+  .kde-cov-num{font-size:24px;font-weight:300;line-height:1.15;font-variant-numeric:tabular-nums}
+  .kde-cov-label{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .kde-cov-item.green .kde-cov-num{color:var(--ok)} .kde-cov-item.red .kde-cov-num{color:var(--crit)}
+  .kde-cov-bar{height:8px;background:var(--line2);border-radius:999px;display:flex;overflow:hidden;margin-bottom:8px}
+  .kde-cov-bar-fill{height:100%;transition:width .9s var(--ease)}
+  .kde-cov-bar-fill.green{background:var(--ok)} .kde-cov-bar-fill.red{background:var(--crit)} .kde-cov-bar-fill.grey{background:#dfe3e9}
+  .kde-cov-bar-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px}
+  .kde-cov-bar-labels .g{color:var(--ok)} .kde-cov-bar-labels .r{color:var(--crit)} .kde-cov-bar-labels .n{color:var(--faint)}
+  .kde-cov-note{margin:10px 0 0;font-size:12px;font-weight:300;color:var(--muted)}
+
+  /* products */
+  .products-table{display:flex;flex-direction:column}
+  .product-row{display:grid;grid-template-columns:minmax(0,2fr) 1fr 1fr 1fr;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line2)}
+  .product-row:last-child{border-bottom:0}
+  .product-row.head{padding:0 0 8px}
+  .product-row.head span{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .product-row-name{font-size:13.5px}
+  .product-row-brand{font-size:11.5px;font-weight:300;color:var(--muted)}
+  .product-row-score{font-size:18px;font-weight:300;font-variant-numeric:tabular-nums}
+  .product-row-score span{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .product-row-date{font-family:var(--mono);font-size:12px;color:var(--muted)}
+
+  /* last assessment */
+  .last-assess-date{font-size:22px;font-weight:300;letter-spacing:-.01em}
+  .last-assess-by{font-size:12.5px;font-weight:300;color:var(--muted);margin-bottom:14px}
+  .last-assess-score{font-size:28px;font-weight:300;font-variant-numeric:tabular-nums}
+
+  /* modal */
+  .stage-modal-overlay{position:fixed;inset:0;z-index:2000;background:rgba(20,22,26,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px;animation:fade .2s ease}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .stage-modal-box{background:var(--white);border-radius:20px;width:100%;max-width:660px;max-height:86vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 80px rgba(16,24,40,.25);animation:up .3s var(--ease)}
+  .stage-modal-header{padding:20px 24px 16px;border-bottom:1px solid var(--line2)}
+  .stage-modal-header-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .stage-modal-title-wrap{display:flex;align-items:center;gap:12px}
+  .stage-modal-code-badge{width:44px;height:44px;border-radius:12px;background:var(--accent-soft);color:var(--accent);font-family:var(--mono);font-size:12px;display:grid;place-items:center;flex:none}
+  .stage-modal-title{font-size:18px;font-weight:300;letter-spacing:-.01em}
+  .stage-modal-subtitle{font-size:12.5px;font-weight:300;color:var(--muted)}
+  .stage-modal-close{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--white);color:var(--muted);font-size:18px;line-height:1;cursor:pointer;transition:color .2s,border-color .2s,transform .2s}
+  .stage-modal-close:hover{color:var(--accent);border-color:var(--accent);transform:rotate(90deg)}
+  .stage-modal-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .stage-modal-score-label{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+  .resp-tag{font-family:var(--mono);font-size:11px;padding:2px 9px;border-radius:999px;border:1px solid}
+  .resp-tag.seller{color:var(--low);background:var(--low-bg);border-color:var(--low-line)}
+  .resp-tag.buyer{color:var(--ok);background:var(--ok-bg);border-color:var(--ok-line)}
+  .resp-tag.both{color:var(--med);background:var(--med-bg);border-color:var(--med-line)}
+  .stage-modal-body{padding:16px 24px 22px;overflow-y:auto}
+  .stage-modal-section-label{font-family:var(--mono);font-size:11px;color:var(--faint);margin-bottom:10px}
+  .stage-modal-kde{padding:12px 14px;border-radius:12px;margin-bottom:8px;border:1px solid var(--crit-line);background:#fff8f7}
+  .stage-modal-kde-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:4px}
+  .stage-modal-kde-label{font-size:13.5px}
+  .stage-modal-kde-why{margin:0;font-size:12.5px;font-weight:300;color:#4b5260;line-height:1.6}
+  .stage-modal-ok-header{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11.5px;color:var(--ok);margin:18px 0 8px}
+  .stage-modal-ok-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 16px}
+  .stage-modal-ok-item{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:300;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--line2)}
+  .stage-modal-ok-item svg{flex:none}
+
+  @media (max-width:1380px){
+    .c-score{grid-column:span 4} .c-stages{grid-column:span 8} .c-orgs{grid-column:span 4}
+    .c-top{grid-column:span 8} .c-pie{grid-column:span 6} .c-kde{grid-column:span 6}
+    .c-prod{grid-column:span 8} .c-last{grid-column:span 4}
+  }
+  @media (max-width:1380px) and (min-width:901px){ .c-orgs{grid-row:span 1} }
+  @media (max-width:900px){
+    .dash > *{grid-column:1 / -1 !important}
+    .stages-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .stage-modal-ok-list{grid-template-columns:1fr}
+  }
+  @media (max-width:560px){ .product-row{grid-template-columns:minmax(0,1.6fr) 1fr} .product-row > :nth-child(n+3){display:none} }
+
+</style>
 </head>
 <body>
 
-  <!-- NAV -->
-  <div class="topbar">
-    <a href="home-logged-in.html" class="topbar-brand">
-      <div>
-        <span class="topbar-brand-project">CONCEPT</span>
-        <span class="topbar-brand-name">SmarTuna</span>
-      </div>
+<header class="top">
+  <div class="wrap nav">
+    <a class="brand" href="home-logged-in.html" aria-label="SmarTuna home">
+      <img src="sc-blue-logo.png" alt="" onerror="this.style.display='none'">
+      <span class="wm"><span class="wm-top">Smar<span>Tuna</span></span><span class="wm-sub">concept</span></span>
     </a>
-    <div class="topbar-nav">
-      <div class="nav-pill">
-        <a href="home-logged-in.html" class="nav-pill-item">Home</a>
-        <div class="nav-pill-item" style="cursor:default;">
-          My Studio
-          <div class="nav-pill-dropdown">
-            <div class="nav-pill-dropdown-inner">
-              <a href="product-list.html">Products</a>
-              <a href="organisation.html">Your Company</a>
-            </div>
-          </div>
-        </div>
-        <div class="nav-pill-item" style="cursor:default;">
-          Atlas
-          <div class="nav-pill-dropdown">
-            <a href="Species.html">Species</a>
-            <a href="country.html">Country</a>
-          </div>
-        </div>
-        <a href="mri.html" class="nav-pill-item active">SRI</a>
-        <a href="#" class="nav-pill-item">Reports</a>
-        <div class="nav-pill-item" style="cursor:default;">
-          Support
-          <div class="nav-pill-dropdown">
-            <a href="contact.html">Contact</a>
-            <a href="report.html">Report an Issue</a>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="topbar-right" onclick="toggleNavDropdown()" style="cursor:pointer;">
-      <div class="topbar-avatar" id="navAvatar"></div>
+    <nav class="links" id="topLinks" aria-label="Main">
+      <span class="ind"></span>
+      <a class="nav-item" href="home-logged-in.html">Home</a>
+      <div class="nav-item-wrap"><a class="nav-item" href="modules.html#my-studio">My Studio</a>
+        <div class="nav-dropdown"><a href="product-list.html">Products</a><a href="organisation.html">Your company</a><a class="all" href="modules.html#my-studio">See all My Studio</a></div></div>
+      <div class="nav-item-wrap"><a class="nav-item" href="modules.html#atlas">Atlas</a>
+        <div class="nav-dropdown"><a href="Species.html">Species</a><a href="country.html">Country</a><a class="all" href="modules.html#atlas">See all Atlas</a></div></div>
+      <a class="nav-item on" href="mri.html" aria-current="page">SRI</a>
+      <a class="nav-item" href="modules.html#reports">Reports</a>
+      <div class="nav-item-wrap"><a class="nav-item" href="modules.html#support">Support</a>
+        <div class="nav-dropdown"><a href="contact.html">Contact</a><a href="report.html">Report an issue</a><a href="about.html">About</a><a class="all" href="modules.html#support">See all Support</a></div></div>
+    </nav>
+    <div class="topbar-right" onclick="toggleNavDropdown()" role="button" tabindex="0" aria-label="Account menu" onkeydown="if(event.key==='Enter'){toggleNavDropdown()}">
       <span class="topbar-email" id="navEmail"></span>
-      <div class="topbar-settings">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-        <div class="topbar-profile-dropdown" id="navDropdown">
-          <div class="topbar-profile-name" id="navFirstName">Hello!</div>
-          <a href="profile.html">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-            Profile
-          </a>
-          <button onclick="handleLogout()">Logout</button>
-        </div>
+      <div class="topbar-avatar" id="navAvatar"></div>
+      <div class="topbar-profile-dropdown" id="navDropdown" onclick="event.stopPropagation()">
+        <div class="topbar-profile-name" id="navFirstName">Hello</div>
+        <a href="profile.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Profile</a>
+        <button onclick="handleLogout()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>Log out</button>
       </div>
     </div>
   </div>
+</header>
 
-  <!-- DASHBOARD -->
-  <div class="dash-wrapper">
-
-    <!-- TOP BAR -->
-    <div class="dash-topbar">
-      <div class="dash-topbar-left">
-        <a href="mri.html" class="dash-back">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-          All Projects
-        </a>
-        <div class="dash-breadcrumb">
-          <span id="dashProjectName">MMP International Supply Chain</span>
-          <span class="dash-breadcrumb-badge" id="dashStatusBadge">Transparent</span>
-        </div>
+<section class="phead">
+  <div class="wrap">
+    <div>
+      <div class="crumbs">
+        <a href="mri.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>All projects</a>
+        <span>/</span><span>sri dashboard</span>
       </div>
-      <div class="dash-topbar-right">
-        <a href="mri-assessment.html" class="dash-edit-btn hidden" id="dashEditBtn">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          Conduct Assessment
-        </a>
+      <div class="ptitle"><h1 id="dashProjectName">Project</h1><span class="mri-status-pill transparent" id="dashStatusBadge"><span class="dot"></span>Transparent</span></div>
+    </div>
+    <a href="mri-assessment.html" class="btn primary hidden" id="dashEditBtn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Conduct assessment
+    </a>
+  </div>
+</section>
+
+<main><div class="wrap dash">
+
+  <section class="card c-score rv" style="--i:0">
+    <div class="card-h"><span class="lbl">overall risk score</span></div>
+    <div class="gauge-wrap">
+      <svg class="gauge-svg" viewBox="0 0 200 120" aria-hidden="true">
+        <path d="M 20 110 A 80 80 0 0 1 180 110" fill="none" stroke="#eef1f6" stroke-width="11" stroke-linecap="round"/>
+        <path id="gaugeArc" d="M 20 110 A 80 80 0 0 1 180 110" fill="none" stroke="#178a4c" stroke-width="11" stroke-linecap="round" stroke-dasharray="251.2" stroke-dashoffset="251.2"/>
+        <circle id="gaugeDot" cx="20" cy="110" r="7" fill="#fff" stroke="#178a4c" stroke-width="3"/>
+      </svg>
+      <div class="gauge-center">
+        <div class="gauge-score" id="gaugeScore">0</div>
+        <div class="gauge-max" id="gaugeMax">/ 3,150</div>
       </div>
     </div>
+    <div class="gauge-labels"><span>0</span><span id="gaugeMaxLabel">3,150</span></div>
+    <div class="gauge-foot"><span class="mri-status-pill transparent" id="gaugeStatus"><span class="dot"></span>Transparent</span></div>
+  </section>
 
-    <!-- GRID -->
-    <div class="dash-grid">
+  <section class="card c-stages rv" style="--i:1">
+    <div class="card-h"><span class="lbl">stage breakdown</span><span class="lbl">click a stage for KDE detail</span></div>
+    <div class="stages-grid">
+      <div class="stage-mini-card" id="stage-FV" tabindex="0"><div class="stage-mini-head"><span class="stage-mini-code">FV</span><span class="stage-mini-name">Fishing vessel</span></div><div class="stage-mini-score" id="stageMiniScore-FV">0 <span>/ 1,080</span></div><div class="stage-mini-bar"><div class="stage-mini-fill" id="stageMiniBar-FV"></div></div></div>
+      <div class="stage-mini-card" id="stage-CR" tabindex="0"><div class="stage-mini-head"><span class="stage-mini-code">CR</span><span class="stage-mini-name">Carrier</span></div><div class="stage-mini-score" id="stageMiniScore-CR">0 <span>/ 430</span></div><div class="stage-mini-bar"><div class="stage-mini-fill" id="stageMiniBar-CR"></div></div></div>
+      <div class="stage-mini-card" id="stage-FCL" tabindex="0"><div class="stage-mini-head"><span class="stage-mini-code">FCL</span><span class="stage-mini-name">Container</span></div><div class="stage-mini-score" id="stageMiniScore-FCL">0 <span>/ 460</span></div><div class="stage-mini-bar"><div class="stage-mini-fill" id="stageMiniBar-FCL"></div></div></div>
+      <div class="stage-mini-card" id="stage-PP" tabindex="0"><div class="stage-mini-head"><span class="stage-mini-code">PP</span><span class="stage-mini-name">Primary processor</span></div><div class="stage-mini-score" id="stageMiniScore-PP">0 <span>/ 270</span></div><div class="stage-mini-bar"><div class="stage-mini-fill" id="stageMiniBar-PP"></div></div></div>
+      <div class="stage-mini-card" id="stage-SP" tabindex="0"><div class="stage-mini-head"><span class="stage-mini-code">SP</span><span class="stage-mini-name">Secondary processor</span></div><div class="stage-mini-score" id="stageMiniScore-SP">0 <span>/ 470</span></div><div class="stage-mini-bar"><div class="stage-mini-fill" id="stageMiniBar-SP"></div></div></div>
+      <div class="stage-mini-card" id="stage-LFP" tabindex="0"><div class="stage-mini-head"><span class="stage-mini-code">LFP</span><span class="stage-mini-name">Final logistics</span></div><div class="stage-mini-score" id="stageMiniScore-LFP">0 <span>/ 440</span></div><div class="stage-mini-bar"><div class="stage-mini-fill" id="stageMiniBar-LFP"></div></div></div>
+    </div>
+  </section>
 
-      <!-- SCORE GAUGE CARD -->
-      <div class="dash-card dash-card-score">
-        <div class="dash-card-label">OVERALL RISK SCORE</div>
-        <div class="gauge-wrap">
-          <svg class="gauge-svg" viewBox="0 0 200 120" xmlns="http://www.w3.org/2000/svg">
-            <!-- Track -->
-            <path d="M 20 110 A 80 80 0 0 1 180 110" fill="none" stroke="#f0f2f7" stroke-width="14" stroke-linecap="round"/>
-            <!-- Score arc -->
-            <path id="gaugeArc" d="M 20 110 A 80 80 0 0 1 180 110" fill="none" stroke="#22c55e" stroke-width="14" stroke-linecap="round" stroke-dasharray="251.2" stroke-dashoffset="251.2"/>
-            <!-- Dot -->
-            <circle id="gaugeDot" cx="20" cy="110" r="7" fill="#fff" stroke="#22c55e" stroke-width="3"/>
-          </svg>
-          <div class="gauge-center">
-            <div class="gauge-score" id="gaugeScore">0</div>
-            <div class="gauge-max" id="gaugeMax">/ 3,150</div>
-            <div class="gauge-status" id="gaugeStatus">🟢 Transparent</div>
-          </div>
-        </div>
-        <div class="gauge-labels">
-          <span>0</span>
-          <span>3,150</span>
-        </div>
+  <section class="card c-orgs rv" style="--i:2">
+    <div class="card-h"><span class="lbl">project organisations</span></div>
+    <div class="org-list" id="orgList">
+      <div class="org-list-item">
+        <div class="org-list-avatar" id="sellerAvatar" style="background:#2f6fed;">T</div>
+        <div class="org-list-info"><div class="org-list-name" id="sellerName">Seller</div><div class="org-list-role">Seller · FV, CR, FCL, PP</div></div>
+        <div class="org-list-score transparent" id="sellerScore">0 pts</div>
       </div>
-
-      <!-- STAGE BREAKDOWN CARDS -->
-      <div class="dash-card dash-card-stages">
-        <div class="dash-card-label">STAGE BREAKDOWN</div>
-        <div class="stages-grid">
-          <div class="stage-mini-card" id="stage-FV">
-            <div class="stage-mini-code">FV</div>
-            <div class="stage-mini-name">Fishing Vessel</div>
-            <div class="stage-mini-score" id="stageMiniScore-FV">0 <span>/ 1,080</span></div>
-            <div class="stage-mini-bar"><div class="stage-mini-fill" id="stageMiniBar-FV" style="width:0%"></div></div>
-          </div>
-          <div class="stage-mini-card" id="stage-CR">
-            <div class="stage-mini-code">CR</div>
-            <div class="stage-mini-name">Carrier</div>
-            <div class="stage-mini-score" id="stageMiniScore-CR">0 <span>/ 430</span></div>
-            <div class="stage-mini-bar"><div class="stage-mini-fill" id="stageMiniBar-CR" style="width:0%"></div></div>
-          </div>
-          <div class="stage-mini-card" id="stage-FCL">
-            <div class="stage-mini-code">FCL</div>
-            <div class="stage-mini-name">Container</div>
-            <div class="stage-mini-score" id="stageMiniScore-FCL">0 <span>/ 460</span></div>
-            <div class="stage-mini-bar"><div class="stage-mini-fill" id="stageMiniBar-FCL" style="width:0%"></div></div>
-          </div>
-          <div class="stage-mini-card" id="stage-PP">
-            <div class="stage-mini-code">PP</div>
-            <div class="stage-mini-name">Primary Proc.</div>
-            <div class="stage-mini-score" id="stageMiniScore-PP">0 <span>/ 270</span></div>
-            <div class="stage-mini-bar"><div class="stage-mini-fill" id="stageMiniBar-PP" style="width:0%"></div></div>
-          </div>
-          <div class="stage-mini-card" id="stage-SP">
-            <div class="stage-mini-code">SP</div>
-            <div class="stage-mini-name">Secondary Proc.</div>
-            <div class="stage-mini-score" id="stageMiniScore-SP">0 <span>/ 470</span></div>
-            <div class="stage-mini-bar"><div class="stage-mini-fill" id="stageMiniBar-SP" style="width:0%"></div></div>
-          </div>
-          <div class="stage-mini-card" id="stage-LFP">
-            <div class="stage-mini-code">LFP</div>
-            <div class="stage-mini-name">Final Logistics</div>
-            <div class="stage-mini-score" id="stageMiniScore-LFP">0 <span>/ 440</span></div>
-            <div class="stage-mini-bar"><div class="stage-mini-fill" id="stageMiniBar-LFP" style="width:0%"></div></div>
-          </div>
-        </div>
+      <div class="org-list-item">
+        <div class="org-list-avatar" id="buyerAvatar" style="background:#0d9488;">N</div>
+        <div class="org-list-info"><div class="org-list-name" id="buyerName">Buyer</div><div class="org-list-role">Buyer · SP, LFP</div></div>
+        <div class="org-list-score transparent" id="buyerScore">0 pts</div>
       </div>
+    </div>
+    <div class="sep"></div>
+    <span class="lbl">risk thresholds</span>
+    <div class="threshold-mini-list">
+      <div class="threshold-mini"><span class="tdot transparent"></span>Transparent · 0</div>
+      <div class="threshold-mini"><span class="tdot low"></span>Low risk · 1 to 99</div>
+      <div class="threshold-mini"><span class="tdot medium"></span>Medium risk · 100 to 499</div>
+      <div class="threshold-mini"><span class="tdot critical"></span>Critical · 500+</div>
+    </div>
+  </section>
 
-      <!-- PROJECT ORGS CARD -->
-      <div class="dash-card dash-card-orgs">
-        <div class="dash-card-label">PROJECT ORGANISATIONS</div>
-        <div class="org-list" id="orgList">
-          <div class="org-list-item">
-            <div class="org-list-avatar" id="sellerAvatar" style="background:#1a6fdb;">T</div>
-            <div class="org-list-info">
-              <div class="org-list-name" id="sellerName">Trident Seafoods</div>
-              <div class="org-list-role">Seller — responsible for FV, CR, FCL, PP</div>
-            </div>
-            <div class="org-list-score medium" id="sellerScore">280 pts</div>
-          </div>
-          <div class="org-list-item">
-            <div class="org-list-avatar" id="buyerAvatar" style="background:#0d9488;">N</div>
-            <div class="org-list-info">
-              <div class="org-list-name" id="buyerName">Nippon Suisan</div>
-              <div class="org-list-role">Buyer — responsible for SP, LFP</div>
-            </div>
-            <div class="org-list-score transparent" id="buyerScore">0 pts</div>
-          </div>
+  <section class="card c-top rv" style="--i:3">
+    <div class="card-h"><span class="lbl">top 10 critical KDEs · highest risk</span></div>
+    <div id="top10KDEs" class="t10"><div class="empty-note">No assessment data yet.</div></div>
+  </section>
+
+  <section class="card c-pie rv" style="--i:4">
+    <div class="card-h"><span class="lbl">risk by stage</span></div>
+    <div class="pie-box">
+      <canvas id="stagePieChart" width="190" height="190" aria-label="Risk by stage chart"></canvas>
+      <div class="pie-legend" id="stageLegend"></div>
+    </div>
+  </section>
+
+  <section class="card c-kde rv" style="--i:5">
+    <div class="card-h"><span class="lbl">KDE coverage</span></div>
+    <div class="kde-coverage-grid">
+      <div class="kde-cov-item"><div class="kde-cov-num" id="kdeCovTotal">77</div><div class="kde-cov-label">total KDEs</div></div>
+      <div class="kde-cov-item green"><div class="kde-cov-num" id="kdeCovData">—</div><div class="kde-cov-label">data available</div></div>
+      <div class="kde-cov-item red"><div class="kde-cov-num" id="kdeCovMissing">—</div><div class="kde-cov-label">data missing</div></div>
+      <div class="kde-cov-item grey"><div class="kde-cov-num" id="kdeCovNA">—</div><div class="kde-cov-label">not applicable</div></div>
+    </div>
+    <div class="kde-cov-bar">
+      <div class="kde-cov-bar-fill green" id="kdeCovBarGreen" style="width:0%"></div>
+      <div class="kde-cov-bar-fill red" id="kdeCovBarRed" style="width:0%"></div>
+      <div class="kde-cov-bar-fill grey" id="kdeCovBarGrey" style="width:100%"></div>
+    </div>
+    <div class="kde-cov-bar-labels"><span class="g">available</span><span class="r">missing</span><span class="n">n/a</span></div>
+    <p class="kde-cov-note">Conduct an assessment to populate KDE coverage data.</p>
+  </section>
+
+  <section class="card c-prod rv" style="--i:6">
+    <div class="card-h"><span class="lbl">product assessments</span></div>
+    <div class="empty-note" id="productsEmpty">
+      <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 8l-9-5-9 5 9 5 9-5zM3 8v8l9 5 9-5V8M12 13v8"/></svg></div>
+      <p>No products assessed yet in this project.</p>
+      Conduct an assessment to see product risk scores here.
+    </div>
+    <div class="products-table hidden" id="productsTable"></div>
+  </section>
+
+  <section class="card c-last rv" style="--i:7">
+    <div class="card-h"><span class="lbl">last assessment</span></div>
+    <div class="empty-note" id="lastAssessEmpty">
+      <div class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></div>
+      <p>No assessment conducted yet.</p>
+    </div>
+    <div class="last-assess-info hidden" id="lastAssessInfo">
+      <div class="last-assess-date" id="lastAssessDate">—</div>
+      <div class="last-assess-by" id="lastAssessBy">—</div>
+      <div class="lbl">score</div>
+      <div class="last-assess-score" id="lastAssessScore">—</div>
+    </div>
+  </section>
+
+</div></main>
+
+<div class="stage-modal-overlay hidden" id="stageModal" role="dialog" aria-modal="true" aria-labelledby="stageModalTitle">
+  <div class="stage-modal-box">
+    <div class="stage-modal-header">
+      <div class="stage-modal-header-top">
+        <div class="stage-modal-title-wrap">
+          <div class="stage-modal-code-badge" id="stageModalCode">FV</div>
+          <div><div class="stage-modal-title" id="stageModalTitle">Fishing Vessel</div><div class="stage-modal-subtitle" id="stageModalDesc"></div></div>
         </div>
-        <div class="dash-card-label" style="margin-top:20px;">RISK THRESHOLDS</div>
-        <div class="threshold-mini-list">
-          <div class="threshold-mini"><span class="tdot transparent"></span> Transparent — 0</div>
-          <div class="threshold-mini"><span class="tdot low"></span> Low Risk — 1 to 99</div>
-          <div class="threshold-mini"><span class="tdot medium"></span> Medium Risk — 100 to 499</div>
-          <div class="threshold-mini"><span class="tdot critical"></span> Critical — 500+</div>
-        </div>
+        <button class="stage-modal-close" onclick="closeStageModal()" aria-label="Close">&times;</button>
       </div>
-
-      <!-- PRODUCTS TABLE -->
-      <div class="dash-card dash-card-products">
-        <div class="dash-card-label">PRODUCT ASSESSMENTS</div>
-        <div class="products-empty" id="productsEmpty">
-          <div style="font-size:32px; margin-bottom:12px;">📦</div>
-          <p>No products assessed yet in this project.</p>
-          <span>Conduct an assessment to see product risk scores here.</span>
-        </div>
-        <div class="products-table hidden" id="productsTable"></div>
+      <div class="stage-modal-meta">
+        <span class="stage-modal-score-label" id="stageModalScore">0 / 1,080 risk pts</span>
+        <span class="mri-status-pill transparent" id="stageModalStatus"><span class="dot"></span>Transparent</span>
+        <span class="resp-tag seller" id="stageModalRespBadge">Seller responsible</span>
       </div>
-
-      <!-- KDE COVERAGE CARD -->
-      <div class="dash-card dash-card-kde">
-        <div class="dash-card-label">KDE COVERAGE</div>
-        <div class="kde-coverage-grid">
-          <div class="kde-cov-item">
-            <div class="kde-cov-num" id="kdeCovTotal">77</div>
-            <div class="kde-cov-label">Total KDEs</div>
-          </div>
-          <div class="kde-cov-item green">
-            <div class="kde-cov-num" id="kdeCovData">—</div>
-            <div class="kde-cov-label">Data Available</div>
-          </div>
-          <div class="kde-cov-item red">
-            <div class="kde-cov-num" id="kdeCovMissing">—</div>
-            <div class="kde-cov-label">Data Missing</div>
-          </div>
-          <div class="kde-cov-item grey">
-            <div class="kde-cov-num" id="kdeCovNA">—</div>
-            <div class="kde-cov-label">Not Applicable</div>
-          </div>
-        </div>
-        <div class="kde-cov-bar-wrap">
-          <div class="kde-cov-bar">
-            <div class="kde-cov-bar-fill green" id="kdeCovBarGreen" style="width:0%"></div>
-            <div class="kde-cov-bar-fill red" id="kdeCovBarRed" style="width:0%"></div>
-            <div class="kde-cov-bar-fill grey" id="kdeCovBarGrey" style="width:100%"></div>
-          </div>
-          <div class="kde-cov-bar-labels">
-            <span style="color:#16a34a;">Available</span>
-            <span style="color:#e63946;">Missing</span>
-            <span style="color:#9aa0b4;">N/A</span>
-          </div>
-        </div>
-        <p class="kde-cov-note">Conduct an assessment to populate KDE coverage data.</p>
-      </div>
-
-      <!-- TOP 10 CRITICAL KDEs CARD -->
-      <div class="dash-card" style="grid-column: span 2;">
-        <div class="dash-card-label">TOP 10 CRITICAL KDEs — HIGHEST RISK</div>
-        <div id="top10KDEs">
-          <div style="text-align:center; padding:24px; color:#9aa0b4; font-size:13px;">No assessment data yet.</div>
-        </div>
-      </div>
-
-      <!-- CTE PIE CHART CARD -->
-      <div class="dash-card" style="display:flex; flex-direction:column; align-items:center; justify-content:center;">
-        <div class="dash-card-label" style="align-self:flex-start;">RISK BY STAGE</div>
-        <canvas id="stagePieChart" width="200" height="200" style="margin:12px auto;"></canvas>
-        <div style="display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:8px;">
-          <span style="font-size:11px; display:flex; align-items:center; gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#1a6fdb;display:inline-block;"></span>FV</span>
-          <span style="font-size:11px; display:flex; align-items:center; gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#7c3aed;display:inline-block;"></span>CR</span>
-          <span style="font-size:11px; display:flex; align-items:center; gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#0d9488;display:inline-block;"></span>FCL</span>
-          <span style="font-size:11px; display:flex; align-items:center; gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#f59e0b;display:inline-block;"></span>PP</span>
-          <span style="font-size:11px; display:flex; align-items:center; gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#e63946;display:inline-block;"></span>SP</span>
-          <span style="font-size:11px; display:flex; align-items:center; gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:#64748b;display:inline-block;"></span>LFP</span>
-        </div>
-      </div>
-
-      <!-- LAST ASSESSMENT CARD -->
-      <div class="dash-card dash-card-last">
-        <div class="dash-card-label">LAST ASSESSMENT</div>
-        <div class="last-assess-empty" id="lastAssessEmpty">
-          <div style="font-size:28px; margin-bottom:8px;">🔍</div>
-          <p>No assessment conducted yet.</p>
-        </div>
-        <div class="last-assess-info hidden" id="lastAssessInfo">
-          <div class="last-assess-date" id="lastAssessDate">—</div>
-          <div class="last-assess-by" id="lastAssessBy">—</div>
-          <div class="last-assess-score" id="lastAssessScore">—</div>
-        </div>
-      </div>
-
+    </div>
+    <div class="stage-modal-body">
+      <div class="stage-modal-section-label">KDEs carrying risk</div>
+      <div id="stageModalMissing"></div>
+      <div id="stageModalOk"></div>
     </div>
   </div>
+</div>
 
-  <!-- STAGE KDE MODAL -->
-  <div class="stage-modal-overlay hidden" id="stageModal">
-    <div class="stage-modal-box">
-      <div class="stage-modal-header">
-        <div class="stage-modal-header-top">
-          <div class="stage-modal-title-wrap">
-            <div class="stage-modal-code-badge" id="stageModalCode">FV</div>
-            <div>
-              <div class="stage-modal-title" id="stageModalTitle">Fishing Vessel</div>
-              <div class="stage-modal-subtitle" id="stageModalDesc">Vessel identification and catch data</div>
-            </div>
-          </div>
-          <button class="stage-modal-close" onclick="closeStageModal()">&times;</button>
-        </div>
-        <div class="stage-modal-meta">
-          <span class="stage-modal-score-label" id="stageModalScore">0 / 1,080 risk pts</span>
-          <span class="mri-status-pill transparent" id="stageModalStatus"><span class="dot"></span> Transparent</span>
-          <span id="stageModalRespBadge" style="font-size:11px; font-weight:700; padding:3px 10px; border-radius:999px; background:#dbeafe; color:#1d4ed8;">Seller Responsible</span>
-        </div>
-      </div>
-      <div class="stage-modal-body">
-        <div class="stage-modal-section-label">⚠️ KDEs with Risk Score</div>
-        <div id="stageModalMissing"></div>
-        <div id="stageModalOk"></div>
-      </div>
-    </div>
-  </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="utils.js"></script>
+<script src="mri-dashboard.js"></script>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="utils.js"></script>
-  <script src="mri-dashboard.js"></script>
+<script>
+(function(){
+  const wrap = document.getElementById('topLinks'); if (!wrap) return;
+  const ind = wrap.querySelector('.ind');
+  const items = [...wrap.querySelectorAll('.nav-item')];
+  const home = wrap.querySelector('.nav-item.on');
+  function move(el){
+    if (!el){ ind.style.opacity = 0; items.forEach(x => x.classList.remove('hl')); return; }
+    const r = el.getBoundingClientRect(), w = wrap.getBoundingClientRect();
+    ind.style.left = (r.left - w.left) + 'px'; ind.style.width = r.width + 'px'; ind.style.opacity = 1;
+    items.forEach(x => x.classList.toggle('hl', x === el));
+  }
+  items.forEach(el => el.addEventListener('mouseenter', () => move(el)));
+  wrap.addEventListener('mouseleave', () => move(home));
+  window.addEventListener('resize', () => move(home));
+  requestAnimationFrame(() => move(home));
+  if (document.fonts) document.fonts.ready.then(() => move(home));
+})();
+</script>
 </body>
 </html>
-
-

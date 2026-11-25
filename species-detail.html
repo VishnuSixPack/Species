@@ -1,286 +1,525 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Species Detail — SmarTuna concept</title>
-  <link rel="icon" type="image/png" href="sc-blue-logo.png" />
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    /* ── SMARTUNA WORDMARK ── */
-    @font-face {
-      font-family: 'Bitsumis';
-      src: url('BITSUMIS.TTF') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-      font-display: swap;
-    }
-    .sc-wm { display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1;gap:0;text-decoration:none; }
-    .sc-wm-top { font-family:'Bitsumis',sans-serif !important;font-weight:900 !important;font-size:15px;letter-spacing:.04em;text-transform:uppercase;background:linear-gradient(90deg,#1a6fdb,#1a6fdb) !important;-webkit-background-clip:text !important;-webkit-text-fill-color:transparent !important;background-clip:text !important; }
-    .sc-wm-sub { font-family:'Bitsumis',sans-serif !important;font-weight:700 !important;font-size:7px;letter-spacing:.22em;text-transform:uppercase;color:#1a1a2e;-webkit-text-fill-color:#1a1a2e !important;margin-top:2px; }
-    .issf-btn{display:none;align-items:center;justify-content:center;padding:0 18px;height:40px;border:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:#0369a1;cursor:pointer;border-radius:999px;transition:background 0.15s,color 0.15s;white-space:nowrap;}
-    .issf-btn:hover{background:#f0f9ff;color:#0284c7;}
-    .issf-btn.show{display:inline-flex;}
-    .issf-modal{display:none;position:fixed;inset:0;background:rgba(4,8,24,0.65);backdrop-filter:blur(8px);z-index:600;align-items:center;justify-content:center;padding:20px;}
-    .issf-modal.open{display:flex;}
-    .issf-box{background:#fff;border-radius:18px;width:90vw;max-width:1100px;height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.25);}
-    .issf-hd{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid #e8eaf0;flex-shrink:0;}
-    .issf-hd-l{display:flex;align-items:center;gap:10px;}
-    .issf-hd-badge{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#0369a1,#0ea5e9);color:#fff;border-radius:999px;padding:4px 13px;font-size:11px;font-weight:700;letter-spacing:0.3px;}
-    .issf-hd-title{font-size:15px;font-weight:800;color:#1a1a2e;}
-    .issf-hd-sub{font-size:12px;color:#9aa0b4;margin-top:1px;}
-    .issf-close{width:30px;height:30px;border-radius:50%;background:#f4f6fb;border:none;cursor:pointer;font-size:16px;color:#6b7280;display:flex;align-items:center;justify-content:center;}
-    .issf-close:hover{background:#e8eaf0;}
-    .issf-body{flex:1;overflow:hidden;background:#f4f6fb;position:relative;}
-    .issf-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#9aa0b4;font-size:13px;font-weight:500;}
-    .issf-loading-spinner{width:32px;height:32px;border-radius:50%;border:3px solid #e0e3ed;border-top-color:#0ea5e9;animation:issf-spin 0.8s linear infinite;}
-    @keyframes issf-spin{to{transform:rotate(360deg);}}
-    .issf-body iframe{width:100%;height:100%;border:none;position:relative;z-index:1;}
-    .issf-footer{padding:10px 22px;border-top:1px solid #f0f2f8;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
-    .issf-source{font-size:11px;color:#9aa0b4;}
-    .issf-source a{color:#0ea5e9;text-decoration:none;font-weight:600;}
-    .issf-source a:hover{text-decoration:underline;}
-    .issf-note{background:#f0f9ff;border-top:1px solid #bae6fd;padding:10px 16px;font-size:11px;color:#0369a1;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Species Detail · SmarTuna concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="sc-blue-logo.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
 
-    .detail-avatar-btn{width:36px;height:36px;border-radius:50%;background:#1a6fdb;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;box-shadow:0 1px 4px rgba(0,0,0,0.12);flex-shrink:0;border:none;}
-    .detail-avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid #e8eaf0;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.10);min-width:176px;overflow:hidden;z-index:999;}
-    .detail-avatar-menu.open{display:block;}
-    .detail-avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;color:#1a1a2e;border-bottom:1px solid #e8eaf0;}
-    .detail-avatar-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;color:#4a4e69;text-decoration:none;font-weight:500;}
-    .detail-avatar-menu a:hover{background:#f0f2f7;color:#1a6fdb;}
-    .detail-avatar-menu button{width:100%;padding:9px 15px;background:none;border:none;border-top:1px solid #e8eaf0;text-align:left;font-family:'Poppins',sans-serif;font-size:13px;color:#e63946;cursor:pointer;}
-    .detail-avatar-menu button:hover{background:#fff0f1;}
+  @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');font-weight:normal;font-style:normal;font-display:swap}
+  :root{
+    --accent:#2f6fed; --accent-soft:rgba(47,111,237,.10); --accent-line:#cddcf8;
+    --ink:#14161a; --muted:#6b7380; --faint:#9aa1ad; --line:#e6e8ec; --line2:#eef0f3; --page:#f6f7f9; --white:#fff;
+    --mono:Consolas,"SFMono-Regular",Menlo,monospace;
+    --ok:#178a4c; --ok-bg:#e8f6ee; --ok-line:#c7e8d4;
+    --low:#2f6fed; --low-bg:#edf3fe; --low-line:#cddcf8;
+    --med:#b7791f; --med-bg:#fdf4e3; --med-line:#f1dcae;
+    --crit:#d64545; --crit-bg:#fdeceb; --crit-line:#f5c9c6;
+    --ease:cubic-bezier(.16,1,.3,1); --spring:cubic-bezier(.34,1.56,.64,1);
+  }
+  *{box-sizing:border-box}
+  html,body{overflow-x:clip}
+  body{margin:0;font-family:Poppins,system-ui,sans-serif;font-weight:400;font-size:14px;font-synthesis:none;color:var(--ink);background:var(--page);line-height:1.55;-webkit-font-smoothing:antialiased}
+  b,strong,h1,h2,h3,h4,th,[style*="font-weight"]{font-weight:400!important}
+  a{color:inherit;text-decoration:none}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .wrap{max-width:1680px;margin:0 auto;padding:0 clamp(16px,3vw,48px)}
+  .mono{font-family:var(--mono)}
+  .hidden{display:none!important}
+  .num{font-variant-numeric:tabular-nums}
 
-    .nav-item-wrap{position:relative;}
-    .nav-item-wrap::after{content:'';position:absolute;top:100%;left:0;width:100%;height:12px;background:transparent;}
-    .nav-item-wrap:hover .nav-dd-menu{display:block;}
-    .nav-dd-menu{display:none;position:absolute;top:calc(100% + 8px);left:0;background:#fff;border:1px solid #e8eaf0;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.10);min-width:160px;padding:6px;z-index:500;}
-    .nav-dd-item{display:block;padding:8px 12px;font-size:13px;color:#4a4e69;text-decoration:none;border-radius:8px;font-weight:500;}
-    .nav-dd-item:hover{background:#f0f2f7;color:#1a6fdb;}
-    .nav-dd-item.active{color:#1a6fdb;font-weight:700;}
-  </style>
+  /* header */
+  header.top{position:sticky;top:0;z-index:1000;background:rgba(255,255,255,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .nav{display:flex;align-items:center;justify-content:space-between;height:62px;gap:20px}
+  .brand{display:flex;align-items:center;gap:10px;flex:none}
+  .brand img{height:30px;width:auto;display:block}
+  .wm{display:inline-flex;flex-direction:column;line-height:1}
+  .wm-top{font-family:'Bitsumis',Poppins,sans-serif;font-size:17px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink)}
+  .wm-top span{color:var(--accent)}
+  .wm-sub{font-family:'Bitsumis',Poppins,sans-serif;font-size:8.5px;letter-spacing:.32em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+  .links{position:relative;display:flex;align-items:center;gap:2px;padding:4px;border:1px solid var(--line);border-radius:999px;background:var(--white);font-size:13px;color:var(--muted)}
+  .links .ind{position:absolute;z-index:0;top:4px;bottom:4px;left:0;width:0;border-radius:999px;background:var(--accent);box-shadow:0 6px 16px rgba(47,111,237,.3);opacity:0;transition:left .45s var(--spring),width .45s var(--spring),opacity .2s}
+  .nav-item{position:relative;z-index:1;display:block;padding:6px 15px;border-radius:999px;font-weight:300;white-space:nowrap;transition:color .25s}
+  .nav-item:hover{color:var(--ink)}
+  .nav-item.hl,.nav-item.hl:hover{color:#fff}
+  .nav-item-wrap{position:relative;z-index:1}
+  .nav-item-wrap::after{content:"";position:absolute;top:100%;left:0;width:100%;height:14px}
+  .nav-dropdown{position:absolute;top:calc(100% + 10px);left:0;min-width:200px;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);padding:6px;visibility:hidden;opacity:0;transform:translateY(-4px);transition:opacity .15s,transform .15s,visibility 0s linear .3s}
+  .nav-item-wrap:hover .nav-dropdown,.nav-item-wrap:focus-within .nav-dropdown{visibility:visible;opacity:1;transform:none;transition-delay:0s}
+  .nav-dropdown a{display:block;padding:8px 12px;font-size:13px;font-weight:300;color:var(--ink);border-radius:9px;white-space:nowrap}
+  .nav-dropdown a:hover{background:var(--page);color:var(--accent)}
+  .nav-dropdown .all{border-top:1px solid var(--line);margin-top:4px;padding-top:9px;color:var(--accent);font-family:var(--mono);font-size:12px}
+  .topbar-right{position:relative;display:flex;align-items:center;gap:10px;cursor:pointer;padding:3px 3px 3px 14px;border:1px solid var(--line);border-radius:999px;background:var(--white);transition:border-color .2s}
+  .topbar-right:hover{border-color:var(--accent-line)}
+  .topbar-email{font-size:12.5px;font-weight:300;color:var(--muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .topbar-avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;font-size:11.5px;display:grid;place-items:center;overflow:hidden;flex:none}
+  .topbar-profile-dropdown{position:absolute;top:calc(100% + 10px);right:0;min-width:200px;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);padding:6px;display:none;cursor:default}
+  .topbar-profile-dropdown.open{display:block;animation:drop .18s ease}
+  @keyframes drop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .topbar-profile-name{padding:8px 12px 10px;font-size:13px;color:var(--ink);border-bottom:1px solid var(--line);margin-bottom:4px}
+  .topbar-profile-dropdown a,.topbar-profile-dropdown button{display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;font-size:13px;font-weight:300;border-radius:9px;border:0;background:none;text-align:left;cursor:pointer}
+  .topbar-profile-dropdown a:hover{background:var(--page);color:var(--accent)}
+  .topbar-profile-dropdown button{color:var(--crit)}
+  .topbar-profile-dropdown button:hover{background:var(--crit-bg)}
+
+  /* shared pieces */
+  .eyebrow{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.04em;display:flex;align-items:center;gap:10px}
+  .lbl{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.03em}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:18px 20px;min-width:0}
+  .card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border:1px solid var(--line);border-radius:999px;background:var(--white);font-size:13px;font-weight:300;color:var(--ink);white-space:nowrap;cursor:pointer;transition:border-color .2s,color .2s,background .2s,transform .2s,box-shadow .2s}
+  .btn svg{flex:none}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.25)}
+  .btn.primary:hover{background:#2560d6;color:#fff;transform:translateY(-1px)}
+  .btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+  .btn:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .badge{font-family:var(--mono);font-size:10.5px;padding:1px 8px;border-radius:999px;border:1px solid;line-height:1.5}
+  .badge.new{color:var(--accent);border-color:var(--accent-line);background:#f3f7ff}
+  .badge.beta{color:#9a6a12;border-color:#efdcae;background:#fdf7e7}
+  .cnt{font-family:var(--mono);font-size:10.5px;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;display:inline-grid;place-items:center}
+
+  .mri-status-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:999px;font-size:12px;border:1px solid transparent;white-space:nowrap}
+  .mri-status-pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .mri-status-pill.transparent{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .mri-status-pill.low{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .mri-status-pill.medium{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .mri-status-pill.critical{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+  .kde-weight{display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;font-family:var(--mono);font-size:10.5px;border:1px solid transparent;white-space:nowrap}
+  .kde-weight.w5{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .kde-weight.w10{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .kde-weight.w30{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .kde-weight.w50{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+
+  .rv{animation:up .55s var(--ease) both;animation-delay:calc(var(--i,0) * 50ms)}
+  @keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .toast-wrap{position:fixed;right:20px;bottom:20px;z-index:3000;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  .toast{display:flex;align-items:center;gap:10px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;font-weight:300;box-shadow:0 14px 34px rgba(16,24,40,.2);animation:up .3s var(--ease)}
+  .toast i{width:8px;height:8px;border-radius:50%;background:#4ade80;flex:none}
+  .toast.error i{background:#f87171}
+
+  @media (max-width:1180px){ .links{display:none} }
+  @media (max-width:640px){ .topbar-email{display:none} .topbar-right{padding:3px} .wm-sub{display:none} }
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
+
+  .phead{background:linear-gradient(180deg,#eef3fc 0%,var(--page) 100%);border-bottom:1px solid var(--line2)}
+  .crumbs{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;color:var(--faint)}
+  .crumbs a{color:var(--muted);display:inline-flex;align-items:center;gap:6px;transition:color .2s}
+  .crumbs a:hover{color:var(--accent)}
+  main{padding:18px 0 56px}
+
+  /* buttons used by script.js / detail.js markup */
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.22)}
+  .btn-primary:hover{background:#2560d6;color:#fff}
+  .btn-secondary{background:var(--white)}
+  .btn-danger{color:var(--crit);border-color:var(--crit-line);background:var(--crit-bg)}
+  .btn-danger:hover{color:#fff;background:var(--crit);border-color:var(--crit)}
+
+  .skeleton{height:14px;border-radius:8px;background:linear-gradient(90deg,#eceff3 25%,#f6f7f9 50%,#eceff3 75%);background-size:200% 100%;animation:shimmer 1.4s infinite}
+  .skeleton.w-60{width:60%} .skeleton.w-40{width:40%} .skeleton.w-80{width:80%} .skeleton.w-100{width:100%}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  .skeleton-row td{padding:14px 16px}
+  .empty-state{text-align:center;padding:44px 20px;color:var(--muted)}
+  .empty-state .empty-icon{width:48px;height:48px;border-radius:14px;background:var(--page);color:var(--faint);display:grid;place-items:center;margin:0 auto 12px;font-size:0}
+  .empty-state p{margin:0;font-size:14.5px;color:var(--ink)}
+  .empty-state small{font-size:12.5px;font-weight:300}
+  .text-muted{color:var(--muted)} .text-sm{font-size:12px} .text-mono{font-family:var(--mono)}
+
+  /* confirm + soft delete */
+  .confirm-overlay{display:none;position:fixed;inset:0;z-index:2100;background:rgba(20,22,26,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:20px}
+  .confirm-overlay.open{display:flex}
+  .confirm-box,.sd-box{background:var(--white);border-radius:18px;padding:28px;max-width:400px;width:100%;text-align:center;box-shadow:0 30px 80px rgba(16,24,40,.25);animation:up .3s var(--ease)}
+  .confirm-box h3,.sd-box h3{margin:0 0 6px;font-size:17px;font-weight:300}
+  .confirm-box p,.sd-box p{margin:0 0 18px;font-size:13px;font-weight:300;color:var(--muted);line-height:1.6}
+  .confirm-actions{display:flex;gap:8px;justify-content:center}
+  .sd-overlay{display:none;position:fixed;inset:0;z-index:2000;background:rgba(20,22,26,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:20px}
+  .sd-icon{width:52px;height:52px;border-radius:50%;background:var(--crit-bg);color:var(--crit);display:grid;place-items:center;margin:0 auto 12px}
+  .sd-row{display:flex;gap:8px}
+  .sd-col{display:flex;flex-direction:column;gap:8px}
+  .sd-row .btn,.sd-col .btn{justify-content:center;width:100%}
+  .btn-solid-danger{background:var(--crit);border-color:var(--crit);color:#fff}
+  .btn-solid-danger:hover{background:#c23a3a;color:#fff;border-color:#c23a3a}
+  .btn-line-danger{color:var(--crit);border-color:var(--crit-line)}
+  .btn-line-danger:hover{color:#fff;background:var(--crit);border-color:var(--crit)}
+
+  #toast-container{position:fixed;bottom:20px;right:20px;z-index:3000;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  #toast-container .toast{padding:11px 16px;border-radius:12px;font-size:13px;font-weight:300;color:#fff;background:var(--ink)}
+  .toast-success,.toast.success{border-left:3px solid #4ade80} .toast-error,.toast.error{border-left:3px solid #f87171}
+
+  .phead .wrap{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding-top:14px;padding-bottom:14px}
+  .actions{position:relative;display:inline-flex;align-items:center;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:3px}
+  .issf-btn{display:none;align-items:center;gap:7px;height:34px;padding:0 14px;border:0;background:none;border-radius:999px;font-size:13px;font-weight:300;color:var(--accent);cursor:pointer;white-space:nowrap;transition:background .2s}
+  .issf-btn:hover{background:var(--low-bg)}
+  .issf-btn.show{display:inline-flex}
+  #issfDivider{width:1px;height:18px;background:var(--line);margin:0 2px}
+  .gear-btn{width:34px;height:34px;border:0;background:none;border-radius:999px;display:grid;place-items:center;color:var(--muted);cursor:pointer;transition:background .2s,color .2s,transform .4s var(--ease)}
+  .gear-btn:hover{background:var(--page);color:var(--ink);transform:rotate(45deg)}
+  #detail-settings-menu{position:absolute;top:calc(100% + 8px);right:0;min-width:180px;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);padding:6px;z-index:200}
+  #detail-settings-menu button{display:flex;align-items:center;gap:9px;width:100%;padding:8px 12px;border:0;background:none;border-radius:9px;font-size:13px;font-weight:300;text-align:left;cursor:pointer}
+  #detail-settings-menu button:hover:not(:disabled){background:var(--page);color:var(--accent)}
+  #detail-settings-menu #detail-delete-btn{color:var(--crit)}
+  #detail-settings-menu #detail-delete-btn:hover:not(:disabled){background:var(--crit-bg);color:var(--crit)}
+  #detail-settings-menu button:disabled{opacity:.4;cursor:not-allowed}
+
+  #loading-state{display:grid;grid-template-columns:320px 1fr;gap:16px}
+  #loading-state .card{display:grid;gap:12px}
+
+  .detail-layout{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;align-items:start}
+  .detail-left-panel{position:sticky;top:78px;background:var(--white);border:1px solid var(--line);border-radius:16px;padding:14px;animation:up .5s var(--ease)}
+  .detail-photo-wrap{width:100%;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:linear-gradient(135deg,#f3f5f8,#e9edf3);margin-bottom:14px}
+  .detail-photo-wrap img{width:100%;height:100%;object-fit:cover;display:block;animation:kb 18s ease-in-out infinite alternate}
+  @keyframes kb{from{transform:scale(1)}to{transform:scale(1.06)}}
+  .detail-no-photo{width:100%;height:100%;display:grid;place-items:center;color:#c3cad6}
+  .detail-species-name{margin:0 4px;font-size:24px;font-weight:300;letter-spacing:-.02em;line-height:1.2}
+  .detail-scientific-name{margin:2px 4px 0;font-size:13.5px;font-weight:300;font-style:italic;color:var(--muted)}
+  .detail-summary-card{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+  .detail-summary-row{background:var(--page);border:1px solid var(--line2);border-radius:12px;padding:9px 11px;min-width:0}
+  .detail-summary-label{display:block;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .detail-summary-value{display:block;font-size:13.5px;overflow-wrap:anywhere}
+
+  .detail-right-panel{background:var(--white);border:1px solid var(--line);border-radius:16px;min-width:0;animation:up .5s var(--ease) .08s both}
+  .tabs-bar{padding:12px 14px;border-bottom:1px solid var(--line2);overflow-x:auto;scrollbar-width:none}
+  .detail-tabs{position:relative;display:inline-flex;gap:2px;padding:4px;border:1px solid var(--line);border-radius:999px;background:var(--white)}
+  .detail-tabs .ind{position:absolute;z-index:0;top:4px;bottom:4px;left:0;width:0;border-radius:999px;background:var(--accent);box-shadow:0 6px 16px rgba(47,111,237,.3);transition:left .45s var(--spring),width .45s var(--spring)}
+  .detail-tab{position:relative;z-index:1;border:0;background:none;padding:7px 16px;border-radius:999px;font-size:13px;font-weight:300;color:var(--muted);white-space:nowrap;cursor:pointer;transition:color .3s}
+  .detail-tab:hover{color:var(--ink)}
+  .detail-tab.active,.detail-tab.active:hover{color:#fff}
+  .detail-tab-content{padding:18px}
+  .tab-panel{display:none}
+  .tab-panel.active{display:block;animation:up .35s var(--ease)}
+  .detail-fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+  .detail-field{display:flex;flex-direction:column;gap:3px;background:var(--page);border:1px solid var(--line2);border-radius:12px;padding:11px 14px;min-width:0;transition:border-color .2s,background .2s}
+  .detail-field:hover{background:#f3f7ff;border-color:var(--accent-line)}
+  .detail-field.long{grid-column:1/-1}
+  .detail-label{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .detail-value{font-size:13.5px;line-height:1.55;color:var(--ink);overflow-wrap:anywhere;white-space:pre-line}
+  .detail-value:empty::before{content:"—";color:#c3cad6}
+  #tab-characteristics .detail-fields{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+
+  /* ISSF */
+  .issf-modal{display:none;position:fixed;inset:0;z-index:2000;background:rgba(20,22,26,.5);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px}
+  .issf-modal.open{display:flex}
+  .issf-box{background:var(--white);border-radius:20px;width:94vw;max-width:1200px;height:90vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 80px rgba(16,24,40,.3);animation:up .3s var(--ease)}
+  .issf-hd{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line2)}
+  .issf-hd-l{display:flex;align-items:center;gap:12px}
+  .issf-hd-badge{font-family:var(--mono);font-size:11px;padding:2px 10px;border-radius:999px;color:var(--accent);background:var(--low-bg);border:1px solid var(--accent-line)}
+  .issf-hd-title{font-size:16px;font-weight:300}
+  .issf-hd-sub{font-size:12px;font-weight:300;color:var(--muted)}
+  .issf-close{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--white);color:var(--muted);font-size:18px;line-height:1;cursor:pointer;transition:color .2s,border-color .2s,transform .2s}
+  .issf-close:hover{color:var(--accent);border-color:var(--accent);transform:rotate(90deg)}
+  .issf-body{flex:1;overflow:hidden;background:var(--page);position:relative}
+  .issf-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:var(--faint);font-size:13px;font-weight:300}
+  .issf-loading-spinner{width:30px;height:30px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--accent);animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .issf-body iframe{width:100%;height:100%;border:0;position:relative;z-index:1}
+  .issf-note{display:flex;align-items:center;gap:8px;padding:9px 18px;background:#f3f7ff;border-top:1px solid var(--accent-line);font-size:12px;font-weight:300;color:var(--accent)}
+  .issf-footer{padding:9px 20px;border-top:1px solid var(--line2)}
+  .issf-source{font-size:11.5px;font-weight:300;color:var(--faint)}
+  .issf-source a{color:var(--accent)}
+  .issf-source a:hover{text-decoration:underline}
+
+  @media (max-width:1000px){
+    .detail-layout,#loading-state{grid-template-columns:1fr}
+    .detail-left-panel{position:static;display:grid;grid-template-columns:minmax(0,220px) 1fr;gap:6px 16px;align-items:start}
+    .detail-photo-wrap{grid-row:span 3;margin:0}
+    .detail-summary-card{margin-top:6px}
+  }
+  @media (max-width:560px){
+    .detail-left-panel{display:block}
+    .detail-photo-wrap{margin-bottom:12px}
+    .detail-fields,#tab-characteristics .detail-fields{grid-template-columns:1fr}
+    .issf-box{width:100%;height:94vh}
+  }
+
+</style>
 </head>
 <body class="species-detail-page">
 
-<div style="display:flex;align-items:center;padding:14px 28px;gap:20px;background:#f0f2f7;position:sticky;top:0;z-index:100;">
-  <a href="home-logged-in.html" style="text-decoration:none;display:flex;align-items:center;gap:9px;">
-    <img src="sc-blue-logo.png" alt="SmarTuna" style="width:26px;height:26px;object-fit:contain;flex-shrink:0;"/>
-      <span class="sc-wm">
-        <span class="sc-wm-top">SmarTuna</span>
-        <span class="sc-wm-sub">concept</span>
-      </span>
-  </a>
-  <div style="flex:1;display:flex;justify-content:center;">
-    <div style="display:inline-flex;align-items:center;gap:2px;background:#fff;border-radius:999px;padding:5px 7px;box-shadow:0 1px 6px rgba(0,0,0,0.07);">
-      <a href="home-logged-in.html" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;color:#6b7280;text-decoration:none;"><img src="home.png" style="width:15px;height:15px;object-fit:contain;opacity:0.5;"/> Home</a>
-      <div class="nav-item-wrap">
-        <div style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;color:#6b7280;cursor:default;"><img src="my-studio.png" style="width:15px;height:15px;object-fit:contain;opacity:0.5;"/> My Studio</div>
-        <div class="nav-dd-menu">
-          <a href="product-list.html" class="nav-dd-item">Product</a>
-          <a href="organisation.html" class="nav-dd-item">Your Company</a>
-        </div>
+<header class="top">
+  <div class="wrap nav">
+    <a class="brand" href="home-logged-in.html" aria-label="SmarTuna home">
+      <img src="sc-blue-logo.png" alt="" onerror="this.style.display='none'">
+      <span class="wm"><span class="wm-top">Smar<span>Tuna</span></span><span class="wm-sub">concept</span></span>
+    </a>
+    <nav class="links" id="topLinks" aria-label="Main">
+      <span class="ind"></span>
+      <a class="nav-item" href="home-logged-in.html">Home</a>
+      <div class="nav-item-wrap"><a class="nav-item" href="modules.html#my-studio">My Studio</a>
+        <div class="nav-dropdown"><a href="product-list.html">Products</a><a href="organisation.html">Your company</a><a class="all" href="modules.html#my-studio">See all My Studio</a></div></div>
+      <div class="nav-item-wrap"><a class="nav-item on" href="Species.html" aria-current="page">Atlas</a>
+        <div class="nav-dropdown"><a href="Species.html">Species</a><a href="country.html">Country</a><a href="port-list.html">Ports</a><a href="vessel-list.html">Vessels</a><a class="all" href="modules.html#atlas">See all Atlas</a></div></div>
+      <a class="nav-item" href="mri.html">SRI</a>
+      <a class="nav-item" href="modules.html#reports">Reports</a>
+      <div class="nav-item-wrap"><a class="nav-item" href="modules.html#support">Support</a>
+        <div class="nav-dropdown"><a href="contact.html">Contact</a><a href="report.html">Report an issue</a><a href="about.html">About</a><a class="all" href="modules.html#support">See all Support</a></div></div>
+    </nav>
+    <div class="topbar-right" onclick="toggleNavDropdown()" role="button" tabindex="0" aria-label="Account menu" onkeydown="if(event.key==='Enter'){toggleNavDropdown()}">
+      <span class="topbar-email" id="navEmail"></span>
+      <div class="topbar-avatar" id="navAvatar"></div>
+      <div class="topbar-profile-dropdown" id="navDropdown" onclick="event.stopPropagation()">
+        <div class="topbar-profile-name" id="navFirstName">Hello</div>
+        <a href="profile.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Profile</a>
+        <button onclick="handleLogout()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>Log out</button>
       </div>
-      <div class="nav-item-wrap">
-        <div style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;color:#1a1a2e;background:#f0f2f7;cursor:default;"><img src="atlas.png" style="width:15px;height:15px;object-fit:contain;opacity:1;"/> Atlas</div>
-        <div class="nav-dd-menu">
-          <a href="Species.html" class="nav-dd-item active">Species</a>
-          <a href="country.html" class="nav-dd-item">Country</a>
-          <a href="#" class="nav-dd-item">Ports</a>
-          <a href="#" class="nav-dd-item">Vessels</a>
-        </div>
-      </div>
-      <a href="#" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;color:#6b7280;text-decoration:none;"><img src="features.png" style="width:15px;height:15px;object-fit:contain;opacity:0.5;"/> Features</a>
-      <a href="#" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;color:#6b7280;text-decoration:none;"><img src="messages.png" style="width:15px;height:15px;object-fit:contain;opacity:0.5;"/> Messages</a>
-      <a href="#" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;color:#6b7280;text-decoration:none;"><img src="report.png" style="width:15px;height:15px;object-fit:contain;opacity:0.5;"/> Reports</a>
-      <a href="report.html" style="display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;color:#6b7280;text-decoration:none;"><img src="support.png" style="width:15px;height:15px;object-fit:contain;opacity:0.5;"/> Support</a>
     </div>
   </div>
-  <div style="position:relative;flex-shrink:0;">
-    <button class="detail-avatar-btn" id="detailAvatarBtn" onclick="toggleDetailAvatar()"><span id="detailAvatarInitials">?</span></button>
-    <div class="detail-avatar-menu" id="detailAvatarMenu">
-      <div class="detail-avatar-menu-name" id="detailAvatarGreeting">Hello!</div>
-      <a href="profile.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg> Profile</a>
-      <button onclick="detailLogout()">Logout</button>
-    </div>
-  </div>
-</div>
+</header>
 
-  <div class="page-container">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
-      <a href="Species.html" class="btn btn-secondary">← Back to Species</a>
-      <div style="position:relative;display:inline-flex;align-items:center;background:#fff;border:1.5px solid #e0e3ed;border-radius:999px;box-shadow:0 1px 6px rgba(0,0,0,0.07);">
-        <button class="issf-btn" id="issfBtn" onclick="openISSF()">Stock Status</button>
-        <div id="issfDivider" style="display:none;width:1px;height:18px;background:#e0e3ed;flex-shrink:0;"></div>
-        <div style="position:relative;display:inline-flex;align-items:center;">
-          <button onclick="toggleSettingsMenu()" style="width:40px;height:40px;border:none;background:transparent;border-radius:0 999px 999px 0;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:background 0.15s;" onmouseover="this.style.background='#f4f6fb'" onmouseout="this.style.background='transparent'">⚙️</button>
-          <div id="detail-settings-menu" style="display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border:1px solid #e0e3ed;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.1);overflow:hidden;min-width:160px;z-index:200;">
-            <button id="detail-edit-btn" disabled onclick="goToEdit()" style="width:100%;padding:10px 14px;border:none;background:transparent;text-align:left;font-family:'DM Sans',sans-serif;font-size:13px;color:#4a4e69;cursor:pointer;display:flex;align-items:center;gap:8px;">✏️ Edit Species</button>
-            <button id="detail-delete-btn" disabled onclick="deleteCurrentSpecies()" style="width:100%;padding:10px 14px;border:none;background:transparent;text-align:left;font-family:'DM Sans',sans-serif;font-size:13px;color:#e63946;cursor:pointer;display:flex;align-items:center;gap:8px;">🗑 Delete Species</button>
-          </div>
+<section class="phead">
+  <div class="wrap">
+    <div class="crumbs">
+      <a href="Species.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>Species</a>
+      <span>/</span><span id="crumbName">detail</span>
+    </div>
+    <div class="actions">
+      <button class="issf-btn" id="issfBtn" onclick="openISSF()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg>Stock status
+      </button>
+      <div id="issfDivider" style="display:none;"></div>
+      <div style="position:relative;display:inline-flex;align-items:center;">
+        <button class="gear-btn" onclick="toggleSettingsMenu()" aria-label="Species settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        </button>
+        <div id="detail-settings-menu" style="display:none;">
+          <button id="detail-edit-btn" disabled onclick="goToEdit()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>Edit species</button>
+          <button id="detail-delete-btn" disabled onclick="deleteCurrentSpecies()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>Delete species</button>
         </div>
       </div>
     </div>
+  </div>
+</section>
 
-    <div id="loading-state">
-      <div class="skeleton" style="height:32px;width:300px;margin-bottom:8px;"></div>
-      <div class="skeleton" style="height:20px;width:200px;"></div>
-    </div>
+<main><div class="wrap page-container">
 
-    <div id="detail-content" style="display:none;">
-      <div class="detail-layout">
-        <div class="detail-left-panel">
-          <div class="detail-photo-wrap">
-            <img id="detail-photo" src="" alt="Species Photo" style="display:none;"/>
-            <div id="detail-no-photo" class="detail-no-photo">🐟</div>
-          </div>
-          <h2 id="detail-species-name" class="detail-species-name"></h2>
-          <p id="detail-scientific-name" class="detail-scientific-name"></p>
-          <div class="detail-summary-card">
-            <div class="detail-summary-row"><span class="detail-summary-label">Common Name</span><span class="detail-summary-value" id="s-common_trade_family_name"></span></div>
-            <div class="detail-summary-row"><span class="detail-summary-label">AFSIS 3A Code</span><span class="detail-summary-value" id="s-afsis_3a_code"></span></div>
-            <div class="detail-summary-row"><span class="detail-summary-label">Taxonomic Code</span><span class="detail-summary-value" id="s-taxonomic_code"></span></div>
-            <div class="detail-summary-row"><span class="detail-summary-label">Maturity</span><span class="detail-summary-value" id="s-maturity_cm"></span></div>
-          </div>
+  <div id="loading-state">
+    <div class="card"><div class="skeleton" style="height:200px"></div><div class="skeleton w-60" style="height:22px"></div><div class="skeleton w-40"></div></div>
+    <div class="card"><div class="skeleton w-60" style="height:34px"></div><div class="skeleton w-100" style="height:60px"></div><div class="skeleton w-80" style="height:60px"></div></div>
+  </div>
+
+  <div id="detail-content" style="display:none;">
+    <div class="detail-layout">
+      <aside class="detail-left-panel">
+        <div class="detail-photo-wrap">
+          <img id="detail-photo" src="" alt="Species photo" style="display:none;"/>
+          <div id="detail-no-photo" class="detail-no-photo"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c3-4.5 7-6 11-6 4 0 6.5 2.5 8 6-1.5 3.5-4 6-8 6-4 0-8-1.5-11-6z"/><path d="M2 12c1.5-1 2.5-2.5 3-4M2 12c1.5 1 2.5 2.5 3 4"/><circle cx="16.5" cy="10.5" r=".8" fill="currentColor"/></svg></div>
         </div>
-        <div class="detail-right-panel">
-          <div class="detail-tabs">
-            <button class="detail-tab active" onclick="switchTab('basic')">Basic Information</button>
+        <h2 id="detail-species-name" class="detail-species-name"></h2>
+        <p id="detail-scientific-name" class="detail-scientific-name"></p>
+        <div class="detail-summary-card">
+          <div class="detail-summary-row"><span class="detail-summary-label">common name</span><span class="detail-summary-value" id="s-common_trade_family_name"></span></div>
+          <div class="detail-summary-row"><span class="detail-summary-label">AFSIS 3A code</span><span class="detail-summary-value" id="s-afsis_3a_code"></span></div>
+          <div class="detail-summary-row"><span class="detail-summary-label">taxonomic code</span><span class="detail-summary-value" id="s-taxonomic_code"></span></div>
+          <div class="detail-summary-row"><span class="detail-summary-label">maturity</span><span class="detail-summary-value" id="s-maturity_cm"></span></div>
+        </div>
+      </aside>
+
+      <section class="detail-right-panel">
+        <div class="tabs-bar">
+          <div class="detail-tabs" id="detailTabs">
+            <span class="ind"></span>
+            <button class="detail-tab active" onclick="switchTab('basic')">Basic information</button>
             <button class="detail-tab" onclick="switchTab('classification')">Classification</button>
             <button class="detail-tab" onclick="switchTab('dimensions')">Dimensions</button>
-            <button class="detail-tab" onclick="switchTab('characteristics')">Characteristics & Environment</button>
+            <button class="detail-tab" onclick="switchTab('characteristics')">Characteristics &amp; environment</button>
             <button class="detail-tab" onclick="switchTab('harvest')">Harvest</button>
           </div>
-          <div class="detail-tab-content">
-            <div id="tab-basic" class="tab-panel active">
-              <div class="detail-fields">
-                <div class="detail-field"><span class="detail-label">Species Name</span><span class="detail-value" id="d-species_name"></span></div>
-                <div class="detail-field"><span class="detail-label">Scientific Name</span><span class="detail-value" id="d-scientific_name"></span></div>
-                <div class="detail-field"><span class="detail-label">Common Name</span><span class="detail-value" id="d-common_trade_family_name"></span></div>
-                <div class="detail-field"><span class="detail-label">AFSIS 3A Code</span><span class="detail-value" id="d-afsis_3a_code"></span></div>
-                <div class="detail-field"><span class="detail-label">Taxonomic Code</span><span class="detail-value" id="d-taxonomic_code"></span></div>
-                <div class="detail-field"><span class="detail-label">Alphia ID</span><span class="detail-value" id="d-alphia_id"></span></div>
-                <div class="detail-field"><span class="detail-label">ISSCAAP Code</span><span class="detail-value" id="d-isscaap_code"></span></div>
-                <div class="detail-field"><span class="detail-label">CAAB Code</span><span class="detail-value" id="d-caab_code"></span></div>
-              </div>
+        </div>
+        <div class="detail-tab-content">
+          <div id="tab-basic" class="tab-panel active">
+            <div class="detail-fields">
+              <div class="detail-field"><span class="detail-label">species name</span><span class="detail-value" id="d-species_name"></span></div>
+              <div class="detail-field"><span class="detail-label">scientific name</span><span class="detail-value" id="d-scientific_name"></span></div>
+              <div class="detail-field"><span class="detail-label">common name</span><span class="detail-value" id="d-common_trade_family_name"></span></div>
+              <div class="detail-field"><span class="detail-label">AFSIS 3A code</span><span class="detail-value" id="d-afsis_3a_code"></span></div>
+              <div class="detail-field"><span class="detail-label">taxonomic code</span><span class="detail-value" id="d-taxonomic_code"></span></div>
+              <div class="detail-field"><span class="detail-label">Alphia ID</span><span class="detail-value" id="d-alphia_id"></span></div>
+              <div class="detail-field"><span class="detail-label">ISSCAAP code</span><span class="detail-value" id="d-isscaap_code"></span></div>
+              <div class="detail-field"><span class="detail-label">CAAB code</span><span class="detail-value" id="d-caab_code"></span></div>
             </div>
-            <div id="tab-classification" class="tab-panel">
-              <div class="detail-fields">
-                <div class="detail-field"><span class="detail-label">Kingdom</span><span class="detail-value" id="d-kingdom"></span></div>
-                <div class="detail-field"><span class="detail-label">Phylum</span><span class="detail-value" id="d-phylum"></span></div>
-                <div class="detail-field"><span class="detail-label">Class</span><span class="detail-value" id="d-class_name"></span></div>
-                <div class="detail-field"><span class="detail-label">Order</span><span class="detail-value" id="d-order_name"></span></div>
-                <div class="detail-field"><span class="detail-label">Family</span><span class="detail-value" id="d-family"></span></div>
-                <div class="detail-field"><span class="detail-label">Genus</span><span class="detail-value" id="d-genus"></span></div>
-              </div>
+          </div>
+          <div id="tab-classification" class="tab-panel">
+            <div class="detail-fields">
+              <div class="detail-field"><span class="detail-label">kingdom</span><span class="detail-value" id="d-kingdom"></span></div>
+              <div class="detail-field"><span class="detail-label">phylum</span><span class="detail-value" id="d-phylum"></span></div>
+              <div class="detail-field"><span class="detail-label">class</span><span class="detail-value" id="d-class_name"></span></div>
+              <div class="detail-field"><span class="detail-label">order</span><span class="detail-value" id="d-order_name"></span></div>
+              <div class="detail-field"><span class="detail-label">family</span><span class="detail-value" id="d-family"></span></div>
+              <div class="detail-field"><span class="detail-label">genus</span><span class="detail-value" id="d-genus"></span></div>
             </div>
-            <div id="tab-dimensions" class="tab-panel">
-              <div class="detail-fields">
-                <div class="detail-field"><span class="detail-label">Maturity</span><span class="detail-value" id="d-maturity_cm"></span></div>
-                <div class="detail-field"><span class="detail-label">Max Length</span><span class="detail-value" id="d-max_length_cm"></span></div>
-                <div class="detail-field"><span class="detail-label">Common Length</span><span class="detail-value" id="d-common_length_cm"></span></div>
-                <div class="detail-field"><span class="detail-label">Max Weight</span><span class="detail-value" id="d-max_published_weight"></span></div>
-                <div class="detail-field"><span class="detail-label">Max Age</span><span class="detail-value" id="d-max_reported_age"></span></div>
-                <div class="detail-field"><span class="detail-label">Generation Length</span><span class="detail-value" id="d-generation_length"></span></div>
-              </div>
+          </div>
+          <div id="tab-dimensions" class="tab-panel">
+            <div class="detail-fields">
+              <div class="detail-field"><span class="detail-label">maturity</span><span class="detail-value" id="d-maturity_cm"></span></div>
+              <div class="detail-field"><span class="detail-label">max length</span><span class="detail-value" id="d-max_length_cm"></span></div>
+              <div class="detail-field"><span class="detail-label">common length</span><span class="detail-value" id="d-common_length_cm"></span></div>
+              <div class="detail-field"><span class="detail-label">max weight</span><span class="detail-value" id="d-max_published_weight"></span></div>
+              <div class="detail-field"><span class="detail-label">max age</span><span class="detail-value" id="d-max_reported_age"></span></div>
+              <div class="detail-field"><span class="detail-label">generation length</span><span class="detail-value" id="d-generation_length"></span></div>
             </div>
-            <div id="tab-characteristics" class="tab-panel">
-              <div class="detail-fields">
-                <div class="detail-field"><span class="detail-label">Short Description</span><span class="detail-value" id="d-short_description"></span></div>
-                <div class="detail-field"><span class="detail-label">Habitat</span><span class="detail-value" id="d-habitat"></span></div>
-                <div class="detail-field"><span class="detail-label">Biology</span><span class="detail-value" id="d-biology"></span></div>
-                <div class="detail-field"><span class="detail-label">Distribution</span><span class="detail-value" id="d-distribution"></span></div>
-                <div class="detail-field"><span class="detail-label">Colour</span><span class="detail-value" id="d-colour"></span></div>
-                <div class="detail-field"><span class="detail-label">DNA Sequence</span><span class="detail-value" id="d-dna_sequence"></span></div>
-                <div class="detail-field"><span class="detail-label">Reproduction</span><span class="detail-value" id="d-reproduction_lifecycle"></span></div>
-                <div class="detail-field"><span class="detail-label">Temperature</span><span class="detail-value" id="d-temperature"></span></div>
-                <div class="detail-field"><span class="detail-label">Behavior</span><span class="detail-value" id="d-behavior"></span></div>
-                <div class="detail-field"><span class="detail-label">Swim Speed</span><span class="detail-value" id="d-swim_speed"></span></div>
-                <div class="detail-field"><span class="detail-label">Short Bursts</span><span class="detail-value" id="d-short_bursts"></span></div>
-                <div class="detail-field"><span class="detail-label">Predators</span><span class="detail-value" id="d-predators"></span></div>
-                <div class="detail-field"><span class="detail-label">Main Prey</span><span class="detail-value" id="d-main_prey"></span></div>
-                <div class="detail-field"><span class="detail-label">Diet</span><span class="detail-value" id="d-diet"></span></div>
-                <div class="detail-field"><span class="detail-label">Depth Range</span><span class="detail-value" id="d-depth_range"></span></div>
-                <div class="detail-field"><span class="detail-label">FAO Area</span><span class="detail-value" id="d-fao_area"></span></div>
-              </div>
+          </div>
+          <div id="tab-characteristics" class="tab-panel">
+            <div class="detail-fields">
+              <div class="detail-field long"><span class="detail-label">short description</span><span class="detail-value" id="d-short_description"></span></div>
+              <div class="detail-field"><span class="detail-label">habitat</span><span class="detail-value" id="d-habitat"></span></div>
+              <div class="detail-field"><span class="detail-label">biology</span><span class="detail-value" id="d-biology"></span></div>
+              <div class="detail-field"><span class="detail-label">distribution</span><span class="detail-value" id="d-distribution"></span></div>
+              <div class="detail-field"><span class="detail-label">colour</span><span class="detail-value" id="d-colour"></span></div>
+              <div class="detail-field"><span class="detail-label">reproduction</span><span class="detail-value" id="d-reproduction_lifecycle"></span></div>
+              <div class="detail-field"><span class="detail-label">temperature</span><span class="detail-value" id="d-temperature"></span></div>
+              <div class="detail-field"><span class="detail-label">behavior</span><span class="detail-value" id="d-behavior"></span></div>
+              <div class="detail-field"><span class="detail-label">diet</span><span class="detail-value" id="d-diet"></span></div>
+              <div class="detail-field"><span class="detail-label">main prey</span><span class="detail-value" id="d-main_prey"></span></div>
+              <div class="detail-field"><span class="detail-label">predators</span><span class="detail-value" id="d-predators"></span></div>
+              <div class="detail-field"><span class="detail-label">swim speed</span><span class="detail-value" id="d-swim_speed"></span></div>
+              <div class="detail-field"><span class="detail-label">short bursts</span><span class="detail-value" id="d-short_bursts"></span></div>
+              <div class="detail-field"><span class="detail-label">depth range</span><span class="detail-value" id="d-depth_range"></span></div>
+              <div class="detail-field long"><span class="detail-label">FAO area</span><span class="detail-value" id="d-fao_area"></span></div>
+              <div class="detail-field long"><span class="detail-label">DNA sequence</span><span class="detail-value mono" id="d-dna_sequence"></span></div>
             </div>
-            <div id="tab-harvest" class="tab-panel">
-              <div class="detail-fields">
-                <div class="detail-field"><span class="detail-label">Source Type</span><span class="detail-value" id="d-source_type"></span></div>
-                <div class="detail-field"><span class="detail-label">Gear Type</span><span class="detail-value" id="d-gear_type"></span></div>
-              </div>
+          </div>
+          <div id="tab-harvest" class="tab-panel">
+            <div class="detail-fields">
+              <div class="detail-field"><span class="detail-label">source type</span><span class="detail-value" id="d-source_type"></span></div>
+              <div class="detail-field"><span class="detail-label">gear type</span><span class="detail-value" id="d-gear_type"></span></div>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-
-    <div id="error-state" style="display:none;">
-      <div class="empty-state">
-        <div class="empty-icon">⚠️</div>
-        <p>Species not found</p>
-        <small>It may have been deleted.</small>
-      </div>
+      </section>
     </div>
   </div>
 
-<!-- ISSF MODAL -->
+  <div id="error-state" style="display:none;">
+    <div class="card empty-state">
+      <div class="empty-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg></div>
+      <p>Species not found</p>
+      <small>It may have been deleted. <a href="Species.html" style="color:var(--accent)">Back to species</a></small>
+    </div>
+  </div>
+</div></main>
+
 <div class="issf-modal" id="issfModal" onclick="closeISSFOutside(event)">
-  <div class="issf-box">
+  <div class="issf-box" role="dialog" aria-modal="true">
     <div class="issf-hd">
       <div class="issf-hd-l">
-        <span class="issf-hd-badge"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg> ISSF</span>
+        <span class="issf-hd-badge">ISSF</span>
         <div>
-          <div class="issf-hd-title">Stock Status — <span id="issfSpeciesName">Tuna</span></div>
-          <div class="issf-hd-sub">International Seafood Sustainability Foundation · Live data</div>
+          <div class="issf-hd-title">Stock status · <span id="issfSpeciesName">Tuna</span></div>
+          <div class="issf-hd-sub">International Seafood Sustainability Foundation · live data</div>
         </div>
       </div>
-      <button class="issf-close" onclick="closeISSF()">×</button>
+      <button class="issf-close" onclick="closeISSF()" aria-label="Close">&times;</button>
     </div>
     <div class="issf-body" id="issfBody">
-      <div class="issf-loading" id="issfLoading">
-        <div class="issf-loading-spinner"></div>
-        Loading ISSF Stock Status...
-      </div>
+      <div class="issf-loading" id="issfLoading"><div class="issf-loading-spinner"></div>Loading ISSF stock status...</div>
     </div>
     <div class="issf-note" id="issfNote" style="display:none;">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0369a1" stroke-width="2" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
       <span id="issfNoteText"></span>
     </div>
     <div class="issf-footer">
-      <div class="issf-source">Data sourced from <a href="https://www.iss-foundation.org" target="_blank">International Seafood Sustainability Foundation (ISSF)</a></div>
+      <div class="issf-source">Data sourced from <a href="https://www.iss-foundation.org" target="_blank" rel="noopener">International Seafood Sustainability Foundation (ISSF)</a></div>
     </div>
   </div>
 </div>
 
-<script src="utils.js"></script>
-<script src="detail.js"></script>
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <h3 id="confirm-title">Are you sure?</h3>
+    <p id="confirm-message">This cannot be undone.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-secondary" id="confirm-cancel">Cancel</button>
+      <button class="btn btn-solid-danger" id="confirm-ok">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="speciesDeleteModal" class="sd-overlay" style="display:none;">
+  <div class="sd-box modal-box">
+    <div class="sd-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></div>
+    <div id="speciesDeleteStep1">
+      <h3>Move to trash?</h3>
+      <p><strong id="deleteSpeciesName"></strong> will be moved to Trash and permanently deleted after 30 days. You can restore it anytime before that.</p>
+      <div class="sd-row">
+        <button class="btn" onclick="closeSpeciesDeleteModal()">Cancel</button>
+        <button class="btn btn-solid-danger" onclick="proceedToSpeciesStep2()">Move to trash</button>
+      </div>
+    </div>
+    <div id="speciesDeleteStep2" class="hidden">
+      <h3>Would you like a reminder?</h3>
+      <p>We can remind you before this is permanently deleted. Would you like to be reminded in 25 days?</p>
+      <div class="sd-col">
+        <button class="btn primary" onclick="confirmSpeciesDelete(true)">Yes, remind me</button>
+        <button class="btn btn-line-danger" onclick="confirmSpeciesDelete(false)">No, I'm sure</button>
+        <button class="btn" onclick="closeSpeciesDeleteModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
-// ── Avatar ──
 (function(){
-  const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
-  const SUPABASE_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
-  const db=window._sharedSupabase||(window._sharedSupabase=supabase.createClient(SUPABASE_URL,SUPABASE_KEY));
+  const URL_='https://enbdaajcromxmhgcverp.supabase.co', KEY_='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+  const db = window._sharedSupabase || (window._sharedSupabase = supabase.createClient(URL_, KEY_));
+  window.toggleNavDropdown = function(){ document.getElementById('navDropdown').classList.toggle('open'); };
+  window.handleLogout = async function(){ await db.auth.signOut(); window.location.href = 'login.html'; };
+  document.addEventListener('click', e => { if (!e.target.closest('.topbar-right')) document.getElementById('navDropdown')?.classList.remove('open'); });
   window.addEventListener('load', async () => {
-    const {data:{session}}=await db.auth.getSession();
-    if(!session)return;
-    const {data:p}=await db.from('profiles').select('first_name,last_name,avatar_color,photo_url').eq('id',session.user.id).single();
-    const firstName=p?.first_name||session.user.email.split('@')[0];
-    const lastName=p?.last_name||'';
-    const initials=(firstName.charAt(0)+(lastName?lastName.charAt(0):'')).toUpperCase();
-    if(p?.photo_url){document.getElementById('detailAvatarBtn').innerHTML=`<img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;}
-    else{document.getElementById('detailAvatarBtn').style.background=p?.avatar_color||'#1a6fdb';document.getElementById('detailAvatarInitials').textContent=initials;}
-    document.getElementById('detailAvatarGreeting').textContent=`Hello, ${firstName}!`;
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    const { data: p } = await db.from('profiles').select('first_name,last_name,avatar_color,photo_url').eq('id', session.user.id).single();
+    const email = session.user.email || '';
+    const first = p?.first_name || email.split('@')[0];
+    const initials = (first.charAt(0) + (p?.last_name ? p.last_name.charAt(0) : '')).toUpperCase();
+    const av = document.getElementById('navAvatar');
+    if (p?.photo_url) { av.innerHTML = `<img src="${p.photo_url}" alt="" style="width:100%;height:100%;object-fit:cover">`; av.style.background = 'transparent'; }
+    else { av.textContent = initials; av.style.background = p?.avatar_color || '#2f6fed'; }
+    document.getElementById('navEmail').textContent = email;
+    document.getElementById('navFirstName').textContent = `Hello, ${first}`;
   });
-  window.toggleDetailAvatar=function(){document.getElementById('detailAvatarMenu').classList.toggle('open');};
-  document.addEventListener('click',e=>{if(!e.target.closest('#detailAvatarBtn')&&!e.target.closest('#detailAvatarMenu'))document.getElementById('detailAvatarMenu')?.classList.remove('open');});
-  window.detailLogout=async function(){await db.auth.signOut();window.location.href='login.html';};
 })();
+</script>
 
-// ── Settings Menu ──
+<script src="utils.js"></script>
+<script src="detail.js"></script>
+<script>
+// ── Settings menu ──
 function toggleSettingsMenu(){const m=document.getElementById('detail-settings-menu');m.style.display=m.style.display==='block'?'none':'block';}
 document.addEventListener('click',e=>{if(!e.target.closest('[onclick="toggleSettingsMenu()"]')&&!e.target.closest('#detail-settings-menu')){const m=document.getElementById('detail-settings-menu');if(m)m.style.display='none';}});
+
+// ── Sliding pill under the active tab (follows whatever detail.js marks active) ──
+(function(){
+  const bar = document.getElementById('detailTabs'); if (!bar) return;
+  const ind = bar.querySelector('.ind');
+  const place = () => {
+    const a = bar.querySelector('.detail-tab.active'); if (!a || !a.offsetWidth) return;
+    ind.style.left = a.offsetLeft + 'px'; ind.style.width = a.offsetWidth + 'px';
+    a.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  };
+  new MutationObserver(place).observe(bar, { attributes: true, subtree: true, attributeFilter: ['class'] });
+  window.addEventListener('resize', place);
+  new MutationObserver(place).observe(document.getElementById('detail-content'), { attributes: true, attributeFilter: ['style'] });
+  if (document.fonts) document.fonts.ready.then(place);
+  requestAnimationFrame(place);
+})();
+
+// Fallback tab switching, used only if detail.js does not define switchTab
+if (typeof window.switchTab !== 'function') {
+  window.switchTab = function(name){
+    document.querySelectorAll('.detail-tab').forEach(b => b.classList.toggle('active', (b.getAttribute('onclick')||'').includes(`'${name}'`)));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+  };
+}
+
+// Show the species name in the breadcrumb once detail.js fills it
+new MutationObserver(() => {
+  const n = document.getElementById('detail-species-name').textContent.trim();
+  if (n) { document.getElementById('crumbName').textContent = n; document.title = n + ' · Species · SmarTuna concept'; }
+}).observe(document.getElementById('detail-species-name'), { childList: true, characterData: true, subtree: true });
 
 // ── ISSF — exact embed codes per species ──
 const ISSF_EMBEDS = {
@@ -321,7 +560,7 @@ function getISSFKey(name) {
   if (l.includes('bluefin'))   return 'bluefin';
   if (l.includes('albacore'))  return 'albacore';
   if (l.includes('skipjack'))  return 'skipjack';
-  if (l.includes('tuna'))      return 'skipjack'; // generic fallback
+  if (l.includes('tuna'))      return 'skipjack';
   return null;
 }
 
@@ -342,29 +581,20 @@ function openISSF() {
   const noteEl = document.getElementById('issfNote');
   const noteText = document.getElementById('issfNoteText');
 
-  // Show loading
-  body.innerHTML = `<div class="issf-loading" id="issfLoadingInner"><div class="issf-loading-spinner"></div>Loading ISSF Stock Status...</div><div style="width:100%;height:100%;">${embed.html}</div>`;
+  body.innerHTML = `<div class="issf-loading" id="issfLoadingInner"><div class="issf-loading-spinner"></div>Loading ISSF stock status...</div><div style="width:100%;height:100%;">${embed.html}</div>`;
 
-  // Show note
-  if (embed.note) {
-    noteText.innerHTML = embed.note;
-    noteEl.style.display = 'flex';
-  } else {
-    noteEl.style.display = 'none';
-  }
+  if (embed.note) { noteText.innerHTML = embed.note; noteEl.style.display = 'flex'; }
+  else noteEl.style.display = 'none';
 
-  // Remove old viz_v1.js and inject fresh — forces re-init for this specific viz
   const oldScript = document.querySelector('script[src*="viz_v1.js"]');
   if (oldScript) oldScript.remove();
 
   const script = document.createElement('script');
   script.src = 'https://public.tableau.com/javascripts/api/viz_v1.js';
   script.onload = () => {
-    // Give Tableau 1.5s to initialise then hide spinner
     setTimeout(() => {
       const l = document.getElementById('issfLoadingInner');
       if (l) l.style.display = 'none';
-      // Size the viz object
       const divEl = document.getElementById(embed.vizId);
       if (divEl) {
         const vizEl = divEl.getElementsByTagName('object')[0];
@@ -374,7 +604,6 @@ function openISSF() {
   };
   document.body.appendChild(script);
 
-  // Hard fallback
   setTimeout(() => {
     const l = document.getElementById('issfLoadingInner');
     if (l) l.style.display = 'none';
@@ -387,9 +616,10 @@ function openISSF() {
 function closeISSF() {
   document.getElementById('issfModal').classList.remove('open');
   document.body.style.overflow = '';
-  document.getElementById('issfBody').innerHTML = '<div class="issf-loading" id="issfLoading"><div class="issf-loading-spinner"></div>Loading ISSF Stock Status...</div>';
+  document.getElementById('issfBody').innerHTML = '<div class="issf-loading" id="issfLoading"><div class="issf-loading-spinner"></div>Loading ISSF stock status...</div>';
 }
 function closeISSFOutside(e){if(e.target===document.getElementById('issfModal'))closeISSF();}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('issfModal').classList.contains('open')) closeISSF(); });
 
 // Patch fillField from detail.js
 window.addEventListener('load', () => {
@@ -400,48 +630,30 @@ window.addEventListener('load', () => {
       if (id === 's-common_trade_family_name' && value) checkISSF(value);
     };
   }
+  // in case detail.js filled the summary before this patch was in place
+  const cn = document.getElementById('s-common_trade_family_name')?.textContent.trim();
+  if (cn && cn !== '—') checkISSF(cn);
 });
 </script>
 
-<!-- CONFIRM OVERLAY -->
-<div class="confirm-overlay" id="confirm-overlay">
-  <div class="confirm-box">
-    <h3 id="confirm-title">Are you sure?</h3>
-    <p id="confirm-message">This cannot be undone.</p>
-    <div class="confirm-actions">
-      <button class="btn btn-secondary" id="confirm-cancel">Cancel</button>
-      <button class="btn btn-danger" id="confirm-ok" style="background:#c0392b;color:white;border:none;">Delete</button>
-    </div>
-  </div>
-</div>
-
-<!-- Species Soft Delete Modal -->
-<div id="speciesDeleteModal" style="display:none;position:fixed;inset:0;background:rgba(15,20,40,0.45);backdrop-filter:blur(6px);z-index:1000;align-items:center;justify-content:center;">
-  <div class="modal-box" style="background:#fff;border-radius:14px;padding:36px 32px;max-width:400px;width:90%;display:flex;flex-direction:column;align-items:center;gap:14px;box-shadow:0 24px 60px rgba(0,0,0,0.15);text-align:center;">
-    <div style="width:56px;height:56px;background:#fff0f1;border-radius:50%;display:flex;align-items:center;justify-content:center;">
-      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#e63946" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-    </div>
-    <div id="speciesDeleteStep1">
-      <h3 style="font-size:16px;font-weight:700;color:#1a1a2e;">Move to Trash?</h3>
-      <p style="font-size:13px;color:#6b7280;line-height:1.6;margin-top:8px;"><strong id="deleteSpeciesName"></strong> will be moved to Trash and permanently deleted after <strong>30 days</strong>. You can restore it anytime before that.</p>
-      <div style="display:flex;gap:10px;width:100%;margin-top:14px;">
-        <button onclick="closeSpeciesDeleteModal()" style="flex:1;padding:9px;background:#fff;border:1.5px solid #e0e3ed;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:#4a4e69;cursor:pointer;">Cancel</button>
-        <button onclick="proceedToSpeciesStep2()" style="flex:1;padding:9px;background:#e63946;color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Move to Trash</button>
-      </div>
-    </div>
-    <div id="speciesDeleteStep2" class="hidden">
-      <h3 style="font-size:16px;font-weight:700;color:#1a1a2e;">Would you like a reminder?</h3>
-      <p style="font-size:13px;color:#6b7280;line-height:1.6;margin-top:8px;">We can remind you before this is permanently deleted. Would you like to be reminded in 25 days?</p>
-      <div style="display:flex;flex-direction:column;gap:8px;width:100%;margin-top:14px;">
-        <button onclick="confirmSpeciesDelete(true)" style="width:100%;padding:9px;background:#1a6fdb;color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Yes, remind me</button>
-        <button onclick="confirmSpeciesDelete(false)" style="width:100%;padding:9px;background:#fff;color:#e63946;border:1.5px solid #e63946;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">No, I'm sure</button>
-        <button onclick="closeSpeciesDeleteModal()" style="width:100%;padding:9px;background:#fff;border:1.5px solid #e0e3ed;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:#4a4e69;cursor:pointer;">Cancel</button>
-      </div>
-    </div>
-  </div>
-</div>
-
+<script>
+(function(){
+  const wrap = document.getElementById('topLinks'); if (!wrap) return;
+  const ind = wrap.querySelector('.ind');
+  const items = [...wrap.querySelectorAll('.nav-item')];
+  const home = wrap.querySelector('.nav-item.on');
+  function move(el){
+    if (!el){ ind.style.opacity = 0; items.forEach(x => x.classList.remove('hl')); return; }
+    const r = el.getBoundingClientRect(), w = wrap.getBoundingClientRect();
+    ind.style.left = (r.left - w.left) + 'px'; ind.style.width = r.width + 'px'; ind.style.opacity = 1;
+    items.forEach(x => x.classList.toggle('hl', x === el));
+  }
+  items.forEach(el => el.addEventListener('mouseenter', () => move(el)));
+  wrap.addEventListener('mouseleave', () => move(home));
+  window.addEventListener('resize', () => move(home));
+  requestAnimationFrame(() => move(home));
+  if (document.fonts) document.fonts.ready.then(() => move(home));
+})();
+</script>
 </body>
 </html>
-
-

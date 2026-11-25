@@ -1,534 +1,602 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Species — SmarTuna concept</title>
-  <link rel="icon" type="image/png" href="sc-blue-logo.png" />
-  <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    /* ── SMARTUNA WORDMARK ── */
-    @font-face {
-      font-family: 'Bitsumis';
-      src: url('BITSUMIS.TTF') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-      font-display: swap;
-    }
-    .sc-wm { display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1;gap:0;text-decoration:none; }
-    .sc-wm-top { font-family:'Bitsumis',sans-serif !important;font-weight:900 !important;font-size:15px;letter-spacing:.04em;text-transform:uppercase;background:linear-gradient(90deg,#1a6fdb,#1a6fdb) !important;-webkit-background-clip:text !important;-webkit-text-fill-color:transparent !important;background-clip:text !important; }
-    .sc-wm-sub { font-family:'Bitsumis',sans-serif !important;font-weight:700 !important;font-size:7px;letter-spacing:.22em;text-transform:uppercase;color:#1a1a2e;-webkit-text-fill-color:#1a1a2e !important;margin-top:2px; }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Species · SmarTuna concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="sc-blue-logo.png">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
 
-    :root {
-      --primary: #1a6fdb;
-      --bg: #f0f2f7;
-      --white: #ffffff;
-      --text: #1a1a2e;
-      --muted: #6b7280;
-      --border: #e8eaf0;
-    }
+  @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');font-weight:normal;font-style:normal;font-display:swap}
+  :root{
+    --accent:#2f6fed; --accent-soft:rgba(47,111,237,.10); --accent-line:#cddcf8;
+    --ink:#14161a; --muted:#6b7380; --faint:#9aa1ad; --line:#e6e8ec; --line2:#eef0f3; --page:#f6f7f9; --white:#fff;
+    --mono:Consolas,"SFMono-Regular",Menlo,monospace;
+    --ok:#178a4c; --ok-bg:#e8f6ee; --ok-line:#c7e8d4;
+    --low:#2f6fed; --low-bg:#edf3fe; --low-line:#cddcf8;
+    --med:#b7791f; --med-bg:#fdf4e3; --med-line:#f1dcae;
+    --crit:#d64545; --crit-bg:#fdeceb; --crit-line:#f5c9c6;
+    --ease:cubic-bezier(.16,1,.3,1); --spring:cubic-bezier(.34,1.56,.64,1);
+  }
+  *{box-sizing:border-box}
+  html,body{overflow-x:clip}
+  body{margin:0;font-family:Poppins,system-ui,sans-serif;font-weight:400;font-size:14px;font-synthesis:none;color:var(--ink);background:var(--page);line-height:1.55;-webkit-font-smoothing:antialiased}
+  b,strong,h1,h2,h3,h4,th,[style*="font-weight"]{font-weight:400!important}
+  a{color:inherit;text-decoration:none}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .wrap{max-width:1680px;margin:0 auto;padding:0 clamp(16px,3vw,48px)}
+  .mono{font-family:var(--mono)}
+  .hidden{display:none!important}
+  .num{font-variant-numeric:tabular-nums}
 
-    body { font-family: 'Poppins', 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  /* header */
+  header.top{position:sticky;top:0;z-index:1000;background:rgba(255,255,255,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .nav{display:flex;align-items:center;justify-content:space-between;height:62px;gap:20px}
+  .brand{display:flex;align-items:center;gap:10px;flex:none}
+  .brand img{height:30px;width:auto;display:block}
+  .wm{display:inline-flex;flex-direction:column;line-height:1}
+  .wm-top{font-family:'Bitsumis',Poppins,sans-serif;font-size:17px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink)}
+  .wm-top span{color:var(--accent)}
+  .wm-sub{font-family:'Bitsumis',Poppins,sans-serif;font-size:8.5px;letter-spacing:.32em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+  .links{position:relative;display:flex;align-items:center;gap:2px;padding:4px;border:1px solid var(--line);border-radius:999px;background:var(--white);font-size:13px;color:var(--muted)}
+  .links .ind{position:absolute;z-index:0;top:4px;bottom:4px;left:0;width:0;border-radius:999px;background:var(--accent);box-shadow:0 6px 16px rgba(47,111,237,.3);opacity:0;transition:left .45s var(--spring),width .45s var(--spring),opacity .2s}
+  .nav-item{position:relative;z-index:1;display:block;padding:6px 15px;border-radius:999px;font-weight:300;white-space:nowrap;transition:color .25s}
+  .nav-item:hover{color:var(--ink)}
+  .nav-item.hl,.nav-item.hl:hover{color:#fff}
+  .nav-item-wrap{position:relative;z-index:1}
+  .nav-item-wrap::after{content:"";position:absolute;top:100%;left:0;width:100%;height:14px}
+  .nav-dropdown{position:absolute;top:calc(100% + 10px);left:0;min-width:200px;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);padding:6px;visibility:hidden;opacity:0;transform:translateY(-4px);transition:opacity .15s,transform .15s,visibility 0s linear .3s}
+  .nav-item-wrap:hover .nav-dropdown,.nav-item-wrap:focus-within .nav-dropdown{visibility:visible;opacity:1;transform:none;transition-delay:0s}
+  .nav-dropdown a{display:block;padding:8px 12px;font-size:13px;font-weight:300;color:var(--ink);border-radius:9px;white-space:nowrap}
+  .nav-dropdown a:hover{background:var(--page);color:var(--accent)}
+  .nav-dropdown .all{border-top:1px solid var(--line);margin-top:4px;padding-top:9px;color:var(--accent);font-family:var(--mono);font-size:12px}
+  .topbar-right{position:relative;display:flex;align-items:center;gap:10px;cursor:pointer;padding:3px 3px 3px 14px;border:1px solid var(--line);border-radius:999px;background:var(--white);transition:border-color .2s}
+  .topbar-right:hover{border-color:var(--accent-line)}
+  .topbar-email{font-size:12.5px;font-weight:300;color:var(--muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .topbar-avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;font-size:11.5px;display:grid;place-items:center;overflow:hidden;flex:none}
+  .topbar-profile-dropdown{position:absolute;top:calc(100% + 10px);right:0;min-width:200px;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);padding:6px;display:none;cursor:default}
+  .topbar-profile-dropdown.open{display:block;animation:drop .18s ease}
+  @keyframes drop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .topbar-profile-name{padding:8px 12px 10px;font-size:13px;color:var(--ink);border-bottom:1px solid var(--line);margin-bottom:4px}
+  .topbar-profile-dropdown a,.topbar-profile-dropdown button{display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;font-size:13px;font-weight:300;border-radius:9px;border:0;background:none;text-align:left;cursor:pointer}
+  .topbar-profile-dropdown a:hover{background:var(--page);color:var(--accent)}
+  .topbar-profile-dropdown button{color:var(--crit)}
+  .topbar-profile-dropdown button:hover{background:var(--crit-bg)}
 
-    /* ── TOPBAR (matches home-logged-in) ── */
-    .topbar { display:flex; align-items:center; padding:14px 28px; gap:20px; flex-shrink:0; background:var(--bg); }
-    .topbar-brand { text-decoration:none; flex-shrink:0; line-height:1.1; }
-    .topbar-brand-project { display:block; font-size:8px; font-weight:700; letter-spacing:2px; color:#9aa0b4; }
-    .topbar-brand-name { display:block; font-size:16px; font-weight:800; color:var(--text); }
-    .topbar-nav { flex:1; display:flex; justify-content:center; }
-    .nav-pill { display:inline-flex; align-items:center; gap:2px; background:var(--white); border-radius:999px; padding:5px 7px; box-shadow:0 1px 6px rgba(0,0,0,0.07); }
-    .nav-item { display:flex; align-items:center; gap:6px; padding:7px 14px; border-radius:999px; font-size:13px; font-weight:400; color:var(--muted); text-decoration:none; transition:background 0.15s,color 0.15s; white-space:nowrap; }
-    .nav-item:hover { background:var(--bg); color:var(--text); }
-    .nav-item.active { background:var(--bg); color:var(--text); font-weight:600; }
-    .nav-item img { width:15px; height:15px; object-fit:contain; opacity:0.5; flex-shrink:0; }
-    .nav-item:hover img, .nav-item.active img { opacity:1; }
-    .nav-item-wrap { position:relative; }
-    .nav-item-wrap::after { content:''; position:absolute; top:100%; left:0; width:100%; height:12px; background:transparent; }
-    .nav-item-wrap:hover .nav-dropdown { display:block; }
-    .nav-dropdown { display:none; position:absolute; top:calc(100% + 8px); left:0; background:var(--white); border:1px solid var(--border); border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.10); min-width:160px; padding:6px; z-index:500; }
-    .nav-dropdown-item { display:flex; align-items:center; padding:8px 12px; font-size:13px; color:#4a4e69; text-decoration:none; border-radius:8px; font-weight:500; transition:background 0.15s; }
-    .nav-dropdown-item:hover { background:var(--bg); color:var(--primary); }
-    .nav-dropdown-item.active { color:var(--primary); font-weight:700; }
-    .topbar-right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
-    .search-pill { display:flex; align-items:center; gap:8px; background:var(--white); border-radius:999px; padding:8px 16px; font-size:12px; color:#c0c4d0; box-shadow:0 1px 4px rgba(0,0,0,0.06); min-width:150px; cursor:text; }
-    .avatar-btn { width:36px; height:36px; border-radius:50%; background:var(--primary); color:var(--white); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; box-shadow:0 1px 4px rgba(0,0,0,0.12); flex-shrink:0; }
-    .avatar-menu { display:none; position:absolute; top:calc(100% + 8px); right:0; background:var(--white); border:1px solid var(--border); border-radius:12px; box-shadow:0 8px 24px rgba(0,0,0,0.10); min-width:176px; overflow:hidden; z-index:999; }
-    .avatar-menu.open { display:block; }
-    .avatar-menu-name { padding:11px 15px 7px; font-size:12px; font-weight:700; color:var(--text); border-bottom:1px solid var(--border); }
-    .avatar-menu a { display:flex; align-items:center; gap:8px; padding:9px 15px; font-size:13px; color:#4a4e69; text-decoration:none; font-weight:500; }
-    .avatar-menu a:hover { background:var(--bg); color:var(--primary); }
-    .avatar-menu button { width:100%; padding:9px 15px; background:none; border:none; border-top:1px solid var(--border); text-align:left; font-family:'Poppins',sans-serif; font-size:13px; color:#e63946; cursor:pointer; }
-    .avatar-menu button:hover { background:#fff0f1; }
+  /* shared pieces */
+  .eyebrow{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.04em;display:flex;align-items:center;gap:10px}
+  .lbl{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.03em}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:18px 20px;min-width:0}
+  .card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border:1px solid var(--line);border-radius:999px;background:var(--white);font-size:13px;font-weight:300;color:var(--ink);white-space:nowrap;cursor:pointer;transition:border-color .2s,color .2s,background .2s,transform .2s,box-shadow .2s}
+  .btn svg{flex:none}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.25)}
+  .btn.primary:hover{background:#2560d6;color:#fff;transform:translateY(-1px)}
+  .btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+  .btn:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .badge{font-family:var(--mono);font-size:10.5px;padding:1px 8px;border-radius:999px;border:1px solid;line-height:1.5}
+  .badge.new{color:var(--accent);border-color:var(--accent-line);background:#f3f7ff}
+  .badge.beta{color:#9a6a12;border-color:#efdcae;background:#fdf7e7}
+  .cnt{font-family:var(--mono);font-size:10.5px;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;display:inline-grid;place-items:center}
 
-    /* ── PAGE ── */
-    .page-container { padding:24px 28px; }
+  .mri-status-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:999px;font-size:12px;border:1px solid transparent;white-space:nowrap}
+  .mri-status-pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .mri-status-pill.transparent{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .mri-status-pill.low{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .mri-status-pill.medium{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .mri-status-pill.critical{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+  .kde-weight{display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;font-family:var(--mono);font-size:10.5px;border:1px solid transparent;white-space:nowrap}
+  .kde-weight.w5{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .kde-weight.w10{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .kde-weight.w30{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .kde-weight.w50{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
 
-    /* ── PAGE HEADER ── */
-    .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
-    .page-header h1 { font-size:22px; font-weight:800; color:var(--text); }
-    .page-header-right { display:flex; align-items:center; gap:10px; }
+  .rv{animation:up .55s var(--ease) both;animation-delay:calc(var(--i,0) * 50ms)}
+  @keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .toast-wrap{position:fixed;right:20px;bottom:20px;z-index:3000;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  .toast{display:flex;align-items:center;gap:10px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;font-weight:300;box-shadow:0 14px 34px rgba(16,24,40,.2);animation:up .3s var(--ease)}
+  .toast i{width:8px;height:8px;border-radius:50%;background:#4ade80;flex:none}
+  .toast.error i{background:#f87171}
 
-    /* Search */
-    .search-bar { display:flex; align-items:center; gap:8px; background:var(--white); border:1px solid var(--border); border-radius:10px; padding:9px 14px; min-width:220px; }
-    .search-bar input { border:none; outline:none; font-family:'Poppins',sans-serif; font-size:13px; color:var(--text); background:transparent; width:100%; }
-    .search-bar input::placeholder { color:#c0c4d0; }
-    .search-bar svg { flex-shrink:0; }
+  @media (max-width:1180px){ .links{display:none} }
+  @media (max-width:640px){ .topbar-email{display:none} .topbar-right{padding:3px} .wm-sub{display:none} }
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
 
-    /* View toggle */
-    .view-toggle { display:flex; background:var(--white); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
-    .view-btn { padding:8px 12px; border:none; background:transparent; cursor:pointer; color:#9aa0b4; display:flex; align-items:center; transition:all 0.15s; }
-    .view-btn:hover { color:var(--text); }
-    .view-btn.active { background:var(--text); color:#fff; }
+  .phead{background:linear-gradient(180deg,#eef3fc 0%,var(--page) 100%);border-bottom:1px solid var(--line2)}
+  .crumbs{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;color:var(--faint)}
+  .crumbs a{color:var(--muted);display:inline-flex;align-items:center;gap:6px;transition:color .2s}
+  .crumbs a:hover{color:var(--accent)}
+  main{padding:18px 0 56px}
 
-    /* Create btn */
-    .btn-create { display:flex; align-items:center; gap:6px; padding:9px 18px; background:var(--primary); color:#fff; border:none; border-radius:10px; font-family:'Poppins',sans-serif; font-size:13px; font-weight:600; cursor:pointer; transition:background 0.15s; }
-    .btn-create:hover { background:#1558b0; }
+  /* buttons used by script.js / detail.js markup */
+  .btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.22)}
+  .btn-primary:hover{background:#2560d6;color:#fff}
+  .btn-secondary{background:var(--white)}
+  .btn-danger{color:var(--crit);border-color:var(--crit-line);background:var(--crit-bg)}
+  .btn-danger:hover{color:#fff;background:var(--crit);border-color:var(--crit)}
 
-    /* ── LIST VIEW ── */
-    .species-table { width:100%; border-collapse:collapse; background:var(--white); border-radius:14px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
-    .species-table thead tr { background:#f8f9fc; }
-    .species-table th { padding:12px 16px; font-size:11px; font-weight:700; color:#9aa0b4; text-transform:uppercase; letter-spacing:0.5px; text-align:left; border-bottom:1px solid var(--border); }
-    .species-table td { padding:13px 16px; font-size:13px; color:var(--text); border-bottom:1px solid #f0f2f7; vertical-align:middle; }
-    .species-table tbody tr:last-child td { border-bottom:none; }
-    .species-table tbody tr:hover { background:#f8f9fc; }
-    .species-thumb { width:40px; height:40px; border-radius:8px; object-fit:cover; border:1px solid var(--border); }
-    .species-thumb-placeholder { width:40px; height:40px; border-radius:8px; background:#f0f2f7; display:flex; align-items:center; justify-content:center; }
-    .species-name-cell { display:flex; align-items:center; gap:12px; }
-    .species-name-text { font-weight:600; color:var(--text); }
-    .species-sci-text { font-size:11px; color:var(--muted); font-style:italic; }
-    .action-btn { padding:5px 12px; border-radius:6px; font-size:12px; font-weight:600; border:none; cursor:pointer; font-family:'Poppins',sans-serif; transition:all 0.15s; }
-    .action-btn-view { background:#eef4fd; color:var(--primary); }
-    .action-btn-view:hover { background:#dce9fb; }
-    .action-btn-edit { background:#f4f6fb; color:#4a4e69; }
-    .action-btn-edit:hover { background:#e8eaf0; }
-    .action-btn-del { background:#fff0f1; color:#e63946; }
-    .action-btn-del:hover { background:#ffd6d8; }
-    .empty-msg { text-align:center; color:var(--muted); padding:40px; font-size:13px; }
+  .skeleton{height:14px;border-radius:8px;background:linear-gradient(90deg,#eceff3 25%,#f6f7f9 50%,#eceff3 75%);background-size:200% 100%;animation:shimmer 1.4s infinite}
+  .skeleton.w-60{width:60%} .skeleton.w-40{width:40%} .skeleton.w-80{width:80%} .skeleton.w-100{width:100%}
+  @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+  .skeleton-row td{padding:14px 16px}
+  .empty-state{text-align:center;padding:44px 20px;color:var(--muted)}
+  .empty-state .empty-icon{width:48px;height:48px;border-radius:14px;background:var(--page);color:var(--faint);display:grid;place-items:center;margin:0 auto 12px;font-size:0}
+  .empty-state p{margin:0;font-size:14.5px;color:var(--ink)}
+  .empty-state small{font-size:12.5px;font-weight:300}
+  .text-muted{color:var(--muted)} .text-sm{font-size:12px} .text-mono{font-family:var(--mono)}
 
-    /* ── GRID VIEW ── */
-    .species-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:16px; }
-    .species-card { background:var(--white); border-radius:14px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.06); transition:transform 0.2s,box-shadow 0.2s; cursor:pointer; }
-    .species-card:hover { transform:translateY(-3px); box-shadow:0 8px 24px rgba(0,0,0,0.10); }
-    .species-card-img { width:100%; height:140px; object-fit:cover; display:block; background:#f0f2f7; }
-    .species-card-img-placeholder { width:100%; height:140px; background:linear-gradient(135deg,#f0f2f7,#e8eaf0); display:flex; align-items:center; justify-content:center; }
-    .species-card-body { padding:14px; }
-    .species-card-name { font-size:14px; font-weight:700; color:var(--text); margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .species-card-sci { font-size:11px; color:var(--muted); font-style:italic; margin-bottom:10px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .species-card-footer { display:flex; gap:6px; }
-    .species-card-footer .action-btn { flex:1; text-align:center; padding:6px 8px; }
+  /* confirm + soft delete */
+  .confirm-overlay{display:none;position:fixed;inset:0;z-index:2100;background:rgba(20,22,26,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:20px}
+  .confirm-overlay.open{display:flex}
+  .confirm-box,.sd-box{background:var(--white);border-radius:18px;padding:28px;max-width:400px;width:100%;text-align:center;box-shadow:0 30px 80px rgba(16,24,40,.25);animation:up .3s var(--ease)}
+  .confirm-box h3,.sd-box h3{margin:0 0 6px;font-size:17px;font-weight:300}
+  .confirm-box p,.sd-box p{margin:0 0 18px;font-size:13px;font-weight:300;color:var(--muted);line-height:1.6}
+  .confirm-actions{display:flex;gap:8px;justify-content:center}
+  .sd-overlay{display:none;position:fixed;inset:0;z-index:2000;background:rgba(20,22,26,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:20px}
+  .sd-icon{width:52px;height:52px;border-radius:50%;background:var(--crit-bg);color:var(--crit);display:grid;place-items:center;margin:0 auto 12px}
+  .sd-row{display:flex;gap:8px}
+  .sd-col{display:flex;flex-direction:column;gap:8px}
+  .sd-row .btn,.sd-col .btn{justify-content:center;width:100%}
+  .btn-solid-danger{background:var(--crit);border-color:var(--crit);color:#fff}
+  .btn-solid-danger:hover{background:#c23a3a;color:#fff;border-color:#c23a3a}
+  .btn-line-danger{color:var(--crit);border-color:var(--crit-line)}
+  .btn-line-danger:hover{color:#fff;background:var(--crit);border-color:var(--crit)}
 
-    /* ── MODAL ── */
-    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(15,20,40,0.45); backdrop-filter:blur(6px); z-index:1000; align-items:flex-start; justify-content:center; overflow-y:auto; padding:24px; }
-    .modal-overlay.open { display:flex; }
-    .modal { background:var(--white); border-radius:16px; width:100%; max-width:760px; box-shadow:0 24px 60px rgba(0,0,0,0.15); margin:auto; }
-    .modal-header { display:flex; align-items:center; justify-content:space-between; padding:20px 24px; border-bottom:1px solid var(--border); }
-    .modal-header h2 { font-size:17px; font-weight:800; color:var(--text); }
-    .modal-body { padding:24px; max-height:65vh; overflow-y:auto; }
-    .modal-footer { display:flex; align-items:center; justify-content:flex-end; gap:10px; padding:16px 24px; border-top:1px solid var(--border); }
-    .section-title { font-size:13px; font-weight:700; color:var(--primary); text-transform:uppercase; letter-spacing:0.5px; margin:20px 0 14px; padding-bottom:6px; border-bottom:2px solid var(--border); }
-    .section-title:first-child { margin-top:0; }
-    .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
-    .form-group { display:flex; flex-direction:column; gap:5px; }
-    .form-group.full-width { grid-column:1/-1; }
-    .form-group label { font-size:11px; font-weight:700; color:#4a4e69; letter-spacing:0.3px; }
-    .form-group input, .form-group textarea, .form-group select { padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; font-family:'Poppins',sans-serif; font-size:13px; color:var(--text); outline:none; transition:border-color 0.2s; }
-    .form-group input:focus, .form-group textarea:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(26,111,219,0.08); }
-    .form-group textarea { resize:vertical; min-height:72px; line-height:1.5; }
-    .btn { padding:9px 20px; border-radius:8px; font-family:'Poppins',sans-serif; font-size:13px; font-weight:600; cursor:pointer; border:none; transition:all 0.15s; }
-    .btn-primary { background:var(--primary); color:#fff; }
-    .btn-primary:hover { background:#1558b0; }
-    .btn-secondary { background:#f4f6fb; color:#4a4e69; border:1.5px solid var(--border); }
-    .btn-secondary:hover { border-color:#9aa0b4; }
-    .btn-danger { background:#fff0f1; color:#e63946; border:1.5px solid #ffd6d8; }
-    .btn-danger:hover { background:#ffd6d8; }
+  #toast-container{position:fixed;bottom:20px;right:20px;z-index:3000;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  #toast-container .toast{padding:11px 16px;border-radius:12px;font-size:13px;font-weight:300;color:#fff;background:var(--ink)}
+  .toast-success,.toast.success{border-left:3px solid #4ade80} .toast-error,.toast.error{border-left:3px solid #f87171}
 
-    /* Multi-select */
-    .multi-select-wrap { position:relative; }
-    .multi-select-box { display:flex; align-items:center; justify-content:space-between; padding:9px 12px; border:1.5px solid var(--border); border-radius:8px; cursor:pointer; background:#fff; min-height:38px; }
-    .multi-select-box:hover { border-color:#9aa0b4; }
-    .multi-select-placeholder { font-size:13px; color:#c0c4d0; }
-    .multi-select-tags { display:flex; flex-wrap:wrap; gap:4px; flex:1; }
-    .multi-select-tag { background:#eef4fd; color:var(--primary); border-radius:4px; padding:2px 8px; font-size:11px; font-weight:600; }
-    .multi-select-arrow { font-size:11px; color:#9aa0b4; flex-shrink:0; margin-left:6px; }
-    .multi-select-dropdown { display:none; position:absolute; top:calc(100% + 4px); left:0; right:0; background:#fff; border:1px solid var(--border); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.10); z-index:600; }
-    .multi-select-dropdown.open { display:block; }
-    .multi-select-search { display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid var(--border); }
-    .multi-select-search input { border:none; outline:none; font-family:'Poppins',sans-serif; font-size:13px; width:100%; background:transparent; }
-    .multi-select-options { max-height:180px; overflow-y:auto; }
-    .multi-select-option { display:flex; align-items:center; gap:10px; padding:9px 14px; cursor:pointer; transition:background 0.12s; font-size:13px; color:#4a4e69; }
-    .multi-select-option:hover { background:#f4f6fb; }
-    .multi-select-option.selected { background:#eef4fd; color:var(--primary); }
-    .multi-select-checkbox { width:15px; height:15px; border:1.5px solid var(--border); border-radius:4px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
-    .multi-select-option.selected .multi-select-checkbox { background:var(--primary); border-color:var(--primary); }
-    .multi-select-option.selected .multi-select-checkbox::after { content:'✓'; color:#fff; font-size:9px; font-weight:700; }
+  .phead .wrap{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;padding-top:30px;padding-bottom:22px}
+  h1{font-size:clamp(28px,3vw,40px);font-weight:300;letter-spacing:-.02em;line-height:1.1;margin:8px 0 4px}
+  .lead{margin:0;color:var(--muted);font-weight:300;font-size:14px}
+  .toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .search-bar{display:flex;align-items:center;gap:10px;height:40px;padding:0 14px;background:var(--white);border:1px solid var(--line);border-radius:999px;width:min(300px,100%);transition:border-color .2s,box-shadow .2s}
+  .search-bar:focus-within{border-color:var(--accent);box-shadow:0 0 0 4px rgba(47,111,237,.10)}
+  .search-bar svg{flex:none;color:var(--faint)}
+  .search-bar input{border:0;outline:0;background:transparent;font-size:13px;font-weight:300;width:100%}
+  .search-bar input::placeholder{color:#b3bac6}
+  .search-bar kbd{font-family:var(--mono);font-size:11px;color:var(--faint);border:1px solid var(--line);border-radius:5px;padding:0 6px}
+  .view-toggle{position:relative;display:inline-flex;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--white)}
+  .view-toggle .ind{position:absolute;top:3px;bottom:3px;left:3px;width:38px;border-radius:999px;background:var(--accent);box-shadow:0 4px 12px rgba(47,111,237,.3);transition:transform .45s var(--spring)}
+  .view-toggle.grid .ind{transform:translateX(38px)}
+  .view-btn{position:relative;z-index:1;width:38px;height:32px;border:0;background:none;border-radius:999px;display:grid;place-items:center;color:var(--muted);cursor:pointer;transition:color .3s}
+  .view-btn.active{color:#fff}
 
-    /* File upload */
-    .file-upload-label { display:inline-flex; align-items:center; gap:6px; padding:8px 16px; background:#f4f6fb; border:1.5px solid var(--border); border-radius:8px; font-size:13px; font-weight:600; color:#4a4e69; cursor:pointer; }
-    .file-upload-label:hover { border-color:#9aa0b4; }
-    input[type="file"] { display:none; }
-    .file-name-text { font-size:12px; color:var(--muted); margin-top:4px; }
+  .stats{display:flex;gap:8px;margin-bottom:12px;font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+  .stats b{color:var(--ink);font-family:var(--mono)}
 
-    /* Delete modal */
-    .confirm-overlay { display:none; position:fixed; inset:0; background:rgba(15,20,40,0.45); backdrop-filter:blur(6px); z-index:1100; align-items:center; justify-content:center; }
-    .confirm-overlay.open { display:flex; }
-    .confirm-box { background:#fff; border-radius:14px; padding:32px; max-width:380px; width:90%; text-align:center; box-shadow:0 24px 60px rgba(0,0,0,0.15); }
-    .confirm-box h3 { font-size:16px; font-weight:700; margin-bottom:8px; }
-    .confirm-box p { font-size:13px; color:var(--muted); line-height:1.6; margin-bottom:20px; }
-    .confirm-actions { display:flex; gap:10px; justify-content:center; }
+  .table-wrap{background:var(--white);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+  .species-table{width:100%;border-collapse:collapse}
+  .species-table th{padding:11px 18px;font-family:var(--mono);font-size:11px;font-weight:400;color:var(--faint);text-align:left;background:var(--page);border-bottom:1px solid var(--line)}
+  .species-table td{padding:10px 18px;font-size:13px;border-bottom:1px solid var(--line2);vertical-align:middle}
+  .species-table tbody tr{transition:background .15s;animation:up .4s var(--ease) both;animation-delay:calc(var(--i,0) * 20ms)}
+  .species-table tbody tr:last-child td{border-bottom:0}
+  .species-table tbody tr:hover{background:#fafbfd}
+  .species-table tbody tr[data-href]{cursor:pointer}
+  .sp-cell{display:flex;align-items:center;gap:12px}
+  .sp-thumb{width:44px;height:33px;border-radius:8px;background:var(--page);border:1px solid var(--line2);display:grid;place-items:center;overflow:hidden;flex:none;color:#c3cad6}
+  .sp-thumb img{width:100%;height:100%;object-fit:cover}
+  .sp-name{color:var(--ink);font-size:13.5px;transition:color .2s}
+  tr:hover .sp-name{color:var(--accent)}
+  .sp-sci{font-style:italic;font-weight:300;color:var(--muted)}
+  .sp-fam{font-family:var(--mono);font-size:11px;padding:1px 9px;border-radius:999px;border:1px solid var(--line);color:var(--muted);background:var(--page);white-space:nowrap}
+  .sp-date{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
+  .sp-go{color:#c3cad6;transition:color .2s,transform .2s;display:inline-flex}
+  tr:hover .sp-go{color:var(--accent);transform:translateX(3px)}
+  .empty-msg{text-align:center;color:var(--faint);padding:40px;font-size:13px;font-weight:300}
 
-    /* Toast */
-    #toast-container { position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column; gap:8px; }
-    .toast { padding:11px 20px; border-radius:999px; font-size:13px; font-weight:600; color:#fff; box-shadow:0 8px 24px rgba(0,0,0,0.15); }
-    .toast-success { background:#16a34a; }
-    .toast-error { background:#e63946; }
+  .species-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+  .species-card{background:var(--white);border:1px solid var(--line);border-radius:16px;overflow:hidden;cursor:pointer;transition:border-color .2s,transform .25s var(--ease),box-shadow .25s;animation:up .45s var(--ease) both;animation-delay:calc(var(--i,0) * 30ms)}
+  .species-card:hover{border-color:#cdd9f2;transform:translateY(-3px);box-shadow:0 16px 36px rgba(16,24,40,.08)}
+  .species-card-img,.species-card-img-placeholder{width:100%;aspect-ratio:4/3;display:block;object-fit:cover;background:linear-gradient(135deg,#f3f5f8,#e9edf3)}
+  .species-card-img-placeholder{display:grid;place-items:center;color:#c3cad6}
+  .species-card .ph{overflow:hidden}
+  .species-card .ph img{transition:transform .6s var(--ease)}
+  .species-card:hover .ph img{transform:scale(1.04)}
+  .species-card-body{padding:12px 14px 14px}
+  .species-card-name{font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .species-card-sci{font-size:12px;font-weight:300;font-style:italic;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:10px}
+  .species-card-foot{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .species-card-foot .go{font-size:12.5px;color:var(--accent);display:flex;align-items:center;gap:5px;transition:gap .2s}
+  .species-card:hover .go{gap:9px}
 
-    .hidden { display:none !important; }
-    /* Hide email in nav profile — show avatar only */
-    #nav-profile-link span[style*="font-size:12px"] { display:none !important; }
+  /* create / edit modal */
+  .modal-overlay{display:none;position:fixed;inset:0;z-index:1500;background:rgba(20,22,26,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:20px}
+  .modal-overlay.open{display:flex;animation:fade .2s ease}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .modal{background:var(--white);border-radius:20px;width:100%;max-width:980px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 30px 80px rgba(16,24,40,.25);animation:up .3s var(--ease)}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 22px;border-bottom:1px solid var(--line2)}
+  .modal-header h2{margin:0;font-size:19px;font-weight:300;letter-spacing:-.01em}
+  .mjump{display:flex;gap:4px;flex-wrap:wrap}
+  .mjump button{border:1px solid var(--line);background:var(--white);border-radius:999px;padding:4px 11px;font-size:12px;font-weight:300;color:var(--muted);cursor:pointer;transition:color .2s,border-color .2s}
+  .mjump button:hover{color:var(--accent);border-color:var(--accent)}
+  .x-btn{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:var(--white);color:var(--muted);font-size:18px;line-height:1;cursor:pointer;flex:none;transition:color .2s,border-color .2s,transform .2s}
+  .x-btn:hover{color:var(--accent);border-color:var(--accent);transform:rotate(90deg)}
+  #species-form{display:contents}
+  .modal-body{padding:4px 22px 22px;overflow-y:auto;flex:1;scroll-behavior:smooth}
+  .section-title{position:sticky;top:0;z-index:2;margin:0 -22px 12px;padding:14px 22px 8px;background:rgba(255,255,255,.96);font-family:var(--mono);font-size:11.5px;font-weight:400;color:var(--accent);border-bottom:1px solid var(--line2)}
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px 14px;margin-bottom:10px}
+  .form-group{display:flex;flex-direction:column;gap:5px;min-width:0}
+  .form-group.full-width{grid-column:1/-1}
+  .form-group > label:not(.file-upload-label){font-family:var(--mono);font-size:11px;font-weight:400;color:var(--faint)}
+  .form-group input:not([type=file]),.form-group textarea,.form-group select{width:100%;padding:8px 12px;border:1px solid var(--line);border-radius:10px;font-size:13px;font-weight:300;outline:none;background:var(--white);transition:border-color .2s,box-shadow .2s}
+  .form-group input:not([type=file]){height:38px}
+  .form-group input:focus,.form-group textarea:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(47,111,237,.10)}
+  .form-group input::placeholder,.form-group textarea::placeholder{color:#b3bac6}
+  .form-group textarea{resize:vertical;min-height:62px;line-height:1.5}
+  .modal-footer{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 22px;border-top:1px solid var(--line2);background:#fbfcfd}
 
-    /* ── CROP MODAL ── */
-    .crop-overlay{display:none;position:fixed;inset:0;background:rgba(10,14,40,0.75);backdrop-filter:blur(8px);z-index:3000;align-items:center;justify-content:center;padding:20px;}
-    .crop-overlay.open{display:flex;}
-    .crop-box{background:#fff;border-radius:16px;width:100%;max-width:680px;box-shadow:0 24px 64px rgba(0,0,0,0.2);overflow:hidden;}
-    .crop-header{padding:18px 24px;border-bottom:1px solid #e8eaf0;display:flex;align-items:center;justify-content:space-between;}
-    .crop-header h3{font-size:15px;font-weight:800;color:#1a1a2e;}
-    .crop-header p{font-size:12px;color:#9aa0b4;margin-top:2px;}
-    .crop-body{padding:24px;display:grid;grid-template-columns:1fr 200px;gap:24px;align-items:start;}
-    .crop-canvas-wrap{position:relative;background:#f0f2f7;border-radius:12px;overflow:hidden;width:100%;height:300px;cursor:crosshair;}
-    canvas#cropCanvas{display:block;width:100%;height:100%;object-fit:contain;}
-    .crop-previews{display:flex;flex-direction:column;gap:14px;}
-    .crop-preview-label{font-size:10px;font-weight:700;color:#9aa0b4;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
-    .crop-preview-grid{width:100%;aspect-ratio:4/3;border-radius:8px;overflow:hidden;border:2px solid #e8eaf0;background:#f0f2f7;}
-    .crop-preview-detail{width:100%;aspect-ratio:16/7;border-radius:8px;overflow:hidden;border:2px solid #e8eaf0;background:#f0f2f7;}
-    .crop-preview-grid img,.crop-preview-detail img{width:100%;height:100%;object-fit:cover;display:block;}
-    .crop-tip{background:#f4f0ff;border-radius:8px;padding:10px 12px;font-size:11px;color:#7c3aed;line-height:1.5;margin-top:4px;}
-    .crop-footer{padding:16px 24px;border-top:1px solid #e8eaf0;display:flex;align-items:center;justify-content:flex-end;gap:10px;}
-    .crop-controls{display:flex;align-items:center;gap:8px;margin-right:auto;}
-    .crop-zoom{font-size:11px;color:#6b7280;font-weight:600;}
-    input[type=range]#cropZoom{width:100px;accent-color:#8b5cf6;}
-  </style>
+  .multi-select-wrap{position:relative}
+  .multi-select-box{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:38px;padding:5px 12px;border:1px solid var(--line);border-radius:10px;background:var(--white);cursor:pointer;transition:border-color .2s}
+  .multi-select-box:hover{border-color:var(--accent-line)}
+  .multi-select-placeholder{font-size:13px;font-weight:300;color:#b3bac6}
+  .multi-select-tags{display:flex;flex-wrap:wrap;gap:4px;flex:1}
+  .multi-select-tag{background:var(--low-bg);color:var(--accent);border:1px solid var(--accent-line);border-radius:999px;padding:0 8px;font-size:11.5px}
+  .multi-select-arrow{font-size:0;width:10px;height:10px;flex:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%239aa1ad' stroke-width='2.4'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat center}
+  .multi-select-dropdown{display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:600;background:var(--white);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 34px rgba(16,24,40,.12);overflow:hidden}
+  .multi-select-dropdown.open{display:block;animation:drop .15s ease}
+  .multi-select-search{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line2)}
+  .multi-select-search input{border:0!important;outline:0;height:auto!important;padding:0!important;box-shadow:none!important;font-size:13px;width:100%}
+  .multi-select-options{max-height:200px;overflow-y:auto;padding:4px}
+  .multi-select-option{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:300}
+  .multi-select-option:hover{background:var(--page)}
+  .multi-select-option.selected{color:var(--accent)}
+  .multi-select-checkbox{width:15px;height:15px;border:1px solid #cfd5de;border-radius:4px;flex:none;display:grid;place-items:center;transition:background .15s,border-color .15s}
+  .multi-select-option.selected .multi-select-checkbox{background:var(--accent);border-color:var(--accent)}
+  .multi-select-option.selected .multi-select-checkbox::after{content:"";width:7px;height:4px;border-left:1.6px solid #fff;border-bottom:1.6px solid #fff;transform:rotate(-45deg) translate(1px,-1px)}
+
+  .file-upload-label{display:inline-flex;align-items:center;gap:8px;align-self:flex-start;height:38px;padding:0 16px;border:1px dashed #c3cad6;border-radius:999px;font-size:13px;font-weight:300;color:var(--ink);cursor:pointer;transition:border-color .2s,color .2s}
+  .file-upload-label:hover{border-color:var(--accent);color:var(--accent)}
+  input[type=file]{display:none}
+  .file-name-text{font-size:12px;font-weight:300;color:var(--muted)}
+  .hint{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  #photo-preview{width:160px;height:120px;object-fit:cover;border-radius:12px;border:1px solid var(--line)}
+
+  /* crop */
+  .crop-overlay{display:none;position:fixed;inset:0;z-index:3000;background:rgba(20,22,26,.6);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:20px}
+  .crop-overlay.open{display:flex}
+  .crop-box{background:var(--white);border-radius:20px;width:100%;max-width:720px;overflow:hidden;box-shadow:0 30px 80px rgba(16,24,40,.3);animation:up .3s var(--ease)}
+  .crop-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 22px;border-bottom:1px solid var(--line2)}
+  .crop-header h3{margin:0;font-size:17px;font-weight:300}
+  .crop-header p{margin:2px 0 0;font-size:12px;font-weight:300;color:var(--muted)}
+  .crop-body{padding:20px 22px;display:grid;grid-template-columns:1fr 200px;gap:20px;align-items:start}
+  .crop-canvas-wrap{position:relative;background:var(--page);border-radius:12px;overflow:hidden;width:100%;height:300px;cursor:grab}
+  .crop-canvas-wrap:active{cursor:grabbing}
+  canvas#cropCanvas{display:block;width:100%;height:100%}
+  .crop-previews{display:flex;flex-direction:column;gap:12px}
+  .crop-preview-label{font-family:var(--mono);font-size:11px;color:var(--faint);margin-bottom:5px}
+  .crop-preview-grid{width:100%;aspect-ratio:4/3;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--page)}
+  .crop-preview-detail{width:100%;aspect-ratio:16/7;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--page)}
+  .crop-preview-grid img,.crop-preview-detail img{width:100%;height:100%;object-fit:cover;display:block}
+  .crop-tip{background:#f3f7ff;border:1px solid var(--accent-line);border-radius:10px;padding:9px 11px;font-size:11.5px;font-weight:300;color:var(--accent);line-height:1.5}
+  .crop-footer{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:14px 22px;border-top:1px solid var(--line2)}
+  .crop-controls{display:flex;align-items:center;gap:8px;margin-right:auto}
+  .crop-zoom{font-family:var(--mono);font-size:11px;color:var(--muted)}
+  input[type=range]#cropZoom{width:110px;accent-color:var(--accent)}
+
+  @media (max-width:760px){
+    .species-table th:nth-child(3),.species-table td:nth-child(3),.species-table th:nth-child(4),.species-table td:nth-child(4){display:none}
+    .species-table td,.species-table th{padding-left:12px;padding-right:12px}
+    .toolbar{width:100%} .search-bar{flex:1;width:auto} .search-bar kbd{display:none}
+    .mjump{display:none}
+    .crop-body{grid-template-columns:1fr}
+  }
+  @media (max-width:520px){ .species-table th:nth-child(2),.species-table td:nth-child(2){display:none} .btn-create .txt{display:none} }
+
+</style>
 </head>
 <body>
 
-  <!-- TOPBAR -->
-  <div class="topbar">
-    <a href="home-logged-in.html" class="topbar-brand" style="display:flex;align-items:center;gap:9px;">
-      <img src="sc-blue-logo.png" alt="SmarTuna" style="width:26px;height:26px;object-fit:contain;flex-shrink:0;"/>
-      <span class="sc-wm">
-        <span class="sc-wm-top">SmarTuna</span>
-        <span class="sc-wm-sub">concept</span>
-      </span>
+<header class="top">
+  <div class="wrap nav">
+    <a class="brand" href="home-logged-in.html" aria-label="SmarTuna home">
+      <img src="sc-blue-logo.png" alt="" onerror="this.style.display='none'">
+      <span class="wm"><span class="wm-top">Smar<span>Tuna</span></span><span class="wm-sub">concept</span></span>
     </a>
-    <div class="topbar-nav">
-      <div class="nav-pill">
-        <a href="home-logged-in.html" class="nav-item">
-          <img src="home.png" alt=""/> Home
-        </a>
-        <div class="nav-item-wrap">
-          <a href="organisation.html" class="nav-item">
-            <img src="my-studio.png" alt=""/> My Studio
-          </a>
-          <div class="nav-dropdown">
-            <a href="product-list.html" class="nav-dropdown-item">Product</a>
-            <a href="organisation.html" class="nav-dropdown-item">Your Company</a>
-          </div>
-        </div>
-        <div class="nav-item-wrap">
-          <a href="Species.html" class="nav-item active">
-            <img src="atlas.png" alt=""/> Atlas
-          </a>
-          <div class="nav-dropdown">
-            <a href="Species.html" class="nav-dropdown-item active">Species</a>
-            <a href="country.html" class="nav-dropdown-item">Country</a>
-            <a href="port-list.html"nav-dropdown-item">Ports</a>
-            <a href="vessel-list.html" class="nav-dropdown-item">Vessels</a>
-          </div>
-        </div>
-        <a href="#" class="nav-item">
-          <img src="features.png" alt=""/> Features
-        </a>
-        <a href="#" class="nav-item">
-          <img src="messages.png" alt=""/> Messages
-        </a>
-        <a href="#" class="nav-item">
-          <img src="report.png" alt=""/> Reports
-        </a>
-        <a href="report.html" class="nav-item">
-          <img src="support.png" alt=""/> Support
-        </a>
+    <nav class="links" id="topLinks" aria-label="Main">
+      <span class="ind"></span>
+      <a class="nav-item" href="home-logged-in.html">Home</a>
+      <div class="nav-item-wrap"><a class="nav-item" href="modules.html#my-studio">My Studio</a>
+        <div class="nav-dropdown"><a href="product-list.html">Products</a><a href="organisation.html">Your company</a><a class="all" href="modules.html#my-studio">See all My Studio</a></div></div>
+      <div class="nav-item-wrap"><a class="nav-item on" href="Species.html" aria-current="page">Atlas</a>
+        <div class="nav-dropdown"><a href="Species.html">Species</a><a href="country.html">Country</a><a href="port-list.html">Ports</a><a href="vessel-list.html">Vessels</a><a class="all" href="modules.html#atlas">See all Atlas</a></div></div>
+      <a class="nav-item" href="mri.html">SRI</a>
+      <a class="nav-item" href="modules.html#reports">Reports</a>
+      <div class="nav-item-wrap"><a class="nav-item" href="modules.html#support">Support</a>
+        <div class="nav-dropdown"><a href="contact.html">Contact</a><a href="report.html">Report an issue</a><a href="about.html">About</a><a class="all" href="modules.html#support">See all Support</a></div></div>
+    </nav>
+    <div class="topbar-right" onclick="toggleNavDropdown()" role="button" tabindex="0" aria-label="Account menu" onkeydown="if(event.key==='Enter'){toggleNavDropdown()}">
+      <span class="topbar-email" id="navEmail"></span>
+      <div class="topbar-avatar" id="navAvatar"></div>
+      <div class="topbar-profile-dropdown" id="navDropdown" onclick="event.stopPropagation()">
+        <div class="topbar-profile-name" id="navFirstName">Hello</div>
+        <a href="profile.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Profile</a>
+        <button onclick="handleLogout()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>Log out</button>
       </div>
-    </div>
-    <div class="topbar-right">
-      <div id="nav-profile-link" style="display:flex;align-items:center;gap:8px;"></div>
     </div>
   </div>
+</header>
 
-  <!-- PAGE -->
-  <div class="page-container">
-
-    <!-- HEADER -->
-    <div class="page-header">
+<section class="phead">
+  <div class="wrap">
+    <div class="rv">
+      <div class="eyebrow">// atlas</div>
       <h1>Species</h1>
-      <div class="page-header-right">
-        <!-- Search -->
-        <div class="search-bar">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9aa0b4" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" id="search-input" placeholder="Search species..."/>
-        </div>
-        <!-- View toggle -->
-        <div class="view-toggle">
-          <button class="view-btn active" id="btn-list-view" onclick="setView('list')" title="List view">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-          </button>
-          <button class="view-btn" id="btn-grid-view" onclick="setView('grid')" title="Grid view">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-          </button>
-        </div>
-        <!-- Create -->
-        <button class="btn-create" id="btn-create-species">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Create Species
+      <p class="lead">Reference records for every species in the supply chain: taxonomy, size, habitat and harvest.</p>
+    </div>
+    <div class="toolbar">
+      <label class="search-bar" for="search-input">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="search-input" placeholder="Search species..." autocomplete="off"/><kbd>/</kbd>
+      </label>
+      <div class="view-toggle" id="viewToggle" role="group" aria-label="View">
+        <span class="ind"></span>
+        <button class="view-btn active" id="btn-list-view" onclick="setView('list')" title="List view" aria-label="List view">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        </button>
+        <button class="view-btn" id="btn-grid-view" onclick="setView('grid')" title="Grid view" aria-label="Grid view">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>
         </button>
       </div>
+      <button class="btn primary btn-create" id="btn-create-species">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        <span class="txt">Create species</span>
+      </button>
     </div>
+  </div>
+</section>
 
-    <!-- LIST VIEW -->
-    <div id="list-view">
+<main><div class="wrap">
+  <div class="stats" id="speciesStats"></div>
+
+  <div id="list-view">
+    <div class="table-wrap">
       <table class="species-table">
-        <thead>
-          <tr>
-            <th>Species</th>
-            <th>Scientific Name</th>
-            <th>Family</th>
-            <th>Created</th>
-          </tr>
-        </thead>
+        <thead><tr><th>species</th><th>scientific name</th><th>family</th><th>created</th><th style="width:40px"></th></tr></thead>
         <tbody id="species-table-body">
-          <tr><td colspan="5" class="empty-msg">Loading species...</td></tr>
+          <tr class="skeleton-row"><td><div class="skeleton w-60"></div></td><td><div class="skeleton w-80"></div></td><td><div class="skeleton w-40"></div></td><td><div class="skeleton w-60"></div></td><td></td></tr>
+          <tr class="skeleton-row"><td><div class="skeleton w-80"></div></td><td><div class="skeleton w-60"></div></td><td><div class="skeleton w-40"></div></td><td><div class="skeleton w-60"></div></td><td></td></tr>
+          <tr class="skeleton-row"><td><div class="skeleton w-40"></div></td><td><div class="skeleton w-80"></div></td><td><div class="skeleton w-40"></div></td><td><div class="skeleton w-60"></div></td><td></td></tr>
         </tbody>
       </table>
     </div>
-
-    <!-- GRID VIEW -->
-    <div id="grid-view" class="hidden">
-      <div class="species-grid" id="species-grid-body"></div>
-    </div>
-
   </div>
 
-  <!-- CREATE / EDIT MODAL -->
-  <div class="modal-overlay" id="modal-overlay">
-    <div class="modal">
-      <div class="modal-header">
-        <h2 id="modal-title">Create Species</h2>
-        <button class="btn btn-secondary" id="btn-modal-close">✕ Close</button>
+  <div id="grid-view" class="hidden">
+    <div class="species-grid" id="species-grid-body"></div>
+  </div>
+</div></main>
+
+<!-- kept for script.js, which may write the old profile chip here -->
+<div id="nav-profile-link" hidden></div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-header">
+      <h2 id="modal-title">Create Species</h2>
+      <div class="mjump">
+        <button type="button" onclick="mJump('sec-basic')">Basic</button><button type="button" onclick="mJump('sec-class')">Classification</button>
+        <button type="button" onclick="mJump('sec-dim')">Dimensions</button><button type="button" onclick="mJump('sec-char')">Characteristics</button>
+        <button type="button" onclick="mJump('sec-harvest')">Harvest</button><button type="button" onclick="mJump('sec-photo')">Photo</button>
       </div>
-      <form id="species-form">
-        <div class="modal-body">
+      <button type="button" class="x-btn" id="btn-modal-close" aria-label="Close">&times;</button>
+    </div>
+    <form id="species-form">
+      <div class="modal-body" id="modalBody">
+        <h3 class="section-title" id="sec-basic">basic information</h3>
+        <div class="form-grid">
+          <div class="form-group"><label for="species_name">Species name</label><input type="text" id="species_name" name="species_name" placeholder="Enter species name"/></div>
+          <div class="form-group"><label for="scientific_name">Scientific name</label><input type="text" id="scientific_name" name="scientific_name" placeholder="Enter scientific name"/></div>
+          <div class="form-group"><label for="common_trade_family_name">Common / trade family name</label><input type="text" id="common_trade_family_name" name="common_trade_family_name" placeholder="Enter common name"/></div>
+          <div class="form-group"><label for="afsis_3a_code">AFSIS 3A code</label><input type="text" id="afsis_3a_code" name="afsis_3a_code" placeholder="Enter code"/></div>
+          <div class="form-group"><label for="taxonomic_code">Taxonomic code</label><input type="number" id="taxonomic_code" name="taxonomic_code" placeholder="Enter number"/></div>
+          <div class="form-group"><label for="alphia_id">Alphia ID</label><input type="number" id="alphia_id" name="alphia_id" placeholder="Enter number"/></div>
+          <div class="form-group"><label for="isscaap_code">ISSCAAP code</label><input type="number" id="isscaap_code" name="isscaap_code" placeholder="Enter number"/></div>
+          <div class="form-group"><label for="caab_code">CAAB code</label><input type="number" id="caab_code" name="caab_code" placeholder="Enter number"/></div>
+        </div>
 
-          <h3 class="section-title">Basic Information</h3>
-          <div class="form-grid">
-            <div class="form-group"><label>Species Name</label><input type="text" id="species_name" name="species_name" placeholder="Enter species name"/></div>
-            <div class="form-group"><label>Scientific Name</label><input type="text" id="scientific_name" name="scientific_name" placeholder="Enter scientific name"/></div>
-            <div class="form-group"><label>Common / Trade Family Name</label><input type="text" id="common_trade_family_name" name="common_trade_family_name" placeholder="Enter common name"/></div>
-            <div class="form-group"><label>AFSIS 3A Code</label><input type="text" id="afsis_3a_code" name="afsis_3a_code" placeholder="Enter code"/></div>
-            <div class="form-group"><label>Taxonomic Code</label><input type="number" id="taxonomic_code" name="taxonomic_code" placeholder="Enter number"/></div>
-            <div class="form-group"><label>Alphia ID</label><input type="number" id="alphia_id" name="alphia_id" placeholder="Enter number"/></div>
-            <div class="form-group"><label>ISSCAAP Code</label><input type="number" id="isscaap_code" name="isscaap_code" placeholder="Enter number"/></div>
-            <div class="form-group"><label>CAAB Code</label><input type="number" id="caab_code" name="caab_code" placeholder="Enter number"/></div>
-          </div>
+        <h3 class="section-title" id="sec-class">classification</h3>
+        <div class="form-grid">
+          <div class="form-group"><label for="kingdom">Kingdom</label><input type="text" id="kingdom" name="kingdom" placeholder="e.g. Animalia"/></div>
+          <div class="form-group"><label for="phylum">Phylum</label><input type="text" id="phylum" name="phylum" placeholder="e.g. Chordata"/></div>
+          <div class="form-group"><label for="class_name">Class</label><input type="text" id="class_name" name="class_name" placeholder="Enter class"/></div>
+          <div class="form-group"><label for="order_name">Order</label><input type="text" id="order_name" name="order_name" placeholder="Enter order"/></div>
+          <div class="form-group"><label for="family">Family</label><input type="text" id="family" name="family" placeholder="Enter family"/></div>
+          <div class="form-group"><label for="genus">Genus</label><input type="text" id="genus" name="genus" placeholder="Enter genus"/></div>
+        </div>
 
-          <h3 class="section-title">Classification</h3>
-          <div class="form-grid">
-            <div class="form-group"><label>Kingdom</label><input type="text" id="kingdom" name="kingdom" placeholder="e.g. Animalia"/></div>
-            <div class="form-group"><label>Phylum</label><input type="text" id="phylum" name="phylum" placeholder="e.g. Chordata"/></div>
-            <div class="form-group"><label>Class</label><input type="text" id="class_name" name="class_name" placeholder="Enter class"/></div>
-            <div class="form-group"><label>Order</label><input type="text" id="order_name" name="order_name" placeholder="Enter order"/></div>
-            <div class="form-group"><label>Family</label><input type="text" id="family" name="family" placeholder="Enter family"/></div>
-            <div class="form-group"><label>Genus</label><input type="text" id="genus" name="genus" placeholder="Enter genus"/></div>
-          </div>
+        <h3 class="section-title" id="sec-dim">dimensions</h3>
+        <div class="form-grid">
+          <div class="form-group"><label for="maturity_cm">Maturity (cm)</label><input type="number" id="maturity_cm" name="maturity_cm" placeholder="0.00" step="0.01"/></div>
+          <div class="form-group"><label for="maturity_cm_type">Maturity type</label><input type="text" id="maturity_cm_type" name="maturity_cm_type" placeholder="e.g. cm"/></div>
+          <div class="form-group"><label for="max_length_cm">Max length (cm)</label><input type="number" id="max_length_cm" name="max_length_cm" placeholder="0.00" step="0.01"/></div>
+          <div class="form-group"><label for="max_length_cm_type">Max length type</label><input type="text" id="max_length_cm_type" name="max_length_cm_type" placeholder="e.g. cm"/></div>
+          <div class="form-group"><label for="common_length_cm">Common length (cm)</label><input type="number" id="common_length_cm" name="common_length_cm" placeholder="0.00" step="0.01"/></div>
+          <div class="form-group"><label for="common_length_cm_type">Common length type</label><input type="text" id="common_length_cm_type" name="common_length_cm_type" placeholder="e.g. cm"/></div>
+          <div class="form-group"><label for="max_published_weight">Max published weight</label><input type="number" id="max_published_weight" name="max_published_weight" placeholder="0.00" step="0.01"/></div>
+          <div class="form-group"><label for="max_published_weight_type">Max published weight type</label><input type="text" id="max_published_weight_type" name="max_published_weight_type" placeholder="e.g. kg"/></div>
+          <div class="form-group"><label for="max_reported_age">Max reported age</label><input type="number" id="max_reported_age" name="max_reported_age" placeholder="0.00" step="0.01"/></div>
+          <div class="form-group"><label for="max_reported_age_type">Max reported age type</label><input type="text" id="max_reported_age_type" name="max_reported_age_type" placeholder="e.g. Years"/></div>
+        </div>
 
-          <h3 class="section-title">Dimensions</h3>
-          <div class="form-grid">
-            <div class="form-group"><label>Maturity (cm)</label><input type="number" id="maturity_cm" name="maturity_cm" placeholder="0.00" step="0.01"/></div>
-            <div class="form-group"><label>Maturity Type</label><input type="text" id="maturity_cm_type" name="maturity_cm_type" placeholder="e.g. cm"/></div>
-            <div class="form-group"><label>Max Length (cm)</label><input type="number" id="max_length_cm" name="max_length_cm" placeholder="0.00" step="0.01"/></div>
-            <div class="form-group"><label>Max Length Type</label><input type="text" id="max_length_cm_type" name="max_length_cm_type" placeholder="e.g. cm"/></div>
-            <div class="form-group"><label>Common Length (cm)</label><input type="number" id="common_length_cm" name="common_length_cm" placeholder="0.00" step="0.01"/></div>
-            <div class="form-group"><label>Common Length Type</label><input type="text" id="common_length_cm_type" name="common_length_cm_type" placeholder="e.g. cm"/></div>
-            <div class="form-group"><label>Max Published Weight</label><input type="number" id="max_published_weight" name="max_published_weight" placeholder="0.00" step="0.01"/></div>
-            <div class="form-group"><label>Max Published Weight Type</label><input type="text" id="max_published_weight_type" name="max_published_weight_type" placeholder="e.g. kg"/></div>
-            <div class="form-group"><label>Max Reported Age</label><input type="number" id="max_reported_age" name="max_reported_age" placeholder="0.00" step="0.01"/></div>
-            <div class="form-group"><label>Max Reported Age Type</label><input type="text" id="max_reported_age_type" name="max_reported_age_type" placeholder="e.g. Years"/></div>
-          </div>
-
-          <h3 class="section-title">Characteristics & Environment</h3>
-          <div class="form-grid">
-            <div class="form-group full-width"><label>Short Description</label><textarea id="short_description" name="short_description" maxlength="300" placeholder="Max 300 characters"></textarea></div>
-            <div class="form-group full-width"><label>Habitat</label><textarea id="habitat" name="habitat" maxlength="300" placeholder="Max 300 characters"></textarea></div>
-            <div class="form-group full-width"><label>Biology</label><textarea id="biology" name="biology" maxlength="300" placeholder="Max 300 characters"></textarea></div>
-            <div class="form-group full-width"><label>Distribution</label><textarea id="distribution" name="distribution" maxlength="300" placeholder="Max 300 characters"></textarea></div>
-            <div class="form-group full-width"><label>Colour</label><textarea id="colour" name="colour" maxlength="300" placeholder="Max 300 characters"></textarea></div>
-            <div class="form-group full-width"><label>DNA Sequence</label><textarea id="dna_sequence" name="dna_sequence" maxlength="300" placeholder="Max 300 characters"></textarea></div>
-            <div class="form-group full-width"><label>Reproduction & Lifecycle</label><textarea id="reproduction_lifecycle" name="reproduction_lifecycle" maxlength="300" placeholder="Max 300 characters"></textarea></div>
-            <div class="form-group full-width"><label>Temperature</label><textarea id="temperature" name="temperature" maxlength="300" placeholder="Max 300 characters"></textarea></div>
-            <div class="form-group"><label>Generation Length</label><input type="number" id="generation_length" name="generation_length" placeholder="0.00" step="0.01"/></div>
-            <div class="form-group"><label>Generation Length Type</label><input type="text" id="generation_length_type" name="generation_length_type" placeholder="e.g. Years"/></div>
-            <div class="form-group full-width"><label>Behavior</label><textarea id="behavior" name="behavior" placeholder="Enter behavior"></textarea></div>
-            <div class="form-group"><label>Swim Speed</label><input type="text" id="swim_speed" name="swim_speed" placeholder="Enter swim speed"/></div>
-            <div class="form-group"><label>Short Bursts</label><input type="text" id="short_bursts" name="short_bursts" placeholder="Enter short bursts"/></div>
-            <div class="form-group"><label>Predators</label><input type="text" id="predators" name="predators" maxlength="100" placeholder="Max 100 characters"/></div>
-            <div class="form-group"><label>Main Prey</label><input type="text" id="main_prey" name="main_prey" maxlength="100" placeholder="Max 100 characters"/></div>
-            <div class="form-group"><label>Diet</label><input type="text" id="diet" name="diet" maxlength="100" placeholder="Max 100 characters"/></div>
-            <div class="form-group"><label>Depth Range</label><input type="text" id="depth_range" name="depth_range" maxlength="100" placeholder="Max 100 characters"/></div>
-            <div class="form-group full-width">
-              <label>FAO Area</label>
+        <h3 class="section-title" id="sec-char">characteristics &amp; environment</h3>
+        <div class="form-grid">
+          <div class="form-group full-width"><label for="short_description">Short description</label><textarea id="short_description" name="short_description" maxlength="300" placeholder="Max 300 characters"></textarea></div>
+          <div class="form-group full-width"><label for="habitat">Habitat</label><textarea id="habitat" name="habitat" maxlength="300" placeholder="Max 300 characters"></textarea></div>
+          <div class="form-group full-width"><label for="biology">Biology</label><textarea id="biology" name="biology" maxlength="300" placeholder="Max 300 characters"></textarea></div>
+          <div class="form-group full-width"><label for="distribution">Distribution</label><textarea id="distribution" name="distribution" maxlength="300" placeholder="Max 300 characters"></textarea></div>
+          <div class="form-group full-width"><label for="colour">Colour</label><textarea id="colour" name="colour" maxlength="300" placeholder="Max 300 characters"></textarea></div>
+          <div class="form-group full-width"><label for="dna_sequence">DNA sequence</label><textarea id="dna_sequence" name="dna_sequence" maxlength="300" placeholder="Max 300 characters"></textarea></div>
+          <div class="form-group full-width"><label for="reproduction_lifecycle">Reproduction &amp; lifecycle</label><textarea id="reproduction_lifecycle" name="reproduction_lifecycle" maxlength="300" placeholder="Max 300 characters"></textarea></div>
+          <div class="form-group full-width"><label for="temperature">Temperature</label><textarea id="temperature" name="temperature" maxlength="300" placeholder="Max 300 characters"></textarea></div>
+          <div class="form-group"><label for="generation_length">Generation length</label><input type="number" id="generation_length" name="generation_length" placeholder="0.00" step="0.01"/></div>
+          <div class="form-group"><label for="generation_length_type">Generation length type</label><input type="text" id="generation_length_type" name="generation_length_type" placeholder="e.g. Years"/></div>
+          <div class="form-group full-width"><label for="behavior">Behavior</label><textarea id="behavior" name="behavior" placeholder="Enter behavior"></textarea></div>
+          <div class="form-group"><label for="swim_speed">Swim speed</label><input type="text" id="swim_speed" name="swim_speed" placeholder="Enter swim speed"/></div>
+          <div class="form-group"><label for="short_bursts">Short bursts</label><input type="text" id="short_bursts" name="short_bursts" placeholder="Enter short bursts"/></div>
+          <div class="form-group"><label for="predators">Predators</label><input type="text" id="predators" name="predators" placeholder="Max 100 characters" maxlength="100"/></div>
+          <div class="form-group"><label for="main_prey">Main prey</label><input type="text" id="main_prey" name="main_prey" placeholder="Max 100 characters" maxlength="100"/></div>
+          <div class="form-group"><label for="diet">Diet</label><input type="text" id="diet" name="diet" placeholder="Max 100 characters" maxlength="100"/></div>
+          <div class="form-group"><label for="depth_range">Depth range</label><input type="text" id="depth_range" name="depth_range" placeholder="Max 100 characters" maxlength="100"/></div>
+          <div class="form-group full-width"><label>FAO area</label>
               <div class="multi-select-wrap" id="ms-wrap-fao_area">
-                <div class="multi-select-box" onclick="toggleMultiSelect('fao_area')">
-                  <span class="multi-select-placeholder" id="ms-placeholder-fao_area">Select FAO areas</span>
-                  <span class="multi-select-arrow">▾</span>
-                </div>
+                <div class="multi-select-box" onclick="toggleMultiSelect('fao_area')"><span class="multi-select-placeholder" id="ms-placeholder-fao_area">Select FAO areas</span><span class="multi-select-arrow">&#9662;</span></div>
                 <div class="multi-select-dropdown" id="ms-dropdown-fao_area">
-                  <div class="multi-select-search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9aa0b4" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search..." oninput="filterMultiSelect('fao_area', this.value)"/></div>
-                  <div class="multi-select-options" id="ms-options-fao_area">
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Africa – Inland waters (FAO 01)')"><div class="multi-select-checkbox"></div><span>Africa – Inland waters (FAO 01)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','America, North – Inland waters (FAO 02)')"><div class="multi-select-checkbox"></div><span>America, North – Inland waters (FAO 02)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','America, South – Inland waters (FAO 03)')"><div class="multi-select-checkbox"></div><span>America, South – Inland waters (FAO 03)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Northwest (FAO 21)')"><div class="multi-select-checkbox"></div><span>Atlantic, Northwest (FAO 21)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Northeast (FAO 27)')"><div class="multi-select-checkbox"></div><span>Atlantic, Northeast (FAO 27)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Western Central (FAO 31)')"><div class="multi-select-checkbox"></div><span>Atlantic, Western Central (FAO 31)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Eastern Central (FAO 34)')"><div class="multi-select-checkbox"></div><span>Atlantic, Eastern Central (FAO 34)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Mediterranean and Black Sea (FAO 37)')"><div class="multi-select-checkbox"></div><span>Mediterranean and Black Sea (FAO 37)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Southwest (FAO 41)')"><div class="multi-select-checkbox"></div><span>Atlantic, Southwest (FAO 41)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Southeast (FAO 47)')"><div class="multi-select-checkbox"></div><span>Atlantic, Southeast (FAO 47)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Antarctic (FAO 48)')"><div class="multi-select-checkbox"></div><span>Atlantic, Antarctic (FAO 48)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Indian Ocean, Western (FAO 51)')"><div class="multi-select-checkbox"></div><span>Indian Ocean, Western (FAO 51)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Indian Ocean, Eastern (FAO 57)')"><div class="multi-select-checkbox"></div><span>Indian Ocean, Eastern (FAO 57)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Indian Ocean, Antarctic (FAO 58)')"><div class="multi-select-checkbox"></div><span>Indian Ocean, Antarctic (FAO 58)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Northwest (FAO 61)')"><div class="multi-select-checkbox"></div><span>Pacific, Northwest (FAO 61)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Northeast (FAO 67)')"><div class="multi-select-checkbox"></div><span>Pacific, Northeast (FAO 67)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Western Central (FAO 71)')"><div class="multi-select-checkbox"></div><span>Pacific, Western Central (FAO 71)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Eastern Central (FAO 77)')"><div class="multi-select-checkbox"></div><span>Pacific, Eastern Central (FAO 77)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Southwest (FAO 81)')"><div class="multi-select-checkbox"></div><span>Pacific, Southwest (FAO 81)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Southeast (FAO 87)')"><div class="multi-select-checkbox"></div><span>Pacific, Southeast (FAO 87)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Antarctic (FAO 88)')"><div class="multi-select-checkbox"></div><span>Pacific, Antarctic (FAO 88)</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('fao_area','Not Specified / Unavailable')"><div class="multi-select-checkbox"></div><span>Not Specified / Unavailable</span></div>
-                  </div>
+                  <div class="multi-select-search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9aa1ad" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search..." oninput="filterMultiSelect('fao_area', this.value)"/></div>
+                  <div class="multi-select-options" id="ms-options-fao_area"><div class="multi-select-option" onclick="selectMultiOption('fao_area','Africa – Inland waters (FAO 01)')"><div class="multi-select-checkbox"></div><span>Africa – Inland waters (FAO 01)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','America, North – Inland waters (FAO 02)')"><div class="multi-select-checkbox"></div><span>America, North – Inland waters (FAO 02)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','America, South – Inland waters (FAO 03)')"><div class="multi-select-checkbox"></div><span>America, South – Inland waters (FAO 03)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Northwest (FAO 21)')"><div class="multi-select-checkbox"></div><span>Atlantic, Northwest (FAO 21)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Northeast (FAO 27)')"><div class="multi-select-checkbox"></div><span>Atlantic, Northeast (FAO 27)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Western Central (FAO 31)')"><div class="multi-select-checkbox"></div><span>Atlantic, Western Central (FAO 31)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Eastern Central (FAO 34)')"><div class="multi-select-checkbox"></div><span>Atlantic, Eastern Central (FAO 34)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','Mediterranean and Black Sea (FAO 37)')"><div class="multi-select-checkbox"></div><span>Mediterranean and Black Sea (FAO 37)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Southwest (FAO 41)')"><div class="multi-select-checkbox"></div><span>Atlantic, Southwest (FAO 41)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Southeast (FAO 47)')"><div class="multi-select-checkbox"></div><span>Atlantic, Southeast (FAO 47)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','Atlantic, Antarctic (FAO 48)')"><div class="multi-select-checkbox"></div><span>Atlantic, Antarctic (FAO 48)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','Indian Ocean, Western (FAO 51)')"><div class="multi-select-checkbox"></div><span>Indian Ocean, Western (FAO 51)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','Indian Ocean, Eastern (FAO 57)')"><div class="multi-select-checkbox"></div><span>Indian Ocean, Eastern (FAO 57)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','Indian Ocean, Antarctic (FAO 58)')"><div class="multi-select-checkbox"></div><span>Indian Ocean, Antarctic (FAO 58)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Northwest (FAO 61)')"><div class="multi-select-checkbox"></div><span>Pacific, Northwest (FAO 61)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Northeast (FAO 67)')"><div class="multi-select-checkbox"></div><span>Pacific, Northeast (FAO 67)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Western Central (FAO 71)')"><div class="multi-select-checkbox"></div><span>Pacific, Western Central (FAO 71)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Eastern Central (FAO 77)')"><div class="multi-select-checkbox"></div><span>Pacific, Eastern Central (FAO 77)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Southwest (FAO 81)')"><div class="multi-select-checkbox"></div><span>Pacific, Southwest (FAO 81)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Southeast (FAO 87)')"><div class="multi-select-checkbox"></div><span>Pacific, Southeast (FAO 87)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','Pacific, Antarctic (FAO 88)')"><div class="multi-select-checkbox"></div><span>Pacific, Antarctic (FAO 88)</span></div><div class="multi-select-option" onclick="selectMultiOption('fao_area','Not Specified / Unavailable')"><div class="multi-select-checkbox"></div><span>Not Specified / Unavailable</span></div></div>
                 </div>
               </div>
               <input type="hidden" id="fao_area" name="fao_area"/>
-            </div>
           </div>
+        </div>
 
-          <h3 class="section-title">Harvest</h3>
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Source Type</label>
+        <h3 class="section-title" id="sec-harvest">harvest</h3>
+        <div class="form-grid">
+          <div class="form-group"><label>Source type</label>
               <div class="multi-select-wrap" id="ms-wrap-source_type">
-                <div class="multi-select-box" onclick="toggleMultiSelect('source_type')"><span class="multi-select-placeholder" id="ms-placeholder-source_type">Select source type</span><span class="multi-select-arrow">▾</span></div>
+                <div class="multi-select-box" onclick="toggleMultiSelect('source_type')"><span class="multi-select-placeholder" id="ms-placeholder-source_type">Select source type</span><span class="multi-select-arrow">&#9662;</span></div>
                 <div class="multi-select-dropdown" id="ms-dropdown-source_type">
-                  <div class="multi-select-search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9aa0b4" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search..." oninput="filterMultiSelect('source_type', this.value)"/></div>
-                  <div class="multi-select-options" id="ms-options-source_type">
-                    <div class="multi-select-option" onclick="selectMultiOption('source_type','Farm')"><div class="multi-select-checkbox"></div><span>Farm</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('source_type','Wild Capture')"><div class="multi-select-checkbox"></div><span>Wild Capture</span></div>
-                  </div>
+                  <div class="multi-select-search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9aa1ad" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search..." oninput="filterMultiSelect('source_type', this.value)"/></div>
+                  <div class="multi-select-options" id="ms-options-source_type"><div class="multi-select-option" onclick="selectMultiOption('source_type','Farm')"><div class="multi-select-checkbox"></div><span>Farm</span></div><div class="multi-select-option" onclick="selectMultiOption('source_type','Wild Capture')"><div class="multi-select-checkbox"></div><span>Wild Capture</span></div></div>
                 </div>
               </div>
               <input type="hidden" id="source_type" name="source_type"/>
-            </div>
-            <div class="form-group">
-              <label>Gear Type</label>
+          </div>
+          <div class="form-group"><label>Gear type</label>
               <div class="multi-select-wrap" id="ms-wrap-gear_type">
-                <div class="multi-select-box" onclick="toggleMultiSelect('gear_type')"><span class="multi-select-placeholder" id="ms-placeholder-gear_type">Select gear type</span><span class="multi-select-arrow">▾</span></div>
+                <div class="multi-select-box" onclick="toggleMultiSelect('gear_type')"><span class="multi-select-placeholder" id="ms-placeholder-gear_type">Select gear type</span><span class="multi-select-arrow">&#9662;</span></div>
                 <div class="multi-select-dropdown" id="ms-dropdown-gear_type">
-                  <div class="multi-select-search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9aa0b4" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search..." oninput="filterMultiSelect('gear_type', this.value)"/></div>
-                  <div class="multi-select-options" id="ms-options-gear_type">
-                    <div class="multi-select-option" onclick="selectMultiOption('gear_type','Purse Seiner')"><div class="multi-select-checkbox"></div><span>Purse Seiner</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('gear_type','Longline')"><div class="multi-select-checkbox"></div><span>Longline</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('gear_type','Traps & Pots')"><div class="multi-select-checkbox"></div><span>Traps & Pots</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('gear_type','Pole & Line')"><div class="multi-select-checkbox"></div><span>Pole & Line</span></div>
-                    <div class="multi-select-option" onclick="selectMultiOption('gear_type','Trawler')"><div class="multi-select-checkbox"></div><span>Trawler</span></div>
-                  </div>
+                  <div class="multi-select-search"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9aa1ad" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" placeholder="Search..." oninput="filterMultiSelect('gear_type', this.value)"/></div>
+                  <div class="multi-select-options" id="ms-options-gear_type"><div class="multi-select-option" onclick="selectMultiOption('gear_type','Purse Seiner')"><div class="multi-select-checkbox"></div><span>Purse Seiner</span></div><div class="multi-select-option" onclick="selectMultiOption('gear_type','Longline')"><div class="multi-select-checkbox"></div><span>Longline</span></div><div class="multi-select-option" onclick="selectMultiOption('gear_type','Traps & Pots')"><div class="multi-select-checkbox"></div><span>Traps &amp; Pots</span></div><div class="multi-select-option" onclick="selectMultiOption('gear_type','Pole & Line')"><div class="multi-select-checkbox"></div><span>Pole &amp; Line</span></div><div class="multi-select-option" onclick="selectMultiOption('gear_type','Trawler')"><div class="multi-select-checkbox"></div><span>Trawler</span></div></div>
                 </div>
               </div>
               <input type="hidden" id="gear_type" name="gear_type"/>
+          </div>
+        </div>
+
+        <h3 class="section-title" id="sec-photo">photo</h3>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="file-upload-label" for="species_photo"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>Choose photo</label>
+            <input type="file" id="species_photo" name="species_photo" accept="image/*" onchange="updateFileName(this)"/>
+            <div class="file-name-text" id="file-name-display">No file chosen</div>
+            <small class="hint">JPG, PNG, WEBP · max 50MB · cropped to 4:3</small>
+          </div>
+          <div class="form-group" id="photo-preview-group" style="display:none;">
+            <label>Current photo</label>
+            <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+              <img id="photo-preview" src="" alt=""/>
+              <button type="button" class="btn btn-danger" onclick="removePhoto()">Remove photo</button>
             </div>
           </div>
-
-          <h3 class="section-title">Photo</h3>
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="file-upload-label" for="species_photo">Choose Photo</label>
-              <input type="file" id="species_photo" name="species_photo" accept="image/*" onchange="updateFileName(this)"/>
-              <div class="file-name-text" id="file-name-display">No file chosen</div>
-              <small style="color:#9aa0b4;font-size:11px;">JPG, PNG, WEBP — max 50MB</small>
-            </div>
-            <div class="form-group" id="photo-preview-group" style="display:none;">
-              <label>Current Photo</label>
-              <div style="display:flex;align-items:flex-start;gap:12px;">
-                <img id="photo-preview" src="" style="width:160px;height:120px;object-fit:cover;border-radius:8px;border:1.5px solid #e8e8e8;"/>
-                <button type="button" class="btn btn-danger" onclick="removePhoto()">Remove Photo</button>
-              </div>
-            </div>
-          </div>
-
         </div>
-      </form>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" id="btn-modal-cancel">Cancel</button>
-        <button class="btn btn-primary" id="btn-save-species">Save Species</button>
+      </div>
+    </form>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" id="btn-modal-cancel">Cancel</button>
+      <button type="button" class="btn btn-primary" id="btn-save-species">Save species</button>
+    </div>
+  </div>
+</div>
+
+<div class="confirm-overlay" id="confirm-overlay">
+  <div class="confirm-box">
+    <h3 id="confirm-title">Are you sure?</h3>
+    <p id="confirm-message">This cannot be undone.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-secondary" id="confirm-cancel">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div id="speciesListDeleteModal" class="sd-overlay" style="display:none;">
+  <div class="sd-box">
+    <div class="sd-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg></div>
+    <div id="speciesListDeleteStep1">
+      <h3>Move to trash?</h3>
+      <p><strong id="deleteSpeciesListName"></strong> will be moved to Trash and permanently deleted after 30 days.</p>
+      <div class="sd-row">
+        <button class="btn" onclick="closeSpeciesListDeleteModal()">Cancel</button>
+        <button class="btn btn-solid-danger" onclick="proceedToSpeciesListStep2()">Move to trash</button>
+      </div>
+    </div>
+    <div id="speciesListDeleteStep2" class="hidden">
+      <h3>Would you like a reminder?</h3>
+      <p>We can remind you before this is permanently deleted in 25 days.</p>
+      <div class="sd-col">
+        <button class="btn primary" onclick="confirmSpeciesListDelete(true)">Yes, remind me</button>
+        <button class="btn btn-line-danger" onclick="confirmSpeciesListDelete(false)">No, I'm sure</button>
+        <button class="btn" onclick="closeSpeciesListDeleteModal()">Cancel</button>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- CONFIRM DELETE -->
-  <div class="confirm-overlay" id="confirm-overlay">
-    <div class="confirm-box">
-      <h3 id="confirm-title">Are you sure?</h3>
-      <p id="confirm-message">This cannot be undone.</p>
-      <div class="confirm-actions">
-        <button class="btn btn-secondary" id="confirm-cancel">Cancel</button>
-        <button class="btn btn-danger" id="confirm-ok">Delete</button>
+<div id="toast-container"></div>
+
+<div class="crop-overlay" id="cropOverlay">
+  <div class="crop-box">
+    <div class="crop-header">
+      <div><h3>Crop photo</h3><p>Drag to reposition · scroll or use the slider to zoom · fixed 4:3 frame</p></div>
+      <button type="button" class="x-btn" onclick="closeCrop()" aria-label="Cancel">&times;</button>
+    </div>
+    <div class="crop-body">
+      <div class="crop-canvas-wrap" id="cropCanvasWrap"><canvas id="cropCanvas"></canvas></div>
+      <div class="crop-previews">
+        <div><div class="crop-preview-label">grid view preview</div><div class="crop-preview-grid"><img id="cropPreviewGrid" src="" alt=""/></div></div>
+        <div><div class="crop-preview-label">detail page preview</div><div class="crop-preview-detail"><img id="cropPreviewDetail" src="" alt=""/></div></div>
+        <div class="crop-tip">Keep the main subject centred for the best result across grid and detail views.</div>
       </div>
     </div>
-  </div>
-
-  <!-- SOFT DELETE MODAL -->
-  <div id="speciesListDeleteModal" style="display:none;position:fixed;inset:0;background:rgba(15,20,40,0.45);backdrop-filter:blur(6px);z-index:1000;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:14px;padding:36px 32px;max-width:400px;width:90%;display:flex;flex-direction:column;align-items:center;gap:14px;box-shadow:0 24px 60px rgba(0,0,0,0.15);text-align:center;">
-      <div style="width:56px;height:56px;background:#fff0f1;border-radius:50%;display:flex;align-items:center;justify-content:center;">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#e63946" stroke-width="1.8"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+    <div class="crop-footer">
+      <div class="crop-controls">
+        <span class="crop-zoom">zoom</span>
+        <input type="range" id="cropZoom" min="100" max="300" value="100" oninput="cropZoomChange(this.value)"/>
+        <span class="crop-zoom" id="cropZoomVal">100%</span>
       </div>
-      <div id="speciesListDeleteStep1">
-        <h3 style="font-size:16px;font-weight:700;color:#1a1a2e;">Move to Trash?</h3>
-        <p style="font-size:13px;color:#6b7280;line-height:1.6;margin-top:8px;"><strong id="deleteSpeciesListName"></strong> will be moved to Trash and permanently deleted after <strong>30 days</strong>.</p>
-        <div style="display:flex;gap:10px;width:100%;margin-top:14px;">
-          <button onclick="closeSpeciesListDeleteModal()" style="flex:1;padding:9px;background:#fff;border:1.5px solid #e0e3ed;border-radius:8px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:#4a4e69;cursor:pointer;">Cancel</button>
-          <button onclick="proceedToSpeciesListStep2()" style="flex:1;padding:9px;background:#e63946;color:#fff;border:none;border-radius:8px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Move to Trash</button>
-        </div>
-      </div>
-      <div id="speciesListDeleteStep2" class="hidden">
-        <h3 style="font-size:16px;font-weight:700;color:#1a1a2e;">Would you like a reminder?</h3>
-        <p style="font-size:13px;color:#6b7280;line-height:1.6;margin-top:8px;">We can remind you before this is permanently deleted in 25 days.</p>
-        <div style="display:flex;flex-direction:column;gap:8px;width:100%;margin-top:14px;">
-          <button onclick="confirmSpeciesListDelete(true)" style="width:100%;padding:9px;background:#1a6fdb;color:#fff;border:none;border-radius:8px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">Yes, remind me</button>
-          <button onclick="confirmSpeciesListDelete(false)" style="width:100%;padding:9px;background:#fff;color:#e63946;border:1.5px solid #e63946;border-radius:8px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">No, I'm sure</button>
-          <button onclick="closeSpeciesListDeleteModal()" style="width:100%;padding:9px;background:#fff;border:1.5px solid #e0e3ed;border-radius:8px;font-family:'Poppins',sans-serif;font-size:13px;font-weight:600;color:#4a4e69;cursor:pointer;">Cancel</button>
-        </div>
-      </div>
+      <button type="button" class="btn" onclick="closeCrop()">Cancel</button>
+      <button type="button" class="btn primary" onclick="applyCrop()">Use this photo</button>
     </div>
   </div>
+</div>
 
-  <div id="toast-container"></div>
+<script>
+(function(){
+  const URL_='https://enbdaajcromxmhgcverp.supabase.co', KEY_='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+  const db = window._sharedSupabase || (window._sharedSupabase = supabase.createClient(URL_, KEY_));
+  window.toggleNavDropdown = function(){ document.getElementById('navDropdown').classList.toggle('open'); };
+  window.handleLogout = async function(){ await db.auth.signOut(); window.location.href = 'login.html'; };
+  document.addEventListener('click', e => { if (!e.target.closest('.topbar-right')) document.getElementById('navDropdown')?.classList.remove('open'); });
+  window.addEventListener('load', async () => {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    const { data: p } = await db.from('profiles').select('first_name,last_name,avatar_color,photo_url').eq('id', session.user.id).single();
+    const email = session.user.email || '';
+    const first = p?.first_name || email.split('@')[0];
+    const initials = (first.charAt(0) + (p?.last_name ? p.last_name.charAt(0) : '')).toUpperCase();
+    const av = document.getElementById('navAvatar');
+    if (p?.photo_url) { av.innerHTML = `<img src="${p.photo_url}" alt="" style="width:100%;height:100%;object-fit:cover">`; av.style.background = 'transparent'; }
+    else { av.textContent = initials; av.style.background = p?.avatar_color || '#2f6fed'; }
+    document.getElementById('navEmail').textContent = email;
+    document.getElementById('navFirstName').textContent = `Hello, ${first}`;
+  });
+})();
+</script>
 
-  <script src="utils.js"></script>
-  <script src="script.js"></script>
-
-  <script>
-  // ── Grid view toggle ──
+<script src="utils.js"></script>
+<script src="script.js"></script>
+<script>
+  // ── List / grid view ──
   let currentView = localStorage.getItem('speciesView') || 'list';
+  const FISH_ICON = '<svg width="{s}" height="{s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c3-4.5 7-6 11-6 4 0 6.5 2.5 8 6-1.5 3.5-4 6-8 6-4 0-8-1.5-11-6z"/><path d="M2 12c1.5-1 2.5-2.5 3-4M2 12c1.5 1 2.5 2.5 3 4"/><circle cx="16.5" cy="10.5" r=".8" fill="currentColor"/></svg>';
+  const escS = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const goSpecies = id => { window.location.href = 'species-detail.html?id=' + id; };
 
   function setView(v) {
     currentView = v;
@@ -537,138 +605,107 @@
     document.getElementById('grid-view').classList.toggle('hidden', v !== 'grid');
     document.getElementById('btn-list-view').classList.toggle('active', v === 'list');
     document.getElementById('btn-grid-view').classList.toggle('active', v === 'grid');
-    // allSpecies is a global let in script.js — accessible directly
-    if (v === 'grid') renderGrid(typeof allSpecies !== 'undefined' ? allSpecies : []);
+    document.getElementById('viewToggle').classList.toggle('grid', v === 'grid');
+    if (v === 'grid') renderGrid(currentRows());
+  }
+
+  // rows currently matching the search box
+  function currentRows() {
+    const all = typeof allSpecies !== 'undefined' ? allSpecies : [];
+    const q = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
+    if (!q) return all;
+    return all.filter(s => (s.species_name||'').toLowerCase().includes(q) || (s.scientific_name||'').toLowerCase().includes(q));
+  }
+
+  function updateStats(shown) {
+    const total = typeof allSpecies !== 'undefined' ? allSpecies.length : shown;
+    const el = document.getElementById('speciesStats');
+    if (el) el.innerHTML = shown === total ? `<b>${total}</b> species` : `<b>${shown}</b> of ${total} species`;
   }
 
   function renderGrid(data) {
     const grid = document.getElementById('species-grid-body');
     if (!grid) return;
     if (!data || !data.length) {
-      grid.innerHTML = '<p style="color:#9aa0b4;font-size:13px;grid-column:1/-1;text-align:center;padding:40px;">No species found.</p>';
+      grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">' + FISH_ICON.replace(/\{s\}/g, 22) + '</div><p>No species found</p><small>Try a different search.</small></div>';
       return;
     }
-    grid.innerHTML = data.map(s => `
-      <div class="species-card">
-        ${s.photo_url
-          ? `<img src="${s.photo_url}" class="species-card-img" alt="${s.species_name || ''}" onclick="window.location.href='species-detail.html?id=${s.id}'"/>`
-          : `<div class="species-card-img-placeholder" onclick="window.location.href='species-detail.html?id=${s.id}'">
-              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#d0d4dd" stroke-width="1.2"><path d="M21 16.5c0 2.5-4 4.5-9 4.5S3 19 3 16.5 7 12 12 12s9 2 9 4.5z"/><path d="M3 16.5V8C3 5.5 7 3.5 12 3.5S21 5.5 21 8v8.5"/></svg>
-             </div>`}
+    grid.innerHTML = data.map((s, i) => `
+      <article class="species-card" style="--i:${Math.min(i, 20)}" tabindex="0" onclick="goSpecies('${s.id}')" onkeydown="if(event.key==='Enter')goSpecies('${s.id}')">
+        <div class="ph">${s.photo_url
+          ? `<img src="${escS(s.photo_url)}" class="species-card-img" alt="${escS(s.species_name)}" loading="lazy"/>`
+          : `<div class="species-card-img-placeholder">${FISH_ICON.replace(/\{s\}/g, 44)}</div>`}</div>
         <div class="species-card-body">
-          <div class="species-card-name">${s.species_name || '—'}</div>
-          <div class="species-card-sci">${s.scientific_name || 'Scientific name not set'}</div>
-          <div class="species-card-footer">
-            <button class="action-btn action-btn-view" style="width:100%;" onclick="window.location.href='species-detail.html?id=${s.id}'">View</button>
+          <div class="species-card-name">${escS(s.species_name) || '—'}</div>
+          <div class="species-card-sci">${escS(s.scientific_name) || 'Scientific name not set'}</div>
+          <div class="species-card-foot">
+            ${s.family ? `<span class="sp-fam">${escS(s.family)}</span>` : '<span></span>'}
+            <span class="go">View <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
           </div>
         </div>
-      </div>`).join('');
+      </article>`).join('');
   }
 
-  // ── Patch script.js AFTER it has fully executed (window load) ──
+  // ── Patch script.js after it has run ──
   window.addEventListener('load', () => {
-    // Override renderTable with 5-column version (adds Family)
     window.renderTable = function(data) {
       const tableBody = document.getElementById('species-table-body');
       if (!tableBody) return;
-      tableBody.innerHTML = '';
+      updateStats(data ? data.length : 0);
       if (!data || !data.length) {
-        tableBody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">🐟</div><p>No species found</p><small>Click "Create Species" to add your first record.</small></div></td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="empty-icon">${FISH_ICON.replace(/\{s\}/g, 22)}</div><p>No species found</p><small>Click "Create species" to add your first record.</small></div></td></tr>`;
+        if (currentView === 'grid') renderGrid(data);
         return;
       }
-      data.forEach(s => {
+      tableBody.innerHTML = data.map((s, i) => {
         const date = s.created_at ? new Date(s.created_at).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : '—';
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>
-            <div style="display:flex;align-items:center;gap:10px;">
-              <div style="width:36px;height:36px;border-radius:6px;background:#f5f5f5;border:1px solid #e8e8e8;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">
-                ${s.photo_url ? `<img src="${s.photo_url}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;"/>` : `<img src="fish-icon.png" style="width:22px;height:22px;opacity:0.5;"/>`}
-              </div>
-              <a href="species-detail.html?id=${s.id}" style="color:#0f0f0f;text-decoration:none;font-weight:600;">${s.species_name || '—'}</a>
-            </div>
-          </td>
-          <td style="font-style:italic;color:#6b7280;">${s.scientific_name || '—'}</td>
-          <td>${s.family || '—'}</td>
-          <td>${date}</td>
-          <td>
-            <button class="action-btn action-btn-view" style="width:100%;" onclick="window.location.href='species-detail.html?id=${s.id}'">View</button>
-          </td>`;
-        tableBody.appendChild(row);
-      });
-      // Also update grid if in grid view
+        return `
+          <tr data-href="${s.id}" style="--i:${Math.min(i, 25)}" onclick="goSpecies('${s.id}')">
+            <td><div class="sp-cell">
+              <span class="sp-thumb">${s.photo_url ? `<img src="${escS(s.photo_url)}" alt="" loading="lazy"/>` : FISH_ICON.replace(/\{s\}/g, 20)}</span>
+              <a class="sp-name" href="species-detail.html?id=${s.id}" onclick="event.stopPropagation()">${escS(s.species_name) || '—'}</a>
+            </div></td>
+            <td class="sp-sci">${escS(s.scientific_name) || '—'}</td>
+            <td>${s.family ? `<span class="sp-fam">${escS(s.family)}</span>` : '<span class="text-muted">—</span>'}</td>
+            <td class="sp-date">${date}</td>
+            <td><span class="sp-go"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span></td>
+          </tr>`;
+      }).join('');
       if (currentView === 'grid') renderGrid(data);
     };
 
-    // Patch filterSpecies — called on search
     const _origFilter = window.filterSpecies;
     if (typeof _origFilter === 'function') {
       window.filterSpecies = function(q) {
         _origFilter(q);
-        if (currentView === 'grid') {
-          const filtered = (typeof allSpecies !== 'undefined' ? allSpecies : []).filter(s =>
-            (s.species_name||'').toLowerCase().includes(q.toLowerCase()) ||
-            (s.scientific_name||'').toLowerCase().includes(q.toLowerCase())
-          );
-          renderGrid(filtered);
-        }
+        if (currentView === 'grid') renderGrid(currentRows());
       };
     }
 
-    // Apply saved view — by now allSpecies is populated
-    if (currentView === 'grid') renderGrid(typeof allSpecies !== 'undefined' ? allSpecies : []);
+    // redraw with the new layout using whatever script.js already loaded
+    if (typeof allSpecies !== 'undefined' && Array.isArray(allSpecies)) window.renderTable(currentRows());
     setView(currentView);
   });
-  </script>
-  <!-- CROP MODAL -->
-  <div class="crop-overlay" id="cropOverlay">
-    <div class="crop-box">
-      <div class="crop-header">
-        <div>
-          <h3>Crop Photo</h3>
-          <p>Drag to reposition · Scroll or use slider to zoom · Crop area is fixed at 4:3 ratio</p>
-        </div>
-        <button class="btn btn-secondary" onclick="closeCrop()">✕ Cancel</button>
-      </div>
-      <div class="crop-body">
-        <!-- Canvas -->
-        <div class="crop-canvas-wrap" id="cropCanvasWrap">
-          <canvas id="cropCanvas"></canvas>
-        </div>
-        <!-- Previews -->
-        <div class="crop-previews">
-          <div>
-            <div class="crop-preview-label">Grid View Preview</div>
-            <div class="crop-preview-grid"><img id="cropPreviewGrid" src="" alt=""/></div>
-          </div>
-          <div>
-            <div class="crop-preview-label">Detail Page Preview</div>
-            <div class="crop-preview-detail"><img id="cropPreviewDetail" src="" alt=""/></div>
-          </div>
-          <div class="crop-tip">Tip: Keep the main subject centred for the best result across grid and detail views.</div>
-        </div>
-      </div>
-      <div class="crop-footer">
-        <div class="crop-controls">
-          <span class="crop-zoom">Zoom</span>
-          <input type="range" id="cropZoom" min="100" max="300" value="100" oninput="cropZoomChange(this.value)"/>
-          <span class="crop-zoom" id="cropZoomVal">100%</span>
-        </div>
-        <button class="btn btn-secondary" onclick="closeCrop()">Cancel</button>
-        <button class="btn btn-primary" onclick="applyCrop()">Use This Photo →</button>
-      </div>
-    </div>
-  </div>
 
-  <script>
-  // ── CROP ENGINE ──
+  // keep grid + count in step with typing even if script.js filters internally
+  document.getElementById('search-input').addEventListener('input', () => {
+    setTimeout(() => { updateStats(currentRows().length); if (currentView === 'grid') renderGrid(currentRows()); }, 0);
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === '/' && !/input|textarea|select/i.test(document.activeElement.tagName)) { e.preventDefault(); document.getElementById('search-input').focus(); }
+  });
+
+  function mJump(id){ const el = document.getElementById(id); if (el) document.getElementById('modalBody').scrollTo({ top: el.offsetTop - 4, behavior: 'smooth' }); }
+</script>
+
+<script>
   let cropImg = new Image();
   let cropScale = 1;
   let cropOffX = 0, cropOffY = 0;
   let cropDragging = false;
   let cropDragStartX, cropDragStartY, cropDragOffX, cropDragOffY;
   let cropOriginalFile = null;
-  const CROP_RATIO = 4 / 3; // fixed ratio
+  const CROP_RATIO = 4 / 3;
 
   function openCrop(file) {
     cropOriginalFile = file;
@@ -676,8 +713,7 @@
     reader.onload = e => {
       cropImg = new Image();
       cropImg.onload = () => {
-        cropScale = 1;
-        // Centre image
+        document.getElementById('cropOverlay').classList.add('open');
         const canvas = document.getElementById('cropCanvas');
         const wrap = document.getElementById('cropCanvasWrap');
         const W = wrap.clientWidth || 400;
@@ -685,7 +721,6 @@
         canvas.width = W; canvas.height = H;
         canvas.style.width = W + 'px';
         canvas.style.height = H + 'px';
-        // Fit image to fill crop area
         const fitScale = Math.max(W / cropImg.width, H / cropImg.height);
         cropScale = fitScale;
         cropOffX = (W - cropImg.width * cropScale) / 2;
@@ -693,7 +728,6 @@
         document.getElementById('cropZoom').value = 100;
         document.getElementById('cropZoomVal').textContent = '100%';
         drawCrop();
-        document.getElementById('cropOverlay').classList.add('open');
       };
       cropImg.src = e.target.result;
     };
@@ -705,23 +739,19 @@
     const ctx = canvas.getContext('2d');
     const W = canvas.width, H = canvas.height;
     ctx.clearRect(0, 0, W, H);
-    // Draw image
     ctx.drawImage(cropImg, cropOffX, cropOffY, cropImg.width * cropScale, cropImg.height * cropScale);
-    // Overlay — darken outside crop
     const cW = Math.min(W, H * CROP_RATIO);
     const cH = cW / CROP_RATIO;
     const cX = (W - cW) / 2, cY = (H - cH) / 2;
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillStyle = 'rgba(20,22,26,0.45)';
     ctx.fillRect(0, 0, W, cY);
     ctx.fillRect(0, cY + cH, W, H - cY - cH);
     ctx.fillRect(0, cY, cX, cH);
     ctx.fillRect(cX + cW, cY, W - cX - cW, cH);
-    // Crop border
-    ctx.strokeStyle = '#8b5cf6';
+    ctx.strokeStyle = '#2f6fed';
     ctx.lineWidth = 2;
     ctx.strokeRect(cX, cY, cW, cH);
-    // Rule of thirds guides
-    ctx.strokeStyle = 'rgba(139,92,246,0.3)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)';
     ctx.lineWidth = 1;
     ctx.setLineDash([4,4]);
     ctx.beginPath();
@@ -740,23 +770,21 @@
     const cW = Math.min(W, H * CROP_RATIO);
     const cH = cW / CROP_RATIO;
     const cX = (W - cW) / 2, cY = (H - cH) / 2;
-    // Extract crop region to offscreen canvas
     const off = document.createElement('canvas');
     off.width = cW; off.height = cH;
     const offCtx = off.getContext('2d');
-    offCtx.drawImage(canvas, cX, cY, cW, cH, 0, 0, cW, cH);
+    offCtx.drawImage(cropImg, (cX - cropOffX) / cropScale, (cY - cropOffY) / cropScale, cW / cropScale, cH / cropScale, 0, 0, cW, cH);
     const url = off.toDataURL('image/jpeg', 0.92);
     document.getElementById('cropPreviewGrid').src = url;
     document.getElementById('cropPreviewDetail').src = url;
   }
 
   function cropZoomChange(val) {
-    document.getElementById('cropZoomVal').textContent = val + '%';
+    document.getElementById('cropZoomVal').textContent = Math.round(val) + '%';
     const canvas = document.getElementById('cropCanvas');
     const W = canvas.width, H = canvas.height;
     const fitScale = Math.max(W / cropImg.width, H / cropImg.height);
     const newScale = fitScale * (val / 100);
-    // Scale around centre
     const cx = W / 2, cy = H / 2;
     const imgCX = (cx - cropOffX) / cropScale;
     const imgCY = (cy - cropOffY) / cropScale;
@@ -766,7 +794,6 @@
     drawCrop();
   }
 
-  // Drag to pan
   const cropCanvas = document.getElementById('cropCanvas');
   cropCanvas.addEventListener('mousedown', e => {
     cropDragging = true;
@@ -781,7 +808,6 @@
   });
   cropCanvas.addEventListener('mouseup', () => cropDragging = false);
   cropCanvas.addEventListener('mouseleave', () => cropDragging = false);
-  // Touch support
   cropCanvas.addEventListener('touchstart', e => {
     const t = e.touches[0];
     cropDragging = true; cropDragStartX = t.clientX; cropDragStartY = t.clientY;
@@ -795,7 +821,6 @@
     drawCrop(); e.preventDefault();
   }, {passive:false});
   cropCanvas.addEventListener('touchend', () => cropDragging = false);
-  // Scroll to zoom
   cropCanvas.addEventListener('wheel', e => {
     e.preventDefault();
     const slider = document.getElementById('cropZoom');
@@ -810,26 +835,21 @@
     const cW = Math.min(W, H * CROP_RATIO);
     const cH = cW / CROP_RATIO;
     const cX = (W - cW) / 2, cY = (H - cH) / 2;
-    // High-res output canvas
     const out = document.createElement('canvas');
     out.width = 800; out.height = 600;
     const outCtx = out.getContext('2d');
-    // Map crop area back to original image coords
     const srcX = (cX - cropOffX) / cropScale;
     const srcY = (cY - cropOffY) / cropScale;
     const srcW = cW / cropScale;
     const srcH = cH / cropScale;
     outCtx.drawImage(cropImg, srcX, srcY, srcW, srcH, 0, 0, 800, 600);
     out.toBlob(blob => {
-      // Create a File object from the cropped blob
       const croppedFile = new File([blob], cropOriginalFile.name, {type:'image/jpeg'});
-      // Inject into the file input via DataTransfer
       try {
         const dt = new DataTransfer();
         dt.items.add(croppedFile);
         document.getElementById('species_photo').files = dt.files;
       } catch(e) { console.warn('DataTransfer not supported:', e); }
-      // Show preview
       const previewUrl = out.toDataURL('image/jpeg', 0.92);
       document.getElementById('photo-preview').src = previewUrl;
       document.getElementById('photo-preview-group').style.display = 'block';
@@ -840,17 +860,13 @@
 
   function closeCrop() {
     document.getElementById('cropOverlay').classList.remove('open');
-    // Reset file input if user cancels
     if (!document.getElementById('photo-preview').src || document.getElementById('photo-preview').src === window.location.href) {
       document.getElementById('species_photo').value = '';
       document.getElementById('file-name-display').textContent = 'No file chosen';
     }
   }
 
-  // ── Hook into file input — intercept and open crop instead ──
-  // Override updateFileName from script.js — intercept and open crop instead
   window.addEventListener('load', () => {
-    // Override the function script.js uses when a file is chosen
     window.updateFileName = function(input) {
       const file = input.files[0];
       if (!file) return;
@@ -860,11 +876,28 @@
         return;
       }
       openCrop(file);
-      // Don't reset input here — openCrop reads it
     };
   });
-  </script>
+</script>
+
+<script>
+(function(){
+  const wrap = document.getElementById('topLinks'); if (!wrap) return;
+  const ind = wrap.querySelector('.ind');
+  const items = [...wrap.querySelectorAll('.nav-item')];
+  const home = wrap.querySelector('.nav-item.on');
+  function move(el){
+    if (!el){ ind.style.opacity = 0; items.forEach(x => x.classList.remove('hl')); return; }
+    const r = el.getBoundingClientRect(), w = wrap.getBoundingClientRect();
+    ind.style.left = (r.left - w.left) + 'px'; ind.style.width = r.width + 'px'; ind.style.opacity = 1;
+    items.forEach(x => x.classList.toggle('hl', x === el));
+  }
+  items.forEach(el => el.addEventListener('mouseenter', () => move(el)));
+  wrap.addEventListener('mouseleave', () => move(home));
+  window.addEventListener('resize', () => move(home));
+  requestAnimationFrame(() => move(home));
+  if (document.fonts) document.fonts.ready.then(() => move(home));
+})();
+</script>
 </body>
 </html>
-
-

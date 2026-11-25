@@ -98,67 +98,6 @@ const KDE_DESCRIPTIONS = {
   LFP_010: { label: 'Port State IUU Risk Index', why: 'The IUU risk rating of the destination port state indicates the likelihood of inadequate import controls. High-risk destination ports require additional documentation and verification to ensure legal trade compliance.' },
 };
 
-function getMriStatus(score) {
-  if (score === 0) return { label: 'Transparent', cls: 'transparent', emoji: '🟢' };
-  if (score < 100) return { label: 'Low Risk', cls: 'low', emoji: '🔵' };
-  if (score < 500) return { label: 'Medium Risk', cls: 'medium', emoji: '🟡' };
-  return { label: 'Critical', cls: 'critical', emoji: '🔴' };
-}
-
-function formatDate(d) {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-}
-
-function handleLogout() { dbClient.auth.signOut().then(() => window.location.href = 'login.html'); }
-
-function toggleNavDropdown() {
-  document.getElementById('navDropdown').classList.toggle('open');
-}
-
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('.topbar-right')) {
-    document.getElementById('navDropdown')?.classList.remove('open');
-  }
-});
-
-// ── GAUGE ─────────────────────────────────────────────────────
-function animateGauge(score, maxScore) {
-  const arc = document.getElementById('gaugeArc');
-  const dot = document.getElementById('gaugeDot');
-  if (!arc || !dot) return;
-
-  const totalLength = 251.2;
-  const ratio = maxScore > 0 ? Math.min(score / maxScore, 1) : 0;
-  const offset = totalLength - (ratio * totalLength);
-
-  const status = getMriStatus(score);
-  const colors = { transparent: '#22c55e', low: '#3b82f6', medium: '#f59e0b', critical: '#e63946' };
-  const color = colors[status.cls];
-
-  arc.style.stroke = color;
-  arc.style.strokeDashoffset = offset;
-  dot.style.stroke = color;
-
-  const angle = -180 + (ratio * 180);
-  const rad = (angle * Math.PI) / 180;
-  const cx = 100 + 80 * Math.cos(rad);
-  const cy = 110 + 80 * Math.sin(rad);
-  dot.setAttribute('cx', cx);
-  dot.setAttribute('cy', cy);
-
-  let current = 0;
-  const step = Math.max(1, Math.ceil(score / 40));
-  const timer = setInterval(() => {
-    current = Math.min(current + step, score);
-    document.getElementById('gaugeScore').textContent = current.toLocaleString();
-    if (current >= score) clearInterval(timer);
-  }, 30);
-}
-
-// ── STAGE MODAL ───────────────────────────────────────────────
-
-// ── STAGE MODAL ───────────────────────────────────────────────
 // Dummy assessment data for beta (Trident proj-002)
 const DUMMY_STAGE_RESPONSIBILITY = { FV: "seller", CR: "seller", FCL: "seller", PP: "seller", SP: "buyer", LFP: "buyer" };
 
@@ -252,6 +191,75 @@ const DUMMY_LOW_ASSESSMENT = {
   ],
 };
 
+// ── HELPERS ───────────────────────────────────────────────────
+const STATUS_COLORS = { transparent: '#178a4c', low: '#2f6fed', medium: '#b7791f', critical: '#d64545' };
+const STAGE_COLORS = { FV: '#2f6fed', CR: '#7c5cd6', FCL: '#14a39a', PP: '#e0a028', SP: '#e05a5a', LFP: '#7b8496' };
+const CHECK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
+
+function getMriStatus(score) {
+  if (score === 0) return { label: 'Transparent', cls: 'transparent' };
+  if (score < 100) return { label: 'Low Risk', cls: 'low' };
+  if (score < 500) return { label: 'Medium Risk', cls: 'medium' };
+  return { label: 'Critical', cls: 'critical' };
+}
+
+function setStatusPill(el, score) {
+  if (!el) return;
+  const s = getMriStatus(score);
+  el.className = `mri-status-pill ${s.cls}`;
+  el.innerHTML = `<span class="dot"></span>${s.label}`;
+}
+
+function formatDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function handleLogout() { dbClient.auth.signOut().then(() => window.location.href = 'login.html'); }
+
+function toggleNavDropdown() {
+  document.getElementById('navDropdown').classList.toggle('open');
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.topbar-right')) {
+    document.getElementById('navDropdown')?.classList.remove('open');
+  }
+});
+
+// ── GAUGE ─────────────────────────────────────────────────────
+// Arc, dot and number move together with an ease-out
+function animateGauge(score, maxScore) {
+  const arc = document.getElementById('gaugeArc');
+  const dot = document.getElementById('gaugeDot');
+  const num = document.getElementById('gaugeScore');
+  if (!arc || !dot) return;
+
+  const totalLength = 251.2;
+  const ratio = maxScore > 0 ? Math.min(score / maxScore, 1) : 0;
+  const color = STATUS_COLORS[getMriStatus(score).cls];
+  arc.style.stroke = color;
+  dot.style.stroke = color;
+
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const dur = reduce ? 0 : 1300;
+  const t0 = performance.now();
+  const ease = t => 1 - Math.pow(1 - t, 3);
+
+  function frame(now) {
+    const t = dur ? Math.min((now - t0) / dur, 1) : 1;
+    const r = ratio * ease(t);
+    arc.style.strokeDashoffset = totalLength - r * totalLength;
+    const rad = (-180 + r * 180) * Math.PI / 180;
+    dot.setAttribute('cx', 100 + 80 * Math.cos(rad));
+    dot.setAttribute('cy', 110 + 80 * Math.sin(rad));
+    if (num) num.textContent = Math.round(score * ease(t)).toLocaleString();
+    if (t < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+// ── STAGE MODAL ───────────────────────────────────────────────
 function openStageModal(stageCode, isDummy = false, isLow = false) {
   const stageInfo = STAGE_INFO[stageCode];
   const assessment = isLow ? DUMMY_LOW_ASSESSMENT : DUMMY_ASSESSMENT;
@@ -262,69 +270,49 @@ function openStageModal(stageCode, isDummy = false, isLow = false) {
   const ok = stageData.filter(k => k.score === 0);
   const totalRisk = stageData.reduce((s, k) => s + k.score, 0);
 
-  const modal = document.getElementById('stageModal');
   document.getElementById('stageModalTitle').textContent = stageInfo.label;
   document.getElementById('stageModalDesc').textContent = stageInfo.desc;
-  document.getElementById('stageModalScore').textContent = `${totalRisk} / ${STAGE_MAX[stageCode]} risk pts`;
+  document.getElementById('stageModalScore').textContent = `${totalRisk} / ${STAGE_MAX[stageCode].toLocaleString()} risk pts`;
   document.getElementById('stageModalCode').textContent = stageCode;
 
-  // Responsibility badge
-  const respConfigs = {
-    seller: { label: 'Seller Responsible', bg: '#dbeafe', color: '#1d4ed8' },
-    buyer:  { label: 'Buyer Responsible',  bg: '#dcfce7', color: '#16a34a' },
-    both:   { label: 'Both Responsible',   bg: '#fef3c7', color: '#d97706' },
-  };
-  const respCfg = respConfigs[resp] || respConfigs.seller;
+  const respLabels = { seller: 'Seller responsible', buyer: 'Buyer responsible', both: 'Both responsible' };
   const respBadgeEl = document.getElementById('stageModalRespBadge');
   if (respBadgeEl) {
-    respBadgeEl.textContent = respCfg.label;
-    respBadgeEl.style.background = respCfg.bg;
-    respBadgeEl.style.color = respCfg.color;
+    const r = respLabels[resp] ? resp : 'seller';
+    respBadgeEl.textContent = respLabels[r];
+    respBadgeEl.className = `resp-tag ${r}`;
   }
 
-  const statusObj = getMriStatus(totalRisk);
-  const pill = document.getElementById('stageModalStatus');
-  pill.className = `mri-status-pill ${statusObj.cls}`;
-  pill.innerHTML = `<span class="dot"></span> ${statusObj.label}`;
+  setStatusPill(document.getElementById('stageModalStatus'), totalRisk);
 
   const missingEl = document.getElementById('stageModalMissing');
   const okEl = document.getElementById('stageModalOk');
 
   if (missing.length === 0) {
-    missingEl.innerHTML = `<div style="text-align:center; padding:24px; color:#16a34a; font-size:13px; font-weight:600;">✅ All KDEs complete — no risk identified at this stage.</div>`;
+    missingEl.innerHTML = `<div class="empty-note ok">${CHECK_SVG}All KDEs complete. No risk identified at this stage.</div>`;
   } else {
     missingEl.innerHTML = missing.map(item => {
       const kde = KDE_DESCRIPTIONS[item.key];
       const wClass = item.score >= 50 ? 'w50' : item.score >= 30 ? 'w30' : 'w10';
       const wLabel = item.score >= 50 ? 'Critical' : item.score >= 30 ? 'High' : 'Low';
       return `
-        <div class="stage-modal-kde missing">
+        <div class="stage-modal-kde">
           <div class="stage-modal-kde-top">
             <div class="stage-modal-kde-label">${kde?.label || item.key}</div>
-            <span class="kde-weight ${wClass}" style="font-size:10px; padding:2px 8px;">${wLabel} — ${item.score} pts</span>
+            <span class="kde-weight ${wClass}">${wLabel} · ${item.score} pts</span>
           </div>
           <p class="stage-modal-kde-why">${kde?.why || 'No description available.'}</p>
         </div>`;
     }).join('');
   }
 
-  if (ok.length === 0) {
-    okEl.innerHTML = '';
-  } else {
-    okEl.innerHTML = `
-      <div class="stage-modal-ok-header">✅ ${ok.length} KDE${ok.length !== 1 ? 's' : ''} with no risk</div>
-      <div class="stage-modal-ok-list">
-        ${ok.map(item => {
-          const kde = KDE_DESCRIPTIONS[item.key];
-          return `<div class="stage-modal-ok-item">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-            ${kde?.label || item.key}
-          </div>`;
-        }).join('')}
-      </div>`;
-  }
+  okEl.innerHTML = ok.length === 0 ? '' : `
+    <div class="stage-modal-ok-header">${CHECK_SVG}${ok.length} KDE${ok.length !== 1 ? 's' : ''} with no risk</div>
+    <div class="stage-modal-ok-list">
+      ${ok.map(item => `<div class="stage-modal-ok-item"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#178a4c" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg>${KDE_DESCRIPTIONS[item.key]?.label || item.key}</div>`).join('')}
+    </div>`;
 
-  modal.classList.remove('hidden');
+  document.getElementById('stageModal').classList.remove('hidden');
   document.body.style.overflow = 'hidden';
 }
 
@@ -333,10 +321,12 @@ function closeStageModal() {
   document.body.style.overflow = '';
 }
 
-// Close on backdrop click
 document.addEventListener('click', (e) => {
   const modal = document.getElementById('stageModal');
   if (modal && e.target === modal) closeStageModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeStageModal();
 });
 
 // ── TOP 10 CRITICAL KDEs ──────────────────────────────────────
@@ -344,135 +334,120 @@ function renderTop10KDEs(assessmentData) {
   const container = document.getElementById('top10KDEs');
   if (!container) return;
 
-  // Flatten all KDEs with scores > 0
   const allMissing = [];
   Object.entries(assessmentData).forEach(([stage, kdes]) => {
     kdes.forEach(kde => {
       if (kde.score > 0) {
-        allMissing.push({
-          key: kde.key,
-          stage,
-          score: kde.score,
-          label: KDE_DESCRIPTIONS[kde.key]?.label || kde.key,
-        });
+        allMissing.push({ key: kde.key, stage, score: kde.score, label: KDE_DESCRIPTIONS[kde.key]?.label || kde.key });
       }
     });
   });
 
-  // Sort by score descending, take top 10
   const top10 = allMissing.sort((a, b) => b.score - a.score).slice(0, 10);
 
   if (!top10.length) {
-    container.innerHTML = '<div style="text-align:center; padding:24px; color:#16a34a; font-size:13px; font-weight:600;">✅ No critical KDEs missing</div>';
+    container.innerHTML = `<div class="empty-note ok">${CHECK_SVG}No critical KDEs missing</div>`;
     return;
   }
 
   const maxScore = top10[0].score;
-  const stageColors = { FV: '#1a6fdb', CR: '#7c3aed', FCL: '#0d9488', PP: '#f59e0b', SP: '#e63946', LFP: '#64748b' };
-
   container.innerHTML = top10.map((kde, i) => {
     const barWidth = Math.round((kde.score / maxScore) * 100);
-    const color = stageColors[kde.stage] || '#1a6fdb';
+    const color = STAGE_COLORS[kde.stage] || '#2f6fed';
     const wLabel = kde.score >= 50 ? 'Critical' : kde.score >= 30 ? 'High' : 'Medium';
     const wClass = kde.score >= 50 ? 'w50' : kde.score >= 30 ? 'w30' : 'w10';
     return `
-      <div style="display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom:1px solid #f0f2f8;">
-        <div style="font-family:'DM Mono',monospace; font-size:11px; color:#9aa0b4; width:20px; text-align:right; flex-shrink:0;">${i + 1}</div>
-        <div style="flex:1; min-width:0;">
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
-            <div style="font-size:12px; font-weight:600; color:#1a1a2e; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:260px;">${kde.label}</div>
-            <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
-              <span style="font-size:10px; font-weight:700; color:${color}; background:${color}18; padding:2px 7px; border-radius:20px;">${kde.stage}</span>
-              <span class="kde-weight ${wClass}" style="font-size:10px; padding:2px 7px;">${wLabel}</span>
+      <div class="t10-row" style="--i:${i}">
+        <div class="t10-rank">${String(i + 1).padStart(2, '0')}</div>
+        <div style="min-width:0">
+          <div class="t10-top">
+            <div class="t10-label" title="${kde.label}">${kde.label}</div>
+            <div class="t10-tags">
+              <span class="stag" style="color:${color};border-color:${color}40;background:${color}12">${kde.stage}</span>
+              <span class="kde-weight ${wClass}">${wLabel}</span>
             </div>
           </div>
-          <div style="height:5px; background:#f0f2f8; border-radius:999px; overflow:hidden;">
-            <div style="height:100%; width:${barWidth}%; background:${color}; border-radius:999px; transition:width 0.6s ease;"></div>
-          </div>
+          <div class="t10-bar"><i data-w="${barWidth}" style="background:${color}"></i></div>
         </div>
-        <div style="font-family:'DM Mono',monospace; font-size:13px; font-weight:500; color:#1a1a2e; width:40px; text-align:right; flex-shrink:0;">${kde.score}</div>
+        <div class="t10-score">${kde.score}</div>
       </div>`;
   }).join('');
+  requestAnimationFrame(() => requestAnimationFrame(() =>
+    container.querySelectorAll('.t10-bar i').forEach(b => b.style.width = b.dataset.w + '%')));
 }
 
-// ── CTE PIE CHART ─────────────────────────────────────────────
+// ── RISK BY STAGE (donut) ─────────────────────────────────────
 function renderStagePieChart(stageScores) {
   const canvas = document.getElementById('stagePieChart');
   if (!canvas) return;
 
+  // draw sharp on high-density screens
+  const css = 190, dpr = window.devicePixelRatio || 1;
+  canvas.width = css * dpr; canvas.height = css * dpr;
   const ctx = canvas.getContext('2d');
-  const cx = canvas.width / 2;
-  const cy = canvas.height / 2;
-  const radius = Math.min(cx, cy) - 20;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-  const stageColors = {
-    FV: '#1a6fdb', CR: '#7c3aed', FCL: '#0d9488',
-    PP: '#f59e0b', SP: '#e63946', LFP: '#64748b'
-  };
-
+  const cx = css / 2, cy = css / 2, outer = css / 2 - 6, inner = outer * 0.68;
   const stages = Object.keys(stageScores);
   const total = stages.reduce((s, k) => s + (stageScores[k] || 0), 0);
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  if (total === 0) {
-    // Draw full green circle for transparent
-    ctx.beginPath();
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-    ctx.fillStyle = '#22c55e';
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 13px Poppins';
-    ctx.textAlign = 'center';
-    ctx.fillText('Transparent', cx, cy);
-    return;
+  const legend = document.getElementById('stageLegend');
+  if (legend) {
+    legend.innerHTML = stages.map(k => {
+      const pct = total ? Math.round((stageScores[k] || 0) / total * 100) : 0;
+      return `<span><i style="background:${STAGE_COLORS[k]}"></i>${k} <em>${pct}%</em></span>`;
+    }).join('');
   }
 
-  let startAngle = -Math.PI / 2;
-  stages.forEach(stage => {
-    const score = stageScores[stage] || 0;
-    if (score === 0) return;
-    const slice = (score / total) * Math.PI * 2;
-
-    ctx.beginPath();
-    ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, radius, startAngle, startAngle + slice);
-    ctx.closePath();
-    ctx.fillStyle = stageColors[stage];
-    ctx.fill();
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // Label
-    const midAngle = startAngle + slice / 2;
-    const lx = cx + (radius * 0.65) * Math.cos(midAngle);
-    const ly = cy + (radius * 0.65) * Math.sin(midAngle);
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 11px DM Mono';
+  const centre = (big, small, color) => {
+    ctx.fillStyle = color || '#14161a';
+    ctx.font = '300 26px Poppins, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(stage, lx, ly);
+    ctx.fillText(big, cx, cy - 6);
+    ctx.font = '11px Consolas, monospace';
+    ctx.fillStyle = '#9aa1ad';
+    ctx.fillText(small, cx, cy + 16);
+  };
 
-    startAngle += slice;
-  });
+  const ring = (a0, a1, color) => {
+    ctx.beginPath();
+    ctx.arc(cx, cy, outer, a0, a1);
+    ctx.arc(cx, cy, inner, a1, a0, true);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  };
 
-  // Center hole (donut)
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius * 0.45, 0, Math.PI * 2);
-  ctx.fillStyle = '#fff';
-  ctx.fill();
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const dur = reduce ? 0 : 900, t0 = performance.now();
 
-  // Center text
-  ctx.fillStyle = '#1a1a2e';
-  ctx.font = 'bold 14px DM Mono';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(total, cx, cy - 8);
-  ctx.font = '10px Poppins';
-  ctx.fillStyle = '#9aa0b4';
-  ctx.fillText('risk pts', cx, cy + 8);
+  function frame(now) {
+    const t = dur ? Math.min((now - t0) / dur, 1) : 1;
+    const p = 1 - Math.pow(1 - t, 3);
+    ctx.clearRect(0, 0, css, css);
+
+    if (total === 0) {
+      ring(-Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * p, '#178a4c');
+      centre('0', 'transparent', '#178a4c');
+    } else {
+      const gap = 0.025;
+      let a = -Math.PI / 2;
+      const span = Math.PI * 2 * p;
+      stages.forEach(stage => {
+        const score = stageScores[stage] || 0;
+        if (!score) return;
+        const slice = (score / total) * span;
+        if (slice > gap) ring(a + gap / 2, a + slice - gap / 2, STAGE_COLORS[stage]);
+        a += slice;
+      });
+      centre(String(Math.round(total * p)), 'risk pts');
+    }
+    if (t < 1) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
 }
+
 // ── INIT ──────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', async () => {
   const { data: { session } } = await dbClient.auth.getSession();
@@ -485,7 +460,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     .single();
 
   const email = session.user.email || '';
-  setNavAvatar(document.getElementById('navAvatar'), profile?.photo_url, email.substring(0, 2).toUpperCase(), profile?.avatar_color || '#1a6fdb');
+  setNavAvatar(document.getElementById('navAvatar'), profile?.photo_url, email.substring(0, 2).toUpperCase(), profile?.avatar_color || '#2f6fed');
   document.getElementById('navEmail').textContent = email;
   document.getElementById('navFirstName').textContent = getGreeting(profile?.first_name || email.split('@')[0]);
 
@@ -498,15 +473,22 @@ window.addEventListener('DOMContentLoaded', async () => {
   const projectStatus = params.get('status') || 'transparent';
 
   document.getElementById('dashProjectName').textContent = projectName;
-  document.title = `${projectName} — MRI`;
+  document.title = `${projectName} · SRI`;
 
-  const statusBadge = document.getElementById('dashStatusBadge');
-  statusBadge.textContent = projectStatus === 'medium' ? 'Medium Risk' : projectStatus === 'low' ? 'Low Risk' : 'Transparent';
-  statusBadge.style.background = projectStatus === 'medium' ? '#fef3c7' : projectStatus === 'low' ? '#dbeafe' : '#dcfce7';
-  statusBadge.style.color = projectStatus === 'medium' ? '#d97706' : projectStatus === 'low' ? '#1d4ed8' : '#16a34a';
+  const badgeScore = projectStatus === 'medium' ? 100 : projectStatus === 'low' ? 1 : 0;
+  setStatusPill(document.getElementById('dashStatusBadge'), badgeScore);
 
   const isLow = projectStatus === 'low';
   const isDummy = projectStatus === 'medium' || isLow;
+
+  const setStageClick = (code, handler) => {
+    const card = document.getElementById(`stage-${code}`);
+    if (!card) return;
+    card.style.cursor = 'pointer';
+    card.title = `See ${STAGE_INFO[code].label} KDE details`;
+    card.onclick = handler;
+    card.onkeydown = (e) => { if (e.key === 'Enter') handler(); };
+  };
 
   if (isDummy) {
     const score = isLow ? 65 : 280;
@@ -518,15 +500,15 @@ window.addEventListener('DOMContentLoaded', async () => {
     const activeResp = isLow ? DUMMY_LOW_STAGE_RESPONSIBILITY : DUMMY_STAGE_RESPONSIBILITY;
 
     document.getElementById('gaugeMax').textContent = `/ ${maxScore.toLocaleString()}`;
-    const s = getMriStatus(score);
-    document.getElementById('gaugeStatus').textContent = `${s.emoji} ${s.label}`;
+    document.getElementById('gaugeMaxLabel').textContent = maxScore.toLocaleString();
+    setStatusPill(document.getElementById('gaugeStatus'), score);
     animateGauge(score, maxScore);
 
     Object.entries(stageScores).forEach(([stage, stageScore]) => {
       const max = STAGE_MAX[stage];
-      document.getElementById(`stageMiniScore-${stage}`).innerHTML = `${stageScore} <span>/ ${max}</span>`;
+      document.getElementById(`stageMiniScore-${stage}`).innerHTML = `${stageScore} <span>/ ${max.toLocaleString()}</span>`;
       const pct = Math.round((stageScore / max) * 100);
-      document.getElementById(`stageMiniBar-${stage}`).style.width = `${pct}%`;
+      requestAnimationFrame(() => { document.getElementById(`stageMiniBar-${stage}`).style.width = `${pct}%`; });
     });
 
     // Org responsibility scores
@@ -540,66 +522,29 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     const sellerEl = document.getElementById('sellerScore');
     const buyerEl = document.getElementById('buyerScore');
-    if (sellerEl) {
-      sellerEl.textContent = `${sellerScore} pts`;
-      const ss = getMriStatus(sellerScore);
-      sellerEl.className = `org-list-score ${ss.cls}`;
-    }
-    if (buyerEl) {
-      buyerEl.textContent = `${buyerScore} pts`;
-      const bs = getMriStatus(buyerScore);
-      buyerEl.className = `org-list-score ${bs.cls}`;
-    }
+    if (sellerEl) { sellerEl.textContent = `${sellerScore} pts`; sellerEl.className = `org-list-score ${getMriStatus(sellerScore).cls}`; }
+    if (buyerEl) { buyerEl.textContent = `${buyerScore} pts`; buyerEl.className = `org-list-score ${getMriStatus(buyerScore).cls}`; }
 
-    // Update org names based on project
-    if (document.getElementById('sellerName')) {
-      if (isLow) {
-        document.getElementById('sellerName').textContent = 'Cermaq Group';
-        document.getElementById('sellerAvatar').textContent = 'C';
-        document.getElementById('sellerAvatar').style.background = '#7c3aed';
-        document.getElementById('buyerName').textContent = 'Maruha Nichiro';
-        document.getElementById('buyerAvatar').textContent = 'M';
-        document.getElementById('buyerAvatar').style.background = '#b45309';
-      } else {
-        document.getElementById('sellerName').textContent = 'Trident Seafoods';
-        document.getElementById('sellerAvatar').textContent = 'T';
-        document.getElementById('sellerAvatar').style.background = '#1a6fdb';
-        document.getElementById('buyerName').textContent = 'Nippon Suisan';
-        document.getElementById('buyerAvatar').textContent = 'N';
-        document.getElementById('buyerAvatar').style.background = '#0d9488';
-      }
-    }
+    if (isLow) setOrgs(['Cermaq Group', 'C', '#7c3aed'], ['Maruha Nichiro', 'M', '#b45309']);
+    else setOrgs(['Trident Seafoods', 'T', '#2f6fed'], ['Nippon Suisan', 'N', '#0d9488']);
 
-    // Make stage cards clickable
-    Object.keys(STAGE_MAX).forEach(code => {
-      const card = document.getElementById(`stage-${code}`);
-      if (card) {
-        card.style.cursor = 'pointer';
-        card.title = `Click to see ${STAGE_INFO[code].label} KDE details`;
-        card.onclick = () => openStageModal(code, true, isLow);
-      }
-    });
+    Object.keys(STAGE_MAX).forEach(code => setStageClick(code, () => openStageModal(code, true, isLow)));
 
-    // Highlight LFP green (all clear)
+    // LFP is all clear
     const lfpCard = document.getElementById('stage-LFP');
     if (lfpCard) {
-      lfpCard.style.background = '#f0fdf4';
-      lfpCard.style.border = '1px solid #bbf7d0';
-    }
-    const lfpScoreEl = document.getElementById('stageMiniScore-LFP');
-    if (lfpScoreEl) {
-      lfpScoreEl.insertAdjacentHTML('afterend', '<div style="font-size:10px; font-weight:700; color:#16a34a; margin-top:4px;">✅ All clear</div>');
+      lfpCard.classList.add('clear');
+      lfpCard.insertAdjacentHTML('beforeend', `<div class="stage-flag ok">${CHECK_SVG}all clear</div>`);
     }
     const lfpBar = document.getElementById('stageMiniBar-LFP');
-    if (lfpBar) { lfpBar.style.background = '#22c55e'; lfpBar.style.width = '0%'; }
+    if (lfpBar) { lfpBar.style.background = '#178a4c'; lfpBar.style.width = '0%'; }
 
-    // Grey out SP (not applicable)
+    // SP is not applicable
     const spCard = document.getElementById('stage-SP');
     if (spCard) {
-      spCard.style.opacity = '0.4';
-      spCard.style.cursor = 'not-allowed';
-      spCard.style.pointerEvents = 'none';
-      spCard.insertAdjacentHTML('beforeend', '<div style="font-size:10px; font-weight:700; color:#9aa0b4; text-align:center; padding:6px 0; text-transform:uppercase; letter-spacing:0.8px;">Not Applicable</div>');
+      spCard.classList.add('na');
+      spCard.tabIndex = -1;
+      spCard.insertAdjacentHTML('beforeend', '<div class="stage-flag na">not applicable</div>');
     }
 
     // Products
@@ -607,28 +552,25 @@ window.addEventListener('DOMContentLoaded', async () => {
     const table = document.getElementById('productsTable');
     table.classList.remove('hidden');
     table.innerHTML = `
-      <div class="product-row" style="border-bottom:1px solid #f0f2f8; padding-bottom:8px; margin-bottom:4px;">
-        <span style="font-size:10px; font-weight:700; color:#9aa0b4; text-transform:uppercase; letter-spacing:0.8px;">Product</span>
-        <span style="font-size:10px; font-weight:700; color:#9aa0b4; text-transform:uppercase; letter-spacing:0.8px;">Risk Score</span>
-        <span style="font-size:10px; font-weight:700; color:#9aa0b4; text-transform:uppercase; letter-spacing:0.8px;">Status</span>
-        <span style="font-size:10px; font-weight:700; color:#9aa0b4; text-transform:uppercase; letter-spacing:0.8px;">Assessed</span>
-      </div>
+      <div class="product-row head"><span>product</span><span>risk score</span><span>status</span><span>assessed</span></div>
       <div class="product-row">
         <div>
-          <div class="product-row-name">${isLow ? 'Atlantic Salmon Fillet — ASC' : 'Pacific Cod Loin — MSC'}</div>
+          <div class="product-row-name">${isLow ? 'Atlantic Salmon Fillet · ASC' : 'Pacific Cod Loin · MSC'}</div>
           <div class="product-row-brand">${isLow ? 'Cermaq Norway' : 'Trident Seafoods'}</div>
         </div>
         <div class="product-row-score">${isLow ? '65' : '280'} <span>/ 2,890</span></div>
-        <div><span class="mri-status-pill ${isLow ? 'low' : 'medium'}"><span class="dot"></span> ${isLow ? 'Low Risk' : 'Medium Risk'}</span></div>
-        <div style="font-size:12px; color:#9aa0b4;">${isLow ? '15 May 2026' : '28 May 2026'}</div>
+        <div><span class="mri-status-pill ${isLow ? 'low' : 'medium'}"><span class="dot"></span>${isLow ? 'Low Risk' : 'Medium Risk'}</span></div>
+        <div class="product-row-date">${isLow ? '15 May 2026' : '28 May 2026'}</div>
       </div>`;
 
     document.getElementById('kdeCovData').textContent = isLow ? '72' : '54';
     document.getElementById('kdeCovMissing').textContent = isLow ? '3' : '18';
     document.getElementById('kdeCovNA').textContent = isLow ? '2' : '5';
-    document.getElementById('kdeCovBarGreen').style.width = isLow ? '93%' : '70%';
-    document.getElementById('kdeCovBarRed').style.width = isLow ? '4%' : '23%';
-    document.getElementById('kdeCovBarGrey').style.width = isLow ? '3%' : '7%';
+    requestAnimationFrame(() => {
+      document.getElementById('kdeCovBarGreen').style.width = isLow ? '93%' : '70%';
+      document.getElementById('kdeCovBarRed').style.width = isLow ? '4%' : '23%';
+      document.getElementById('kdeCovBarGrey').style.width = isLow ? '3%' : '7%';
+    });
     document.querySelector('.kde-cov-note').textContent = isLow ? '93% data coverage across 77 KDEs' : '70% data coverage across 77 KDEs';
 
     document.getElementById('lastAssessEmpty').classList.add('hidden');
@@ -637,34 +579,29 @@ window.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('lastAssessBy').textContent = 'Assessed by Analyst';
     document.getElementById('lastAssessScore').textContent = isLow ? '65 / 2,890' : '280 / 2,890';
 
-    // Top 10 KDEs
     renderTop10KDEs(activeAssessment);
-
-    // Pie chart
     renderStagePieChart(stageScores);
 
   } else {
     animateGauge(0, 3150);
-    document.getElementById('gaugeStatus').textContent = '🟢 Transparent';
-
-    if (document.getElementById('sellerName')) {
-      document.getElementById('sellerName').textContent = 'Mowi ASA';
-      document.getElementById('sellerAvatar').textContent = 'M';
-      document.getElementById('sellerAvatar').style.background = '#0369a1';
-      document.getElementById('buyerName').textContent = 'Maruha Nichiro';
-      document.getElementById('buyerAvatar').textContent = 'M';
-      document.getElementById('buyerAvatar').style.background = '#b45309';
-    }
+    setStatusPill(document.getElementById('gaugeStatus'), 0);
+    setOrgs(['Mowi ASA', 'M', '#0369a1'], ['Maruha Nichiro', 'M', '#b45309']);
 
     Object.keys(STAGE_MAX).forEach(code => {
-      document.getElementById(`stageMiniScore-${code}`).innerHTML = `0 <span>/ ${STAGE_MAX[code]}</span>`;
-      const card = document.getElementById(`stage-${code}`);
-      if (card) {
-        card.style.cursor = 'pointer';
-        card.onclick = () => openStageModal(code, false);
-      }
+      document.getElementById(`stageMiniScore-${code}`).innerHTML = `0 <span>/ ${STAGE_MAX[code].toLocaleString()}</span>`;
+      setStageClick(code, () => openStageModal(code, false));
     });
     renderTop10KDEs({ FV: [], CR: [], FCL: [], PP: [], SP: [], LFP: [] });
     renderStagePieChart({ FV: 0, CR: 0, FCL: 0, PP: 0, SP: 0, LFP: 0 });
   }
 });
+
+function setOrgs(seller, buyer) {
+  const set = (prefix, [name, letter, color]) => {
+    const n = document.getElementById(`${prefix}Name`), a = document.getElementById(`${prefix}Avatar`);
+    if (n) n.textContent = name;
+    if (a) { a.textContent = letter; a.style.background = color; }
+  };
+  set('seller', seller);
+  set('buyer', buyer);
+}

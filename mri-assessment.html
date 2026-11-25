@@ -1,814 +1,378 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>MRI Assessment — Project Manhattan</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
-  <link rel="icon" type="image/png" href="brand-logo.png" />
-  <link rel="stylesheet" href="mri.css" />
-  <style>
-
-    .stage-score-badge,
-.save-bar-info strong,
-.score-live-number,
-.score-live-max {
-  font-family: 'DM Mono', monospace !important;
-}
-    /* ── ASSESSMENT SPECIFIC ── */
-    .assessment-wrapper {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 0 40px 60px;
-    }
-
-    .assessment-header {
-      padding: 32px 0 24px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 28px;
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 24px;
-    }
-
-    .assessment-header-left h1 {
-      font-size: 28px;
-      font-weight: 800;
-      color: var(--text);
-      letter-spacing: -0.5px;
-      margin-bottom: 6px;
-    }
-
-    .assessment-header-left p {
-      font-size: 13px;
-      color: var(--muted);
-    }
-
-    .assessment-header-right {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-shrink: 0;
-    }
-
-    /* ── SETUP CARD ── */
-    .setup-card {
-      background: var(--white);
-      border-radius: 16px;
-      padding: 24px;
-      margin-bottom: 24px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 20px;
-      align-items: end;
-    }
-
-    .setup-field label {
-      display: block;
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.8px;
-      margin-bottom: 7px;
-    }
-
-    .setup-field select,
-    .setup-field textarea {
-      width: 100%;
-      padding: 10px 14px;
-      border: 1.5px solid var(--border);
-      border-radius: 10px;
-      font-family: 'Poppins', sans-serif;
-      font-size: 13px;
-      color: var(--text);
-      outline: none;
-      background: var(--white);
-      transition: border-color 0.15s;
-    }
-
-    .setup-field select:focus,
-    .setup-field textarea:focus {
-      border-color: var(--primary);
-    }
-
-    /* ── SCORE LIVE ── */
-    .score-live {
-      background: var(--text);
-      border-radius: 16px;
-      padding: 20px 28px;
-      margin-bottom: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 24px;
-    }
-
-    .score-live-label {
-      font-size: 12px;
-      font-weight: 600;
-      color: rgba(255,255,255,0.5);
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 4px;
-    }
-
-    .score-live-number {
-      font-family: 'DM Mono', monospace;
-      font-size: 36px;
-      font-weight: 500;
-      color: var(--white);
-      line-height: 1;
-    }
-
-    .score-live-max {
-      font-family: 'DM Mono', monospace;
-      font-size: 13px;
-      color: rgba(255,255,255,0.4);
-      margin-top: 4px;
-    }
-
-    .score-live-stages {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .stage-score-chip {
-      background: rgba(255,255,255,0.08);
-      border-radius: 8px;
-      padding: 8px 14px;
-      text-align: center;
-    }
-
-    .stage-score-chip-label {
-      font-size: 10px;
-      font-weight: 700;
-      color: rgba(255,255,255,0.5);
-      letter-spacing: 1px;
-      margin-bottom: 4px;
-    }
-
-    .stage-score-chip-value {
-      font-family: 'DM Mono', monospace;
-      font-size: 16px;
-      font-weight: 500;
-      color: var(--white);
-    }
-
-    .score-live-status {
-      flex-shrink: 0;
-    }
-
-    /* ── STAGE SECTION ── */
-    .stage-section {
-      background: var(--white);
-      border-radius: 16px;
-      overflow: hidden;
-      margin-bottom: 16px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-    }
-
-    .stage-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 18px 24px;
-      cursor: pointer;
-      border-bottom: 1px solid var(--border);
-      transition: background 0.15s;
-    }
-
-    .stage-header:hover { background: var(--bg); }
-
-    .stage-header-left {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .stage-code {
-      width: 44px;
-      height: 44px;
-      border-radius: 10px;
-      background: #1a1a2e;
-      color: var(--white);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: 'DM Mono', monospace;
-      font-size: 12px;
-      font-weight: 500;
-      letter-spacing: 0.5px;
-      flex-shrink: 0;
-    }
-
-    .stage-name {
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--text);
-    }
-
-    .stage-desc {
-      font-size: 12px;
-      color: var(--muted);
-      margin-top: 2px;
-    }
-
-    .stage-header-right {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .stage-score-badge {
-      font-family: 'DM Mono', monospace;
-      font-size: 18px;
-      font-weight: 500;
-      color: var(--text);
-    }
-
-    .stage-chevron {
-      color: var(--muted);
-      transition: transform 0.2s;
-    }
-
-    .stage-section.open .stage-chevron { transform: rotate(180deg); }
-
-    .stage-kdes {
-      display: none;
-    }
-
-    .stage-section.open .stage-kdes { display: block; }
-
-    /* ── KDE ROW ── */
-     .kde-row {
-      display: grid;
-      grid-template-columns: 48px 2fr 160px 200px 180px 1.2fr;
-      align-items: start;
-      padding: 16px 32px;
-      gap: 20px;
-    }
-
-
-    .kde-severity-select {
-      position: relative;
-      display: inline-block;
-    }
-
-    .kde-severity-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 4px 12px;
-      border-radius: 999px;
-      font-family: 'DM Mono', monospace;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-      transition: opacity 0.15s;
-      gap: 6px;
-    }
-
-    .kde-severity-btn:hover { opacity: 0.8; }
-    .kde-severity-btn.w10 { background: #dbeafe; color: #1d4ed8; }
-    .kde-severity-btn.w30 { background: #fef3c7; color: #d97706; }
-    .kde-severity-btn.w50 { background: #fee2e2; color: #dc2626; }
-    .kde-severity-btn.none { background: #f0f2f7; color: #9aa0b4; }
-
-    .kde-severity-dropdown {
-      display: none;
-      position: absolute;
-      top: calc(100% + 6px);
-      left: 0;
-      background: #fff;
-      border: 1px solid #e8eaf0;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-      z-index: 200;
-      overflow: hidden;
-      min-width: 160px;
-    }
-
-    .kde-severity-select.open .kde-severity-dropdown { display: block; }
-
-    .kde-severity-option {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 14px;
-      font-size: 13px;
-      font-weight: 500;
-      color: #1a1a2e;
-      cursor: pointer;
-      border-bottom: 1px solid #f4f6fb;
-      transition: background 0.1s;
-    }
-
-    .kde-severity-option:last-child { border-bottom: none; }
-    .kde-severity-option:hover { background: #f4f6fb; }
-
-    .kde-severity-option .opt-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-
-    .kde-severity-option .opt-dot.w0 { background: #d1d5db; }
-    .kde-severity-option .opt-dot.w10 { background: #3b82f6; }
-    .kde-severity-option .opt-dot.w30 { background: #f59e0b; }
-    .kde-severity-option .opt-dot.w50 { background: #e63946; }
-
-    .kde-evidence-col input {
-      width: 100%;
-      padding: 7px 10px;
-      border: 1px solid #e8eaf0;
-      border-radius: 8px;
-      font-size: 12px;
-      font-family: 'Poppins', sans-serif;
-      color: #1a1a2e;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-
-    .kde-evidence-col input:focus { border-color: #1a6fdb; }
-    .kde-evidence-col input::placeholder { color: #c0c4d0; }
-
-    .kde-points-input {
-      width: 70px;
-      padding: 6px 10px;
-      border: 1.5px solid #e8eaf0;
-      border-radius: 8px;
-      font-family: 'DM Mono', monospace;
-      font-size: 13px;
-      font-weight: 500;
-      color: #1a1a2e;
-      text-align: center;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-
-    .kde-points-input:focus { border-color: #1a6fdb; }
-
-    .kde-points-wrap {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 11px;
-      color: #9aa0b4;
-    }
-
-    .kde-row:last-child { border-bottom: none; }
-    .kde-row:hover { background: #fafbfc; }
-
-    .kde-row.na { opacity: 0.4; }
-
-    .kde-number {
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
-      color: var(--muted);
-      font-weight: 500;
-    }
-
-    .kde-label {
-      font-size: 13px;
-      color: var(--text);
-      font-weight: 500;
-      line-height: 1.4;
-    }
-
-    .kde-weight {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 3px 10px;
-      border-radius: 999px;
-      font-family: 'DM Mono', monospace;
-      font-size: 11px;
-      font-weight: 500;
-    }
-
-    .kde-weight.w5 { background: #dcfce7; color: #16a34a; }
-    .kde-weight.w10 { background: #dbeafe; color: #1d4ed8; }
-    .kde-weight.w30 { background: #fef3c7; color: #d97706; }
-    .kde-weight.w50 { background: #fee2e2; color: #dc2626; }
-
-    /* ── TOGGLE SWITCH ── */
-    .kde-toggle {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .toggle-switch {
-      position: relative;
-      width: 44px;
-      height: 24px;
-      flex-shrink: 0;
-    }
-
-    .toggle-switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .toggle-slider {
-      position: absolute;
-      cursor: pointer;
-      inset: 0;
-      background: #e63946;
-      border-radius: 999px;
-      transition: 0.2s;
-    }
-
-    .toggle-slider::before {
-      content: '';
-      position: absolute;
-      width: 18px;
-      height: 18px;
-      left: 3px;
-      top: 3px;
-      background: white;
-      border-radius: 50%;
-      transition: 0.2s;
-    }
-
-    .toggle-switch input:checked + .toggle-slider { background: #22c55e; }
-    .toggle-switch input:checked + .toggle-slider::before { transform: translateX(20px); }
-
-    .toggle-label {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--muted);
-      min-width: 24px;
-    }
-
-    /* ── NA CHECKBOX ── */
-    .kde-na {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      color: var(--muted);
-      cursor: pointer;
-    }
-
-    .kde-na input[type="checkbox"] {
-      width: 14px;
-      height: 14px;
-      cursor: pointer;
-      accent-color: var(--primary);
-    }
-
-    /* ── EVIDENCE ── */
-    .kde-evidence input {
-      width: 100%;
-      padding: 7px 10px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 12px;
-      font-family: 'Poppins', sans-serif;
-      color: var(--text);
-      outline: none;
-      transition: border-color 0.15s;
-    }
-
-    .kde-evidence input:focus { border-color: var(--primary); }
-    .kde-evidence input::placeholder { color: #c0c4d0; }
-
-    /* ── SAVE BAR ── */
-    .save-bar {
-      position: sticky;
-      bottom: 24px;
-      background: var(--text);
-      border-radius: 16px;
-      padding: 16px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-      margin-top: 24px;
-      z-index: 100;
-    }
-
-    .save-bar-info {
-      font-size: 13px;
-      color: rgba(255,255,255,0.6);
-    }
-
-    .save-bar-info strong { color: var(--white); }
-
-    .btn-save-assessment {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 11px 28px;
-      background: #22c55e;
-      color: var(--white);
-      border: none;
-      border-radius: 10px;
-      font-family: 'Poppins', sans-serif;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background 0.15s;
-      white-space: nowrap;
-    }
-
-    .btn-save-assessment:hover { background: #16a34a; }
-    .btn-save-assessment:disabled { background: #9ca3af; cursor: not-allowed; }
-
-    .btn-back-mri {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 8px 16px;
-      border: 1.5px solid var(--border);
-      border-radius: 10px;
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--muted);
-      text-decoration: none;
-      transition: all 0.15s;
-    }
-
-    .btn-back-mri:hover { border-color: var(--text); color: var(--text); }
-
-    .btn-save-new {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 11px 28px;
-      background: var(--primary);
-      color: var(--white);
-      border: none;
-      border-radius: 10px;
-      font-family: 'Poppins', sans-serif;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-
-.btn-save-new:hover { background: #1560c0; }
-
-    /* ── RESPONSIBILITY SELECTOR ── */
-    .resp-wrap {
-      display: inline-flex;
-      align-items: center;
-      position: relative;
-      cursor: pointer;
-      padding: 4px 8px;
-      border-radius: 8px;
-      transition: background 0.15s;
-      z-index: 1;
-    }
-
-    .resp-wrap:hover { background: #f0f2f7; }
-
-    .resp-badge {
-      display: inline-block;
-      padding: 3px 10px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 700;
-      pointer-events: none;
-    }
-
-    .resp-select {
-      position: absolute;
-      opacity: 0;
-      width: 100%;
-      height: 100%;
-      top: 0;
-      left: 0;
-      cursor: pointer;
-      font-size: 13px;
-      z-index: 2;
-    }
-
-    /* ── CUSTOM RESPONSIBILITY DROPDOWN ── */
-    .resp-custom {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      position: relative;
-      cursor: pointer;
-      padding: 5px 10px;
-      border-radius: 10px;
-      border: 1.5px solid #e8eaf0;
-      background: #fff;
-      transition: border-color 0.15s, box-shadow 0.15s;
-      user-select: none;
-    }
-
-    .resp-custom:hover {
-      border-color: #1a6fdb;
-      box-shadow: 0 2px 8px rgba(26,111,219,0.12);
-    }
-
-    .resp-custom.open {
-      border-color: #1a6fdb;
-      box-shadow: 0 2px 8px rgba(26,111,219,0.12);
-    }
-
-    .resp-badge {
-      display: inline-block;
-      padding: 2px 10px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 700;
-    }
-
-    .resp-dropdown {
-      display: none;
-      position: absolute;
-      top: calc(100% + 6px);
-      left: 0;
-      background: #fff;
-      border: 1px solid #e8eaf0;
-      border-radius: 12px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.12);
-      min-width: 140px;
-      overflow: hidden;
-      z-index: 300;
-    }
-
-    .resp-custom.open .resp-dropdown { display: block; }
-
-    .resp-option {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 14px;
-      font-size: 13px;
-      font-weight: 500;
-      color: #1a1a2e;
-      cursor: pointer;
-      border-bottom: 1px solid #f4f6fb;
-      transition: background 0.1s;
-    }
-
-    .resp-option:last-child { border-bottom: none; }
-    .resp-option:hover { background: #f4f6fb; }
-
-    .resp-opt-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SRI Assessment · SmarTuna concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="sc-blue-logo.png">
+<style>
+
+  @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');font-weight:normal;font-style:normal;font-display:swap}
+  :root{
+    --accent:#2f6fed; --accent-soft:rgba(47,111,237,.10); --accent-line:#cddcf8;
+    --ink:#14161a; --muted:#6b7380; --faint:#9aa1ad; --line:#e6e8ec; --line2:#eef0f3; --page:#f6f7f9; --white:#fff;
+    --mono:Consolas,"SFMono-Regular",Menlo,monospace;
+    --ok:#178a4c; --ok-bg:#e8f6ee; --ok-line:#c7e8d4;
+    --low:#2f6fed; --low-bg:#edf3fe; --low-line:#cddcf8;
+    --med:#b7791f; --med-bg:#fdf4e3; --med-line:#f1dcae;
+    --crit:#d64545; --crit-bg:#fdeceb; --crit-line:#f5c9c6;
+    --ease:cubic-bezier(.16,1,.3,1); --spring:cubic-bezier(.34,1.56,.64,1);
+  }
+  *{box-sizing:border-box}
+  html,body{overflow-x:clip}
+  body{margin:0;font-family:Poppins,system-ui,sans-serif;font-weight:400;font-size:14px;font-synthesis:none;color:var(--ink);background:var(--page);line-height:1.55;-webkit-font-smoothing:antialiased}
+  b,strong,h1,h2,h3,h4,th,[style*="font-weight"]{font-weight:400!important}
+  a{color:inherit;text-decoration:none}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .wrap{max-width:1680px;margin:0 auto;padding:0 clamp(16px,3vw,48px)}
+  .mono{font-family:var(--mono)}
+  .hidden{display:none!important}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* header */
+  header.top{position:sticky;top:0;z-index:1000;background:rgba(255,255,255,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .nav{display:flex;align-items:center;justify-content:space-between;height:62px;gap:20px}
+  .brand{display:flex;align-items:center;gap:10px;flex:none}
+  .brand img{height:30px;width:auto;display:block}
+  .wm{display:inline-flex;flex-direction:column;line-height:1}
+  .wm-top{font-family:'Bitsumis',Poppins,sans-serif;font-size:17px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink)}
+  .wm-top span{color:var(--accent)}
+  .wm-sub{font-family:'Bitsumis',Poppins,sans-serif;font-size:8.5px;letter-spacing:.32em;text-transform:uppercase;color:var(--muted);margin-top:3px}
+  .links{position:relative;display:flex;align-items:center;gap:2px;padding:4px;border:1px solid var(--line);border-radius:999px;background:var(--white);font-size:13px;color:var(--muted)}
+  .links .ind{position:absolute;z-index:0;top:4px;bottom:4px;left:0;width:0;border-radius:999px;background:var(--accent);box-shadow:0 6px 16px rgba(47,111,237,.3);opacity:0;transition:left .45s var(--spring),width .45s var(--spring),opacity .2s}
+  .nav-item{position:relative;z-index:1;display:block;padding:6px 15px;border-radius:999px;font-weight:300;white-space:nowrap;transition:color .25s}
+  .nav-item:hover{color:var(--ink)}
+  .nav-item.hl,.nav-item.hl:hover{color:#fff}
+  .nav-item-wrap{position:relative;z-index:1}
+  .nav-item-wrap::after{content:"";position:absolute;top:100%;left:0;width:100%;height:14px}
+  .nav-dropdown{position:absolute;top:calc(100% + 10px);left:0;min-width:200px;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);padding:6px;visibility:hidden;opacity:0;transform:translateY(-4px);transition:opacity .15s,transform .15s,visibility 0s linear .3s}
+  .nav-item-wrap:hover .nav-dropdown,.nav-item-wrap:focus-within .nav-dropdown{visibility:visible;opacity:1;transform:none;transition-delay:0s}
+  .nav-dropdown a{display:block;padding:8px 12px;font-size:13px;font-weight:300;color:var(--ink);border-radius:9px;white-space:nowrap}
+  .nav-dropdown a:hover{background:var(--page);color:var(--accent)}
+  .nav-dropdown .all{border-top:1px solid var(--line);margin-top:4px;padding-top:9px;color:var(--accent);font-family:var(--mono);font-size:12px}
+  .topbar-right{position:relative;display:flex;align-items:center;gap:10px;cursor:pointer;padding:3px 3px 3px 14px;border:1px solid var(--line);border-radius:999px;background:var(--white);transition:border-color .2s}
+  .topbar-right:hover{border-color:var(--accent-line)}
+  .topbar-email{font-size:12.5px;font-weight:300;color:var(--muted);max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .topbar-avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;font-size:11.5px;display:grid;place-items:center;overflow:hidden;flex:none}
+  .topbar-profile-dropdown{position:absolute;top:calc(100% + 10px);right:0;min-width:200px;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);padding:6px;display:none;cursor:default}
+  .topbar-profile-dropdown.open{display:block;animation:drop .18s ease}
+  @keyframes drop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .topbar-profile-name{padding:8px 12px 10px;font-size:13px;color:var(--ink);border-bottom:1px solid var(--line);margin-bottom:4px}
+  .topbar-profile-dropdown a,.topbar-profile-dropdown button{display:flex;align-items:center;gap:8px;width:100%;padding:8px 12px;font-size:13px;font-weight:300;border-radius:9px;border:0;background:none;text-align:left;cursor:pointer}
+  .topbar-profile-dropdown a:hover{background:var(--page);color:var(--accent)}
+  .topbar-profile-dropdown button{color:var(--crit)}
+  .topbar-profile-dropdown button:hover{background:var(--crit-bg)}
+
+  /* shared pieces */
+  .eyebrow{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.04em;display:flex;align-items:center;gap:10px}
+  .lbl{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.03em}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:18px 20px;min-width:0}
+  .card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border:1px solid var(--line);border-radius:999px;background:var(--white);font-size:13px;font-weight:300;color:var(--ink);white-space:nowrap;cursor:pointer;transition:border-color .2s,color .2s,background .2s,transform .2s,box-shadow .2s}
+  .btn svg{flex:none}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.25)}
+  .btn.primary:hover{background:#2560d6;color:#fff;transform:translateY(-1px)}
+  .btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+  .btn:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .badge{font-family:var(--mono);font-size:10.5px;padding:1px 8px;border-radius:999px;border:1px solid;line-height:1.5}
+  .badge.new{color:var(--accent);border-color:var(--accent-line);background:#f3f7ff}
+  .badge.beta{color:#9a6a12;border-color:#efdcae;background:#fdf7e7}
+  .cnt{font-family:var(--mono);font-size:10.5px;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;display:inline-grid;place-items:center}
+
+  .mri-status-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:999px;font-size:12px;border:1px solid transparent;white-space:nowrap}
+  .mri-status-pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .mri-status-pill.transparent{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .mri-status-pill.low{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .mri-status-pill.medium{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .mri-status-pill.critical{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+  .kde-weight{display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;font-family:var(--mono);font-size:10.5px;border:1px solid transparent;white-space:nowrap}
+  .kde-weight.w5{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .kde-weight.w10{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .kde-weight.w30{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .kde-weight.w50{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+
+  .rv{animation:up .55s var(--ease) both;animation-delay:calc(var(--i,0) * 50ms)}
+  @keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .toast-wrap{position:fixed;right:20px;bottom:20px;z-index:3000;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  .toast{display:flex;align-items:center;gap:10px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;font-weight:300;box-shadow:0 14px 34px rgba(16,24,40,.2);animation:up .3s var(--ease)}
+  .toast i{width:8px;height:8px;border-radius:50%;background:#4ade80;flex:none}
+  .toast.error i{background:#f87171}
+
+  @media (max-width:1180px){ .links{display:none} }
+  @media (max-width:640px){ .topbar-email{display:none} .topbar-right{padding:3px} .wm-sub{display:none} }
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
+
+  .phead{background:linear-gradient(180deg,#eef3fc 0%,var(--page) 100%);border-bottom:1px solid var(--line2)}
+  .phead .wrap{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap;padding-top:20px;padding-bottom:18px}
+  .crumbs{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;color:var(--faint)}
+  .crumbs a{color:var(--muted);display:inline-flex;align-items:center;gap:6px;transition:color .2s}
+  .crumbs a:hover{color:var(--accent)}
+  h1{font-size:clamp(24px,2.4vw,32px);font-weight:300;letter-spacing:-.02em;line-height:1.15;margin:6px 0 2px}
+  .sub{margin:0;font-size:13.5px;font-weight:300;color:var(--muted)}
+  .stage-jump{display:flex;gap:6px;flex-wrap:wrap}
+
+  main{padding:18px 0 56px}
+  .layout{display:grid;grid-template-columns:330px minmax(0,1fr);gap:16px;align-items:start}
+  .side{position:sticky;top:78px;display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 92px);overflow:auto;scrollbar-width:thin;padding-bottom:2px}
+
+  /* setup */
+  .field{display:block;margin-bottom:12px}
+  .field:last-child{margin-bottom:0}
+  .field > span{display:block;font-family:var(--mono);font-size:11px;color:var(--faint);margin-bottom:5px}
+  .field > span em{font-style:normal;color:var(--crit)}
+  .field select,.field textarea{width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--white);font-size:13px;font-weight:300;outline:none;transition:border-color .2s,box-shadow .2s}
+  .field select{height:38px;padding-right:30px;appearance:none;-webkit-appearance:none;background:var(--white) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%239aa1ad' stroke-width='2.4'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 12px center}
+  .field textarea{resize:vertical;min-height:58px;line-height:1.5}
+  .field select:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(47,111,237,.10)}
+  textarea::placeholder{color:#b3bac6}
+
+  /* live score */
+  .score-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  .score-live-number{font-size:44px;font-weight:300;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums;transition:color .3s}
+  .score-live-max{font-family:var(--mono);font-size:12px;color:var(--faint);margin-top:4px}
+  .score-meter{height:6px;border-radius:999px;background:var(--line2);overflow:hidden;margin:14px 0 14px}
+  .score-meter i{display:block;height:100%;width:0;border-radius:999px;background:var(--ok);transition:width .5s var(--ease),background .3s}
+  .chips{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+  .stage-score-chip{border:1px solid var(--line2);background:var(--page);border-radius:10px;padding:7px 9px;cursor:pointer;text-align:left;transition:border-color .2s,background .2s,transform .2s}
+  .stage-score-chip:hover{border-color:var(--accent-line);background:#f3f7ff;transform:translateY(-1px)}
+  .stage-score-chip-label{display:block;font-family:var(--mono);font-size:10.5px;color:var(--accent)}
+  .stage-score-chip-value{display:block;font-size:16px;font-weight:300;font-variant-numeric:tabular-nums;line-height:1.3}
+  .stage-score-chip .bar{display:block;height:3px;border-radius:999px;background:var(--line);overflow:hidden;margin-top:4px}
+  .stage-score-chip .bar i{display:block;height:100%;width:0;background:var(--crit);border-radius:999px;transition:width .4s var(--ease)}
+
+  /* save */
+  .savebox{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .save-bar-info{font-size:12px;font-weight:300;color:var(--muted);line-height:1.4}
+  .save-bar-info strong{display:block;font-family:var(--mono);font-size:13px;color:var(--ink)}
+  .btn-save-assessment{height:42px;padding:0 20px}
+
+  /* stages */
+  .stage-section{background:var(--white);border:1px solid var(--line);border-radius:16px;margin-bottom:10px;container-type:inline-size;scroll-margin-top:80px;transition:border-color .2s,box-shadow .2s}
+  .stage-section.open{box-shadow:0 10px 30px rgba(16,24,40,.05)}
+  .stage-header{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;cursor:pointer;border-radius:16px;transition:background .2s}
+  .stage-header:hover{background:#fafbfc}
+  .stage-section.open .stage-header{border-bottom:1px solid var(--line2);border-radius:16px 16px 0 0}
+  .stage-header-left{display:flex;align-items:center;gap:14px;min-width:0}
+  .stage-code{width:44px;height:44px;border-radius:12px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-family:var(--mono);font-size:12px;flex:none;transition:background .2s,color .2s}
+  .stage-section.open .stage-code{background:var(--accent);color:#fff}
+  .stage-name{font-size:15px}
+  .stage-desc{font-size:12px;font-weight:300;color:var(--muted)}
+  .stage-header-right{display:flex;align-items:center;gap:14px;flex:none}
+  .stage-score-badge{font-family:var(--mono);font-size:13px;color:var(--ink);min-width:74px;text-align:right}
+  .stage-chevron{color:var(--faint);transition:transform .3s var(--ease)}
+  .stage-section.open .stage-chevron{transform:rotate(180deg)}
+  .stage-kdes{display:none}
+  .stage-section.open .stage-kdes{display:block;animation:up .35s var(--ease)}
+
+  /* responsibility */
+  .resp-custom{position:relative;display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 10px;border:1px solid var(--line);border-radius:999px;background:var(--white);cursor:pointer;user-select:none;transition:border-color .2s}
+  .resp-custom:hover,.resp-custom.open{border-color:var(--accent)}
+  .resp-custom .k{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .resp-badge{font-size:12px;padding:1px 9px;border-radius:999px}
+  .resp-dropdown{position:absolute;top:calc(100% + 6px);right:0;min-width:150px;background:var(--white);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 34px rgba(16,24,40,.12);padding:5px;z-index:300;display:none}
+  .resp-custom.open .resp-dropdown{display:block;animation:drop .15s ease}
+  .resp-option{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:13px;font-weight:300;border-radius:8px}
+  .resp-option:hover{background:var(--page)}
+  .resp-opt-dot{width:8px;height:8px;border-radius:50%}
+
+  /* KDE rows */
+  .kde-row{display:grid;grid-template-columns:34px minmax(200px,2fr) 112px 160px 78px minmax(150px,1.3fr);gap:16px;align-items:center;padding:11px 18px;border-bottom:1px solid var(--line2);transition:background .15s,opacity .2s}
+  .kde-row:last-child{border-bottom:0}
+  .kde-row:not(.head):hover{background:#fafbfc}
+  .kde-row.head{padding-top:8px;padding-bottom:8px;background:var(--page)}
+  .kde-row.head span{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .kde-row.na{opacity:.45}
+  .kde-number{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .kde-label{font-size:13px;line-height:1.4}
+  .kde-na{display:inline-flex;align-items:center;gap:6px;margin-top:4px;font-size:11.5px;font-weight:300;color:var(--faint);cursor:pointer}
+  .kde-na input{width:13px;height:13px;accent-color:var(--accent);cursor:pointer;margin:0}
+  .kde-max{font-size:12px;font-weight:300;color:var(--muted)}
+  .kde-max b{font-family:var(--mono);color:var(--ink)}
+  .cell-k{display:none;font-family:var(--mono);font-size:10.5px;color:var(--faint);white-space:nowrap}
+
+  .kde-toggle{display:flex;align-items:center;gap:8px}
+  .toggle-switch{position:relative;width:40px;height:22px;flex:none}
+  .toggle-switch input{opacity:0;width:0;height:0}
+  .toggle-slider{position:absolute;inset:0;cursor:pointer;background:#e7a3a3;border-radius:999px;transition:background .25s}
+  .toggle-slider::before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.15);transition:transform .3s var(--spring)}
+  .toggle-switch input:checked + .toggle-slider{background:#3fb37a}
+  .toggle-switch input:checked + .toggle-slider::before{transform:translateX(18px)}
+  .toggle-switch input:disabled + .toggle-slider{cursor:not-allowed}
+  .toggle-switch input:focus-visible + .toggle-slider{outline:2px solid var(--accent);outline-offset:2px}
+  .toggle-label{font-family:var(--mono);font-size:11px;color:var(--muted);min-width:24px}
+
+  .kde-severity-select{position:relative}
+  .kde-severity-btn{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--white);font-family:var(--mono);font-size:11.5px;cursor:pointer;white-space:nowrap;transition:border-color .2s,background .2s}
+  .kde-severity-btn:hover{border-color:var(--accent)}
+  .kde-severity-btn:disabled{cursor:not-allowed}
+  .kde-severity-btn.none{color:var(--faint)}
+  .kde-severity-btn.w10{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .kde-severity-btn.w30{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .kde-severity-btn.w50{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+  .kde-severity-dropdown{position:absolute;top:calc(100% + 6px);left:0;min-width:170px;background:var(--white);border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 34px rgba(16,24,40,.12);padding:5px;z-index:200;display:none}
+  .kde-severity-select.open .kde-severity-dropdown{display:block;animation:drop .15s ease}
+  .kde-severity-option{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 10px;font-size:13px;font-weight:300;border-radius:8px;cursor:pointer}
+  .kde-severity-option:hover{background:var(--page)}
+  .kde-severity-option > span{display:flex;align-items:center;gap:8px}
+  .kde-severity-option .pts{font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+  .opt-dot{width:8px;height:8px;border-radius:50%}
+  .opt-dot.w0{background:#d1d5db} .opt-dot.w10{background:var(--low)} .opt-dot.w30{background:var(--med)} .opt-dot.w50{background:var(--crit)}
+
+  .kde-evidence-col input{width:100%;height:32px;padding:0 10px;border:1px solid var(--line);border-radius:9px;font-size:12.5px;font-weight:300;outline:none;transition:border-color .2s,box-shadow .2s;background:var(--white)}
+  .kde-evidence-col input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(47,111,237,.10)}
+  .kde-evidence-col input::placeholder{color:#b3bac6}
+  .kde-evidence-col input:disabled{background:var(--page)}
+
+  /* narrow stage cards: each KDE becomes a small two-line block */
+  @container (max-width:820px){
+    .kde-row.head{display:none}
+    .kde-row{grid-template-columns:28px repeat(3,minmax(0,1fr));grid-template-areas:"n l l l" ". t s m" ". e e e";gap:8px 12px;padding:12px 14px}
+    .kde-row > :nth-child(1){grid-area:n} .kde-row > :nth-child(2){grid-area:l} .kde-row > :nth-child(3){grid-area:t}
+    .kde-row > :nth-child(4){grid-area:s} .kde-row > :nth-child(5){grid-area:m} .kde-row > :nth-child(6){grid-area:e}
+    .cell-k{display:block;margin-bottom:2px}
+    .kde-toggle{flex-wrap:wrap}
+  }
+  @container (max-width:560px){
+    .stage-header{flex-wrap:wrap}
+    .stage-header-right{width:100%;justify-content:space-between}
+  }
+
+  @media (max-width:1100px){
+    .layout{grid-template-columns:1fr}
+    .side{position:static;max-height:none;overflow:visible;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+    .savecard{position:fixed;left:12px;right:12px;bottom:12px;z-index:60;box-shadow:0 14px 40px rgba(16,24,40,.18);background:rgba(255,255,255,.96);backdrop-filter:blur(8px)}
+    main{padding-bottom:110px}
+    .toast-wrap{bottom:96px}
+  }
+  @media (max-width:700px){ .side{grid-template-columns:1fr} .stage-jump{display:none} }
+
+</style>
 </head>
 <body>
 
-  <!-- NAV -->
-  <div class="topbar">
-    <a href="home-logged-in.html" class="topbar-brand">
-      <div>
-        <span class="topbar-brand-project">PROJECT</span>
-        <span class="topbar-brand-name">Manhattan.</span>
-      </div>
+<header class="top">
+  <div class="wrap nav">
+    <a class="brand" href="home-logged-in.html" aria-label="SmarTuna home">
+      <img src="sc-blue-logo.png" alt="" onerror="this.style.display='none'">
+      <span class="wm"><span class="wm-top">Smar<span>Tuna</span></span><span class="wm-sub">concept</span></span>
     </a>
-    <div class="topbar-nav">
-      <div class="nav-pill">
-        <a href="home-logged-in.html" class="nav-pill-item">Home</a>
-        <div class="nav-pill-item" style="cursor:default;">
-          My Studio
-          <div class="nav-pill-dropdown">
-            <div class="nav-pill-dropdown-inner">
-              <a href="product-list.html">Products</a>
-              <a href="organisation.html">Your Company</a>
-            </div>
-          </div>
-        </div>
-        <div class="nav-pill-item" style="cursor:default;">
-          Atlas
-          <div class="nav-pill-dropdown">
-            <a href="Species.html">Species</a>
-            <a href="country.html">Country</a>
-            <a href="#">Ports</a>
-            <a href="#">Vessels</a>
-          </div>
-        </div>
-        <a href="mri.html" class="nav-pill-item active">MRI</a>
-        <a href="#" class="nav-pill-item">Reports</a>
-        <div class="nav-pill-item" style="cursor:default;">
-          Support
-          <div class="nav-pill-dropdown">
-            <a href="contact.html">Contact</a>
-            <a href="report.html">Report an Issue</a>
-            <a href="about.html">About</a>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="topbar-right" onclick="toggleNavDropdown()" style="cursor:pointer;">
-      <div class="topbar-avatar" id="navAvatar"></div>
+    <nav class="links" id="topLinks" aria-label="Main">
+      <span class="ind"></span>
+      <a class="nav-item" href="home-logged-in.html">Home</a>
+      <div class="nav-item-wrap"><a class="nav-item" href="modules.html#my-studio">My Studio</a>
+        <div class="nav-dropdown"><a href="product-list.html">Products</a><a href="organisation.html">Your company</a><a class="all" href="modules.html#my-studio">See all My Studio</a></div></div>
+      <div class="nav-item-wrap"><a class="nav-item" href="modules.html#atlas">Atlas</a>
+        <div class="nav-dropdown"><a href="Species.html">Species</a><a href="country.html">Country</a><a class="all" href="modules.html#atlas">See all Atlas</a></div></div>
+      <a class="nav-item on" href="mri.html" aria-current="page">SRI</a>
+      <a class="nav-item" href="modules.html#reports">Reports</a>
+      <div class="nav-item-wrap"><a class="nav-item" href="modules.html#support">Support</a>
+        <div class="nav-dropdown"><a href="contact.html">Contact</a><a href="report.html">Report an issue</a><a href="about.html">About</a><a class="all" href="modules.html#support">See all Support</a></div></div>
+    </nav>
+    <div class="topbar-right" onclick="toggleNavDropdown()" role="button" tabindex="0" aria-label="Account menu" onkeydown="if(event.key==='Enter'){toggleNavDropdown()}">
       <span class="topbar-email" id="navEmail"></span>
-      <div class="topbar-settings">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
-        <div class="topbar-profile-dropdown" id="navDropdown">
-          <div class="topbar-profile-name" id="navFirstName">Hello!</div>
-          <a href="profile.html">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-            Profile
-          </a>
-          <button onclick="handleLogout()">Logout</button>
+      <div class="topbar-avatar" id="navAvatar"></div>
+      <div class="topbar-profile-dropdown" id="navDropdown" onclick="event.stopPropagation()">
+        <div class="topbar-profile-name" id="navFirstName">Hello</div>
+        <a href="profile.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Profile</a>
+        <button onclick="handleLogout()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>Log out</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="phead">
+  <div class="wrap">
+    <div>
+      <div class="crumbs">
+        <a href="mri.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>Back to SRI</a>
+        <span>/</span><span>assessment</span>
+      </div>
+      <h1 id="assessTitle">New SRI assessment</h1>
+      <p class="sub">Select organisation and product, then fill in each KDE below.</p>
+    </div>
+    <div class="stage-jump">
+      <button class="btn" type="button" onclick="setAllStages(true)">Expand all</button>
+      <button class="btn" type="button" onclick="setAllStages(false)">Collapse all</button>
+    </div>
+  </div>
+</section>
+
+<main><div class="wrap layout">
+
+  <aside class="side">
+    <section class="card">
+      <div class="card-h"><span class="lbl">setup</span></div>
+      <label class="field"><span>Organisation <em>*</em></span>
+        <select id="selectOrg" onchange="loadOrgProducts()"><option value="">Select organisation...</option></select></label>
+      <label class="field"><span>Product <em>*</em></span>
+        <select id="selectProduct"><option value="">Select product...</option></select></label>
+      <label class="field"><span>Assessment notes</span>
+        <textarea id="assessmentNotes" rows="2" placeholder="Optional notes about this assessment..."></textarea></label>
+    </section>
+
+    <section class="card">
+      <div class="score-top">
+        <div>
+          <div class="lbl">live risk score</div>
+          <div class="score-live-number" id="liveScore">0</div>
+          <div class="score-live-max" id="liveMax">/ 3,150 max</div>
         </div>
+        <span class="mri-status-pill transparent" id="liveStatusPill"><span class="dot"></span><span id="liveStatusLabel">Transparent</span></span>
       </div>
-    </div>
-  </div>
+      <div class="score-meter"><i id="liveMeter"></i></div>
+      <div class="chips" id="liveStages">
+        <button type="button" class="stage-score-chip" onclick="jumpToStage('FV')"><span class="stage-score-chip-label">FV</span><span class="stage-score-chip-value" id="scoreChip-FV">0</span><span class="bar"><i id="scoreBar-FV"></i></span></button>
+        <button type="button" class="stage-score-chip" onclick="jumpToStage('CR')"><span class="stage-score-chip-label">CR</span><span class="stage-score-chip-value" id="scoreChip-CR">0</span><span class="bar"><i id="scoreBar-CR"></i></span></button>
+        <button type="button" class="stage-score-chip" onclick="jumpToStage('FCL')"><span class="stage-score-chip-label">FCL</span><span class="stage-score-chip-value" id="scoreChip-FCL">0</span><span class="bar"><i id="scoreBar-FCL"></i></span></button>
+        <button type="button" class="stage-score-chip" onclick="jumpToStage('PP')"><span class="stage-score-chip-label">PP</span><span class="stage-score-chip-value" id="scoreChip-PP">0</span><span class="bar"><i id="scoreBar-PP"></i></span></button>
+        <button type="button" class="stage-score-chip" onclick="jumpToStage('SP')"><span class="stage-score-chip-label">SP</span><span class="stage-score-chip-value" id="scoreChip-SP">0</span><span class="bar"><i id="scoreBar-SP"></i></span></button>
+        <button type="button" class="stage-score-chip" onclick="jumpToStage('LFP')"><span class="stage-score-chip-label">LFP</span><span class="stage-score-chip-value" id="scoreChip-LFP">0</span><span class="bar"><i id="scoreBar-LFP"></i></span></button>
+      </div>
+    </section>
 
-  <!-- MAIN -->
-  <div class="assessment-wrapper">
+    <section class="card savecard">
+      <div class="savebox">
+        <div class="save-bar-info">Risk score<strong id="saveBarScore">0 / 3,150</strong></div>
+        <button class="btn primary btn-save-assessment" id="btnSaveAssessment" onclick="saveAssessment()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+          Save assessment
+        </button>
+      </div>
+    </section>
+  </aside>
 
-    <!-- HEADER -->
-    <div class="assessment-header">
-      <div class="assessment-header-left">
-        <h1>New MRI Assessment</h1>
-        <p>Select organisation and product, then fill in each KDE below.</p>
-      </div>
-      <div class="assessment-header-right">
-        <a href="mri.html" class="btn-back-mri">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-          Back to MRI
-        </a>
-      </div>
-    </div>
+  <div id="kdeStages"></div>
 
-    <!-- SETUP -->
-    <div class="setup-card">
-      <div class="setup-field">
-        <label>Organisation <span style="color:#e63946;">*</span></label>
-        <select id="selectOrg" onchange="loadOrgProducts()">
-          <option value="">Select organisation...</option>
-        </select>
-      </div>
-      <div class="setup-field">
-        <label>Product <span style="color:#e63946;">*</span></label>
-        <select id="selectProduct">
-          <option value="">Select product...</option>
-        </select>
-      </div>
-      <div class="setup-field">
-        <label>Assessment Notes</label>
-        <textarea id="assessmentNotes" rows="2" placeholder="Optional notes about this assessment..."></textarea>
-      </div>
-    </div>
+</div></main>
 
-    <!-- LIVE SCORE -->
-    <div class="score-live">
-      <div>
-        <div class="score-live-label">Live Risk Score</div>
-        <div class="score-live-number" id="liveScore">0</div>
-        <div class="score-live-max" id="liveMax">/ 3,150 max</div>
-      </div>
-      <div class="score-live-stages" id="liveStages">
-        <div class="stage-score-chip"><div class="stage-score-chip-label">FV</div><div class="stage-score-chip-value" id="scoreChip-FV">0</div></div>
-        <div class="stage-score-chip"><div class="stage-score-chip-label">CR</div><div class="stage-score-chip-value" id="scoreChip-CR">0</div></div>
-        <div class="stage-score-chip"><div class="stage-score-chip-label">FCL</div><div class="stage-score-chip-value" id="scoreChip-FCL">0</div></div>
-        <div class="stage-score-chip"><div class="stage-score-chip-label">PP</div><div class="stage-score-chip-value" id="scoreChip-PP">0</div></div>
-        <div class="stage-score-chip"><div class="stage-score-chip-label">SP</div><div class="stage-score-chip-value" id="scoreChip-SP">0</div></div>
-        <div class="stage-score-chip"><div class="stage-score-chip-label">LFP</div><div class="stage-score-chip-value" id="scoreChip-LFP">0</div></div>
-      </div>
-      <div class="score-live-status">
-        <span class="mri-status-pill transparent" id="liveStatusPill">
-          <span class="dot"></span>
-          <span id="liveStatusLabel">Transparent</span>
-        </span>
-      </div>
-    </div>
+<div class="toast-wrap" id="toastContainer"></div>
 
-    <!-- KDE STAGES -->
-    <div id="kdeStages"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="utils.js"></script>
+<script src="mri-assessment.js"></script>
 
-    <!-- SAVE BAR -->
-    <div class="save-bar">
-      <div class="save-bar-info">
-        Risk score: <strong id="saveBarScore">0 / 3,150</strong>
-      </div>
-      <button class="btn-save-assessment" id="btnSaveAssessment" onclick="saveAssessment()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-        Save Assessment
-      </button>
-    </div>
-
-  </div>
-
-  <!-- TOAST -->
-  <div id="toastContainer" style="position:fixed; bottom:100px; right:24px; z-index:9999; display:flex; flex-direction:column; gap:10px;"></div>
-
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="utils.js"></script>
-  <script src="mri-assessment.js"></script>
+<script>
+(function(){
+  const wrap = document.getElementById('topLinks'); if (!wrap) return;
+  const ind = wrap.querySelector('.ind');
+  const items = [...wrap.querySelectorAll('.nav-item')];
+  const home = wrap.querySelector('.nav-item.on');
+  function move(el){
+    if (!el){ ind.style.opacity = 0; items.forEach(x => x.classList.remove('hl')); return; }
+    const r = el.getBoundingClientRect(), w = wrap.getBoundingClientRect();
+    ind.style.left = (r.left - w.left) + 'px'; ind.style.width = r.width + 'px'; ind.style.opacity = 1;
+    items.forEach(x => x.classList.toggle('hl', x === el));
+  }
+  items.forEach(el => el.addEventListener('mouseenter', () => move(el)));
+  wrap.addEventListener('mouseleave', () => move(home));
+  window.addEventListener('resize', () => move(home));
+  requestAnimationFrame(() => move(home));
+  if (document.fonts) document.fonts.ready.then(() => move(home));
+})();
+</script>
 </body>
 </html>
-
-
