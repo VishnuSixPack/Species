@@ -5,11 +5,8 @@ const SUPABASE_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
 const dbClient = window._sharedSupabase || (window._sharedSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY));
 
 // ── CONTINENT DATA ─────────────────────────────────────────────
-const CONTINENT_ICONS = {
-  'Africa': '🌍', 'Antarctica': '🧊', 'Asia': '🌏',
-  'Europe': '🌍', 'North America': '🌎', 'Oceania': '🌏',
-  'South America': '🌎', 'All': '🌐'
-};
+const CONTINENT_ICONS = {}; /* emoji set removed; the list shows a line globe instead */
+const GLOBE_IC = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20"/></svg>';
 
 const CONTINENTS = ['All','Africa','Antarctica','Asia','Europe','North America','Oceania','South America'];
 
@@ -17,6 +14,7 @@ const CONTINENT_MAP = {
   AF:'Asia',AX:'Europe',AL:'Europe',DZ:'Africa',AS:'Oceania',AD:'Europe',AO:'Africa',AI:'North America',AQ:'Antarctica',AG:'North America',AR:'South America',AM:'Asia',AW:'North America',AU:'Oceania',AT:'Europe',AZ:'Asia',BS:'North America',BH:'Asia',BD:'Asia',BB:'North America',BY:'Europe',BE:'Europe',BZ:'North America',BJ:'Africa',BM:'North America',BT:'Asia',BO:'South America',BQ:'North America',BA:'Europe',BW:'Africa',BV:'Antarctica',BR:'South America',IO:'Asia',BN:'Asia',BG:'Europe',BF:'Africa',BI:'Africa',CV:'Africa',KH:'Asia',CM:'Africa',CA:'North America',KY:'North America',CF:'Africa',TD:'Africa',CL:'South America',CN:'Asia',CX:'Asia',CC:'Asia',CO:'South America',KM:'Africa',CG:'Africa',CD:'Africa',CK:'Oceania',CR:'North America',CI:'Africa',HR:'Europe',CU:'North America',CW:'North America',CY:'Asia',CZ:'Europe',DK:'Europe',DJ:'Africa',DM:'North America',DO:'North America',EC:'South America',EG:'Africa',SV:'North America',GQ:'Africa',ER:'Africa',EE:'Europe',SZ:'Africa',ET:'Africa',FK:'South America',FO:'Europe',FJ:'Oceania',FI:'Europe',FR:'Europe',GF:'South America',PF:'Oceania',TF:'Antarctica',GA:'Africa',GM:'Africa',GE:'Asia',DE:'Europe',GH:'Africa',GI:'Europe',GR:'Europe',GL:'North America',GD:'North America',GP:'North America',GU:'Oceania',GT:'North America',GG:'Europe',GN:'Africa',GW:'Africa',GY:'South America',HT:'North America',HM:'Antarctica',VA:'Europe',HN:'North America',HK:'Asia',HU:'Europe',IS:'Europe',IN:'Asia',ID:'Asia',IR:'Asia',IQ:'Asia',IE:'Europe',IM:'Europe',IL:'Asia',IT:'Europe',JM:'North America',JP:'Asia',JE:'Europe',JO:'Asia',KZ:'Asia',KE:'Africa',KI:'Oceania',KP:'Asia',KR:'Asia',KW:'Asia',KG:'Asia',LA:'Asia',LV:'Europe',LB:'Asia',LS:'Africa',LR:'Africa',LY:'Africa',LI:'Europe',LT:'Europe',LU:'Europe',MO:'Asia',MG:'Africa',MW:'Africa',MY:'Asia',MV:'Asia',ML:'Africa',MT:'Europe',MH:'Oceania',MQ:'North America',MR:'Africa',MU:'Africa',YT:'Africa',MX:'North America',FM:'Oceania',MD:'Europe',MC:'Europe',MN:'Asia',ME:'Europe',MS:'North America',MA:'Africa',MZ:'Africa',MM:'Asia',NA:'Africa',NR:'Oceania',NP:'Asia',NL:'Europe',NC:'Oceania',NZ:'Oceania',NI:'North America',NE:'Africa',NG:'Africa',NU:'Oceania',NF:'Oceania',MK:'Europe',MP:'Oceania',NO:'Europe',OM:'Asia',PK:'Asia',PW:'Oceania',PS:'Asia',PA:'North America',PG:'Oceania',PY:'South America',PE:'South America',PH:'Asia',PN:'Oceania',PL:'Europe',PT:'Europe',PR:'North America',QA:'Asia',RE:'Africa',RO:'Europe',RU:'Europe',RW:'Africa',BL:'North America',SH:'Africa',KN:'North America',LC:'North America',MF:'North America',PM:'North America',VC:'North America',WS:'Oceania',SM:'Europe',ST:'Africa',SA:'Asia',SN:'Africa',RS:'Europe',SC:'Africa',SL:'Africa',SG:'Asia',SX:'North America',SK:'Europe',SI:'Europe',SB:'Oceania',SO:'Africa',ZA:'Africa',GS:'Antarctica',SS:'Africa',ES:'Europe',LK:'Asia',SD:'Africa',SR:'South America',SJ:'Europe',SE:'Europe',CH:'Europe',SY:'Asia',TW:'Asia',TJ:'Asia',TZ:'Africa',TH:'Asia',TL:'Asia',TG:'Africa',TK:'Oceania',TO:'Oceania',TT:'North America',TN:'Africa',TR:'Asia',TM:'Asia',TC:'North America',TV:'Oceania',UG:'Africa',UA:'Europe',AE:'Asia',GB:'Europe',US:'North America',UM:'Oceania',UY:'South America',UZ:'Asia',VU:'Oceania',VE:'South America',VN:'Asia',VG:'North America',VI:'North America',WF:'Oceania',EH:'Africa',YE:'Asia',ZM:'Africa',ZW:'Africa'
 };
 
+const _esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let allCountries = [];
 let activeContinent = 'All';
 let euOnly = false;
@@ -53,7 +51,7 @@ async function initListPage() {
 }
 
 function renderContinentFilter() {
-  const grid = document.getElementById('countryGrid');
+  const host = document.getElementById('continentHost');
   const bar = document.createElement('div');
   bar.id = 'continentBar';
   bar.innerHTML = CONTINENTS.map(c => {
@@ -64,11 +62,11 @@ function renderContinentFilter() {
       id="cbtn-${c.replace(/ /g,'-')}"
       class="continent-btn${c === 'All' ? ' active' : ''}"
       onclick="setContinent('${c}')">
-      ${CONTINENT_ICONS[c]} ${c}
+      ${c}
       <span class="continent-count">${count}</span>
     </button>`;
   }).join('');
-  grid.parentNode.insertBefore(bar, grid);
+  host.appendChild(bar);
 }
 
 function setContinent(continent) {
@@ -87,21 +85,20 @@ function setEUFilter(checked) {
   renderCountries(getFiltered());
 }
 
+let searchQuery = '';
 function getFiltered() {
+  const q = searchQuery;
   return allCountries.filter(c => {
     const continentMatch = activeContinent === 'All' || CONTINENT_MAP[c.alpha2] === activeContinent;
     const euMatch = !euOnly || EU_COUNTRIES.includes(c.alpha2);
-    return continentMatch && euMatch;
+    const qMatch = !q || [c.country, c.alpha2, c.alpha3].some(v => (v || '').toLowerCase().includes(q));
+    return continentMatch && euMatch && qMatch;
   });
 }
 
 function filterCountries(q) {
-  const filtered = allCountries.filter(c =>
-    c.country?.toLowerCase().includes(q.toLowerCase()) ||
-    c.alpha2?.toLowerCase().includes(q.toLowerCase()) ||
-    c.alpha3?.toLowerCase().includes(q.toLowerCase())
-  );
-  renderCountries(filtered);
+  searchQuery = (q || '').toLowerCase().trim();
+  renderCountries(getFiltered());
 }
 
 function toggleFilterMenu() {
@@ -121,22 +118,21 @@ function renderCountries(countries) {
   document.getElementById('emptyState').classList.add('hidden');
   grid.classList.remove('hidden');
 
-  grid.innerHTML = countries.map(c => {
+  const countEl = document.getElementById('countryCount');
+  if (countEl) countEl.textContent = countries.length === allCountries.length ? `${allCountries.length} countries` : `${countries.length} of ${allCountries.length}`;
+  grid.innerHTML = countries.map((c, i) => {
     const continent = CONTINENT_MAP[c.alpha2] || '';
-    const icon = CONTINENT_ICONS[continent] || '🌐';
     return `
-      <div class="country-card" onclick="window.location.href='country-detail.html?id=${c.id}'">
+      <div class="country-card" style="animation-delay:${Math.min(i, 24) * 15}ms" onclick="window.location.href='country-detail.html?id=${encodeURIComponent(c.id)}'">
         <div class="country-card-flag">
-          <img src="https://flagcdn.com/w80/${c.alpha2?.toLowerCase()}.png" alt="${c.country} flag" loading="lazy"/>
+          <img src="https://flagcdn.com/w80/${(c.alpha2 || '').toLowerCase()}.png" alt="" loading="lazy"/>
         </div>
-        <div class="country-card-body">
-          <div class="country-card-name">${c.country}</div>
-          <div class="country-card-codes">
-            <span class="code-chip small">${c.alpha2}</span>
-            <span class="code-chip small">${c.alpha3}</span>
-            <span class="continent-tag">${icon} ${continent}</span>
-          </div>
+        <div class="country-card-name">${_esc(c.country)}</div>
+        <div class="country-card-codes">
+          <span class="code-chip small">${_esc(c.alpha2)}</span>
+          <span class="code-chip small">${_esc(c.alpha3)}</span>
         </div>
+        ${continent ? `<span class="continent-tag">${GLOBE_IC}${continent}</span>` : ''}
       </div>`;
   }).join('');
 }
@@ -156,7 +152,8 @@ async function initDetailPage() {
   document.getElementById('loadingState').style.display = 'none';
   if (error || !data) { window.location.href = 'country.html'; return; }
 
-  document.title = `${data.country} — Project Manhattan`;
+  document.title = `${data.country} · SmarTuna concept`;
+  const crumb = document.getElementById('crumbName'); if (crumb) crumb.textContent = data.country;
 
   const continent = CONTINENT_MAP[data.alpha2] || '';
 
@@ -173,7 +170,7 @@ async function initDetailPage() {
   setEl('d-numeric', data.numeric);
 
   const contEl = document.getElementById('d-continent');
-  if (contEl) contEl.textContent = continent ? `${CONTINENT_ICONS[continent]} ${continent}` : '—';
+  if (contEl) { if (continent) contEl.textContent = continent; else contEl.style.display = 'none'; }
 
   // ── General Information ──
   populateGeneralInfo(data);
@@ -183,10 +180,12 @@ async function initDetailPage() {
   const focWidget = document.getElementById('foc-widget');
   if (focEl) {
     if (data.is_foc === true) {
-      focEl.innerHTML = '🚩 Yes';
+      focEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>Yes';
+      focEl.style.color = 'var(--crit)';
       if (focWidget) focWidget.className = 'widget widget-foc';
     } else if (data.is_foc === false) {
-      focEl.innerHTML = '✓ No';
+      focEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>No';
+      focEl.style.color = 'var(--ok)';
       if (focWidget) focWidget.className = 'widget widget-foc foc-no';
     } else {
       focEl.textContent = '—';
@@ -212,16 +211,18 @@ async function initDetailPage() {
   if (data.iuu_score !== null && data.iuu_score !== undefined) {
     const iS = document.getElementById('iuu-score'), iB = document.getElementById('iuu-bar'), iBadge = document.getElementById('iuu-risk-badge');
     if (iS) iS.textContent = data.iuu_score;
-    if (iB) { iB.style.width = Math.min(data.iuu_score, 100) + '%'; iB.style.background = '#7c3aed'; }
+    if (iB) { iB.style.width = Math.min(data.iuu_score, 100) + '%'; }
     if (iBadge) {
       iBadge.style.display = 'inline-flex';
-      if      (data.iuu_score >= 60) { iBadge.textContent = 'High Risk';   iBadge.className = 'foc-badge yes'; }
-      else if (data.iuu_score >= 35) { iBadge.textContent = 'Medium Risk'; iBadge.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border-radius:999px;font-size:13px;font-weight:700;background:#fffbeb;color:#d97706;border:1.5px solid #fde68a;'; }
-      else                            { iBadge.textContent = 'Low Risk';    iBadge.className = 'foc-badge no'; }
+      if      (data.iuu_score >= 60) { iBadge.textContent = 'High risk';   iBadge.className = 'foc-badge yes'; }
+      else if (data.iuu_score >= 35) { iBadge.textContent = 'Medium risk'; iBadge.className = 'foc-badge mid'; }
+      else                            { iBadge.textContent = 'Low risk';    iBadge.className = 'foc-badge no'; }
     }
     if (data.iuu_year) { const e = document.getElementById('iuu-year-label'); if (e) e.textContent = 'IUU Fishing Index ' + data.iuu_year; }
   }
   if (data.iuu_url) { const e = document.getElementById('iuu-url'); if (e) { e.href = data.iuu_url; e.style.display = 'inline-flex'; } }
+
+  populateFiti(data);
 
   document.getElementById('detailContent').classList.remove('hidden');
 
@@ -232,6 +233,20 @@ async function initDetailPage() {
   if (typeof loadVesselsAndPorts === 'function') {
     loadVesselsAndPorts(data.alpha2, data.alpha3, data.country);
   }
+}
+
+// ── FiTI (saved by country-edit.html; the card was never filled before) ──
+function populateFiti(d) {
+  const card = document.getElementById('fitiCard');
+  if (!card) return;
+  const has = d.fiti_participation !== null && d.fiti_participation !== undefined || d.fiti_fis || d.fiti_status || d.fiti_url;
+  if (!has) return;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || '—'; };
+  set('fiti-participation', d.fiti_participation === true ? 'Yes' : d.fiti_participation === false ? 'No' : null);
+  set('fiti-fis', d.fiti_fis);
+  set('fiti-status', d.fiti_status);
+  if (d.fiti_url) { const a = document.getElementById('fiti-url'); if (a) { a.href = d.fiti_url; a.style.display = 'inline-flex'; } }
+  card.style.display = '';
 }
 
 // ── GENERAL INFORMATION ────────────────────────────────────────
@@ -322,7 +337,7 @@ async function loadCountryMap(alpha3, countryName) {
     if (feature) {
       countryLayer = L.geoJSON(feature, {
         interactive: false,
-        style: { color: '#1565c0', weight: 1.2, fillColor: '#1a6fdb', fillOpacity: 0.92 }
+        style: { color: '#2560d6', weight: 1.2, fillColor: '#2f6fed', fillOpacity: 0.9 }
       }).addTo(countryMap);
 
       countryMap.fitBounds(countryLayer.getBounds(), { padding: [40, 40], maxZoom: 6 });
@@ -346,7 +361,7 @@ async function loadCountryMap(alpha3, countryName) {
       const h = hits[0], bb = h.boundingbox.map(Number);
       countryMap.fitBounds([[bb[0], bb[2]], [bb[1], bb[3]]], { padding: [30, 30], maxZoom: 8 });
       countryLayer = L.circleMarker([+h.lat, +h.lon], {
-        radius: 8, color: '#1a6fdb', fillColor: '#1a6fdb', fillOpacity: 0.6
+        radius: 8, color: '#2f6fed', fillColor: '#2f6fed', fillOpacity: 0.6
       }).addTo(countryMap);
       document.getElementById('mapNote').textContent = 'Approximate location shown.';
     } else {
@@ -398,7 +413,7 @@ function setEezScope(scope, btn) {
 
 function refreshEez() {
   if (eezWmsLayer) { countryMap.removeLayer(eezWmsLayer); eezWmsLayer = null; }
-  const eezBtn = document.querySelector('.map-toggle:nth-child(2)');
+  const eezBtn = document.getElementById('eezToggle') || document.querySelector('.map-toggle:nth-child(2)');
   if (!eezBtn || !eezBtn.classList.contains('active')) return;
 
   if (eezScope === 'country' && currentAlpha3) {

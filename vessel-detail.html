@@ -534,7 +534,7 @@ function fmtDateTime(d){
   return `${date}, ${time}${TZ_NAME?' '+TZ_NAME:''}`;
 }
 const vid=new URLSearchParams(location.search).get('id');
-let vessel={}, isAdmin=false, activeTab='overview', curModalType=null;
+let vessel={}, isAdmin=false, activeTab='overview', curModalType=null, editingHist=null, HIST_CACHE={};
 
 const PVR_STATUS_CLASS={'Y':'pvr-Y','N':'pvr-N','IP':'pvr-IP','N/A':'pvr-NA','-':'pvr-NA','Delisted':'pvr-Delisted','Status Unknown':'pvr-Unknown','Relocated':'pvr-Relocated'};
 const PVR_STATUS_ICON={'Y':'✓','N':'✕','IP':'⟳','N/A':'N/A','-':'–','Delisted':'–','Status Unknown':'⚠','Relocated':'→'};
@@ -800,7 +800,7 @@ function renderOverview(v){
 
 // ── OWNERSHIP ──
 function renderOwnership(v){
-  const charter=v.charterer?`
+  const charter=v.charter_active?`
     <div class="sub-card" style="margin-top:16px">
       <div class="sub-card-title">Charter</div>
       <div class="dl">
@@ -815,6 +815,14 @@ function renderOwnership(v){
         ${v.charter_notes?`<div class="full"><div class="dt">Notes</div>${val(v.charter_notes)}</div>`:''}
       </div>
     </div>`:'';
+  const beneficialOwner=v.beneficial_owner_active?`
+    <div class="sub-card" style="margin-top:16px">
+      <div class="sub-card-title">Beneficial Owner</div>
+      <div class="dl">
+        <div><div class="dt">Name</div>${val(v.beneficial_owner)}</div>
+        <div><div class="dt">Address</div>${val(v.beneficial_owner_addr)}</div>
+      </div>
+    </div>`:'';
   return `<div class="card">
     <div class="card-head"><div class="card-title">Ownership & Management</div></div>
     <div class="sub-card">
@@ -824,13 +832,7 @@ function renderOwnership(v){
         <div><div class="dt">Address</div>${val(v.registered_owner_addr)}</div>
       </div>
     </div>
-    <div class="sub-card" style="margin-top:16px">
-      <div class="sub-card-title">Beneficial Owner</div>
-      <div class="dl">
-        <div><div class="dt">Name</div>${val(v.beneficial_owner)}</div>
-        <div><div class="dt">Address</div>${val(v.beneficial_owner_addr)}</div>
-      </div>
-    </div>
+    ${beneficialOwner}
     <div class="sub-card" style="margin-top:16px">
       <div class="sub-card-title">Operator / Manager</div>
       <div class="dl">
@@ -971,6 +973,7 @@ function renderRFMO(v){
 
 // ── ISSF ──
 async function renderISSF(v){
+  if(!v.issf_active) return `<div class="card"><div style="padding:32px;text-align:center;color:var(--soft);font-size:13px">ISSF Records not enabled for this vessel.</div></div>`;
   const {data:measures}=await sb.from('vessel_pvr_measures').select('*').eq('vessel_id',vid).order('sort_order');
   // Fetch VOSI vessel record + initiatives from new schema
   const {data:vosiRec}=await sb.from('vessel_vosi').select('*').eq('vessel_id',vid).order('last_synced',{ascending:false}).limit(1);
@@ -1092,20 +1095,20 @@ function renderSustain(v){
   return `<div class="card">
     <div class="card-head"><div class="card-title">Sustainability & Certifications</div></div>
 
+    ${v.msc_fishery_participation?`
     <div class="sub-card">
       <div class="sub-card-title">MSC Certification</div>
       <div class="dl">
-        <div><div class="dt">MSC Participation</div>${bool(v.msc_fishery_participation)}</div>
         <div><div class="dt">Fishery Name</div>${val(v.msc_fishery_name)}</div>
         <div><div class="dt">Certification Status</div>${val(v.msc_cert_status)}</div>
         <div><div class="dt">Fisheries & Programs</div>${val(v.fisheries_programs)}</div>
       </div>
-    </div>
+    </div>`:''}
 
+    ${v.pna_vds_active?`
     <div class="sub-card" style="margin-top:16px">
       <div class="sub-card-title">PNA / Vessel Day Scheme (VDS)</div>
       <div class="dl">
-        <div><div class="dt">PNA VDS Active</div>${bool(v.pna_vds_active)}</div>
         <div><div class="dt">VDS Registration No.</div>${val(v.vds_reg_no)}</div>
         <div><div class="dt">VDS Valid From</div>${val(fmtDate(v.vds_valid_from))}</div>
         <div><div class="dt">VDS Valid Until</div>${val(fmtDate(v.vds_valid_until))}</div>
@@ -1113,7 +1116,7 @@ function renderSustain(v){
         <div><div class="dt">PNA Status</div>${val(v.pna_status)}</div>
         <div><div class="dt">Regional Schemes</div>${val(v.regional_schemes)}</div>
       </div>
-    </div>
+    </div>`:''}
 
     <div class="sub-card" style="margin-top:16px">
       <div class="sub-card-title">PNA-FSMA Agreement</div>
@@ -1438,6 +1441,7 @@ async function loadHistory(){
     sb.from('vessel_ffa_history').select('*').eq('vessel_id',vid).order('valid_from',{ascending:false}),
   ]);
   const g=$('histGrid'); if(!g) return;
+  HIST_CACHE={name_history:nh.data||[],owner_history:oh.data||[],captain_history:ch.data||[],charterer_history:chr.data||[],rfmo_history:rfmo.data||[],pna_vds:pna.data||[],pna_fsma:fsma.data||[],ffa_history:ffa.data||[]};
   // Visibility rules
   const cat=vessel.vessel_category||'';
   const sub=vessel.vessel_subtype||'';
@@ -1486,10 +1490,10 @@ function histCard(title,type,cols,rows,ids){
   // ids = array of DB row IDs matching rows[], for delete
   const editBtn=`<button class="btn-edit" onclick="openHistModal('${type}')">+ Add</button>`;
   const body=rows.length
-    ?`<table class="hist-table"><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}'<th style="width:36px"></th>'</tr></thead><tbody>
+    ?`<table class="hist-table"><thead><tr>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}<th style="width:64px"></th></tr></thead><tbody>
       ${rows.map((r,i)=>`<tr>
         ${r.map(c=>`<td>${esc(c||'—')}</td>`).join('')}
-        ${ids?.[i]?`<td><button onclick="deleteHistRow('${type}','${ids[i]}')" style="width:26px;height:26px;border:none;background:none;cursor:pointer;color:var(--soft);border-radius:6px;display:flex;align-items:center;justify-content:center;transition:.14s" title="Delete" onmouseover="this.style.color='var(--danger)';this.style.background='var(--danger-soft)'" onmouseout="this.style.color='var(--soft)';this.style.background='none'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button></td>`:''}
+        ${ids?.[i]?`<td style="white-space:nowrap"><div style="display:flex;gap:2px"><button onclick="openHistEdit('${type}','${ids[i]}')" style="width:26px;height:26px;border:none;background:none;cursor:pointer;color:var(--soft);border-radius:6px;display:flex;align-items:center;justify-content:center;transition:.14s" title="Edit" onmouseover="this.style.color='var(--primary)';this.style.background='var(--primary-soft)'" onmouseout="this.style.color='var(--soft)';this.style.background='none'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></button><button onclick="deleteHistRow('${type}','${ids[i]}')" style="width:26px;height:26px;border:none;background:none;cursor:pointer;color:var(--soft);border-radius:6px;display:flex;align-items:center;justify-content:center;transition:.14s" title="Delete" onmouseover="this.style.color='var(--danger)';this.style.background='var(--danger-soft)'" onmouseout="this.style.color='var(--soft)';this.style.background='none'"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></button></div></td>`:''}
       </tr>`).join('')}
     </tbody></table>`
     :`<div class="hist-empty">No records yet.</div>`;
@@ -2002,6 +2006,7 @@ document.addEventListener('click',()=>{
 });
 
 function openHistModal(type){
+  editingHist=null;
   if(type==='rfmo_history'){ openRFMOHistoryModal(); return; }
   // Safety: force close any stuck state before opening
   const overlay=$('modalOverlay');
@@ -2065,12 +2070,12 @@ function pickMCsel(fid,country){
   if(wrap) wrap.classList.remove('open','drop-up');
 }
 
-function openModal(type){
+function openModal(type,prefill){
   const cfg=MODAL_CONFIGS[type]; if(!cfg) return;
   curModalType=type;
-  $('modalTitle').textContent=cfg.title;
-  $('modalSub').textContent=cfg.sub;
-  const autofills=cfg.autofill?cfg.autofill(vessel):{};
+  $('modalTitle').textContent=prefill?cfg.title.replace(/^Add /,'Edit '):cfg.title;
+  $('modalSub').textContent=prefill?'Update this record and save.':cfg.sub;
+  const autofills=prefill||(cfg.autofill?cfg.autofill(vessel):{});
   $('modalBody').innerHTML=`<div class="modal-grid">${cfg.fields.map(f=>`
     <div class="mfield${f.full?' full':''}">
       <span>${f.label}${f.required?' <span style="color:var(--danger)">*</span>':''}</span>
@@ -2080,12 +2085,67 @@ function openModal(type){
         ?`${buildMCsel(f.id)}<script>document.getElementById(${JSON.stringify(f.id)})&&(()=>{const v=${JSON.stringify(autofills[f.id]||'')};if(v){document.getElementById(${JSON.stringify(f.id)}).value=v;const l=document.getElementById('mcsel_lbl_'+${JSON.stringify(f.id)});if(l){l.textContent=v;l.className='mcsel-lbl';}}})();<\/script>`
         :`<input type="${f.type==='number'?'number':f.type==='date'?'date':'text'}" step="${f.type==='number'?'any':''}" id="${f.id}" placeholder="${f.type==='date'?'':f.label+'…'}" value="${esc(String(autofills[f.id]||''))}"/>`}
     </div>`).join('')}</div>`;
+  // scripts injected via innerHTML never run, so set country values explicitly
+  cfg.fields.filter(f=>f.type==='country').forEach(f=>{
+    const v=autofills[f.id]; if(!v) return;
+    const inp=document.getElementById(f.id); if(inp) inp.value=v;
+    const l=document.getElementById('mcsel_lbl_'+f.id); if(l){l.textContent=v;l.className='mcsel-lbl';}
+  });
   $('modalOverlay').classList.add('open');
+}
+
+
+// ── EDIT EXISTING HISTORY ROW ──
+// modal field id -> DB column, per history type
+const HIST_EDIT={
+  name_history:{cols:{mf_name:'name',mf_flag:'flag',mf_port:'port_of_registry',mf_ircs:'ircs',mf_length:'vessel_length',mf_beam:'beam_m',mf_depth:'depth_m',mf_tonnage:'vessel_tonnage',mf_fishhold:'fish_hold_capacity',mf_from:'valid_from',mf_to:'valid_to',mf_notes:'notes'}},
+  owner_history:{cols:{mf_name:'owner_name',mf_addr:'address',mf_from:'valid_from',mf_to:'valid_to',mf_notes:'notes'}},
+  captain_history:{cols:{mf_name:'captain_name',mf_nat:'nationality',mf_from:'valid_from',mf_to:'valid_to',mf_notes:'notes'}},
+  charterer_history:{cols:{mf_name:'charterer_name',mf_addr:'address',mf_from:'valid_from',mf_to:'valid_to',mf_notes:'notes'}},
+  pna_vds:{cols:{mf_vds:'vds_no',mf_flag:'vessel_flag',mf_from:'valid_from',mf_to:'valid_to',mf_notes:'notes'}},
+  pna_fsma:{cols:{mf_ral:'ral_no',mf_from:'valid_from',mf_to:'valid_to',mf_notes:'notes'}},
+  ffa_history:{cols:{mf_ffa:'ffa_id',mf_from:'valid_from',mf_to:'valid_to',mf_reason:'reason_for_deletion',mf_notes:'notes'}},
+};
+// RFMO: modal field id -> DB column (per form variant)
+const RFMO_EDIT_COLS={
+  WCPFC:{mf_regno:'registration_no',mf_authno:'auth_no',mf_authform:'auth_form',mf_start:'auth_start',mf_end:'auth_end',mf_species:'auth_species',mf_areas:'auth_areas',mf_tranship_hs:'tranship_hs',mf_ps_tranship:'ps_tranship_sea',mf_reason:'reason_for_deletion',mf_deldate:'date_of_deletion',mf_url:'registry_url'},
+  IATTC:{mf_regno:'registration_no',mf_status:'auth_no',mf_start:'auth_start',mf_end:'auth_end',mf_reason:'reason_for_deletion',mf_url:'registry_url'},
+  Other:{mf_rfmo:'rfmo_name',mf_regno:'registration_no',mf_authno:'auth_no',mf_start:'auth_start',mf_end:'auth_end',mf_reason:'reason_for_deletion',mf_deldate:'date_of_deletion'},
+};
+const RFMO_YESNO=['mf_tranship_hs','mf_ps_tranship'];
+function openHistEdit(type,id){
+  const row=(HIST_CACHE[type]||[]).find(r=>String(r.id)===String(id));
+  if(!row){toast('Record not found — refresh and try again',true);return;}
+  editingHist={type,id:row.id};
+  if(type==='rfmo_history'){
+    openRFMOHistoryModal();
+    const RF=['WCPFC','IATTC','IOTC','ICCAT','CCSBT','CCAMLR','NEAFC','NAFO','SPRFMO'];
+    const sel=RF.includes(row.rfmo_name)?row.rfmo_name:'Other';
+    pickModalCsel('rfmoPanel','rfmoLbl','rfmoArrow','mf_rfmo_sel',sel,switchRFMOFields);
+    $('modalTitle').textContent='Edit RFMO History';
+    $('modalSub').textContent='Update this record and save.';
+    const key=['WCPFC','IATTC'].includes(sel)?sel:'Other';
+    Object.entries(RFMO_EDIT_COLS[key]).forEach(([fid,col])=>{
+      let v=row[col];
+      if(RFMO_YESNO.includes(fid)){
+        const txt=v===true?'Yes':v===false?'No':'';
+        if(txt) pickModalCsel(fid+'_panel',fid+'_lbl',fid+'_arr',fid,txt);
+        return;
+      }
+      const el=$(fid); if(el) el.value=v==null?'':String(v);
+    });
+    const n=$('mf_rfmo_notes'); if(n) n.value=row.notes||'';
+    return;
+  }
+  const cfg=HIST_EDIT[type]; if(!cfg) return;
+  const pre={};
+  Object.entries(cfg.cols).forEach(([fid,col])=>{ pre[fid]=row[col]==null?'':String(row[col]); });
+  openModal(type,pre);
 }
 
 function closeModal(){
   $('modalOverlay').classList.remove('open');
-  curModalType=null;
+  curModalType=null; editingHist=null;
 }
 
 async function saveModal(){
@@ -2100,11 +2160,24 @@ async function saveModal(){
     const missing=cfg.fields.filter(f=>f.required&&!d[f.id]);
     if(missing.length){toast(`${missing[0].label} is required`,true);return;}
     $('modalSave').disabled=true;
-    const {error}=await cfg.save(d);
+    let error;
+    if(editingHist&&editingHist.type==='rfmo_history'){
+      const obj={rfmo_name:key==='Other'?(d.mf_rfmo||null):rfmo,notes:d.mf_rfmo_notes||null};
+      Object.entries(RFMO_EDIT_COLS[key]).forEach(([fid,col])=>{
+        if(col==='rfmo_name') return;
+        let v=d[fid]; v=(v===''||v==null)?null:v;
+        if(RFMO_YESNO.includes(fid)) v=v==='Yes'?true:v==='No'?false:null;
+        obj[col]=v;
+      });
+      ({error}=await sb.from('vessel_rfmo_history').update(obj).eq('id',editingHist.id));
+    } else {
+      ({error}=await cfg.save(d));
+    }
     $('modalSave').disabled=false;
     if(error){toast(error.message||'Save failed',true);return;}
+    const wasEdit=!!editingHist;
     closeModal();
-    toast('RFMO history entry saved'); await loadHistory(); return;
+    toast(wasEdit?'RFMO history entry updated':'RFMO history entry saved'); await loadHistory(); return;
   }
   const cfg=MODAL_CONFIGS[curModalType];
   if(!cfg) return;
@@ -2113,11 +2186,19 @@ async function saveModal(){
   const missing=cfg.fields.filter(f=>f.required&&!d[f.id]);
   if(missing.length){toast(`${missing[0].label} is required`,true);return;}
   $('modalSave').disabled=true;
-  const {error}=await cfg.save(d);
+  let error;
+  if(editingHist&&HIST_EDIT[editingHist.type]&&editingHist.type===curModalType){
+    const obj={};
+    Object.entries(HIST_EDIT[editingHist.type].cols).forEach(([fid,col])=>{ const v=d[fid]; obj[col]=(v===''||v==null)?null:v; });
+    ({error}=await sb.from(HIST_TABLE_MAP[editingHist.type]).update(obj).eq('id',editingHist.id));
+  } else {
+    ({error}=await cfg.save(d));
+  }
   $('modalSave').disabled=false;
   if(error){toast(error.message||'Save failed',true);return;}
+  const wasEdit=!!editingHist;
   closeModal();
-  toast('Entry saved');
+  toast(wasEdit?'Entry updated':'Entry saved');
   await loadHistory();
 }
 

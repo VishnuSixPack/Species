@@ -1,636 +1,654 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Country Detail — SmarTuna concept</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="icon" type="image/png" href="sc-blue-logo.png" />
-  <link rel="stylesheet" href="country.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>
-    /* ── SMARTUNA WORDMARK ── */
-    @font-face {
-      font-family: 'Bitsumis';
-      src: url('BITSUMIS.TTF') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-      font-display: swap;
-    }
-    .sc-wm { display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1;gap:0;text-decoration:none; }
-    .sc-wm-top { font-family:'Bitsumis',sans-serif !important;font-weight:900 !important;font-size:15px;letter-spacing:.04em;text-transform:uppercase;background:linear-gradient(90deg,#1a6fdb,#1a6fdb) !important;-webkit-background-clip:text !important;-webkit-text-fill-color:transparent !important;background-clip:text !important; }
-    .sc-wm-sub { font-family:'Bitsumis',sans-serif !important;font-weight:700 !important;font-size:7px;letter-spacing:.22em;text-transform:uppercase;color:#1a1a2e;-webkit-text-fill-color:#1a1a2e !important;margin-top:2px; }
-    .cd-nav-wrap{display:flex;align-items:center;padding:14px 28px;gap:20px;background:#f0f2f7;position:sticky;top:0;z-index:100;}
-    .cd-nav-brand{text-decoration:none;flex-shrink:0;line-height:1.1;}
-    .cd-nav-brand span:first-child{display:block;font-size:8px;font-weight:700;letter-spacing:2px;color:#9aa0b4;}
-    .cd-nav-brand span:last-child{display:block;font-size:16px;font-weight:800;color:#1a1a2e;}
-    .cd-nav-pill{display:inline-flex;align-items:center;gap:2px;background:#fff;border-radius:999px;padding:5px 7px;box-shadow:0 1px 6px rgba(0,0,0,0.07);}
-    .cd-nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;color:#6b7280;text-decoration:none;cursor:pointer;}
-    .cd-nav-item:hover,.cd-nav-item.active{background:#f0f2f7;color:#1a1a2e;}
-    .cd-nav-item.active{font-weight:600;}
-    .cd-nav-item img{width:15px;height:15px;object-fit:contain;opacity:0.5;}
-    .cd-nav-item.active img{opacity:1;}
-    .cd-nav-item-wrap{position:relative;}
-    .cd-nav-item-wrap::after{content:"";position:absolute;top:100%;left:0;width:100%;height:12px;background:transparent;}
-    .cd-nav-item-wrap:hover .cd-nav-dd{display:block;}
-    .cd-nav-dd{display:none;position:absolute;top:calc(100% + 8px);left:0;background:#fff;border:1px solid #e8eaf0;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.10);min-width:160px;padding:6px;z-index:500;}
-    .cd-nav-dd a{display:block;padding:8px 12px;font-size:13px;color:#4a4e69;text-decoration:none;border-radius:8px;font-weight:500;}
-    .cd-nav-dd a:hover{background:#f0f2f7;color:#1a6fdb;}
-    .cd-nav-dd a.active{color:#1a6fdb;font-weight:700;}
-    .cd-avatar-btn{width:36px;height:36px;border-radius:50%;background:#1a6fdb;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,0.12);flex-shrink:0;border:none;}
-    .cd-avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid #e8eaf0;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.10);min-width:176px;overflow:hidden;z-index:999;}
-    .cd-avatar-menu.open{display:block;}
-    .cd-avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;color:#1a1a2e;border-bottom:1px solid #e8eaf0;}
-    .cd-avatar-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;color:#4a4e69;text-decoration:none;font-weight:500;}
-    .cd-avatar-menu a:hover{background:#f0f2f7;color:#1a6fdb;}
-    .cd-avatar-menu button{width:100%;padding:9px 15px;background:none;border:none;border-top:1px solid #e8eaf0;text-align:left;font-family:'Poppins','DM Sans',sans-serif;font-size:13px;color:#e63946;cursor:pointer;}
-    .cd-avatar-menu button:hover{background:#fff0f1;}
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Country · SmarTuna concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="sc-blue-logo.png">
+<style>
 
-    /* Info tooltips */
-    .info-tooltip-wrap{display:inline-flex;align-items:center;gap:6px;position:relative;cursor:help;}
-    .info-tooltip-icon{width:15px;height:15px;border-radius:50%;background:#eef4fd;display:inline-flex;align-items:center;justify-content:center;color:#1a6fdb;font-size:10px;font-weight:700;flex-shrink:0;}
-    .info-tooltip-box{display:none;position:absolute;bottom:calc(100% + 8px);left:0;background:#1a1a2e;color:#fff;font-size:11px;font-weight:400;line-height:1.6;padding:10px 14px;border-radius:10px;width:280px;z-index:200;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,0.2);}
-    .info-tooltip-box::after{content:'';position:absolute;top:100%;left:14px;border:5px solid transparent;border-top-color:#1a1a2e;}
-    .info-tooltip-wrap:hover .info-tooltip-box{display:block;}
+  @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');font-weight:normal;font-style:normal;font-display:swap}
+  :root{
+    --accent:#2f6fed; --accent-soft:rgba(47,111,237,.10); --accent-line:#cddcf8;
+    --ink:#14161a; --muted:#6b7380; --faint:#9aa1ad; --line:#e6e8ec; --line2:#eef0f3; --page:#f6f7f9; --white:#fff;
+    --mono:Consolas,"SFMono-Regular",Menlo,monospace;
+    --ok:#178a4c; --ok-bg:#e8f6ee; --ok-line:#c7e8d4;
+    --low:#2f6fed; --low-bg:#edf3fe; --low-line:#cddcf8;
+    --med:#b7791f; --med-bg:#fdf4e3; --med-line:#f1dcae;
+    --crit:#d64545; --crit-bg:#fdeceb; --crit-line:#f5c9c6;
+    --ease:cubic-bezier(.16,1,.3,1); --spring:cubic-bezier(.34,1.56,.64,1);
+  }
+  *{box-sizing:border-box}
+  html,body{overflow-x:clip}
+  body{margin:0;font-family:Poppins,system-ui,sans-serif;font-weight:400;font-size:14px;font-synthesis:none;color:var(--ink);background:var(--page);line-height:1.55;-webkit-font-smoothing:antialiased}
+  b,strong,h1,h2,h3,h4,th,[style*="font-weight"]{font-weight:400!important}
+  a{color:inherit;text-decoration:none}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .wrap{max-width:1680px;margin:0 auto;padding:0 clamp(16px,3vw,48px)}
+  .mono{font-family:var(--mono)}
+  .hidden{display:none!important}
+  .num{font-variant-numeric:tabular-nums}
 
-    /* Compliance widgets */
-    .widgets-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:4px;}
-    .widget{flex:1;min-width:110px;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;position:relative;overflow:hidden;}
-    .widget::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:12px 12px 0 0;}
-    .widget-foc{background:#fff5f5;border:1.5px solid #ffd6d8;}.widget-foc::before{background:#e63946;}
-    .widget-foc.foc-no{background:#f0fdf4;border-color:#bbf7d0;}.widget-foc.foc-no::before{background:#16a34a;}
-    .widget-prev{background:#fff5f5;border:1.5px solid #ffd6d8;}.widget-prev::before{background:#e63946;}
-    .widget-vuln{background:#fffbeb;border:1.5px solid #fde68a;}.widget-vuln::before{background:#f59e0b;}
-    .widget-gov{background:#f0fdf4;border:1.5px solid #bbf7d0;}.widget-gov::before{background:#16a34a;}
-    .widget-iuu{background:#faf5ff;border:1.5px solid #e9d5ff;}.widget-iuu::before{background:#7c3aed;}
-    .widget-label{font-size:10px;font-weight:700;color:#9aa0b4;text-transform:uppercase;letter-spacing:0.5px;display:flex;align-items:center;gap:4px;}
-    .widget-value{font-size:22px;font-weight:800;color:#1a1a2e;line-height:1;}
-    .widget-sub{font-size:10px;color:#9aa0b4;margin-top:1px;}
-    .widget-mini-bar{height:4px;background:rgba(0,0,0,0.06);border-radius:999px;margin-top:6px;overflow:hidden;}
-    .widget-mini-bar-fill{height:100%;border-radius:999px;transition:width 0.6s;}
-    .widget-info{width:13px;height:13px;border-radius:50%;background:rgba(0,0,0,0.08);display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;cursor:help;flex-shrink:0;position:relative;}
-    .widget-info .info-tooltip-box{bottom:calc(100% + 6px);left:auto;right:0;width:220px;}
-    .widget-info .info-tooltip-box::after{left:auto;right:8px;}
-    .widget-info:hover .info-tooltip-box{display:block;}
-    .source-link{display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#1a6fdb;text-decoration:none;}
-    .source-link:hover{text-decoration:underline;}
+  /* shared pieces */
+  .eyebrow{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.04em;display:flex;align-items:center;gap:10px}
+  .lbl{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.03em}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:18px 20px;min-width:0}
+  .card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border:1px solid var(--line);border-radius:999px;background:var(--white);font-size:13px;font-weight:300;color:var(--ink);white-space:nowrap;cursor:pointer;transition:border-color .2s,color .2s,background .2s,transform .2s,box-shadow .2s}
+  .btn svg{flex:none}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.25)}
+  .btn.primary:hover{background:#2560d6;color:#fff;transform:translateY(-1px)}
+  .btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+  .btn:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .badge{font-family:var(--mono);font-size:10.5px;padding:1px 8px;border-radius:999px;border:1px solid;line-height:1.5}
+  .badge.new{color:var(--accent);border-color:var(--accent-line);background:#f3f7ff}
+  .badge.beta{color:#9a6a12;border-color:#efdcae;background:#fdf7e7}
+  .cnt{font-family:var(--mono);font-size:10.5px;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;display:inline-grid;place-items:center}
 
-    /* Vessels & Ports table */
-    .module-table{width:100%;border-collapse:collapse;margin-top:4px;}
-    .module-table th{font-size:10px;font-weight:700;color:#9aa0b4;text-transform:uppercase;letter-spacing:0.5px;padding:8px 10px;text-align:left;border-bottom:1.5px solid #f0f2f8;}
-    .module-table td{padding:10px 10px;font-size:13px;color:#1a1a2e;border-bottom:1px solid #f7f8fc;vertical-align:middle;}
-    .module-table tbody tr:last-child td{border-bottom:none;}
-    .module-table tbody tr:hover{background:#f9fafe;}
-    .module-link{color:#1a6fdb;font-weight:600;text-decoration:none;display:flex;align-items:center;gap:5px;}
-    .module-link:hover{text-decoration:underline;}
-    .module-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#f0f2f7;color:#4a4e69;}
-    .module-empty{text-align:center;padding:28px;color:#c0c4d0;font-size:13px;}
-    .vp-count{font-size:11px;color:#9aa0b4;font-weight:400;margin-left:6px;}
-    .module-count{font-size:11px;color:#9aa0b4;margin-left:auto;}
+  .mri-status-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:999px;font-size:12px;border:1px solid transparent;white-space:nowrap}
+  .mri-status-pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .mri-status-pill.transparent{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .mri-status-pill.low{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .mri-status-pill.medium{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .mri-status-pill.critical{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+  .kde-weight{display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;font-family:var(--mono);font-size:10.5px;border:1px solid transparent;white-space:nowrap}
+  .kde-weight.w5{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .kde-weight.w10{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .kde-weight.w30{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .kde-weight.w50{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
 
-    /* Vessel / Port tables */
-    .vp-table{width:100%;border-collapse:collapse;margin-top:4px;}
-    .vp-table th{font-size:10px;font-weight:700;color:#9aa0b4;text-transform:uppercase;letter-spacing:0.4px;padding:8px 10px;text-align:left;border-bottom:1.5px solid #f0f2f8;}
-    .vp-table td{font-size:13px;color:#1a1a2e;padding:10px 10px;border-bottom:1px solid #f8f9fc;vertical-align:middle;}
-    .vp-table tbody tr:last-child td{border-bottom:none;}
-    .vp-table tbody tr:hover{background:#f8f9fc;}
-    .vp-link{color:#1a6fdb;text-decoration:none;font-weight:600;}
-    .vp-link:hover{text-decoration:underline;}
-    .vp-badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;background:#f0f2f7;color:#4a4e69;}
-    .vp-empty{text-align:center;padding:28px;color:#c0c4d0;font-size:13px;}
-    .vp-count{font-size:11px;color:#9aa0b4;margin-left:6px;font-weight:400;}
+  .rv{animation:up .55s var(--ease) both;animation-delay:calc(var(--i,0) * 50ms)}
+  @keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .toast-wrap{position:fixed;right:20px;bottom:20px;z-index:3000;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  .toast{display:flex;align-items:center;gap:10px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;font-weight:300;box-shadow:0 14px 34px rgba(16,24,40,.2);animation:up .3s var(--ease)}
+  .toast i{width:8px;height:8px;border-radius:50%;background:#4ade80;flex:none}
+  .toast.error i{background:#f87171}
 
-    /* Widget description + more popup */
-    .widget-desc{font-size:10px;color:#9aa0b4;line-height:1.5;margin-top:5px;}
-    .widget-more{color:#1a6fdb;font-size:10px;font-weight:700;cursor:pointer;background:none;border:none;padding:0;font-family:inherit;}
-    .widget-more:hover{text-decoration:underline;}
-    .info-popup-overlay{display:none;position:fixed;inset:0;background:rgba(10,14,40,0.5);backdrop-filter:blur(4px);z-index:9000;align-items:center;justify-content:center;padding:20px;}
-    .info-popup-overlay.open{display:flex;}
-    .info-popup-box{background:#fff;border-radius:16px;padding:28px;max-width:420px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,0.2);position:relative;}
-    .info-popup-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;flex-shrink:0;}
-    .info-popup-title{font-size:15px;font-weight:800;color:#1a1a2e;margin-bottom:8px;}
-    .info-popup-body{font-size:13px;color:#4a4e69;line-height:1.7;}
-    .info-popup-close{position:absolute;top:14px;right:14px;width:28px;height:28px;border-radius:50%;background:#f4f6fb;border:none;cursor:pointer;font-size:16px;color:#6b7280;display:flex;align-items:center;justify-content:center;}
-    .info-popup-close:hover{background:#e8eaf0;}
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
 
-    /* Map z-index fix */
-    #countryMap{z-index:0 !important;}
-    .leaflet-pane,.leaflet-top,.leaflet-bottom{z-index:0 !important;}
-    .leaflet-control{z-index:1 !important;}
-  </style>
+  .sc-wm{display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1}
+  .sc-wm-top{font-family:'Bitsumis',sans-serif;font-size:17px;letter-spacing:.04em;text-transform:uppercase;line-height:1;color:var(--ink)}
+  .sc-wm-top span{color:var(--accent)}
+  .sc-wm-sub{font-family:'Bitsumis',sans-serif;font-size:8px;letter-spacing:.32em;text-transform:uppercase;color:#6b7380;margin-top:2px}
+  .topbar{position:sticky;top:0;z-index:1000;display:flex;align-items:center;gap:20px;padding:10px 28px;background:rgba(255,255,255,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .topbar-brand{display:flex;align-items:center;gap:8px;flex-shrink:0;line-height:1.1}
+  .topbar-brand img{width:28px;height:28px;object-fit:contain}
+  .topbar-nav{flex:1;display:flex;justify-content:center;min-width:0}
+  .nav-pill{display:inline-flex;align-items:center;gap:2px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:4px}
+  .topbar .nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:300;color:#6b7380;white-space:nowrap;transition:background .15s,color .15s}
+  .topbar .nav-item img,.topbar .nav-item svg{width:15px;height:15px;object-fit:contain;opacity:.45;flex-shrink:0}
+  .topbar .nav-item:hover{background:#f3f6fb;color:var(--ink)}
+  .topbar .nav-item:hover img,.topbar .nav-item:hover svg{opacity:1}
+  .topbar .nav-item.active{background:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.28)}
+  .topbar .nav-item.active img{filter:brightness(0) invert(1);opacity:1}
+  .topbar .nav-item.active svg{opacity:1}
+  .topbar .nav-item-wrap{position:relative}
+  .topbar .nav-item-wrap::after{content:'';position:absolute;top:100%;left:0;width:100%;height:12px}
+  .topbar .nav-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:160px;z-index:500;padding:6px}
+  .topbar .nav-item-wrap:hover .nav-dropdown{display:block}
+  .topbar .nav-dropdown-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;font-size:13px;font-weight:300;color:var(--ink);border-radius:8px;white-space:nowrap;cursor:pointer;position:relative;transition:background .15s}
+  .topbar .nav-dropdown-item:hover{background:#f6f7f9;color:var(--accent)}
+  .topbar .nav-dropdown-sub{display:block;visibility:hidden;opacity:0;position:absolute;left:100%;top:0;margin-left:6px;transform:translateX(-4px);background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:160px;padding:6px;z-index:501;transition:opacity .15s ease,transform .15s ease,visibility 0s linear .35s}
+  .topbar .nav-dropdown-sub::before{content:"";position:absolute;top:-10px;bottom:-10px;left:-16px;width:16px}
+  .topbar .nav-dropdown-item:hover > .nav-dropdown-sub,.topbar .nav-dropdown-item:focus-within > .nav-dropdown-sub{visibility:visible;opacity:1;transform:none;transition-delay:0s}
+  .topbar .nav-dropdown-item:has(> .nav-dropdown-sub:hover){background:#f6f7f9;color:var(--accent)}
+  .topbar .tag-new,.topbar .tag-beta{font-size:9px;padding:1px 7px;border-radius:999px}
+  .topbar .tag-new{color:#2f6fed;background:#eef3fc} .topbar .tag-beta{color:#a9721f;background:#fdf3df}
+  #devNav[hidden]{display:none!important}
+  .topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .search-pill{display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:12px;font-weight:300;color:#b3bac6;min-width:150px;cursor:text}
+  .notif-btn{width:36px;height:36px;border-radius:50%;background:var(--white);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;flex-shrink:0}
+  .notif-btn img{width:17px;height:17px;object-fit:contain;opacity:.65}
+  .notif-dot{position:absolute;top:5px;right:5px;width:8px;height:8px;background:#e63946;border-radius:50%;border:2px solid #fff}
+  .avatar-wrap{position:relative;flex-shrink:0}
+  .avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;flex-shrink:0}
+  .avatar-btn img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+  .avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:176px;overflow:hidden;z-index:999}
+  .avatar-menu.open{display:block;animation:drop .18s ease}
+  @keyframes drop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .avatar-menu-name{padding:11px 15px 7px;font-family:var(--mono);font-size:11.5px;color:#6b7380;border-bottom:1px solid var(--line)}
+  .avatar-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;font-weight:300;color:var(--ink)}
+  .avatar-menu a:hover{background:#f6f7f9;color:var(--accent)}
+  .avatar-menu button{width:100%;padding:9px 15px;background:none;border:0;border-top:1px solid var(--line);text-align:left;font-size:13px;font-weight:300;color:#e63946;cursor:pointer}
+  .avatar-menu button:hover{background:#fff0f1}
+  @media (max-width:1280px){ .search-pill{display:none} }
+  @media (max-width:1080px){ .topbar-nav{visibility:hidden} }
+  @media (max-width:600px){ .topbar{padding:10px 16px} .topbar-nav{display:none} .topbar{justify-content:space-between} }
+
+  body *{font-weight:400!important}
+  body h1,body .port-name,body .card-name,body .modal-h,body .stat-val,body .help-term{font-weight:300!important}
+  .page{padding-top:24px;padding-bottom:70px}
+  .crumb{font-family:var(--mono);font-size:12px;color:var(--faint);margin-bottom:6px}
+  .crumb a{color:var(--muted)} .crumb a:hover{color:var(--accent)}
+  h1{margin:0;font-size:clamp(26px,2.6vw,36px);letter-spacing:-.02em;line-height:1.15}
+  .sub{font-size:13.5px;color:var(--muted);font-weight:300!important;margin-top:3px}
+  .lbl{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .pill-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 17px;border-radius:999px;border:1px solid var(--line);background:var(--white);color:var(--ink);font:inherit;font-size:13px;font-weight:300!important;cursor:pointer;white-space:nowrap;transition:border-color .2s,color .2s,background .2s,transform .2s}
+  .pill-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .pill-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.22)}
+  .pill-btn.primary:hover{background:#2560d6;color:#fff;transform:translateY(-1px)}
+  .pill-btn.sm{height:32px;padding:0 13px;font-size:12px}
+  .pill-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .icon-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--white);color:var(--muted);display:grid;place-items:center;cursor:pointer;transition:border-color .2s,color .2s,background .2s;flex:none;font-size:16px;line-height:1}
+  .icon-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .icon-btn.danger:hover{border-color:var(--crit-line);color:var(--crit);background:var(--crit-bg)}
+  .icon-btn svg{width:13px;height:13px}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:20px 22px;margin-bottom:14px}
+  .card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .card-t{font-size:17px;letter-spacing:-.005em;font-weight:300!important}
+  .ptag{font-size:11.5px;padding:1px 10px;border-radius:999px;border:1px solid var(--accent-line);background:var(--low-bg);color:var(--accent);white-space:nowrap}
+  .ptag.fishing{border-color:var(--ok-line);background:var(--ok-bg);color:var(--ok)}
+  .ptag.cargo{border-color:var(--med-line);background:var(--med-bg);color:var(--med)}
+  .ptag.private{border-color:#ddd2f5;background:#f5f1fd;color:#7c5cd6}
+  .locode{font-family:var(--mono);font-size:12px;letter-spacing:.06em}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(12px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:12px;font-size:13px;opacity:0;visibility:hidden;transition:opacity .25s,transform .3s var(--ease),visibility .25s;z-index:3000;box-shadow:0 14px 34px rgba(16,24,40,.2);animation:none}
+  .toast.show{opacity:1;visibility:visible;transform:translateX(-50%)}
+  .toast.ok{background:var(--ok)} .toast.err{background:var(--crit)}
+  .ovl{position:fixed;inset:0;background:rgba(20,22,26,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
+  .ovl.open{display:flex}
+  .mbox{background:var(--white);border-radius:20px;box-shadow:0 30px 80px rgba(16,24,40,.25);width:600px;max-width:100%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;animation:up .3s var(--ease)}
+  .mhead{padding:20px 24px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .modal-h{font-size:20px;letter-spacing:-.01em;margin:0}
+  .mbody{padding:6px 24px 20px;overflow-y:auto;flex:1}
+  .mfoot{padding:14px 24px;border-top:1px solid var(--line2);background:var(--page);display:flex;justify-content:flex-end;gap:8px}
+  .x-btn{width:36px;height:36px;border-radius:50%;border:0;background:none;color:var(--muted);font-size:22px;cursor:pointer;flex:none;transition:background .2s,color .2s}
+  .x-btn:hover{background:var(--page);color:var(--ink)}
+  .lightbox{position:fixed;inset:0;background:rgba(10,12,16,.9);z-index:2000;display:none;align-items:center;justify-content:center;cursor:zoom-out}
+  .lightbox img{max-width:92vw;max-height:90vh;border-radius:14px;object-fit:contain;pointer-events:none}
+  .lightbox .x-btn{position:fixed;top:18px;right:22px;background:rgba(255,255,255,.14);color:#fff}
+  .tile{background:var(--page);border:1px solid var(--line2);border-radius:12px;padding:10px 13px;min-width:0}
+  .tile .v{font-size:13.5px;word-break:break-word}
+  .tile .v.mono{font-family:var(--mono);font-size:13px;color:var(--accent);letter-spacing:.04em}
+  .tile .v.empty{color:#c3c9d3}
+  .fac{display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--line);border-radius:14px;background:var(--white);margin-bottom:8px;transition:border-color .2s,background .2s,box-shadow .2s;animation:up .4s var(--ease) both}
+  .fac:hover{border-color:var(--accent-line)}
+  .fac-ic{width:38px;height:38px;border-radius:12px;background:var(--low-bg);color:var(--accent);display:grid;place-items:center;flex:none;overflow:hidden}
+  .fac-ic img{width:100%;height:100%;object-fit:cover}
+  .fac-main{flex:1;min-width:0}
+  .fac-name{font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .fac-type{font-size:11.5px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 8px}
+  .fac-meta{font-size:12px;color:var(--muted);font-weight:300!important;display:flex;gap:10px;flex-wrap:wrap;margin-top:1px}
+  .fac-meta .co{font-family:var(--mono);font-size:11.5px;color:var(--accent)}
+  .fac-kids{margin-left:19px;padding-left:14px;border-left:1px dashed var(--accent-line)}
+  .empty-note{padding:26px;text-align:center;color:var(--muted);font-size:13px;font-weight:300!important;background:var(--page);border:1px dashed var(--line);border-radius:14px}
+  .map-box{height:260px;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--page);position:relative}
+  .map-box iframe{display:block;width:100%;height:100%;border:0}
+  .map-ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--faint);font-size:12.5px}
+  .map-ph p{margin:0}
+  .hero{position:relative;height:230px;border-radius:22px;overflow:hidden;background:linear-gradient(120deg,#e9f0fd 0%,#f4f7fd 55%,#eef3fc 100%);border:1px solid var(--line);background-size:cover;background-position:center}
+
+  .hidden{display:none!important}
+  .loading-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:100px 0;color:var(--faint);font-family:var(--mono);font-size:12px}
+  .loading-state p{margin:0}
+  .spinner{width:28px;height:28px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .count-chip{font-family:var(--mono);font-size:11.5px;color:var(--accent);background:var(--low-bg);border:1px solid var(--accent-line);border-radius:999px;padding:2px 10px;letter-spacing:0;vertical-align:middle}
+
+  .crumb{margin-bottom:12px}
+  .country-hero{display:flex;align-items:center;gap:22px;flex-wrap:wrap;background:linear-gradient(120deg,#eef3fc,#f8faff);border:1px solid var(--line);border-radius:22px;padding:22px 24px;margin-bottom:14px;animation:up .4s var(--ease) both}
+  .country-flag-large{width:112px;height:auto;max-height:80px;object-fit:cover;border-radius:10px;box-shadow:0 0 0 1px rgba(16,24,40,.08),0 10px 24px rgba(16,24,40,.12);flex:none}
+  .country-hero-info{flex:1;min-width:220px}
+  .country-hero-info h1{margin-bottom:8px}
+  .country-codes{display:flex;gap:6px;flex-wrap:wrap}
+  .code-chip{font-family:var(--mono);font-size:12px;padding:2px 11px;border-radius:999px;background:var(--white);border:1px solid var(--accent-line);color:var(--accent)}
+  .code-chip.numeric{border-color:var(--line);color:var(--muted)}
+  .hero-acts{display:flex;gap:8px}
+  .detail-card{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:18px 20px;min-width:0;animation:up .4s var(--ease) both}
+  .detail-card-header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .detail-card-header h2{margin:0;font-size:17px;font-weight:300!important;letter-spacing:-.005em;display:flex;align-items:center;gap:8px}
+  .detail-card-header > svg{width:16px;height:16px;flex:none;stroke:var(--accent)!important}
+  .stack{display:flex;flex-direction:column;gap:14px}
+  .gi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+  .gi-field{background:var(--page);border:1px solid var(--line2);border-radius:12px;padding:10px 13px;display:flex;flex-direction:column;gap:1px;min-width:0}
+  .gi-label{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .gi-value{font-size:13.5px;word-break:break-word}
+  .widgets-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+  .widget{position:relative;border-radius:16px;padding:13px 15px;display:flex;flex-direction:column;gap:2px;border:1px solid var(--line);background:var(--white);min-width:0}
+  .widget-label{font-family:var(--mono);font-size:11px;color:var(--faint);display:flex;align-items:center;gap:6px}
+  .widget-label::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--dot,var(--accent));flex:none}
+  .widget-value{font-size:26px;letter-spacing:-.02em;line-height:1.15;font-weight:300!important;margin-top:4px}
+  .widget-sub{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .widget-mini-bar{height:5px;background:var(--page);border-radius:999px;margin-top:8px;overflow:hidden}
+  .widget-mini-bar-fill{height:100%;border-radius:999px;transition:width .9s var(--ease)}
+  .widget-desc{font-size:11.5px;color:var(--muted);font-weight:300!important;line-height:1.5;margin-top:8px}
+  .widget-more{color:var(--accent);font:inherit;font-size:11.5px;cursor:pointer;background:none;border:0;padding:0}
+  .widget-more:hover{text-decoration:underline}
+  .widget-foc{--dot:var(--crit)} .widget-foc.foc-no{--dot:var(--ok)} .widget-foc.foc-unk{--dot:var(--faint)}
+  .widget-prev{--dot:var(--crit)} .widget-vuln{--dot:var(--med)} .widget-gov{--dot:var(--ok)} .widget-iuu{--dot:#7c5cd6}
+  .foc-val{display:inline-flex;align-items:center;gap:7px;font-size:18px!important}
+  .foc-val svg{width:16px;height:16px}
+  .foc-badge{display:inline-flex;align-items:center;font-size:11.5px;padding:1px 10px;border-radius:999px;border:1px solid;margin-top:6px;align-self:flex-start}
+  .foc-badge.yes{color:var(--crit);background:var(--crit-bg);border-color:var(--crit-line)}
+  .foc-badge.mid{color:var(--med);background:var(--med-bg);border-color:var(--med-line)}
+  .foc-badge.no{color:var(--ok);background:var(--ok-bg);border-color:var(--ok-line)}
+  .src-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:12px;padding-top:10px;border-top:1px solid var(--line2)}
+  .source-link{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--accent)}
+  .source-link:hover{text-decoration:underline}
+  .src-note{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .fiti-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .fiti-row .widget{--dot:#0ea5e9}
+  .fiti-row .widget-value{font-size:17px}
+  .tip{position:relative;display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--low-bg);color:var(--accent);font-family:var(--mono);font-size:11px;cursor:help}
+  .tip-box{display:none;position:absolute;top:calc(100% + 8px);left:-10px;background:var(--ink);color:#fff;font-family:Poppins,sans-serif;font-size:12px;font-weight:300;line-height:1.6;padding:10px 14px;border-radius:12px;width:300px;z-index:200;box-shadow:0 14px 34px rgba(16,24,40,.2)}
+  .tip-box a{color:#9cc1ff}
+  .tip:hover .tip-box{display:block}
+  .mid-grid{display:grid;grid-template-columns:1fr 360px;gap:14px;align-items:start}
+  .map-wrap{position:relative}
+  .map-toggles{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}
+  .map-toggle{height:32px;padding:0 13px;border-radius:999px;border:1px solid var(--line);background:var(--white);color:var(--muted);font:inherit;font-size:12px;cursor:pointer;transition:background .2s,color .2s,border-color .2s}
+  .map-toggle:hover{border-color:var(--accent-line);color:var(--ink)}
+  .map-toggle.active{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.22)}
+  .eez-scope{display:inline-flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:999px;background:var(--page)}
+  .eez-scope-btn{height:26px;padding:0 11px;border-radius:999px;border:0;background:none;color:var(--muted);font:inherit;font-size:11.5px;cursor:pointer}
+  .eez-scope-btn.active{background:var(--white);color:var(--ink);box-shadow:0 1px 4px rgba(16,24,40,.12)}
+  #countryMap{width:100%;height:380px;border-radius:14px;overflow:hidden;background:#f4f7fb;border:1px solid var(--line);z-index:0}
+  .leaflet-pane,.leaflet-top,.leaflet-bottom{z-index:0!important}
+  .leaflet-control{z-index:1!important}
+  .leaflet-container{font-family:Poppins,sans-serif}
+  .leaflet-control-zoom a{color:var(--accent)!important}
+  .map-note{margin:8px 2px 0;font-size:12px;color:var(--faint);font-weight:300!important}
+  .map-legend{position:absolute;left:12px;bottom:34px;z-index:5;background:rgba(255,255,255,.95);border:1px solid var(--line);border-radius:12px;padding:8px 11px;box-shadow:0 6px 16px rgba(16,24,40,.08);display:flex;flex-direction:column;gap:5px}
+  .legend-row{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--muted)}
+  .legend-swatch{width:13px;height:13px;border-radius:4px;flex:none;box-sizing:border-box}
+  .country-map-label,.country-map-label.leaflet-tooltip-right{background:transparent;border:0;box-shadow:none;padding:0;white-space:nowrap}
+  .country-map-label::before{display:none!important}
+  .country-map-label .cml-name{display:block;font-size:14px;letter-spacing:.08em;color:var(--ink);line-height:1.1}
+  .country-map-label .cml-area{display:block;font-family:var(--mono);font-size:11px;color:var(--faint);margin-top:2px}
+  .detail-fields{display:flex;flex-direction:column;gap:8px}
+  .detail-field{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 13px;background:var(--page);border:1px solid var(--line2);border-radius:12px}
+  .detail-label{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .detail-value{font-family:var(--mono);font-size:13.5px;color:var(--accent)}
+  .coming{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:20px 10px;background:var(--page);border:1px dashed var(--line);border-radius:14px}
+  .coming svg{color:#c3c9d3}
+  .coming h3{margin:0;font-size:15px;font-weight:300!important}
+  .coming p{margin:0;font-size:12.5px;color:var(--muted);font-weight:300!important;line-height:1.6;max-width:300px}
+  .vp-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  .vp-count{font-family:var(--mono);font-size:11.5px;color:var(--accent);background:var(--low-bg);border:1px solid var(--accent-line);border-radius:999px;padding:1px 9px;letter-spacing:0}
+  .vp-count:empty{display:none}
+  .table-wrap{overflow-x:auto}
+  .module-table{width:100%;border-collapse:collapse}
+  .module-table th{font-family:var(--mono);font-size:11px;color:var(--faint);padding:0 10px 9px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+  .module-table td{padding:9px 10px;font-size:13px;border-bottom:1px solid var(--line2);vertical-align:middle}
+  .module-table tbody tr:last-child td{border-bottom:0}
+  .module-table tbody tr:hover td{background:#fafbfd}
+  .module-table .mono{font-family:var(--mono);font-size:12px}
+  .module-link{color:var(--ink);display:inline-flex;align-items:center;gap:7px;transition:color .2s}
+  .module-link:hover{color:var(--accent)}
+  .module-link svg{color:var(--accent);flex:none}
+  .module-badge{display:inline-flex;align-items:center;padding:0 9px;border-radius:999px;font-size:11.5px;background:var(--page);border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+  .module-badge.mono{font-family:var(--mono);font-size:11px;color:var(--accent);border-color:var(--accent-line);background:var(--low-bg)}
+  .module-empty{text-align:center;padding:24px;color:var(--faint);font-size:13px;font-weight:300!important;background:var(--page);border-radius:12px}
+  .view-all{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--accent);margin-top:12px}
+  .info-popup-overlay{display:none;position:fixed;inset:0;background:rgba(20,22,26,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:9000;align-items:center;justify-content:center;padding:20px}
+  .info-popup-overlay.open{display:flex}
+  .info-popup-box{background:var(--white);border-radius:20px;padding:26px 28px;max-width:480px;width:100%;max-height:86vh;overflow-y:auto;box-shadow:0 30px 80px rgba(16,24,40,.25);position:relative;animation:up .3s var(--ease)}
+  .info-popup-icon{width:44px;height:44px;border-radius:14px;display:grid;place-items:center;margin-bottom:12px}
+  .info-popup-icon svg{width:20px;height:20px}
+  .info-popup-title{font-size:19px;font-weight:300!important;letter-spacing:-.01em;margin-bottom:8px}
+  .info-popup-body{font-size:13px;color:var(--muted);line-height:1.7;font-weight:300!important}
+  .info-popup-body strong{color:var(--ink);font-weight:400!important}
+  .info-popup-body ul{margin:8px 0 8px 18px;padding:0}
+  .info-popup-body a{color:var(--accent)}
+  .info-popup-close{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;background:var(--page);border:0;cursor:pointer;font-size:20px;color:var(--muted)}
+  .info-popup-close:hover{color:var(--ink)}
+  @media (max-width:1200px){ .widgets-row{grid-template-columns:repeat(3,1fr)} }
+  @media (max-width:1080px){ .mid-grid,.vp-grid{grid-template-columns:1fr} }
+  @media (max-width:640px){ .widgets-row,.fiti-row{grid-template-columns:1fr 1fr} .country-hero{padding:18px} .country-flag-large{width:80px} #countryMap{height:300px} .hero-acts{width:100%} }
+
+</style>
 </head>
 <body>
 
-<!-- NAV -->
-<div class="cd-nav-wrap">
-  <a href="home-logged-in.html" class="cd-nav-brand" style="display:flex;align-items:center;gap:9px;"><img src="sc-blue-logo.png" alt="SmarTuna" style="width:26px;height:26px;object-fit:contain;flex-shrink:0;"/>
-      <span class="sc-wm">
-        <span class="sc-wm-top">SmarTuna</span>
-        <span class="sc-wm-sub">concept</span>
-      </span></a>
-  <div style="flex:1;display:flex;justify-content:center;">
-    <div class="cd-nav-pill">
-      <a href="home-logged-in.html" class="cd-nav-item"><img src="home.png"/> Home</a>
-      <div class="cd-nav-item-wrap">
-        <div class="cd-nav-item"><img src="my-studio.png"/> My Studio</div>
-        <div class="cd-nav-dd">
-          <a href="product-list.html">Product</a>
-          <a href="organisation.html">Your Company</a>
+  <!-- TOP BAR (same as home-logged-in.html) -->
+  <div class="topbar">
+    <a href="home-logged-in.html" class="topbar-brand">
+      <img src="sc-blue-logo.png" alt="SmarTuna"/>
+      <span class="sc-wm"><span class="sc-wm-top">Smar<span>Tuna</span></span><span class="sc-wm-sub">concept</span></span>
+    </a>
+    <div class="topbar-nav">
+      <div class="nav-pill">
+        <a href="home-logged-in.html" class="nav-item"><img src="home.png" alt=""/>Home</a>
+        <div class="nav-item-wrap">
+          <a href="modules.html#my-studio" class="nav-item"><img src="my-studio.png" alt=""/>My Studio</a>
+          <div class="nav-dropdown">
+            <a href="product-list.html" class="nav-dropdown-item">Product</a>
+            <a href="evidence-list.html" class="nav-dropdown-item">Evidence</a>
+            <a href="raw-material-list.html" class="nav-dropdown-item">Raw Materials</a>
+            <a href="shipment-list.html" class="nav-dropdown-item">Shipments</a>
+            <a href="organisation.html" class="nav-dropdown-item">Your Company</a>
+            <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('carbon-calculator.html','Carbon Footprint Calculator','carbon-icon.png','Carbon','green');">Carbon Calculator</a>
+            <a href="modules.html#my-studio" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all My Studio</a>
+          </div>
+        </div>
+        <div class="nav-item-wrap">
+          <a href="modules.html#atlas" class="nav-item active"><img src="atlas.png" alt=""/>Atlas</a>
+          <div class="nav-dropdown">
+            <a href="Species.html" class="nav-dropdown-item">Species</a>
+            <a href="cold-storage-list.html" class="nav-dropdown-item">Cold Storage</a>
+            <a href="port-list.html" class="nav-dropdown-item">Ports</a>
+            <a href="vessel-list.html" class="nav-dropdown-item">Vessels</a>
+            <a href="country.html" class="nav-dropdown-item">Country</a>
+            <div class="nav-dropdown-item" style="position:relative;">
+              Others <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+              <div class="nav-dropdown-sub">
+                <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('fishery.html','MSC Fishery Module')">MSC Fisheries</a>
+                <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('asc-farms.html','ASC Farm Standard Module','ASC_ecolabel.png','ASC')">ASC Farms</a>
+              </div>
+            </div>
+            <a href="modules.html#atlas" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all Atlas</a>
+          </div>
+        </div>
+        <div class="nav-item-wrap">
+          <a href="modules.html#features" class="nav-item">Features</a>
+          <div class="nav-dropdown">
+            <a href="smartuna-ai.html" class="nav-dropdown-item">SmarTuna A.I <span class="tag-new">New</span></a>
+            <a href="smartuna-assistant.html" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('smartuna-assistant.html','SmarTuna Assistant');">SmarTuna Assistant <span class="tag-beta">Beta</span></a>
+            <div class="nav-dropdown-item" style="position:relative;">
+              Compliance <span style="font-size:11px;color:#6b7280;">&rsaquo;</span>
+              <div class="nav-dropdown-sub">
+                <a href="eu-catch-support.html" class="nav-dropdown-item">EU CATCH Form</a>
+                <a href="simp-support.html" class="nav-dropdown-item">NOAA SIMP <span class="tag-new">New</span></a>
+                <a href="fsma-support.html" class="nav-dropdown-item">FSMA Act 204 <span class="tag-new">New</span></a>
+              </div>
+            </div>
+            <a href="load-planner.html" class="nav-dropdown-item">Load Planner</a>
+            <a href="modules.html#features" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all Features</a>
+          </div>
+        </div>
+        <a href="modules.html#messages" class="nav-item"><img src="messages.png" alt=""/>Messages</a>
+        <a href="modules.html#reports" class="nav-item"><img src="report.png" alt=""/>Reports</a>
+        <a href="modules.html#support" class="nav-item"><img src="support.png" alt=""/>Support</a>
+        <a href="developer.html" class="nav-item" id="devNav" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 6 2 12 8 18"/><polyline points="16 6 22 12 16 18"/></svg>Developer</a>
+        <script>try{if(localStorage.getItem('smartuna_dev_unlocked')==='1')document.getElementById('devNav').hidden=false;}catch(e){}</script>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="search-pill">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search here...
+      </div>
+      <div class="notif-btn"><img src="notification.png" alt=""/><div class="notif-dot"></div></div>
+      <div class="avatar-wrap">
+        <div class="avatar-btn" id="navAvatar" onclick="toggleNavDropdown()" role="button" tabindex="0" aria-label="Account menu"></div>
+        <div class="avatar-menu" id="navDropdown">
+          <div class="avatar-menu-name" id="navFirstName">Hello!</div>
+          <span id="navEmail" hidden></span>
+          <a href="profile.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Profile</a>
+          <button onclick="handleLogout()">Logout</button>
         </div>
       </div>
-      <div class="cd-nav-item-wrap">
-        <div class="cd-nav-item active"><img src="atlas.png" style="opacity:1;"/> Atlas</div>
-        <div class="cd-nav-dd">
-          <a href="Species.html">Species</a>
-          <a href="country.html" class="active">Country</a>
-          <a href="#">Ports</a>
-          <a href="#">Vessels</a>
-        </div>
-      </div>
-      <a href="#" class="cd-nav-item"><img src="features.png"/> Features</a>
-      <a href="#" class="cd-nav-item"><img src="messages.png"/> Messages</a>
-      <a href="#" class="cd-nav-item"><img src="report.png"/> Reports</a>
-      <a href="report.html" class="cd-nav-item"><img src="support.png"/> Support</a>
-    </div>
-  </div>
-  <div style="position:relative;flex-shrink:0;">
-    <button class="cd-avatar-btn" id="cdAvatarBtn" onclick="toggleCdAvatar()"><span id="cdAvatarInitials">?</span></button>
-    <div class="cd-avatar-menu" id="cdAvatarMenu">
-      <div class="cd-avatar-menu-name" id="cdAvatarGreeting">Hello!</div>
-      <a href="profile.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg> Profile</a>
-      <button onclick="handleLogout()">Logout</button>
-    </div>
-  </div>
-</div>
-
-<!-- PAGE -->
-<div class="page-wrapper">
-  <div class="detail-topbar">
-    <div style="display:flex;align-items:center;gap:10px;">
-      <a href="country.html" class="btn-back">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-        Back to Countries
-      </a>
-      <button id="editCountryBtn" onclick="openEditCountry()" style="display:none;align-items:center;gap:6px;padding:8px 16px;background:#1a6fdb;color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        Edit Country
-      </button>
     </div>
   </div>
 
+<div class="wrap page">
+  <div class="crumb"><a href="country.html">Countries</a> / <span id="crumbName">Loading...</span></div>
   <div class="loading-state" id="loadingState"><div class="spinner"></div><p>Loading country...</p></div>
 
-  <div class="country-detail hidden" id="detailContent">
+  <div class="hidden" id="detailContent">
     <div class="country-hero">
       <img id="countryFlag" src="" alt="Flag" class="country-flag-large"/>
       <div class="country-hero-info">
         <h1 id="countryName">—</h1>
         <div class="country-codes">
-          <span class="code-chip" id="alpha2Chip">—</span>
-          <span class="code-chip" id="alpha3Chip">—</span>
-          <span class="code-chip numeric" id="numericChip">—</span>
+          <span class="code-chip" id="alpha2Chip">—</span><span class="code-chip" id="alpha3Chip">—</span><span class="code-chip numeric" id="numericChip">—</span>
+          <span class="code-chip numeric" id="d-continent">—</span>
         </div>
+      </div>
+      <div class="hero-acts">
+        <a href="country.html" class="pill-btn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>Countries</a>
+        <button class="pill-btn primary" id="editCountryBtn" onclick="openEditCountry()" style="display:none"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>Edit country</button>
       </div>
     </div>
 
-    <div class="detail-grid">
-
-      <!-- 1. GENERAL INFORMATION -->
+    <div class="stack">
       <div class="detail-card gi-card">
-        <div class="detail-card-header">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-          <h2>General Information</h2>
-        </div>
+        <div class="detail-card-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><h2>General information</h2></div>
         <div class="gi-grid">
-          <div class="gi-field"><span class="gi-label">Capital City</span><span class="gi-value" id="gi-capital">—</span></div>
+          <div class="gi-field"><span class="gi-label">Capital city</span><span class="gi-value" id="gi-capital">—</span></div>
           <div class="gi-field"><span class="gi-label">Currency</span><span class="gi-value" id="gi-currency">—</span></div>
-          <div class="gi-field"><span class="gi-label">Official Language(s)</span><span class="gi-value" id="gi-languages">—</span></div>
-          <div class="gi-field"><span class="gi-label">Mainland / Region</span><span class="gi-value" id="gi-region">—</span></div>
-          <div class="gi-field"><span class="gi-label">Decimal Format</span><span class="gi-value" id="gi-decimal">—</span></div>
-          <div class="gi-field"><span class="gi-label">Time Zone</span><span class="gi-value" id="gi-timezone">—</span></div>
+          <div class="gi-field"><span class="gi-label">Official language(s)</span><span class="gi-value" id="gi-languages">—</span></div>
+          <div class="gi-field"><span class="gi-label">Region</span><span class="gi-value" id="gi-region">—</span></div>
+          <div class="gi-field"><span class="gi-label">Decimal format</span><span class="gi-value" id="gi-decimal">—</span></div>
+          <div class="gi-field"><span class="gi-label">Time zone</span><span class="gi-value" id="gi-timezone">—</span></div>
         </div>
       </div>
 
-      <!-- 2. COMPLIANCE INDICATORS -->
-      <div class="detail-card" style="grid-column:1/-1;">
-        <div class="detail-card-header">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          <h2>Compliance Indicators</h2>
-        </div>
+      <div class="detail-card">
+        <div class="detail-card-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><h2>Compliance indicators</h2></div>
         <div class="widgets-row">
-          <!-- FOC -->
-          <div class="widget widget-foc" id="foc-widget">
-            <div class="widget-label">Flag of Convenience</div>
-            <div class="widget-value" id="foc-status" style="font-size:15px;margin-top:4px;">—</div>
-            <div class="widget-desc">Vessel registered outside the owner's country. <button class="widget-more" onclick="openInfoPopup('foc')">more</button></div>
+          <div class="widget widget-foc foc-unk" id="foc-widget">
+            <div class="widget-label">Flag of convenience</div>
+            <div class="widget-value foc-val" id="foc-status">—</div>
+            <div class="widget-desc">Vessels registered outside the owner's country. <button class="widget-more" onclick="openInfoPopup('foc')">More</button></div>
           </div>
-          <!-- Prevalence -->
           <div class="widget widget-prev">
             <div class="widget-label">Prevalence</div>
-            <div class="widget-value" id="msi-prevalence">—</div>
-            <div class="widget-sub">per 1,000 people</div>
-            <div class="widget-mini-bar"><div class="widget-mini-bar-fill" id="msi-prev-bar" style="width:0%;background:#e63946;"></div></div>
-            <div class="widget-desc">Modern slavery victims per 1,000. <button class="widget-more" onclick="openInfoPopup('prevalence')">more</button></div>
+            <div class="widget-value" id="msi-prevalence">—</div><div class="widget-sub">per 1,000 people</div>
+            <div class="widget-mini-bar"><div class="widget-mini-bar-fill" id="msi-prev-bar" style="width:0%;background:var(--crit)"></div></div>
+            <div class="widget-desc">Modern slavery victims per 1,000. <button class="widget-more" onclick="openInfoPopup('prevalence')">More</button></div>
           </div>
-          <!-- Vulnerability -->
           <div class="widget widget-vuln">
             <div class="widget-label">Vulnerability</div>
-            <div class="widget-value" id="msi-vulnerability">—</div>
-            <div class="widget-sub">out of 100</div>
-            <div class="widget-mini-bar"><div class="widget-mini-bar-fill" id="msi-vuln-bar" style="width:0%;background:#f59e0b;"></div></div>
-            <div class="widget-desc">Social & economic risk factors. <button class="widget-more" onclick="openInfoPopup('vulnerability')">more</button></div>
+            <div class="widget-value" id="msi-vulnerability">—</div><div class="widget-sub">out of 100</div>
+            <div class="widget-mini-bar"><div class="widget-mini-bar-fill" id="msi-vuln-bar" style="width:0%;background:var(--med)"></div></div>
+            <div class="widget-desc">Social and economic risk factors. <button class="widget-more" onclick="openInfoPopup('vulnerability')">More</button></div>
           </div>
-          <!-- Gov Response -->
           <div class="widget widget-gov">
-            <div class="widget-label">Gov. Response</div>
-            <div class="widget-value" id="msi-gov-response">—</div>
-            <div class="widget-sub">out of 100</div>
-            <div class="widget-mini-bar"><div class="widget-mini-bar-fill" id="msi-gov-bar" style="width:0%;background:#16a34a;"></div></div>
-            <div class="widget-desc">Government action against slavery. <button class="widget-more" onclick="openInfoPopup('govresponse')">more</button></div>
+            <div class="widget-label">Gov. response</div>
+            <div class="widget-value" id="msi-gov-response">—</div><div class="widget-sub">out of 100</div>
+            <div class="widget-mini-bar"><div class="widget-mini-bar-fill" id="msi-gov-bar" style="width:0%;background:var(--ok)"></div></div>
+            <div class="widget-desc">Government action against slavery. <button class="widget-more" onclick="openInfoPopup('govresponse')">More</button></div>
           </div>
-          <!-- IUU Score -->
           <div class="widget widget-iuu">
-            <div class="widget-label">IUU Fishing Score</div>
-            <div class="widget-value" id="iuu-score">—</div>
-            <div class="widget-sub" id="iuu-year-label">out of 100</div>
-            <div class="widget-mini-bar"><div class="widget-mini-bar-fill" id="iuu-bar" style="width:0%;background:#7c3aed;"></div></div>
-            <div class="widget-desc">Illegal fishing risk by role. <button class="widget-more" onclick="openInfoPopup('iuu')">more</button></div>
+            <div class="widget-label">IUU fishing score</div>
+            <div class="widget-value" id="iuu-score">—</div><div class="widget-sub" id="iuu-year-label">out of 100</div>
+            <div class="widget-mini-bar"><div class="widget-mini-bar-fill" id="iuu-bar" style="width:0%;background:#7c5cd6"></div></div>
+            <span class="foc-badge" id="iuu-risk-badge" style="display:none"></span>
+            <div class="widget-desc">Illegal fishing risk by role. <button class="widget-more" onclick="openInfoPopup('iuu')">More</button></div>
           </div>
         </div>
-        <div style="display:flex;gap:16px;margin-top:12px;padding-top:10px;border-top:1px solid #f0f2f8;">
-          <a id="msi-url" href="#" target="_blank" class="source-link" style="display:none;">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            Walk Free Index
-          </a>
-          <a id="iuu-url" href="#" target="_blank" class="source-link" style="display:none;">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            IUU Fishing Index
-          </a>
-          <span id="msi-year-label" style="font-size:11px;color:#c0c4d0;margin-left:auto;"></span>
+        <div class="src-row">
+          <a id="msi-url" href="#" target="_blank" rel="noopener" class="source-link" style="display:none"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>Walk Free Index</a>
+          <a id="iuu-url" href="#" target="_blank" rel="noopener" class="source-link" style="display:none"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>IUU Fishing Index</a>
+          <span class="src-note" id="msi-year-label"></span>
         </div>
       </div>
 
-
-      <!-- FISHERIES TRANSPARENCY (FiTI) -->
-      <div class="detail-card fiti-card" id="fitiCard" style="grid-column:1/-1;display:none;">
-        <div class="detail-card-header">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          <div class="info-tooltip-wrap">
-            <h2 style="color:#0c4a6e;">Fisheries Transparency Initiative (FiTI)</h2>
-            <span class="info-tooltip-icon" style="background:#e0f2fe;color:#0369a1;">i</span>
-            <div class="info-tooltip-box">The Fisheries Transparency Initiative (FiTI) is a global, multi-stakeholder endeavour to enhance the sustainability of marine fisheries by increasing transparency and stakeholder collaboration. <a href="https://fiti.global/" target="_blank" style="color:#7dd3fc;">fiti.global ↗</a></div>
-          </div>
+      <div class="detail-card" id="fitiCard" style="display:none">
+        <div class="detail-card-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><h2>Fisheries Transparency Initiative (FiTI)
+          <span class="tip">i<span class="tip-box">FiTI is a global multi-stakeholder initiative that makes marine fisheries more sustainable by increasing transparency and collaboration. <a href="https://fiti.global/" target="_blank" rel="noopener">fiti.global</a></span></span></h2></div>
+        <div class="fiti-row">
+          <div class="widget"><div class="widget-label">FiTI participation</div><div class="widget-value" id="fiti-participation">—</div><div class="widget-desc">Whether the country takes part in FiTI</div></div>
+          <div class="widget"><div class="widget-label">Fisheries info system</div><div class="widget-value" id="fiti-fis">—</div><div class="widget-desc">National FIS availability</div></div>
+          <div class="widget"><div class="widget-label">FiTI country status</div><div class="widget-value" id="fiti-status">—</div><div class="widget-desc">Implementation stage</div></div>
         </div>
-        <div class="widgets-row">
-
-          <!-- FiTI Participation -->
-          <div class="widget" id="fiti-part-widget" style="background:#f0f9ff;border:1.5px solid #bae6fd;">
-            <div class="widget-label" style="color:#0369a1;">FiTI Participation</div>
-            <div class="widget-value" id="fiti-participation" style="font-size:15px;margin-top:4px;">—</div>
-            <div class="widget-desc" style="font-size:10px;color:#9aa0b4;margin-top:5px;">Country participates in FiTI</div>
-          </div>
-
-          <!-- Fisheries Information System -->
-          <div class="widget" id="fis-widget" style="background:#f0f9ff;border:1.5px solid #bae6fd;">
-            <div class="widget-label" style="color:#0369a1;">Fisheries Info System (FIS)</div>
-            <div class="widget-value" id="fiti-fis" style="font-size:15px;margin-top:4px;">—</div>
-            <div class="widget-desc" style="font-size:10px;color:#9aa0b4;margin-top:5px;">National FIS availability</div>
-          </div>
-
-          <!-- FiTI Country Status -->
-          <div class="widget" id="fiti-status-widget" style="background:#f0f9ff;border:1.5px solid #bae6fd;">
-            <div class="widget-label" style="color:#0369a1;">FiTI Country Status</div>
-            <div class="widget-value" id="fiti-status" style="font-size:13px;margin-top:4px;line-height:1.3;">—</div>
-            <div class="widget-desc" style="font-size:10px;color:#9aa0b4;margin-top:5px;">Implementation stage</div>
-          </div>
-
-        </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:1px solid #e0f2fe;">
-          <a id="fiti-url" href="#" target="_blank" class="source-link" style="display:none;color:#0369a1;">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            FiTI Country Page
-          </a>
-          <a href="https://fiti.global/" target="_blank" class="source-link" style="margin-left:auto;color:#0369a1;">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-            fiti.global
-          </a>
+        <div class="src-row">
+          <a id="fiti-url" href="#" target="_blank" rel="noopener" class="source-link" style="display:none"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>FiTI country page</a>
+          <a href="https://fiti.global/" target="_blank" rel="noopener" class="source-link" style="margin-left:auto"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>fiti.global</a>
         </div>
       </div>
 
-      <!-- 3. ISO CODES -->
-      <div class="detail-card">
-        <div class="detail-card-header">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20"/></svg>
-          <h2>ISO Codes</h2>
-        </div>
-        <div class="detail-fields">
-          <div class="detail-field"><span class="detail-label">Alpha-2 Code</span><span class="detail-value" id="d-alpha2">—</span></div>
-          <div class="detail-field"><span class="detail-label">Alpha-3 Code</span><span class="detail-value" id="d-alpha3">—</span></div>
-          <div class="detail-field"><span class="detail-label">Numeric Code</span><span class="detail-value" id="d-numeric">—</span></div>
-        </div>
-      </div>
-
-      <!-- 4. LOCATION MAP (full width) -->
-      <div class="detail-card map-card" style="grid-column:1/-1;">
-        <div class="detail-card-header">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          <h2>Location</h2>
-        </div>
-        <div class="map-wrap">
-          <div class="map-toggles">
-            <button class="map-toggle" onclick="toggleFao(this)">FAO Areas</button>
-            <button class="map-toggle" onclick="toggleEez(this)">EEZ</button>
-            <button class="map-toggle" onclick="toggleHighSeas(this)">High Seas</button>
-            <span class="eez-scope hidden" id="eezScopeWrap">
-              <button class="eez-scope-btn active" onclick="setEezScope('country', this)">This country</button>
-              <button class="eez-scope-btn" onclick="setEezScope('all', this)">All</button>
-            </span>
-          </div>
-          <div id="countryMap"></div>
-          <div class="map-legend hidden" id="mapLegend">
-            <div class="legend-row hidden" id="legendFao"><span class="legend-swatch" style="background:transparent;border:2px solid #e6772e"></span>FAO Major Areas</div>
-            <div class="legend-row hidden" id="legendEez"><span class="legend-swatch" style="background:#1b9e4b"></span>EEZ</div>
-            <div class="legend-row hidden" id="legendHighseas"><span class="legend-swatch" style="background:#6a3d9a"></span>High Seas</div>
-          </div>
-          <p class="map-note" id="mapNote"></p>
-        </div>
-      </div>
-
-      <!-- 5. REGISTERED VESSELS -->
-      <div class="detail-card" style="grid-column:1/-1;">
-        <div class="detail-card-header">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M3 17l2-8h14l2 8"/><path d="M3 17h18"/><path d="M5 17v2a1 1 0 001 1h12a1 1 0 001-1v-2"/><path d="M9 9V7a3 3 0 016 0v2"/></svg>
-          <h2>Registered Vessels <span class="vp-count" id="vessel-count"></span></h2>
-        </div>
-        <div id="vessels-body">
-          <div class="vp-empty">Loading vessels...</div>
-        </div>
-      </div>
-
-      <!-- REGISTERED PORTS -->
-      <div class="detail-card" style="grid-column:1/-1;">
-        <div class="detail-card-header" style="display:flex;align-items:center;justify-content:space-between;">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M2 20h20M6 20V10M18 20V10M12 20V4M2 10h20"/></svg>
-            <h2>Registered Ports <span class="vp-count" id="port-count"></span></h2>
+      <div class="mid-grid">
+        <div class="detail-card map-card">
+          <div class="detail-card-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg><h2>Location</h2></div>
+          <div class="map-wrap">
+            <div class="map-toggles">
+              <button class="map-toggle" id="faoToggle" onclick="toggleFao(this)">FAO areas</button>
+              <button class="map-toggle" id="eezToggle" onclick="toggleEez(this)">EEZ</button>
+              <button class="map-toggle" id="hsToggle" onclick="toggleHighSeas(this)">High seas</button>
+              <span class="eez-scope hidden" id="eezScopeWrap">
+                <button class="eez-scope-btn active" onclick="setEezScope('country', this)">This country</button>
+                <button class="eez-scope-btn" onclick="setEezScope('all', this)">All</button>
+              </span>
+            </div>
+            <div id="countryMap"></div>
+            <div class="map-legend hidden" id="mapLegend">
+              <div class="legend-row hidden" id="legendFao"><span class="legend-swatch" style="border:2px solid #e6772e"></span>FAO major areas</div>
+              <div class="legend-row hidden" id="legendEez"><span class="legend-swatch" style="background:#1b9e4b"></span>EEZ</div>
+              <div class="legend-row hidden" id="legendHighseas"><span class="legend-swatch" style="background:#6a3d9a"></span>High seas</div>
+            </div>
+            <p class="map-note" id="mapNote"></p>
           </div>
         </div>
-        <div id="ports-body"><div class="module-empty">Loading...</div></div>
-        <a href="ports.html" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:#1a6fdb;text-decoration:none;margin-top:10px;padding-top:10px;border-top:1px solid #f0f2f8;">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-          View all in Ports module
-        </a>
-      </div>
-
-      <!-- 7. IMPORT REQUIREMENTS (bottom) -->
-      <div class="detail-card coming-soon-card" style="grid-column:1/-1;">
-        <div class="detail-card-header">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a6fdb" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          <h2>Import Requirements &amp; Restrictions</h2>
-        </div>
-        <div class="coming-soon-body">
-          <div class="coming-soon-icon">🚧</div>
-          <h3>Coming Soon</h3>
-          <p>Country-specific import requirements, restrictions, and compliance rules will be available here.</p>
+        <div class="stack">
+          <div class="detail-card">
+            <div class="detail-card-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 010 20"/></svg><h2>ISO codes</h2></div>
+            <div class="detail-fields">
+              <div class="detail-field"><span class="detail-label">Country</span><span class="detail-value" id="d-country" style="font-family:Poppins,sans-serif;color:var(--ink)">—</span></div>
+              <div class="detail-field"><span class="detail-label">Alpha-2 code</span><span class="detail-value" id="d-alpha2">—</span></div>
+              <div class="detail-field"><span class="detail-label">Alpha-3 code</span><span class="detail-value" id="d-alpha3">—</span></div>
+              <div class="detail-field"><span class="detail-label">Numeric code</span><span class="detail-value" id="d-numeric">—</span></div>
+            </div>
+          </div>
+          <div class="detail-card">
+            <div class="detail-card-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><h2>Import requirements</h2></div>
+            <div class="coming"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l4 18H5z"/><path d="M7.5 10h9M6.5 15h11"/></svg><h3>Coming soon</h3><p>Country-specific import requirements, restrictions and compliance rules will appear here.</p></div>
+          </div>
         </div>
       </div>
 
-    </div><!-- /detail-grid -->
-  </div><!-- /country-detail -->
-</div><!-- /page-wrapper -->
+      <div class="vp-grid">
+        <div class="detail-card">
+          <div class="detail-card-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20c2 0 2-1.5 4-1.5S8 20 10 20s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><path d="M4 16l-1-5h18l-2 5"/><path d="M7 11V7h8v4M11 7V4"/></svg><h2>Registered vessels <span class="vp-count" id="vessel-count"></span></h2></div>
+          <div id="vessels-body"><div class="module-empty">Loading vessels...</div></div>
+        </div>
+        <div class="detail-card">
+          <div class="detail-card-header"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 13H3a9 9 0 0018 0h-2"/></svg><h2>Registered ports <span class="vp-count" id="port-count"></span></h2></div>
+          <div id="ports-body"><div class="module-empty">Loading ports...</div></div>
+          <a href="port-list.html" class="view-all"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>View all in the Ports module</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
+<div class="info-popup-overlay" id="infoPopupOverlay" onclick="closeInfoPopup(event)">
+  <div class="info-popup-box">
+    <button class="info-popup-close" onclick="closeInfoPopup()" aria-label="Close">&times;</button>
+    <div class="info-popup-icon" id="infoPopupIcon"></div>
+    <div class="info-popup-title" id="infoPopupTitle"></div>
+    <div class="info-popup-body" id="infoPopupBody"></div>
+  </div>
+</div>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="utils.js"></script>
+
 <script>
 (function(){
-  const SURL='https://enbdaajcromxmhgcverp.supabase.co';
-  const SKEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+  const URL_='https://enbdaajcromxmhgcverp.supabase.co', KEY_='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+  const db = window._sharedSupabase || (window._sharedSupabase = supabase.createClient(URL_, KEY_));
+  window.toggleNavDropdown = function(){ document.getElementById('navDropdown').classList.toggle('open'); };
+  window.handleLogout = async function(){ await db.auth.signOut(); window.location.href = 'login.html'; };
+  document.addEventListener('click', e => { if (!e.target.closest('.topbar-right')) document.getElementById('navDropdown')?.classList.remove('open'); });
   window.addEventListener('load', async () => {
-    const db=window._sharedSupabase||(window._sharedSupabase=supabase.createClient(SURL,SKEY));
-    const {data:{session}}=await db.auth.getSession();
-    if(!session)return;
-    const {data:p}=await db.from('profiles').select('first_name,last_name,avatar_color,photo_url,role').eq('id',session.user.id).single();
-    const firstName=p?.first_name||session.user.email.split('@')[0];
-    const lastName=p?.last_name||'';
-    const initials=(firstName.charAt(0)+(lastName?lastName.charAt(0):'')).toUpperCase();
-    if(p?.photo_url){document.getElementById('cdAvatarBtn').innerHTML=`<img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;}
-    else{document.getElementById('cdAvatarBtn').style.background=p?.avatar_color||'#1a6fdb';document.getElementById('cdAvatarInitials').textContent=initials;}
-    document.getElementById('cdAvatarGreeting').textContent=`Hello, ${firstName}!`;
-    if(p&&(p.role==='super_admin'||p.role==='admin')){
-      const btn=document.getElementById('editCountryBtn');
-      if(btn)btn.style.display='inline-flex';
-    }
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    const { data: p } = await db.from('profiles').select('first_name,last_name,avatar_color,photo_url').eq('id', session.user.id).single();
+    const email = session.user.email || '';
+    const first = p?.first_name || email.split('@')[0];
+    const initials = (first.charAt(0) + (p?.last_name ? p.last_name.charAt(0) : '')).toUpperCase();
+    const av = document.getElementById('navAvatar');
+    if (p?.photo_url) { av.innerHTML = `<img src="${p.photo_url}" alt="" style="width:100%;height:100%;object-fit:cover">`; av.style.background = 'transparent'; }
+    else { av.textContent = initials; av.style.background = p?.avatar_color || '#2f6fed'; }
+    document.getElementById('navEmail').textContent = email;
+    document.getElementById('navFirstName').textContent = `Hello, ${first}`;
   });
-  window.toggleCdAvatar=function(){document.getElementById('cdAvatarMenu').classList.toggle('open');};
-  document.addEventListener('click',e=>{
-    if(!e.target.closest('#cdAvatarBtn')&&!e.target.closest('#cdAvatarMenu'))
-      document.getElementById('cdAvatarMenu')?.classList.remove('open');
-  });
-  window.handleLogout=async function(){
-    const db=window._sharedSupabase;
-    if(db)await db.auth.signOut();
-    window.location.href='login.html';
-  };
 })();
+</script>
 
-document.getElementById=(function(orig){
-  return function(id){
-    const stubs=['navAvatar','navEmail','navFirstName','navDropdown','navProfile'];
-    if(stubs.includes(id))return{textContent:'',innerHTML:'',style:{},classList:{toggle:()=>{},remove:()=>{},add:()=>{}},onclick:null};
-    return orig.call(document,id);
-  };
-})(document.getElementById);
-function toggleNavDropdown(){}
-function setNavAvatar(){}
+<script>
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+/* edit button for admins */
+window.addEventListener('load',async()=>{
+  const db=window._sharedSupabase; if(!db) return;
+  const {data:{session}}=await db.auth.getSession(); if(!session) return;
+  const {data:p}=await db.from('profiles').select('role').eq('id',session.user.id).single();
+  if(p&&(p.role==='super_admin'||p.role==='admin')) document.getElementById('editCountryBtn').style.display='inline-flex';
+});
+function openEditCountry(){ const id=new URLSearchParams(location.search).get('id'); if(id) location.href=`country-edit.html?id=${encodeURIComponent(id)}`; }
 
-function openEditCountry(){
-  const id=new URLSearchParams(window.location.search).get('id');
-  if(id)window.location.href=`country-edit.html?id=${id}`;
-}
-
-// ── Load Vessels & Ports for this country ──
-async function loadVesselsAndPorts(alpha2, alpha3, countryName) {
-  const db = window._sharedSupabase;
-  if (!db) return;
-
-  // ── VESSELS (flag_state matches country) ──
-  const { data: vessels } = await db
-    .from('vessels')
-    .select('id, current_name, imo, ircs, vessel_category, vessel_flag')
-    .eq('vessel_flag', countryName)
-    .order('current_name');
-
-  const vesselBody = document.getElementById('vessels-body');
-  const vesselCount = document.getElementById('vessel-count');
-  if (!vessels || !vessels.length) {
-    vesselBody.innerHTML = '<div class="module-empty">No vessels registered under this flag in the system.</div>';
-    if (vesselCount) vesselCount.textContent = '0 vessels';
-  } else {
-    if (vesselCount) vesselCount.textContent = `${vessels.length} vessel${vessels.length !== 1 ? 's' : ''}`;
-    vesselBody.innerHTML = `
-      <table class="module-table">
-        <thead><tr>
-          <th>Vessel Name</th>
-          <th>IMO</th>
-          <th>IRCS</th>
-          <th>Type</th>
-        </tr></thead>
-        <tbody>${vessels.map(v => `
-          <tr>
-            <td><a href="vessel-detail.html?id=${v.id}" class="module-link">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 20h20M5 20V8l7-5 7 5v12"/></svg>
-              ${v.current_name || '—'}
-            </a></td>
-            <td>${v.imo || '—'}</td>
-            <td>${v.ircs || '—'}</td>
-            <td>${v.vessel_category ? `<span class="module-badge">${v.vessel_category}</span>` : '—'}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>`;
+const SHIP_IC='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20c2 0 2-1.5 4-1.5S8 20 10 20s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><path d="M4 16l-1-5h18l-2 5"/><path d="M7 11V7h8v4"/></svg>';
+const PORT_IC='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 13H3a9 9 0 0018 0h-2"/></svg>';
+async function loadVesselsAndPorts(alpha2, alpha3, countryName){
+  const db=window._sharedSupabase; if(!db) return;
+  const {data:vessels}=await db.from('vessels').select('id, current_name, imo, ircs, vessel_category, vessel_flag').eq('vessel_flag',countryName).order('current_name');
+  const vb=document.getElementById('vessels-body'), vc=document.getElementById('vessel-count');
+  if(!vessels||!vessels.length){ vb.innerHTML='<div class="module-empty">No vessels registered under this flag yet.</div>'; vc.textContent='0'; }
+  else{
+    vc.textContent=vessels.length;
+    vb.innerHTML=`<div class="table-wrap"><table class="module-table"><thead><tr><th>Vessel name</th><th>IMO</th><th>IRCS</th><th>Type</th></tr></thead><tbody>${vessels.map(v=>`<tr>
+      <td><a href="vessel-detail.html?id=${encodeURIComponent(v.id)}" class="module-link">${SHIP_IC}${esc(v.current_name||'—')}</a></td>
+      <td class="mono">${esc(v.imo||'—')}</td><td class="mono">${esc(v.ircs||'—')}</td>
+      <td>${v.vessel_category?`<span class="module-badge">${esc(v.vessel_category)}</span>`:'—'}</td></tr>`).join('')}</tbody></table></div>`;
   }
-
-  // ── PORTS (country matches) ──
-  const { data: ports } = await db
-    .from('ports')
-    .select('id, main_port_name, alternate_port_name, un_locode, port_type')
-    .eq('country', countryName)
-    .order('main_port_name');
-
-  const portBody = document.getElementById('ports-body');
-  const portCount = document.getElementById('port-count');
-  if (!ports || !ports.length) {
-    portBody.innerHTML = '<div class="module-empty">No ports registered for this country in the system.</div>';
-    if (portCount) portCount.textContent = '0 ports';
-  } else {
-    if (portCount) portCount.textContent = `${ports.length} port${ports.length !== 1 ? 's' : ''}`;
-    portBody.innerHTML = `
-      <table class="module-table">
-        <thead><tr>
-          <th>Port Name</th>
-          <th>Alternative Name</th>
-          <th>UN LOCODE</th>
-          <th>Type</th>
-        </tr></thead>
-        <tbody>${ports.map(p => `
-          <tr>
-            <td><a href="port-detail.html?id=${p.id}" class="module-link">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
-              ${p.main_port_name || '—'}
-            </a></td>
-            <td>${p.alternate_port_name || '—'}</td>
-            <td>${p.un_locode ? `<span class="module-badge">${p.un_locode}</span>` : '—'}</td>
-            <td>${p.port_type ? `<span class="module-badge">${p.port_type}</span>` : '—'}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>`;
+  const {data:ports}=await db.from('ports').select('id, main_port_name, alternate_port_name, un_locode, port_type').eq('country',countryName).order('main_port_name');
+  const pb=document.getElementById('ports-body'), pc=document.getElementById('port-count');
+  if(!ports||!ports.length){ pb.innerHTML='<div class="module-empty">No ports registered for this country yet.</div>'; pc.textContent='0'; }
+  else{
+    pc.textContent=ports.length;
+    pb.innerHTML=`<div class="table-wrap"><table class="module-table"><thead><tr><th>Port name</th><th>Alternative name</th><th>UN/LOCODE</th><th>Type</th></tr></thead><tbody>${ports.map(p=>`<tr>
+      <td><a href="port-detail.html?id=${encodeURIComponent(p.id)}" class="module-link">${PORT_IC}${esc(p.main_port_name||'—')}</a></td>
+      <td>${esc(p.alternate_port_name||'—')}</td>
+      <td>${p.un_locode?`<span class="module-badge mono">${esc(p.un_locode)}</span>`:'—'}</td>
+      <td>${p.port_type?`<span class="module-badge">${esc(p.port_type)}</span>`:'—'}</td></tr>`).join('')}</tbody></table></div>`;
   }
 }
 </script>
 <script src="country.js"></script>
+<script>
+var INFO_CONTENT={
+  foc:{icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>',bg:'var(--crit-bg)',fg:'var(--crit)',title:'Flag of convenience (FOC)',
+    body:`A flag of convenience is when a vessel owner registers their ship in a country other than their own, not because they operate there, but for the benefits that country offers.<br><br>
+<strong>Why owners do it:</strong> lower registration fees, lower taxes, minimal labour rules and weak enforcement of international fishing rules make some registries attractive to owners who want to cut costs or avoid scrutiny.<br><br>
+<strong>Why it matters in seafood:</strong> FOC vessels are harder to trace back to their true beneficial owner, the person or company actually profiting from the catch. That leaves a loophole for illegal, unreported and unregulated (IUU) fishing.<br><br>
+<strong>How it's being addressed:</strong> regional fisheries bodies such as WCPFC, ICCAT and IOTC now require members and fishing companies to disclose the beneficial owner behind any vessel, whatever its flag. IUU blacklists target vessels known to change flags to dodge sanctions.`},
+  prevalence:{icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>',bg:'var(--crit-bg)',fg:'var(--crit)',title:'Modern slavery prevalence',
+    body:`Prevalence is the estimated number of people living in modern slavery per 1,000 of the population, as reported by the Walk Free Global Slavery Index.<br><br>
+<strong>What counts as modern slavery:</strong> forced labour (including on fishing vessels), debt bondage, human trafficking, forced marriage and child slavery. In seafood, labour abuse on vessels and in processing plants is a documented risk.<br><br>
+<strong>Why it matters for supply chains:</strong> a high score in a sourcing country signals a higher risk that workers, from fishers at sea to processing staff, are under exploitative or coercive conditions.<br><br>
+<strong>Source:</strong> <a href="https://www.walkfree.org/global-slavery-index/" target="_blank" rel="noopener">Walk Free Global Slavery Index</a>`},
+  vulnerability:{icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',bg:'var(--med-bg)',fg:'var(--med)',title:'Vulnerability to modern slavery',
+    body:`Vulnerability measures the structural conditions that make a population more likely to fall into modern slavery, whatever today's prevalence. It is scored out of 100; higher means more vulnerable.<br><br>
+<strong>What drives it:</strong><ul><li>Weak rule of law and governance</li><li>Poverty and inequality</li><li>Political instability or conflict</li><li>Discrimination against minorities or migrants</li><li>Limited access to education and social protection</li></ul>
+<strong>Why it matters:</strong> a country with low prevalence today can still be a high future risk if these conditions are getting worse. Buyers and auditors use it to decide where to focus due diligence.<br><br>
+<strong>Source:</strong> <a href="https://www.walkfree.org/global-slavery-index/" target="_blank" rel="noopener">Walk Free Global Slavery Index</a>`},
+  govresponse:{icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V10M19 21V10M9 21V10M15 21V10M2 10l10-7 10 7z"/></svg>',bg:'var(--ok-bg)',fg:'var(--ok)',title:'Government response to modern slavery',
+    body:`Government response measures how strong and effective a country's laws, policies and actions against modern slavery are. It is scored out of 100; higher is stronger.<br><br>
+<strong>What is assessed:</strong><ul><li>Laws that criminalise modern slavery and forced labour</li><li>Victim identification and support</li><li>Enforcement capacity and prosecutions</li><li>Ratification of international conventions (ILO, UN Palermo Protocol)</li><li>Supply chain transparency laws</li></ul>
+<strong>Why it matters:</strong> a weak response lets exploitation continue with impunity. Where it is low, buyers rely more on private audits and certification to check labour conditions.<br><br>
+<strong>Source:</strong> <a href="https://www.walkfree.org/global-slavery-index/" target="_blank" rel="noopener">Walk Free Global Slavery Index</a>`},
+  iuu:{icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c3-4.5 7-6 11-6 4 0 6.5 2.5 8 6-1.5 3.5-4 6-8 6-4 0-8-1.5-11-6z"/><circle cx="16.5" cy="10.5" r=".8" fill="currentColor"/></svg>',bg:'#f5f1fd',fg:'#7c5cd6',title:'IUU fishing score',
+    body:`The IUU Fishing Index scores countries on their risk of involvement in illegal, unreported and unregulated fishing across four roles. A higher score means a higher risk.<br><br>
+<strong>The four roles:</strong><ul>
+<li><strong>Flag state:</strong> how well the country controls vessels flying its flag, including monitoring, control and surveillance.</li>
+<li><strong>Coastal state:</strong> how well it manages fishing access in its own EEZ.</li>
+<li><strong>Port state:</strong> whether its ports are used to land, tranship or sell illegal catch.</li>
+<li><strong>Market state:</strong> its role as a buyer or trader of seafood, and whether it lets IUU products into legitimate supply chains.</li></ul>
+<strong>Why it matters:</strong> a high score means a higher chance of illegal catch entering your supply chain, especially where flagging, transshipment or processing happens.<br><br>
+<strong>Source:</strong> <a href="https://iuufishingindex.net/" target="_blank" rel="noopener">IUU Fishing Index</a>`}
+};
+function openInfoPopup(key){
+  const d=INFO_CONTENT[key]; if(!d) return;
+  const ic=document.getElementById('infoPopupIcon'); ic.style.background=d.bg; ic.style.color=d.fg; ic.innerHTML=d.icon;
+  document.getElementById('infoPopupTitle').textContent=d.title;
+  document.getElementById('infoPopupBody').innerHTML=d.body;
+  document.getElementById('infoPopupOverlay').classList.add('open'); document.body.style.overflow='hidden';
+}
+function closeInfoPopup(e){
+  if(e&&e.target!==document.getElementById('infoPopupOverlay')&&!e.target.closest('.info-popup-close')) return;
+  document.getElementById('infoPopupOverlay').classList.remove('open'); document.body.style.overflow='';
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ document.getElementById('infoPopupOverlay').classList.remove('open'); document.body.style.overflow=''; } });
+</script>
 
-  <!-- INFO POPUP -->
-  <div class="info-popup-overlay" id="infoPopupOverlay" onclick="closeInfoPopup(event)">
-    <div class="info-popup-box">
-      <button class="info-popup-close" onclick="closeInfoPopup()">×</button>
-      <div class="info-popup-icon" id="infoPopupIcon"></div>
-      <div class="info-popup-title" id="infoPopupTitle"></div>
-      <div class="info-popup-body" id="infoPopupBody"></div>
-    </div>
-  </div>
-
-  <script>
-  var INFO_CONTENT = {
-    foc: {
-      icon: '🚩',
-      color: '#fff0f1',
-      title: 'Flag of Convenience (FOC)',
-      body: `A Flag of Convenience occurs when a vessel owner registers their ship in a country other than their own nationality — not because they operate there, but to take advantage of benefits that country offers.<br><br>
-<strong>Why owners do it:</strong> Lower registration fees, reduced taxes, minimal labour regulations, and weaker enforcement of international fishing rules make certain registries attractive to vessel owners seeking to cut costs or evade scrutiny.<br><br>
-<strong>Why it matters in seafood:</strong> FOC vessels are harder to trace back to their true beneficial owner — the person or company actually profiting from the catch. This creates a significant loophole for illegal, unreported and unregulated (IUU) fishing, as vessels can operate under flags with little oversight.<br><br>
-<strong>How it's being addressed:</strong> Regional fisheries bodies such as the WCPFC, ICCAT and IOTC now require member states and fishing companies to disclose the beneficial owner behind any vessel, regardless of its flag. IUU blacklists specifically target vessels known to change flags to evade sanctions.`
-    },
-    prevalence: {
-      icon: '👥',
-      color: '#fff5f5',
-      title: 'Modern Slavery Prevalence',
-      body: `Prevalence measures the estimated number of people living in conditions of modern slavery per 1,000 of the general population, as reported by the Walk Free Global Slavery Index.<br><br>
-<strong>What counts as modern slavery:</strong> Forced labour (including on fishing vessels), debt bondage, human trafficking, forced marriage, and child slavery. In the seafood industry, labour abuses aboard fishing vessels and in processing plants are a known and documented risk.<br><br>
-<strong>Why it matters for supply chains:</strong> A high prevalence score in a sourcing country signals elevated risk that workers in the seafood supply chain — from fishers at sea to processing plant workers — may be operating under exploitative or coercive conditions.<br><br>
-<strong>Source:</strong> Walk Free Global Slavery Index — <a href="https://www.walkfree.org/global-slavery-index/" target="_blank" style="color:#1a6fdb;">walkfree.org</a>`
-    },
-    vulnerability: {
-      icon: '⚠️',
-      color: '#fffbeb',
-      title: 'Vulnerability to Modern Slavery',
-      body: `Vulnerability measures the structural conditions that make a country's population more susceptible to modern slavery, regardless of current prevalence levels. It is scored out of 100 — a higher score means greater vulnerability.<br><br>
-<strong>What drives vulnerability:</strong>
-<ul style="margin:8px 0 8px 16px;line-height:1.8;">
-  <li>Weak rule of law and governance</li>
-  <li>High levels of poverty and inequality</li>
-  <li>Political instability or conflict</li>
-  <li>Discrimination against minorities or migrants</li>
-  <li>Limited access to education and social protection</li>
-</ul>
-<strong>Why it matters:</strong> Even countries with relatively low current prevalence can pose high future risk if underlying vulnerability conditions are deteriorating. Buyers and auditors use vulnerability scores to prioritise due diligence in sourcing regions.<br><br>
-<strong>Source:</strong> Walk Free Global Slavery Index — <a href="https://www.walkfree.org/global-slavery-index/" target="_blank" style="color:#1a6fdb;">walkfree.org</a>`
-    },
-    govresponse: {
-      icon: '🏛️',
-      color: '#f0fdf4',
-      title: 'Government Response to Modern Slavery',
-      body: `Government Response measures the strength and effectiveness of a country's policies, laws and actions to combat modern slavery. It is scored out of 100 — a higher score indicates a stronger, more comprehensive response.<br><br>
-<strong>What is assessed:</strong>
-<ul style="margin:8px 0 8px 16px;line-height:1.8;">
-  <li>National laws criminalising modern slavery and forced labour</li>
-  <li>Victim identification and support systems</li>
-  <li>Law enforcement capacity and prosecutions</li>
-  <li>Ratification of international conventions (ILO, UN Palermo Protocol)</li>
-  <li>Supply chain transparency legislation</li>
-</ul>
-<strong>Why it matters:</strong> A weak government response creates an environment where exploitation can persist with impunity. For seafood buyers operating in high-risk sourcing regions, a low gov. response score means greater reliance on private audits and certification schemes to verify labour conditions.<br><br>
-<strong>Source:</strong> Walk Free Global Slavery Index — <a href="https://www.walkfree.org/global-slavery-index/" target="_blank" style="color:#1a6fdb;">walkfree.org</a>`
-    },
-    iuu: {
-      icon: '🎣',
-      color: '#faf5ff',
-      title: 'IUU Fishing Score',
-      body: `The IUU Fishing Index scores countries on their risk of involvement in Illegal, Unreported and Unregulated (IUU) fishing across four distinct roles. A higher overall score indicates greater IUU fishing risk.<br><br>
-<strong>The four roles assessed:</strong>
-<ul style="margin:8px 0 8px 16px;line-height:1.8;">
-  <li><strong>Flag State</strong> — How well the country controls vessels flying its flag, including monitoring, control and surveillance (MCS) systems.</li>
-  <li><strong>Coastal State</strong> — How effectively the country manages fishing access in its own Exclusive Economic Zone (EEZ).</li>
-  <li><strong>Port State</strong> — Whether the country's ports are used by IUU vessels to land, tranship or sell illegal catch.</li>
-  <li><strong>Market State</strong> — The country's role as a consumer or trader of seafood, and whether it enables IUU products to enter legitimate supply chains.</li>
-</ul>
-<strong>Why it matters:</strong> Countries with high IUU scores represent elevated risk of illegal catch entering your supply chain — particularly where vessel flagging, transshipment or processing occur.<br><br>
-<strong>Source:</strong> IUU Fishing Index — <a href="https://iuufishingindex.net/" target="_blank" style="color:#1a6fdb;">iuufishingindex.net</a>`
-    }
-  };
-
-  function openInfoPopup(key) {
-    const d = INFO_CONTENT[key];
-    if (!d) return;
-    document.getElementById('infoPopupIcon').style.background = d.color;
-    document.getElementById('infoPopupIcon').textContent = d.icon;
-    document.getElementById('infoPopupTitle').textContent = d.title;
-    document.getElementById('infoPopupBody').innerHTML = d.body;
-    document.getElementById('infoPopupOverlay').classList.add('open');
-    document.body.style.overflow = 'hidden';
-  }
-
-  function closeInfoPopup(e) {
-    if (e && e.target !== document.getElementById('infoPopupOverlay') && !e.target.closest('.info-popup-close')) return;
-    document.getElementById('infoPopupOverlay').classList.remove('open');
-    document.body.style.overflow = '';
-  }
-
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-      document.getElementById('infoPopupOverlay').classList.remove('open');
-      document.body.style.overflow = '';
-    }
-  });
-  </script>
+<script>
+if (typeof window.launchModule !== 'function') { window.launchModule = function(url){ window.location.href = url; }; }
+</script>
 </body>
 </html>
