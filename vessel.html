@@ -1,72 +1,145 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Add Vessel · SmarTuna concept</title>
-<link rel="icon" type="image/png" href="sc-blue-logo.png"/>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vessel · SmarTuna concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="sc-blue-logo.png">
 <style>
-    /* ── SMARTUNA WORDMARK ── */
-    @font-face {
-      font-family: 'Bitsumis';
-      src: url('BITSUMIS.TTF') format('truetype');
-      font-weight: normal;
-      font-style: normal;
-      font-display: swap;
-    }
-    .sc-wm { display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1;gap:0;text-decoration:none; }
-    .sc-wm-top { font-family:'Bitsumis',sans-serif !important;font-weight:900 !important;font-size:15px;letter-spacing:.04em;text-transform:uppercase;background:linear-gradient(90deg,#1a6fdb,#1a6fdb) !important;-webkit-background-clip:text !important;-webkit-text-fill-color:transparent !important;background-clip:text !important; }
-    .sc-wm-sub { font-family:'Bitsumis',sans-serif !important;font-weight:700 !important;font-size:7px;letter-spacing:.22em;text-transform:uppercase;color:#1a1a2e;-webkit-text-fill-color:#1a1a2e !important;margin-top:2px; }
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --primary:#1a6fdb;--primary-dark:#1558b0;--primary-soft:#e8f1fc;--primary-mid:#d0e4f8;
-  --bg:#f0f2f7;--white:#fff;--text:#1a1a2e;--muted:#6b7280;--soft:#9aa0b4;
-  --border:#e8eaf0;--line:#eef0f5;--line-strong:#dfe3ec;
-  --ok:#1f9d6b;--ok-soft:#e6f6ef;--danger:#e63946;--danger-soft:#fff0f1;
-  --warn:#f59e0b;--warn-soft:#fff7ed;
-  --field-h:44px;--radius:14px;--radius-sm:10px;
-  --shadow:0 1px 3px rgba(20,24,45,.05),0 8px 24px rgba(20,24,45,.06);
-  --shadow-lg:0 6px 14px rgba(20,24,45,.08),0 24px 48px rgba(20,24,45,.11);
-  --font:'Poppins','DM Sans',system-ui,sans-serif;
-}
-body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased}
 
-/* NAV */
-.topbar{display:flex;align-items:center;padding:14px 28px;gap:20px}
-.topbar-brand{text-decoration:none;flex-shrink:0;line-height:1.1}
-.topbar-brand-project{display:block;font-size:8px;font-weight:700;letter-spacing:2px;color:#9aa0b4}
-.topbar-brand-name{display:block;font-size:16px;font-weight:800;color:var(--text)}
-.topbar-nav{flex:1;display:flex;justify-content:center}
-.nav-pill{display:inline-flex;align-items:center;gap:2px;background:#fff;border-radius:999px;padding:5px 7px;box-shadow:0 1px 6px rgba(0,0,0,.07)}
-.nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:400;color:var(--muted);text-decoration:none;transition:.15s;white-space:nowrap}
-.nav-item img{width:15px;height:15px;object-fit:contain;opacity:.5;flex-shrink:0}
-.nav-item:hover,.nav-item.active{background:var(--bg);color:var(--text);font-weight:600}
-.nav-item:hover img,.nav-item.active img{opacity:1}
-.nav-item-wrap{position:relative}
-.nav-item-wrap::after{content:'';position:absolute;top:100%;left:0;width:100%;height:12px;background:transparent}
-.nav-item-wrap:hover .nav-dropdown{display:block}
-.topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
-.search-pill{display:flex;align-items:center;gap:8px;background:#fff;border-radius:999px;padding:8px 16px;font-size:12px;color:#c0c4d0;box-shadow:0 1px 4px rgba(0,0,0,.06);min-width:150px;cursor:text}
-.notif-btn{width:36px;height:36px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.07);position:relative;flex-shrink:0}
-.notif-btn img{width:17px;height:17px;object-fit:contain;opacity:.65}
-.notif-dot{position:absolute;top:5px;right:5px;width:8px;height:8px;background:#e63946;border-radius:50%;border:2px solid var(--bg)}
-.avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;box-shadow:0 1px 4px rgba(0,0,0,.12);flex-shrink:0;overflow:hidden}
-.avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:176px;overflow:hidden;z-index:999}
-.avatar-menu.open{display:block}
-.avatar-menu-name{padding:11px 15px 7px;font-size:12px;font-weight:700;color:var(--text);border-bottom:1px solid var(--border)}
-.avatar-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;color:#4a4e69;text-decoration:none;font-weight:500}
-.avatar-menu a:hover{background:var(--bg);color:var(--primary)}
-.avatar-menu button{width:100%;padding:9px 15px;background:none;border:none;border-top:1px solid var(--border);text-align:left;font-family:var(--font);font-size:13px;color:#e63946;cursor:pointer}
-.avatar-menu button:hover{background:#fff0f1}
-.nav-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:170px;padding:6px;z-index:500}
-.nav-dropdown-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;font-size:13px;color:#4a4e69;text-decoration:none;border-radius:8px;font-weight:500;transition:.15s;white-space:nowrap;cursor:pointer;position:relative}
-.nav-dropdown-item:hover{background:var(--bg);color:var(--primary)}
-.nav-dropdown-item.active{background:var(--primary-soft);color:var(--primary-dark);font-weight:600}
-.nav-dropdown-sub{display:none;position:absolute;left:calc(100% + 4px);top:0;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.10);min-width:160px;padding:6px;z-index:501}
-.nav-dropdown-item:hover .nav-dropdown-sub{display:block}
+  @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');font-weight:normal;font-style:normal;font-display:swap}
+  :root{
+    --accent:#2f6fed; --accent-soft:rgba(47,111,237,.10); --accent-line:#cddcf8;
+    --ink:#14161a; --muted:#6b7380; --faint:#9aa1ad; --line:#e6e8ec; --line2:#eef0f3; --page:#f6f7f9; --white:#fff;
+    --mono:Consolas,"SFMono-Regular",Menlo,monospace;
+    --ok:#178a4c; --ok-bg:#e8f6ee; --ok-line:#c7e8d4;
+    --low:#2f6fed; --low-bg:#edf3fe; --low-line:#cddcf8;
+    --med:#b7791f; --med-bg:#fdf4e3; --med-line:#f1dcae;
+    --crit:#d64545; --crit-bg:#fdeceb; --crit-line:#f5c9c6;
+    --ease:cubic-bezier(.16,1,.3,1); --spring:cubic-bezier(.34,1.56,.64,1);
+  }
+  *{box-sizing:border-box}
+  html,body{overflow-x:clip}
+  body{margin:0;font-family:Poppins,system-ui,sans-serif;font-weight:400;font-size:14px;font-synthesis:none;color:var(--ink);background:var(--page);line-height:1.55;-webkit-font-smoothing:antialiased}
+  b,strong,h1,h2,h3,h4,th,[style*="font-weight"]{font-weight:400!important}
+  a{color:inherit;text-decoration:none}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .wrap{max-width:1680px;margin:0 auto;padding:0 clamp(16px,3vw,48px)}
+  .mono{font-family:var(--mono)}
+  .hidden{display:none!important}
+  .num{font-variant-numeric:tabular-nums}
 
+  /* shared pieces */
+  .eyebrow{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.04em;display:flex;align-items:center;gap:10px}
+  .lbl{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.03em}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:18px 20px;min-width:0}
+  .card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border:1px solid var(--line);border-radius:999px;background:var(--white);font-size:13px;font-weight:300;color:var(--ink);white-space:nowrap;cursor:pointer;transition:border-color .2s,color .2s,background .2s,transform .2s,box-shadow .2s}
+  .btn svg{flex:none}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.25)}
+  .btn.primary:hover{background:#2560d6;color:#fff;transform:translateY(-1px)}
+  .btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+  .btn:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .badge{font-family:var(--mono);font-size:10.5px;padding:1px 8px;border-radius:999px;border:1px solid;line-height:1.5}
+  .badge.new{color:var(--accent);border-color:var(--accent-line);background:#f3f7ff}
+  .badge.beta{color:#9a6a12;border-color:#efdcae;background:#fdf7e7}
+  .cnt{font-family:var(--mono);font-size:10.5px;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;display:inline-grid;place-items:center}
+
+  .mri-status-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:999px;font-size:12px;border:1px solid transparent;white-space:nowrap}
+  .mri-status-pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .mri-status-pill.transparent{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .mri-status-pill.low{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .mri-status-pill.medium{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .mri-status-pill.critical{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+  .kde-weight{display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;font-family:var(--mono);font-size:10.5px;border:1px solid transparent;white-space:nowrap}
+  .kde-weight.w5{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .kde-weight.w10{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .kde-weight.w30{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .kde-weight.w50{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+
+  .rv{animation:up .55s var(--ease) both;animation-delay:calc(var(--i,0) * 50ms)}
+  @keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .toast-wrap{position:fixed;right:20px;bottom:20px;z-index:3000;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  .toast{display:flex;align-items:center;gap:10px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;font-weight:300;box-shadow:0 14px 34px rgba(16,24,40,.2);animation:up .3s var(--ease)}
+  .toast i{width:8px;height:8px;border-radius:50%;background:#4ade80;flex:none}
+  .toast.error i{background:#f87171}
+
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
+
+  .sc-wm{display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1}
+  .sc-wm-top{font-family:'Bitsumis',sans-serif;font-size:17px;letter-spacing:.04em;text-transform:uppercase;line-height:1;color:var(--ink)}
+  .sc-wm-top span{color:var(--accent)}
+  .sc-wm-sub{font-family:'Bitsumis',sans-serif;font-size:8px;letter-spacing:.32em;text-transform:uppercase;color:#6b7380;margin-top:2px}
+  .topbar{position:sticky;top:0;z-index:1000;display:flex;align-items:center;gap:20px;padding:10px 28px;background:rgba(255,255,255,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .topbar-brand{display:flex;align-items:center;gap:8px;flex-shrink:0;line-height:1.1}
+  .topbar-brand img{width:28px;height:28px;object-fit:contain}
+  .topbar-nav{flex:1;display:flex;justify-content:center;min-width:0}
+  .nav-pill{display:inline-flex;align-items:center;gap:2px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:4px}
+  .topbar .nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:300;color:#6b7380;white-space:nowrap;transition:background .15s,color .15s}
+  .topbar .nav-item img,.topbar .nav-item svg{width:15px;height:15px;object-fit:contain;opacity:.45;flex-shrink:0}
+  .topbar .nav-item:hover{background:#f3f6fb;color:var(--ink)}
+  .topbar .nav-item:hover img,.topbar .nav-item:hover svg{opacity:1}
+  .topbar .nav-item.active{background:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.28)}
+  .topbar .nav-item.active img{filter:brightness(0) invert(1);opacity:1}
+  .topbar .nav-item.active svg{opacity:1}
+  .topbar .nav-item-wrap{position:relative}
+  .topbar .nav-item-wrap::after{content:'';position:absolute;top:100%;left:0;width:100%;height:12px}
+  .topbar .nav-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:160px;z-index:500;padding:6px}
+  .topbar .nav-item-wrap:hover .nav-dropdown{display:block}
+  .topbar .nav-dropdown-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;font-size:13px;font-weight:300;color:var(--ink);border-radius:8px;white-space:nowrap;cursor:pointer;position:relative;transition:background .15s}
+  .topbar .nav-dropdown-item:hover{background:#f6f7f9;color:var(--accent)}
+  .topbar .nav-dropdown-sub{display:block;visibility:hidden;opacity:0;position:absolute;left:100%;top:0;margin-left:6px;transform:translateX(-4px);background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:160px;padding:6px;z-index:501;transition:opacity .15s ease,transform .15s ease,visibility 0s linear .35s}
+  .topbar .nav-dropdown-sub::before{content:"";position:absolute;top:-10px;bottom:-10px;left:-16px;width:16px}
+  .topbar .nav-dropdown-item:hover > .nav-dropdown-sub,.topbar .nav-dropdown-item:focus-within > .nav-dropdown-sub{visibility:visible;opacity:1;transform:none;transition-delay:0s}
+  .topbar .nav-dropdown-item:has(> .nav-dropdown-sub:hover){background:#f6f7f9;color:var(--accent)}
+  .topbar .tag-new,.topbar .tag-beta{font-size:9px;padding:1px 7px;border-radius:999px}
+  .topbar .tag-new{color:#2f6fed;background:#eef3fc} .topbar .tag-beta{color:#a9721f;background:#fdf3df}
+  #devNav[hidden]{display:none!important}
+  .topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .search-pill{display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:12px;font-weight:300;color:#b3bac6;min-width:150px;cursor:text}
+  .notif-btn{width:36px;height:36px;border-radius:50%;background:var(--white);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;flex-shrink:0}
+  .notif-btn img{width:17px;height:17px;object-fit:contain;opacity:.65}
+  .notif-dot{position:absolute;top:5px;right:5px;width:8px;height:8px;background:#e63946;border-radius:50%;border:2px solid #fff}
+  .avatar-wrap{position:relative;flex-shrink:0}
+  .avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;flex-shrink:0}
+  .avatar-btn img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+  .avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:176px;overflow:hidden;z-index:999}
+  .avatar-menu.open{display:block;animation:drop .18s ease}
+  @keyframes drop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .avatar-menu-name{padding:11px 15px 7px;font-family:var(--mono);font-size:11.5px;color:#6b7380;border-bottom:1px solid var(--line)}
+  .avatar-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;font-weight:300;color:var(--ink)}
+  .avatar-menu a:hover{background:#f6f7f9;color:var(--accent)}
+  .avatar-menu button{width:100%;padding:9px 15px;background:none;border:0;border-top:1px solid var(--line);text-align:left;font-size:13px;font-weight:300;color:#e63946;cursor:pointer}
+  .avatar-menu button:hover{background:#fff0f1}
+  @media (max-width:1280px){ .search-pill{display:none} }
+  @media (max-width:1080px){ .topbar-nav{visibility:hidden} }
+  @media (max-width:600px){ .topbar{padding:10px 16px} .topbar-nav{display:none} .topbar{justify-content:space-between} }
+
+  :root{
+    --primary:#2f6fed; --primary-dark:#2560d6; --primary-soft:#edf3fe; --primary-mid:#cddcf8;
+    --bg:#f6f7f9; --text:#14161a; --soft:#9aa1ad; --border:#e6e8ec; --line-strong:#d6dbe3;
+    --ok-soft:#e8f6ee; --danger:#d64545; --danger-soft:#fdeceb; --warn:#b7791f; --warn-soft:#fdf4e3;
+    --field-h:40px; --radius:16px; --radius-sm:10px; --shadow:none; --shadow-lg:0 30px 80px rgba(16,24,40,.22);
+    --font:Poppins,system-ui,sans-serif;
+  }
+  :where(.wrap,#wizard,.page,.modal-overlay,.confirm-overlay,#aisModal) *{margin:0;padding:0}
+  body *{font-weight:400!important}
+  .pill-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 17px;border-radius:999px;border:1px solid var(--line);background:var(--white);color:var(--ink);font:inherit;font-size:13px;font-weight:300!important;cursor:pointer;white-space:nowrap;transition:border-color .2s,color .2s,background .2s,transform .2s,box-shadow .2s}
+  .pill-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .pill-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.22)}
+  .pill-btn.primary:hover{background:#2560d6;color:#fff;transform:translateY(-1px)}
+  .pill-btn.danger{color:var(--crit);border-color:var(--crit-line)}
+  .pill-btn.danger:hover{background:var(--crit);border-color:var(--crit);color:#fff}
+  .pill-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .crumb{font-family:var(--mono);font-size:12px;color:var(--faint)}
+  .crumb a{color:var(--muted)} .crumb a:hover{color:var(--accent)}
+  h1{font-size:clamp(24px,2.4vw,34px)!important;letter-spacing:-.02em!important;line-height:1.15;font-weight:300!important}
+  .toast{left:50%!important;bottom:24px!important;border-radius:12px!important;font-size:13px;font-weight:300!important;padding:11px 18px!important;box-shadow:0 14px 34px rgba(16,24,40,.2)}
+  .toast.err{background:var(--crit)!important}
 /* WIZARD */
 #wizard{position:fixed;inset:0;background:rgba(20,24,45,.6);backdrop-filter:blur(6px);z-index:200;display:flex;align-items:center;justify-content:center}
 .wizard-card{background:#fff;border-radius:22px;box-shadow:var(--shadow-lg);padding:32px 36px 36px;width:760px;max-width:96vw;position:relative}
@@ -273,6 +346,123 @@ select:focus{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w
 *::-webkit-scrollbar-thumb{background:#d1d5e0;border-radius:99px}
 *::-webkit-scrollbar-thumb:hover{background:#a0a8bc}
 html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
+
+  /* ── shared look ── */
+  .wrap{max-width:1680px;padding:0 clamp(16px,3vw,48px) 80px}
+  .actionbar{position:sticky;top:63px;z-index:50;display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap;background:rgba(246,247,249,.92);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);margin:0 calc(-1 * clamp(16px,3vw,48px)) 16px;padding:16px clamp(16px,3vw,48px) 14px;border-bottom:1px solid var(--line2)}
+  .ab-title{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:3px}
+  .ab-r{display:flex;gap:8px}
+  .vessel-badge{margin:0;font-family:var(--mono);font-size:11.5px;padding:2px 11px;border-radius:999px;background:var(--low-bg);border:1px solid var(--accent-line);color:var(--accent)}
+  .vessel-badge:empty{display:none}
+  .gate{display:flex;align-items:center;gap:10px;background:var(--crit-bg);border:1px solid var(--crit-line);color:var(--crit);border-radius:14px;font-size:13px;margin:0 0 14px}
+  .gate::before{content:"";width:16px;height:16px;flex:none;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Crect x='4' y='11' width='16' height='10' rx='2'/%3E%3Cpath d='M8 11V7a4 4 0 0118 0'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2'%3E%3Crect x='4' y='11' width='16' height='10' rx='2'/%3E%3Cpath d='M8 11V7a4 4 0 0118 0'/%3E%3C/svg%3E") center/contain no-repeat}
+  .form-cols{gap:0 14px}
+  .form-col .section,.section{margin-bottom:14px}
+  .section{border-radius:18px;border-color:var(--line);padding:20px 22px 22px;animation:up .4s var(--ease) both}
+  .section:focus-within{border-color:var(--accent-line);box-shadow:0 10px 30px rgba(16,24,40,.05)}
+  .sec-head{margin-bottom:16px}
+  .sec-dot{width:7px;height:7px;box-shadow:0 0 0 4px var(--low-bg)}
+  .sec-title{font-size:17px;text-transform:none;letter-spacing:-.005em;color:var(--ink);font-weight:300!important}
+  .sec-badge{font-family:var(--mono);font-size:10.5px;padding:1px 9px;background:var(--low-bg);color:var(--accent);border:1px solid var(--accent-line)}
+  .sub-section{border-radius:14px;background:var(--page);border-color:var(--line2);padding:14px 16px}
+  .sub-sec-title{font-family:var(--mono);font-size:11px;text-transform:none;letter-spacing:.02em;color:var(--accent);margin-bottom:12px}
+  .g2,.g3,.g4{gap:12px 16px}
+  .field{gap:5px;font-size:13px}
+  .field>span:first-child{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.02em}
+  .field>span:first-child small{font-family:Poppins,sans-serif;font-size:10.5px;color:#b3bac6}
+  .field .hint{font-family:Poppins,sans-serif;font-size:11.5px;color:var(--faint);font-weight:300!important;margin-top:-2px}
+  input,select,textarea{border:1px solid var(--line);font-size:13px;font-weight:300!important;border-radius:10px}
+  input:focus,select:focus,textarea:focus,.chip-wrap:focus-within{box-shadow:0 0 0 4px rgba(47,111,237,.10)}
+  input::placeholder,textarea::placeholder{color:#b3bac6}
+  .csel-trigger,.year-trigger{border:1px solid var(--line);font-size:13px;font-weight:300!important;border-radius:10px}
+  .csel.open .csel-trigger,.year-picker.open .year-trigger{box-shadow:0 0 0 4px rgba(47,111,237,.10)}
+  .csel-panel,.year-panel{border-radius:14px;border-color:var(--line);box-shadow:0 18px 40px rgba(16,24,40,.12)}
+  .csel-opt{font-size:13px;border-radius:8px;padding:8px 11px}
+  .csel-opt:hover{background:var(--page);color:var(--accent)}
+  .csel-opt.active{background:var(--low-bg);color:var(--accent)}
+  .csel-opt.active::after{content:"";width:12px;height:12px;background:currentColor;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center/contain no-repeat}
+  .csel-opt.active:hover{background:var(--low-bg)}
+  .yr-cell{border-radius:999px;font-size:12.5px}
+  .yr-cell.sel{background:var(--accent);box-shadow:0 4px 12px rgba(47,111,237,.25)}
+  .year-decade-lbl{font-family:var(--mono);font-size:12px}
+  .year-nav-btn{border-radius:50%;border:1px solid var(--line)}
+  .clear-btn{background:#c3c9d3} .clear-btn:hover{background:var(--muted)}
+  .clear-select-lnk{font-family:var(--mono);font-size:10.5px}
+  .tag-grid{gap:6px}
+  .tag-opt{display:inline-flex;align-items:center;gap:7px;padding:5px 13px;border:1px solid var(--line);font-size:12.5px;transition:background .25s,color .25s,border-color .25s,transform .25s var(--spring)}
+  .tag-opt::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.5}
+  .tag-opt.on{transform:scale(1.03)}
+  .tag-opt.on::before{background:#fff;opacity:1}
+  .tag-opt[data-tag="Active"].on{background:var(--ok)}
+  .tag-opt[data-tag="Suspicious"].on{background:var(--med)}
+  .tag-opt.on:not([data-tag="Active"]):not([data-tag="Suspicious"]):not([data-tag="Inactive"]):not([data-tag="Decommissioned"]):not([data-tag="Sunk"]):not([data-tag="Relocated"]):not([data-tag="Delisted"]):not([data-tag="Repurposed"]){background:var(--accent)}
+  .tag-conflict{display:none;align-items:center;gap:7px;font-size:12px;color:var(--crit);margin-top:8px}
+  .tag-conflict svg{width:14px;height:14px;flex:none}
+  .chip-wrap{border:1px solid var(--line);border-radius:12px;gap:6px;padding:6px 8px;min-height:40px}
+  .chip-item,.pf-chip{display:inline-flex;align-items:center;gap:6px;background:var(--low-bg);color:var(--accent);border:1px solid var(--accent-line);border-radius:999px;padding:2px 6px 2px 11px;font-size:12.5px}
+  .chip-item button,.pf-chip button{border:0;background:none;color:inherit;cursor:pointer;font-size:15px;line-height:1;opacity:.6;width:18px;height:18px;border-radius:50%;display:grid;place-items:center}
+  .chip-item button:hover,.pf-chip button:hover{opacity:1;background:rgba(47,111,237,.12)}
+  .chip-input{border:0!important;box-shadow:none!important;height:28px!important;padding:0 4px!important}
+  .toggle-row{border:1px solid var(--line);border-radius:12px;padding:10px 14px;background:var(--white);transition:border-color .2s,background .2s}
+  .toggle-row:focus-within,.toggle-row.active{border-color:var(--accent-line);background:#f6f9ff}
+  .toggle-lbl{font-size:13px}
+  .toggle-sw{width:38px;height:22px}
+  .toggle-sw .track{background:#d6dbe3}
+  .toggle-sw .track::after{transition:transform .35s var(--spring);box-shadow:0 1px 3px rgba(16,24,40,.25)}
+  .toggle-sw input:checked+.track{background:var(--accent)}
+  .toggle-sw input:checked+.track::after{transform:translateX(16px)}
+  .toggle-sub{border-radius:14px;border-color:var(--accent-line);background:var(--white);animation:up .3s var(--ease)}
+  .photo-preview{width:76px;height:76px;border-radius:18px;background:var(--low-bg);border:1px solid var(--accent-line);color:var(--accent)}
+  .photo-preview svg{width:30px;height:30px}
+  .btn-upload,.add-link{display:inline-flex;align-items:center;gap:7px;height:36px;border-radius:999px;border:1px solid var(--line);font-size:12.5px;font-weight:300!important;padding:0 15px}
+  .add-link{border-style:dashed;border-color:var(--accent-line);color:var(--accent);height:38px}
+  .icon-btn{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);color:var(--faint)}
+  .icon-btn svg{width:13px;height:13px}
+  .license-row{gap:10px;border-top:1px dashed var(--line)}
+  #pvrTable th{font-family:var(--mono)!important;font-size:11px!important;text-transform:none!important;letter-spacing:.02em!important;color:var(--faint)!important;border-bottom:1px solid var(--line)!important}
+  #pvrTable td{border-bottom:1px solid var(--line2)!important}
+  #vosiInitsTable th{font-family:var(--mono)!important;text-transform:none!important;letter-spacing:.02em!important;border-bottom:1px solid var(--line)!important}
+  #vosiEditPanel>div:first-child{border-radius:12px!important;border-color:var(--accent-line)!important;font-weight:300!important}
+  .save-bar{border-top:1px solid var(--line2);padding-top:16px;gap:8px}
+  .btn{display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 20px;border-radius:999px;font-size:13px;font-weight:300!important;border:1px solid var(--line)}
+  .btn-primary{border-color:var(--accent);box-shadow:0 6px 16px rgba(47,111,237,.22)}
+  .btn-primary:hover{transform:translateY(-1px)}
+  .btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+  /* wizard */
+  #wizard{background:rgba(20,22,26,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:20px;z-index:1200}
+  .wizard-card{border-radius:24px;padding:28px 30px 26px;width:820px;box-shadow:0 30px 80px rgba(16,24,40,.25);animation:up .35s var(--ease)}
+  .wizard-card h2{font-size:24px;letter-spacing:-.015em;font-weight:300!important}
+  .wizard-card>p,.wiz-step>p{font-size:13px;font-weight:300!important;margin:4px 0 20px}
+  .wiz-close{border:0;background:var(--page);color:var(--muted);top:18px;right:18px;width:36px;height:36px}
+  .wiz-close:hover{background:var(--crit-bg);color:var(--crit);border:0}
+  .wiz-cat-grid{gap:12px}
+  .wiz-cat-opt{border:1px solid var(--line);border-radius:18px;background:var(--white);transition:border-color .2s,box-shadow .25s,transform .3s var(--spring)}
+  .wiz-cat-opt:hover{transform:translateY(-2px);border-color:var(--accent-line);box-shadow:0 14px 34px rgba(16,24,40,.08)}
+  .wiz-cat-opt.sel{border-color:var(--accent);box-shadow:0 0 0 4px rgba(47,111,237,.12)}
+  .wiz-cat-img{height:120px;background:linear-gradient(120deg,#e9f0fd,#f4f7fd)}
+  .wiz-cat-fb{color:var(--accent)}
+  .wiz-cat-fb svg{width:40px;height:40px;stroke-width:1.3}
+  .wiz-cat-body{padding:11px 14px 13px}
+  .wiz-cat-label{font-size:15px}
+  .wiz-cat-hint{font-weight:300!important;font-size:12px}
+  .wiz-cat-check{width:26px;height:26px;background:var(--accent);box-shadow:0 6px 14px rgba(47,111,237,.3)}
+  .wiz-cat-check::after{content:"";width:13px;height:13px;background:#fff;-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") center/contain no-repeat}
+  .wiz-sub-grid{gap:8px}
+  .wiz-sub-opt{border:1px solid var(--line);border-radius:14px;padding:12px 15px;transition:border-color .2s,background .25s,transform .3s var(--spring)}
+  .wiz-sub-opt:hover{background:var(--page);border-color:var(--accent-line)}
+  .wiz-sub-opt.sel{background:var(--accent);border-color:var(--accent);box-shadow:0 8px 20px rgba(47,111,237,.25);transform:translateY(-1px)}
+  .wiz-sub-opt .slabel{font-size:13.5px}
+  .wiz-sub-opt .shint{font-weight:300!important}
+  .wiz-nav{margin-top:20px;padding-top:16px;border-top:1px solid var(--line2)}
+  .wiz-nav>span,.wiz-nav span[style]{font-family:var(--mono);font-size:11.5px!important;color:var(--faint)!important}
+  .wiz-back,.wiz-next{display:inline-flex;align-items:center;gap:7px;height:38px;border-radius:999px;font-size:13px;font-weight:300!important}
+  .wiz-back{border:1px solid var(--line)}
+  .wiz-next{box-shadow:0 6px 16px rgba(47,111,237,.25)}
+  .wiz-next:hover:not(:disabled){transform:translateY(-1px)}
+  .wiz-dots{display:flex;gap:6px}
+  @media (max-width:700px){ .wizard-card{padding:22px 18px} .wiz-cat-grid,.wiz-sub-grid{grid-template-columns:1fr} .wiz-cat-img{height:84px} .license-row{grid-template-columns:1fr 1fr} .actionbar .ab-r{width:100%} .actionbar .ab-r>*{flex:1} }
+  @media (max-width:640px){ .section{padding:16px} }
+
 </style>
 </head>
 <body>
@@ -292,62 +482,89 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
 })();
 </script>
 
-<!-- NAV -->
-<div class="topbar">
-  <a href="index.html" class="topbar-brand" style="display:flex;align-items:center;gap:9px;">
-    <img src="sc-blue-logo.png" alt="SmarTuna" style="width:26px;height:26px;object-fit:contain;flex-shrink:0;"/>
-      <span class="sc-wm">
-        <span class="sc-wm-top">SmarTuna</span>
-        <span class="sc-wm-sub">concept</span>
-      </span>
-  </a>
-  <div class="topbar-nav">
-    <div class="nav-pill">
-      <a href="home-logged-in.html" class="nav-item"><img src="home.png" alt=""/>Home</a>
-      <div class="nav-item-wrap">
-        <a href="organisation.html" class="nav-item"><img src="my-studio.png" alt=""/>My Studio</a>
-        <div class="nav-dropdown">
-          <a href="product-list.html" class="nav-dropdown-item">Product</a>
-          <a href="organisation.html" class="nav-dropdown-item">Your Company</a>
-        </div>
-      </div>
-      <div class="nav-item-wrap">
-        <a href="Species.html" class="nav-item active"><img src="atlas.png" alt=""/>Atlas</a>
-        <div class="nav-dropdown">
-          <a href="Species.html" class="nav-dropdown-item">Species</a>
-          <a href="cold-storage-list.html" class="nav-dropdown-item">Cold Storage</a>
-          <a href="#" class="nav-dropdown-item">Ports</a>
-          <a href="vessel-list.html" class="nav-dropdown-item active">Vessels</a>
-          <a href="country.html" class="nav-dropdown-item">Country</a>
-          <div class="nav-dropdown-item" style="position:relative;">Others<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
-            <div class="nav-dropdown-sub"><a href="#" class="nav-dropdown-item">MSC Fisheries</a><a href="#" class="nav-dropdown-item">ASC Farms</a></div>
+  <!-- TOP BAR (same as home-logged-in.html) -->
+  <div class="topbar">
+    <a href="home-logged-in.html" class="topbar-brand">
+      <img src="sc-blue-logo.png" alt="SmarTuna"/>
+      <span class="sc-wm"><span class="sc-wm-top">Smar<span>Tuna</span></span><span class="sc-wm-sub">concept</span></span>
+    </a>
+    <div class="topbar-nav">
+      <div class="nav-pill">
+        <a href="home-logged-in.html" class="nav-item"><img src="home.png" alt=""/>Home</a>
+        <div class="nav-item-wrap">
+          <a href="modules.html#my-studio" class="nav-item"><img src="my-studio.png" alt=""/>My Studio</a>
+          <div class="nav-dropdown">
+            <a href="product-list.html" class="nav-dropdown-item">Product</a>
+            <a href="evidence-list.html" class="nav-dropdown-item">Evidence</a>
+            <a href="raw-material-list.html" class="nav-dropdown-item">Raw Materials</a>
+            <a href="shipment-list.html" class="nav-dropdown-item">Shipments</a>
+            <a href="organisation.html" class="nav-dropdown-item">Your Company</a>
+            <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('carbon-calculator.html','Carbon Footprint Calculator','carbon-icon.png','Carbon','green');">Carbon Calculator</a>
+            <a href="modules.html#my-studio" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all My Studio</a>
           </div>
         </div>
+        <div class="nav-item-wrap">
+          <a href="modules.html#atlas" class="nav-item active"><img src="atlas.png" alt=""/>Atlas</a>
+          <div class="nav-dropdown">
+            <a href="Species.html" class="nav-dropdown-item">Species</a>
+            <a href="cold-storage-list.html" class="nav-dropdown-item">Cold Storage</a>
+            <a href="port-list.html" class="nav-dropdown-item">Ports</a>
+            <a href="vessel-list.html" class="nav-dropdown-item">Vessels</a>
+            <a href="country.html" class="nav-dropdown-item">Country</a>
+            <div class="nav-dropdown-item" style="position:relative;">
+              Others <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+              <div class="nav-dropdown-sub">
+                <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('fishery.html','MSC Fishery Module')">MSC Fisheries</a>
+                <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('asc-farms.html','ASC Farm Standard Module','ASC_ecolabel.png','ASC')">ASC Farms</a>
+              </div>
+            </div>
+            <a href="modules.html#atlas" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all Atlas</a>
+          </div>
+        </div>
+        <div class="nav-item-wrap">
+          <a href="modules.html#features" class="nav-item">Features</a>
+          <div class="nav-dropdown">
+            <a href="smartuna-ai.html" class="nav-dropdown-item">SmarTuna A.I <span class="tag-new">New</span></a>
+            <a href="smartuna-assistant.html" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('smartuna-assistant.html','SmarTuna Assistant');">SmarTuna Assistant <span class="tag-beta">Beta</span></a>
+            <div class="nav-dropdown-item" style="position:relative;">
+              Compliance <span style="font-size:11px;color:#6b7280;">&rsaquo;</span>
+              <div class="nav-dropdown-sub">
+                <a href="eu-catch-support.html" class="nav-dropdown-item">EU CATCH Form</a>
+                <a href="simp-support.html" class="nav-dropdown-item">NOAA SIMP <span class="tag-new">New</span></a>
+                <a href="fsma-support.html" class="nav-dropdown-item">FSMA Act 204 <span class="tag-new">New</span></a>
+              </div>
+            </div>
+            <a href="load-planner.html" class="nav-dropdown-item">Load Planner</a>
+            <a href="modules.html#features" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all Features</a>
+          </div>
+        </div>
+        <a href="modules.html#messages" class="nav-item"><img src="messages.png" alt=""/>Messages</a>
+        <a href="modules.html#reports" class="nav-item"><img src="report.png" alt=""/>Reports</a>
+        <a href="modules.html#support" class="nav-item"><img src="support.png" alt=""/>Support</a>
+        <a href="developer.html" class="nav-item" id="devNav" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 6 2 12 8 18"/><polyline points="16 6 22 12 16 18"/></svg>Developer</a>
+        <script>try{if(localStorage.getItem('smartuna_dev_unlocked')==='1')document.getElementById('devNav').hidden=false;}catch(e){}</script>
       </div>
-      <a href="#" class="nav-item"><img src="features.png" alt=""/>Features</a>
-      <a href="#" class="nav-item"><img src="messages.png" alt=""/>Messages</a>
-      <a href="#" class="nav-item"><img src="report.png" alt=""/>Reports</a>
-      <a href="report.html" class="nav-item"><img src="support.png" alt=""/>Support</a>
+    </div>
+    <div class="topbar-right">
+      <div class="search-pill">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search here...
+      </div>
+      <div class="notif-btn"><img src="notification.png" alt=""/><div class="notif-dot"></div></div>
+      <div class="avatar-wrap">
+        <div class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()" role="button" tabindex="0" aria-label="Account menu"><span id="avatarInitials">··</span></div>
+        <div class="avatar-menu" id="avatarMenu">
+          <div class="avatar-menu-name" id="avatarGreeting">Hello!</div>
+                    <a href="profile.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Profile</a>
+          <button onclick="handleLogout()">Logout</button>
+        </div>
+      </div>
     </div>
   </div>
-  <div class="topbar-right">
-    <div class="search-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search here...</div>
-    <div class="notif-btn"><img src="notification.png" alt=""/><div class="notif-dot"></div></div>
-    <div style="position:relative;flex-shrink:0">
-      <div class="avatar-btn" id="avatarBtn" onclick="toggleAvatarMenu()"><span id="avatarInitials">··</span></div>
-      <div class="avatar-menu" id="avatarMenu">
-        <div class="avatar-menu-name" id="avatarGreeting">Hello!</div>
-        <a href="profile.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Profile</a>
-        <button onclick="handleLogout()">Logout</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- WIZARD -->
 <div id="wizard">
   <div class="wizard-card">
-    <button class="wiz-close" onclick="location.href='vessel-list.html'" title="Close">✕</button>
+    <button class="wiz-close" onclick="location.href='vessel-list.html'" title="Close" aria-label="Close"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     <div class="wiz-step active" id="wiz1">
       <h2>What type of vessel?</h2>
       <p>This determines which compliance fields and sections are shown.</p>
@@ -355,37 +572,37 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
         <div class="wiz-cat-opt" data-cat="Fishing Vessel">
           <div class="wiz-cat-check"></div>
           <img class="wiz-cat-img" src="fishing-vessel.jpg" alt="Fishing Vessel" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
-          <div class="wiz-cat-img" style="display:none;background:linear-gradient(135deg,#c8dff8,#a8c8f0);align-items:center;justify-content:center;font-size:38px">🎣</div>
+          <div class="wiz-cat-img wiz-cat-fb" style="display:none;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12c3-4.5 7-6 11-6 4 0 6.5 2.5 8 6-1.5 3.5-4 6-8 6-4 0-8-1.5-11-6z"/><path d="M2 12l-0 0M6 9.5 2 7v10l4-2.5"/><circle cx="16.5" cy="10.5" r=".8" fill="currentColor"/></svg></div>
           <div class="wiz-cat-body"><div class="wiz-cat-label">Fishing Vessel</div><div class="wiz-cat-hint">Purse seiners, longliners, trawlers, pole & line, handline</div></div>
         </div>
         <div class="wiz-cat-opt" data-cat="Carrier/Reefer">
           <div class="wiz-cat-check"></div>
           <img class="wiz-cat-img" src="carrier-vessel.jpg" alt="Carrier / Reefer" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
-          <div class="wiz-cat-img" style="display:none;background:linear-gradient(135deg,#c8dff8,#a8c8f0);align-items:center;justify-content:center;font-size:38px">🚢</div>
+          <div class="wiz-cat-img wiz-cat-fb" style="display:none;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M4.9 6l14.2 12M4.9 18L19.1 6"/><path d="M9 4l3 2 3-2M9 20l3-2 3 2"/></svg></div>
           <div class="wiz-cat-body"><div class="wiz-cat-label">Carrier / Reefer</div><div class="wiz-cat-hint">Transshipment and refrigerated carrier vessels</div></div>
         </div>
         <div class="wiz-cat-opt" data-cat="Cargo/Transport">
           <div class="wiz-cat-check"></div>
           <img class="wiz-cat-img" src="cargo-vessel.jpg" alt="Cargo / Transport" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
-          <div class="wiz-cat-img" style="display:none;background:linear-gradient(135deg,#c8dff8,#a8c8f0);align-items:center;justify-content:center;font-size:38px">📦</div>
+          <div class="wiz-cat-img wiz-cat-fb" style="display:none;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="8" height="8" rx="1"/><rect x="13" y="11" width="8" height="8" rx="1"/><rect x="8" y="3" width="8" height="8" rx="1"/></svg></div>
           <div class="wiz-cat-body"><div class="wiz-cat-label">Cargo / Transport</div><div class="wiz-cat-hint">Container ships, bulk carriers, general cargo</div></div>
         </div>
         <div class="wiz-cat-opt" data-cat="Support/Tender">
           <div class="wiz-cat-check"></div>
           <img class="wiz-cat-img" src="supply-vessel.jpg" alt="Support / Tender" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/>
-          <div class="wiz-cat-img" style="display:none;background:linear-gradient(135deg,#c8dff8,#a8c8f0);align-items:center;justify-content:center;font-size:38px">⚓</div>
+          <div class="wiz-cat-img wiz-cat-fb" style="display:none;align-items:center;justify-content:center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v14M5 13H3a9 9 0 0018 0h-2M8 11h8"/></svg></div>
           <div class="wiz-cat-body"><div class="wiz-cat-label">Support / Tender</div><div class="wiz-cat-hint">Supply vessels, tenders, support craft</div></div>
         </div>
       </div>
-      <div class="wiz-nav"><span style="font-size:12px;color:var(--soft)">Step 1 of 2</span><button class="wiz-next" id="wiz1next" disabled onclick="goWiz2()">Next →</button></div>
+      <div class="wiz-nav"><span style="font-size:12px;color:var(--soft)">Step 1 of 2</span><button class="wiz-next" id="wiz1next" disabled onclick="goWiz2()">Next<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
     </div>
     <div class="wiz-step" id="wiz2">
       <h2 id="wiz2title">Select sub-type</h2>
       <p id="wiz2hint">Choose the specific type for accurate compliance fields.</p>
       <div class="wiz-sub-grid" id="subGrid"></div>
       <div class="wiz-nav">
-        <button class="wiz-back" onclick="goWiz1()">← Back</button>
-        <div style="display:flex;align-items:center;gap:12px"><span style="font-size:12px;color:var(--soft)">Step 2 of 2</span><button class="wiz-next" id="wiz2next" disabled onclick="startForm()">Start →</button></div>
+        <button class="wiz-back" onclick="goWiz1()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>Back</button>
+        <div style="display:flex;align-items:center;gap:12px"><span style="font-size:12px;color:var(--soft)">Step 2 of 2</span><button class="wiz-next" id="wiz2next" disabled onclick="startForm()">Start<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button></div>
       </div>
     </div>
   </div>
@@ -393,11 +610,14 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
 
 <!-- FORM -->
 <div class="wrap" id="formWrap" style="display:none">
-  <div class="crumb"><a href="vessel-list.html">Vessels</a> · <span id="formCrumb">Add vessel</span></div>
-  <div class="page-head">
+  <div class="actionbar">
     <div>
-      <h1 id="pageTitle">Add new vessel</h1>
-      <div class="vessel-badge" id="vesselBadge"></div>
+      <div class="crumb"><a href="vessel-list.html">Vessels</a> / <span id="formCrumb">Add vessel</span></div>
+      <div class="ab-title"><h1 id="pageTitle">Add new vessel</h1><div class="vessel-badge" id="vesselBadge"></div></div>
+    </div>
+    <div class="ab-r">
+      <a href="vessel-list.html" class="pill-btn">Cancel</a>
+      <button type="button" class="pill-btn primary" id="saveTop" onclick="document.getElementById('saveBtn').click()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg><span id="saveTopLbl">Save vessel</span></button>
     </div>
   </div>
   <div class="gate" id="gate" style="display:none">Only SmarTuna concept admins can create or edit vessels.</div>
@@ -527,7 +747,7 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
         <div class="tag-grid" id="tagGrid" style="margin-top:8px">
           <div class="tag-opt" data-tag="Active">Active</div>
           <div class="tag-opt" data-tag="Inactive">Inactive</div>
-          <div class="tag-opt" data-tag="Suspicious">⚠️ Suspicious</div>
+          <div class="tag-opt" data-tag="Suspicious">Suspicious</div>
           <div class="tag-opt" data-tag="Relocated">Relocated</div>
           <div class="tag-opt" data-tag="Decommissioned">Decommissioned</div>
           <div class="tag-opt" data-tag="Status Unknown">Status Unknown</div>
@@ -535,14 +755,14 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
           <div class="tag-opt" data-tag="Delisted">Delisted</div>
           <div class="tag-opt" data-tag="Repurposed">Repurposed</div>
         </div>
-        <div class="tag-conflict" id="tagConflict">⚠ Active conflicts with terminal status tags — please review your selection.</div>
+        <div class="tag-conflict" id="tagConflict"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 3.9L1.8 18a2 2 0 001.7 3h17a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Active cannot be combined with Sunk, Decommissioned, Relocated, Delisted or Repurposed.</div>
       </div>
 
       <!-- Photo -->
       <div style="margin-top:18px" class="field"><span>Vessel Photo</span>
         <div class="photo-upload">
-          <div class="photo-preview" id="photoPreview">🚢</div>
-          <div><button type="button" class="btn-upload" onclick="document.getElementById('photoFile').click()">Upload photo</button>
+          <div class="photo-preview" id="photoPreview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20c2 0 2-1.5 4-1.5S8 20 10 20s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><path d="M4 16l-1-5h18l-2 5"/><path d="M7 11V7h8v4M11 7V4"/></svg></div>
+          <div><button type="button" class="btn-upload" onclick="document.getElementById('photoFile').click()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Upload photo</button>
           <input type="file" id="photoFile" accept="image/*" style="display:none" onchange="previewPhoto(this)"/>
           <div style="font-size:11.5px;color:var(--soft);margin-top:6px">JPG, PNG · max 5MB</div></div>
         </div>
@@ -565,7 +785,7 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
 
       <div class="sub-section">
         <div class="toggle-row" style="margin-bottom:0">
-          <span class="toggle-lbl" style="font-weight:700;font-size:13px">Beneficial Owner</span>
+          <span class="toggle-lbl">Beneficial owner</span>
           <label class="toggle-sw"><input type="checkbox" id="beneficial_owner_active" onchange="toggleSub('beneficial_owner_active','beneficialOwnerSub',this)"/><span class="track"></span></label>
         </div>
         <div class="toggle-sub" id="beneficialOwnerSub">
@@ -586,7 +806,7 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
 
       <div class="sub-section">
         <div class="toggle-row" style="margin-bottom:0">
-          <span class="toggle-lbl" style="font-weight:700;font-size:13px">Charter Arrangement</span>
+          <span class="toggle-lbl">Charter arrangement</span>
           <label class="toggle-sw"><input type="checkbox" id="charter_active" onchange="toggleSub('charter_active','charterSub',this)"/><span class="track"></span></label>
         </div>
         <div class="toggle-sub" id="charterSub">
@@ -938,23 +1158,25 @@ html{scrollbar-width:thin;scrollbar-color:#d1d5e0 transparent}
     <div class="section" id="otherLicensesSection">
       <div class="sec-head"><div class="sec-dot"></div><div class="sec-title">Other Licenses</div><span class="sec-badge">Multiple allowed</span></div>
       <div id="licenseRows"></div>
-      <button type="button" class="add-link" id="addLicenseBtn" onclick="addLicenseRow()">+ Add License</button>
+      <button type="button" class="add-link" id="addLicenseBtn" onclick="addLicenseRow()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add license</button>
     </div>
 
     <div class="save-bar">
       <button type="button" class="btn btn-ghost" onclick="location.href='vessel-list.html'">Cancel</button>
-      <button type="submit" class="btn btn-primary" id="saveBtn">Save vessel</button>
+      <button type="submit" class="btn btn-primary" id="saveBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg><span id="saveBtnLbl">Save vessel</span></button>
     </div>
   </form>
 </div>
 
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL='https://enbdaajcromxmhgcverp.supabase.co';
 const SUPABASE_KEY='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const params=new URLSearchParams(location.search);
 const editId=params.get('id');
 let isAdmin=false, selCategory='', selSubtype='', photoUrl=null;
@@ -973,7 +1195,7 @@ function addLicenseRow(v={}){
     <div class="field"><span>Start Date</span><input class="lic-start" type="date"/></div>
     <div class="field"><span>End Date</span><input class="lic-end" type="date"/></div>
     <div class="field"><span>Agreement Note</span><input class="lic-note" placeholder="Optional note"/></div>
-    <button type="button" class="icon-btn" title="Remove" onclick="this.closest('.license-row').remove()">✕</button>`;
+    <button type="button" class="icon-btn" title="Remove" aria-label="Remove" onclick="this.closest('.license-row').remove()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>`;
   if(v.licensing_authority) row.querySelector('.lic-authority').value=v.licensing_authority;
   if(v.license_number) row.querySelector('.lic-number').value=v.license_number;
   if(v.start_date) row.querySelector('.lic-start').value=v.start_date.split('T')[0];
@@ -1010,24 +1232,26 @@ function autoFlagStateReg(){
 /* ── AUTO FOC CHECK FROM COUNTRY MODULE ── */
 async function checkFOCFromFlag(flagCountry){
   if(!flagCountry) return;
-  const {data}=await sb.from('countries').select('flag_of_convenience').eq('country',flagCountry).single();
-  const isFOC=data&&(data.flag_of_convenience===true||data.flag_of_convenience==='true'||data.flag_of_convenience==='Yes');
+  const {data}=await sb.from('countries').select('is_foc').eq('country',flagCountry).maybeSingle();
+  if(!data||data.is_foc==null) return; // unknown in the Country module: leave the toggle as it is
+  const isFOC=data.is_foc===true||data.is_foc==='true';
   const cb=document.getElementById('flag_state_foc');
   if(cb){
     // flag_state_foc means "NOT FOC" — so if country IS FOC, the toggle should be OFF
     cb.checked=!isFOC;
     const row=cb.closest('.toggle-row');
     if(row) row.classList.toggle('active',cb.checked);
-    if(isFOC) toast('⚠ '+flagCountry+' is listed as a Flag of Convenience in the Country module',true);
+    if(isFOC) toast(flagCountry+' is listed as a flag of convenience in the Country module',true);
   }
 }
 
 function toProperCase(s){return(s||'').replace(/\w\S*/g,t=>t.charAt(0).toUpperCase()+t.slice(1).toLowerCase());}
 document.addEventListener('DOMContentLoaded',()=>{
-  const skipIds=['current_name','imo','mmsi','ircs','registration_number','wcpfc_vid','wcpfc_auth_no','iattc_no','uvi_number','vds_reg_no','fsma_ral_no','ffa_id','eu_approval_no','uk_auth_no','ffa_refrigerant_type'];
+  const skipIds=['current_name','imo','mmsi','ircs','registration_number','wcpfc_vid','wcpfc_auth_no','iattc_no','uvi_number','vds_reg_no','fsma_ral_no','ffa_id','eu_approval_no','uk_auth_no','ffa_refrigerant_type',
+    'wcpfc_registry_url','iattc_registry_url','official_number','class_number','class_society','ffa_refrigerant_unit','ffa_rated_speed_unit','ffa_fuel_unit','ffa_engine_model','rfmo_others_text','freezing_capacity','gear_type'];
   document.querySelectorAll('input').forEach(inp=>{
     if(inp.type&&inp.type!=='text') return;
-    if(skipIds.includes(inp.id)) return;
+    if(skipIds.includes(inp.id)||/_url$|_unit$/.test(inp.id)) return;
     inp.addEventListener('blur',()=>{if(inp.value.trim()) inp.value=toProperCase(inp.value);});
   });
 });
@@ -1122,7 +1346,7 @@ function validateMMSI(mmsi, flagCountry){
   if(midCountry.toLowerCase()!==flagCountry.toLowerCase()){
     return {ok:false,msg:`MMSI MID (${mid} = ${midCountry}) does not match vessel flag (${flagCountry}). Please verify.`};
   }
-  return {ok:true,msg:`MMSI MID ${mid} matches flag (${midCountry}) ✓`};
+  return {ok:true,msg:`MMSI MID ${mid} matches flag (${midCountry})`};
 }
 const TERMINAL_TAGS=['Sunk','Decommissioned','Relocated','Delisted','Repurposed'];
 function handleTagClick(el){
@@ -1163,7 +1387,7 @@ function renderChips(wrapId,inputId,arr){
   [...wrap.querySelectorAll('.chip-item')].forEach(c=>c.remove());
   arr.forEach((v,i)=>{
     const c=document.createElement('span'); c.className='chip-item';
-    c.innerHTML=`${v} <button type="button" onclick="removeChip(${i},'${wrapId}','${inputId}',${wrapId==='prevNamesWrap'?'prevNames':wrapId==='prevFlagsWrap'?'prevFlags':'pvrRFMOs'})">×</button>`;
+    c.innerHTML=`${esc(v)} <button type="button" aria-label="Remove" onclick="removeChip(${i},'${wrapId}','${inputId}',${wrapId==='prevNamesWrap'?'prevNames':wrapId==='prevFlagsWrap'?'prevFlags':'pvrRFMOs'})">×</button>`;
     wrap.insertBefore(c,inp);
   });
   inp.value='';
@@ -1221,7 +1445,7 @@ function buildPVR(){
   b.innerHTML=PVR_MEASURES.map(m=>`<tr>
     <td style="font-weight:500;padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px">${m.label}</td>
     <td style="padding:10px 12px;border-bottom:1px solid var(--line)">
-      <select class="pvr-select" data-key="${m.key}" data-label="${m.label}" style="height:36px;border-radius:8px;font-size:12.5px;min-width:100px">
+      <select class="pvr-select" data-key="${m.key}" data-label="${m.label}" style="height:36px;border-radius:999px;font-size:12.5px;min-width:150px">
         <option value="N/A" selected>N/A</option><option value="Y">Y — Yes</option><option value="N">N — No</option><option value="IP">IP — In Progress</option><option value="-">– Not required</option>
       </select></td>
     <td style="padding:10px 12px;border-bottom:1px solid var(--line)">
@@ -1354,7 +1578,7 @@ function addPrevFlag(country){
 }
 function renderPrevFlagChips(){
   const wrap=$('prevFlagsChips'); if(!wrap) return;
-  wrap.innerHTML=prevFlags.map((f,i)=>`<span style="display:inline-flex;align-items:center;gap:5px;background:var(--primary-soft);color:var(--primary-dark);border-radius:8px;padding:5px 10px;font-size:12.5px;font-weight:600">${f} <button type="button" onclick="removePrevFlag(${i})" style="border:none;background:none;color:inherit;cursor:pointer;font-size:14px;line-height:1;opacity:.7">×</button></span>`).join('');
+  wrap.innerHTML=prevFlags.map((f,i)=>`<span class="pf-chip">${esc(f)} <button type="button" aria-label="Remove" onclick="removePrevFlag(${i})">&times;</button></span>`).join('');
 }
 function removePrevFlag(i){ prevFlags.splice(i,1); renderPrevFlagChips(); }
 
@@ -1379,7 +1603,7 @@ async function getAuthUser(){
   const {data:p}=await sb.from('profiles').select('role,first_name,last_name,avatar_color,photo_url').eq('id',user.id).single();
   isAdmin=p&&['admin','operator'].includes(p.role);
   const first=p?.first_name||user.email.split('@')[0], last=p?.last_name||'';
-  if(p?.photo_url) $('avatarBtn').innerHTML=`<img src="${p.photo_url}" style="width:100%;height:100%;object-fit:cover">`;
+  if(p?.photo_url) $('avatarBtn').innerHTML=`<img src="${esc(p.photo_url)}" alt="">`;
   else{$('avatarBtn').style.background=p?.avatar_color||'#1a6fdb';$('avatarInitials').textContent=((first[0]||'')+(last[0]||'')).toUpperCase()||'··';}
   $('avatarGreeting').textContent=`Hello, ${first}!`;
 
@@ -1394,7 +1618,7 @@ async function getAuthUser(){
     // Remove wizard from DOM entirely in edit mode
     const wiz=$('wizard'); if(wiz) wiz.remove();
     $('formWrap').style.display='block';
-    $('pageTitle').textContent='Edit vessel'; $('formCrumb').textContent='Edit vessel'; $('saveBtn').textContent='Save changes';
+    $('pageTitle').textContent='Edit vessel'; $('formCrumb').textContent='Edit vessel'; $('saveBtnLbl').textContent='Save changes'; $('saveTopLbl').textContent='Save changes';
     await loadVessel(editId);
   }
 })();
@@ -1436,6 +1660,16 @@ async function loadVessel(id){
     'wcpfc_tranship_hs','wcpfc_ps_tranship_sea','msc_fishery_participation','pna_vds_active','fsma_vessel'];
   bools.forEach(k=>{const el=$(k); if(el) el.checked=!!v[k];});
 
+  // latest IUU listing details (saved to vessel_iuu_history)
+  const {data:iuuH}=await sb.from('vessel_iuu_history').select('*').eq('vessel_id',id).order('created_at',{ascending:false}).limit(1);
+  const ih=iuuH&&iuuH[0]; window._iuuLoaded=ih||null;
+  if(ih){
+    const set=(k,x)=>{const el=$(k); if(el&&x!=null) el.value=String(x).split('T')[0];};
+    set('iuu_list_name',ih.iuu_list_name); set('iuu_date_listed',ih.date_listed); set('iuu_delisted_date',ih.delisted_date);
+    set('iuu_delisted_reason',ih.delisted_reason); set('iuu_reason_removal',ih.reason_removal);
+    if(ih.previously_listed!=null) set('iuu_previously_listed',ih.previously_listed?'true':'false');
+  }
+  if(v.rfmo_others&&$('rfmo_others_text')) $('rfmo_others_text').value=[].concat(v.rfmo_others).join(', ');
   // restore toggleSubs
   ['iuu_listed','uk_approved','eu_approved','ffa_good_standing','fsma_vessel'].forEach(k=>{
     const el=$(k); if(el&&el.checked) toggleSub(k,{iuu_listed:'iuuSub',uk_approved:'ukSub',eu_approved:'euSub',ffa_good_standing:'ffaSub',fsma_vessel:'fsmaSub'}[k],el);
@@ -1470,7 +1704,7 @@ async function loadVessel(id){
   if(v.tags) v.tags.forEach(t=>{const el=document.querySelector(`.tag-opt[data-tag="${t}"]`); if(el) el.classList.add('on');});
 
   // photo
-  if(v.photo_url){$('photoPreview').innerHTML=`<img src="${v.photo_url}" alt="">`;photoUrl=v.photo_url;}
+  if(v.photo_url){$('photoPreview').innerHTML=`<img src="${esc(v.photo_url)}" alt="">`;photoUrl=v.photo_url;}
 
   // pvr
   syncRFMOChips();
@@ -1493,6 +1727,7 @@ async function loadVessel(id){
   if(yr){ const lbl=$('yearLabel'); if(lbl){lbl.textContent=yr;lbl.className='yr-lbl';} }
   // load VOSI data for this vessel
   await loadVOSIforEdit(id);
+  syncAllCsels();
 }
 
 const BP_EDIT_LABELS={
@@ -1583,7 +1818,6 @@ $('vForm').addEventListener('submit',async e=>{
   const payload={
     current_name:$('current_name').value.trim(),
     imo:g('imo'),mmsi:g('mmsi'),ircs:g('ircs'),registration_number:g('registration_number'),
-    current_port_id:g('current_port_id')||null,current_terminal_id:g('current_terminal_id')||null,current_port_name:g('current_port_name')||null,current_terminal_name:g('current_terminal_name')||null,current_berth:g('current_berth')||null,
     vessel_category:selCategory,vessel_subtype:selSubtype||null,
     tags:getSelectedTags(),photo_url:finalPhotoUrl||null,
     vessel_flag:g('vessel_flag'),port_of_registry:g('port_of_registry'),
@@ -1597,7 +1831,7 @@ $('vForm').addEventListener('submit',async e=>{
     previous_names:prevNames.length?prevNames:null,
     previous_flags:prevFlags.length?prevFlags:null,
     vessel_tonnage:g('vessel_tonnage')||null,tonnage_type:g('tonnage_type')||null,
-    vessel_length:g('vessel_length')||null,beam_m:g('beam_m')||null,depth_m:g('depth_m')||null,
+    beam_m:g('beam_m')||null,depth_m:g('depth_m')||null,
     crew_complement:g('crew_complement')||null,fish_hold_capacity:g('fish_hold_capacity')||null,
     gear_type:g('gear_type'),engine_power:g('engine_power')||null,engine_power_unit:g('engine_power_unit')||null,
     freezer_type:g('freezer_type'),freezer_count:g('freezer_count')||null,freezing_capacity:g('freezing_capacity'),freezing_method:g('freezing_method'),hull_material:g('hull_material'),
@@ -1646,7 +1880,7 @@ $('vForm').addEventListener('submit',async e=>{
     const midCheck=validateMMSI(payload.mmsi, payload.vessel_flag);
     if(midCheck && !midCheck.ok){
       // Show as a warning toast but don't block — admin can override
-      toast('⚠ '+midCheck.msg, true);
+      toast(midCheck.msg, true);
       // Give 3s to decide — if they click Save again within the same call cycle it was already disabled
       // We still save — this is a warning not a hard block
     }
@@ -1666,15 +1900,17 @@ $('vForm').addEventListener('submit',async e=>{
 
     // save IUU history row if IUU listed
     if(gb('iuu_listed')){
-      await sb.from('vessel_iuu_history').insert({
-        vessel_id:vesselId,
+      const iuuRow={
         previously_listed:g('iuu_previously_listed')==='true',
         iuu_list_name:g('iuu_list_name'),
         date_listed:gd('iuu_date_listed'),
         delisted_date:gd('iuu_delisted_date'),
         delisted_reason:g('iuu_delisted_reason'),
         reason_removal:g('iuu_reason_removal'),
-      });
+      };
+      const prev=window._iuuLoaded;
+      const same=prev&&Object.keys(iuuRow).every(k=>String(prev[k]??'').split('T')[0]===String(iuuRow[k]??''));
+      if(!same) await sb.from('vessel_iuu_history').insert({vessel_id:vesselId,...iuuRow});
     }
 
     // save PVR measures
@@ -1686,10 +1922,8 @@ $('vForm').addEventListener('submit',async e=>{
 
     // save other licenses
     const licData=getLicenseRowData();
-    if(licData.length){
-      await sb.from('vessel_other_licenses').delete().eq('vessel_id',vesselId);
-      await sb.from('vessel_other_licenses').insert(licData.map(l=>({...l,vessel_id:vesselId})));
-    }
+    if(editId||licData.length) await sb.from('vessel_other_licenses').delete().eq('vessel_id',vesselId);
+    if(licData.length) await sb.from('vessel_other_licenses').insert(licData.map(l=>({...l,vessel_id:vesselId})));
     // Save VOSI overrides if panel is loaded
     const vosiFields=$('vosiFields');
     if(vosiFields&&vosiFields.dataset.vosiId){
@@ -1801,7 +2035,7 @@ function pickYear(y){
   closeAll();
 }
 
-function toast(msg,err=false){const t=$('toast');t.textContent=msg;t.className='toast show'+(err?' err':'');setTimeout(()=>t.className='toast',2800);}
+function toast(msg,err=false){const t=$('toast');t.textContent=msg;t.className='toast show'+(err?' err':'');clearTimeout(t._h);t._h=setTimeout(()=>t.className='toast',3200);}
 function toggleAvatarMenu(){$('avatarMenu').classList.toggle('open');}
 document.addEventListener('click',e=>{if(!e.target.closest('.avatar-btn'))$('avatarMenu')?.classList.remove('open');});
 async function handleLogout(){await sb.auth.signOut();location.href='index.html';}
@@ -1861,6 +2095,7 @@ function initClearable(root=document){
     if(SKIP_IDS.includes(el.id)) return;
     if(el.closest('.chip-wrap,.tag-grid,.prev-flags-wrap,.toggle-sw')) return;
     if(el.readOnly||el.disabled) return;
+    if(el.classList.contains('pvr-select')||el.classList.contains('vosi-bp-select')) return;
     wrap(el);
   });
 }
@@ -1868,6 +2103,14 @@ function initClearable(root=document){
 document.addEventListener('DOMContentLoaded',()=>{ setTimeout(()=>initClearable(),200); });
 // Export so dynamic rows (license rows, etc.) can call it after rendering
 window.initClearable=initClearable;
+/* top save button mirrors the bottom one; Ctrl/Cmd+S saves */
+new MutationObserver(()=>{ $('saveTop').disabled=$('saveBtn').disabled; }).observe($('saveBtn'),{attributes:true,attributeFilter:['disabled']});
+document.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s'&&$('formWrap').style.display!=='none'){ e.preventDefault(); $('saveBtn').click(); } });
+
+</script>
+
+<script>
+if (typeof window.launchModule !== 'function') { window.launchModule = function(url){ window.location.href = url; }; }
 </script>
 </body>
 </html>
