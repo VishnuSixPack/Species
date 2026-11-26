@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Support · SmarTuna concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="sc-blue-logo.png">
+<style>
+
+  @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');font-weight:normal;font-style:normal;font-display:swap}
+  :root{
+    --accent:#2f6fed; --accent-soft:rgba(47,111,237,.10); --accent-line:#cddcf8;
+    --ink:#14161a; --muted:#6b7380; --faint:#9aa1ad; --line:#e6e8ec; --line2:#eef0f3; --page:#f6f7f9; --white:#fff;
+    --mono:Consolas,"SFMono-Regular",Menlo,monospace;
+    --ok:#178a4c; --ok-bg:#e8f6ee; --ok-line:#c7e8d4;
+    --low:#2f6fed; --low-bg:#edf3fe; --low-line:#cddcf8;
+    --med:#b7791f; --med-bg:#fdf4e3; --med-line:#f1dcae;
+    --crit:#d64545; --crit-bg:#fdeceb; --crit-line:#f5c9c6;
+    --ease:cubic-bezier(.16,1,.3,1); --spring:cubic-bezier(.34,1.56,.64,1);
+  }
+  *{box-sizing:border-box}
+  html,body{overflow-x:clip}
+  body{margin:0;font-family:Poppins,system-ui,sans-serif;font-weight:400;font-size:14px;font-synthesis:none;color:var(--ink);background:var(--page);line-height:1.55;-webkit-font-smoothing:antialiased}
+  b,strong,h1,h2,h3,h4,th,[style*="font-weight"]{font-weight:400!important}
+  a{color:inherit;text-decoration:none}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .wrap{max-width:1680px;margin:0 auto;padding:0 clamp(16px,3vw,48px)}
+  .mono{font-family:var(--mono)}
+  .hidden{display:none!important}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* shared pieces */
+  .eyebrow{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.04em;display:flex;align-items:center;gap:10px}
+  .lbl{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.03em}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:18px 20px;min-width:0}
+  .card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border:1px solid var(--line);border-radius:999px;background:var(--white);font-size:13px;font-weight:300;color:var(--ink);white-space:nowrap;cursor:pointer;transition:border-color .2s,color .2s,background .2s,transform .2s,box-shadow .2s}
+  .btn svg{flex:none}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.25)}
+  .btn.primary:hover{background:#2560d6;color:#fff;transform:translateY(-1px)}
+  .btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+  .btn:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .badge{font-family:var(--mono);font-size:10.5px;padding:1px 8px;border-radius:999px;border:1px solid;line-height:1.5}
+  .badge.new{color:var(--accent);border-color:var(--accent-line);background:#f3f7ff}
+  .badge.beta{color:#9a6a12;border-color:#efdcae;background:#fdf7e7}
+  .cnt{font-family:var(--mono);font-size:10.5px;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;display:inline-grid;place-items:center}
+
+  .mri-status-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:999px;font-size:12px;border:1px solid transparent;white-space:nowrap}
+  .mri-status-pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .mri-status-pill.transparent{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .mri-status-pill.low{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .mri-status-pill.medium{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .mri-status-pill.critical{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+  .kde-weight{display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;font-family:var(--mono);font-size:10.5px;border:1px solid transparent;white-space:nowrap}
+  .kde-weight.w5{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .kde-weight.w10{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .kde-weight.w30{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .kde-weight.w50{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+
+  .rv{animation:up .55s var(--ease) both;animation-delay:calc(var(--i,0) * 50ms)}
+  @keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .toast-wrap{position:fixed;right:20px;bottom:20px;z-index:3000;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  .toast{display:flex;align-items:center;gap:10px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;font-weight:300;box-shadow:0 14px 34px rgba(16,24,40,.2);animation:up .3s var(--ease)}
+  .toast i{width:8px;height:8px;border-radius:50%;background:#4ade80;flex:none}
+  .toast.error i{background:#f87171}
+
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
+
+  .sc-wm{display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1}
+  .sc-wm-top{font-family:'Bitsumis',sans-serif;font-size:17px;letter-spacing:.04em;text-transform:uppercase;line-height:1;color:var(--ink)}
+  .sc-wm-top span{color:var(--accent)}
+  .sc-wm-sub{font-family:'Bitsumis',sans-serif;font-size:8px;letter-spacing:.32em;text-transform:uppercase;color:#6b7380;margin-top:2px}
+  .topbar{position:sticky;top:0;z-index:1000;display:flex;align-items:center;gap:20px;padding:10px 28px;background:rgba(255,255,255,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .topbar-brand{display:flex;align-items:center;gap:8px;flex-shrink:0;line-height:1.1}
+  .topbar-brand img{width:28px;height:28px;object-fit:contain}
+  .topbar-nav{flex:1;display:flex;justify-content:center;min-width:0}
+  .nav-pill{display:inline-flex;align-items:center;gap:2px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:4px}
+  .topbar .nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:300;color:#6b7380;white-space:nowrap;transition:background .15s,color .15s}
+  .topbar .nav-item img,.topbar .nav-item svg{width:15px;height:15px;object-fit:contain;opacity:.45;flex-shrink:0}
+  .topbar .nav-item:hover{background:#f3f6fb;color:var(--ink)}
+  .topbar .nav-item:hover img,.topbar .nav-item:hover svg{opacity:1}
+  .topbar .nav-item.active{background:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.28)}
+  .topbar .nav-item.active img{filter:brightness(0) invert(1);opacity:1}
+  .topbar .nav-item.active svg{opacity:1}
+  .topbar .nav-item-wrap{position:relative}
+  .topbar .nav-item-wrap::after{content:'';position:absolute;top:100%;left:0;width:100%;height:12px}
+  .topbar .nav-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:160px;z-index:500;padding:6px}
+  .topbar .nav-item-wrap:hover .nav-dropdown{display:block}
+  .topbar .nav-dropdown-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;font-size:13px;font-weight:300;color:var(--ink);border-radius:8px;white-space:nowrap;cursor:pointer;position:relative;transition:background .15s}
+  .topbar .nav-dropdown-item:hover{background:#f6f7f9;color:var(--accent)}
+  .topbar .nav-dropdown-sub{display:block;visibility:hidden;opacity:0;position:absolute;left:100%;top:0;margin-left:6px;transform:translateX(-4px);background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:160px;padding:6px;z-index:501;transition:opacity .15s ease,transform .15s ease,visibility 0s linear .35s}
+  .topbar .nav-dropdown-sub::before{content:"";position:absolute;top:-10px;bottom:-10px;left:-16px;width:16px}
+  .topbar .nav-dropdown-item:hover > .nav-dropdown-sub,.topbar .nav-dropdown-item:focus-within > .nav-dropdown-sub{visibility:visible;opacity:1;transform:none;transition-delay:0s}
+  .topbar .nav-dropdown-item:has(> .nav-dropdown-sub:hover){background:#f6f7f9;color:var(--accent)}
+  .topbar .tag-new,.topbar .tag-beta{font-size:9px;padding:1px 7px;border-radius:999px}
+  .topbar .tag-new{color:#2f6fed;background:#eef3fc} .topbar .tag-beta{color:#a9721f;background:#fdf3df}
+  #devNav[hidden]{display:none!important}
+  .topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .search-pill{display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:12px;font-weight:300;color:#b3bac6;min-width:150px;cursor:text}
+  .notif-btn{width:36px;height:36px;border-radius:50%;background:var(--white);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;flex-shrink:0}
+  .notif-btn img{width:17px;height:17px;object-fit:contain;opacity:.65}
+  .notif-dot{position:absolute;top:5px;right:5px;width:8px;height:8px;background:#e63946;border-radius:50%;border:2px solid #fff}
+  .avatar-wrap{position:relative;flex-shrink:0}
+  .avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;flex-shrink:0}
+  .avatar-btn img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+  .avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:176px;overflow:hidden;z-index:999}
+  .avatar-menu.open{display:block;animation:drop .18s ease}
+  @keyframes drop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .avatar-menu-name{padding:11px 15px 7px;font-family:var(--mono);font-size:11.5px;color:#6b7380;border-bottom:1px solid var(--line)}
+  .avatar-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;font-weight:300;color:var(--ink)}
+  .avatar-menu a:hover{background:#f6f7f9;color:var(--accent)}
+  .avatar-menu button{width:100%;padding:9px 15px;background:none;border:0;border-top:1px solid var(--line);text-align:left;font-size:13px;font-weight:300;color:#e63946;cursor:pointer}
+  .avatar-menu button:hover{background:#fff0f1}
+  @media (max-width:1280px){ .search-pill{display:none} }
+  @media (max-width:1080px){ .topbar-nav{visibility:hidden} }
+  @media (max-width:600px){ .topbar{padding:10px 16px} .topbar-nav{display:none} .topbar{justify-content:space-between} }
+
+  body *{font-weight:400!important}
+  body h1,body .port-name,body .card-name,body .modal-h,body .stat-val,body .help-term{font-weight:300!important}
+  .page{padding-top:24px;padding-bottom:70px}
+  .crumb{font-family:var(--mono);font-size:12px;color:var(--faint);margin-bottom:6px}
+  .crumb a{color:var(--muted)} .crumb a:hover{color:var(--accent)}
+  h1{margin:0;font-size:clamp(26px,2.6vw,36px);letter-spacing:-.02em;line-height:1.15}
+  .sub{font-size:13.5px;color:var(--muted);font-weight:300!important;margin-top:3px}
+  .lbl{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .pill-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 17px;border-radius:999px;border:1px solid var(--line);background:var(--white);color:var(--ink);font:inherit;font-size:13px;font-weight:300!important;cursor:pointer;white-space:nowrap;transition:border-color .2s,color .2s,background .2s,transform .2s}
+  .pill-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .pill-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.22)}
+  .pill-btn.primary:hover{background:#2560d6;color:#fff;transform:translateY(-1px)}
+  .pill-btn.sm{height:32px;padding:0 13px;font-size:12px}
+  .pill-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .icon-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--white);color:var(--muted);display:grid;place-items:center;cursor:pointer;transition:border-color .2s,color .2s,background .2s;flex:none;font-size:16px;line-height:1}
+  .icon-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .icon-btn.danger:hover{border-color:var(--crit-line);color:var(--crit);background:var(--crit-bg)}
+  .icon-btn svg{width:13px;height:13px}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:20px 22px;margin-bottom:14px}
+  .card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .card-t{font-size:17px;letter-spacing:-.005em;font-weight:300!important}
+  .ptag{font-size:11.5px;padding:1px 10px;border-radius:999px;border:1px solid var(--accent-line);background:var(--low-bg);color:var(--accent);white-space:nowrap}
+  .ptag.fishing{border-color:var(--ok-line);background:var(--ok-bg);color:var(--ok)}
+  .ptag.cargo{border-color:var(--med-line);background:var(--med-bg);color:var(--med)}
+  .ptag.private{border-color:#ddd2f5;background:#f5f1fd;color:#7c5cd6}
+  .locode{font-family:var(--mono);font-size:12px;letter-spacing:.06em}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(12px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:12px;font-size:13px;opacity:0;visibility:hidden;transition:opacity .25s,transform .3s var(--ease),visibility .25s;z-index:3000;box-shadow:0 14px 34px rgba(16,24,40,.2);animation:none}
+  .toast.show{opacity:1;visibility:visible;transform:translateX(-50%)}
+  .toast.ok{background:var(--ok)} .toast.err{background:var(--crit)}
+  .ovl{position:fixed;inset:0;background:rgba(20,22,26,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
+  .ovl.open{display:flex}
+  .mbox{background:var(--white);border-radius:20px;box-shadow:0 30px 80px rgba(16,24,40,.25);width:600px;max-width:100%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;animation:up .3s var(--ease)}
+  .mhead{padding:20px 24px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .modal-h{font-size:20px;letter-spacing:-.01em;margin:0}
+  .mbody{padding:6px 24px 20px;overflow-y:auto;flex:1}
+  .mfoot{padding:14px 24px;border-top:1px solid var(--line2);background:var(--page);display:flex;justify-content:flex-end;gap:8px}
+  .x-btn{width:36px;height:36px;border-radius:50%;border:0;background:none;color:var(--muted);font-size:22px;cursor:pointer;flex:none;transition:background .2s,color .2s}
+  .x-btn:hover{background:var(--page);color:var(--ink)}
+  .lightbox{position:fixed;inset:0;background:rgba(10,12,16,.9);z-index:2000;display:none;align-items:center;justify-content:center;cursor:zoom-out}
+  .lightbox img{max-width:92vw;max-height:90vh;border-radius:14px;object-fit:contain;pointer-events:none}
+  .lightbox .x-btn{position:fixed;top:18px;right:22px;background:rgba(255,255,255,.14);color:#fff}
+  .tile{background:var(--page);border:1px solid var(--line2);border-radius:12px;padding:10px 13px;min-width:0}
+  .tile .v{font-size:13.5px;word-break:break-word}
+  .tile .v.mono{font-family:var(--mono);font-size:13px;color:var(--accent);letter-spacing:.04em}
+  .tile .v.empty{color:#c3c9d3}
+  .fac{display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--line);border-radius:14px;background:var(--white);margin-bottom:8px;transition:border-color .2s,background .2s,box-shadow .2s;animation:up .4s var(--ease) both}
+  .fac:hover{border-color:var(--accent-line)}
+  .fac-ic{width:38px;height:38px;border-radius:12px;background:var(--low-bg);color:var(--accent);display:grid;place-items:center;flex:none;overflow:hidden}
+  .fac-ic img{width:100%;height:100%;object-fit:cover}
+  .fac-main{flex:1;min-width:0}
+  .fac-name{font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .fac-type{font-size:11.5px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 8px}
+  .fac-meta{font-size:12px;color:var(--muted);font-weight:300!important;display:flex;gap:10px;flex-wrap:wrap;margin-top:1px}
+  .fac-meta .co{font-family:var(--mono);font-size:11.5px;color:var(--accent)}
+  .fac-kids{margin-left:19px;padding-left:14px;border-left:1px dashed var(--accent-line)}
+  .empty-note{padding:26px;text-align:center;color:var(--muted);font-size:13px;font-weight:300!important;background:var(--page);border:1px dashed var(--line);border-radius:14px}
+  .map-box{height:260px;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--page);position:relative}
+  .map-box iframe{display:block;width:100%;height:100%;border:0}
+  .map-ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--faint);font-size:12.5px}
+  .map-ph p{margin:0}
+  .hero{position:relative;height:230px;border-radius:22px;overflow:hidden;background:linear-gradient(120deg,#e9f0fd 0%,#f4f7fd 55%,#eef3fc 100%);border:1px solid var(--line);background-size:cover;background-position:center}
+
+  [hidden]{display:none!important}
+  .page{padding-top:22px}
+  .phead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+  .seg{position:relative;display:inline-flex;gap:2px;padding:3px;background:var(--white);border:1px solid var(--line);border-radius:999px;max-width:100%;overflow-x:auto;scrollbar-width:none}
+  .seg::-webkit-scrollbar{display:none}
+  .seg .ind{position:absolute;top:3px;bottom:3px;left:0;width:0;border-radius:999px;background:var(--accent);box-shadow:0 6px 16px rgba(47,111,237,.25);transition:transform .45s var(--spring),width .45s var(--spring);z-index:0}
+  .seg>button{position:relative;z-index:1;height:34px;padding:0 16px;border:0;background:none;border-radius:999px;font:inherit;font-size:13px;color:var(--muted);cursor:pointer;white-space:nowrap;transition:color .25s;display:inline-flex;align-items:center;gap:8px}
+  .seg>button:hover{color:var(--ink)}
+  .seg>button.active{color:#fff}
+  .seg>button .c{font-family:var(--mono);font-size:10.5px;opacity:.75}
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start}
+  .side{position:sticky;top:76px;display:flex;flex-direction:column;gap:14px}
+  .side .card{margin:0}
+  .fgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+  .fgrid .wide{grid-column:1 / -1}
+  .fl{display:block}
+  .fl .lbl{display:block;margin-bottom:6px}
+  .fl .lbl .req{color:var(--accent)}
+  .in,.ta,.sel{width:100%;border:1px solid var(--line);border-radius:12px;background:var(--white);padding:0 12px;font:inherit;font-size:13.5px;transition:border-color .2s,box-shadow .2s}
+  .in,.sel{height:42px}
+  .sel{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239aa1ad' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:34px;cursor:pointer}
+  .ta{padding:11px 12px;min-height:130px;resize:vertical;line-height:1.55}
+  .ta.sm{min-height:84px}
+  .in:focus,.ta:focus,.sel:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .bad{border-color:var(--crit)!important;box-shadow:0 0 0 3px var(--crit-bg)!important}
+  .hint{font-size:11.5px;color:var(--faint);margin-top:5px;display:flex;justify-content:space-between;gap:8px}
+  .who{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line2);background:var(--page);border-radius:14px;margin-bottom:16px}
+  .who .av{width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:13px;flex:none}
+  .who .n{font-size:14px} .who .e{font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+  .sev{display:flex;gap:6px;flex-wrap:wrap}
+  .sev button{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 14px;border-radius:999px;border:1px solid var(--line);background:var(--white);font:inherit;font-size:12.5px;color:var(--muted);cursor:pointer;transition:background .2s,border-color .2s,color .2s}
+  .sev button i{width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.45}
+  .sev button.on i{opacity:1}
+  .sev button.low.on{color:var(--ok);border-color:var(--ok-line);background:var(--ok-bg)}
+  .sev button.medium.on{color:var(--accent);border-color:var(--accent-line);background:var(--low-bg)}
+  .sev button.high.on{color:var(--med);border-color:var(--med-line);background:var(--med-bg)}
+  .sev button.critical.on{color:var(--crit);border-color:var(--crit-line);background:var(--crit-bg)}
+  .sev-note{font-size:12px;color:var(--muted);margin-top:7px;min-height:18px}
+  .actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;flex-wrap:wrap}
+  .help-i{display:flex;gap:12px;padding:11px 0;border-top:1px solid var(--line2)}
+  .help-i:first-of-type{border-top:0;padding-top:2px}
+  .help-ic{width:34px;height:34px;border-radius:11px;background:var(--low-bg);color:var(--accent);display:grid;place-items:center;flex:none}
+  .help-i .t{font-size:13.5px} .help-i .d{font-size:12px;color:var(--muted);line-height:1.45}
+  a.help-i:hover .t{color:var(--accent)}
+  .done{text-align:center;padding:40px 20px}
+  .done .ok-ic{width:58px;height:58px;border-radius:50%;background:var(--ok-bg);color:var(--ok);display:grid;place-items:center;margin:0 auto 14px;animation:pop .5s var(--spring)}
+  @keyframes pop{from{transform:scale(.4);opacity:0}to{transform:none;opacity:1}}
+  .done h2{font-size:22px;font-weight:300!important;margin:0 0 6px}
+  .done .ref{font-family:var(--mono);color:var(--accent);font-size:13px}
+  .tk{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 14px;padding:14px 4px;border-top:1px solid var(--line2);cursor:pointer;animation:up .35s var(--ease) both}
+  .tk:first-child{border-top:0}
+  .tk .s{font-size:14px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tk .m{font-size:12px;color:var(--muted);grid-column:1 / -1;display:flex;gap:10px;flex-wrap:wrap}
+  .tk .m .mono{font-size:11.5px}
+  .tk .body{grid-column:1 / -1;white-space:pre-wrap;font-size:13px;color:var(--ink);background:var(--page);border:1px solid var(--line2);border-radius:12px;padding:12px 14px;margin-top:8px;line-height:1.55}
+  .st{display:inline-flex;align-items:center;gap:6px;padding:2px 11px;border-radius:999px;font-size:12px;border:1px solid;white-space:nowrap;align-self:start}
+  .st i{width:6px;height:6px;border-radius:50%;background:currentColor}
+  .st.open{color:var(--accent);border-color:var(--accent-line);background:var(--low-bg)}
+  .st.in_progress,.st.pending{color:var(--med);border-color:var(--med-line);background:var(--med-bg)}
+  .st.resolved,.st.closed{color:var(--ok);border-color:var(--ok-line);background:var(--ok-bg)}
+  .kind{font-family:var(--mono);font-size:10.5px;color:var(--faint);border:1px solid var(--line);border-radius:999px;padding:0 7px}
+  @media (max-width:1100px){ .layout{grid-template-columns:1fr} .side{position:static} }
+  @media (max-width:640px){ .fgrid{grid-template-columns:1fr} }
+
+</style>
+</head>
+<body>
+
+  <!-- TOP BAR (same as home-logged-in.html) -->
+  <div class="topbar">
+    <a href="home-logged-in.html" class="topbar-brand">
+      <img src="sc-blue-logo.png" alt="SmarTuna"/>
+      <span class="sc-wm"><span class="sc-wm-top">Smar<span>Tuna</span></span><span class="sc-wm-sub">concept</span></span>
+    </a>
+    <div class="topbar-nav">
+      <div class="nav-pill">
+        <a href="home-logged-in.html" class="nav-item"><img src="home.png" alt=""/>Home</a>
+        <div class="nav-item-wrap">
+          <a href="modules.html#my-studio" class="nav-item"><img src="my-studio.png" alt=""/>My Studio</a>
+          <div class="nav-dropdown">
+            <a href="product-list.html" class="nav-dropdown-item">Product</a>
+            <a href="evidence-list.html" class="nav-dropdown-item">Evidence</a>
+            <a href="raw-material-list.html" class="nav-dropdown-item">Raw Materials</a>
+            <a href="shipment-list.html" class="nav-dropdown-item">Shipments</a>
+            <a href="organisation.html" class="nav-dropdown-item">Your Company</a>
+            <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('carbon-calculator.html','Carbon Footprint Calculator','carbon-icon.png','Carbon','green');">Carbon Calculator</a>
+            <a href="modules.html#my-studio" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all My Studio</a>
+          </div>
+        </div>
+        <div class="nav-item-wrap">
+          <a href="modules.html#atlas" class="nav-item"><img src="atlas.png" alt=""/>Atlas</a>
+          <div class="nav-dropdown">
+            <a href="Species.html" class="nav-dropdown-item">Species</a>
+            <a href="cold-storage-list.html" class="nav-dropdown-item">Cold Storage</a>
+            <a href="port-list.html" class="nav-dropdown-item">Ports</a>
+            <a href="vessel-list.html" class="nav-dropdown-item">Vessels</a>
+            <a href="country.html" class="nav-dropdown-item">Country</a>
+            <div class="nav-dropdown-item" style="position:relative;">
+              Others <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+              <div class="nav-dropdown-sub">
+                <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('fishery.html','MSC Fishery Module')">MSC Fisheries</a>
+                <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('asc-farms.html','ASC Farm Standard Module','ASC_ecolabel.png','ASC')">ASC Farms</a>
+              </div>
+            </div>
+            <a href="modules.html#atlas" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all Atlas</a>
+          </div>
+        </div>
+        <div class="nav-item-wrap">
+          <a href="modules.html#features" class="nav-item">Features</a>
+          <div class="nav-dropdown">
+            <a href="smartuna-ai.html" class="nav-dropdown-item">SmarTuna A.I <span class="tag-new">New</span></a>
+            <a href="smartuna-assistant.html" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('smartuna-assistant.html','SmarTuna Assistant');">SmarTuna Assistant <span class="tag-beta">Beta</span></a>
+            <div class="nav-dropdown-item" style="position:relative;">
+              Compliance <span style="font-size:11px;color:#6b7280;">&rsaquo;</span>
+              <div class="nav-dropdown-sub">
+                <a href="eu-catch-support.html" class="nav-dropdown-item">EU CATCH Form</a>
+                <a href="simp-support.html" class="nav-dropdown-item">NOAA SIMP <span class="tag-new">New</span></a>
+                <a href="fsma-support.html" class="nav-dropdown-item">FSMA Act 204 <span class="tag-new">New</span></a>
+              </div>
+            </div>
+            <a href="load-planner-home.html" class="nav-dropdown-item">Load Planner</a>
+            <a href="modules.html#features" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all Features</a>
+          </div>
+        </div>
+        <a href="modules.html#messages" class="nav-item"><img src="messages.png" alt=""/>Messages</a>
+        <a href="modules.html#reports" class="nav-item"><img src="report.png" alt=""/>Reports</a>
+        <a href="modules.html#support" class="nav-item active"><img src="support.png" alt=""/>Support</a>
+        <a href="developer.html" class="nav-item" id="devNav" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 6 2 12 8 18"/><polyline points="16 6 22 12 16 18"/></svg>Developer</a>
+        <script>try{if(localStorage.getItem('smartuna_dev_unlocked')==='1')document.getElementById('devNav').hidden=false;}catch(e){}</script>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="search-pill">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search here...
+      </div>
+      <div class="notif-btn"><img src="notification.png" alt=""/><div class="notif-dot"></div></div>
+      <div class="avatar-wrap">
+        <div class="avatar-btn" id="navAvatar" onclick="toggleNavDropdown()" role="button" tabindex="0" aria-label="Account menu"></div>
+        <div class="avatar-menu" id="navDropdown">
+          <div class="avatar-menu-name" id="navFirstName">Hello!</div>
+          <span id="navEmail" hidden></span>
+          <a href="profile.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Profile</a>
+          <button onclick="handleLogout()">Logout</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<main class="wrap page">
+  <div class="phead"><div><div class="crumb"><a href="modules.html#support">Support</a> / Help</div>
+    <h1 id="hello">How can we help?</h1><div class="sub">Ask us anything about SmarTuna, or tell us when something isn’t working. We reply by email and you can follow every request here.</div></div></div>
+  <div class="seg" id="tabs" style="margin-bottom:16px"><span class="ind"></span>
+    <button data-t="ask" class="active"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Ask a question</button>
+    <button data-t="report"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="6" width="8" height="14" rx="4"/><path d="M12 6V3M8 10H4M8 15H4M16 10h4M16 15h4M9 3l1.5 3M15 3l-1.5 3"/></svg>Report a problem</button>
+    <button data-t="mine"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg>My requests <span class="c" id="mineCount"></span></button></div>
+  <div class="layout">
+    <div>
+      <!-- ask -->
+      <section class="card" id="p-ask">
+        <div class="who"><span class="av" id="whoAv">··</span><div><div class="n" id="whoName">Signed in</div><div class="e" id="whoEmail"></div></div><span class="lbl" style="margin-left:auto">we reply to this address</span></div>
+        <div class="fgrid">
+          <label class="fl"><span class="lbl">Topic</span><select class="sel" id="aCat">
+            <option value="">Choose a topic</option><option>Account and access</option><option>My data and modules</option><option>Imports and exports</option><option>Shipments and orders</option><option>Feature request</option><option>Billing</option><option>Something else</option></select></label>
+          <label class="fl"><span class="lbl">Subject <span class="req">*</span></span><input class="in" id="aSubject" maxlength="140" placeholder="A short summary"></label>
+          <label class="fl wide"><span class="lbl">Your question <span class="req">*</span></span><textarea class="ta" id="aMsg" maxlength="5000" placeholder="Tell us what you’re trying to do. Order numbers, product names or links help us answer faster."></textarea><span class="hint"><span>No passwords or payment details, please.</span><span id="aLen">0 / 5000</span></span></label>
+        </div>
+        <div class="actions"><button class="pill-btn primary" id="aSend"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>Send question</button></div>
+      </section>
+      <!-- report -->
+      <section class="card" id="p-report" hidden>
+        <div class="fgrid">
+          <div class="fl wide"><span class="lbl">How bad is it?</span>
+            <div class="sev" id="sev"><button type="button" class="low" data-v="Low"><i></i>Low</button><button type="button" class="medium on" data-v="Medium"><i></i>Medium</button><button type="button" class="high" data-v="High"><i></i>High</button><button type="button" class="critical" data-v="Critical"><i></i>Critical</button></div>
+            <div class="sev-note" id="sevNote"></div></div>
+          <label class="fl"><span class="lbl">Where did it happen?</span><select class="sel" id="rModule"><option value="">Choose a page or module</option></select></label>
+          <label class="fl"><span class="lbl">Subject <span class="req">*</span></span><input class="in" id="rSubject" maxlength="140" placeholder="e.g. Save button does nothing on Vessels"></label>
+          <label class="fl wide"><span class="lbl">What happened? <span class="req">*</span></span><textarea class="ta" id="rMsg" maxlength="5000" placeholder="What you saw, including any error message word for word."></textarea></label>
+          <label class="fl"><span class="lbl">Steps to get there</span><textarea class="ta sm" id="rSteps" maxlength="3000" placeholder="1. Open …&#10;2. Click …"></textarea></label>
+          <label class="fl"><span class="lbl">What you expected</span><textarea class="ta sm" id="rExpected" maxlength="3000" placeholder="What should have happened"></textarea></label>
+        </div>
+        <p class="hint" style="margin-top:12px">Your browser and screen size are added to the report so we can reproduce it.</p>
+        <div class="actions"><button class="pill-btn primary" id="rSend"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>Send report</button></div>
+      </section>
+      <!-- mine -->
+      <section class="card" id="p-mine" hidden><div class="card-h"><span class="card-t">My requests</span><span class="lbl" id="mineNote"></span></div><div id="mineList"><div class="empty-note">Loading…</div></div></section>
+      <!-- sent -->
+      <section class="card done" id="p-done" hidden><div class="ok-ic"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><h2 id="doneT">Thanks, we have it</h2><p class="sub" id="doneD" style="max-width:520px;margin:0 auto 18px"></p>
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><button class="pill-btn" id="doneMine">See my requests</button><button class="pill-btn primary" id="doneNew">Send another</button></div></section>
+    </div>
+    <aside class="side">
+      <div class="card"><div class="card-h"><span class="card-t">Good to know</span></div>
+        <div class="help-i"><span class="help-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><div><div class="t">We reply by email</div><div class="d">To the address on your account. Critical problems are looked at first.</div></div></div>
+        <a class="help-i" href="smartuna-ai.html"><span class="help-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/></svg></span><div><div class="t">Ask SmarTuna A.I</div><div class="d">Quick answers about your own shipments, products and suppliers.</div></div></a>
+        <a class="help-i" href="report-center.html"><span class="help-ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v12M6 10l6 6 6-6M4 20h16"/></svg></span><div><div class="t">Data Export Centre</div><div class="d">Download module data as Excel or CSV.</div></div></a>
+      </div>
+      <div class="card"><div class="card-h"><span class="card-t">Your requests</span></div>
+        <div class="fgrid" style="gap:8px"><div class="tile"><div class="lbl">Open</div><div class="v" id="sOpen" style="font-size:20px">—</div></div><div class="tile"><div class="lbl">Resolved</div><div class="v" id="sDone" style="font-size:20px">—</div></div></div></div>
+    </aside>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+(function(){
+  const URL_='https://enbdaajcromxmhgcverp.supabase.co', KEY_='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+  const db = window._sharedSupabase || (window._sharedSupabase = supabase.createClient(URL_, KEY_));
+  window.toggleNavDropdown = function(){ document.getElementById('navDropdown').classList.toggle('open'); };
+  window.handleLogout = async function(){ await db.auth.signOut(); window.location.href = 'login.html'; };
+  document.addEventListener('click', e => { if (!e.target.closest('.topbar-right')) document.getElementById('navDropdown')?.classList.remove('open'); });
+  window.addEventListener('load', async () => {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    const { data: p } = await db.from('profiles').select('first_name,last_name,avatar_color,photo_url').eq('id', session.user.id).single();
+    const email = session.user.email || '';
+    const first = p?.first_name || email.split('@')[0];
+    const initials = (first.charAt(0) + (p?.last_name ? p.last_name.charAt(0) : '')).toUpperCase();
+    const av = document.getElementById('navAvatar');
+    if (p?.photo_url) { av.innerHTML = `<img src="${p.photo_url}" alt="" style="width:100%;height:100%;object-fit:cover">`; av.style.background = 'transparent'; }
+    else { av.textContent = initials; av.style.background = p?.avatar_color || '#2f6fed'; }
+    document.getElementById('navEmail').textContent = email;
+    document.getElementById('navFirstName').textContent = `Hello, ${first}`;
+  });
+})();
+</script>
+<script>
+
+const db = window._sharedSupabase || (window._sharedSupabase = supabase.createClient('https://enbdaajcromxmhgcverp.supabase.co','sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5'));
+const $ = id => document.getElementById(id);
+const h = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let USER = null, PROFILE = null, NAME = '', TAB = 'ask', TICKETS = [], OPEN_TK = null;
+let _tt; function toast(m, k){ const t = $('toast'); t.textContent = m; t.className = 'toast show ' + (k||''); clearTimeout(_tt); _tt = setTimeout(()=>t.className='toast', 3200); }
+function moveInd(seg){ const on = seg.querySelector('.active'), ind = seg.querySelector('.ind'); if(!on||!ind||!on.offsetWidth) return; ind.style.width = on.offsetWidth+'px'; ind.style.transform = 'translateX('+on.offsetLeft+'px)'; }
+window.addEventListener('resize', ()=>moveInd($('tabs'))); if(document.fonts) document.fonts.ready.then(()=>moveInd($('tabs')));
+const MODULES = ['Home','Product','Evidence','Raw Materials','Shipments','Master orders','Your Company','Carbon Calculator','Species','Cold Storage','Ports','Vessels','Country','MSC Fisheries','ASC Farms','SmarTuna A.I','SmarTuna Assistant','EU CATCH Form','NOAA SIMP','FSMA Act 204','Load Planner','Data Export Centre','Login or account','Other'];
+$('rModule').innerHTML += MODULES.map(m=>`<option>${h(m)}</option>`).join('');
+const SEV_NOTE = {Low:'Small or cosmetic; you can keep working.', Medium:'Something is wrong but there is a way around it.', High:'A task can’t be finished.', Critical:'You can’t work, or data looks wrong or lost.'};
+let SEV = 'Medium'; $('sevNote').textContent = SEV_NOTE[SEV];
+$('sev').onclick = e => { const b = e.target.closest('button'); if(!b) return; SEV = b.dataset.v; $('sev').querySelectorAll('button').forEach(x=>x.classList.toggle('on', x===b)); $('sevNote').textContent = SEV_NOTE[SEV]; };
+$('aMsg').oninput = () => $('aLen').textContent = `${$('aMsg').value.length} / 5000`;
+
+function show(t){
+  TAB = t; ['ask','report','mine','done'].forEach(k=>$('p-'+k).hidden = k!==t);
+  if(t!=='done'){ $('tabs').querySelectorAll('button').forEach(b=>b.classList.toggle('active', b.dataset.t===t)); moveInd($('tabs')); history.replaceState(null,'','#'+t); }
+  if(t==='mine') loadMine();
+}
+$('tabs').onclick = e => { const b = e.target.closest('button'); if(b) show(b.dataset.t); };
+$('doneMine').onclick = () => show('mine');
+$('doneNew').onclick = () => show(LAST);
+
+function need(ids){ let ok = true; ids.forEach(id=>{ const el = $(id), bad = !el.value.trim(); el.classList.toggle('bad', bad); if(bad && ok){ el.focus(); ok = false; } }); return ok; }
+document.addEventListener('input', e=>{ if(e.target.classList?.contains('bad') && e.target.value.trim()) e.target.classList.remove('bad'); });
+let LAST = 'ask';
+async function send(kind){
+  const ask = kind==='ask';
+  if(!need(ask ? ['aSubject','aMsg'] : ['rSubject','rMsg'])){ toast('Please fill in the marked fields', 'err'); return; }
+  const btn = $(ask ? 'aSend' : 'rSend'); btn.disabled = true;
+  let subject, message;
+  if(ask){ const c = $('aCat').value; subject = c ? `[${c}] ${$('aSubject').value.trim()}` : $('aSubject').value.trim(); message = $('aMsg').value.trim(); }
+  else {
+    subject = `[${SEV}] ${$('rSubject').value.trim()}`;
+    message = [`Severity: ${SEV}`, `Module: ${$('rModule').value || 'Not specified'}`, '', 'What happened:', $('rMsg').value.trim(), '',
+      'Steps to reproduce:', $('rSteps').value.trim() || 'Not provided', '', 'Expected:', $('rExpected').value.trim() || 'Not provided', '',
+      `Browser: ${navigator.userAgent}`, `Screen: ${innerWidth}×${innerHeight}`, `Sent from: ${document.referrer || 'support page'}`].join('\n');
+  }
+  const data = null;   /* no read-back: the insert works even where users can't read the table */
+  const {error} = await db.from('support_tickets').insert({user_id:USER.id, user_email:USER.email, user_name:NAME || USER.email, type: ask ? 'contact' : 'report', subject, message, status:'open'});
+  btn.disabled = false;
+  if(error){ toast('Couldn’t send it. Please try again in a moment.', 'err'); console.warn(error.message); return; }
+  LAST = kind;
+  (ask ? ['aSubject','aMsg'] : ['rSubject','rMsg','rSteps','rExpected']).forEach(id=>$(id).value='');
+  if(ask){ $('aCat').value = ''; $('aLen').textContent = '0 / 5000'; }
+  $('doneT').textContent = ask ? 'Thanks, your question is with us' : 'Thanks, your report is with us';
+  $('doneD').innerHTML = `We reply to <b>${h(USER.email)}</b>${SEV==='Critical' && !ask ? ', critical problems first' : ''}.${data?.id ? ` Reference <span class="ref">${h(String(data.id).slice(0,8).toUpperCase())}</span>.` : ''}`;
+  show('done'); TICKETS = null; stats();
+}
+$('aSend').onclick = () => send('ask');
+$('rSend').onclick = () => send('report');
+
+const ST_LBL = {open:'Open', in_progress:'In progress', pending:'Waiting', resolved:'Resolved', closed:'Closed'};
+const fmt = v => { const d = new Date(v); return isNaN(d) ? '' : d.toLocaleString(undefined,{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); };
+async function fetchMine(){
+  const {data, error} = await db.from('support_tickets').select('*').eq('user_id', USER.id).order('created_at', {ascending:false}).limit(100);
+  if(error) throw error; return data || [];
+}
+async function stats(){
+  try{ TICKETS = await fetchMine(); }catch(e){ TICKETS = []; }
+  const open = TICKETS.filter(t=>!['resolved','closed'].includes(String(t.status||'').toLowerCase())).length;
+  $('sOpen').textContent = open; $('sDone').textContent = TICKETS.length - open; $('mineCount').textContent = TICKETS.length || '';
+  requestAnimationFrame(()=>moveInd($('tabs')));
+}
+async function loadMine(){
+  const box = $('mineList');
+  try{ if(!TICKETS) TICKETS = await fetchMine(); }
+  catch(e){ box.innerHTML = `<div class="empty-note">Your requests can’t be listed right now.</div>`; return; }
+  $('mineNote').textContent = TICKETS.length ? `${TICKETS.length} request${TICKETS.length===1?'':'s'}` : '';
+  box.innerHTML = TICKETS.length ? TICKETS.map((t,i)=>{ const st = String(t.status||'open').toLowerCase();
+    return `<div class="tk" data-id="${h(t.id)}" style="animation-delay:${Math.min(i,12)*30}ms" tabindex="0">
+      <div class="s">${h(t.subject||'(no subject)')}</div><span class="st ${h(st)}"><i></i>${h(ST_LBL[st]||t.status||'Open')}</span>
+      <div class="m"><span class="kind">${t.type==='report'?'problem':'question'}</span><span>${h(fmt(t.created_at))}</span><span class="mono">${h(String(t.id).slice(0,8).toUpperCase())}</span></div>
+      ${OPEN_TK===String(t.id) ? `<div class="body">${h(t.message||'')}</div>` : ''}</div>`; }).join('')
+    : `<div class="empty-note">No requests yet. Questions and problem reports you send show up here with their status.</div>`;
+}
+$('mineList').addEventListener('click', e=>{ const tk = e.target.closest('.tk'); if(!tk) return; OPEN_TK = OPEN_TK===tk.dataset.id ? null : tk.dataset.id; loadMine(); });
+$('mineList').addEventListener('keydown', e=>{ if(e.key==='Enter') e.target.closest('.tk')?.click(); });
+
+(async()=>{
+  const {data:{session}} = await db.auth.getSession();
+  if(!session){ location.href = 'contact.html'; return; }      /* guests use the public contact page */
+  USER = session.user;
+  const {data:p} = await db.from('profiles').select('first_name,last_name,avatar_color,photo_url').eq('id', USER.id).maybeSingle();
+  PROFILE = p || {};
+  NAME = [PROFILE.first_name, PROFILE.last_name].filter(Boolean).join(' ');
+  const first = PROFILE.first_name || (USER.email||'').split('@')[0];
+  $('hello').textContent = `How can we help, ${first}?`;
+  $('whoName').textContent = NAME || first; $('whoEmail').textContent = USER.email || '';
+  $('whoAv').textContent = ((PROFILE.first_name||first).charAt(0) + (PROFILE.last_name||'').charAt(0)).toUpperCase();
+  if(PROFILE.avatar_color) $('whoAv').style.background = PROFILE.avatar_color;
+  const start = (location.hash||'').slice(1);
+  show(['ask','report','mine'].includes(start) ? start : 'ask');
+  stats();
+})();
+
+</script>
+<script src="notifications.js"></script>
+
+<script>
+if (typeof window.launchModule !== 'function') { window.launchModule = function(url){ window.location.href = url; }; }
+</script>
+</body>
+</html>
