@@ -258,7 +258,25 @@
   .fs-h .lbl{font-size:11.5px;color:var(--muted)}
   .fs-h button{border:0;background:none;color:var(--accent);font:inherit;font-size:12px;cursor:pointer;padding:2px 4px}
   .fs-h button[hidden]{display:none}
-  .opts{display:flex;flex-direction:column;gap:2px;max-height:216px;overflow-y:auto;margin-top:8px}
+  .opts{display:flex;flex-direction:column;gap:2px;max-height:240px;overflow-y:auto;margin-top:8px}
+  .dd-t{width:100%;height:40px;display:flex;align-items:center;gap:8px;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:var(--white);font:inherit;font-size:13px;color:var(--ink);cursor:pointer;text-align:left;transition:border-color .2s,box-shadow .2s}
+  .dd-t:hover{border-color:var(--accent-line)}
+  .dd-t.open{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .dd-v{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .dd-ph{color:var(--faint)}
+  .dd-more{font-family:var(--mono);font-size:11px;color:var(--accent)}
+  .dd-c{font-family:var(--mono);font-size:10.5px;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;display:inline-grid;place-items:center}
+  .dd-chev{color:var(--faint);flex:none;transition:transform .25s var(--ease)}
+  .dd-t.open .dd-chev{transform:rotate(180deg);color:var(--accent)}
+  .dd-p{margin-top:6px;border:1px solid var(--line);border-radius:14px;padding:8px;background:var(--white);box-shadow:0 14px 34px rgba(16,24,40,.08);animation:up .25s var(--ease)}
+  .st-tg{display:flex;gap:6px;flex-wrap:wrap}
+  .st-b{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 13px;border-radius:999px;border:1px solid var(--line);background:var(--white);font:inherit;font-size:12.5px;color:var(--muted);cursor:pointer;transition:background .2s,border-color .2s,color .2s}
+  .st-b i{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.5}
+  .st-b .n{font-family:var(--mono);font-size:10.5px;opacity:.7}
+  .st-b.notice.on{color:#7c5cd6;border-color:#ddd2f5;background:#f5f1fd}
+  .st-b.scheduled.on{color:var(--accent);border-color:var(--accent-line);background:var(--low-bg)}
+  .st-b.actual.on{color:var(--ok);border-color:var(--ok-line);background:var(--ok-bg)}
+  .st-b.on i{opacity:1}
   .opt{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:9px;cursor:pointer;font-size:13px;transition:background .15s}
   .opt:hover{background:var(--page)}
   .opt input{position:absolute;opacity:0;pointer-events:none}
@@ -513,11 +531,12 @@ const ICON = {
   actual:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20c2 1.2 4 1.2 6 0s4-1.2 6 0 4 1.2 6 0"/><path d="M4 16.5 5 11h14l1 5.5"/><path d="M9 11V6.5h6V11"/></svg>',
   done:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'};
 const ARROW = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><line x1="4" y1="12" x2="20" y2="12"/><polyline points="14 6 20 12 14 18"/></svg>';
-let ROWS = [], VIEW = 'received', STAGE = 'all';
+let ROWS = [], VIEW = 'received';
 
 /* ---------- filters (right drawer) ---------- */
 const BOX = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
-const blankF = () => ({to:[], from:[], product:[], company:[], mode:[], dateOn:'departure', dFrom:'', dTo:''});
+const blankF = () => ({stage:[], to:[], from:[], product:[], company:[], mode:[], dateOn:'departure', dFrom:'', dTo:''});
+let DOPEN = null;   /* which dropdown in the drawer is open */
 let FA = blankF(), FD = blankF();
 const DATE_ON = {departure:'Departure', arrival:'Arrival', issued:'Issued'};
 const LISTS = [
@@ -534,12 +553,13 @@ function dateOf(r, on){
   return r.departure_actual || r.departure_scheduled || r.departure_planned || '';
 }
 function passF(r, F, skip){
+  if(skip!=='stage' && F.stage.length && !F.stage.includes(r.stage)) return false;
   for(const L of LISTS){ if(L.k!==skip && F[L.k].length && !F[L.k].includes(L.get(r)||'')) return false; }
   if(skip!=='date' && (F.dFrom || F.dTo)){ const d = dateOf(r, F.dateOn); if(!d) return false; if(F.dFrom && d < F.dFrom) return false; if(F.dTo && d > F.dTo) return false; }
   return true;
 }
-const fCount = F => LISTS.reduce((a,L)=>a+F[L.k].length,0) + (F.dFrom||F.dTo ? 1 : 0);
-const inViewRows = () => ROWS.filter(r => (VIEW==='all' || (VIEW==='received' ? r.is_receiver : r.is_sender)) && (STAGE==='all' || r.stage===STAGE));
+const fCount = F => F.stage.length + LISTS.reduce((a,L)=>a+F[L.k].length,0) + (F.dFrom||F.dTo ? 1 : 0);
+const inViewRows = () => ROWS.filter(r => VIEW==='all' || (VIEW==='received' ? r.is_receiver : r.is_sender));
 const iso = d => d.toISOString().slice(0,10);
 function preset(p){
   const t = new Date(); t.setHours(12); const a = new Date(t), b = new Date(t);
@@ -553,16 +573,36 @@ function drawDrawer(){
   const rows = inViewRows(), F = FD;
   let html = '';
   const ph = {to:'Search ports', from:'Search ports', product:'Search products', company:'Search companies'};
+  /* stage: three toggles */
+  const stPool = rows.filter(r=>passF(r, F, 'stage'));
+  html += `<div class="fs" data-k="stage"><div class="fs-h"><span class="lbl">Stage</span><button type="button" data-clear="stage" ${F.stage.length?'':'hidden'}>Clear</button></div>
+    <div class="st-tg">${STAGES.map(st=>`<button type="button" class="st-b ${st} ${F.stage.includes(st)?'on':''}" data-st="${st}" aria-pressed="${F.stage.includes(st)}"><i></i>${STAGE_LBL[st]}<span class="n">${stPool.filter(r=>r.stage===st).length}</span></button>`).join('')}</div></div>`;
+  /* the lists: dropdowns with search, so they stay small however many values there are */
+  const CAP = 100;
   LISTS.forEach(L=>{
     const pool = rows.filter(r=>passF(r, F, L.k));            /* counts respect the other filters */
     const vals = [...new Set(rows.map(L.get).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b)));
     if(!vals.length) return;
     const n = v => pool.filter(r=>L.get(r)===v).length;
-    const qv = (DQ[L.k]||'').toLowerCase();
-    const shown = vals.filter(v=>!qv || String(v).toLowerCase().includes(qv));
-    html += `<div class="fs" data-k="${L.k}"><div class="fs-h"><span class="lbl">${L.t}${L.k==='company'?` <span style="color:var(--faint)">· ${VIEW==='sent'?'receiver':VIEW==='received'?'sender':'other party'}</span>`:''}</span><button type="button" data-clear="${L.k}" ${F[L.k].length?'':'hidden'}>Clear</button></div>
-      ${vals.length>6 ? `<input class="in sm" type="search" data-q="${L.k}" value="${h(DQ[L.k]||'')}" placeholder="${ph[L.k]||'Search'}" aria-label="Search ${L.t.toLowerCase()}">` : ''}
-      <div class="opts">${shown.map(v=>`<label class="opt"><input type="checkbox" data-k="${L.k}" value="${h(v)}" ${F[L.k].includes(v)?'checked':''}><span class="bx">${BOX}</span><span class="t" title="${h(v)}">${h(L.show?L.show(v):v)}</span><span class="n">${n(v)}</span></label>`).join('') || `<div class="opt-none">No match.</div>`}</div></div>`;
+    const show = v => L.show ? L.show(v) : v;
+    const sel = F[L.k];
+    const summary = !sel.length ? `<span class="dd-ph">Any ${L.t.toLowerCase()}</span>`
+      : sel.length <= 2 ? h(sel.map(show).join(', ')) : `${h(sel.slice(0,2).map(show).join(', '))} <span class="dd-more">+${sel.length-2}</span>`;
+    const open = DOPEN === L.k;
+    let panel = '';
+    if(open){
+      const qv = (DQ[L.k]||'').toLowerCase();
+      const match = vals.filter(v=>!qv || String(v).toLowerCase().includes(qv));
+      /* chosen ones first, then by how many notices they cover */
+      match.sort((a,b)=>(sel.includes(b)-sel.includes(a)) || (n(b)-n(a)) || String(a).localeCompare(String(b)));
+      const shown = match.slice(0, CAP);
+      panel = `<div class="dd-p">
+        <input class="in sm" type="search" data-q="${L.k}" value="${h(DQ[L.k]||'')}" placeholder="Search ${L.t.toLowerCase()}" aria-label="Search ${L.t.toLowerCase()}">
+        <div class="opts">${shown.map(v=>`<label class="opt"><input type="checkbox" data-k="${L.k}" value="${h(v)}" ${sel.includes(v)?'checked':''}><span class="bx">${BOX}</span><span class="t" title="${h(v)}">${h(show(v))}</span><span class="n">${n(v)}</span></label>`).join('') || `<div class="opt-none">No match.</div>`}</div>
+        ${match.length > CAP ? `<div class="opt-none">${match.length - CAP} more. Type to narrow down.</div>` : ''}</div>`;
+    }
+    html += `<div class="fs" data-k="${L.k}"><div class="fs-h"><span class="lbl">${L.t}${L.k==='company'?` <span style="color:var(--faint)">· ${VIEW==='sent'?'receiver':VIEW==='received'?'sender':'other party'}</span>`:''}</span><button type="button" data-clear="${L.k}" ${sel.length?'':'hidden'}>Clear</button></div>
+      <button type="button" class="dd-t ${open?'open':''} ${sel.length?'has':''}" data-dd="${L.k}" aria-expanded="${open}"><span class="dd-v">${summary}</span>${sel.length?`<span class="dd-c">${sel.length}</span>`:''}<svg class="dd-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></button>${panel}</div>`;
   });
   html += `<div class="fs" data-k="date"><div class="fs-h"><span class="lbl">Date</span><button type="button" data-clear="date" ${F.dFrom||F.dTo?'':'hidden'}>Clear</button></div>
     <div class="seg full" id="dOn"><span class="ind"></span>${Object.entries(DATE_ON).map(([k,t])=>`<button type="button" data-on="${k}" class="${F.dateOn===k?'active':''}">${t}</button>`).join('')}</div>
@@ -574,11 +614,12 @@ function drawDrawer(){
   if(keep){ const i = $('drBody').querySelector(`[data-q="${keep}"]`); if(i){ i.focus(); try{ i.setSelectionRange(pos,pos); }catch(e){} } }
   const n = rows.filter(r=>passF(r, F)).length;
   $('drApply').textContent = `Show ${n} notice${n===1?'':'s'}`;
-  requestAnimationFrame(()=>moveInd($('dOn')));
+  const dOn = $('dOn'), ind = dOn?.querySelector('.ind');           /* place the pill without animating on every redraw */
+  if(ind){ ind.style.transition = 'none'; moveInd(dOn); void ind.offsetWidth; ind.style.transition = ''; }
 }
 const DQ = {};
 function openDrawer(){
-  FD = JSON.parse(JSON.stringify(FA)); Object.keys(DQ).forEach(k=>delete DQ[k]);
+  FD = JSON.parse(JSON.stringify(FA)); Object.keys(DQ).forEach(k=>delete DQ[k]); DOPEN = null;
   drawDrawer(); $('drawer').classList.add('open'); $('drOvl').classList.add('open'); $('drawer').setAttribute('aria-hidden','false');
   setTimeout(()=>$('drClose').focus(), 60);
 }
@@ -589,6 +630,7 @@ function drawChips(){
   const c = fCount(FA); const fc = $('fCount'); fc.textContent = c; fc.classList.toggle('on', c>0);
   const chip = (k, v, label) => `<span class="chip"><span class="k">${k}</span>${h(label)}<button type="button" data-rm="${h(v)}" aria-label="Remove filter ${h(label)}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button></span>`;
   let html = '';
+  FA.stage.forEach(v=>{ html += chip('stage', 'stage\u0001'+v, STAGE_LBL[v]); });
   LISTS.forEach(L=>FA[L.k].forEach(v=>{ html += chip(L.t.split(' ')[0].toLowerCase(), L.k+'\u0001'+v, L.show?L.show(v):v); }));
   if(FA.dFrom||FA.dTo) html += chip(DATE_ON[FA.dateOn].toLowerCase(), 'date\u0001', `${FA.dFrom?fmtD(FA.dFrom):'…'} – ${FA.dTo?fmtD(FA.dTo):'…'}`);
   box.innerHTML = html ? html + `<button class="chip-clear" type="button" data-rm="all">Clear all</button>` : '';
@@ -601,6 +643,9 @@ document.addEventListener('click', e=>{
     listView(); return; }
   if(!e.target.closest('#drawer')) return;
   const cl = e.target.closest('[data-clear]'); if(cl){ const k = cl.dataset.clear; if(k==='date'){ FD.dFrom = FD.dTo = ''; } else FD[k] = []; drawDrawer(); return; }
+  const dd = e.target.closest('[data-dd]'); if(dd){ DOPEN = DOPEN===dd.dataset.dd ? null : dd.dataset.dd; drawDrawer(); if(DOPEN) $('drBody').querySelector(`[data-q="${DOPEN}"]`)?.focus(); return; }
+  const stb = e.target.closest('[data-st]'); if(stb){ const v = stb.dataset.st; FD.stage = FD.stage.includes(v) ? FD.stage.filter(x=>x!==v) : [...FD.stage, v]; drawDrawer(); return; }
+  if(DOPEN && !e.target.closest('.dd-p')){ DOPEN = null; drawDrawer(); }
   const on = e.target.closest('[data-on]'); if(on){ FD.dateOn = on.dataset.on; drawDrawer(); return; }
   const pr = e.target.closest('[data-p]'); if(pr){ const [a,b] = preset(pr.dataset.p); if(FD.dFrom===a && FD.dTo===b){ FD.dFrom = FD.dTo = ''; } else { FD.dFrom = a; FD.dTo = b; } drawDrawer(); return; }
 });
@@ -612,7 +657,7 @@ document.addEventListener('change', e=>{
   if(e.target.id==='dTo'){ FD.dTo = e.target.value; drawDrawer(); }
 });
 document.addEventListener('input', e=>{ const q = e.target.dataset?.q; if(q){ DQ[q] = e.target.value; drawDrawer(); } });
-document.addEventListener('keydown', e=>{ if(e.key==='Escape' && $('drawer')?.classList.contains('open')) closeDrawer(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && $('drawer')?.classList.contains('open')){ if(DOPEN){ DOPEN = null; drawDrawer(); $('drBody').querySelector('.dd-t')?.focus(); } else closeDrawer(); } });
 $('drClose').onclick = closeDrawer; $('drOvl').onclick = closeDrawer;
 $('drApply').onclick = applyF;
 $('drReset').onclick = ()=>{ FD = blankF(); drawDrawer(); };
@@ -626,12 +671,14 @@ function listView(){
   const inView = r => VIEW==='all' || (VIEW==='received' ? r.is_receiver : r.is_sender);
   const base = ROWS.filter(inView);
   const qq = ($('ntSearch')?.value || '').trim().toLowerCase();
-  const list = base.filter(r => (STAGE==='all' || r.stage===STAGE) && passF(r, FA) && (!qq || [r.reference, r.master_key, r.product, r.gtin, r.shipper, r.consignee, r.departure_port, r.arrival_port, r.customer_order_no, r.container_no, r.bl_no, r.awb_no].some(v => String(v??'').toLowerCase().includes(qq))));
+  const list = base.filter(r => passF(r, FA) && (!qq || [r.reference, r.master_key, r.product, r.gtin, r.shipper, r.consignee, r.departure_port, r.arrival_port, r.customer_order_no, r.container_no, r.bl_no, r.awb_no].some(v => String(v??'').toLowerCase().includes(qq))));
   const cnt = s => base.filter(r=>r.stage===s).length;
   const soon = base.filter(r => { const d = r.arrival_scheduled || r.arrival_planned; if(!d || r.arrival_actual) return false; const t = (new Date(d+'T00:00:00') - new Date())/864e5; return t >= -1 && t <= 14; }).length;
   $('tNotice').textContent = cnt('notice'); $('tSched').textContent = cnt('scheduled'); $('tActual').textContent = cnt('actual'); $('tSoon').textContent = soon;
   document.querySelectorAll('#segStage .c').forEach(c => { const s = c.dataset.s; c.textContent = s==='all' ? base.length : cnt(s); });
   $('ntCount').textContent = `${list.length} of ${base.length}`;
+  const segOn = FA.stage.length===0 ? 'all' : FA.stage.length===1 ? FA.stage[0] : null;
+  $('segStage').querySelectorAll('button').forEach(x=>x.classList.toggle('active', x.dataset.s===segOn)); moveInd($('segStage'));
   drawChips();
   const who = r => r.is_receiver && VIEW!=='sent' ? `<span class="dir">from</span>${h(r.shipper||'—')}` : `<span class="dir">to</span>${h(r.consignee||'—')}`;
   $('ntBody').innerHTML = list.length ? list.map((r,i)=>{ const k = keyDate(r);
@@ -666,7 +713,7 @@ async function showList(){
   <div class="chips no-print" id="fChips"></div>
   <div class="card list-card"><table class="nt-table"><thead><tr><th>Reference</th><th>Product</th><th>Route</th><th>Key date</th><th>Company</th><th>Stage</th></tr></thead><tbody id="ntBody"><tr><td colspan="6"><div class="skel"></div><div class="skel"></div></td></tr></tbody></table></div>`;
   $('segView').onclick = e => { const b = e.target.closest('button'); if(!b) return; VIEW = b.dataset.v; $('segView').querySelectorAll('button').forEach(x=>x.classList.toggle('active', x===b)); moveInd($('segView')); listView(); };
-  $('segStage').onclick = e => { const b = e.target.closest('button'); if(!b) return; STAGE = b.dataset.s; $('segStage').querySelectorAll('button').forEach(x=>x.classList.toggle('active', x===b)); moveInd($('segStage')); listView(); };
+  $('segStage').onclick = e => { const b = e.target.closest('button'); if(!b) return; FA.stage = b.dataset.s==='all' ? [] : [b.dataset.s]; listView(); };
   $('ntSearch').oninput = listView;
   $('fOpen').onclick = openDrawer;
   requestAnimationFrame(()=>moveInd());
