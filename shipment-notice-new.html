@@ -235,8 +235,8 @@
   .mini{height:5px;border-radius:5px;background:var(--line2);overflow:hidden;margin-top:8px}
   .mini i{display:block;height:100%;background:var(--accent);border-radius:5px;transition:width .4s var(--ease)}
   .mini i.over{background:var(--crit)}
-  .rows-h{display:grid;grid-template-columns:28px minmax(150px,1.3fr) 130px minmax(140px,1fr) minmax(140px,1fr) 140px 140px minmax(140px,1fr) 32px;gap:8px;font-family:var(--mono);font-size:11px;color:var(--faint);padding:0 4px 6px}
-  .row{display:grid;grid-template-columns:28px minmax(150px,1.3fr) 130px minmax(140px,1fr) minmax(140px,1fr) 140px 140px minmax(140px,1fr) 32px;gap:8px;align-items:center;padding:8px 4px;border-top:1px solid var(--line2);animation:up .35s var(--ease) both}
+  .rows-h{display:grid;grid-template-columns:28px minmax(150px,1.3fr) 130px minmax(140px,1fr) minmax(140px,1fr) 140px 140px minmax(140px,1fr) 72px;gap:8px;font-family:var(--mono);font-size:11px;color:var(--faint);padding:0 4px 6px}
+  .row{display:grid;grid-template-columns:28px minmax(150px,1.3fr) 130px minmax(140px,1fr) minmax(140px,1fr) 140px 140px minmax(140px,1fr) 72px;gap:8px;align-items:center;padding:8px 4px;border-top:1px solid var(--line2);animation:up .35s var(--ease) both}
   .row .n{font-family:var(--mono);font-size:12px;color:var(--faint);text-align:center}
   .row select.in{padding-right:8px}
   .qty{position:relative}
@@ -244,6 +244,18 @@
   .qty .in{padding-right:58px}
   .rl{display:none;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
   .add-row{margin-top:10px}
+  .r-acts{display:flex;gap:6px;justify-content:flex-end}
+  .cb{position:relative;display:block}
+  .cb .in{padding-right:30px;text-overflow:ellipsis}
+  .cb-chev{position:absolute;right:11px;top:50%;transform:translateY(-50%);color:var(--faint);pointer-events:none;transition:transform .25s var(--ease)}
+  .cb.open .cb-chev{transform:translateY(-50%) rotate(180deg);color:var(--accent)}
+  .cb-pop{position:fixed;z-index:4000;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 44px rgba(16,24,40,.16);padding:6px;max-height:300px;overflow-y:auto;min-width:260px;animation:up .2s var(--ease)}
+  .cb-g{font-family:var(--mono);font-size:10.5px;color:var(--faint);padding:8px 10px 4px}
+  .cb-o{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 10px;border-radius:9px;font:inherit;font-size:13px;cursor:pointer;color:var(--ink)}
+  .cb-o small{display:block;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .cb-o.hl{background:var(--low-bg);color:var(--accent)}
+  .cb-o.sel{color:var(--accent)}
+  .cb-none{padding:14px 10px;font-size:12.5px;color:var(--muted)}
   .sum-p{padding:10px 0;border-top:1px solid var(--line2)}
   .sum-p:first-of-type{border-top:0}
   .sum-p .t{display:flex;justify-content:space-between;gap:10px;font-size:13px}
@@ -264,7 +276,7 @@
     .row{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px;padding:14px 4px;position:relative}
     .row .n{grid-column:1 / -1;text-align:left}
     .row .wide{grid-column:1 / -1}
-    .row .rm{position:absolute;right:4px;top:8px}
+    .row .r-acts{position:absolute;right:4px;top:8px}
     .rl{display:block;margin-bottom:3px}
   }
 
@@ -367,7 +379,7 @@
       <div class="card"><div class="card-h"><span class="card-t">Shipments</span><span class="lbl">one row = one shipment of one product</span></div>
         <div class="rows-h"><span>#</span><span>Product</span><span>Quantity</span><span>From port</span><span>To port</span><span>Planned departure</span><span>Planned arrival</span><span>Receiver</span><span></span></div>
         <div id="rows"></div>
-        <div class="empty-note" id="rowsEmpty">Pick one or more orders above. Rows are added for each order’s planned shipments, spread over its arrival ports.</div>
+        <div class="empty-note" id="rowsEmpty">Pick one or more orders above. Each order starts with one shipment; use Add shipment or Split to plan as many as you need.</div>
         <button class="pill-btn add-row" id="addRow" hidden><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add shipment</button></div>
     </div>
     <aside class="side">
@@ -379,7 +391,7 @@
         <p class="sub" style="font-size:12px;margin:10px 0 0">The notice carries the product, quantity, ports and planned dates. Carrier, vessel, container and B/L come later on the shipment page.</p></div>
     </aside>
   </div>
-  <datalist id="dlPorts"></datalist><datalist id="dlOrgs"></datalist>
+  <div class="cb-pop" id="cbPop" role="listbox" hidden></div>
 </main>
 <div class="toast" id="toast"></div>
 <div class="ovl" id="cfOvl"><div class="mbox" style="width:460px"><div class="mhead"><h3 class="modal-h" id="cfTitle"></h3></div><div class="mbody" id="cfText"></div><div class="mfoot"><button class="pill-btn" id="cfNo">Cancel</button><button class="pill-btn primary" id="cfYes">OK</button></div></div></div>
@@ -460,6 +472,15 @@ async function needSession(){
 
 const CHECK = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
 const XI = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>';
+const SPLIT = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v7M12 10l-6 6v5M12 10l6 6v5"/></svg>';
+/* a new shipment for an order: next arrival port of that order that isn't used yet */
+function addShipment(id, like, at){
+  const arr = portsOf(id,'arrival'), used = ROWS.filter(r=>r.master===id).map(r=>r.to);
+  const to = arr.find(p=>!used.includes(p)) || '';
+  const row = {key:++seq, master:id, qty:'', from: like?.from || portsOf(id,'departure')[0] || '', to, dep: like?.dep || '', arr: like?.arr || '', rec: like?.rec || defaultReceiver(id)};
+  if(at == null) ROWS.push(row); else ROWS.splice(at, 0, row);
+  return row;
+}
 let MASTERS = [], PORTS = [], ORGS = [], MPORTS = [], MPARTIES = [];
 const PORT_BY_LABEL = new Map(), PORT_BY_ID = new Map(), ORG_BY_LABEL = new Map(), ORG_BY_ID = new Map();
 const SEL = new Set();          /* chosen master ids */
@@ -490,10 +511,8 @@ function defaultReceiver(id){
 function portsOf(id, dir){ return MPORTS.filter(p=>p.master_id===id && p.direction===dir).sort((a,b)=>a.sort_order-b.sort_order).map(p=>PORT_BY_ID.get(p.port_id)?.label).filter(Boolean); }
 function addRowsFor(id){
   const m = M(id); if(!m) return;
-  const n = Math.max(1, (num(m.planned_shipments) || 1) - num(m.shipments_created));
-  const left = Math.max(0, num(m.remaining)), each = Math.floor(left / n);
-  const dep = portsOf(id,'departure'), arr = portsOf(id,'arrival'), rec = defaultReceiver(id);
-  for(let i=0;i<n;i++) ROWS.push({key:++seq, master:id, qty: left ? String(i===n-1 ? left - each*(n-1) : each) : '', from: dep[0]||'', to: arr.length ? arr[i % arr.length] : '', dep:'', arr:'', rec});
+  const left = Math.max(0, num(m.remaining));
+  ROWS.push({key:++seq, master:id, qty: left ? String(left) : '', from: portsOf(id,'departure')[0]||'', to: portsOf(id,'arrival')[0]||'', dep:'', arr:'', rec: defaultReceiver(id)});
 }
 function toggleMaster(id){
   if(SEL.has(id)){ SEL.delete(id); ROWS = ROWS.filter(r=>r.master!==id); }
@@ -507,12 +526,12 @@ function rowHtml(r, i){
     <span class="n">${i+1}</span>
     <label class="wide"><span class="rl">Product</span><select class="in" data-f="master" aria-label="Product">${opts}</select></label>
     <label><span class="rl">Quantity</span><span class="qty"><input class="in" data-f="qty" inputmode="decimal" value="${h(r.qty)}" placeholder="0" aria-label="Quantity"><span class="u">${u}</span></span></label>
-    <label><span class="rl">From port</span><input class="in" data-f="from" list="dlPorts" value="${h(r.from)}" placeholder="Search port" aria-label="From port"></label>
-    <label><span class="rl">To port</span><input class="in" data-f="to" list="dlPorts" value="${h(r.to)}" placeholder="Search port" aria-label="To port"></label>
+    <label><span class="rl">From port</span><span class="cb"><input class="in" data-f="from" data-cb="ports" autocomplete="off" value="${h(r.from)}" placeholder="Search port" aria-label="From port"><svg class="cb-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span></label>
+    <label><span class="rl">To port</span><span class="cb"><input class="in" data-f="to" data-cb="ports" autocomplete="off" value="${h(r.to)}" placeholder="Search port" aria-label="To port"><svg class="cb-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span></label>
     <label><span class="rl">Planned departure</span><input class="in" type="date" data-f="dep" value="${h(r.dep)}" aria-label="Planned departure"></label>
     <label><span class="rl">Planned arrival</span><input class="in" type="date" data-f="arr" value="${h(r.arr)}" aria-label="Planned arrival"></label>
-    <label class="wide"><span class="rl">Receiver</span><input class="in" data-f="rec" list="dlOrgs" value="${h(r.rec)}" placeholder="Organisation" aria-label="Receiver"></label>
-    <button type="button" class="icon-btn danger rm" title="Remove this shipment" aria-label="Remove shipment ${i+1}">${XI}</button></div>`;
+    <label class="wide"><span class="rl">Receiver</span><span class="cb"><input class="in" data-f="rec" data-cb="orgs" autocomplete="off" value="${h(r.rec)}" placeholder="Search organisation" aria-label="Receiver"><svg class="cb-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg></span></label>
+    <span class="r-acts"><button type="button" class="icon-btn split" title="Split into two shipments" aria-label="Split shipment ${i+1}">${SPLIT}</button><button type="button" class="icon-btn danger rm" title="Remove this shipment" aria-label="Remove shipment ${i+1}">${XI}</button></span></div>`;
 }
 function drawRows(){
   $('rows').innerHTML = ROWS.map(rowHtml).join('');
@@ -525,11 +544,11 @@ function issues(){
   ROWS.forEach((r,i)=>{
     const n = i+1;
     if(!(num(r.qty) > 0)){ flag(r,'qty'); errs.push(`Shipment ${n}: enter a quantity.`); }
-    if(!PORT_BY_LABEL.has(r.from)){ flag(r,'from'); errs.push(`Shipment ${n}: pick the departure port from the list.`); }
-    if(!PORT_BY_LABEL.has(r.to)){ flag(r,'to'); errs.push(`Shipment ${n}: pick the destination port from the list.`); }
+    if(!PORT_BY_LABEL.has(r.from)){ flag(r,'from'); errs.push(`Shipment ${n}: choose the departure port from the dropdown.`); }
+    if(!PORT_BY_LABEL.has(r.to)){ flag(r,'to'); errs.push(`Shipment ${n}: choose the destination port from the dropdown.`); }
     if(!r.dep){ flag(r,'dep'); errs.push(`Shipment ${n}: set the planned departure.`); }
     if(r.arr && r.dep && r.arr < r.dep){ flag(r,'arr'); errs.push(`Shipment ${n}: arrival is before departure.`); }
-    if(!ORG_BY_LABEL.has(r.rec)){ flag(r,'rec'); errs.push(`Shipment ${n}: pick the receiver from the list.`); }
+    if(!ORG_BY_LABEL.has(r.rec)){ flag(r,'rec'); errs.push(`Shipment ${n}: choose the receiver from the dropdown.`); }
   });
   [...SEL].forEach(id=>{ const m = M(id), p = planned(id), left = num(m.remaining);
     if(p > left){ ROWS.filter(r=>r.master===id).forEach(r=>flag(r,'qty')); errs.unshift(`${mKey(m)}: ${fmtN(p)} planned but only ${fmtN(left)} ${m.quantity_unit||''} left.`); } });
@@ -572,20 +591,100 @@ async function issue(){
 }
 document.addEventListener('click', e=>{
   const mo = e.target.closest('.mo'); if(mo && !mo.disabled){ toggleMaster(mo.dataset.id); return; }
+  const sp = e.target.closest('.split'); if(sp){
+    const k = +sp.closest('.row').dataset.k, i = ROWS.findIndex(x=>x.key===k), r = ROWS[i], q = num(r.qty);
+    const half = q > 0 ? Math.floor(q/2) : 0;
+    const n = addShipment(r.master, r, i+1);
+    if(q > 0){ r.qty = String(q - half); n.qty = String(half); }
+    drawRows(); drawMasters(); return;
+  }
   const rm = e.target.closest('.rm'); if(rm){ const k = +rm.closest('.row').dataset.k; ROWS = ROWS.filter(r=>r.key!==k); drawRows(); drawMasters(); return; }
 });
 document.addEventListener('input', e=>{
   const f = e.target.dataset?.f; if(!f) return; const k = +e.target.closest('.row').dataset.k, r = ROWS.find(x=>x.key===k); if(!r) return;
   r[f] = e.target.value;
+  if(e.target.dataset.cb){ cbOpen(e.target); check(); return; }
   if(f==='master'){ r.from = portsOf(r.master,'departure')[0] || r.from; r.rec = defaultReceiver(r.master) || r.rec; drawRows(); drawMasters(); return; }
   if(f==='qty') drawMasters();
   check();
 });
 $('moSearch').addEventListener('input', drawMasters);
+
+/* ---------- searchable dropdowns for ports and receivers ---------- */
+const CB = {input:null, opts:[], hi:0};
+const norm = v => String(v||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+function cbOptions(inp){
+  const r = ROWS.find(x=>x.key===+inp.closest('.row').dataset.k), kind = inp.dataset.cb, f = inp.dataset.f;
+  const words = norm(inp.value).split(/[\s,()]+/).filter(Boolean);
+  const showAll = !words.length || (kind==='ports' ? PORT_BY_LABEL : ORG_BY_LABEL).has(inp.value);
+  const hit = l => showAll || words.every(w => norm(l).includes(w));
+  let mine = [], all = [];
+  if(kind==='ports'){
+    mine = r ? portsOf(r.master, f==='from' ? 'departure' : 'arrival') : [];
+    all = [...PORT_BY_LABEL.keys()];
+  }else{
+    mine = r ? partiesOf(r.master).map(p=>ORG_BY_ID.get(p.organization_id)?.label).filter(Boolean) : [];
+    all = [...ORG_BY_LABEL.keys()];
+  }
+  mine = [...new Set(mine)].filter(hit);
+  const rest = all.filter(l=>!mine.includes(l) && hit(l));
+  /* best matches first: name starts with the text */
+  if(!showAll){ const w0 = words[0]; rest.sort((a,b)=>(norm(b).startsWith(w0)) - (norm(a).startsWith(w0))); }
+  return {mine, rest: rest.slice(0, 60), kind};
+}
+function cbOpen(inp){
+  CB.input = inp; const {mine, rest, kind} = cbOptions(inp);
+  CB.opts = [...mine, ...rest]; CB.hi = Math.max(0, CB.opts.indexOf(inp.value));
+  const pop = $('cbPop'), sub = l => { const m = /^(.*?)(?:, (.*?))?(?: \(([A-Z0-9]+)\))?$/.exec(l) || []; return kind==='ports' ? `<span>${h(m[1]||l)}</span><small>${h([m[2], m[3]].filter(Boolean).join(' · '))}</small>` : `<span>${h(l)}</span>`; };
+  let i = 0; const item = l => `<button type="button" class="cb-o ${i===CB.hi?'hl':''} ${l===inp.value?'sel':''}" data-i="${i++}" role="option">${sub(l)}</button>`;
+  pop.innerHTML = (mine.length ? `<div class="cb-g">${kind==='ports'?'From this order':'Parties on this order'}</div>${mine.map(item).join('')}` : '')
+    + (rest.length ? `${mine.length?`<div class="cb-g">${kind==='ports'?'All ports':'All organisations'}</div>`:''}${rest.map(item).join('')}` : '')
+    + (!CB.opts.length ? `<div class="cb-none">Nothing matches “${h(inp.value)}”.</div>` : '');
+  const b = inp.getBoundingClientRect(), w = Math.max(b.width, 280);
+  pop.style.width = w + 'px'; pop.style.left = Math.min(b.left, innerWidth - w - 8) + 'px';
+  const below = innerHeight - b.bottom;
+  if(below < 220 && b.top > below){ pop.style.top = ''; pop.style.bottom = (innerHeight - b.top + 6) + 'px'; }
+  else { pop.style.bottom = ''; pop.style.top = (b.bottom + 6) + 'px'; }
+  pop.hidden = false;
+  document.querySelectorAll('.cb.open').forEach(x=>x.classList.remove('open')); inp.parentNode.classList.add('open');
+  pop.querySelector('.hl')?.scrollIntoView({block:'nearest'});
+}
+function cbClose(){
+  const inp = CB.input; $('cbPop').hidden = true; document.querySelectorAll('.cb.open').forEach(x=>x.classList.remove('open')); CB.input = null;
+  if(inp && inp.value && !(inp.dataset.cb==='ports' ? PORT_BY_LABEL : ORG_BY_LABEL).has(inp.value)){
+    /* typed text that points to exactly one entry is taken as that entry */
+    const {mine, rest} = cbOptions(inp), all = [...mine, ...rest];
+    const exact = all.filter(l => norm(l.split(',')[0].replace(/ \([A-Z0-9]+\)$/,'')) === norm(inp.value) || norm(l.match(/\(([A-Z0-9]+)\)$/)?.[1]) === norm(inp.value));
+    const pick = exact.length === 1 ? exact[0] : all.length === 1 ? all[0] : null;
+    if(pick) cbPick(inp, pick, true);
+  }
+}
+function cbPick(inp, label, quiet){
+  inp.value = label; const r = ROWS.find(x=>x.key===+inp.closest('.row').dataset.k); if(r) r[inp.dataset.f] = label;
+  if(!quiet) cbClose();
+  check();
+}
+document.addEventListener('focusin', e=>{ if(e.target.dataset?.cb){ e.target.select(); cbOpen(e.target); } });
+document.addEventListener('mousedown', e=>{
+  const o = e.target.closest('.cb-o'); if(o){ e.preventDefault(); cbPick(CB.input, CB.opts[+o.dataset.i]); return; }
+  if(CB.input && !e.target.closest('#cbPop') && e.target !== CB.input) cbClose();
+});
+document.addEventListener('keydown', e=>{
+  if(!CB.input || e.target !== CB.input) return;
+  const pop = $('cbPop');
+  if(e.key==='ArrowDown' || e.key==='ArrowUp'){ e.preventDefault(); if(pop.hidden){ cbOpen(CB.input); return; }
+    CB.hi = Math.max(0, Math.min(CB.opts.length-1, CB.hi + (e.key==='ArrowDown'?1:-1)));
+    pop.querySelectorAll('.cb-o').forEach(b=>b.classList.toggle('hl', +b.dataset.i===CB.hi)); pop.querySelector('.hl')?.scrollIntoView({block:'nearest'}); }
+  else if(e.key==='Enter'){ if(!pop.hidden && CB.opts[CB.hi]){ e.preventDefault(); cbPick(CB.input, CB.opts[CB.hi]); } }
+  else if(e.key==='Escape'){ cbClose(); }
+  else if(e.key==='Tab'){ if(!pop.hidden && CB.opts.length && CB.input.value && !(CB.input.dataset.cb==='ports'?PORT_BY_LABEL:ORG_BY_LABEL).has(CB.input.value)) cbPick(CB.input, CB.opts[CB.hi], true); cbClose(); }
+});
+window.addEventListener('scroll', e=>{ if(CB.input && e.target !== $('cbPop')) cbClose(); }, true);
+window.addEventListener('resize', ()=>{ if(CB.input) cbOpen(CB.input); });
 $('addRow').addEventListener('click', ()=>{
   const last = ROWS[ROWS.length-1], id = last ? last.master : [...SEL][0];
-  ROWS.push({key:++seq, master:id, qty:'', from: last?.from || portsOf(id,'departure')[0] || '', to:'', dep: last?.dep || '', arr:'', rec: last?.rec || defaultReceiver(id)});
-  drawRows(); document.querySelector('#rows .row:last-child [data-f="qty"]')?.focus();
+  addShipment(id, last);
+  drawRows(); drawMasters(); document.querySelector('#rows .row:last-child [data-f="qty"]')?.focus();
 });
 $('issueBtn').addEventListener('click', issue);
 
@@ -602,8 +701,6 @@ $('issueBtn').addEventListener('click', issue);
   PORTS.forEach(p=>{ const l = portLabel(p); const o = {id:p.id, label:l}; PORT_BY_LABEL.set(l, o); PORT_BY_ID.set(p.id, o); });
   const seen = new Map(); ORGS.forEach(o=>{ const n = (o.company_name||'').trim(); seen.set(n, (seen.get(n)||0)+1); });
   ORGS.forEach(o=>{ const n = (o.company_name||'').trim(); const l = seen.get(n) > 1 && o.country ? `${n} (${o.country})` : n; const x = {id:o.id, label:l}; ORG_BY_LABEL.set(l, x); ORG_BY_ID.set(o.id, x); });
-  $('dlPorts').innerHTML = [...PORT_BY_LABEL.keys()].map(l=>`<option value="${h(l)}">`).join('');
-  $('dlOrgs').innerHTML = [...ORG_BY_LABEL.keys()].map(l=>`<option value="${h(l)}">`).join('');
   drawMasters(); drawRows();
   const pre = new URLSearchParams(location.search).get('order');     /* shipment-notice-new.html?order=<ref id> */
   if(pre){ const m = MASTERS.find(x=>String(x.ref_id)===pre); if(m && num(m.remaining) > 0) toggleMaster(m.id); }
