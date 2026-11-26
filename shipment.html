@@ -1017,6 +1017,39 @@ body.dr-open{overflow:hidden}
 .strip .vsplit .vpre{display:grid;place-items:center;width:24px;flex:none;border-left:1px solid var(--field-border);background:var(--page);color:var(--muted);font-family:Consolas,"SFMono-Regular",Menlo,monospace;font-size:11.5px;font-weight:600}
 .strip .vsplit .vvoy{flex:0 0 84px;padding:0 8px;font-family:Consolas,"SFMono-Regular",Menlo,monospace;font-size:12px}
 .strip .leg.vessel:has(.rm) .vvoy{padding-right:26px}
+
+/* ---------- stage flow: notice -> scheduled -> actual ---------- */
+.stagebar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 18px;margin:-6px 0 22px;box-shadow:var(--shadow)}
+.stg-steps{display:flex;align-items:center;gap:0;flex:1 1 420px;min-width:0}
+.stg-step{display:flex;align-items:center;gap:10px;min-width:0}
+.stg-dot{width:30px;height:30px;border-radius:50%;flex:0 0 30px;display:grid;place-items:center;border:1.5px solid var(--field-border);color:var(--muted);background:var(--surface);transition:background .25s,border-color .25s,color .25s}
+.stg-dot svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.stg-step.done .stg-dot{background:var(--accent);border-color:var(--accent);color:#fff}
+.stg-step.cur .stg-dot{border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.stg-txt{display:flex;flex-direction:column;min-width:0}
+.stg-txt b{font-weight:400;font-size:13.5px;color:var(--text)}
+.stg-txt small{font-family:Consolas,"SFMono-Regular",Menlo,monospace;font-size:11px;color:var(--muted);white-space:nowrap}
+.stg-line{flex:1 1 30px;min-width:18px;height:2px;margin:0 12px;background:var(--border);border-radius:2px;position:relative;overflow:hidden}
+.stg-line i{position:absolute;inset:0;width:0;background:var(--accent);transition:width .45s ease}
+.stg-line.done i{width:100%}
+.stg-act{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-left:auto}
+.stg-need{font-size:12.5px;color:var(--muted);max-width:340px}
+.stg-need.ready{color:var(--ok-text)}
+.stg-need a{color:var(--accent);text-decoration:none}
+.field .stg-tag{font-family:Consolas,"SFMono-Regular",Menlo,monospace;font-size:10.5px;font-weight:400;color:var(--muted);background:var(--neutral-bg);padding:1px 7px;border-radius:999px;margin-left:6px;letter-spacing:0}
+.field.stg-next label .req{color:var(--accent)}
+.stg-banner{font-size:12.5px;color:var(--accent);background:var(--accent-soft);border-radius:10px;padding:9px 12px;margin:0 0 12px}
+@media (max-width:760px){
+  .stagebar{padding:12px 14px;gap:12px}
+  .stg-txt small{display:none}
+  .stg-steps{flex:1 1 100%}
+  .stg-line{margin:0 6px;min-width:8px}
+  .stg-txt b{font-size:12.5px}
+  .stg-dot{width:26px;height:26px;flex-basis:26px}
+  .stg-step{gap:7px}
+  .stg-act{margin-left:0;width:100%}
+  .stg-act .btn{flex:1;justify-content:center}
+}
 </style>
 </head>
 <body>
@@ -1025,6 +1058,7 @@ body.dr-open{overflow:hidden}
 <main class="page">
   <div class="page-head"><div><h1><span id="pageTitle">Create shipment</span> <span class="src-badge">from master order</span></h1><p class="sub" id="headSub"></p></div>
     <div class="head-actions"><div class="viewseg" role="group" aria-label="Layout"><button type="button" data-view="list" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>List</button><button type="button" data-view="compact" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/></svg>Compact</button></div><button type="button" class="btn danger-ghost" id="delShipBtn" data-action="delShipment" hidden><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Delete shipment</button><button type="button" class="btn" data-action="changeSource"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><polyline points="21 3 21 8 16 8"/><polyline points="3 21 3 16 8 16"/></svg>Change master order</button></div></div>
+  <section class="stagebar" id="stageBar" aria-label="Shipment stage" hidden></section>
   <div class="layout">
     <aside class="side">
       <button type="button" class="side-toggle" id="sideToggle" aria-expanded="true" aria-label="Collapse section menu" title="Collapse menu"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg><span class="nl">Collapse</span></button>
@@ -1077,10 +1111,29 @@ const CHEV  = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" strok
 const SEARCHI = `<svg class="sicon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.5" y2="16.5"/></svg>`;
 
 /* ---------- builders ---------- */
+/* Stage flow. Each required field belongs to the stage that first needs it:
+   notice (0) · scheduled (1) · actual (2). REQ_AT is the stage being checked. */
+const STAGES = ["notice","scheduled","actual"];
+const STAGE_LBL = {notice:"Notice", scheduled:"Scheduled", actual:"Actual"};
+let REQ_AT = 0;
+function levelOf(p){
+  p = String(p||"");
+  if(/^(lg\.sea\.(container\.|blNo$|blDate$)|lg\.air\.(awbNo|awbDate)$|dep\.actual$|lines\.\d+\.batch$)/.test(p)) return 2;
+  if(/^(details\.type$|lg\.(loadBasis|loadType|incoterm)$|lg\.(sea|air|truck)\.|dep\.scheduled$|arr\.scheduled$)/.test(p)) return 1;
+  return 0;
+}
+const STAGE_EXTRA = [/^dep\.scheduled$/, /^arr\.scheduled$/, /^dep\.actual$/, /^lines\.\d+\.batch$/];
+const stageReq = p => !!p && STAGE_EXTRA.some(r=>r.test(p));
+const need = (p, ok) => levelOf(p) > REQ_AT || !!ok;          /* not needed yet, or filled */
+function withLevel(l, fn){ const k = REQ_AT; REQ_AT = l; try{ return fn(); } finally { REQ_AT = k; } }
 function field(label, ctl, o={}){
-  const err = SHOW_ERR && o.req && o.path && !filled(o.path) && !o.disabled;
-  return `<div class="field ${o.cls||""} ${o.dim?"dim":""} ${err?"err":""}">
-    <label>${label}${o.req?'<span class="req">*</span>':""}${o.tag?`<span class="tag">${o.tag}</span>`:""}${o.hint?`<i class="hint-i" tabindex="0" role="note" title="${esc(String(o.hint).replace(/<[^>]*>/g,""))}" aria-label="${esc(String(o.hint).replace(/<[^>]*>/g,""))}">i</i>`:""}${o.extra||""}</label>
+  const wants = o.req || stageReq(o.path), lvl = o.path ? levelOf(o.path) : 0;
+  const isReq = wants && lvl <= REQ_AT;
+  const later = wants && lvl > REQ_AT ? `<span class="stg-tag" title="Needed once the shipment is ${STAGE_LBL[STAGES[lvl]].toLowerCase()}">${STAGE_LBL[STAGES[lvl]]}</span>` : "";
+  const nextUp = isReq && lvl > 0 && lvl > curStage();
+  const err = SHOW_ERR && isReq && o.path && !filled(o.path) && !o.disabled;
+  return `<div class="field ${o.cls||""} ${o.dim?"dim":""} ${err?"err":""} ${nextUp?"stg-next":""}">
+    <label>${label}${isReq?'<span class="req">*</span>':""}${later}${o.tag?`<span class="tag">${o.tag}</span>`:""}${o.hint?`<i class="hint-i" tabindex="0" role="note" title="${esc(String(o.hint).replace(/<[^>]*>/g,""))}" aria-label="${esc(String(o.hint).replace(/<[^>]*>/g,""))}">i</i>`:""}${o.extra||""}</label>
     ${o.hint?`<p class="hint">${o.hint}</p>`:""}${ctl}${o.after||""}</div>`;
 }
 const clearBtn = (path,multi) => `<button class="clearbtn" type="button" data-clear="${path}" ${multi?'data-multi="1"':""} aria-label="Clear">${XICON}</button>`;
@@ -2134,10 +2187,13 @@ function lgCompact(){
 function lgReq(){
   const L = S.lg;
   const optionalLoad = L.mode==="Sea" && L.loadBasis==="LCL";
-  const r = [!!L.mode, !!L.loadBasis, optionalLoad || !!L.loadType, !!L.incoterm];
-  if(L.mode==="Sea"){ const s = L.sea; r.push(!!s.shippingLine, !!s.vessels[s.vessels.length-1].trim(), !!s.shipMode, !!s.container.containerNo.trim(), !!s.container.sealNo.trim(), !!s.blNo.trim(), !!s.blDate); if(s.shipMode==="Transhipment") r.push(!!s.transhipmentPorts[0]); }
-  if(L.mode==="Air"){ const a = L.air; r.push(!!a.airline, !!a.flights[0].trim(), !!a.shipMode, !!a.awbNo.trim(), !!a.awbDate); if(a.shipMode==="Transhipment") r.push(!!a.transhipmentAirports[0].trim()); }
-  if(L.mode==="Truck"){ const t = L.truck; r.push(!!t.trucks[0].trim(), !!t.shipMode); if(t.shipMode==="Transhipment") r.push(!!t.transfers[0].trim()); }
+  const r = [!!L.mode, need("lg.loadBasis", L.loadBasis), need("lg.loadType", optionalLoad || L.loadType), need("lg.incoterm", L.incoterm)];
+  if(L.mode==="Sea"){ const s = L.sea; r.push(need("lg.sea.shippingLine", s.shippingLine), need("lg.sea.vessels", s.vessels[s.vessels.length-1].trim()), need("lg.sea.shipMode", s.shipMode),
+    need("lg.sea.container.containerNo", s.container.containerNo.trim()), need("lg.sea.container.sealNo", s.container.sealNo.trim()), need("lg.sea.blNo", s.blNo.trim()), need("lg.sea.blDate", s.blDate));
+    if(s.shipMode==="Transhipment") r.push(need("lg.sea.transhipmentPorts", s.transhipmentPorts[0])); }
+  if(L.mode==="Air"){ const a = L.air; r.push(need("lg.air.airline", a.airline), need("lg.air.flights", a.flights[0].trim()), need("lg.air.shipMode", a.shipMode), need("lg.air.awbNo", a.awbNo.trim()), need("lg.air.awbDate", a.awbDate));
+    if(a.shipMode==="Transhipment") r.push(need("lg.air.transhipmentAirports", a.transhipmentAirports[0].trim())); }
+  if(L.mode==="Truck"){ const t = L.truck; r.push(need("lg.truck.trucks", t.trucks[0].trim()), need("lg.truck.shipMode", t.shipMode)); if(t.shipMode==="Transhipment") r.push(need("lg.truck.transfers", t.transfers[0].trim())); }
   return r;
 }
 
@@ -2166,14 +2222,14 @@ SECTIONS.push(
     return `<div class="row">
       ${field("Reference", lockBox(esc(S.ref)+(S.id?"":" · assigned on save"),{title:"Generated from the master order"}), {hint:"Master number + shipment number"})}
       ${field("Type of shipping", dropdown(`${d}.type`,"shipTypes","Select a type",{plus:true}), {req:true, path:`${d}.type`, hint:"How this shipment moves commercially"})}
-      ${field("Status", dropdown(`${d}.status`,"shipStatus","Select a status",{plus:true}), {hint:"Current shipment status"})}
+      ${field("Detail status", dropdown(`${d}.status`,"shipStatus","Select a status",{plus:true}), {hint:"Optional detail such as Booking requested. The stage bar at the top is what the receiver follows."})}
       ${field("Customer order number", textIn(`${d}.custOrder`,"Enter customer order no.",{live:true}), {req:true, path:`${d}.custOrder`, tag:tag(`${d}.custOrder`), hint:"Key identifier · buyer’s purchase order number"})}
       ${field("Order date", datePicker(`${d}.orderDate`,"Select order date"), {tag:tag(`${d}.orderDate`), hint:"Date of the customer order"})}
       ${field("Related to", `<div class="lockbox" title="Master order this shipment belongs to">${LOCK}<a href="order.html?order=${encodeURIComponent(OREF)}">${esc(mKey(ORDER))}</a>${ORDER.external_reference?`<span class="muted-s">&nbsp;· PO ${esc(ORDER.master_no)}</span>`:""}</div>`, {hint:"Master order this shipment belongs to"})}
     </div><div class="row one">
       ${field("Mixed with", mixedBox(), {hint:"Found automatically: other shipments with the same customer order number, container number and seal number"})}
     </div>`; },
-  req:()=>[filled("details.type"), filled("details.custOrder")] },
+  req:()=>[need("details.type", filled("details.type")), filled("details.custOrder")] },
 
 { id:"parties", group:"General", title:"Parties",
   render(){ return subhead("Who · shipper") + partyRow("parties.who") + subhead("To whom · consignee") + partyRow("parties.to"); },
@@ -2209,7 +2265,7 @@ SECTIONS.push(
         <div class="alloc-legend"><span><i style="background:var(--accent)"></i>Other shipments</span><span><i style="background:${R<0?"var(--danger)":"#1fbf6a"}"></i>This shipment</span><span><i style="background:var(--neutral-bg)"></i>Not yet allocated</span></div></div>
       ${over}${lines}
       <button type="button" class="addbtn" data-action="addLine">+ Add another lot</button><p class="after">Add a line for each raw material lot of this product. Other products in the same container belong to their own master order.</p>`; },
-  req:()=>[S.lines.length>0, ...S.lines.flatMap((l,i)=>[filled(`lines.${i}.product`), num(l.qty)>0]), remaining()>=0] },
+  req:()=>[S.lines.length>0, ...S.lines.flatMap((l,i)=>[filled(`lines.${i}.product`), num(l.qty)>0, need(`lines.${i}.batch`, filled(`lines.${i}.batch`))]), remaining()>=0] },
 
 { id:"dep", group:"Routing", title:"Departure",
   render(){ const d="dep", future = S.dep.actual && S.dep.actual > todayISO();
@@ -2221,7 +2277,7 @@ SECTIONS.push(
       ${field("Scheduled date", datePicker(`${d}.scheduled`,"Select date"), {hint:"Carrier’s scheduled departure (ETD)"})}
       ${field("Actual date", datePicker(`${d}.actual`,"Select date"), {hint:"Actual departure (ATD)", after: future?`<p class="after alert">This date is in the future.</p>`:""})}
     </div>`; },
-  req:()=>[filled("dep.port"), filled("dep.planned")] },
+  req:()=>[filled("dep.port"), filled("dep.planned"), need("dep.scheduled", filled("dep.scheduled")), need("dep.actual", filled("dep.actual"))] },
 
 { id:"arr", group:"Routing", title:"Arrival",
   render(){ const a="arr";
@@ -2234,7 +2290,7 @@ SECTIONS.push(
       ${field("Scheduled date", datePicker(`${a}.scheduled`,"Select date"), {hint:"Carrier’s estimated arrival (ETA)", after:before("scheduled")})}
       ${field("Actual date", datePicker(`${a}.actual`,"Select date"), {hint:"Actual arrival (ATA)", after:before("actual")})}
     </div>`; },
-  req:()=>[filled("arr.port"), ...["planned","scheduled","actual"].map(k=>!(S.arr[k] && S.dep[k] && S.arr[k] < S.dep[k]))] },
+  req:()=>[filled("arr.port"), need("arr.scheduled", filled("arr.scheduled")), ...["planned","scheduled","actual"].map(k=>!(S.arr[k] && S.dep[k] && S.arr[k] < S.dep[k]))] },
 
 { id:"com", group:"Additional", title:"Commercial details",
   render(){ const c="com";
@@ -2491,7 +2547,7 @@ HOOKS.onInput = path => {
   if(path.startsWith("lg.sea.container") && S.lg.sea.traceableObject && !isLinked()){ S.lg.sea.traceableObject = null; rerenderKeepFocus(path); }
   if(path.startsWith("lines.")) {}
 };
-HOOKS.onStatus = () => { const h = $("#headSub"); if(h && ORDER) h.innerHTML = `<b>${esc(S.ref)}</b> · ${esc(ORDER.product?.name||"")} · ${fmtN(thisQty())} of ${fmtN(orderQty())} ${esc(UNIT)}`; };
+HOOKS.onStatus = () => { paintStage(); const h = $("#headSub"); if(h && ORDER) h.innerHTML = `<b>${esc(S.ref)}</b> · ${esc(ORDER.product?.name||"")} · ${fmtN(thisQty())} of ${fmtN(orderQty())} ${esc(UNIT)}`; };
 
 /* ---------- actions ---------- */
 Object.assign(ACTIONS, {
@@ -2532,31 +2588,107 @@ Object.assign(ACTIONS, {
     popup({kind:"ask", title:"Change master order?", msg:"You’ll choose another master order and start this shipment again from its details. Anything typed here isn’t saved.", primary:"Choose master order", secondary:"Stay here", onPrimary:go});
   },
   async save(){
-    SHOW_ERR = true; renderAll();
+    REQ_AT = curStage(); SHOW_ERR = true; renderAll();
     const bad = firstIncomplete();
-    if(bad.length){ popup({ok:false, title:"Some required fields are missing", msg:"Finish these sections to save the shipment:", list:bad.map(s=>({id:s.id, title:s.title, note: s.id==="lines" && remaining()<0 ? "over quantity" : "incomplete"})), primary:"Got it"}); return; }
-    const btns = $$('[data-action="save"]'); btns.forEach(b=>{ b.disabled = true; });
+    if(bad.length){ popup({ok:false, title:"Some required fields are missing", msg:`Finish these sections to save the shipment${S.id?"":" and issue the notice"}:`, list:bad.map(s=>({id:s.id, title:s.title, note: s.id==="lines" && remaining()<0 ? "over quantity" : "incomplete"})), primary:"Got it"}); return; }
+    const btns = $$('[data-action="save"],[data-action="advance"]'); btns.forEach(b=>{ b.disabled = true; });
     try{
       const wasNew = !S.id;
-      const res = await q(smt().rpc("save_shipment", {p: toPayload()}));
-      let posted = 0;
-      if(wasNew){ try{ posted = await postPendingNotes(res.id); }catch(e){ toast(`Shipment saved, but a note couldn’t be posted: ${errText(e)}`); } }
-      EXISTING = await q(smt().rpc("get_shipment", {p_id: res.id}));
-      S = fromShipment(EXISTING); guessDueRule(); syncDueLabel(); SHOW_ERR = false;
-      if(wasNew) history.replaceState(null, "", `shipment.html?order=${OREF}&id=${res.id}`);
-      OTHERS = await q(smt().from("v_shipment_list").select("id,quantity").eq("master_id", ORDER.id));
-      await refreshMixed(); renderAll(); setHead(); refreshNotes();
+      const {res, posted} = await persist();
       const back = `order.html?order=${encodeURIComponent(OREF)}#shipments`;
-      popup({title:`Shipment ${res.reference} saved`, msg:`Linked to master order <span class="obj">${esc(mKey(ORDER))}</span>. ${fmtN(thisQty())} ${esc(UNIT)} allocated, ${fmtN(remaining())} left on the order.${MIXED.length?`<br>Mixed with ${MIXED.map(m=>esc(m.ref)).join(", ")}.`:""}${posted?`<br>${posted} note${posted>1?"s":""} posted.`:""}`,
+      const who = esc(S.parties.to.party||"The receiver");
+      popup({title: wasNew ? `Shipment notice ${res.reference} issued` : `Shipment ${res.reference} saved`,
+        msg:`${wasNew ? `${who} has been notified. ` : ""}Linked to master order <span class="obj">${esc(mKey(ORDER))}</span>. ${fmtN(thisQty())} ${esc(UNIT)} allocated, ${fmtN(remaining())} left on the order.${MIXED.length?`<br>Mixed with ${MIXED.map(m=>esc(m.ref)).join(", ")}.`:""}${posted?`<br>${posted} note${posted>1?"s":""} posted.`:""}`,
         primary:"Back to master order", onPrimary:()=>{ location.href = back; },
-        secondary:"Add another shipment", onSecondary:()=>{ location.href = `shipment.html?order=${encodeURIComponent(OREF)}`; }});
-    }catch(err){
-      const m = String(err.message||"");
-      if(m.startsWith("DUPLICATE:")) popup({ok:false, title:"Shipment already exists", msg:`<span class="obj">${esc(m.slice(10))}</span> on this master already has customer order ${esc(S.details.custOrder)}, container ${esc(S.lg.sea.container.containerNo)} and seal ${esc(S.lg.sea.container.sealNo)}.`});
-      else popup({ok:false, title:"Couldn’t save", msg:esc(errText(err))});
-    } finally { btns.forEach(b=>{ b.disabled = false; }); }
+        secondary: wasNew ? "Stay on this shipment" : "Add another shipment", onSecondary: wasNew ? null : ()=>{ location.href = `shipment.html?order=${encodeURIComponent(OREF)}`; }});
+    }catch(err){ saveError(err); }
+    finally { btns.forEach(b=>{ b.disabled = false; }); }
+  },
+  /* next stage: check what it needs, save, then move the stage (the receiver is notified) */
+  advance(){
+    if(!S.id) return;
+    const nxt = curStage() + 1; if(nxt > 2) return;
+    const lbl = STAGE_LBL[STAGES[nxt]];
+    REQ_AT = nxt; SHOW_ERR = true; renderAll();
+    const bad = firstIncomplete();
+    if(bad.length){
+      popup({ok:false, title:`Not ready to mark as ${lbl.toLowerCase()}`, msg:`Fill the fields marked <span class="req">*</span> in these sections. They are needed once the shipment is ${lbl.toLowerCase()}.`,
+        list:bad.map(s=>({id:s.id, title:s.title, note:"incomplete"})), primary:"Got it"});
+      return;
+    }
+    const who = esc(S.parties.to.party||"The receiver");
+    popup({kind:"ask", title:`Mark ${esc(S.ref)} as ${lbl.toLowerCase()}?`,
+      msg:`Your changes are saved first, then ${who} is notified. A shipment can’t go back to an earlier stage.`,
+      primary:`Mark as ${lbl.toLowerCase()}`, secondary:"Cancel",
+      async onPrimary(){
+        const btns = $$('[data-action="save"],[data-action="advance"]'); btns.forEach(b=>{ b.disabled = true; });
+        try{
+          await persist();
+          await q(smt().rpc("set_shipment_stage", {p_id:S.id, p_stage:STAGES[nxt]}));
+          EXISTING = await q(smt().rpc("get_shipment", {p_id: S.id}));
+          S = fromShipment(EXISTING); guessDueRule(); syncDueLabel();
+          REQ_AT = curStage(); SHOW_ERR = false; renderAll(); setHead();
+          popup({title:`${esc(S.ref)} is ${lbl.toLowerCase()}`, msg:`${who} has been notified.${nxt<2?" Add the actual departure, container, seal and B/L or AWB once the cargo has left, then mark it as actual.":""}`, primary:"Done"});
+        }catch(err){ saveError(err); }
+        finally { btns.forEach(b=>{ b.disabled = false; }); }
+      }});
   }
 });
+
+async function persist(){
+  const wasNew = !S.id;
+  const res = await q(smt().rpc("save_shipment", {p: toPayload()}));
+  let posted = 0;
+  if(wasNew){ try{ posted = await postPendingNotes(res.id); }catch(e){ toast(`Shipment saved, but a note couldn’t be posted: ${errText(e)}`); } }
+  EXISTING = await q(smt().rpc("get_shipment", {p_id: res.id}));
+  S = fromShipment(EXISTING); guessDueRule(); syncDueLabel(); SHOW_ERR = false; REQ_AT = curStage();
+  if(wasNew) history.replaceState(null, "", `shipment.html?order=${OREF}&id=${res.id}`);
+  OTHERS = await q(smt().from("v_shipment_list").select("id,quantity").eq("master_id", ORDER.id));
+  await refreshMixed(); renderAll(); setHead(); refreshNotes();
+  return {res, posted};
+}
+function saveError(err){
+  const m = String(err?.message||"");
+  if(m.startsWith("DUPLICATE:")) popup({ok:false, title:"Shipment already exists", msg:`<span class="obj">${esc(m.slice(10))}</span> on this master already has customer order ${esc(S.details.custOrder)}, container ${esc(S.lg.sea.container.containerNo)} and seal ${esc(S.lg.sea.container.sealNo)}.`});
+  else if(m.startsWith("STAGE_MISSING:")) popup({ok:false, title:"Some details are still missing", msg:`The ${STAGE_LBL[EXISTING?.stage]?.toLowerCase()||""} stage needs: ${m.slice(14).split("|").map(esc).join(", ")}.`});
+  else if(m.startsWith("STAGE_ORDER:")) popup({ok:false, title:"Can’t change the stage", msg:esc(m.slice(12))});
+  else popup({ok:false, title:"Couldn’t save", msg:esc(errText(err))});
+}
+
+/* ---------- stage bar ---------- */
+const curStage = () => Math.max(0, STAGES.indexOf(EXISTING?.stage || "notice"));
+const STG_ICON = {
+  notice:`<svg viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>`,
+  scheduled:`<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>`,
+  actual:`<svg viewBox="0 0 24 24"><path d="M2 20c2 1.2 4 1.2 6 0s4-1.2 6 0 4 1.2 6 0"/><path d="M4 16.5 5 11h14l1 5.5"/><path d="M9 11V6.5h6V11"/></svg>`};
+const STG_DONE = `<svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>`;
+const stgStamp = v => { if(!v) return ""; const d = new Date(v); return isNaN(d) ? "" : d.toLocaleDateString(undefined,{day:"2-digit",month:"short",year:"numeric"}); };
+function paintStage(){
+  const bar = $("#stageBar"); if(!bar || !ORDER) return;
+  bar.hidden = false;
+  const cur = S.id ? curStage() : -1;
+  const stamp = {notice:EXISTING?.notice_at, scheduled:EXISTING?.scheduled_at, actual:EXISTING?.actual_at};
+  const steps = STAGES.map((k,i)=>{
+    const st = i <= cur ? "done" : i === cur+1 ? "cur" : "";
+    const sub = i <= cur ? (stgStamp(stamp[k]) || "done") : i === 0 ? "issued on save" : i === cur+1 ? "next" : "later";
+    return `${i?`<span class="stg-line ${i<=cur?"done":""}"><i></i></span>`:""}<div class="stg-step ${st}"><span class="stg-dot">${i<=cur?STG_DONE:STG_ICON[k]}</span><span class="stg-txt"><b>${STAGE_LBL[k]}</b><small>${esc(sub)}</small></span></div>`;
+  }).join("");
+  let act = "";
+  if(!S.id){
+    act = `<span class="stg-need">Saving issues the shipment notice and notifies ${esc(S.parties.to.party||"the receiver")}.</span>`;
+  }else if(cur < 2){
+    const nxt = cur+1, lbl = STAGE_LBL[STAGES[nxt]];
+    const left = withLevel(nxt, ()=>firstIncomplete());
+    act = left.length
+      ? `<span class="stg-need">${lbl} needs details in ${left.map(x=>`<a href="#sec-${x.id}">${esc(x.title)}</a>`).join(", ")}.</span>`
+      : `<span class="stg-need ready">Ready to mark as ${lbl.toLowerCase()}.</span>`;
+    act += `<button type="button" class="btn ${left.length?"":"primary"}" data-action="advance">Mark as ${lbl.toLowerCase()}</button>`;
+  }else{
+    act = `<span class="stg-need ready">All stages done. The receiver can follow it on the notice.</span>`;
+  }
+  if(S.id) act += `<a class="btn" href="shipment-notice.html?id=${encodeURIComponent(S.id)}">View notice</a>`;
+  bar.innerHTML = `<div class="stg-steps">${steps}</div><div class="stg-act">${act}</div>`;
+}
 
 /* ---------- step 1 of a new shipment: choose the master order ---------- */
 async function showPicker(warn){
@@ -2595,12 +2727,16 @@ async function showPicker(warn){
 
 /* ---------- header + mount ---------- */
 function setHead(){
-  $("#pageTitle").textContent = S.id ? "Edit shipment" : "Create shipment";
+  $("#pageTitle").textContent = S.id ? "Edit shipment" : "Create shipment notice";
+  $$('.side .save .nl').forEach(n=>{ n.textContent = S.id ? "Save shipment" : "Issue notice"; });
+  $$('.mobile-save .btn').forEach(b=>{ b.lastChild.textContent = S.id ? "Save shipment" : "Issue notice"; });
+  REQ_AT = S.id ? curStage() : 0;
   const db = $("#delShipBtn"); if(db) db.hidden = !S.id;
   const cs = $('[data-action="changeSource"]'); if(cs) cs.hidden = !!S.id;
   document.title = S.id ? `${S.ref} · Shipment` : "Create Shipment";
   $("#crumbOrder").textContent = mKey(ORDER); $("#crumbOrder").href = `order.html?order=${encodeURIComponent(OREF)}`;
-  $("#crumbHere").textContent = S.id ? S.ref : "Create shipment";
+  $("#crumbHere").textContent = S.id ? S.ref : "Create shipment notice";
+  paintStage();
   const b = $("#importBadge"); if(b) b.hidden = EXISTING?.source!=="import";
 }
 boot(async ()=>{
@@ -2614,6 +2750,7 @@ boot(async ()=>{
     if(!EXISTING){ popup({ok:false, title:"Shipment not found", msg:"It may have been deleted.", primary:"Back to master order", onPrimary:()=>location.href=`order.html?order=${OREF}#shipments`}); }
   }
   S = EXISTING ? fromShipment(EXISTING) : buildDefault();
+  REQ_AT = EXISTING ? curStage() : 0;
   if(EXISTING) guessDueRule(); else recalcDue(); syncDueLabel();
   rememberPrefill();
   OTHERS = await q(smt().from("v_shipment_list").select("id,quantity").eq("master_id", ORDER.id));
@@ -2624,5 +2761,6 @@ boot(async ()=>{
 });
 
 </script>
+<script src="notifications.js"></script>
 </body>
 </html>

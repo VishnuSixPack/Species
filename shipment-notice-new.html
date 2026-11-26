@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>New shipment notices · SmarTuna concept</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400&display=swap" rel="stylesheet">
+<link rel="icon" type="image/png" href="sc-blue-logo.png">
+<style>
+
+  @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');font-weight:normal;font-style:normal;font-display:swap}
+  :root{
+    --accent:#2f6fed; --accent-soft:rgba(47,111,237,.10); --accent-line:#cddcf8;
+    --ink:#14161a; --muted:#6b7380; --faint:#9aa1ad; --line:#e6e8ec; --line2:#eef0f3; --page:#f6f7f9; --white:#fff;
+    --mono:Consolas,"SFMono-Regular",Menlo,monospace;
+    --ok:#178a4c; --ok-bg:#e8f6ee; --ok-line:#c7e8d4;
+    --low:#2f6fed; --low-bg:#edf3fe; --low-line:#cddcf8;
+    --med:#b7791f; --med-bg:#fdf4e3; --med-line:#f1dcae;
+    --crit:#d64545; --crit-bg:#fdeceb; --crit-line:#f5c9c6;
+    --ease:cubic-bezier(.16,1,.3,1); --spring:cubic-bezier(.34,1.56,.64,1);
+  }
+  *{box-sizing:border-box}
+  html,body{overflow-x:clip}
+  body{margin:0;font-family:Poppins,system-ui,sans-serif;font-weight:400;font-size:14px;font-synthesis:none;color:var(--ink);background:var(--page);line-height:1.55;-webkit-font-smoothing:antialiased}
+  b,strong,h1,h2,h3,h4,th,[style*="font-weight"]{font-weight:400!important}
+  a{color:inherit;text-decoration:none}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .wrap{max-width:1680px;margin:0 auto;padding:0 clamp(16px,3vw,48px)}
+  .mono{font-family:var(--mono)}
+  .hidden{display:none!important}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* shared pieces */
+  .eyebrow{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.04em;display:flex;align-items:center;gap:10px}
+  .lbl{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.03em}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:16px;padding:18px 20px;min-width:0}
+  .card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .btn{display:inline-flex;align-items:center;gap:8px;height:38px;padding:0 16px;border:1px solid var(--line);border-radius:999px;background:var(--white);font-size:13px;font-weight:300;color:var(--ink);white-space:nowrap;cursor:pointer;transition:border-color .2s,color .2s,background .2s,transform .2s,box-shadow .2s}
+  .btn svg{flex:none}
+  .btn:hover{border-color:var(--accent);color:var(--accent)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.25)}
+  .btn.primary:hover{background:#2560d6;color:#fff;transform:translateY(-1px)}
+  .btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+  .btn:focus-visible,a:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .badge{font-family:var(--mono);font-size:10.5px;padding:1px 8px;border-radius:999px;border:1px solid;line-height:1.5}
+  .badge.new{color:var(--accent);border-color:var(--accent-line);background:#f3f7ff}
+  .badge.beta{color:#9a6a12;border-color:#efdcae;background:#fdf7e7}
+  .cnt{font-family:var(--mono);font-size:10.5px;min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:var(--accent);color:#fff;display:inline-grid;place-items:center}
+
+  .mri-status-pill{display:inline-flex;align-items:center;gap:6px;padding:3px 11px;border-radius:999px;font-size:12px;border:1px solid transparent;white-space:nowrap}
+  .mri-status-pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+  .mri-status-pill.transparent{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .mri-status-pill.low{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .mri-status-pill.medium{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .mri-status-pill.critical{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+  .kde-weight{display:inline-flex;align-items:center;padding:1px 8px;border-radius:999px;font-family:var(--mono);font-size:10.5px;border:1px solid transparent;white-space:nowrap}
+  .kde-weight.w5{background:var(--ok-bg);color:var(--ok);border-color:var(--ok-line)}
+  .kde-weight.w10{background:var(--low-bg);color:var(--low);border-color:var(--low-line)}
+  .kde-weight.w30{background:var(--med-bg);color:var(--med);border-color:var(--med-line)}
+  .kde-weight.w50{background:var(--crit-bg);color:var(--crit);border-color:var(--crit-line)}
+
+  .rv{animation:up .55s var(--ease) both;animation-delay:calc(var(--i,0) * 50ms)}
+  @keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .toast-wrap{position:fixed;right:20px;bottom:20px;z-index:3000;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+  .toast{display:flex;align-items:center;gap:10px;background:var(--ink);color:#fff;padding:11px 16px;border-radius:12px;font-size:13px;font-weight:300;box-shadow:0 14px 34px rgba(16,24,40,.2);animation:up .3s var(--ease)}
+  .toast i{width:8px;height:8px;border-radius:50%;background:#4ade80;flex:none}
+  .toast.error i{background:#f87171}
+
+  @media (prefers-reduced-motion:reduce){ *{transition:none!important;animation:none!important} }
+
+  .sc-wm{display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1}
+  .sc-wm-top{font-family:'Bitsumis',sans-serif;font-size:17px;letter-spacing:.04em;text-transform:uppercase;line-height:1;color:var(--ink)}
+  .sc-wm-top span{color:var(--accent)}
+  .sc-wm-sub{font-family:'Bitsumis',sans-serif;font-size:8px;letter-spacing:.32em;text-transform:uppercase;color:#6b7380;margin-top:2px}
+  .topbar{position:sticky;top:0;z-index:1000;display:flex;align-items:center;gap:20px;padding:10px 28px;background:rgba(255,255,255,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .topbar-brand{display:flex;align-items:center;gap:8px;flex-shrink:0;line-height:1.1}
+  .topbar-brand img{width:28px;height:28px;object-fit:contain}
+  .topbar-nav{flex:1;display:flex;justify-content:center;min-width:0}
+  .nav-pill{display:inline-flex;align-items:center;gap:2px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:4px}
+  .topbar .nav-item{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:300;color:#6b7380;white-space:nowrap;transition:background .15s,color .15s}
+  .topbar .nav-item img,.topbar .nav-item svg{width:15px;height:15px;object-fit:contain;opacity:.45;flex-shrink:0}
+  .topbar .nav-item:hover{background:#f3f6fb;color:var(--ink)}
+  .topbar .nav-item:hover img,.topbar .nav-item:hover svg{opacity:1}
+  .topbar .nav-item.active{background:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.28)}
+  .topbar .nav-item.active img{filter:brightness(0) invert(1);opacity:1}
+  .topbar .nav-item.active svg{opacity:1}
+  .topbar .nav-item-wrap{position:relative}
+  .topbar .nav-item-wrap::after{content:'';position:absolute;top:100%;left:0;width:100%;height:12px}
+  .topbar .nav-dropdown{display:none;position:absolute;top:calc(100% + 8px);left:0;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:160px;z-index:500;padding:6px}
+  .topbar .nav-item-wrap:hover .nav-dropdown{display:block}
+  .topbar .nav-dropdown-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;font-size:13px;font-weight:300;color:var(--ink);border-radius:8px;white-space:nowrap;cursor:pointer;position:relative;transition:background .15s}
+  .topbar .nav-dropdown-item:hover{background:#f6f7f9;color:var(--accent)}
+  .topbar .nav-dropdown-sub{display:block;visibility:hidden;opacity:0;position:absolute;left:100%;top:0;margin-left:6px;transform:translateX(-4px);background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:160px;padding:6px;z-index:501;transition:opacity .15s ease,transform .15s ease,visibility 0s linear .35s}
+  .topbar .nav-dropdown-sub::before{content:"";position:absolute;top:-10px;bottom:-10px;left:-16px;width:16px}
+  .topbar .nav-dropdown-item:hover > .nav-dropdown-sub,.topbar .nav-dropdown-item:focus-within > .nav-dropdown-sub{visibility:visible;opacity:1;transform:none;transition-delay:0s}
+  .topbar .nav-dropdown-item:has(> .nav-dropdown-sub:hover){background:#f6f7f9;color:var(--accent)}
+  .topbar .tag-new,.topbar .tag-beta{font-size:9px;padding:1px 7px;border-radius:999px}
+  .topbar .tag-new{color:#2f6fed;background:#eef3fc} .topbar .tag-beta{color:#a9721f;background:#fdf3df}
+  #devNav[hidden]{display:none!important}
+  .topbar-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+  .search-pill{display:flex;align-items:center;gap:8px;background:var(--white);border:1px solid var(--line);border-radius:999px;padding:8px 16px;font-size:12px;font-weight:300;color:#b3bac6;min-width:150px;cursor:text}
+  .notif-btn{width:36px;height:36px;border-radius:50%;background:var(--white);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;flex-shrink:0}
+  .notif-btn img{width:17px;height:17px;object-fit:contain;opacity:.65}
+  .notif-dot{position:absolute;top:5px;right:5px;width:8px;height:8px;background:#e63946;border-radius:50%;border:2px solid #fff}
+  .avatar-wrap{position:relative;flex-shrink:0}
+  .avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;flex-shrink:0}
+  .avatar-btn img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+  .avatar-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--white);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(16,24,40,.12);min-width:176px;overflow:hidden;z-index:999}
+  .avatar-menu.open{display:block;animation:drop .18s ease}
+  @keyframes drop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .avatar-menu-name{padding:11px 15px 7px;font-family:var(--mono);font-size:11.5px;color:#6b7380;border-bottom:1px solid var(--line)}
+  .avatar-menu a{display:flex;align-items:center;gap:8px;padding:9px 15px;font-size:13px;font-weight:300;color:var(--ink)}
+  .avatar-menu a:hover{background:#f6f7f9;color:var(--accent)}
+  .avatar-menu button{width:100%;padding:9px 15px;background:none;border:0;border-top:1px solid var(--line);text-align:left;font-size:13px;font-weight:300;color:#e63946;cursor:pointer}
+  .avatar-menu button:hover{background:#fff0f1}
+  @media (max-width:1280px){ .search-pill{display:none} }
+  @media (max-width:1080px){ .topbar-nav{visibility:hidden} }
+  @media (max-width:600px){ .topbar{padding:10px 16px} .topbar-nav{display:none} .topbar{justify-content:space-between} }
+
+  body *{font-weight:400!important}
+  body h1,body .port-name,body .card-name,body .modal-h,body .stat-val,body .help-term{font-weight:300!important}
+  .page{padding-top:24px;padding-bottom:70px}
+  .crumb{font-family:var(--mono);font-size:12px;color:var(--faint);margin-bottom:6px}
+  .crumb a{color:var(--muted)} .crumb a:hover{color:var(--accent)}
+  h1{margin:0;font-size:clamp(26px,2.6vw,36px);letter-spacing:-.02em;line-height:1.15}
+  .sub{font-size:13.5px;color:var(--muted);font-weight:300!important;margin-top:3px}
+  .lbl{font-family:var(--mono);font-size:11px;color:var(--faint)}
+  .pill-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 17px;border-radius:999px;border:1px solid var(--line);background:var(--white);color:var(--ink);font:inherit;font-size:13px;font-weight:300!important;cursor:pointer;white-space:nowrap;transition:border-color .2s,color .2s,background .2s,transform .2s}
+  .pill-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .pill-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 6px 16px rgba(47,111,237,.22)}
+  .pill-btn.primary:hover{background:#2560d6;color:#fff;transform:translateY(-1px)}
+  .pill-btn.sm{height:32px;padding:0 13px;font-size:12px}
+  .pill-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .icon-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--line);background:var(--white);color:var(--muted);display:grid;place-items:center;cursor:pointer;transition:border-color .2s,color .2s,background .2s;flex:none;font-size:16px;line-height:1}
+  .icon-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .icon-btn.danger:hover{border-color:var(--crit-line);color:var(--crit);background:var(--crit-bg)}
+  .icon-btn svg{width:13px;height:13px}
+  .card{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:20px 22px;margin-bottom:14px}
+  .card-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .card-t{font-size:17px;letter-spacing:-.005em;font-weight:300!important}
+  .ptag{font-size:11.5px;padding:1px 10px;border-radius:999px;border:1px solid var(--accent-line);background:var(--low-bg);color:var(--accent);white-space:nowrap}
+  .ptag.fishing{border-color:var(--ok-line);background:var(--ok-bg);color:var(--ok)}
+  .ptag.cargo{border-color:var(--med-line);background:var(--med-bg);color:var(--med)}
+  .ptag.private{border-color:#ddd2f5;background:#f5f1fd;color:#7c5cd6}
+  .locode{font-family:var(--mono);font-size:12px;letter-spacing:.06em}
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(12px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:12px;font-size:13px;opacity:0;visibility:hidden;transition:opacity .25s,transform .3s var(--ease),visibility .25s;z-index:3000;box-shadow:0 14px 34px rgba(16,24,40,.2);animation:none}
+  .toast.show{opacity:1;visibility:visible;transform:translateX(-50%)}
+  .toast.ok{background:var(--ok)} .toast.err{background:var(--crit)}
+  .ovl{position:fixed;inset:0;background:rgba(20,22,26,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px}
+  .ovl.open{display:flex}
+  .mbox{background:var(--white);border-radius:20px;box-shadow:0 30px 80px rgba(16,24,40,.25);width:600px;max-width:100%;max-height:90vh;display:flex;flex-direction:column;overflow:hidden;animation:up .3s var(--ease)}
+  .mhead{padding:20px 24px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .modal-h{font-size:20px;letter-spacing:-.01em;margin:0}
+  .mbody{padding:6px 24px 20px;overflow-y:auto;flex:1}
+  .mfoot{padding:14px 24px;border-top:1px solid var(--line2);background:var(--page);display:flex;justify-content:flex-end;gap:8px}
+  .x-btn{width:36px;height:36px;border-radius:50%;border:0;background:none;color:var(--muted);font-size:22px;cursor:pointer;flex:none;transition:background .2s,color .2s}
+  .x-btn:hover{background:var(--page);color:var(--ink)}
+  .lightbox{position:fixed;inset:0;background:rgba(10,12,16,.9);z-index:2000;display:none;align-items:center;justify-content:center;cursor:zoom-out}
+  .lightbox img{max-width:92vw;max-height:90vh;border-radius:14px;object-fit:contain;pointer-events:none}
+  .lightbox .x-btn{position:fixed;top:18px;right:22px;background:rgba(255,255,255,.14);color:#fff}
+  .tile{background:var(--page);border:1px solid var(--line2);border-radius:12px;padding:10px 13px;min-width:0}
+  .tile .v{font-size:13.5px;word-break:break-word}
+  .tile .v.mono{font-family:var(--mono);font-size:13px;color:var(--accent);letter-spacing:.04em}
+  .tile .v.empty{color:#c3c9d3}
+  .fac{display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--line);border-radius:14px;background:var(--white);margin-bottom:8px;transition:border-color .2s,background .2s,box-shadow .2s;animation:up .4s var(--ease) both}
+  .fac:hover{border-color:var(--accent-line)}
+  .fac-ic{width:38px;height:38px;border-radius:12px;background:var(--low-bg);color:var(--accent);display:grid;place-items:center;flex:none;overflow:hidden}
+  .fac-ic img{width:100%;height:100%;object-fit:cover}
+  .fac-main{flex:1;min-width:0}
+  .fac-name{font-size:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .fac-type{font-size:11.5px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:0 8px}
+  .fac-meta{font-size:12px;color:var(--muted);font-weight:300!important;display:flex;gap:10px;flex-wrap:wrap;margin-top:1px}
+  .fac-meta .co{font-family:var(--mono);font-size:11.5px;color:var(--accent)}
+  .fac-kids{margin-left:19px;padding-left:14px;border-left:1px dashed var(--accent-line)}
+  .empty-note{padding:26px;text-align:center;color:var(--muted);font-size:13px;font-weight:300!important;background:var(--page);border:1px dashed var(--line);border-radius:14px}
+  .map-box{height:260px;border-radius:14px;overflow:hidden;border:1px solid var(--line);background:var(--page);position:relative}
+  .map-box iframe{display:block;width:100%;height:100%;border:0}
+  .map-ph{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--faint);font-size:12.5px}
+  .map-ph p{margin:0}
+  .hero{position:relative;height:230px;border-radius:22px;overflow:hidden;background:linear-gradient(120deg,#e9f0fd 0%,#f4f7fd 55%,#eef3fc 100%);border:1px solid var(--line);background-size:cover;background-position:center}
+
+  .page{padding-top:22px}
+  [hidden]{display:none!important}
+  .phead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+  .phead .acts{display:flex;gap:8px;flex-wrap:wrap}
+  .seg{position:relative;display:inline-flex;gap:2px;padding:3px;background:var(--white);border:1px solid var(--line);border-radius:999px;max-width:100%;overflow-x:auto;scrollbar-width:none}
+  .seg::-webkit-scrollbar{display:none}
+  .seg .ind{position:absolute;top:3px;bottom:3px;left:0;width:0;border-radius:999px;background:var(--accent);box-shadow:0 6px 16px rgba(47,111,237,.25);transition:transform .45s var(--spring),width .45s var(--spring);z-index:0}
+  .seg>button{position:relative;z-index:1;height:32px;padding:0 15px;border:0;background:none;border-radius:999px;font:inherit;font-size:12.5px;color:var(--muted);cursor:pointer;white-space:nowrap;transition:color .25s;display:inline-flex;align-items:center;gap:7px}
+  .seg>button:hover{color:var(--ink)}
+  .seg>button.active{color:#fff}
+  .seg>button .c{font-family:var(--mono);font-size:10.5px;opacity:.75}
+  .stg{display:inline-flex;align-items:center;gap:7px;padding:2px 11px 2px 9px;border-radius:999px;font-size:12px;border:1px solid;white-space:nowrap}
+  .stg i{display:inline-flex;gap:3px}
+  .stg i b{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.25}
+  .stg i b.on{opacity:1}
+  .stg.notice{color:#7c5cd6;border-color:#ddd2f5;background:#f5f1fd}
+  .stg.scheduled{color:var(--accent);border-color:var(--accent-line);background:var(--low-bg)}
+  .stg.actual{color:var(--ok);border-color:var(--ok-line);background:var(--ok-bg)}
+  .in{height:38px;border:1px solid var(--line);border-radius:12px;background:var(--white);padding:0 12px;font:inherit;font-size:13px;width:100%;transition:border-color .2s,box-shadow .2s;min-width:0}
+  .in:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  .in.bad{border-color:var(--crit);box-shadow:0 0 0 3px var(--crit-bg)}
+  .searchbox{position:relative;flex:1 1 240px;max-width:380px}
+  .searchbox svg{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--faint)}
+  .searchbox .in{padding-left:36px;border-radius:999px}
+  .skel{height:52px;border-radius:12px;background:linear-gradient(90deg,#eceff3 25%,#f6f7f9 50%,#eceff3 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;margin-bottom:8px}
+  @keyframes shimmer{to{background-position:-200% 0}}
+  @media print{
+    .topbar,.no-print,.toast{display:none!important}
+    body{background:#fff}
+    .card{break-inside:avoid;border-color:#ddd}
+    .page{padding-top:0}
+  }
+
+  .steps{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;color:var(--faint);margin:-4px 0 16px;flex-wrap:wrap}
+  .steps span{display:inline-flex;align-items:center;gap:7px}
+  .steps span b{width:20px;height:20px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:11px;background:var(--white)}
+  .steps span.on{color:var(--accent)} .steps span.on b{border-color:var(--accent);background:var(--accent);color:#fff}
+  .steps i{width:28px;height:1px;background:var(--line)}
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:16px;align-items:start}
+  .side{position:sticky;top:76px}
+  .mo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;max-height:340px;overflow:auto;padding:2px}
+  .mo{position:relative;text-align:left;border:1px solid var(--line);border-radius:14px;background:var(--white);padding:12px 14px 12px 44px;cursor:pointer;font:inherit;transition:border-color .2s,background .2s,box-shadow .2s,transform .2s}
+  .mo:hover{border-color:var(--accent-line);transform:translateY(-1px)}
+  .mo.on{border-color:var(--accent);background:#f6f9ff;box-shadow:0 0 0 3px var(--accent-soft)}
+  .mo .ck{position:absolute;left:14px;top:14px;width:18px;height:18px;border-radius:6px;border:1.5px solid var(--line);display:grid;place-items:center;color:#fff;transition:background .2s,border-color .2s}
+  .mo.on .ck{background:var(--accent);border-color:var(--accent)}
+  .mo .ck svg{opacity:0;transition:opacity .2s} .mo.on .ck svg{opacity:1}
+  .mo .k{font-family:var(--mono);font-size:12px;color:var(--accent)}
+  .mo .p{font-size:13.5px;margin:2px 0}
+  .mo .m{font-size:12px;color:var(--muted)}
+  .mo.full{opacity:.55;cursor:not-allowed}
+  .mini{height:5px;border-radius:5px;background:var(--line2);overflow:hidden;margin-top:8px}
+  .mini i{display:block;height:100%;background:var(--accent);border-radius:5px;transition:width .4s var(--ease)}
+  .mini i.over{background:var(--crit)}
+  .rows-h{display:grid;grid-template-columns:28px minmax(150px,1.3fr) 130px minmax(140px,1fr) minmax(140px,1fr) 140px 140px minmax(140px,1fr) 32px;gap:8px;font-family:var(--mono);font-size:11px;color:var(--faint);padding:0 4px 6px}
+  .row{display:grid;grid-template-columns:28px minmax(150px,1.3fr) 130px minmax(140px,1fr) minmax(140px,1fr) 140px 140px minmax(140px,1fr) 32px;gap:8px;align-items:center;padding:8px 4px;border-top:1px solid var(--line2);animation:up .35s var(--ease) both}
+  .row .n{font-family:var(--mono);font-size:12px;color:var(--faint);text-align:center}
+  .row select.in{padding-right:8px}
+  .qty{position:relative}
+  .qty .u{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:10.5px;color:var(--faint);pointer-events:none}
+  .qty .in{padding-right:58px}
+  .rl{display:none;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .add-row{margin-top:10px}
+  .sum-p{padding:10px 0;border-top:1px solid var(--line2)}
+  .sum-p:first-of-type{border-top:0}
+  .sum-p .t{display:flex;justify-content:space-between;gap:10px;font-size:13px}
+  .sum-p .t span:last-child{font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap}
+  .sum-p .t span.bad{color:var(--crit)}
+  .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+  .kpis .tile .v{font-size:20px;font-weight:300!important}
+  .errs{margin:10px 0 0;padding:0;list-style:none;font-size:12.5px;color:var(--crit)}
+  .errs li{padding:3px 0}
+  .issue{width:100%;justify-content:center;height:44px;margin-top:12px}
+  .done-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;margin:14px 0}
+  .done-i{border:1px solid var(--ok-line);background:var(--ok-bg);border-radius:14px;padding:12px 14px;display:block;transition:transform .2s}
+  .done-i:hover{transform:translateY(-1px)}
+  .done-i .ref{color:var(--ok)}
+  @media (max-width:1280px){ .layout{grid-template-columns:1fr} .side{position:static} }
+  @media (max-width:1100px){
+    .rows-h{display:none}
+    .row{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px;padding:14px 4px;position:relative}
+    .row .n{grid-column:1 / -1;text-align:left}
+    .row .wide{grid-column:1 / -1}
+    .row .rm{position:absolute;right:4px;top:8px}
+    .rl{display:block;margin-bottom:3px}
+  }
+
+</style>
+</head>
+<body>
+
+  <!-- TOP BAR (same as home-logged-in.html) -->
+  <div class="topbar">
+    <a href="home-logged-in.html" class="topbar-brand">
+      <img src="sc-blue-logo.png" alt="SmarTuna"/>
+      <span class="sc-wm"><span class="sc-wm-top">Smar<span>Tuna</span></span><span class="sc-wm-sub">concept</span></span>
+    </a>
+    <div class="topbar-nav">
+      <div class="nav-pill">
+        <a href="home-logged-in.html" class="nav-item"><img src="home.png" alt=""/>Home</a>
+        <div class="nav-item-wrap">
+          <a href="modules.html#my-studio" class="nav-item active"><img src="my-studio.png" alt=""/>My Studio</a>
+          <div class="nav-dropdown">
+            <a href="product-list.html" class="nav-dropdown-item">Product</a>
+            <a href="evidence-list.html" class="nav-dropdown-item">Evidence</a>
+            <a href="raw-material-list.html" class="nav-dropdown-item">Raw Materials</a>
+            <a href="shipment-list.html" class="nav-dropdown-item">Shipments</a>
+            <a href="shipment-notice.html" class="nav-dropdown-item">Shipment notices <span class="tag-new">New</span></a>
+            <a href="organisation.html" class="nav-dropdown-item">Your Company</a>
+            <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('carbon-calculator.html','Carbon Footprint Calculator','carbon-icon.png','Carbon','green');">Carbon Calculator</a>
+            <a href="modules.html#my-studio" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all My Studio</a>
+          </div>
+        </div>
+        <div class="nav-item-wrap">
+          <a href="modules.html#atlas" class="nav-item"><img src="atlas.png" alt=""/>Atlas</a>
+          <div class="nav-dropdown">
+            <a href="Species.html" class="nav-dropdown-item">Species</a>
+            <a href="cold-storage-list.html" class="nav-dropdown-item">Cold Storage</a>
+            <a href="port-list.html" class="nav-dropdown-item">Ports</a>
+            <a href="vessel-list.html" class="nav-dropdown-item">Vessels</a>
+            <a href="country.html" class="nav-dropdown-item">Country</a>
+            <div class="nav-dropdown-item" style="position:relative;">
+              Others <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+              <div class="nav-dropdown-sub">
+                <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('fishery.html','MSC Fishery Module')">MSC Fisheries</a>
+                <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('asc-farms.html','ASC Farm Standard Module','ASC_ecolabel.png','ASC')">ASC Farms</a>
+              </div>
+            </div>
+            <a href="modules.html#atlas" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all Atlas</a>
+          </div>
+        </div>
+        <div class="nav-item-wrap">
+          <a href="modules.html#features" class="nav-item">Features</a>
+          <div class="nav-dropdown">
+            <a href="smartuna-ai.html" class="nav-dropdown-item">SmarTuna A.I <span class="tag-new">New</span></a>
+            <a href="smartuna-assistant.html" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('smartuna-assistant.html','SmarTuna Assistant');">SmarTuna Assistant <span class="tag-beta">Beta</span></a>
+            <div class="nav-dropdown-item" style="position:relative;">
+              Compliance <span style="font-size:11px;color:#6b7280;">&rsaquo;</span>
+              <div class="nav-dropdown-sub">
+                <a href="eu-catch-support.html" class="nav-dropdown-item">EU CATCH Form</a>
+                <a href="simp-support.html" class="nav-dropdown-item">NOAA SIMP <span class="tag-new">New</span></a>
+                <a href="fsma-support.html" class="nav-dropdown-item">FSMA Act 204 <span class="tag-new">New</span></a>
+              </div>
+            </div>
+            <a href="load-planner-home.html" class="nav-dropdown-item">Load Planner</a>
+            <a href="modules.html#features" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all Features</a>
+          </div>
+        </div>
+        <a href="modules.html#messages" class="nav-item"><img src="messages.png" alt=""/>Messages</a>
+        <a href="modules.html#reports" class="nav-item"><img src="report.png" alt=""/>Reports</a>
+        <a href="modules.html#support" class="nav-item"><img src="support.png" alt=""/>Support</a>
+        <a href="developer.html" class="nav-item" id="devNav" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 6 2 12 8 18"/><polyline points="16 6 22 12 16 18"/></svg>Developer</a>
+        <script>try{if(localStorage.getItem('smartuna_dev_unlocked')==='1')document.getElementById('devNav').hidden=false;}catch(e){}</script>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="search-pill">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Search here...
+      </div>
+      <div class="notif-btn"><img src="notification.png" alt=""/><div class="notif-dot"></div></div>
+      <div class="avatar-wrap">
+        <div class="avatar-btn" id="navAvatar" onclick="toggleNavDropdown()" role="button" tabindex="0" aria-label="Account menu"></div>
+        <div class="avatar-menu" id="navDropdown">
+          <div class="avatar-menu-name" id="navFirstName">Hello!</div>
+          <span id="navEmail" hidden></span>
+          <a href="profile.html"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Profile</a>
+          <button onclick="handleLogout()">Logout</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<main class="wrap page">
+  <div class="phead"><div><div class="crumb"><a href="shipment-notice.html">Shipment notices</a> / New</div>
+    <h1>New shipment notices</h1><div class="sub">Pick the orders, plan one row per shipment, then issue. Every receiver is notified straight away; you add the schedule and the actuals later on each shipment.</div></div>
+    <div class="acts"><a class="pill-btn" href="shipment-notice.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>All notices</a></div></div>
+  <div class="steps"><span class="on" id="st1"><b>1</b>Orders</span><i></i><span id="st2"><b>2</b>Shipments</span><i></i><span id="st3"><b>3</b>Issue</span></div>
+  <div class="layout" id="planner">
+    <div>
+      <div class="card"><div class="card-h"><span class="card-t">Orders</span><span class="lbl" id="moCount"></span></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px"><label class="searchbox"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input class="in" id="moSearch" type="search" placeholder="Order, product, buyer…" aria-label="Search orders"></label></div>
+        <div class="mo-grid" id="moGrid"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div></div>
+      <div class="card"><div class="card-h"><span class="card-t">Shipments</span><span class="lbl">one row = one shipment of one product</span></div>
+        <div class="rows-h"><span>#</span><span>Product</span><span>Quantity</span><span>From port</span><span>To port</span><span>Planned departure</span><span>Planned arrival</span><span>Receiver</span><span></span></div>
+        <div id="rows"></div>
+        <div class="empty-note" id="rowsEmpty">Pick one or more orders above. Rows are added for each order’s planned shipments, spread over its arrival ports.</div>
+        <button class="pill-btn add-row" id="addRow" hidden><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add shipment</button></div>
+    </div>
+    <aside class="side">
+      <div class="card"><div class="card-h"><span class="card-t">Plan</span></div>
+        <div class="kpis"><div class="tile"><div class="lbl">Shipments</div><div class="v" id="kS">0</div></div><div class="tile"><div class="lbl">Ports</div><div class="v" id="kP">0</div></div><div class="tile"><div class="lbl">Receivers</div><div class="v" id="kR">0</div></div></div>
+        <div id="sumP"></div>
+        <ul class="errs" id="errs"></ul>
+        <button class="pill-btn primary issue" id="issueBtn" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>Issue notices</button>
+        <p class="sub" style="font-size:12px;margin:10px 0 0">The notice carries the product, quantity, ports and planned dates. Carrier, vessel, container and B/L come later on the shipment page.</p></div>
+    </aside>
+  </div>
+  <datalist id="dlPorts"></datalist><datalist id="dlOrgs"></datalist>
+</main>
+<div class="toast" id="toast"></div>
+<div class="ovl" id="cfOvl"><div class="mbox" style="width:460px"><div class="mhead"><h3 class="modal-h" id="cfTitle"></h3></div><div class="mbody" id="cfText"></div><div class="mfoot"><button class="pill-btn" id="cfNo">Cancel</button><button class="pill-btn primary" id="cfYes">OK</button></div></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+(function(){
+  const URL_='https://enbdaajcromxmhgcverp.supabase.co', KEY_='sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
+  const db = window._sharedSupabase || (window._sharedSupabase = supabase.createClient(URL_, KEY_));
+  window.toggleNavDropdown = function(){ document.getElementById('navDropdown').classList.toggle('open'); };
+  window.handleLogout = async function(){ await db.auth.signOut(); window.location.href = 'login.html'; };
+  document.addEventListener('click', e => { if (!e.target.closest('.topbar-right')) document.getElementById('navDropdown')?.classList.remove('open'); });
+  window.addEventListener('load', async () => {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session) return;
+    const { data: p } = await db.from('profiles').select('first_name,last_name,avatar_color,photo_url').eq('id', session.user.id).single();
+    const email = session.user.email || '';
+    const first = p?.first_name || email.split('@')[0];
+    const initials = (first.charAt(0) + (p?.last_name ? p.last_name.charAt(0) : '')).toUpperCase();
+    const av = document.getElementById('navAvatar');
+    if (p?.photo_url) { av.innerHTML = `<img src="${p.photo_url}" alt="" style="width:100%;height:100%;object-fit:cover">`; av.style.background = 'transparent'; }
+    else { av.textContent = initials; av.style.background = p?.avatar_color || '#2f6fed'; }
+    document.getElementById('navEmail').textContent = email;
+    document.getElementById('navFirstName').textContent = `Hello, ${first}`;
+  });
+})();
+</script>
+<script>
+
+const db = window._sharedSupabase || (window._sharedSupabase = supabase.createClient('https://enbdaajcromxmhgcverp.supabase.co','sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5'));
+const smt = () => db.schema('smartuna');
+const $ = id => document.getElementById(id);
+const h = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const num = v => { const n = parseFloat(String(v ?? '').replace(/,/g,'')); return isFinite(n) ? n : 0; };
+const fmtN = v => Number(v||0).toLocaleString(undefined,{maximumFractionDigits:3});
+const fmtD = v => { if(!v) return ''; const d = new Date(String(v).length===10 ? v+'T00:00:00' : v); return isNaN(d) ? '' : d.toLocaleDateString(undefined,{day:'2-digit',month:'short',year:'numeric'}); };
+const shortPort = l => String(l||'').split(',')[0] || '—';
+const STAGES = ['notice','scheduled','actual'];
+const STAGE_LBL = {notice:'Notice', scheduled:'Scheduled', actual:'Actual'};
+const stagePill = s => { const i = STAGES.indexOf(s); return `<span class="stg ${h(s)}"><i>${STAGES.map((_,k)=>`<b class="${k<=i?'on':''}"></b>`).join('')}</i>${STAGE_LBL[s]||h(s)}</span>`; };
+let _tt;
+function toast(msg, kind){ const t = $('toast'); t.textContent = msg; t.className = 'toast show ' + (kind||''); clearTimeout(_tt); _tt = setTimeout(()=>t.className='toast', 3200); }
+function moveInd(seg){
+  if(!seg){ document.querySelectorAll('.seg').forEach(s=>moveInd(s)); return; }
+  const on = seg.querySelector('.active'), ind = seg.querySelector('.ind'); if(!ind) return;
+  if(!on || !on.offsetWidth){ ind.style.width = '0'; return; }
+  ind.style.width = on.offsetWidth + 'px'; ind.style.transform = 'translateX(' + on.offsetLeft + 'px)';
+}
+window.addEventListener('resize', ()=>moveInd());
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(()=>moveInd());
+function askConfirm(text, title, ok){
+  return new Promise(res=>{
+    $('cfTitle').textContent = title || 'Are you sure?'; $('cfText').innerHTML = text; $('cfYes').textContent = ok || 'OK';
+    const o = $('cfOvl'); o.classList.add('open');
+    const done = v => { o.classList.remove('open'); $('cfYes').onclick = $('cfNo').onclick = null; document.removeEventListener('keydown', esc); res(v); };
+    const esc = e => { if(e.key==='Escape') done(false); };
+    $('cfYes').onclick = () => done(true); $('cfNo').onclick = () => done(false); document.addEventListener('keydown', esc);
+    setTimeout(()=>$('cfYes').focus(), 30);
+  });
+}
+async function q(p){ const {data, error} = await p; if(error) throw error; return data; }
+async function fetchAll(make){
+  const out = []; for(let from = 0;; from += 1000){ const d = await q(make().range(from, from+999)); out.push(...d); if(d.length < 1000) break; } return out;
+}
+function errMsg(e){
+  const m = String(e?.message || e || 'Unknown error');
+  if(/schema must be one of|PGRST106/i.test(m)) return 'The smartuna schema is not exposed to the API yet (Supabase → Settings → API → Exposed schemas).';
+  if(/does not exist|PGRST20[02]|Could not find/i.test(m)) return 'The shipment notice update has not been run on the database yet (smartuna_patch_shipment_notice.sql).';
+  if(m.startsWith('OVER:')) return m.slice(5);
+  if(m.startsWith('STAGE_MISSING:')) return 'Still missing: ' + m.slice(14).split('|').join(', ');
+  return m;
+}
+async function needSession(){
+  const {data:{session}} = await db.auth.getSession();
+  if(!session){ location.href = 'login.html'; throw new Error('signed out'); }
+  return session;
+}
+
+const CHECK = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+const XI = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>';
+let MASTERS = [], PORTS = [], ORGS = [], MPORTS = [], MPARTIES = [];
+const PORT_BY_LABEL = new Map(), PORT_BY_ID = new Map(), ORG_BY_LABEL = new Map(), ORG_BY_ID = new Map();
+const SEL = new Set();          /* chosen master ids */
+let ROWS = [], seq = 0;
+const portLabel = p => [p.main_port_name, p.country].filter(Boolean).join(', ') + (p.un_locode ? ` (${p.un_locode})` : '');
+const mKey = m => m.external_reference || m.master_no;
+const M = id => MASTERS.find(m=>m.id===id);
+const planned = id => ROWS.filter(r=>r.master===id).reduce((a,r)=>a+num(r.qty),0);
+
+function drawMasters(){
+  const qq = $('moSearch').value.trim().toLowerCase();
+  const list = MASTERS.filter(m => SEL.has(m.id) || !qq || [mKey(m), m.master_no, m.product, m.gtin, m.buyer, m.seller].some(v=>String(v??'').toLowerCase().includes(qq)));
+  $('moCount').textContent = `${SEL.size} selected · ${MASTERS.length} order${MASTERS.length===1?'':'s'}`;
+  $('moGrid').innerHTML = list.length ? list.map(m=>{
+    const Q = num(m.order_quantity), left = num(m.remaining), plan = planned(m.id), pct = Q ? Math.min(100, (Q-left+plan)/Q*100) : 0;
+    const full = left <= 0 && !SEL.has(m.id);
+    return `<button type="button" class="mo ${SEL.has(m.id)?'on':''} ${full?'full':''}" data-id="${m.id}" ${full?'disabled title="Nothing left to ship on this order"':''}>
+      <span class="ck">${CHECK}</span><div class="k">${h(mKey(m))}</div><div class="p">${h(m.product||'—')}</div>
+      <div class="m">${h(m.buyer||'—')} · ${fmtN(left)} of ${fmtN(Q)} ${h(m.quantity_unit||'')} left</div>
+      <div class="mini"><i class="${Q-left+plan>Q?'over':''}" style="width:${pct}%"></i></div></button>`; }).join('')
+    : `<div class="empty-note" style="grid-column:1/-1">${MASTERS.length ? 'No orders match.' : 'No master orders yet. Create one under Master orders first.'}</div>`;
+}
+function partiesOf(id){ return MPARTIES.filter(p=>p.master_id===id); }
+function defaultReceiver(id){
+  const ps = partiesOf(id), c = ps.find(p=>p.role==='Consignee') || ps.find(p=>p.role==='Buyer');
+  return c ? (ORG_BY_ID.get(c.organization_id)?.label || '') : '';
+}
+function portsOf(id, dir){ return MPORTS.filter(p=>p.master_id===id && p.direction===dir).sort((a,b)=>a.sort_order-b.sort_order).map(p=>PORT_BY_ID.get(p.port_id)?.label).filter(Boolean); }
+function addRowsFor(id){
+  const m = M(id); if(!m) return;
+  const n = Math.max(1, (num(m.planned_shipments) || 1) - num(m.shipments_created));
+  const left = Math.max(0, num(m.remaining)), each = Math.floor(left / n);
+  const dep = portsOf(id,'departure'), arr = portsOf(id,'arrival'), rec = defaultReceiver(id);
+  for(let i=0;i<n;i++) ROWS.push({key:++seq, master:id, qty: left ? String(i===n-1 ? left - each*(n-1) : each) : '', from: dep[0]||'', to: arr.length ? arr[i % arr.length] : '', dep:'', arr:'', rec});
+}
+function toggleMaster(id){
+  if(SEL.has(id)){ SEL.delete(id); ROWS = ROWS.filter(r=>r.master!==id); }
+  else { SEL.add(id); addRowsFor(id); }
+  drawMasters(); drawRows();
+}
+function rowHtml(r, i){
+  const opts = [...SEL].map(id=>{ const m = M(id); return `<option value="${id}" ${id===r.master?'selected':''}>${h(mKey(m))} · ${h(m.product||'')}</option>`; }).join('');
+  const u = h(M(r.master)?.quantity_unit || '');
+  return `<div class="row" data-k="${r.key}">
+    <span class="n">${i+1}</span>
+    <label class="wide"><span class="rl">Product</span><select class="in" data-f="master" aria-label="Product">${opts}</select></label>
+    <label><span class="rl">Quantity</span><span class="qty"><input class="in" data-f="qty" inputmode="decimal" value="${h(r.qty)}" placeholder="0" aria-label="Quantity"><span class="u">${u}</span></span></label>
+    <label><span class="rl">From port</span><input class="in" data-f="from" list="dlPorts" value="${h(r.from)}" placeholder="Search port" aria-label="From port"></label>
+    <label><span class="rl">To port</span><input class="in" data-f="to" list="dlPorts" value="${h(r.to)}" placeholder="Search port" aria-label="To port"></label>
+    <label><span class="rl">Planned departure</span><input class="in" type="date" data-f="dep" value="${h(r.dep)}" aria-label="Planned departure"></label>
+    <label><span class="rl">Planned arrival</span><input class="in" type="date" data-f="arr" value="${h(r.arr)}" aria-label="Planned arrival"></label>
+    <label class="wide"><span class="rl">Receiver</span><input class="in" data-f="rec" list="dlOrgs" value="${h(r.rec)}" placeholder="Organisation" aria-label="Receiver"></label>
+    <button type="button" class="icon-btn danger rm" title="Remove this shipment" aria-label="Remove shipment ${i+1}">${XI}</button></div>`;
+}
+function drawRows(){
+  $('rows').innerHTML = ROWS.map(rowHtml).join('');
+  $('rowsEmpty').hidden = ROWS.length > 0; $('addRow').hidden = SEL.size === 0;
+  check();
+}
+function issues(){
+  const errs = [], bad = new Map();
+  const flag = (r, f) => { if(!bad.has(r.key)) bad.set(r.key, new Set()); bad.get(r.key).add(f); };
+  ROWS.forEach((r,i)=>{
+    const n = i+1;
+    if(!(num(r.qty) > 0)){ flag(r,'qty'); errs.push(`Shipment ${n}: enter a quantity.`); }
+    if(!PORT_BY_LABEL.has(r.from)){ flag(r,'from'); errs.push(`Shipment ${n}: pick the departure port from the list.`); }
+    if(!PORT_BY_LABEL.has(r.to)){ flag(r,'to'); errs.push(`Shipment ${n}: pick the destination port from the list.`); }
+    if(!r.dep){ flag(r,'dep'); errs.push(`Shipment ${n}: set the planned departure.`); }
+    if(r.arr && r.dep && r.arr < r.dep){ flag(r,'arr'); errs.push(`Shipment ${n}: arrival is before departure.`); }
+    if(!ORG_BY_LABEL.has(r.rec)){ flag(r,'rec'); errs.push(`Shipment ${n}: pick the receiver from the list.`); }
+  });
+  [...SEL].forEach(id=>{ const m = M(id), p = planned(id), left = num(m.remaining);
+    if(p > left){ ROWS.filter(r=>r.master===id).forEach(r=>flag(r,'qty')); errs.unshift(`${mKey(m)}: ${fmtN(p)} planned but only ${fmtN(left)} ${m.quantity_unit||''} left.`); } });
+  return {errs, bad};
+}
+function check(){
+  const {errs, bad} = issues();
+  document.querySelectorAll('#rows .row').forEach(el=>{ const b = bad.get(+el.dataset.k) || new Set(); el.querySelectorAll('[data-f]').forEach(i=>i.classList.toggle('bad', SHOW && b.has(i.dataset.f))); });
+  $('sumP').innerHTML = [...SEL].map(id=>{ const m = M(id), Q = num(m.order_quantity), left = num(m.remaining), p = planned(id), after = left - p, pct = Q ? Math.min(100,(Q-after)/Q*100) : 0;
+    return `<div class="sum-p"><div class="t"><span>${h(mKey(m))}</span><span class="${after<0?'bad':''}">${fmtN(p)} planned · ${fmtN(after)} left</span></div><div class="muted" style="font-size:12px">${h(m.product||'')}</div><div class="mini"><i class="${after<0?'over':''}" style="width:${pct}%"></i></div></div>`; }).join('') || `<p class="sub" style="font-size:12.5px;margin:0">No orders picked yet.</p>`;
+  $('kS').textContent = ROWS.length;
+  $('kP').textContent = new Set(ROWS.map(r=>r.to).filter(v=>PORT_BY_LABEL.has(v))).size;
+  $('kR').textContent = new Set(ROWS.map(r=>r.rec).filter(v=>ORG_BY_LABEL.has(v))).size;
+  $('errs').innerHTML = SHOW ? errs.slice(0,6).map(e=>`<li>${h(e)}</li>`).join('') + (errs.length>6?`<li>and ${errs.length-6} more</li>`:'') : '';
+  $('issueBtn').disabled = !ROWS.length;
+  $('issueBtn').lastChild.textContent = ROWS.length ? `Issue ${ROWS.length} notice${ROWS.length===1?'':'s'}` : 'Issue notices';
+  $('st1').classList.toggle('on', true); $('st2').classList.toggle('on', ROWS.length>0); $('st3').classList.toggle('on', ROWS.length>0 && !errs.length);
+  return errs;
+}
+let SHOW = false;
+async function issue(){
+  SHOW = true; const errs = check();
+  if(errs.length){ toast('Some shipments need attention', 'err'); document.querySelector('#rows .bad')?.focus(); return; }
+  const recs = new Set(ROWS.map(r=>r.rec));
+  const ok = await askConfirm(`${ROWS.length} shipment notice${ROWS.length===1?'':'s'} to ${new Set(ROWS.map(r=>r.to)).size} port${new Set(ROWS.map(r=>r.to)).size===1?'':'s'}. <b>${[...recs].map(h).join(', ')}</b> ${recs.size===1?'is':'are'} notified straight away.`, 'Issue shipment notices?', 'Issue notices');
+  if(!ok) return;
+  const btn = $('issueBtn'); btn.disabled = true;
+  try{
+    const rows = ROWS.map(r=>({master_id:r.master, quantity:num(r.qty), departure_port_id:PORT_BY_LABEL.get(r.from).id, arrival_port_id:PORT_BY_LABEL.get(r.to).id,
+      departure_planned:r.dep, arrival_planned:r.arr||null, consignee_org_id:ORG_BY_LABEL.get(r.rec).id}));
+    const out = await q(smt().rpc('create_shipment_notices', {p:{rows}}));
+    const byId = new Map(ROWS.map((r,i)=>[i, r]));
+    $('planner').outerHTML = `<div class="card rv"><div class="card-h"><span class="card-t">${out.length} shipment notice${out.length===1?'':'s'} issued</span>${stagePill('notice')}</div>
+      <div class="sub">${[...recs].map(h).join(', ')} ${recs.size===1?'has':'have'} been notified. Open a shipment to add the carrier and scheduled dates, then mark it scheduled.</div>
+      <div class="done-list">${out.map((o,i)=>{ const r = byId.get(i); return `<a class="done-i" href="shipment-notice.html?id=${encodeURIComponent(o.id)}"><div class="ref">${h(o.reference)}</div><div style="font-size:13px">${h(M(r.master)?.product||'')}</div><div class="muted">${fmtN(r.qty)} ${h(M(r.master)?.quantity_unit||'')} · ${h(shortPort(r.from))} → ${h(shortPort(r.to))}</div></a>`; }).join('')}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="pill-btn primary" href="shipment-notice.html">See all notices</a><a class="pill-btn" href="shipment-notice-new.html">Plan more shipments</a></div></div>`;
+    $('st3').classList.add('on');
+    toast('Notices issued', 'ok');
+  }catch(e){ btn.disabled = false; toast(errMsg(e), 'err'); }
+}
+document.addEventListener('click', e=>{
+  const mo = e.target.closest('.mo'); if(mo && !mo.disabled){ toggleMaster(mo.dataset.id); return; }
+  const rm = e.target.closest('.rm'); if(rm){ const k = +rm.closest('.row').dataset.k; ROWS = ROWS.filter(r=>r.key!==k); drawRows(); drawMasters(); return; }
+});
+document.addEventListener('input', e=>{
+  const f = e.target.dataset?.f; if(!f) return; const k = +e.target.closest('.row').dataset.k, r = ROWS.find(x=>x.key===k); if(!r) return;
+  r[f] = e.target.value;
+  if(f==='master'){ r.from = portsOf(r.master,'departure')[0] || r.from; r.rec = defaultReceiver(r.master) || r.rec; drawRows(); drawMasters(); return; }
+  if(f==='qty') drawMasters();
+  check();
+});
+$('moSearch').addEventListener('input', drawMasters);
+$('addRow').addEventListener('click', ()=>{
+  const last = ROWS[ROWS.length-1], id = last ? last.master : [...SEL][0];
+  ROWS.push({key:++seq, master:id, qty:'', from: last?.from || portsOf(id,'departure')[0] || '', to:'', dep: last?.dep || '', arr:'', rec: last?.rec || defaultReceiver(id)});
+  drawRows(); document.querySelector('#rows .row:last-child [data-f="qty"]')?.focus();
+});
+$('issueBtn').addEventListener('click', issue);
+
+(async()=>{
+  await needSession();
+  try{
+    [MASTERS, PORTS, ORGS, MPORTS, MPARTIES] = await Promise.all([
+      fetchAll(()=>smt().from('v_master_list').select('*').order('ref_id', {ascending:false})),
+      fetchAll(()=>db.from('ports').select('id,main_port_name,country,un_locode').order('main_port_name')),
+      fetchAll(()=>db.from('companies').select('id,company_name,country').order('company_name')),
+      fetchAll(()=>smt().from('master_ports').select('master_id,direction,port_id,sort_order')),
+      fetchAll(()=>smt().from('master_parties').select('master_id,organization_id,role,sort_order'))]);
+  }catch(e){ $('moGrid').innerHTML = `<div class="empty-note" style="grid-column:1/-1">${h(errMsg(e))}</div>`; return; }
+  PORTS.forEach(p=>{ const l = portLabel(p); const o = {id:p.id, label:l}; PORT_BY_LABEL.set(l, o); PORT_BY_ID.set(p.id, o); });
+  const seen = new Map(); ORGS.forEach(o=>{ const n = (o.company_name||'').trim(); seen.set(n, (seen.get(n)||0)+1); });
+  ORGS.forEach(o=>{ const n = (o.company_name||'').trim(); const l = seen.get(n) > 1 && o.country ? `${n} (${o.country})` : n; const x = {id:o.id, label:l}; ORG_BY_LABEL.set(l, x); ORG_BY_ID.set(o.id, x); });
+  $('dlPorts').innerHTML = [...PORT_BY_LABEL.keys()].map(l=>`<option value="${h(l)}">`).join('');
+  $('dlOrgs').innerHTML = [...ORG_BY_LABEL.keys()].map(l=>`<option value="${h(l)}">`).join('');
+  drawMasters(); drawRows();
+  const pre = new URLSearchParams(location.search).get('order');     /* shipment-notice-new.html?order=<ref id> */
+  if(pre){ const m = MASTERS.find(x=>String(x.ref_id)===pre); if(m && num(m.remaining) > 0) toggleMaster(m.id); }
+})();
+
+</script>
+<script src="notifications.js"></script>
+
+<script>
+if (typeof window.launchModule !== 'function') { window.launchModule = function(url){ window.location.href = url; }; }
+</script>
+</body>
+</html>
