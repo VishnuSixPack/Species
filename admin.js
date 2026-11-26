@@ -1,1442 +1,707 @@
 /* ============================================================
-   PROJECT MANHATTAN — admin.js
-   Admin console — accessible only to vishnu@pacifical.com
+   SmarTuna — admin.js
+   Admin console. Who can open it: the admin email below AND a
+   profile with role "admin". The browser check only hides the page;
+   what an admin can really read and change is decided by the
+   database rules (row level security) and the edge functions.
    ============================================================ */
 
 const SUPABASE_URL = 'https://enbdaajcromxmhgcverp.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_NxQj3wE3UqijQVwwUNCfxg_f2uFLRz5';
-const dbClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const dbClient = window._sharedSupabase || (window._sharedSupabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY));
 
 const ADMIN_EMAIL = 'vishnu@pacifical.com';
+const HOME = 'home-logged-in.html';
+const TRASH_DAYS = 30;
+const LOG_LIMIT = 500;
+const PAGE_ROWS = 300;              /* rows drawn per table; search narrows the rest */
 
-let allUsers = [];
-let allLogs = [];
-let suspendTargetId = null;
-let suspendAction = null;
-let roleTargetId = null;
+const $ = id => document.getElementById(id);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]);
+const fullName = u => [u?.first_name, u?.last_name].filter(Boolean).join(' ');
+const initials = (name, email) => { const p = String(name || '').trim().split(/\s+/).filter(Boolean); return ((p[0]?.[0] || email?.[0] || '?') + (p[1]?.[0] || '')).toUpperCase(); };
+const safeColor = c => /^#[0-9a-f]{3,8}$/i.test(String(c || '')) ? c : 'var(--accent)';
+const safeUrl = u => /^https:\/\//i.test(String(u || '')) ? u : '';
 
-// ── AUTH GUARD ────────────────────────────────────────────────
-async function checkAdminAuth() {
+let ME = null;
+const D = { users:[], requests:[], orgs:[], tickets:[], products:[], species:[], logs:[], archives:[], trash:{ products:[], species:[] }, todayCount:null };
+const F = { users:{ q:'', status:'', role:'' }, requests:{ q:'', status:'pending' }, organisations:{ q:'', status:'' },
+            support:{ q:'', status:'', type:'' }, products:{ q:'' }, species:{ q:'' }, activity:{ q:'', action:'' },
+            archives:{ q:'' }, trash:{ q:'', type:'' }, dashboard:{ q:'' } };
+let SECTION = 'dashboard';
+
+/* ── THEME ─────────────────────────────────────────────────── */
+function setTheme(t){
+  document.documentElement.setAttribute('data-theme', t);
+  try{ localStorage.setItem('smartuna-admin-theme', t); }catch(e){}
+}
+$('themeSwitch').addEventListener('click', () => setTheme(document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light'));
+
+/* ── HELPERS ───────────────────────────────────────────────── */
+function formatDate(d, withTime = true){
+  if(!d) return '—';
+  const x = new Date(d); if(isNaN(x)) return '—';
+  return x.toLocaleString('en-GB', withTime ? { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' } : { day:'2-digit', month:'short', year:'numeric' });
+}
+function timeAgo(d){
+  if(!d) return '—';
+  const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
+  if(m < 1) return 'just now'; if(m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60); if(h < 24) return `${h}h ago`;
+  const days = Math.floor(h / 24); return days < 30 ? `${days}d ago` : formatDate(d, false);
+}
+let _tt;
+function showToast(msg, type = 'success'){
+  const t = $('toast'); t.querySelector('span').textContent = msg;
+  t.className = 'toast show ' + (type === 'error' ? 'error' : '');
+  clearTimeout(_tt); _tt = setTimeout(() => t.className = 'toast', 3400);
+}
+function moveInd(seg){
+  const on = seg.querySelector('button.active'), ind = seg.querySelector('.ind');
+  if(!ind) return;
+  if(!on || !on.offsetWidth){ ind.style.width = '0'; return; }
+  ind.style.width = on.offsetWidth + 'px'; ind.style.transform = `translateX(${on.offsetLeft}px)`;
+}
+function moveNavInd(){
+  const on = document.querySelector('.nav-item.active'), ind = $('navInd');
+  if(!on){ ind.style.height = '0'; return; }
+  ind.style.height = on.offsetHeight + 'px'; ind.style.transform = `translateY(${on.offsetTop}px)`;
+}
+window.addEventListener('resize', () => { document.querySelectorAll('.seg').forEach(moveInd); moveNavInd(); });
+const matches = (q, ...vals) => !q || vals.some(v => String(v ?? '').toLowerCase().includes(q));
+function capped(rows, cols, render){
+  const shown = rows.slice(0, PAGE_ROWS).map(render).join('');
+  return shown + (rows.length > PAGE_ROWS ? `<tr><td colspan="${cols}" class="dim">Showing ${PAGE_ROWS} of ${rows.length}. Search to narrow the list.</td></tr>` : '');
+}
+async function edgeFn(name, body){
   const { data: { session } } = await dbClient.auth.getSession();
-
-  if (!session) {
-    window.location.href = 'login.html';
-    return null;
-  }
-
-  if (session.user.email !== ADMIN_EMAIL) {
-    window.location.href = 'index.html';
-    return null;
-  }
-
-  const { data: profile } = await dbClient
-    .from('profiles')
-    .select('role, first_name, avatar_color')
-    .eq('id', session.user.id)
-    .single();
-
-  if (!profile || profile.role !== 'admin') {
-    window.location.href = 'index.html';
-    return null;
-  }
-
-  return { session, profile };
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/${name}`, {
+    method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${session.access_token}` }, body:JSON.stringify(body) });
+  let out = {}; try{ out = await res.json(); }catch(e){}
+  if(!res.ok || out.error) throw new Error(out.error || `The ${name} service returned an error (${res.status}).`);
+  return out;
 }
 
-async function handleLogout() {
-  await dbClient.auth.signOut();
-  window.location.href = 'login.html';
+/* ── MODALS ────────────────────────────────────────────────── */
+const ICONS = {
+  info:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>',
+  warning:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 3l10 18H2z"/><path d="M12 10v4M12 17.5h.01"/></svg>',
+  danger:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/></svg>',
+  user:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>',
+  ok:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  mail:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>'
+};
+/* openModal({title, icon, kind, html, wide, actions:[{label, kind:'primary'|'danger'|'', id, onClick(close, box) -> false keeps it open}], onOpen(box)}) */
+function openModal({ title, icon = 'info', kind = '', html = '', wide = false, actions = [], onOpen }){
+  const root = $('modalRoot');
+  const ov = document.createElement('div'); ov.className = 'modal-overlay';
+  ov.innerHTML = `<div class="modal-box ${wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+    <div class="modal-head"><span class="modal-icon ${kind}">${ICONS[icon] || ICONS.info}</span><h3 class="modal-title">${esc(title)}</h3><button class="modal-x" aria-label="Close">&times;</button></div>
+    <div class="modal-body">${html}</div>
+    <div class="modal-actions">${actions.map((a, i) => `<button class="pill-btn ${a.kind || ''}" data-i="${i}" ${a.id ? `id="${a.id}"` : ''} ${a.disabled ? 'disabled' : ''}>${esc(a.label)}</button>`).join('')}</div></div>`;
+  root.appendChild(ov);
+  const prevFocus = document.activeElement;
+  const close = () => { ov.remove(); document.removeEventListener('keydown', onKey); prevFocus?.focus?.(); };
+  const onKey = e => { if(e.key === 'Escape') close(); };
+  document.addEventListener('keydown', onKey);
+  ov.addEventListener('mousedown', e => { if(e.target === ov) close(); });
+  ov.querySelector('.modal-x').onclick = close;
+  ov.querySelectorAll('.modal-actions button').forEach(b => b.onclick = async () => {
+    const a = actions[+b.dataset.i];
+    if(!a.onClick){ close(); return; }
+    const label = b.textContent; b.disabled = true; if(a.busy) b.textContent = a.busy;
+    try{ const keep = await a.onClick(close, ov); if(keep === false){ b.disabled = false; b.textContent = label; } }
+    catch(err){ b.disabled = false; b.textContent = label; showToast(err.message || 'Something went wrong.', 'error'); }
+  });
+  onOpen?.(ov);
+  setTimeout(() => (ov.querySelector('input, select, textarea') || ov.querySelector('.modal-actions .primary, .modal-actions .danger') || ov.querySelector('.modal-actions button'))?.focus(), 40);
+  return close;
 }
-
-// ── INIT ──────────────────────────────────────────────────────
-window.addEventListener('DOMContentLoaded', async () => {
-  const auth = await checkAdminAuth();
-  if (!auth) return;
-
-  const { session, profile } = auth;
-  const email = session.user.email;
-  const initials = email.substring(0, 2).toUpperCase();
-  const firstName = profile.first_name || 'Admin';
-
-  document.getElementById('adminAvatar').textContent = initials;
-  document.getElementById('adminAvatar').style.background = profile.avatar_color || '#1a6fdb';
-  document.getElementById('adminName').textContent = firstName;
-
-  // Log admin login
-  await logActivity('login', 'admin_console', null, 'Admin accessed console');
-
-  // Show app
-  document.getElementById('authGuard').style.display = 'none';
-  document.getElementById('adminWrapper').classList.remove('hidden');
-
-  // Load all data
-await Promise.all([
-    loadStats(),
-    loadUsers(),
-    loadLogs(),
-    loadProducts(),
-    loadSpecies(),
-    loadRecentActivity(),
-    loadUserOverview(),
-    loadTrash(),
-    loadAdminOrgs(),
-    loadArchives(),
-    loadTickets(),
-  ]);
+const confirmModal = ({ title, html, ok = 'Confirm', kind = 'danger', icon = 'warning' }) => new Promise(res => {
+  let done = false;
+  const close = openModal({ title, html, icon, kind: kind === 'danger' ? 'danger' : kind === 'warning' ? 'warning' : '',
+    actions:[{ label:'Cancel', onClick:c => { done = true; c(); res(false); } },
+             { label:ok, kind: kind === 'danger' ? 'danger' : 'primary', onClick:c => { done = true; c(); res(true); } }] });
+  const obs = new MutationObserver(() => { if(!document.querySelector('#modalRoot .modal-overlay') && !done){ done = true; obs.disconnect(); res(false); } });
+  obs.observe($('modalRoot'), { childList:true });
 });
 
-// ── SECTION SWITCHER ──────────────────────────────────────────
-function switchSection(name) {
-  document.querySelectorAll('.admin-section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-
-  document.getElementById(`section-${name}`)?.classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(btn => {
-    if (btn.getAttribute('onclick')?.includes(`'${name}'`)) btn.classList.add('active');
-  });
-
-  const labels = {
-    dashboard: 'Dashboard', users: 'User Management',
-    requests: 'Access Requests',
-    activity: 'Activity Logs',
-    products: 'Products Overview', species: 'Species Overview',
-    support: 'Support Tickets', trash: 'Trash',
-    organisations: 'Organisations', archives: 'Company Archives'
-  };
-  document.getElementById('breadcrumbCurrent').textContent = labels[name] || name;
-
-  if (name === 'requests') loadAccessRequests();
-}
-
-// ── STATS ─────────────────────────────────────────────────────
-async function loadStats() {
-  const [usersRes, productsRes, speciesRes, logsRes] = await Promise.all([
-    dbClient.from('profiles').select('id', { count: 'exact', head: true }),
-    dbClient.from('products').select('id', { count: 'exact', head: true }),
-    dbClient.from('species').select('id', { count: 'exact', head: true }),
-    dbClient.from('activity_logs').select('id', { count: 'exact', head: true })
-      .gte('created_at', new Date(new Date().setHours(0,0,0,0)).toISOString()),
-  ]);
-
-  document.getElementById('statUsers').textContent = usersRes.count ?? '—';
-  document.getElementById('statProducts').textContent = productsRes.count ?? '—';
-  document.getElementById('statSpecies').textContent = speciesRes.count ?? '—';
-  document.getElementById('statActions').textContent = logsRes.count ?? '—';
-}
-
-// ── USERS ─────────────────────────────────────────────────────
-async function loadUsers() {
-  const { data, error } = await dbClient
-    .from('profiles')
-    .select('*, company:company_id(company_name)')
-    .order('created_at', { ascending: false });
-
-  if (error) { console.error('Error loading users:', error); return; }
-
-  // Get emails from auth via our edge function isn't possible client-side
-  // So we store email in profiles table — let's add it
-  allUsers = data || [];
-  renderUsersTable(allUsers);
-  renderUserOverview(allUsers);
-}
-
-function renderUsersTable(users) {
-  const tbody = document.getElementById('usersTableBody');
-  if (!users.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">No users found.</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = users.map(u => `
-    <tr>
-      <td>
-        <div class="user-cell">
-          <div class="user-mini-avatar" style="background:${u.avatar_color || '#1a6fdb'}">${(u.first_name || 'U').charAt(0).toUpperCase()}</div>
-          <div>
-            <div class="user-mini-name">${[u.first_name, u.last_name].filter(Boolean).join(' ') || '—'}</div>
-            <div class="user-mini-email">${u.email || u.id}</div>
-          </div>
-        </div>
-      </td>
-      <td><span class="role-pill ${u.role || 'supplier'}">${u.role || 'supplier'}</span></td>
-      <td>${u.company?.company_name || '—'}</td>
-      <td>${u.last_login ? formatDate(u.last_login) : 'Never'}</td>
-      <td>
-        <span class="status-pill ${u.is_suspended ? 'suspended' : (u.status === 'invited' ? 'invited' : 'active')}">
-          <span class="status-dot"></span>
-          ${u.is_suspended ? 'Suspended' : (u.status === 'invited' ? 'Invited' : 'Active')}
-        </span>
-      </td>
-      <td>
-        <div class="action-btns">
-            ${u.role !== 'admin' ? `
-            ${u.status === 'invited' && !u.is_suspended ? `
-            <button class="btn-action role" onclick="resendInvite('${u.id}', '${u.email || ''}')">Resend</button>
-            ` : ''}
-            <button class="btn-action ${u.is_suspended ? 'activate' : 'suspend'}"
-              onclick="${u.is_suspended ? `openActivateModal('${u.id}')` : `openSuspendModal('${u.id}')`}">
-              ${u.is_suspended ? 'Activate' : 'Suspend'}
-            </button>
-            <button class="btn-action role" onclick="openRoleModal('${u.id}', '${u.role || 'supplier'}')">Role</button>
-            <button class="btn-action suspend" onclick="deleteUser('${u.id}', '${[u.first_name, u.last_name].filter(Boolean).join(' ') || u.email}')">Delete</button>
-          ` : '<span style="color:#4a4e7a; font-size:11px;">God Mode</span>'}
-        </div>
-      </td>
-    </tr>
-  `).join('');
-}
-
-function filterUsers(query) {
-  const q = query.toLowerCase();
-  const filtered = allUsers.filter(u =>
-    (u.first_name || '').toLowerCase().includes(q) ||
-    (u.last_name || '').toLowerCase().includes(q) ||
-    (u.email || '').toLowerCase().includes(q) ||
-    (u.company_name || '').toLowerCase().includes(q) ||
-    (u.id || '').toLowerCase().includes(q)
-  );
-  renderUsersTable(filtered);
-}
-
-function filterUsersByRole(role) {
-  const filtered = role ? allUsers.filter(u => u.role === role) : allUsers;
-  renderUsersTable(filtered);
-}
-
-// ── USER OVERVIEW (dashboard) ─────────────────────────────────
-function loadUserOverview() {
-  // Already loaded via loadUsers
-}
-
-function renderUserOverview(users) {
-  const container = document.getElementById('liveUsersList');
-  const recent = users.slice(0, 5);
-
-  if (!recent.length) {
-    container.innerHTML = '<p class="coming-soon">No users yet.</p>';
-    return;
-  }
-
-  container.innerHTML = recent.map(u => `
-    <div class="activity-log-row">
-      <div class="user-mini-avatar" style="background:${u.avatar_color || '#1a6fdb'}; width:28px; height:28px; font-size:10px;">
-        ${(u.first_name || 'U').charAt(0).toUpperCase()}
-      </div>
-      <div class="activity-text">
-        <strong style="color:#e0e2f0;">${[u.first_name, u.last_name].filter(Boolean).join(' ') || 'Unknown'}</strong>
-        <br/><span style="font-size:11px; color:#4a4e7a;">${u.company_name || 'No company'} · ${u.role || 'supplier'}</span>
-      </div>
-      <span class="status-pill ${u.is_suspended ? 'suspended' : 'active'}" style="font-size:10px;">
-        <span class="status-dot"></span>
-        ${u.is_suspended ? 'Suspended' : 'Active'}
-      </span>
-    </div>
-  `).join('');
-}
-
-// ── ACTIVITY LOGS ─────────────────────────────────────────────
-async function loadLogs() {
-  const { data, error } = await dbClient
-    .from('activity_logs')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(200);
-
-  if (error) { console.error('Error loading logs:', error); return; }
-
-  allLogs = data || [];
-  renderLogsTable(allLogs);
-}
-
-function renderLogsTable(logs) {
-  const tbody = document.getElementById('logsTableBody');
-  if (!logs.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="loading-cell">No activity logs yet.</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = logs.map(l => `
-    <tr>
-      <td style="white-space:nowrap; color:#4a4e7a;">${formatDate(l.created_at)}</td>
-      <td style="font-size:12px;">${l.user_email || l.user_id || '—'}</td>
-      <td><span class="activity-action-badge ${l.action || ''}">${l.action || '—'}</span></td>
-      <td style="color:#6b7080;">${l.resource || '—'}</td>
-      <td style="font-size:12px; color:#4a4e7a; max-width:200px; overflow:hidden; text-overflow:ellipsis;">${l.metadata ? JSON.stringify(l.metadata) : '—'}</td>
-    </tr>
-  `).join('');
-}
-
-async function loadRecentActivity() {
-  const { data } = await dbClient
-    .from('activity_logs')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(8);
-
-  const container = document.getElementById('recentActivityList');
-  if (!data || !data.length) {
-    container.innerHTML = '<p class="coming-soon">No activity yet.</p>';
-    return;
-  }
-
-  container.innerHTML = data.map(l => `
-    <div class="activity-log-row">
-      <span class="activity-action-badge ${l.action || ''}">${l.action || '—'}</span>
-      <span class="activity-text">${l.user_email || 'Unknown'} · ${l.resource || ''}</span>
-      <span class="activity-time">${timeAgo(l.created_at)}</span>
-    </div>
-  `).join('');
-}
-
-function filterLogs(query) {
-  const q = query.toLowerCase();
-  const filtered = allLogs.filter(l =>
-    (l.user_email || '').toLowerCase().includes(q) ||
-    (l.action || '').toLowerCase().includes(q) ||
-    (l.resource || '').toLowerCase().includes(q)
-  );
-  renderLogsTable(filtered);
-}
-
-function filterLogsByAction(action) {
-  const filtered = action ? allLogs.filter(l => l.action === action) : allLogs;
-  renderLogsTable(filtered);
-}
-
-// ── PRODUCTS ──────────────────────────────────────────────────
-async function loadProducts() {
-  const { data } = await dbClient
-    .from('products')
-    .select('id, product_name, brand, created_at, user_id')
-    .order('created_at', { ascending: false });
-
-  const tbody = document.getElementById('productsTableBody');
-  if (!data || !data.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="loading-cell">No products found.</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = data.map(p => `
-    <tr>
-      <td style="font-weight:600; color:#e0e2f0;">${p.product_name || '—'}</td>
-      <td>${p.brand || '—'}</td>
-      <td style="font-size:11px; color:#4a4e7a;">${p.user_id || '—'}</td>
-      <td style="color:#4a4e7a;">${formatDate(p.created_at)}</td>
-      <td>
-        <button class="btn-action view" onclick="window.open('product-detail.html?id=${p.id}', '_blank')">View</button>
-      </td>
-    </tr>
-  `).join('');
-}
-
-// ── SPECIES ───────────────────────────────────────────────────
-async function loadSpecies() {
-  const { data } = await dbClient
-    .from('species')
-    .select('id, species_name, scientific_name, created_at')
-    .order('created_at', { ascending: false });
-
-  const tbody = document.getElementById('speciesTableBody');
-  if (!data || !data.length) {
-    tbody.innerHTML = '<tr><td colspan="4" class="loading-cell">No species found.</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = data.map(s => `
-    <tr>
-      <td style="font-weight:600; color:#e0e2f0;">${s.species_name || '—'}</td>
-      <td style="font-style:italic; color:#6b7080;">${s.scientific_name || '—'}</td>
-      <td style="color:#4a4e7a;">${formatDate(s.created_at)}</td>
-      <td>
-        <button class="btn-action view" onclick="window.open('species-detail.html?id=${s.id}', '_blank')">View</button>
-      </td>
-    </tr>
-  `).join('');
-}
-
-// ── SUSPEND / ACTIVATE ────────────────────────────────────────
-function openSuspendModal(userId) {
-  suspendTargetId = userId;
-  suspendAction = 'suspend';
-  const user = allUsers.find(u => u.id === userId);
-  document.getElementById('suspendModalTitle').textContent = 'Suspend User';
-  document.getElementById('suspendModalBody').textContent = `Are you sure you want to suspend ${[user?.first_name, user?.last_name].filter(Boolean).join(' ') || 'this user'}? They will lose access immediately.`;
-  document.getElementById('suspendConfirmBtn').textContent = 'Suspend';
-  document.getElementById('suspendConfirmBtn').className = 'modal-confirm-btn';
-  document.getElementById('suspendModal').classList.remove('hidden');
-}
-
-function openActivateModal(userId) {
-  suspendTargetId = userId;
-  suspendAction = 'activate';
-  const user = allUsers.find(u => u.id === userId);
-  document.getElementById('suspendModalTitle').textContent = 'Activate User';
-  document.getElementById('suspendModalBody').textContent = `Restore access for ${[user?.first_name, user?.last_name].filter(Boolean).join(' ') || 'this user'}?`;
-  document.getElementById('suspendConfirmBtn').textContent = 'Activate';
-  document.getElementById('suspendConfirmBtn').className = 'modal-confirm-btn blue';
-  document.getElementById('suspendModal').classList.remove('hidden');
-}
-
-function closeSuspendModal() {
-  suspendTargetId = null;
-  document.getElementById('suspendModal').classList.add('hidden');
-}
-
-async function confirmSuspend() {
-  if (!suspendTargetId) return;
-  const isSuspending = suspendAction === 'suspend';
-
-  const { error } = await dbClient
-    .from('profiles')
-    .update({ is_suspended: isSuspending })
-    .eq('id', suspendTargetId);
-
-  if (error) { showToast('Action failed.', 'error'); return; }
-
-  await logActivity(
-    isSuspending ? 'suspend_user' : 'activate_user',
-    'profile',
-    suspendTargetId,
-    `Admin ${isSuspending ? 'suspended' : 'activated'} user`
-  );
-
-  closeSuspendModal();
-  showToast(`User ${isSuspending ? 'suspended' : 'activated'} successfully.`, 'success');
-  await loadUsers();
-}
-
-// ── ROLE CHANGE ───────────────────────────────────────────────
-function openRoleModal(userId, currentRole) {
-  roleTargetId = userId;
-  const user = allUsers.find(u => u.id === userId);
-  document.getElementById('roleModalBody').textContent = `Change role for ${[user?.first_name, user?.last_name].filter(Boolean).join(' ') || 'this user'}`;
-  document.getElementById('roleSelect').value = currentRole;
-  document.getElementById('roleModal').classList.remove('hidden');
-}
-
-function closeRoleModal() {
-  roleTargetId = null;
-  document.getElementById('roleModal').classList.add('hidden');
-}
-
-async function confirmRoleChange() {
-  if (!roleTargetId) return;
-  const newRole = document.getElementById('roleSelect').value;
-
-  const { error } = await dbClient
-    .from('profiles')
-    .update({ role: newRole })
-    .eq('id', roleTargetId);
-
-  if (error) { showToast('Role change failed.', 'error'); return; }
-
-  await logActivity('update', 'profile', roleTargetId, `Role changed to ${newRole}`);
-
-  closeRoleModal();
-  showToast(`Role updated to ${newRole}.`, 'success');
-  await loadUsers();
-}
-
-// ── LOG ACTIVITY ──────────────────────────────────────────────
-async function logActivity(action, resource, resourceId, details) {
+/* ── AUTH ──────────────────────────────────────────────────── */
+async function checkAdminAuth(){
   const { data: { session } } = await dbClient.auth.getSession();
-  if (!session) return;
+  if(!session){ location.href = 'login.html'; return null; }
+  if((session.user.email || '').toLowerCase() !== ADMIN_EMAIL){ location.href = HOME; return null; }
+  const { data: profile } = await dbClient.from('profiles').select('role, first_name, last_name, avatar_color, photo_url').eq('id', session.user.id).maybeSingle();
+  if(!profile || profile.role !== 'admin'){ location.href = HOME; return null; }
+  return { session, profile };
+}
+$('logoutBtn').onclick = async () => { await dbClient.auth.signOut(); location.href = 'login.html'; };
 
-  await dbClient.from('activity_logs').insert({
-    user_id: session.user.id,
-    user_email: session.user.email,
-    action,
-    resource,
-    resource_id: resourceId,
-    metadata: { details }
+async function logActivity(action, resource, resourceId, details){
+  try{
+    await dbClient.from('activity_logs').insert({ user_id:ME.id, user_email:ME.email, action, resource, resource_id:resourceId, metadata:{ details } });
+  }catch(e){}
+}
+
+/* ── NAVIGATION ────────────────────────────────────────────── */
+const LABELS = { dashboard:'Dashboard', users:'Users', requests:'Access requests', organisations:'Organisations', support:'Support tickets',
+                 products:'Products', species:'Species', activity:'Activity log', archives:'Company archives', trash:'Trash' };
+const SEARCH_PH = { dashboard:'Search users, organisations, tickets, then Enter', users:'Search name, email, company', requests:'Search name, email, company',
+  organisations:'Search name, country, industry', support:'Search sender, subject, message', products:'Search product, brand, creator',
+  species:'Search common or scientific name', activity:'Search user, action, resource', archives:'Search company', trash:'Search deleted items' };
+function switchSection(name){
+  if(!LABELS[name]) name = 'dashboard';
+  SECTION = name;
+  document.querySelectorAll('.admin-section').forEach(s => s.classList.toggle('active', s.id === `section-${name}`));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.sec === name));
+  $('breadcrumbCurrent').textContent = LABELS[name];
+  const gs = $('globalSearch'); gs.placeholder = SEARCH_PH[name]; gs.value = F[name]?.q || '';
+  if(location.hash.slice(1) !== name) history.replaceState(null, '', '#' + name);
+  closeSide(); moveNavInd();
+  requestAnimationFrame(() => document.querySelectorAll(`#section-${name} .seg`).forEach(moveInd));
+}
+$('sideNav').addEventListener('click', e => { const b = e.target.closest('.nav-item'); if(b) switchSection(b.dataset.sec); });
+document.addEventListener('click', e => { const g = e.target.closest('[data-go]'); if(g){ if(g.dataset.goFilter){ const [s, k, v] = g.dataset.goFilter.split(':'); setSeg(s, k, v); } switchSection(g.dataset.go); } });
+$('menuBtn').onclick = () => { $('sidebar').classList.add('open'); $('sideScrim').classList.add('open'); };
+const closeSide = () => { $('sidebar').classList.remove('open'); $('sideScrim').classList.remove('open'); };
+$('sideScrim').onclick = closeSide;
+
+$('globalSearch').addEventListener('input', e => {
+  F[SECTION].q = e.target.value.trim().toLowerCase();
+  if(SECTION !== 'dashboard') RENDER[SECTION]?.();          /* on the dashboard, Enter jumps to the section that has a match */
+});
+$('globalSearch').addEventListener('keydown', e => {
+  if(e.key !== 'Enter' || SECTION !== 'dashboard') return;
+  F.dashboard.q = e.target.value.trim().toLowerCase();
+  if(F.dashboard.q && !renderDashboardSearch()) showToast('Nothing matches in users, organisations or tickets.', 'error');
+});
+/* segmented filters: data-filter="section.key" */
+document.querySelectorAll('.seg[data-filter]').forEach(seg => {
+  seg.addEventListener('click', e => {
+    const b = e.target.closest('button'); if(!b) return;
+    const [s, k] = seg.dataset.filter.split('.');
+    setSeg(s, k, b.dataset.v);
   });
+});
+function setSeg(s, k, v){
+  F[s][k] = v;
+  const seg = document.querySelector(`.seg[data-filter="${s}.${k}"]`);
+  if(seg){ seg.querySelectorAll('button').forEach(x => x.classList.toggle('active', x.dataset.v === v)); moveInd(seg); }
+  RENDER[s]?.();
+}
+$('usersRole').onchange = e => { F.users.role = e.target.value; renderUsers(); };
+$('logsAction').onchange = e => { F.activity.action = e.target.value; renderLogs(); };
+
+/* ── INIT ──────────────────────────────────────────────────── */
+window.addEventListener('DOMContentLoaded', async () => {
+  const auth = await checkAdminAuth();
+  if(!auth) return;
+  const { session, profile } = auth;
+  ME = { id:session.user.id, email:session.user.email, profile };
+  const name = fullName(profile) || profile.first_name || 'Admin';
+  const av = $('adminAvatar');
+  if(safeUrl(profile.photo_url)){ av.innerHTML = `<img src="${esc(profile.photo_url)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`; }
+  else { av.textContent = initials(name, ME.email); av.style.background = safeColor(profile.avatar_color); }
+  $('adminName').textContent = name;
+  const h = new Date().getHours();
+  $('helloTitle').textContent = `${h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening'}, ${profile.first_name || 'admin'}`;
+  const img = new Image(); img.onload = () => { $('brandMark').outerHTML = '<img src="sc-blue-logo.png" alt="" style="width:30px;height:30px;object-fit:contain">'; }; img.src = 'sc-blue-logo.png';
+
+  $('authGuard').style.display = 'none';
+  $('adminWrapper').classList.remove('hidden');
+  switchSection(location.hash.slice(1) || 'dashboard');
+  await loadAll();
+  /* once per browser session, so reloads don't flood the log */
+  try{ if(!sessionStorage.getItem('smt-admin-logged')){ sessionStorage.setItem('smt-admin-logged', '1'); logActivity('access', 'admin_console', null, 'Opened the admin console'); } }catch(e){}
+});
+$('refreshBtn').onclick = async () => { const b = $('refreshBtn'); b.classList.add('spin'); await loadAll(); setTimeout(() => b.classList.remove('spin'), 700); showToast('Up to date.'); };
+
+async function loadAll(){
+  await Promise.all([loadUsers(), loadAccessRequests(), loadAdminOrgs(), loadTickets(), loadProducts(), loadSpecies(), loadLogs(), loadArchives(), loadTrash(), loadToday()]);
+  renderDashboard();
 }
 
-// ── SEARCH ────────────────────────────────────────────────────
-function handleGlobalSearch(query) {
-  // Search within current active section
-  const activeSection = document.querySelector('.admin-section.active')?.id;
-  if (activeSection === 'section-users') filterUsers(query);
-  if (activeSection === 'section-activity') filterLogs(query);
+/* ── DASHBOARD ─────────────────────────────────────────────── */
+async function loadToday(){
+  const { count } = await dbClient.from('activity_logs').select('id', { count:'exact', head:true }).gte('created_at', new Date(new Date().setHours(0,0,0,0)).toISOString());
+  D.todayCount = count ?? null;
 }
+function renderDashboard(){
+  const openT = D.tickets.filter(t => isOpenTicket(t)).length;
+  const pendR = D.requests.filter(r => r.status === 'pending').length;
+  const invited = D.users.filter(u => u.status === 'invited' && !u.is_suspended).length;
+  const suspended = D.users.filter(u => u.is_suspended).length;
+  const S = [
+    { k:'Users', v:D.users.length, note: invited ? `${invited} invite${invited === 1 ? '' : 's'} not accepted` : `${suspended} suspended`, c:'blue', go:'users', i:'<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>' },
+    { k:'Organisations', v:D.orgs.length, note:`${D.orgs.filter(o => o.status === 'suspended').length} suspended`, c:'violet', go:'organisations', i:'<path d="M3 21V8l6-4v17M9 21V4l12 5v12M3 21h18"/>' },
+    { k:'Products', v:D.products.length, note:`${D.trash.products.length} in trash`, c:'green', go:'products', i:'<path d="M21 16V8l-9-5-9 5v8l9 5z"/><path d="M3.3 7.5 12 12l8.7-4.5M12 22V12"/>' },
+    { k:'Species', v:D.species.length, note:`${D.trash.species.length} in trash`, c:'green', go:'species', i:'<path d="M2 12c3-5 9-7 14-4l5-3v14l-5-3c-5 3-11 1-14-4z"/>' },
+    { k:'Open tickets', v:openT, note:`${D.tickets.length} in total`, c: openT ? 'red' : 'blue', go:'support', f:'support:status:open', i:'<path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>' },
+    { k:'Pending requests', v:pendR, note: D.todayCount != null ? `${D.todayCount} actions today` : 'access to SmarTuna', c: pendR ? 'amber' : 'blue', go:'requests', f:'requests:status:pending', i:'<path d="M22 6l-10 7L2 6"/><rect x="2" y="4" width="20" height="16" rx="2"/>' }];
+  $('statsGrid').innerHTML = S.map((s, i) => `<button class="stat-card" style="animation-delay:${i * 40}ms" data-go="${s.go}" ${s.f ? `data-go-filter="${s.f}"` : ''}>
+    <span class="stat-top"><span class="lbl">${s.k}</span><span class="stat-icon ${s.c}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${s.i}</svg></span></span>
+    <span class="stat-value">${s.v.toLocaleString()}</span><span class="stat-note">${esc(s.note)}</span></button>`).join('');
 
-function refreshAll() {
-  loadStats();
-  loadUsers();
-  loadLogs();
-  loadProducts();
-  loadSpecies();
-  loadRecentActivity();
-  loadTrash();
-  loadAdminOrgs();
-  loadArchives();
-  loadTickets(); 
-  showToast('Refreshed!', 'success');
+  /* needs attention: pending requests, open tickets, invites waiting, trash expiring soon */
+  const items = [];
+  D.requests.filter(r => r.status === 'pending').slice(0, 4).forEach(r => items.push({ pill:['amber','request'], t:fullName(r) || r.email, s:`${r.company_name || 'No company'} · asked ${timeAgo(r.created_at)}`, go:'requests' }));
+  D.tickets.filter(isOpenTicket).slice(0, 4).forEach(t => items.push({ pill: t.type === 'report' ? ['red','problem'] : ['blue','question'], t:t.subject || '(no subject)', s:`${t.user_name || t.user_email || '—'} · ${timeAgo(t.created_at)}`, ticket:t.id }));
+  const soon = [...D.trash.products.map(p => ({ n:p.product_name, d:p.deleted_at })), ...D.trash.species.map(s => ({ n:s.species_name, d:s.deleted_at }))].filter(x => daysLeft(x.d) <= 5);
+  if(soon.length) items.push({ pill:['red','trash'], t:`${soon.length} item${soon.length === 1 ? '' : 's'} removed for good within 5 days`, s:soon.slice(0, 3).map(x => x.n || '—').join(', '), go:'trash' });
+  $('attentionList').innerHTML = items.length ? items.map(x => `<div class="row-item link" ${x.ticket ? `data-ticket="${esc(x.ticket)}"` : `data-go="${x.go}"`} tabindex="0"><span class="pill ${x.pill[0]}">${x.pill[1]}</span><span class="t">${esc(x.t)}<small>${esc(x.s)}</small></span></div>`).join('')
+    : '<div class="empty">Nothing waiting. No pending requests or open tickets.</div>';
+
+  const recent = D.logs.filter(l => l.action !== 'access');
+  $('recentActivityList').innerHTML = recent.length ? recent.slice(0, 8).map(l => `<div class="row-item">${actionPill(l.action)}<span class="t">${esc(l.user_email || 'Unknown')}<small>${esc(logDetail(l) || l.resource || '')}</small></span><span class="time">${timeAgo(l.created_at)}</span></div>`).join('')
+    : '<div class="empty">No activity yet.</div>';
+  $('liveUsersList').innerHTML = D.users.length ? D.users.slice(0, 6).map(u => `<div class="row-item">${avatar(u)}<span class="t">${esc(fullName(u) || u.email || 'Unknown')}<small>${esc(companyOf(u) || 'No company')} · joined ${timeAgo(u.created_at)}</small></span>${statusPill(u)}</div>`).join('')
+    : '<div class="empty">No users yet.</div>';
 }
-
-// ── TRASH ─────────────────────────────────────────────────────
-async function loadTrash() {
-  await Promise.all([loadTrashProducts(), loadTrashSpecies()]);
+/* dashboard search: jump to the best section */
+function renderDashboardSearch(){
+  const q = F.dashboard.q; if(!q) return;
+  const hit = D.users.some(u => matches(q, fullName(u), u.email, companyOf(u))) ? 'users'
+    : D.orgs.some(o => matches(q, o.company_name, o.country)) ? 'organisations'
+    : D.tickets.some(t => matches(q, t.subject, t.user_email, t.user_name)) ? 'support' : null;
+  if(hit){ F[hit].q = q; F.dashboard.q = ''; switchSection(hit); RENDER[hit](); }
+  return !!hit;
 }
+document.addEventListener('click', e => { const t = e.target.closest('[data-ticket]'); if(t) viewTicket(t.dataset.ticket); });
+document.addEventListener('keydown', e => { if(e.key === 'Enter' && e.target.matches?.('.row-item.link')) e.target.click(); });
 
-async function loadTrashProducts() {
-  const { data } = await dbClient
-    .from('products')
-    .select('id, product_name, brand, deleted_at, reminder')
-    .not('deleted_at', 'is', null)
-    .order('deleted_at', { ascending: false });
-
-  const tbody = document.getElementById('trashProductsBody');
-  const count = document.getElementById('trashProductCount');
-
-  if (!data || !data.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">No deleted products.</td></tr>';
-    count.textContent = '0 items';
-    return;
-  }
-
-  count.textContent = `${data.length} item${data.length !== 1 ? 's' : ''}`;
-
-  tbody.innerHTML = data.map(p => {
-    const deletedAt = new Date(p.deleted_at);
-    const expiresAt = new Date(deletedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
-    const daysLeft = Math.ceil((expiresAt - Date.now()) / (1000 * 60 * 60 * 24));
-
-    return `
-      <tr>
-        <td style="font-weight:600; color:#e0e2f0;">${p.product_name || '—'}</td>
-        <td>${p.brand || '—'}</td>
-        <td style="color:#4a4e7a;">${formatDate(p.deleted_at)}</td>
-        <td>
-          <span style="color:${daysLeft <= 5 ? '#e63946' : '#f59e0b'}; font-weight:600;">
-            ${daysLeft} day${daysLeft !== 1 ? 's' : ''} left
-          </span>
-        </td>
-        <td>
-          <span style="color:${p.reminder ? '#22c55e' : '#4a4e7a'}; font-size:12px;">
-            ${p.reminder ? '✓ Yes' : '—'}
-          </span>
-        </td>
-        <td>
-          <div class="action-btns">
-            <button class="btn-action activate" onclick="restoreProduct('${p.id}')">Restore</button>
-            <button class="btn-action suspend" onclick="permanentDeleteProduct('${p.id}')">Delete Forever</button>
-          </div>
-        </td>
-      </tr>
-    `;
-  }).join('');
+/* ── USERS ─────────────────────────────────────────────────── */
+const companyOf = u => u.company?.company_name || u.company_name || '';
+const userStatus = u => u.is_suspended ? 'suspended' : u.status === 'invited' ? 'invited' : 'active';
+const statusPill = u => { const s = userStatus(u); return `<span class="pill ${s === 'suspended' ? 'red' : s === 'invited' ? 'amber' : 'green'}"><i></i>${s}</span>`; };
+const rolePill = r => `<span class="pill ${r === 'admin' ? 'amber' : r === 'partner' ? 'violet' : 'blue'}">${esc(r || 'user')}</span>`;
+const avatar = u => { const n = fullName(u); return safeUrl(u.photo_url) ? `<span class="user-mini-avatar"><img src="${esc(u.photo_url)}" alt=""></span>` : `<span class="user-mini-avatar" style="background:${safeColor(u.avatar_color)}">${esc(initials(n, u.email))}</span>`; };
+async function loadUsers(){
+  const { data, error } = await dbClient.from('profiles').select('*, company:company_id(company_name)').order('created_at', { ascending:false });
+  if(error){ console.error('Users:', error); $('usersTableBody').innerHTML = `<tr><td colspan="6" class="loading-cell">Couldn’t load users: ${esc(error.message)}</td></tr>`; return; }
+  D.users = data || [];
+  const roles = [...new Set(D.users.map(u => u.role || 'user'))].sort();
+  $('usersRole').innerHTML = '<option value="">All roles</option>' + roles.map(r => `<option value="${esc(r)}" ${F.users.role === r ? 'selected' : ''}>${esc(r[0].toUpperCase() + r.slice(1))}</option>`).join('');
+  renderUsers();
 }
-
-async function loadTrashSpecies() {
-  const { data } = await dbClient
-    .from('species')
-    .select('id, species_name, scientific_name, deleted_at, reminder')
-    .not('deleted_at', 'is', null)
-    .order('deleted_at', { ascending: false });
-
-  const tbody = document.getElementById('trashSpeciesBody');
-  const count = document.getElementById('trashSpeciesCount');
-
-  if (!data || !data.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">No deleted species.</td></tr>';
-    count.textContent = '0 items';
-    return;
-  }
-
-  count.textContent = `${data.length} item${data.length !== 1 ? 's' : ''}`;
-
-  tbody.innerHTML = data.map(s => {
-    const deletedAt = new Date(s.deleted_at);
-    const expiresAt = new Date(deletedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
-    const daysLeft = Math.ceil((expiresAt - Date.now()) / (1000 * 60 * 60 * 24));
-
-    return `
-      <tr>
-        <td style="font-weight:600; color:#e0e2f0;">${s.species_name || '—'}</td>
-        <td style="font-style:italic; color:#6b7080;">${s.scientific_name || '—'}</td>
-        <td style="color:#4a4e7a;">${formatDate(s.deleted_at)}</td>
-        <td>
-          <span style="color:${daysLeft <= 5 ? '#e63946' : '#f59e0b'}; font-weight:600;">
-            ${daysLeft} day${daysLeft !== 1 ? 's' : ''} left
-          </span>
-        </td>
-        <td>
-          <span style="color:${s.reminder ? '#22c55e' : '#4a4e7a'}; font-size:12px;">
-            ${s.reminder ? '✓ Yes' : '—'}
-          </span>
-        </td>
-        <td>
-          <div class="action-btns">
-            <button class="btn-action activate" onclick="restoreSpecies('${s.id}')">Restore</button>
-            <button class="btn-action suspend" onclick="permanentDeleteSpecies('${s.id}')">Delete Forever</button>
-          </div>
-        </td>
-      </tr>
-    `;
-  }).join('');
+function renderUsers(){
+  const f = F.users;
+  const rows = D.users.filter(u => (!f.status || userStatus(u) === f.status) && (!f.role || (u.role || 'user') === f.role) && matches(f.q, fullName(u), u.email, companyOf(u), u.id, u.role));
+  $('usersSub').textContent = `${rows.length} of ${D.users.length} user${D.users.length === 1 ? '' : 's'}`;
+  $('usersTableBody').innerHTML = rows.length ? capped(rows, 6, (u, i) => {
+    const self = u.id === ME.id, admin = u.role === 'admin', s = userStatus(u);
+    return `<tr style="animation-delay:${Math.min(i, 15) * 18}ms" data-user="${esc(u.id)}">
+      <td><div class="user-cell">${avatar(u)}<div><div class="user-mini-name">${esc(fullName(u) || '—')}${self ? '<span class="you">you</span>' : ''}</div><div class="user-mini-email">${esc(u.email || u.id)}</div></div></div></td>
+      <td>${rolePill(u.role)}</td><td>${esc(companyOf(u) || '—')}</td>
+      <td class="dim">${u.last_login ? timeAgo(u.last_login) : 'Never'}</td><td>${statusPill(u)}</td>
+      <td>${self || admin ? `<span class="dim">${self ? 'Your account' : 'Administrator'}</span>` : `<div class="action-btns">
+        ${s === 'invited' ? '<button class="btn-action" data-act="resend">Resend invite</button>' : ''}
+        <button class="btn-action ${u.is_suspended ? 'good' : 'bad'}" data-act="${u.is_suspended ? 'activate' : 'suspend'}">${u.is_suspended ? 'Activate' : 'Suspend'}</button>
+        <button class="btn-action" data-act="role">Role</button>
+        <button class="btn-action bad" data-act="delete">Delete</button></div>`}</td></tr>`; })
+    : `<tr><td colspan="6" class="loading-cell">${D.users.length ? 'No users match.' : 'No users yet.'}</td></tr>`;
 }
-
-async function restoreProduct(id) {
-  const { error } = await dbClient
-    .from('products')
-    .update({ deleted_at: null, reminder: false })
-    .eq('id', id);
-
-  if (error) { showToast('Failed to restore.', 'error'); return; }
-  await logActivity('restore', 'product', id, 'Product restored from Trash');
-  showToast('Product restored!', 'success');
-  await loadTrashProducts();
+$('usersTableBody').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if(!b) return;
+  const u = D.users.find(x => x.id === b.closest('[data-user]').dataset.user); if(!u) return;
+  ({ resend:resendInvite, suspend:suspendUser, activate:activateUser, role:openRoleModal, delete:deleteUser })[b.dataset.act]?.(u);
+});
+async function suspendUser(u){
+  if(!await confirmModal({ title:`Suspend ${fullName(u) || u.email}?`, html:'<p>They lose access straight away. Their data stays and you can activate them again later.</p>', ok:'Suspend' })) return;
+  const { error } = await dbClient.from('profiles').update({ is_suspended:true }).eq('id', u.id);
+  if(error){ showToast('Couldn’t suspend: ' + error.message, 'error'); return; }
+  await logActivity('suspend_user', 'profile', u.id, `Suspended ${u.email}`);
+  showToast('User suspended.'); await loadUsers(); renderDashboard();
 }
-
-async function permanentDeleteProduct(id) {
-  if (!confirm('This will permanently delete the product. This cannot be undone!')) return;
-
-  await dbClient.from('product_allergens').delete().eq('product_id', id);
-  await dbClient.from('product_nutrition').delete().eq('product_id', id);
-  await dbClient.from('product_artwork').delete().eq('product_id', id);
-
-  const { error } = await dbClient.from('products').delete().eq('id', id);
-  if (error) { showToast('Failed to delete permanently.', 'error'); return; }
-
-  await logActivity('permanent_delete', 'product', id, 'Product permanently deleted');
-  showToast('Product permanently deleted.', 'success');
-  await loadTrashProducts();
+async function activateUser(u){
+  if(!await confirmModal({ title:`Activate ${fullName(u) || u.email}?`, html:'<p>They can sign in again with their existing password.</p>', ok:'Activate', kind:'primary', icon:'ok' })) return;
+  const { error } = await dbClient.from('profiles').update({ is_suspended:false }).eq('id', u.id);
+  if(error){ showToast('Couldn’t activate: ' + error.message, 'error'); return; }
+  await logActivity('activate_user', 'profile', u.id, `Activated ${u.email}`);
+  showToast('User activated.'); await loadUsers(); renderDashboard();
 }
-
-async function restoreSpecies(id) {
-  const { error } = await dbClient
-    .from('species')
-    .update({ deleted_at: null, reminder: false })
-    .eq('id', id);
-
-  if (error) { showToast('Failed to restore.', 'error'); return; }
-  await logActivity('restore', 'species', id, 'Species restored from Trash');
-  showToast('Species restored!', 'success');
-  await loadTrashSpecies();
+function openRoleModal(u){
+  openModal({ title:`Change role for ${fullName(u) || u.email}`, icon:'user',
+    html:`<label class="fld"><span>Role</span><select class="in" id="roleSelect"><option value="user">User</option><option value="admin">Administrator</option></select></label>
+      <div class="warn-box hidden" id="roleWarn">Administrators can see and change every company’s data in this console.</div>`,
+    onOpen: box => { const s = box.querySelector('#roleSelect'); s.value = u.role === 'admin' ? 'admin' : 'user'; s.onchange = () => box.querySelector('#roleWarn').classList.toggle('hidden', s.value !== 'admin'); },
+    actions:[{ label:'Cancel' }, { label:'Save role', kind:'primary', busy:'Saving…', onClick: async (close, box) => {
+      const role = box.querySelector('#roleSelect').value;
+      if(role === (u.role || 'user')){ close(); return; }
+      const { error } = await dbClient.from('profiles').update({ role }).eq('id', u.id);
+      if(error) throw new Error('Role change failed: ' + error.message);
+      await logActivity('update', 'profile', u.id, `Role changed to ${role}`);
+      close(); showToast(`Role set to ${role}.`); await loadUsers();
+    } }] });
 }
-
-async function permanentDeleteSpecies(id) {
-  if (!confirm('This will permanently delete the species. This cannot be undone!')) return;
-
-  const { error } = await dbClient.from('species').delete().eq('id', id);
-  if (error) { showToast('Failed to delete permanently.', 'error'); return; }
-
-  await logActivity('permanent_delete', 'species', id, 'Species permanently deleted');
-  showToast('Species permanently deleted.', 'success');
-  await loadTrashSpecies();
+async function resendInvite(u){
+  if(!u.email){ showToast('No email on record for that user.', 'error'); return; }
+  const { error } = await dbClient.auth.resetPasswordForEmail(u.email, { redirectTo:`${location.origin}${location.pathname.replace(/[^/]*$/, '')}set-password.html` });
+  if(error){ showToast(error.message || 'Could not resend the invite.', 'error'); return; }
+  await logActivity('invite', 'user', u.id, `Resent invite: ${u.email}`);
+  showToast(`New link sent to ${u.email}.`);
 }
-
-function filterTrashByType(type) {
-  const productsTable = document.getElementById('trashProductsTable').closest('.admin-card');
-  const speciesTable = document.getElementById('trashSpeciesTable').closest('.admin-card');
-
-  if (type === 'products') {
-    productsTable.style.display = 'block';
-    speciesTable.style.display = 'none';
-  } else if (type === 'species') {
-    productsTable.style.display = 'none';
-    speciesTable.style.display = 'block';
-  } else {
-    productsTable.style.display = 'block';
-    speciesTable.style.display = 'block';
-  }
-}
-
-// ── HELPERS ───────────────────────────────────────────────────
-function formatDate(dateStr) {
-  if (!dateStr) return '—';
-  return new Date(dateStr).toLocaleString('en-GB', {
-    day: '2-digit', month: 'short', year: 'numeric',
-    hour: '2-digit', minute: '2-digit'
-  });
-}
-
-function timeAgo(dateStr) {
-  if (!dateStr) return '—';
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
-
-// ── ORGANISATIONS ─────────────────────────────────────────────
-let allAdminOrgs = [];
-
-async function loadAdminOrgs() {
-  const { data } = await dbClient
-    .from('companies')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  allAdminOrgs = data || [];
-
-  // Get member and product counts
-  const tbody = document.getElementById('orgsTableBody');
-  if (!allAdminOrgs.length) {
-    tbody.innerHTML = '<tr><td colspan="7" class="loading-cell">No organisations found.</td></tr>';
-    return;
-  }
-
-  // Fetch counts for each org
-  const rows = await Promise.all(allAdminOrgs.map(async org => {
-    const [{ count: memberCount }, { count: productCount }] = await Promise.all([
-      dbClient.from('company_members').select('id', { count: 'exact', head: true }).eq('company_id', org.id),
-      dbClient.from('products').select('id', { count: 'exact', head: true }).eq('company_id', org.id).is('deleted_at', null),
-    ]);
-    return { ...org, memberCount: memberCount || 0, productCount: productCount || 0 };
-  }));
-
-  renderAdminOrgsTable(rows);
-}
-
-function renderAdminOrgsTable(orgs) {
-  const tbody = document.getElementById('orgsTableBody');
-  tbody.innerHTML = orgs.map(org => `
-    <tr>
-      <td>
-        <div style="display:flex; align-items:center; gap:10px;">
-          ${org.photo_url
-            ? `<img src="${org.photo_url}" style="width:32px; height:32px; border-radius:50%; object-fit:cover;" />`
-            : `<div style="width:32px; height:32px; border-radius:50%; background:rgba(26,111,219,0.15); color:#1a6fdb; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px;">${(org.company_name||'O').charAt(0).toUpperCase()}</div>`
-          }
-          <div>
-            <div style="font-weight:600; color:#e0e2f0;">${org.company_name || '—'}</div>
-            <div style="font-size:11px; color:#4a4e7a;">${org.email || '—'}</div>
-          </div>
-        </div>
-      </td>
-      <td style="color:#6b7080;">${org.industry || '—'}</td>
-      <td style="color:#6b7080;">${org.country || '—'}</td>
-      <td><span style="color:#1a6fdb; font-weight:600;">${org.memberCount}</span></td>
-      <td><span style="color:#22c55e; font-weight:600;">${org.productCount}</span></td>
-      <td><span class="status-pill ${org.status === 'active' ? 'active' : 'suspended'}">
-        <span class="status-dot"></span>${org.status}
-      </span></td>
-      <td>
-        <div class="action-btns">
-          <button class="btn-action ${org.status === 'suspended' ? 'activate' : 'suspend'}"
-            onclick="${org.status === 'suspended' ? `activateOrg('${org.id}')` : `suspendOrg('${org.id}')`}">
-            ${org.status === 'suspended' ? 'Activate' : 'Suspend'}
-          </button>
-          <button class="btn-action suspend" onclick="deleteOrgWithArchive('${org.id}', '${(org.company_name||'').replace(/'/g,"\\'")}', ${org.memberCount}, ${org.productCount})">Delete</button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
-}
-
-function filterAdminOrgs(query) {
-  const q = query.toLowerCase();
-  const filtered = allAdminOrgs.filter(o =>
-    (o.company_name||'').toLowerCase().includes(q) ||
-    (o.country||'').toLowerCase().includes(q) ||
-    (o.industry||'').toLowerCase().includes(q)
-  );
-  renderAdminOrgsTable(filtered);
-}
-
-function filterAdminOrgsByStatus(status) {
-  const filtered = status ? allAdminOrgs.filter(o => o.status === status) : allAdminOrgs;
-  renderAdminOrgsTable(filtered);
-}
-
-async function suspendOrg(id) {
-  await dbClient.from('companies').update({ status: 'suspended' }).eq('id', id);
-  showToast('Organisation suspended.', 'success');
-  await loadAdminOrgs();
-}
-
-async function activateOrg(id) {
-  await dbClient.from('companies').update({ status: 'active' }).eq('id', id);
-  showToast('Organisation activated.', 'success');
-  await loadAdminOrgs();
-}
-
-async function deleteOrgWithArchive(companyId, companyName, memberCount, productCount) {
-  if (!confirm(`Delete "${companyName}"?\n\n⚠️ This will:\n- Delete ${memberCount} user(s)\n- Move ${productCount} product(s) to Trash\n- Create a JSON archive\n\nThis cannot be undone!`)) return;
-
-  showToast('Archiving and deleting...', 'success');
-
-  try {
-    // 1. Collect all data for archive
-    const [
-      { data: company },
-      { data: members },
-      { data: products },
-      { data: certs },
-      { data: logs }
-    ] = await Promise.all([
-      dbClient.from('companies').select('*').eq('id', companyId).single(),
-      dbClient.from('company_members').select('*, profiles:user_id(*)').eq('company_id', companyId),
-      dbClient.from('products').select('*').eq('company_id', companyId),
-      dbClient.from('organisation_certifications').select('*').eq('company_id', companyId),
-      dbClient.from('activity_logs').select('*').eq('resource', 'company').eq('resource_id', companyId),
-    ]);
-
-    // 2. Build archive JSON
-    const archive = {
-      archived_at: new Date().toISOString(),
-      company,
-      members: members || [],
-      products: products || [],
-      certifications: certs || [],
-      activity_logs: logs || [],
-    };
-
-    // 3. Upload JSON to storage
-    const fileName = `${companyId}_${Date.now()}.json`;
-    const blob = new Blob([JSON.stringify(archive, null, 2)], { type: 'application/json' });
-
-    const { error: uploadError } = await dbClient.storage
-      .from('company-archives')
-      .upload(fileName, blob);
-
-    let archiveUrl = null;
-    if (!uploadError) {
-      const { data: urlData } = dbClient.storage
-        .from('company-archives')
-        .getPublicUrl(fileName);
-      archiveUrl = urlData.publicUrl;
-    }
-
-    // 4. Save archive record
-    await dbClient.from('company_archives').insert({
-      company_id: companyId,
-      company_name: companyName,
-      deleted_by: (await dbClient.auth.getSession()).data.session?.user.id,
-      archive_url: archiveUrl,
-      user_count: memberCount,
-      product_count: productCount,
-    });
-
-    // 5. Soft delete products (move to trash)
-    if (products?.length) {
-      await dbClient.from('products')
-        .update({ deleted_at: new Date().toISOString() })
-        .eq('company_id', companyId);
-    }
-
-    // 6. Delete users (profiles + auth)
-    if (members?.length) {
-      for (const member of members) {
-        await dbClient.from('profiles').delete().eq('id', member.user_id);
-      }
-    }
-
-    // 7. Delete company (cascades members, certs, associations)
-    await dbClient.from('companies').delete().eq('id', companyId);
-
-    await logActivity('delete', 'company', companyId, `Deleted company with archive: ${companyName}`);
-    showToast(`"${companyName}" deleted and archived!`, 'success');
-    await Promise.all([loadAdminOrgs(), loadArchives(), loadStats(), loadTrash()]);
-
-  } catch (err) {
-    console.error('Delete org error:', err);
-    showToast('Something went wrong during deletion.', 'error');
-  }
-}
-
-// ── ARCHIVES ──────────────────────────────────────────────────
-async function loadArchives() {
-  const { data } = await dbClient
-    .from('company_archives')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  const tbody = document.getElementById('archivesTableBody');
-  if (!data?.length) {
-    tbody.innerHTML = '<tr><td colspan="5" class="loading-cell">No archives yet.</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = data.map(a => `
-    <tr>
-      <td style="font-weight:600; color:#e0e2f0;">${a.company_name || '—'}</td>
-      <td style="color:#4a4e7a;">${formatDate(a.created_at)}</td>
-      <td style="color:#1a6fdb; font-weight:600;">${a.user_count || 0}</td>
-      <td style="color:#22c55e; font-weight:600;">${a.product_count || 0}</td>
-      <td>
-        ${a.archive_url
-          ? `<a href="${a.archive_url}" target="_blank" class="btn-action view">Download JSON</a>`
-          : '<span style="color:#4a4e7a; font-size:12px;">No file</span>'
-        }
-      </td>
-    </tr>
-  `).join('');
-}
-
-function showToast(message, type = 'success') {
-  const existing = document.querySelector('.admin-toast');
-  if (existing) existing.remove();
-  const toast = document.createElement('div');
-  toast.className = 'admin-toast';
-  toast.style.cssText = `
-    position:fixed; bottom:24px; right:24px;
-    background:${type === 'success' ? '#22c55e' : '#e63946'};
-    color:#fff; padding:10px 18px; border-radius:8px;
-    font-family:'DM Sans',sans-serif; font-size:13px; font-weight:600;
-    box-shadow:0 4px 20px rgba(0,0,0,0.3); z-index:9999;
-  `;
-  toast.textContent = message;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
-}
-
-// ── ADD USER ──────────────────────────────────────────────────
-async function openAddUserModal() {
-  // Load companies into dropdown
-  const select = document.getElementById('newUserCompany');
-  select.innerHTML = '<option value="">Select company...</option>';
-
-  if (!allAdminOrgs.length) {
-    select.innerHTML = '<option value="">No companies yet — create one first</option>';
-  } else {
-    allAdminOrgs.forEach(org => {
-      const opt = document.createElement('option');
-      opt.value = org.id;
-      opt.textContent = `${org.company_name} (${org.company_code || '—'})`;
-      select.appendChild(opt);
-    });
-  }
-
-  // Load partner of dropdown
-  const partnerSelect = document.getElementById('newUserPartnerOf');
-  partnerSelect.innerHTML = '<option value="">Select organisation...</option>';
-  allAdminOrgs.forEach(org => {
-    const opt = document.createElement('option');
-    opt.value = org.id;
-    opt.textContent = org.company_name;
-    partnerSelect.appendChild(opt);
-  });
-
-  // Clear fields
-  ['newUserFirstName', 'newUserLastName', 'newUserEmail', 'newUserPosition'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-
-  document.getElementById('newUserRole').value = 'user';
-  document.getElementById('newUserPartnerOfGroup').style.display = 'none';
-  document.getElementById('addUserModal').classList.remove('hidden');
-}
-
-function handleNewUserRoleChange(select) {
-  const partnerGroup = document.getElementById('newUserPartnerOfGroup');
-  partnerGroup.style.display = select.value === 'partner' ? 'flex' : 'none';
-}
-
-async function createUser() {
-  const email = document.getElementById('newUserEmail').value.trim().toLowerCase();
-  const firstName = document.getElementById('newUserFirstName').value.trim();
-  const lastName = document.getElementById('newUserLastName').value.trim();
-  const role = document.getElementById('newUserRole').value;
-  const companyId = document.getElementById('newUserCompany').value || null;
-  const position = document.getElementById('newUserPosition').value.trim();
-  const partnerOf = role === 'partner' ? document.getElementById('newUserPartnerOf').value || null : null;
-
-  if (!email) { showToast('Enter an email address.', 'error'); return; }
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)) {
-    showToast('That does not look like a valid email address.', 'error'); return;
-  }
-  if (!firstName || !lastName) { showToast('First and last name are required.', 'error'); return; }
-  if (!companyId) { showToast('Please select a company. Every user must belong to an organisation.', 'error'); return; }
-
-  const btn = document.querySelector('#addUserModal .modal-confirm-btn');
-  btn.textContent = 'Sending...';
-  btn.disabled = true;
-
-  try {
-    const { data: { session } } = await dbClient.auth.getSession();
-
-    const response = await fetch(
-      `${SUPABASE_URL}/functions/v1/create-user`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-          body: JSON.stringify({
-          email, first_name: firstName,
-          last_name: lastName, role, company_id: companyId,
-          position, partner_of: partnerOf
-        })
-      }
-    );
-
-    const result = await response.json();
-
-    if (result.error) throw new Error(result.error);
-
-// Add to company_members
-    if (companyId && result.user_id) {
-      await dbClient.from('company_members').insert({
-        company_id: companyId,
-        user_id: result.user_id,
-        company_role: 'member',
-        status: 'active'
-      });
-    }
-
-    await logActivity('invite', 'user', result.user_id, `Invited user: ${email}`);
-    showToast(`Invite sent to ${email}. They appear as Invited until they set a password.`, 'success');
-    document.getElementById('addUserModal').classList.add('hidden');
-    await loadUsers();
-
-  } catch (err) {
-    showToast(err.message || 'Could not send the invite.', 'error');
-  } finally {
-    btn.textContent = 'Send invite';
-    btn.disabled = false;
-  }
-}
-
-// Re-send an invite that expired or never arrived. Uses the recovery email
-// rather than the invite endpoint, because the auth user already exists —
-// set-password.html accepts both link types.
-async function resendInvite(userId, email) {
-  if (!email) { showToast('No email on record for that user.', 'error'); return; }
-
-  const { error } = await dbClient.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/set-password.html`
-  });
-
-  if (error) {
-    showToast(error.message || 'Could not resend the invite.', 'error');
-    return;
-  }
-
-  await logActivity('invite', 'user', userId, `Resent invite: ${email}`);
-  showToast(`New link sent to ${email}.`, 'success');
-}
-
-// ── SUPPORT TICKETS ───────────────────────────────────────────
-let allTickets = [];
-
-async function loadTickets() {
-  const { data } = await dbClient
-    .from('support_tickets')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  allTickets = data || [];
-  renderTickets(allTickets);
-}
-
-function renderTickets(tickets) {
-  const tbody = document.getElementById('ticketsTableBody');
-  if (!tbody) return;
-  if (!tickets.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">No tickets yet.</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = tickets.map(t => `
-    <tr>
-      <td>
-        <div style="font-size:13px; font-weight:600; color:#e0e2f0;">${t.user_name || '—'}</div>
-        <div style="font-size:11px; color:#4a4e7a;">${t.user_email || '—'}</div>
-      </td>
-      <td>
-        <span class="role-pill ${t.type === 'report' ? 'buyer' : 'supplier'}">
-          ${t.type === 'report' ? '🐛 Bug Report' : '✉ Contact'}
-        </span>
-      </td>
-      <td style="color:#c0c2d8; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.subject || '—'}</td>
-      <td style="color:#4a4e7a; font-size:12px;">${formatDate(t.created_at)}</td>
-      <td>
-        <select onchange="updateTicketStatus('${t.id}', this.value)"
-          style="padding:4px 8px; background:#1a1a30; border:1px solid #2a2a4a; border-radius:6px; font-family:'DM Sans',sans-serif; font-size:11px; color:#e0e2f0; outline:none; cursor:pointer;">
-          <option value="open" ${t.status === 'open' ? 'selected' : ''}>Open</option>
-          <option value="in_progress" ${t.status === 'in_progress' ? 'selected' : ''}>In Progress</option>
-          <option value="resolved" ${t.status === 'resolved' ? 'selected' : ''}>Resolved</option>
-        </select>
-      </td>
-      <td>
-        <button class="btn-action view" onclick="viewTicket('${t.id}')">View</button>
-      </td>
-    </tr>
-  `).join('');
-}
-
-function filterTicketsByType(type) {
-  renderTickets(type ? allTickets.filter(t => t.type === type) : allTickets);
-}
-
-function filterTicketsByStatus(status) {
-  renderTickets(status ? allTickets.filter(t => t.status === status) : allTickets);
-}
-
-async function updateTicketStatus(id, status) {
-  await dbClient.from('support_tickets').update({ status }).eq('id', id);
-  showToast('Status updated!', 'success');
-  await loadTickets();
-}
-
-function viewTicket(id) {
-  const t = allTickets.find(t => t.id === id);
-  if (!t) return;
-  alert(`From: ${t.user_name} (${t.user_email})\n\nSubject: ${t.subject}\n\n${t.message}`);
-}
-
-// ── DELETE USER ───────────────────────────────────────────────
-let deleteUserTarget = null;
-
-function deleteUser(userId, name) {
-  const user = allUsers.find(u => u.id === userId);
-  const email = user?.email || '';
-
-  deleteUserTarget = { id: userId, name, email };
-
-  document.getElementById('deleteUserName').textContent = name || 'this user';
-  document.getElementById('deleteUserEmailHint').textContent = email || userId;
-  document.getElementById('deleteUserConfirmInput').value = '';
-  document.getElementById('deleteUserConfirmInput').placeholder = email || userId;
-  document.getElementById('deleteUserConfirmInput').classList.remove('match');
-  document.getElementById('deleteUserConfirmBtn').disabled = true;
-  document.getElementById('deleteUserConfirmBtn').textContent = 'Delete account';
-
-  // Say what is actually about to be lost, rather than a generic warning.
-  const warn = document.getElementById('deleteUserWarn');
+function deleteUser(u){
+  const name = fullName(u) || u.email || 'this user', expected = (u.email || u.id).toLowerCase();
   const notes = [];
-  if (user?.status === 'invited') {
-    notes.push('This invite has not been accepted yet — deleting cancels it, and any link already emailed stops working.');
-  }
-  if (user?.last_login) {
-    notes.push(`Last signed in ${formatDate(user.last_login)}. Suspending keeps their history and can be undone.`);
-  } else if (user?.status !== 'invited') {
-    notes.push('This account has never signed in.');
-  }
-  if (notes.length) {
-    warn.innerHTML = notes.join('<br/>');
-    warn.classList.remove('hidden');
-  } else {
-    warn.classList.add('hidden');
-  }
-
-  document.getElementById('deleteUserModal').classList.remove('hidden');
-  setTimeout(() => document.getElementById('deleteUserConfirmInput').focus(), 50);
+  if(u.status === 'invited') notes.push('This invite hasn’t been accepted yet. Deleting cancels it, and any link already emailed stops working.');
+  if(u.last_login) notes.push(`Last signed in ${formatDate(u.last_login)}. Suspending keeps their history and can be undone.`);
+  else if(u.status !== 'invited') notes.push('This account has never signed in.');
+  openModal({ title:`Delete ${name}?`, icon:'danger', kind:'danger',
+    html:`<p>Their login, profile and company membership are removed for good. Work they created stays, but is no longer linked to an account. There is no undo.</p>
+      ${notes.length ? `<div class="warn-box">${notes.map(esc).join('<br>')}</div>` : ''}
+      <label class="fld"><span>Type <strong>${esc(u.email || u.id)}</strong> to confirm</span><input class="in" id="delConfirm" autocomplete="off" spellcheck="false" placeholder="${esc(u.email || u.id)}"></label>`,
+    onOpen: box => { const i = box.querySelector('#delConfirm'), b = box.querySelector('#delBtn'); i.oninput = () => { const ok = i.value.trim().toLowerCase() === expected; i.classList.toggle('match', ok); b.disabled = !ok; }; },
+    actions:[{ label:'Cancel' }, { label:'Delete account', kind:'danger', id:'delBtn', disabled:true, busy:'Deleting…', onClick: async close => {
+      await edgeFn('delete-user', { user_id:u.id });         /* the login first: if this fails nothing else is touched */
+      await dbClient.from('company_members').delete().eq('user_id', u.id);
+      await dbClient.from('profiles').delete().eq('id', u.id);
+      await logActivity('delete', 'user', u.id, `Deleted user: ${u.email || name}`);
+      close(); showToast(`${name} deleted.`); await Promise.all([loadUsers(), loadAdminOrgs()]); renderDashboard();
+    } }] });
+}
+$('addUserBtn').onclick = () => {
+  const orgs = D.orgs.filter(o => o.status !== 'suspended');
+  openModal({ title:'Invite a user', icon:'user',
+    html:`<div class="grid2"><label class="fld"><span>First name <em>*</em></span><input class="in" id="nuFirst" autocomplete="off"></label><label class="fld"><span>Last name <em>*</em></span><input class="in" id="nuLast" autocomplete="off"></label></div>
+      <label class="fld"><span>Email <em>*</em></span><input class="in" id="nuEmail" type="email" placeholder="name@company.com" autocomplete="off"></label>
+      <label class="fld"><span>Position</span><input class="in" id="nuPos" placeholder="e.g. Procurement manager"></label>
+      <div class="grid2"><label class="fld"><span>Company <em>*</em></span><select class="in" id="nuCompany"><option value="">${orgs.length ? 'Choose a company' : 'No active companies yet'}</option>${orgs.map(o => `<option value="${esc(o.id)}">${esc(o.company_name)}${o.company_code ? ` (${esc(o.company_code)})` : ''}</option>`).join('')}</select></label>
+      <label class="fld"><span>Role</span><select class="in" id="nuRole"><option value="user">User</option><option value="admin">Administrator</option></select></label></div>
+      <p style="margin-top:12px;font-size:12px">They get an email to set their own password. Use an address they can open; you can’t sign in for them.</p>`,
+    actions:[{ label:'Cancel' }, { label:'Send invite', kind:'primary', busy:'Sending…', onClick: async (close, box) => {
+      const v = id => box.querySelector('#' + id).value.trim();
+      const email = v('nuEmail').toLowerCase(), first = v('nuFirst'), last = v('nuLast'), company = v('nuCompany'), role = v('nuRole'), position = v('nuPos');
+      if(!first || !last){ showToast('First and last name are required.', 'error'); return false; }
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(email)){ showToast('That doesn’t look like a valid email address.', 'error'); return false; }
+      if(D.users.some(u => (u.email || '').toLowerCase() === email)){ showToast('Someone with that email already has an account.', 'error'); return false; }
+      if(!company){ showToast('Choose a company. Every user belongs to an organisation.', 'error'); return false; }
+      const result = await edgeFn('create-user', { email, first_name:first, last_name:last, role, company_id:company, position });
+      await addMembership(company, result.user_id);
+      await logActivity('invite', 'user', result.user_id, `Invited user: ${email}`);
+      close(); showToast(`Invite sent to ${email}.`); await Promise.all([loadUsers(), loadAdminOrgs()]); renderDashboard();
+    } }] });
+};
+/* company membership, without a duplicate if the edge function already added it */
+async function addMembership(companyId, userId){
+  if(!companyId || !userId) return;
+  const { data } = await dbClient.from('company_members').select('id').eq('company_id', companyId).eq('user_id', userId).limit(1);
+  if(data && data.length) return;
+  await dbClient.from('company_members').insert({ company_id:companyId, user_id:userId, company_role:'member', status:'active' });
 }
 
-function validateDeleteConfirm() {
-  if (!deleteUserTarget) return;
-  const input = document.getElementById('deleteUserConfirmInput');
-  const expected = (deleteUserTarget.email || deleteUserTarget.id).toLowerCase();
-  const match = input.value.trim().toLowerCase() === expected;
-  input.classList.toggle('match', match);
-  document.getElementById('deleteUserConfirmBtn').disabled = !match;
+/* ── ACCESS REQUESTS ───────────────────────────────────────── */
+const FREE_MAIL = ['gmail.com','yahoo.com','hotmail.com','outlook.com','icloud.com','live.com','aol.com','proton.me','protonmail.com'];
+async function loadAccessRequests(){
+  const { data, error } = await dbClient.from('access_requests').select('*').order('created_at', { ascending:false });
+  if(error){ console.error('Requests:', error); $('requestsTableBody').innerHTML = '<tr><td colspan="6" class="loading-cell">Couldn’t load requests.</td></tr>'; D.requests = []; updateBadges(); return; }
+  D.requests = data || []; renderRequests(); updateBadges();
 }
-
-function closeDeleteUserModal() {
-  deleteUserTarget = null;
-  document.getElementById('deleteUserModal').classList.add('hidden');
-}
-
-async function confirmDeleteUser() {
-  if (!deleteUserTarget) return;
-  const { id: userId, name } = deleteUserTarget;
-
-  const btn = document.getElementById('deleteUserConfirmBtn');
-  btn.disabled = true;
-  btn.textContent = 'Deleting...';
-
-  try {
-    const { data: { session } } = await dbClient.auth.getSession();
-
-    // Delete the auth user FIRST. If this fails, the profile row is still
-    // there and the account is still reachable — a clean failure. Doing it
-    // last leaves a login with no profile, which is how orphaned accounts
-    // accumulate.
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/delete-user`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ user_id: userId })
-    });
-
-    const result = await response.json();
-    if (!response.ok || result.error) {
-      throw new Error(result.error || 'Could not delete the login account.');
-    }
-
-    await dbClient.from('company_members').delete().eq('user_id', userId);
-    await dbClient.from('profiles').delete().eq('id', userId);
-
-    await logActivity('delete', 'user', userId, `Deleted user: ${name}`);
-    showToast(`${name} deleted.`, 'success');
-    closeDeleteUserModal();
-    await loadUsers();
-    await loadStats();
-
-  } catch (err) {
-    showToast(err.message || 'Failed to delete user.', 'error');
-    const btn = document.getElementById('deleteUserConfirmBtn');
-    btn.disabled = false;
-    btn.textContent = 'Delete account';
-  }
-}
-// ── ACCESS REQUESTS ───────────────────────────────────────────
-let allRequests = [];
-let requestFilter = 'pending';
-let approveTarget = null;
-let declineTarget = null;
-
-async function loadAccessRequests() {
-  const { data, error } = await dbClient
-    .from('access_requests')
-    .select('*')
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    console.error('Error loading access requests:', error);
-    document.getElementById('requestsTableBody').innerHTML =
-      '<tr><td colspan="6" class="loading-cell">Could not load requests.</td></tr>';
-    return;
-  }
-
-  allRequests = data || [];
-  renderRequests(allRequests.filter(r => !requestFilter || r.status === requestFilter));
-  updateRequestsBadge();
-}
-
-function updateRequestsBadge() {
-  const pending = allRequests.filter(r => r.status === 'pending').length;
-  const badge = document.getElementById('requestsBadge');
-  if (!badge) return;
-  badge.textContent = pending;
-  badge.classList.toggle('hidden', pending === 0);
-}
-
-function renderRequests(requests) {
-  const tbody = document.getElementById('requestsTableBody');
-
-  if (!requests.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">Nothing waiting for review.</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = requests.map(r => {
-    const name = [r.first_name, r.last_name].filter(Boolean).join(' ');
+function renderRequests(){
+  const f = F.requests;
+  const rows = D.requests.filter(r => (!f.status || r.status === f.status) && matches(f.q, fullName(r), r.email, r.company_name, r.position, r.reason));
+  $('requestsTableBody').innerHTML = rows.length ? capped(rows, 6, (r, i) => {
     const domain = (r.email || '').split('@')[1] || '';
-    const freeMail = ['gmail.com','yahoo.com','hotmail.com','outlook.com','icloud.com'].includes(domain);
-
-    return `
-    <tr>
-      <td>
-        <div class="user-cell">
-          <div class="user-mini-avatar" style="background:#1a6fdb">${(r.first_name || '?').charAt(0).toUpperCase()}</div>
-          <div>
-            <div class="user-mini-name">${escapeHtml(name)}</div>
-            <div class="user-mini-email">${escapeHtml(r.email)}${freeMail ? ' <span class="req-flag">personal address</span>' : ''}</div>
-          </div>
-        </div>
-      </td>
-      <td>${escapeHtml(r.company_name || '—')}<br/><span style="font-size:11px; color:#4a4e7a;">${escapeHtml(r.position || '')}</span></td>
-      <td class="req-reason" title="${escapeHtml(r.reason || '')}">${escapeHtml(r.reason || '')}</td>
-      <td>${formatDate(r.created_at)}</td>
-      <td>
-        <span class="status-pill ${r.status === 'approved' ? 'active' : (r.status === 'declined' ? 'suspended' : 'invited')}">
-          <span class="status-dot"></span>${r.status}
-        </span>
-      </td>
-      <td>
-        <div class="action-btns">
-          ${r.status === 'pending' ? `
-            <button class="btn-action activate" onclick="openApproveRequestModal('${r.id}')">Approve</button>
-            <button class="btn-action suspend" onclick="openDeclineRequestModal('${r.id}')">Decline</button>
-          ` : `<span style="color:#4a4e7a; font-size:11px;">${r.reviewed_at ? formatDate(r.reviewed_at) : '—'}</span>`}
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
+    const st = r.status === 'approved' ? 'green' : r.status === 'declined' ? 'red' : 'amber';
+    return `<tr style="animation-delay:${Math.min(i, 15) * 18}ms" data-req="${esc(r.id)}">
+      <td><div class="user-cell"><span class="user-mini-avatar">${esc(initials(fullName(r), r.email))}</span><div><div class="user-mini-name">${esc(fullName(r) || '—')}</div><div class="user-mini-email">${esc(r.email)}${FREE_MAIL.includes(domain.toLowerCase()) ? '<span class="req-flag">personal address</span>' : ''}</div></div></div></td>
+      <td><span class="ink">${esc(r.company_name || '—')}</span><div class="dim">${esc(r.position || '')}</div></td>
+      <td><div class="req-reason" title="${esc(r.reason || '')}">${esc(r.reason || '—')}</div></td>
+      <td class="dim">${timeAgo(r.created_at)}</td>
+      <td><span class="pill ${st}"><i></i>${esc(r.status)}</span></td>
+      <td>${r.status === 'pending' ? `<div class="action-btns"><button class="btn-action good" data-act="approve">Approve</button><button class="btn-action bad" data-act="decline">Decline</button></div>`
+        : `<span class="dim">${r.reviewed_at ? formatDate(r.reviewed_at, false) : '—'}${r.review_note ? ` · ${esc(r.review_note)}` : ''}</span>`}</td></tr>`; })
+    : `<tr><td colspan="6" class="loading-cell">${f.status === 'pending' ? 'Nothing waiting for review.' : 'No requests here.'}</td></tr>`;
+}
+$('requestsTableBody').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if(!b) return;
+  const r = D.requests.find(x => x.id === b.closest('[data-req]').dataset.req); if(!r) return;
+  (b.dataset.act === 'approve' ? approveRequest : declineRequest)(r);
+});
+function approveRequest(r){
+  const typed = (r.company_name || '').trim().toLowerCase();
+  const orgs = D.orgs.filter(o => o.status === 'active');
+  const guess = typed ? orgs.find(o => (o.company_name || '').toLowerCase() === typed) || orgs.find(o => (o.company_name || '').toLowerCase().includes(typed) || typed.includes((o.company_name || '').toLowerCase())) : null;
+  openModal({ title:`Approve ${fullName(r) || r.email}?`, icon:'ok',
+    html:`<p>This creates their account and emails an invite to <strong>${esc(r.email)}</strong>. They choose their own password from that link.</p>
+      ${typed ? `<div class="warn-box">They wrote their company as <strong>${esc(r.company_name)}</strong>. Check it matches the organisation below.</div>` : ''}
+      <label class="fld"><span>Company <em>*</em></span><select class="in" id="arCompany"><option value="">Choose a company</option>${orgs.map(o => `<option value="${esc(o.id)}" ${guess && guess.id === o.id ? 'selected' : ''}>${esc(o.company_name)}</option>`).join('')}</select></label>
+      <label class="fld"><span>Role</span><select class="in" id="arRole"><option value="user">User</option></select></label>`,
+    actions:[{ label:'Cancel' }, { label:'Approve and invite', kind:'primary', busy:'Inviting…', onClick: async (close, box) => {
+      const companyId = box.querySelector('#arCompany').value, role = box.querySelector('#arRole').value;
+      if(!companyId){ showToast('Choose a company first.', 'error'); return false; }
+      const result = await edgeFn('create-user', { email:r.email, first_name:r.first_name, last_name:r.last_name, position:r.position, company_id:companyId, role });
+      /* only marked approved once the invite went out */
+      await dbClient.from('access_requests').update({ status:'approved', reviewed_by:ME.id, reviewed_at:new Date().toISOString() }).eq('id', r.id);
+      await addMembership(companyId, result.user_id);
+      await logActivity('approve', 'access_request', r.id, `Approved access for ${r.email}`);
+      close(); showToast(`Invite sent to ${r.email}.`); await Promise.all([loadAccessRequests(), loadUsers(), loadAdminOrgs()]); renderDashboard();
+    } }] });
+}
+function declineRequest(r){
+  openModal({ title:`Decline ${fullName(r) || r.email}?`, icon:'warning', kind:'warning',
+    html:`<p>No account is created and no email is sent. The request stays on file, so the same address can’t apply again unnoticed.</p>
+      <label class="fld"><span>Internal note (optional)</span><input class="in" id="drNote" placeholder="e.g. no known contact at this company"></label>`,
+    actions:[{ label:'Cancel' }, { label:'Decline', kind:'danger', busy:'Saving…', onClick: async (close, box) => {
+      const note = box.querySelector('#drNote').value.trim();
+      const { error } = await dbClient.from('access_requests').update({ status:'declined', reviewed_by:ME.id, reviewed_at:new Date().toISOString(), review_note:note || null }).eq('id', r.id);
+      if(error) throw error;
+      await logActivity('decline', 'access_request', r.id, `Declined access for ${r.email}`);
+      close(); showToast('Request declined.'); await loadAccessRequests(); renderDashboard();
+    } }] });
 }
 
-function filterRequests(query) {
-  const q = query.toLowerCase();
-  const base = allRequests.filter(r => !requestFilter || r.status === requestFilter);
-  renderRequests(base.filter(r =>
-    (r.first_name || '').toLowerCase().includes(q) ||
-    (r.last_name || '').toLowerCase().includes(q) ||
-    (r.email || '').toLowerCase().includes(q) ||
-    (r.company_name || '').toLowerCase().includes(q)
-  ));
+/* ── ORGANISATIONS ─────────────────────────────────────────── */
+async function loadAdminOrgs(){
+  const [orgs, members, prods] = await Promise.all([
+    dbClient.from('companies').select('*').order('created_at', { ascending:false }),
+    fetchAll(() => dbClient.from('company_members').select('company_id')),
+    fetchAll(() => dbClient.from('products').select('company_id').is('deleted_at', null))]);
+  if(orgs.error){ $('orgsTableBody').innerHTML = `<tr><td colspan="7" class="loading-cell">Couldn’t load organisations.</td></tr>`; return; }
+  const tally = rows => rows.reduce((m, r) => (m[r.company_id] = (m[r.company_id] || 0) + 1, m), {});
+  const mc = tally(members), pc = tally(prods);
+  D.orgs = (orgs.data || []).map(o => ({ ...o, memberCount:mc[o.id] || 0, productCount:pc[o.id] || 0 }));
+  renderOrgs();
 }
-
-function filterRequestsByStatus(status) {
-  requestFilter = status;
-  renderRequests(status ? allRequests.filter(r => r.status === status) : allRequests);
-}
-
-// ── APPROVE ───────────────────────────────────────────────────
-async function openApproveRequestModal(requestId) {
-  const req = allRequests.find(r => r.id === requestId);
-  if (!req) return;
-  approveTarget = req;
-
-  document.getElementById('approveReqName').textContent =
-    [req.first_name, req.last_name].filter(Boolean).join(' ');
-  document.getElementById('approveReqEmail').textContent = req.email;
-
-  // Surface what they typed as their company, since the admin has to map it
-  // onto a real organisation record and the two rarely match exactly.
-  const warn = document.getElementById('approveReqWarn');
-  warn.innerHTML = `They wrote their company as <strong>${escapeHtml(req.company_name)}</strong>. Check this matches the organisation you pick below.`;
-  warn.classList.remove('hidden');
-
-  // Reuse the company list the Add User modal already loads
-  const select = document.getElementById('approveReqCompany');
-  select.innerHTML = '<option value="">Select company...</option>';
-  const { data: companies } = await dbClient
-    .from('companies')
-    .select('id, company_name')
-    .eq('status', 'active')
-    .order('company_name');
-
-  (companies || []).forEach(c => {
-    const opt = document.createElement('option');
-    opt.value = c.id;
-    opt.textContent = c.company_name;
-    // Pre-select if the typed name is a close match
-    if ((c.company_name || '').toLowerCase().includes((req.company_name || '').toLowerCase())) {
-      opt.selected = true;
-    }
-    select.appendChild(opt);
-  });
-
-  document.getElementById('approveReqBtn').disabled = false;
-  document.getElementById('approveReqBtn').textContent = 'Approve and invite';
-  document.getElementById('approveRequestModal').classList.remove('hidden');
-}
-
-function closeApproveRequestModal() {
-  approveTarget = null;
-  document.getElementById('approveRequestModal').classList.add('hidden');
-}
-
-async function confirmApproveRequest() {
-  if (!approveTarget) return;
-
-  const companyId = document.getElementById('approveReqCompany').value;
-  const role = document.getElementById('approveReqRole').value;
-
-  if (!companyId) { showToast('Select a company first.', 'error'); return; }
-
-  const btn = document.getElementById('approveReqBtn');
-  btn.disabled = true;
-  btn.textContent = 'Inviting...';
-
-  try {
-    const { data: { session } } = await dbClient.auth.getSession();
-
-    // Same endpoint the Add User modal uses — the invite email and the
-    // set-password link come from there, so there is one path into the system.
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/create-user`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({
-        email: approveTarget.email,
-        first_name: approveTarget.first_name,
-        last_name: approveTarget.last_name,
-        position: approveTarget.position,
-        company_id: companyId,
-        role
-      })
-    });
-
-    const result = await response.json();
-    if (!response.ok || result.error) {
-      throw new Error(result.error || 'Could not send the invite.');
-    }
-
-    // Only mark approved once the invite actually went out, so a failed
-    // send leaves the request in the queue rather than silently closing it.
-    await dbClient.from('access_requests').update({
-      status: 'approved',
-      reviewed_by: session.user.id,
-      reviewed_at: new Date().toISOString()
-    }).eq('id', approveTarget.id);
-
-    if (result.user_id) {
-      await dbClient.from('company_members').insert({
-        company_id: companyId,
-        user_id: result.user_id,
-        company_role: 'member',
-        status: 'active'
-      });
-    }
-
-    await logActivity('approve', 'access_request', approveTarget.id,
-      `Approved access for ${approveTarget.email}`);
-    showToast(`Invite sent to ${approveTarget.email}.`, 'success');
-
-    closeApproveRequestModal();
-    await loadAccessRequests();
-    await loadUsers();
-
-  } catch (err) {
-    showToast(err.message || 'Could not approve this request.', 'error');
-    btn.disabled = false;
-    btn.textContent = 'Approve and invite';
+async function fetchAll(make){
+  const out = [];
+  for(let from = 0; ; from += 1000){
+    const { data, error } = await make().range(from, from + 999);
+    if(error || !data) break; out.push(...data); if(data.length < 1000) break;
   }
+  return out;
+}
+function renderOrgs(){
+  const f = F.organisations;
+  const rows = D.orgs.filter(o => (!f.status || o.status === f.status) && matches(f.q, o.company_name, o.country, o.industry, o.email, o.company_code));
+  $('orgsTableBody').innerHTML = rows.length ? capped(rows, 7, (o, i) => {
+    const st = o.status === 'active' ? 'green' : o.status === 'suspended' ? 'red' : 'amber';
+    return `<tr style="animation-delay:${Math.min(i, 15) * 18}ms" data-org="${esc(o.id)}">
+      <td><div class="user-cell"><span class="org-dot">${safeUrl(o.photo_url) ? `<img src="${esc(o.photo_url)}" alt="">` : esc((o.company_name || 'O').charAt(0).toUpperCase())}</span><div><div class="user-mini-name">${esc(o.company_name || '—')}</div><div class="user-mini-email">${esc(o.email || o.company_code || '')}</div></div></div></td>
+      <td class="dim">${esc(o.industry || '—')}</td><td class="dim">${esc(o.country || '—')}</td>
+      <td class="ink">${o.memberCount}</td><td class="ink">${o.productCount}</td>
+      <td><span class="pill ${st}"><i></i>${esc(o.status || '—')}</span></td>
+      <td><div class="action-btns"><button class="btn-action ${o.status === 'suspended' ? 'good' : 'bad'}" data-act="${o.status === 'suspended' ? 'activate' : 'suspend'}">${o.status === 'suspended' ? 'Activate' : 'Suspend'}</button><button class="btn-action bad" data-act="delete">Delete</button></div></td></tr>`; })
+    : `<tr><td colspan="7" class="loading-cell">${D.orgs.length ? 'No organisations match.' : 'No organisations yet.'}</td></tr>`;
+}
+$('orgsTableBody').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if(!b) return;
+  const o = D.orgs.find(x => x.id === b.closest('[data-org]').dataset.org); if(!o) return;
+  if(b.dataset.act === 'delete') deleteOrg(o); else setOrgStatus(o, b.dataset.act === 'suspend' ? 'suspended' : 'active');
+});
+async function setOrgStatus(o, status){
+  const suspend = status === 'suspended';
+  if(!await confirmModal({ title:`${suspend ? 'Suspend' : 'Activate'} ${o.company_name}?`, ok: suspend ? 'Suspend' : 'Activate', kind: suspend ? 'danger' : 'primary', icon: suspend ? 'warning' : 'ok',
+    html: suspend ? `<p>The organisation is marked suspended. Its ${o.memberCount} member${o.memberCount === 1 ? '' : 's'} keep their logins; suspend them under Users if they should lose access too.</p>` : '<p>The organisation is marked active again.</p>' })) return;
+  const { error } = await dbClient.from('companies').update({ status }).eq('id', o.id);
+  if(error){ showToast('Couldn’t update: ' + error.message, 'error'); return; }
+  await logActivity(suspend ? 'suspend' : 'activate', 'company', o.id, `${suspend ? 'Suspended' : 'Activated'} ${o.company_name}`);
+  showToast(`Organisation ${suspend ? 'suspended' : 'activated'}.`); await loadAdminOrgs(); renderDashboard();
+}
+function deleteOrg(o){
+  const memberIds = () => D.users.filter(u => u.company_id === o.id).map(u => u.id);
+  openModal({ title:`Delete ${o.company_name}?`, icon:'danger', kind:'danger',
+    html:`<p>Before anything is removed, a JSON copy of the company, its members, products and certificates is saved under Company archives.</p>
+      <div class="warn-box">This deletes <strong>${o.memberCount} member account${o.memberCount === 1 ? '' : 's'}</strong> (their logins too), moves <strong>${o.productCount} product${o.productCount === 1 ? '' : 's'}</strong> to Trash and removes the organisation. There is no undo.</div>
+      <label class="fld"><span>Type <strong>${esc(o.company_name)}</strong> to confirm</span><input class="in" id="doConfirm" autocomplete="off" spellcheck="false"></label>`,
+    onOpen: box => { const i = box.querySelector('#doConfirm'), b = box.querySelector('#doBtn'); i.oninput = () => { const ok = i.value.trim() === (o.company_name || '').trim(); i.classList.toggle('match', ok); b.disabled = !ok; }; },
+    actions:[{ label:'Cancel' }, { label:'Archive and delete', kind:'danger', id:'doBtn', disabled:true, busy:'Archiving…', onClick: async close => {
+      /* 1. archive */
+      const [company, members, products, certs, logs] = await Promise.all([
+        dbClient.from('companies').select('*').eq('id', o.id).maybeSingle(),
+        dbClient.from('company_members').select('*, profiles:user_id(*)').eq('company_id', o.id),
+        dbClient.from('products').select('*').eq('company_id', o.id),
+        dbClient.from('organisation_certifications').select('*').eq('company_id', o.id),
+        dbClient.from('activity_logs').select('*').eq('resource', 'company').eq('resource_id', o.id)]);
+      const archive = { archived_at:new Date().toISOString(), archived_by:ME.email, company:company.data, members:members.data || [], products:products.data || [], certifications:certs.data || [], activity_logs:logs.data || [] };
+      const path = `${o.id}_${Date.now()}.json`;
+      const up = await dbClient.storage.from('company-archives').upload(path, new Blob([JSON.stringify(archive, null, 2)], { type:'application/json' }));
+      if(up.error) throw new Error('The archive couldn’t be saved, so nothing was deleted. ' + up.error.message);
+      await dbClient.from('company_archives').insert({ company_id:o.id, company_name:o.company_name, deleted_by:ME.id, archive_url:path, user_count:o.memberCount, product_count:o.productCount });
+      /* 2. products to trash */
+      await dbClient.from('products').update({ deleted_at:new Date().toISOString() }).eq('company_id', o.id).is('deleted_at', null);
+      /* 3. member accounts: login first, then profile (never your own) */
+      const ids = [...new Set([...(members.data || []).map(m => m.user_id), ...memberIds()])].filter(id => id && id !== ME.id);
+      const failed = [];
+      for(const id of ids){
+        try{ await edgeFn('delete-user', { user_id:id }); await dbClient.from('profiles').delete().eq('id', id); }
+        catch(e){ failed.push(id); }
+      }
+      await dbClient.from('company_members').delete().eq('company_id', o.id);
+      /* 4. the organisation */
+      const del = await dbClient.from('companies').delete().eq('id', o.id);
+      if(del.error) throw new Error('Archived, but the organisation couldn’t be deleted: ' + del.error.message);
+      await logActivity('delete', 'company', o.id, `Deleted company with archive: ${o.company_name}`);
+      close();
+      showToast(failed.length ? `${o.company_name} deleted. ${failed.length} login${failed.length === 1 ? '' : 's'} couldn’t be removed; check Users.` : `${o.company_name} archived and deleted.`, failed.length ? 'error' : 'success');
+      await loadAll();
+    } }] });
 }
 
-// ── DECLINE ───────────────────────────────────────────────────
-function openDeclineRequestModal(requestId) {
-  const req = allRequests.find(r => r.id === requestId);
-  if (!req) return;
-  declineTarget = req;
+/* ── ARCHIVES ──────────────────────────────────────────────── */
+async function loadArchives(){
+  const { data } = await dbClient.from('company_archives').select('*').order('created_at', { ascending:false });
+  D.archives = data || []; renderArchives();
+}
+function renderArchives(){
+  const rows = D.archives.filter(a => matches(F.archives.q, a.company_name));
+  $('archivesTableBody').innerHTML = rows.length ? capped(rows, 5, (a, i) => `<tr style="animation-delay:${Math.min(i, 15) * 18}ms">
+      <td class="ink">${esc(a.company_name || '—')}</td><td class="dim">${formatDate(a.created_at)}</td><td>${a.user_count || 0}</td><td>${a.product_count || 0}</td>
+      <td>${a.archive_url ? `<button class="btn-action" data-arch="${esc(a.archive_url)}">Download JSON</button>` : '<span class="dim">No file</span>'}</td></tr>`)
+    : `<tr><td colspan="5" class="loading-cell">${D.archives.length ? 'No archives match.' : 'No archives yet.'}</td></tr>`;
+}
+$('archivesTableBody').addEventListener('click', async e => {
+  const b = e.target.closest('[data-arch]'); if(!b) return;
+  const v = b.dataset.arch;
+  /* older archives saved a public link; new ones save the file path and get a short-lived link */
+  if(/^https?:\/\//.test(v)){ window.open(v, '_blank', 'noopener'); return; }
+  const { data, error } = await dbClient.storage.from('company-archives').createSignedUrl(v, 120);
+  if(error){ showToast('Couldn’t open the archive: ' + error.message, 'error'); return; }
+  window.open(data.signedUrl, '_blank', 'noopener');
+});
 
-  document.getElementById('declineReqName').textContent =
-    [req.first_name, req.last_name].filter(Boolean).join(' ');
-  document.getElementById('declineReqNote').value = '';
-  document.getElementById('declineRequestModal').classList.remove('hidden');
+/* ── SUPPORT TICKETS ───────────────────────────────────────── */
+const isOpenTicket = t => !['resolved', 'closed'].includes(String(t.status || 'open'));
+async function loadTickets(){
+  const { data, error } = await dbClient.from('support_tickets').select('*').order('created_at', { ascending:false });
+  if(error){ $('ticketsTableBody').innerHTML = '<tr><td colspan="6" class="loading-cell">Couldn’t load tickets.</td></tr>'; D.tickets = []; updateBadges(); return; }
+  D.tickets = data || []; renderTickets(); updateBadges();
+}
+const STATUS_OPTS = [['open','Open'], ['in_progress','In progress'], ['resolved','Resolved']];
+const statusSelect = t => `<select class="status-sel" data-status aria-label="Status">${STATUS_OPTS.map(([v, l]) => `<option value="${v}" ${t.status === v ? 'selected' : ''}>${l}</option>`).join('')}${t.status && !STATUS_OPTS.some(([v]) => v === t.status) ? `<option selected>${esc(t.status)}</option>` : ''}</select>`;
+const typePill = t => t.type === 'report' ? '<span class="pill red">problem</span>' : '<span class="pill blue">question</span>';
+function renderTickets(){
+  const f = F.support;
+  const rows = D.tickets.filter(t => (!f.status || (t.status || 'open') === f.status) && (!f.type || t.type === f.type) && matches(f.q, t.user_name, t.user_email, t.subject, t.message));
+  $('ticketsTableBody').innerHTML = rows.length ? capped(rows, 6, (t, i) => `<tr style="animation-delay:${Math.min(i, 15) * 18}ms" data-tk="${esc(t.id)}">
+      <td><div class="user-mini-name">${esc(t.user_name || '—')}</div><div class="user-mini-email">${esc(t.user_email || '—')}</div></td>
+      <td>${typePill(t)}</td><td class="ink clip" title="${esc(t.subject || '')}">${esc(t.subject || '—')}</td>
+      <td class="dim">${timeAgo(t.created_at)}</td><td>${statusSelect(t)}</td>
+      <td><button class="btn-action" data-view>Open</button></td></tr>`)
+    : `<tr><td colspan="6" class="loading-cell">${D.tickets.length ? 'No tickets match.' : 'No tickets yet.'}</td></tr>`;
+}
+$('ticketsTableBody').addEventListener('change', e => { if(e.target.matches('[data-status]')) updateTicketStatus(e.target.closest('[data-tk]').dataset.tk, e.target.value); });
+$('ticketsTableBody').addEventListener('click', e => { if(e.target.closest('[data-view]')) viewTicket(e.target.closest('[data-tk]').dataset.tk); });
+async function updateTicketStatus(id, status){
+  const { error } = await dbClient.from('support_tickets').update({ status }).eq('id', id);
+  if(error){ showToast('Couldn’t update the status.', 'error'); await loadTickets(); return; }
+  const t = D.tickets.find(x => x.id === id); if(t) t.status = status;
+  await logActivity('update', 'support_ticket', id, `Ticket set to ${status}`);
+  showToast('Status updated.'); renderTickets(); updateBadges(); renderDashboard();
+}
+function viewTicket(id){
+  const t = D.tickets.find(x => String(x.id) === String(id)); if(!t) return;
+  const subj = String(t.subject || '').replace(/^\[[^\]]*\]\s*/, '');
+  const mailto = t.user_email ? `mailto:${encodeURIComponent(t.user_email)}?subject=${encodeURIComponent('Re: ' + subj)}` : '';
+  openModal({ title:t.subject || '(no subject)', icon:'mail', wide:true,
+    html:`<div class="kv"><span>From</span><span>${esc(t.user_name || '—')} · ${esc(t.user_email || '—')}</span><span>Type</span><span>${t.type === 'report' ? 'Problem report' : 'Question'}</span><span>Sent</span><span>${formatDate(t.created_at)}</span>
+      <span>Status</span><span>${statusSelect(t)}</span></div><div class="msg-box">${esc(t.message || '')}</div>`,
+    onOpen: box => box.querySelector('[data-status]').onchange = e => updateTicketStatus(t.id, e.target.value),
+    actions:[{ label:'Close' }, ...(mailto ? [{ label:'Reply by email', kind:'primary', onClick: close => { location.href = mailto; if(t.status === 'open') updateTicketStatus(t.id, 'in_progress'); close(); } }] : [])] });
 }
 
-function closeDeclineRequestModal() {
-  declineTarget = null;
-  document.getElementById('declineRequestModal').classList.add('hidden');
+/* ── PRODUCTS / SPECIES ────────────────────────────────────── */
+const userName = id => { const u = D.users.find(x => x.id === id); return u ? (fullName(u) || u.email) : (id ? `${String(id).slice(0, 8)}…` : '—'); };
+async function loadProducts(){
+  const { data, error } = await dbClient.from('products').select('id, product_name, brand, created_at, user_id').is('deleted_at', null).order('created_at', { ascending:false });
+  D.products = error ? [] : (data || []); renderProducts();
+}
+function renderProducts(){
+  const rows = D.products.filter(p => matches(F.products.q, p.product_name, p.brand, userName(p.user_id)));
+  $('productsTableBody').innerHTML = rows.length ? capped(rows, 5, (p, i) => `<tr style="animation-delay:${Math.min(i, 15) * 18}ms">
+      <td class="ink">${esc(p.product_name || '—')}</td><td>${esc(p.brand || '—')}</td><td class="dim">${esc(userName(p.user_id))}</td><td class="dim">${formatDate(p.created_at, false)}</td>
+      <td><a class="btn-action" href="product-detail.html?id=${encodeURIComponent(p.id)}" target="_blank" rel="noopener">Open</a></td></tr>`)
+    : `<tr><td colspan="5" class="loading-cell">${D.products.length ? 'No products match.' : 'No products yet.'}</td></tr>`;
+}
+async function loadSpecies(){
+  const { data, error } = await dbClient.from('species').select('id, species_name, scientific_name, created_at').is('deleted_at', null).order('created_at', { ascending:false });
+  D.species = error ? [] : (data || []); renderSpecies();
+}
+function renderSpecies(){
+  const rows = D.species.filter(s => matches(F.species.q, s.species_name, s.scientific_name));
+  $('speciesTableBody').innerHTML = rows.length ? capped(rows, 4, (s, i) => `<tr style="animation-delay:${Math.min(i, 15) * 18}ms">
+      <td class="ink">${esc(s.species_name || '—')}</td><td class="dim" style="font-style:italic">${esc(s.scientific_name || '—')}</td><td class="dim">${formatDate(s.created_at, false)}</td>
+      <td><a class="btn-action" href="species-detail.html?id=${encodeURIComponent(s.id)}" target="_blank" rel="noopener">Open</a></td></tr>`)
+    : `<tr><td colspan="4" class="loading-cell">${D.species.length ? 'No species match.' : 'No species yet.'}</td></tr>`;
 }
 
-async function confirmDeclineRequest() {
-  if (!declineTarget) return;
-  const note = document.getElementById('declineReqNote').value.trim();
+/* ── ACTIVITY ──────────────────────────────────────────────── */
+const ACTION_COLOR = { login:'green', access:'green', activate:'green', activate_user:'green', approve:'green', restore:'green', create:'blue', invite:'blue',
+  update:'amber', suspend:'red', suspend_user:'red', decline:'red', delete:'red', permanent_delete:'red', logout:'grey' };
+const actionPill = a => `<span class="pill ${ACTION_COLOR[a] || 'violet'}">${esc(String(a || '—').replace(/_/g, ' '))}</span>`;
+const logDetail = l => l.metadata?.details ?? (l.metadata ? JSON.stringify(l.metadata) : '');
+async function loadLogs(){
+  const { data, error } = await dbClient.from('activity_logs').select('*').order('created_at', { ascending:false }).limit(LOG_LIMIT);
+  D.logs = error ? [] : (data || []);
+  const acts = [...new Set(D.logs.map(l => l.action).filter(Boolean))].sort();
+  $('logsAction').innerHTML = '<option value="">All actions</option>' + acts.map(a => `<option value="${esc(a)}" ${F.activity.action === a ? 'selected' : ''}>${esc(a.replace(/_/g, ' '))}</option>`).join('');
+  renderLogs();
+}
+function renderLogs(){
+  const f = F.activity;
+  const rows = D.logs.filter(l => (!f.action || l.action === f.action) && matches(f.q, l.user_email, l.action, l.resource, logDetail(l)));
+  $('logsTableBody').innerHTML = rows.length ? capped(rows, 5, (l, i) => `<tr style="animation-delay:${Math.min(i, 15) * 12}ms">
+      <td class="dim" style="white-space:nowrap" title="${esc(formatDate(l.created_at))}">${timeAgo(l.created_at)}</td>
+      <td>${esc(l.user_email || l.user_id || '—')}</td><td>${actionPill(l.action)}</td><td class="dim">${esc(String(l.resource || '—').replace(/_/g, ' '))}</td>
+      <td class="dim clip" title="${esc(logDetail(l))}">${esc(logDetail(l) || '—')}</td></tr>`)
+    : `<tr><td colspan="5" class="loading-cell">${D.logs.length ? 'No entries match.' : 'No activity yet.'}</td></tr>`;
+}
 
-  try {
-    const { data: { session } } = await dbClient.auth.getSession();
-
-    const { error } = await dbClient.from('access_requests').update({
-      status: 'declined',
-      reviewed_by: session.user.id,
-      reviewed_at: new Date().toISOString(),
-      review_note: note || null
-    }).eq('id', declineTarget.id);
-
-    if (error) throw error;
-
-    await logActivity('decline', 'access_request', declineTarget.id,
-      `Declined access for ${declineTarget.email}`);
-    showToast('Request declined.', 'success');
-
-    closeDeclineRequestModal();
-    await loadAccessRequests();
-
-  } catch (err) {
-    showToast(err.message || 'Could not decline this request.', 'error');
+/* ── TRASH ─────────────────────────────────────────────────── */
+const daysLeft = d => Math.ceil((new Date(d).getTime() + TRASH_DAYS * 864e5 - Date.now()) / 864e5);
+async function loadTrash(){
+  const [p, s] = await Promise.all([
+    dbClient.from('products').select('id, product_name, brand, deleted_at, reminder').not('deleted_at', 'is', null).order('deleted_at', { ascending:false }),
+    dbClient.from('species').select('id, species_name, scientific_name, deleted_at, reminder').not('deleted_at', 'is', null).order('deleted_at', { ascending:false })]);
+  D.trash.products = p.data || []; D.trash.species = s.data || [];
+  renderTrash(); updateBadges();
+}
+function renderTrash(){
+  const f = F.trash;
+  $('trashProductsCard').classList.toggle('hidden', f.type === 'species');
+  $('trashSpeciesCard').classList.toggle('hidden', f.type === 'products');
+  const left = d => { const n = daysLeft(d); return `<span class="pill ${n <= 5 ? 'red' : 'amber'}">${n <= 0 ? 'today' : `${n} day${n === 1 ? '' : 's'}`}</span>`; };
+  const acts = `<div class="action-btns"><button class="btn-action good" data-act="restore">Restore</button><button class="btn-action bad" data-act="purge">Delete for good</button></div>`;
+  const P = D.trash.products.filter(p => matches(f.q, p.product_name, p.brand));
+  const S = D.trash.species.filter(s => matches(f.q, s.species_name, s.scientific_name));
+  $('trashProductCount').textContent = `${P.length} item${P.length === 1 ? '' : 's'}`;
+  $('trashSpeciesCount').textContent = `${S.length} item${S.length === 1 ? '' : 's'}`;
+  $('trashProductsBody').innerHTML = P.length ? capped(P, 6, p => `<tr data-kind="products" data-id="${esc(p.id)}"><td class="ink">${esc(p.product_name || '—')}</td><td>${esc(p.brand || '—')}</td><td class="dim">${formatDate(p.deleted_at, false)}</td><td>${left(p.deleted_at)}</td><td class="dim">${p.reminder ? 'Yes' : '—'}</td><td>${acts}</td></tr>`)
+    : '<tr><td colspan="6" class="loading-cell">No deleted products.</td></tr>';
+  $('trashSpeciesBody').innerHTML = S.length ? capped(S, 6, s => `<tr data-kind="species" data-id="${esc(s.id)}"><td class="ink">${esc(s.species_name || '—')}</td><td class="dim" style="font-style:italic">${esc(s.scientific_name || '—')}</td><td class="dim">${formatDate(s.deleted_at, false)}</td><td>${left(s.deleted_at)}</td><td class="dim">${s.reminder ? 'Yes' : '—'}</td><td>${acts}</td></tr>`)
+    : '<tr><td colspan="6" class="loading-cell">No deleted species.</td></tr>';
+}
+$('section-trash').addEventListener('click', async e => {
+  const b = e.target.closest('[data-act]'); if(!b) return;
+  const tr = b.closest('[data-kind]'), kind = tr.dataset.kind, id = tr.dataset.id;
+  const item = D.trash[kind].find(x => String(x.id) === id); if(!item) return;
+  const name = kind === 'products' ? item.product_name : item.species_name, noun = kind === 'products' ? 'product' : 'species';
+  if(b.dataset.act === 'restore'){
+    const { error } = await dbClient.from(kind).update({ deleted_at:null, reminder:false }).eq('id', id);
+    if(error){ showToast('Couldn’t restore.', 'error'); return; }
+    await logActivity('restore', noun, id, `${name} restored from Trash`);
+    showToast(`${name || 'Item'} restored.`);
+  } else {
+    if(!await confirmModal({ title:`Delete ${name || 'this ' + noun} for good?`, html:`<p>The ${noun}${kind === 'products' ? ' and its allergens, nutrition and artwork' : ''} are removed permanently. This can’t be undone.</p>`, ok:'Delete for good' })) return;
+    if(kind === 'products'){
+      await Promise.all(['product_allergens', 'product_nutrition', 'product_artwork'].map(t => dbClient.from(t).delete().eq('product_id', id)));
+    }
+    const { error } = await dbClient.from(kind).delete().eq('id', id);
+    if(error){ showToast('Couldn’t delete: ' + error.message, 'error'); return; }
+    await logActivity('permanent_delete', noun, id, `${name} permanently deleted`);
+    showToast(`${name || 'Item'} deleted for good.`);
   }
-}
+  await Promise.all([loadTrash(), kind === 'products' ? loadProducts() : loadSpecies()]); renderDashboard();
+});
 
-// Escape anything a stranger typed before it reaches innerHTML.
-function escapeHtml(str) {
-  return String(str ?? '').replace(/[&<>"']/g, c => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-  })[c]);
+/* ── BADGES / RENDER MAP ───────────────────────────────────── */
+function updateBadges(){
+  const set = (id, n) => { const b = $(id); b.textContent = n; b.classList.toggle('hidden', !n); };
+  set('requestsBadge', D.requests.filter(r => r.status === 'pending').length);
+  set('ticketsBadge', D.tickets.filter(isOpenTicket).length);
+  set('trashBadge', D.trash.products.length + D.trash.species.length);
 }
+const RENDER = { dashboard:renderDashboardSearch, users:renderUsers, requests:renderRequests, organisations:renderOrgs, support:renderTickets,
+                 products:renderProducts, species:renderSpecies, activity:renderLogs, archives:renderArchives, trash:renderTrash };
+document.addEventListener('keydown', e => {
+  if(e.key === '/' && !/input|textarea|select/i.test(document.activeElement.tagName) && !document.querySelector('.modal-overlay')){ e.preventDefault(); $('globalSearch').focus(); }
+});
