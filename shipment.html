@@ -1122,12 +1122,14 @@ function levelOf(p){
   if(/^(details\.type$|lg\.(loadBasis|loadType|incoterm)$|lg\.(sea|air|truck)\.|dep\.scheduled$|arr\.scheduled$)/.test(p)) return 1;
   return 0;
 }
-const STAGE_EXTRA = [/^dep\.scheduled$/, /^arr\.scheduled$/, /^dep\.actual$/, /^lines\.\d+\.batch$/];
+const STAGE_EXTRA = [/^lines\.\d+\.batch$/];
+/* never required, at any stage: ports, shipment mode, vessels / flights / trucks, transhipment points */
+const NEVER_REQ = /^(dep\.port|arr\.port|lg\.mode|lg\.(sea\.vessels|air\.flights|truck\.trucks|sea\.transhipmentPorts|air\.transhipmentAirports|truck\.transfers)\.\d+|lg\.(sea|air|truck)\.shipMode)$/;
 const stageReq = p => !!p && STAGE_EXTRA.some(r=>r.test(p));
 const need = (p, ok) => levelOf(p) > REQ_AT || !!ok;          /* not needed yet, or filled */
 function withLevel(l, fn){ const k = REQ_AT; REQ_AT = l; try{ return fn(); } finally { REQ_AT = k; } }
 function field(label, ctl, o={}){
-  const wants = o.req || stageReq(o.path), lvl = o.path ? levelOf(o.path) : 0;
+  const wants = (o.req || stageReq(o.path)) && !(o.path && NEVER_REQ.test(o.path)), lvl = o.path ? levelOf(o.path) : 0;
   const isReq = wants && lvl <= REQ_AT;
   const later = wants && lvl > REQ_AT ? `<span class="stg-tag" title="Needed once the shipment is ${STAGE_LBL[STAGES[lvl]].toLowerCase()}">${STAGE_LBL[STAGES[lvl]]}</span>` : "";
   const nextUp = isReq && lvl > 0 && lvl > curStage();
@@ -2187,13 +2189,11 @@ function lgCompact(){
 function lgReq(){
   const L = S.lg;
   const optionalLoad = L.mode==="Sea" && L.loadBasis==="LCL";
-  const r = [!!L.mode, need("lg.loadBasis", L.loadBasis), need("lg.loadType", optionalLoad || L.loadType), need("lg.incoterm", L.incoterm)];
-  if(L.mode==="Sea"){ const s = L.sea; r.push(need("lg.sea.shippingLine", s.shippingLine), need("lg.sea.vessels", s.vessels[s.vessels.length-1].trim()), need("lg.sea.shipMode", s.shipMode),
-    need("lg.sea.container.containerNo", s.container.containerNo.trim()), need("lg.sea.container.sealNo", s.container.sealNo.trim()), need("lg.sea.blNo", s.blNo.trim()), need("lg.sea.blDate", s.blDate));
-    if(s.shipMode==="Transhipment") r.push(need("lg.sea.transhipmentPorts", s.transhipmentPorts[0])); }
-  if(L.mode==="Air"){ const a = L.air; r.push(need("lg.air.airline", a.airline), need("lg.air.flights", a.flights[0].trim()), need("lg.air.shipMode", a.shipMode), need("lg.air.awbNo", a.awbNo.trim()), need("lg.air.awbDate", a.awbDate));
-    if(a.shipMode==="Transhipment") r.push(need("lg.air.transhipmentAirports", a.transhipmentAirports[0].trim())); }
-  if(L.mode==="Truck"){ const t = L.truck; r.push(need("lg.truck.trucks", t.trucks[0].trim()), need("lg.truck.shipMode", t.shipMode)); if(t.shipMode==="Transhipment") r.push(need("lg.truck.transfers", t.transfers[0].trim())); }
+  const r = L.mode ? [need("lg.loadBasis", L.loadBasis), need("lg.loadType", optionalLoad || L.loadType), need("lg.incoterm", L.incoterm)] : [need("lg.incoterm", L.incoterm)];
+  /* ports, mode, vessels / flights / trucks and transhipment points are optional */
+  if(L.mode==="Sea"){ const s = L.sea; r.push(need("lg.sea.shippingLine", s.shippingLine),
+    need("lg.sea.container.containerNo", s.container.containerNo.trim()), need("lg.sea.container.sealNo", s.container.sealNo.trim()), need("lg.sea.blNo", s.blNo.trim()), need("lg.sea.blDate", s.blDate)); }
+  if(L.mode==="Air"){ const a = L.air; r.push(need("lg.air.airline", a.airline), need("lg.air.awbNo", a.awbNo.trim()), need("lg.air.awbDate", a.awbDate)); }
   return r;
 }
 
@@ -2277,7 +2277,7 @@ SECTIONS.push(
       ${field("Scheduled date", datePicker(`${d}.scheduled`,"Select date"), {hint:"Carrier’s scheduled departure (ETD)"})}
       ${field("Actual date", datePicker(`${d}.actual`,"Select date"), {hint:"Actual departure (ATD)", after: future?`<p class="after alert">This date is in the future.</p>`:""})}
     </div>`; },
-  req:()=>[filled("dep.port"), filled("dep.planned"), need("dep.scheduled", filled("dep.scheduled")), need("dep.actual", filled("dep.actual"))] },
+  req:()=>[filled("dep.planned")] },
 
 { id:"arr", group:"Routing", title:"Arrival",
   render(){ const a="arr";
@@ -2290,7 +2290,7 @@ SECTIONS.push(
       ${field("Scheduled date", datePicker(`${a}.scheduled`,"Select date"), {hint:"Carrier’s estimated arrival (ETA)", after:before("scheduled")})}
       ${field("Actual date", datePicker(`${a}.actual`,"Select date"), {hint:"Actual arrival (ATA)", after:before("actual")})}
     </div>`; },
-  req:()=>[filled("arr.port"), need("arr.scheduled", filled("arr.scheduled")), ...["planned","scheduled","actual"].map(k=>!(S.arr[k] && S.dep[k] && S.arr[k] < S.dep[k]))] },
+  req:()=>[...["planned","scheduled","actual"].map(k=>!(S.arr[k] && S.dep[k] && S.arr[k] < S.dep[k]))] },
 
 { id:"com", group:"Additional", title:"Commercial details",
   render(){ const c="com";
@@ -2628,7 +2628,7 @@ Object.assign(ACTIONS, {
           EXISTING = await q(smt().rpc("get_shipment", {p_id: S.id}));
           S = fromShipment(EXISTING); guessDueRule(); syncDueLabel();
           REQ_AT = curStage(); SHOW_ERR = false; renderAll(); setHead();
-          popup({title:`${esc(S.ref)} is ${lbl.toLowerCase()}`, msg:`${who} has been notified.${nxt<2?" Add the actual departure, container, seal and B/L or AWB once the cargo has left, then mark it as actual.":""}`, primary:"Done"});
+          popup({title:`${esc(S.ref)} is ${lbl.toLowerCase()}`, msg:`${who} has been notified.${nxt<2?" Add the container, seal and B/L or AWB once the cargo has left, then mark it as actual.":""}`, primary:"Done"});
         }catch(err){ saveError(err); }
         finally { btns.forEach(b=>{ b.disabled = false; }); }
       }});
