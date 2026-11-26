@@ -513,7 +513,9 @@ async function showList(){
   requestAnimationFrame(()=>moveInd());
   try{
     ROWS = await fetchAll(()=>smt().from('v_shipment_notices').select('*').order('notice_at', {ascending:false}));
-    if(!ROWS.some(r=>r.is_receiver) && ROWS.some(r=>r.is_sender)){ VIEW = 'sent'; $('segView').querySelectorAll('button').forEach(x=>x.classList.toggle('active', x.dataset.v==='sent')); moveInd($('segView')); }
+    /* open on the tab that has something: received, else sent, else all */
+    const start = ROWS.some(r=>r.is_receiver) ? 'received' : ROWS.some(r=>r.is_sender) ? 'sent' : ROWS.length ? 'all' : 'received';
+    if(start !== VIEW){ VIEW = start; $('segView').querySelectorAll('button').forEach(x=>x.classList.toggle('active', x.dataset.v===start)); moveInd($('segView')); }
     listView();
   }catch(e){ $('ntBody').innerHTML = `<tr><td colspan="6"><div class="empty-note">${h(errMsg(e))}</div></td></tr>`; }
 }

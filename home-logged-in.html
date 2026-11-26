@@ -226,6 +226,19 @@
     /* ── NOTIFICATIONS ── */
     .notif-item{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f4f6fb;}
     .notif-item:last-child{border-bottom:none;}
+    .sh-notices{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:2px 0 10px;padding:7px 10px;border:1px solid #e6e8ec;border-radius:12px;text-decoration:none;color:#374151;font-size:11px;transition:border-color .2s,background .2s}
+    .sh-notices:hover{border-color:#cddcf8;background:#f8faff}
+    .sh-notices[hidden]{display:none}
+    .shn-l{font-family:Consolas,"SFMono-Regular",Menlo,monospace;font-size:10px;color:#9aa0b4;letter-spacing:.03em}
+    .shn-c{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+    .shn-c i{width:7px;height:7px;border-radius:50%}
+    .shn-c b{font-weight:400!important}
+    .shn-c.n i{background:#7c5cd6} .shn-c.s i{background:#2f6fed} .shn-c.a i{background:#178a4c}
+    .shn-go{margin-left:auto;color:#2f6fed}
+    .notif-item.live{text-decoration:none;color:inherit;border-radius:8px;transition:background .15s}
+    .notif-item.live:hover{background:#f8faff}
+    .notif-item.unread .notif-title::after{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:#2f6fed;margin-left:6px;vertical-align:middle}
+    .notif-empty{font-size:12px;color:#9aa0b4;padding:14px 0}
     .notif-icon{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;}
     .notif-title{font-size:11px;color:#4a4e69;line-height:1.3;}
     .notif-desc{font-size:10px;color:#9aa0b4;margin-top:1px;}
@@ -322,6 +335,7 @@
             <a href="evidence-list.html" class="nav-dropdown-item">Evidence</a>
             <a href="raw-material-list.html" class="nav-dropdown-item">Raw Materials</a>
             <a href="shipment-list.html" class="nav-dropdown-item">Shipments</a>
+            <a href="shipment-notice.html" class="nav-dropdown-item">Shipment notices <span class="tag-new">New</span></a>
             <a href="organisation.html" class="nav-dropdown-item">Your Company</a>
             <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('carbon-calculator.html','Carbon Footprint Calculator','carbon-icon.png','Carbon','green');">Carbon Calculator</a>
             <a href="modules.html#my-studio" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all My Studio</a>
@@ -447,6 +461,7 @@
               </select>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:8px;margin-top:4px;"><div><div style="font-size:9px;color:#9aa0b4;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Shipments</div><div id="shTotal" style="font-size:18px;font-weight:700;color:#374151;margin:2px 0;">—</div><div id="shTotalDelta" style="font-size:10px;color:#9aa0b4;"></div></div><div><div style="font-size:9px;color:#9aa0b4;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Active</div><div id="shActive" style="font-size:18px;font-weight:700;color:#374151;margin:2px 0;">—</div><div id="shActiveDelta" style="font-size:10px;color:#9aa0b4;"></div></div><div><div style="font-size:9px;color:#9aa0b4;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Delivered</div><div id="shDone" style="font-size:18px;font-weight:700;color:#374151;margin:2px 0;">—</div><div id="shDoneDelta" style="font-size:10px;color:#9aa0b4;"></div></div><div><div style="font-size:9px;color:#9aa0b4;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;">Flagged</div><div id="shFlag" style="font-size:18px;font-weight:700;color:#374151;margin:2px 0;">—</div><div id="shFlagDelta" style="font-size:10px;color:#9aa0b4;"></div></div></div>
+            <a href="shipment-notice.html" class="sh-notices" id="shNotices" hidden title="Shipment notices"><span class="shn-l">Notices</span><span class="shn-c n"><i></i><b id="shnN">0</b> notice</span><span class="shn-c s"><i></i><b id="shnS">0</b> scheduled</span><span class="shn-c a"><i></i><b id="shnA">0</b> actual</span><span class="shn-go">&rarr;</span></a>
             <div style="position:relative;flex:1;min-height:0;"><canvas id="shipmentsChart" style="width:100%;height:100%;"></canvas></div>
           </div>
         </div>
@@ -455,11 +470,8 @@
         <div class="tile t-notif">
           <div class="tile-pad">
             <div style="margin-bottom:10px;"><span class="tile-title">Notifications</span></div>
-            <div class="notif-item"><div class="notif-icon" style="background:#f0f9ff;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg></div><div style="flex:1;"><div class="notif-title">New report ready to download</div><div class="notif-desc">Compliance Report — May 2025</div></div><div class="notif-time">5m ago</div></div>
-            <div class="notif-item"><div class="notif-icon" style="background:#f0fdf4;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg></div><div style="flex:1;"><div class="notif-title">Data sync completed</div><div class="notif-desc">All systems are up to date</div></div><div class="notif-time">1h ago</div></div>
-            <div class="notif-item"><div class="notif-icon" style="background:#fffbeb;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.01"/></svg></div><div style="flex:1;"><div class="notif-title">Storage usage at 85%</div><div class="notif-desc">Consider upgrading your plan</div></div><div class="notif-time">3h ago</div></div>
-            <div class="notif-item"><div class="notif-icon" style="background:#fdf4ff;"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg></div><div style="flex:1;"><div class="notif-title">Beta Assessment submitted</div><div class="notif-desc">Reviewed by Jasmine Tan</div></div><div class="notif-time">5h ago</div></div>
-            <a href="#" style="font-size:11px;color:#9aa0b4;text-decoration:none;margin-top:auto;padding-top:8px;display:block;">View all notifications →</a>
+            <div id="homeNotifs"><div class="notif-empty">Loading…</div></div>
+            <a href="shipment-notice.html" style="font-size:11px;color:#9aa0b4;text-decoration:none;margin-top:auto;padding-top:8px;display:block;">View all shipment notices →</a>
           </div>
         </div>
 
@@ -1028,41 +1040,74 @@ const WMO_DESC={0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45
 
       if(typeof dbClient==='undefined'||!dbClient) return;
 
-      try{
-        const {data,error}=await dbClient
-          .from('shipments').select('id,status').is('deleted_at',null);
-        if(error) throw error;
+      // Shipments module (public.shipments) and shipment notices (smartuna)
+      const [mod, notices] = await Promise.all([
+        dbClient.from('shipments').select('id,status').is('deleted_at',null)
+          .then(r=>r.error?null:(r.data||[]), ()=>null),
+        dbClient.schema('smartuna').from('v_shipment_notices').select('id,stage,arrival_actual')
+          .then(r=>r.error?null:(r.data||[]), ()=>null)
+      ]);
+      if(mod===null && notices===null){ console.warn('Shipment stats unavailable'); return; }
+      const rows=mod||[], nts=notices||[];
 
-        const rows=data||[];
-        if(!rows.length){
-          set('shTotal','0'); set('shActive','0'); set('shDone','0'); set('shFlag','—');
-          note('shTotalDelta','No shipments yet');
-          return;
-        }
+      // notices: in transit = scheduled or departed, not yet arrived; delivered = arrived
+      const nActive=nts.filter(n=>n.stage!=='notice' && !n.arrival_actual).length;
+      const nDone  =nts.filter(n=>n.arrival_actual).length;
+      const active=rows.filter(r=>['Booked','In-Transit'].includes(r.status)).length + nActive;
+      const done  =rows.filter(r=>['Delivered','Arrived'].includes(r.status)).length + nDone;
+      const total =rows.length + nts.length;
 
-        const active=rows.filter(r=>['Booked','In-Transit'].includes(r.status)).length;
-        const done  =rows.filter(r=>['Delivered','Arrived'].includes(r.status)).length;
+      set('shTotal',total.toLocaleString());
+      set('shActive',active.toLocaleString());
+      set('shDone',done.toLocaleString());
+      if(!total){ set('shFlag','—'); note('shTotalDelta','No shipments yet'); }
+      else if(nts.length) note('shTotalDelta', nts.length+' from notices');
 
-        set('shTotal',rows.length.toLocaleString());
-        set('shActive',active.toLocaleString());
-        set('shDone',done.toLocaleString());
-
-        // Flagged = product lines whose packages don't reconcile against their lots
-        try{
-          const {data:chk}=await dbClient
-            .from('shipment_package_check').select('shipment_id,variance');
-          if(chk){
-            const bad=new Set(chk.filter(c=>Number(c.variance)!==0).map(c=>c.shipment_id));
-            const pct=rows.length?(bad.size/rows.length*100):0;
-            set('shFlag',pct.toFixed(2)+'%');
-            note('shFlagDelta', bad.size?(bad.size+' to fix'):'All reconciled',
-                 bad.size?'#e63946':'#16a34a');
-          }
-        }catch(e){ set('shFlag','—'); }
-      }catch(err){
-        console.warn('Shipment stats unavailable:',err.message);
+      const strip=document.getElementById('shNotices');
+      if(strip && nts.length){
+        set('shnN', nts.filter(n=>n.stage==='notice').length);
+        set('shnS', nts.filter(n=>n.stage==='scheduled').length);
+        set('shnA', nts.filter(n=>n.stage==='actual').length);
+        strip.hidden=false;
       }
+
+      if(!rows.length){ if(total) set('shFlag','—'); return; }
+      // Flagged = product lines whose packages don't reconcile against their lots
+      try{
+        const {data:chk}=await dbClient
+          .from('shipment_package_check').select('shipment_id,variance');
+        if(chk){
+          const bad=new Set(chk.filter(c=>Number(c.variance)!==0).map(c=>c.shipment_id));
+          const pct=rows.length?(bad.size/rows.length*100):0;
+          set('shFlag',pct.toFixed(2)+'%');
+          note('shFlagDelta', bad.size?(bad.size+' to fix'):'All reconciled',
+               bad.size?'#e63946':'#16a34a');
+        }
+      }catch(e){ set('shFlag','—'); }
     }
+
+    // ── NOTIFICATIONS TILE (latest from smartuna.notifications) ──
+    async function loadHomeNotifs(){
+      const box=document.getElementById('homeNotifs'); if(!box) return;
+      const empty=t=>{ box.innerHTML=`<div class="notif-empty">${t}</div>`; };
+      if(typeof dbClient==='undefined'||!dbClient) return empty('No notifications yet.');
+      const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      const ago=iso=>{const m=(Date.now()-new Date(iso))/6e4; if(m<1)return'just now'; if(m<60)return Math.floor(m)+'m ago'; if(m<1440)return Math.floor(m/60)+'h ago'; return Math.floor(m/1440)+'d ago';};
+      const ICON={notice:['#f5f1fd','#7c5cd6','<path d="M5 3h14v18H5z"/><path d="M9 8h6M9 12h6M9 16h4"/>'],
+        scheduled:['#edf3fe','#2f6fed','<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/>'],
+        actual:['#e8f6ee','#178a4c','<path d="M2 20c2 1.2 4 1.2 6 0s4-1.2 6 0 4 1.2 6 0"/><path d="M4 16.5 5 11h14l1 5.5"/><path d="M9 11V6.5h6V11"/>'],
+        updated:['#fdf4e3','#b7791f','<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><polyline points="21 3 21 8 16 8"/>']};
+      try{
+        const {data,error}=await dbClient.schema('smartuna').from('notifications')
+          .select('id,kind,title,body,link,created_at,read_at').order('created_at',{ascending:false}).limit(4);
+        if(error) throw error;
+        if(!data||!data.length) return empty('No notifications yet. Shipment notices sent to your company show up here.');
+        box.innerHTML=data.map(n=>{const k=ICON[n.kind]||ICON.notice;
+          return `<a class="notif-item live ${n.read_at?'':'unread'}" href="${esc(n.link||'shipment-notice.html')}"><div class="notif-icon" style="background:${k[0]};color:${k[1]}"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${k[2]}</svg></div><div style="flex:1;min-width:0"><div class="notif-title">${esc(n.title)}</div><div class="notif-desc" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(n.body||'')}</div></div><div class="notif-time">${ago(n.created_at)}</div></a>`;}).join('');
+      }catch(e){ empty('No notifications yet.'); }
+    }
+    loadHomeNotifs();
+    window.addEventListener('smt-notif-refresh', loadHomeNotifs);
     loadShipmentStats();
 
     /** Called from the Features dropdown and the dashboard tile's chips/CTA. */
@@ -1072,5 +1117,6 @@ const WMO_DESC={0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45
       else window.mhAssistant.open();
     }
   </script>
+<script src="notifications.js"></script>
 </body>
 </html>
