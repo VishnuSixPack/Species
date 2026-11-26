@@ -773,13 +773,30 @@ body.dr-open{overflow:hidden}
 .pk-go{margin-top:2px;font-size:12px;font-weight:600;color:var(--accent)}
 @media (max-width:760px){ .pk-bar .search{max-width:none;flex:1 1 100%} .pk-count{margin-left:0} }
 
+/* ---------- notice stage + Shipments-module rows ---------- */
+.nst{display:inline-flex;align-items:center;gap:5px;font-family:Consolas,"SFMono-Regular",Menlo,monospace;font-size:10.5px;font-weight:400;padding:1px 8px;border-radius:999px;border:1px solid var(--border);color:var(--muted);background:var(--surface);margin-top:4px;white-space:nowrap}
+.nst i{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.8}
+.nst.notice{color:#7c5cd6;border-color:rgba(124,92,214,.3);background:rgba(124,92,214,.08)}
+.nst.scheduled{color:var(--accent);border-color:var(--accent-ring);background:var(--accent-soft)}
+.nst.actual{color:var(--ok-text);border-color:transparent;background:var(--ok-bg)}
+.tag-mod{font-size:10px;font-weight:400;color:var(--accent);background:var(--accent-soft);border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:1px;white-space:nowrap}
+.dr-stage{display:flex;align-items:center;gap:0;margin:0 0 4px}
+.dr-stage .sg{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted)}
+.dr-stage .sg b{font-weight:400}
+.dr-stage .sg i{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);display:grid;place-items:center;flex:none}
+.dr-stage .sg.done{color:var(--text)} .dr-stage .sg.done i{background:var(--accent);border-color:var(--accent)}
+.dr-stage .sg.done i::after{content:"";width:8px;height:4px;border:2px solid #fff;border-top:0;border-right:0;transform:rotate(-45deg) translate(1px,-1px)}
+.dr-stage .ln{flex:1;height:2px;background:var(--border);margin:0 10px;min-width:16px}
+.dr-stage .ln.done{background:var(--accent)}
+.dr-need{font-size:12.5px;color:var(--muted);margin:8px 0 0}
+.dr-need.ready{color:var(--ok-text)}
 </style>
 </head>
 <body>
 <div id="shellTop"></div>
 <nav class="crumbs" aria-label="Breadcrumb"><div class="crumbs-inner"><a href="orders.html">Master orders</a><span class="sep">›</span><span aria-current="page">Shipments</span></div></nav>
 <main class="page">
-  <div class="page-head"><div><h1>Shipments</h1><p class="sub">Every child shipment across all master orders. Click a shipment for its summary.</p><nav class="ptabs" aria-label="Pages"><a href="orders.html">Master orders</a><a href="shipments.html" aria-current="page">Shipments</a></nav></div>
+  <div class="page-head"><div><h1>Shipments</h1><p class="sub">Every child shipment across all master orders, including the ones created from shipment notices. Click a shipment for its summary.</p><nav class="ptabs" aria-label="Pages"><a href="orders.html">Master orders</a><a href="shipments.html" aria-current="page">Shipments</a></nav></div>
     <div class="head-actions"><a class="btn" href="orders.html">All master orders</a><a class="btn primary" href="shipment.html"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>New shipment</a></div></div>
   <div class="tiles" id="tiles" aria-label="Filter by status"></div>
   <div class="filters">
@@ -788,6 +805,7 @@ body.dr-open{overflow:hidden}
     <select class="ctl" id="fDep" aria-label="Departure port"></select>
     <select class="ctl" id="fArr" aria-label="Arrival port"></select>
     <select class="ctl" id="fWhen" aria-label="Departure date"></select>
+    <select class="ctl" id="fStage" aria-label="Notice stage"><option value="">Any notice stage</option><option value="notice">Notice</option><option value="scheduled">Scheduled</option><option value="actual">Actual</option><option value="none">No notice sent</option></select>
     <span class="count" id="count" role="status"></span>
   </div>
   <div class="list-card"><table class="otbl stbl" id="stbl"></table></div>
@@ -1447,7 +1465,7 @@ Object.assign(ACTIONS, {
    shipments.html — overview of every child shipment + read-only summary
    ===================================================================== */
 const txt = v => v==null ? "" : String(v).trim();
-const UI = { q:"", tile:"all", mode:"", dep:"", arr:"", when:"", sort:"etd", dir:-1, sel:new Set() };
+const UI = { q:"", tile:"all", mode:"", dep:"", arr:"", when:"", nstage:"", sort:"etd", dir:-1, sel:new Set() };
 let SHOWN = [];   /* ids in the list as filtered */
 const DATA = { ships:[], mixed:{} };
 
@@ -1456,19 +1474,67 @@ const SHIP_COLS = "id,master_id,reference,shipment_no,source,status,customer_ord
   + "departure_port_id,departure_planned,departure_scheduled,departure_actual,arrival_port_id,arrival_planned,arrival_scheduled,arrival_actual,"
   + "destination_delivery_date,master_orders(ref_id,master_no,external_reference,product_id,quantity_unit),shipment_lines(quantity),shipment_transhipments(seq,port_id,location)";
 
+/* notice stage column (smartuna_patch_shipment_notice.sql); the list still loads without it */
+let HAS_STAGE = true;
+async function loadOwn(){
+  if(HAS_STAGE){
+    try{ return await fetchAll(()=>smt().from("shipments").select(SHIP_COLS+",stage").order("departure_planned",{ascending:false}).order("id")); }
+    catch(e){ if(!/stage/i.test(errText(e))) throw e; HAS_STAGE = false; }
+  }
+  return fetchAll(()=>smt().from("shipments").select(SHIP_COLS).order("departure_planned",{ascending:false}).order("id"));
+}
+/* shipments that notices created in the Shipments module (EU Catch and Carbon work on these).
+   Needs smartuna_patch_notices_on_shipments.sql; without it this simply returns nothing. */
+let HAS_MOD = true;
+async function loadModuleShips(){
+  if(!HAS_MOD) return [];
+  let rows;
+  try{
+    rows = await fetchAll(()=>SB.from("shipments").select("*,shipment_items(*,shipment_batches(*)),shipment_legs(*)")
+      .not("master_order_id","is",null).is("deleted_at",null).order("created_at",{ascending:false}).order("id"));
+  }catch(e){ HAS_MOD = false; return []; }
+  if(!rows.length) return [];
+  const mids = [...new Set(rows.map(r=>r.master_order_id))], mo = new Map();
+  for(let i=0;i<mids.length;i+=100){
+    (await q(smt().from("master_orders").select("id,ref_id,master_no,external_reference,product_id,quantity_unit").in("id", mids.slice(i,i+100)))).forEach(m=>mo.set(m.id, m));
+  }
+  const ST = {"In-Transit":"In transit","In Transit":"In transit"};
+  return rows.map(r=>{
+    const legs = (r.shipment_legs||[]).slice().sort((a,b)=>(a.leg_no||0)-(b.leg_no||0));
+    const carrier = (legs.find(l=>txt(l.carrier_name))||{}).carrier_name || "";
+    const doc = (legs.find(l=>txt(l.document_no))||{}).document_no || "";
+    const mode = r.transport_mode==="Road" ? "Truck" : (r.transport_mode||"");
+    const items = (r.shipment_items||[]).slice().sort((a,b)=>(a.line_no||0)-(b.line_no||0));
+    return {
+      kind:"module", id:r.id, master_id:r.master_order_id, reference:r.shipment_ref||"", shipment_no:+(String(r.shipment_ref||"").split(".").pop())||0,
+      source:"notice", status: ST[r.status] || r.status || "Draft", nstage:r.stage||"",
+      customer_order_no:r.purchase_order_no, container_no:r.container_no, seal_no:r.seal_number,
+      bl_no: mode==="Sea" ? doc : "", awb_no: mode==="Air" ? doc : "", invoice_no:r.invoice_no,
+      shipment_mode:mode, load_basis:"", load_type:r.load_type, shipping_line:carrier, airline:carrier,
+      shipper_org_id:r.exporter_org_id, consignee_org_id:r.importer_org_id, shipper_name:r.exporter_name, consignee_name:r.importer_name,
+      departure_port_id:r.origin_port_id, arrival_port_id:r.destination_port_id,
+      departure_planned:r.departure_planned, departure_scheduled:r.departure_date, departure_actual:r.on_board_date,
+      arrival_planned:r.arrival_planned, arrival_scheduled:r.arrival_date, arrival_actual:r.container_discharge_date,
+      master_orders: mo.get(r.master_order_id) || {},
+      shipment_lines: items.map(i=>({quantity: i.number_of_packages ?? i.net_weight_kg})),
+      shipment_transhipments: [], _row:r, _items:items, _legs:legs
+    };
+  });
+}
 async function loadData(){
-  const [ships, mixed] = await Promise.all([
-    fetchAll(()=>smt().from("shipments").select(SHIP_COLS).order("departure_planned",{ascending:false}).order("id")),
+  const [ships, mod, mixed] = await Promise.all([
+    loadOwn().then(rows=>rows.map(r=>({...r, kind:"order", nstage:r.stage||""}))),
+    loadModuleShips(),
     fetchAll(()=>smt().from("v_shipment_mixed_with").select("shipment_id,mixed_shipment_id,mixed_reference").order("shipment_id").order("mixed_reference"))
   ]);
   DATA.mixed = {};
   mixed.forEach(m=>{ (DATA.mixed[m.shipment_id] = DATA.mixed[m.shipment_id] || []).push({id:m.mixed_shipment_id, ref:m.mixed_reference}); });
-  DATA.ships = ships.map(enrich);
+  DATA.ships = ships.concat(mod).map(enrich);
 }
 
 /* ---------- derived facts ---------- */
 const DONE = ["Arrived","Delivered"];
-const NOT_BOOKED = ["No shipment instructions","Booking requested"];
+const NOT_BOOKED = ["No shipment instructions","Booking requested","Draft"];
 function enrich(s){
   const m = s.master_orders || {};
   const prod = REFS.productById.get(m.product_id);
@@ -1489,7 +1555,7 @@ function enrich(s){
     dep: REFS.portById.get(s.departure_port_id) || "", arr: REFS.portById.get(s.arrival_port_id) || "",
     tranship: (s.shipment_transhipments||[]).sort((a,b)=>a.seq-b.seq).map(t=>t.port_id ? (REFS.portById.get(t.port_id)||"") : (t.location||"")).filter(Boolean),
     qty: (s.shipment_lines||[]).reduce((a,l)=>a+num(l.quantity),0), lines:(s.shipment_lines||[]).length,
-    shipper: REFS.orgById.get(s.shipper_org_id)?.label || "", consignee: REFS.orgById.get(s.consignee_org_id)?.label || "",
+    shipper: REFS.orgById.get(s.shipper_org_id)?.label || s.shipper_name || "", consignee: REFS.orgById.get(s.consignee_org_id)?.label || s.consignee_name || "",
     etd, eta, etdActual:!!s.departure_actual, etaActual:!!s.arrival_actual,
     stage: DONE.includes(s.status) && s.status==="Delivered" ? 3 : arrived ? 2 : departed ? 1 : 0,
     overdue: !arrived && !!etaDue && etaDue < today,
@@ -1497,6 +1563,8 @@ function enrich(s){
     missing, mixed: DATA.mixed[s.id] || []
   };
 }
+const NST = {notice:"Notice", scheduled:"Scheduled", actual:"Actual"};
+const nstPill = s => s.nstage ? `<span class="nst ${esc(s.nstage)}" title="Shipment notice stage"><i></i>${NST[s.nstage]||esc(s.nstage)}</span>` : "";
 const code = l => { const m = String(l||"").match(/\(([A-Z0-9]{5})\)\s*$/); return m ? m[1] : ""; };
 const place = l => String(l||"—").split(",")[0];
 
@@ -1523,6 +1591,7 @@ function baseFiltered(){
     (!UI.dep || s.departure_port_id===UI.dep) &&
     (!UI.arr || s.arrival_port_id===UI.arr) &&
     WHEN[UI.when].test(s) &&
+    (!UI.nstage || (UI.nstage==="none" ? !s.nstage : s.nstage===UI.nstage)) &&
     (!qq || [s.reference, s.master_no, s.ext_ref, s.customer_order_no, s.container_no, s.seal_no, s.bl_no, s.awb_no, s.invoice_no, s.product, s.gtin, s.shipper, s.consignee, s.dep, s.arr]
               .some(v=>txt(v).toLowerCase().includes(qq))));
 }
@@ -1557,12 +1626,12 @@ function render(){
   const th = (k, label, cls="") => `<th class="${cls}"><button type="button" class="sortb ${UI.sort===k?"on":""}" data-sort="${k}">${label}<span aria-hidden="true">${UI.sort===k ? (UI.dir>0?"↑":"↓") : "↕"}</span></button></th>`;
   const body = rows.map(s=>`<tr data-view="${esc(s.id)}" tabindex="0" class="${UI.sel.has(s.id)?"picked":""}">
       <td class="selc"><input type="checkbox" class="cbx" data-pick="${esc(s.id)}" ${UI.sel.has(s.id)?"checked":""} aria-label="Select ${esc(s.reference)}"></td>
-      <td><span class="ref">${esc(s.reference)}</span>${s.source==="import"?`<span class="tag-src">Excel</span>`:""}<br><span class="muted-s">${esc(s.product||"—")}</span></td>
+      <td><span class="ref">${esc(s.reference)}</span>${s.source==="import"?`<span class="tag-src">Excel</span>`:""}${s.kind==="module"?`<span class="tag-mod" title="Created from a shipment notice; lives in the Shipments module">Shipments module</span>`:""}<br><span class="muted-s">${esc(s.product||"—")}</span></td>
       <td>${esc(s.customer_order_no||"—")}${s.mixed.length?` <span class="tag-share" title="Same customer order, container and seal">mixed with ${esc(s.mixed.map(m=>m.ref).join(", "))}</span>`:""}<br><span class="muted-s">${esc(s.container_no||"—")} · ${esc(s.seal_no||"—")}</span></td>
       <td class="rt-cell">${routeMini(s)}</td>
       <td><span class="mode">${MODE_ICON[s.shipment_mode]||""}${esc(s.shipment_mode)}</span><br><span class="muted-s">${esc([s.load_basis, s.load_type].filter(Boolean).join(" · ")||"—")}</span></td>
       <td class="num">${fmtN(s.qty)} ${esc(s.unit)}<br><span class="muted-s">${s.lines} line${s.lines===1?"":"s"}</span></td>
-      <td><span class="st ${statusClass(s.status)}">${esc(s.status||"—")}</span>${s.overdue?`<br><span class="late-t">ETA ${s.lateDays} day${s.lateDays===1?"":"s"} overdue</span>`:""}</td>
+      <td><span class="st ${statusClass(s.status)}">${esc(s.status||"—")}</span>${s.nstage?`<br>${nstPill(s)}`:""}${s.overdue?`<br><span class="late-t">ETA ${s.lateDays} day${s.lateDays===1?"":"s"} overdue</span>`:""}</td>
       <td>${s.missing.length?`<span class="docs-miss" title="Missing: ${esc(s.missing.join(", "))}">${s.missing.length} missing</span>`:`<span class="docs-ok">Complete</span>`}</td>
     </tr>`).join("");
   const empty = !DATA.ships.length
@@ -1587,11 +1656,14 @@ function confirmDelete(ids, after){
   const refs = list.map(s=>s.reference), shown = refs.slice(0,8).map(r=>`<span class="obj">${esc(r)}</span>`).join(", ") + (refs.length>8 ? ` and ${refs.length-8} more` : "");
   const mixed = list.filter(s=>s.mixed.length && !s.mixed.every(m=>ids.includes(m.id)));
   popup({ok:false, title: list.length>1 ? `Delete ${list.length} shipments?` : `Delete ${refs[0]}?`,
-    msg:`${shown} will be removed with ${list.length>1?"their":"its"} lines. The quantity goes back to the master order. Shipment numbers aren’t reused.${mixed.length?`<br><br>${mixed.length>1?"Some are":"It is"} mixed with other shipments; those stay and simply lose the link.`:""}<br><br><b>This can’t be undone.</b>`,
-    primary: list.length>1 ? `Delete ${list.length}` : "Delete", secondary:"Cancel",
+    msg:`${shown} will be removed with ${list.length>1?"their":"its"} lines.${list.some(s=>s.kind==="module")?" Shipments from the Shipments module go to its trash and can be restored there.":""} The quantity goes back to the master order. Shipment numbers aren’t reused.${mixed.length?`<br><br>${mixed.length>1?"Some are":"It is"} mixed with other shipments; those stay and simply lose the link.`:""}${list.every(s=>s.kind==="module") ? "" : "<br><br><b>This can’t be undone.</b>"}`,
+    primary: list.every(s=>s.kind==="module") ? "Move to trash" : list.length>1 ? `Delete ${list.length}` : "Delete", secondary:"Cancel",
     async onPrimary(){
       try{
-        for(let i=0;i<ids.length;i+=100) await q(smt().from("shipments").delete().in("id", ids.slice(i,i+100)));
+        const own = list.filter(s=>s.kind!=="module").map(s=>s.id), mod = list.filter(s=>s.kind==="module");
+        for(let i=0;i<own.length;i+=100) await q(smt().from("shipments").delete().in("id", own.slice(i,i+100)));
+        /* Shipments-module rows are moved to its trash (shipment-trash.html), same as deleting them there */
+        for(const m of mod) await q(SB.from("shipments").update({deleted_at:new Date().toISOString(), organisation_id:m._row.organisation_id}).eq("id", m.id));
         ids.forEach(id=>UI.sel.delete(id));
         if(after) after();
         await loadData(); fillFilters(); render();
@@ -1641,6 +1713,65 @@ function timeline(s, x){
       ${st.sub?`<div class="muted-s">${st.sub}</div>`:""}</div></li>`).join("")}</ol>`;
 }
 function docRow(label, ok, detail){ return `<li class="${ok?"ok":"miss"}"><span class="dk" aria-hidden="true">${ok?"✓":"!"}</span><b>${label}</b><span>${ok?esc(detail):"Missing"}</span></li>`; }
+/* notice stage strip used in both drawers */
+function stageStrip(s, need){
+  if(!s.nstage) return "";
+  const k = ["notice","scheduled","actual"], cur = k.indexOf(s.nstage);
+  const steps = k.map((x,i)=>`${i?`<span class="ln ${i<=cur?"done":""}"></span>`:""}<span class="sg ${i<=cur?"done":""}"><i></i><b>${NST[x]}</b></span>`).join("");
+  const n = cur<2 && need ? (need.length ? `<p class="dr-need">${NST[k[cur+1]]} needs: ${need.map(esc).join(", ")}.</p>` : `<p class="dr-need ready">Ready to mark as ${NST[k[cur+1]].toLowerCase()}.</p>`) : "";
+  return `<section><h3>Shipment notice</h3><div class="dr-stage">${steps}</div>${n}</section>`;
+}
+/* summary of a shipment that lives in the Shipments module */
+async function openModuleView(s, dr){
+  const r = s._row, d2 = v => v ? fmtDate(v) : "";
+  let need = null;
+  if(s.nstage && s.nstage!=="actual"){ try{ need = await q(smt().rpc("ship_stage_missing", {p_id:s.id, p_target: s.nstage==="notice"?"scheduled":"actual"})) || []; }catch(e){ need = null; } }
+  const isSea = s.shipment_mode==="Sea", isAir = s.shipment_mode==="Air";
+  const lots = it => (it.shipment_batches||[]).map(b=>b.batch_lot).filter(Boolean);
+  const lines = s._items.map((it,i)=>`<tr><td>${it.line_no||i+1}</td><td>${esc(it.product_name||"—")}</td><td class="num">${it.number_of_packages!=null?`${fmtN(+it.number_of_packages)} ${esc(it.package_type||"")}`:"—"}</td><td class="num">${it.net_weight_kg!=null?`${fmtN(+it.net_weight_kg)} kg`:"—"}</td><td>${esc(lots(it).join(", ")||"—")}</td></tr>`).join("");
+  const legs = s._legs.map(l=>`<tr><td>${l.leg_no||""}</td><td>${esc([l.origin_name,l.destination_name].filter(Boolean).join(" → ")||"—")}</td><td>${esc(l.carrier_name||"—")}</td><td>${esc(l.vessel_name||"—")}</td><td>${esc(l.document_no||"—")}</td></tr>`).join("");
+  const x = {departure_planned:s.departure_planned, departure_scheduled:s.departure_scheduled, departure_actual:s.departure_actual,
+             arrival_planned:s.arrival_planned, arrival_scheduled:s.arrival_scheduled, arrival_actual:s.arrival_actual, legs:[], transhipments:[]};
+  dr.querySelector(".dr").innerHTML = `
+    <div class="dr-head">
+      <div><div class="dr-ttl"><h2>${esc(s.reference)}</h2><span class="st ${statusClass(s.status)}">${esc(s.status)}</span><span class="tag-mod">Shipments module</span></div>
+        <p>${esc(s.product||s._items[0]?.product_name||"—")} · Master <a href="order.html?order=${s.master_ref}">${esc(s.master_key)}</a></p></div>
+      <button type="button" class="mx" data-close-dr="1" aria-label="Close">${XICON}</button>
+    </div>
+    <div class="dr-body">
+      <div class="dr-strip">
+        ${kv("Customer order", esc(s.customer_order_no))}${kv("Quantity", `${fmtN(s.qty)} ${esc(s._items[0]?.package_type || s.unit)} · ${s.lines} line${s.lines===1?"":"s"}`)}
+        ${kv("Mode", esc(s.shipment_mode))}${kv("Incoterm", esc(r.incoterms))}
+      </div>
+      ${stageStrip(s, need)}
+      <section><h3>Route</h3>${timeline(s, x)}</section>
+      <div class="dr-2">
+        <section><h3>Parties</h3>
+          <div class="party"><span>Exporter</span><b>${esc(s.shipper||"—")}</b><em>${esc(r.country_of_export||"")}</em></div>
+          <div class="party"><span>Importer</span><b>${esc(s.consignee||"—")}</b><em>${esc(r.destination_country||"")}</em></div>
+        </section>
+        <section><h3>Documents</h3><ul class="docs">
+          ${isSea?docRow("Bill of lading", !!txt(s.bl_no), s.bl_no||""):""}
+          ${isAir?docRow("Air waybill", !!txt(s.awb_no), s.awb_no||""):""}
+          ${docRow("Commercial invoice", !!txt(s.invoice_no), s.invoice_no||"")}
+          ${isSea?docRow("Container & seal", !!(txt(s.container_no)&&txt(s.seal_no)), `${s.container_no||""} · ${s.seal_no||""}`):""}
+        </ul></section>
+      </div>
+      <section><h3>Lines</h3>${lines?`<div class="tbl-wrap"><table class="tbl dr-lines"><thead><tr><th>#</th><th>Product</th><th class="num">Packages</th><th class="num">Net weight</th><th>Batch / lot</th></tr></thead><tbody>${lines}</tbody></table></div>`:`<p class="muted-s">No lines.</p>`}</section>
+      <section><h3>Legs</h3>${legs?`<div class="tbl-wrap"><table class="tbl dr-lines"><thead><tr><th>#</th><th>Route</th><th>Carrier</th><th>Vessel</th><th>B/L or AWB</th></tr></thead><tbody>${legs}</tbody></table></div>`:`<p class="muted-s">No legs yet.</p>`}</section>
+      <section><h3>Reports</h3><div class="kv-grid">
+        ${kv("EU Catch", `<a href="eu-catch-support.html?shipment=${encodeURIComponent(s.id)}">Create EU Catch document</a>`)}
+        ${kv("Carbon", `<a href="carbon-calculator.html?shipment=${encodeURIComponent(s.id)}">Calculate impact footprint</a>`)}
+      </div></section>
+    </div>
+    <div class="dr-foot">
+      <button type="button" class="btn danger-ghost" data-action="deleteOne" data-id="${esc(s.id)}"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Move to trash</button><span class="sp"></span>
+      ${s.nstage?`<a class="btn" href="shipment-notice.html?ship=${encodeURIComponent(s.id)}">View notice</a>`:""}
+      <a class="btn" href="shipment-detail.html?id=${encodeURIComponent(s.id)}">Open shipment</a>
+      <a class="btn primary" href="shipment-form.html?id=${encodeURIComponent(s.id)}">Edit shipment</a>
+    </div>`;
+  dr.querySelector(".mx").focus();
+}
 async function openView(id, push=true){
   const s = DATA.ships.find(x=>x.id===id);
   if(!s){ toast("That shipment wasn’t found. It may have been deleted."); return; }
@@ -1649,6 +1780,7 @@ async function openView(id, push=true){
   if(!dr){ dr = document.createElement("div"); dr.id = "drawer"; dr.className = "dr-ov"; document.body.appendChild(dr); }
   dr.innerHTML = `<aside class="dr" role="dialog" aria-modal="true" aria-label="Shipment ${esc(s.reference)}"><div class="dr-load"><span class="spin"></span>Loading ${esc(s.reference)}…</div></aside>`;
   dr.classList.add("show"); document.body.classList.add("dr-open");
+  if(s.kind==="module"){ await openModuleView(s, dr); return; }
   let x;
   try{ x = await q(smt().rpc("get_shipment", {p_id:id})); }
   catch(e){ dr.querySelector(".dr").innerHTML = `<div class="dr-load"><p class="boot-err">${esc(errText(e))}</p><button class="btn" data-close-dr="1">Close</button></div>`; return; }
@@ -1668,6 +1800,7 @@ async function openView(id, push=true){
         ${kv("Customer order", esc(x.customer_order_no))}${kv("Quantity", `${fmtN(s.qty)} ${unit} · ${s.lines} line${s.lines===1?"":"s"}`)}
         ${kv("Mode", `${esc(s.shipment_mode)}${x.ship_mode?` · ${esc(x.ship_mode)}`:""}`)}${kv("Incoterm", esc(x.incoterm))}
       </div>
+      ${stageStrip(s, x.stage && x.stage!=="actual" && Array.isArray(x.missing_next) ? x.missing_next : null)}
       <section><h3>Route</h3>${timeline(s, x)}</section>
       <div class="dr-2">
         <section><h3>Parties</h3>
@@ -1698,6 +1831,7 @@ async function openView(id, push=true){
     </div>
     <div class="dr-foot">
       <button type="button" class="btn danger-ghost" data-action="deleteOne" data-id="${esc(s.id)}"><svg viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>Delete</button><span class="sp"></span>
+      ${s.nstage?`<a class="btn" href="shipment-notice.html?id=${encodeURIComponent(s.id)}">View notice</a>`:""}
       <a class="btn" href="order.html?order=${s.master_ref}">Open master ${esc(s.master_key)}</a>
       <a class="btn primary" href="shipment.html?order=${s.master_ref}&id=${encodeURIComponent(s.id)}">Edit shipment</a>
     </div>`;
@@ -1741,10 +1875,10 @@ Object.assign(ACTIONS, {
   clearSel(){ UI.sel.clear(); render(); },
   deleteSel(){ confirmDelete([...UI.sel]); },
   deleteOne(el){ confirmDelete([el.dataset.id], closeView); },
-  resetFilters(){ Object.assign(UI, {q:"", tile:"all", mode:"", dep:"", arr:"", when:""}); $("#search").value = ""; fillFilters(); render(); }
+  resetFilters(){ Object.assign(UI, {q:"", tile:"all", mode:"", dep:"", arr:"", when:"", nstage:""}); $("#fStage").value = ""; $("#search").value = ""; fillFilters(); render(); }
 });
 $("#search").addEventListener("input", e=>{ UI.q = e.target.value; render(); });
-[["#fMode","mode"],["#fDep","dep"],["#fArr","arr"],["#fWhen","when"]].forEach(([sel,k])=>$(sel).addEventListener("change", e=>{ UI[k] = e.target.value; render(); }));
+[["#fMode","mode"],["#fDep","dep"],["#fArr","arr"],["#fWhen","when"],["#fStage","nstage"]].forEach(([sel,k])=>$(sel).addEventListener("change", e=>{ UI[k] = e.target.value; render(); }));
 let lastLoad = 0;
 window.addEventListener("focus", async ()=>{ if(!SB || $("#drawer.show") || Date.now()-lastLoad < 5000) return; lastLoad = Date.now(); try{ await loadData(); fillFilters(); render(); }catch(e){} });
 
