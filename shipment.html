@@ -2588,7 +2588,7 @@ Object.assign(ACTIONS, {
     popup({kind:"ask", title:"Change master order?", msg:"You’ll choose another master order and start this shipment again from its details. Anything typed here isn’t saved.", primary:"Choose master order", secondary:"Stay here", onPrimary:go});
   },
   async save(){
-    REQ_AT = curStage(); SHOW_ERR = true; renderAll();
+    REQ_AT = 0; SHOW_ERR = true; renderAll();   /* saving only needs the basics; stage details are checked when the stage moves */
     const bad = firstIncomplete();
     if(bad.length){ popup({ok:false, title:"Some required fields are missing", msg:`Finish these sections to save the shipment${S.id?"":" and issue the notice"}:`, list:bad.map(s=>({id:s.id, title:s.title, note: s.id==="lines" && remaining()<0 ? "over quantity" : "incomplete"})), primary:"Got it"}); return; }
     const btns = $$('[data-action="save"],[data-action="advance"]'); btns.forEach(b=>{ b.disabled = true; });
@@ -2627,7 +2627,7 @@ Object.assign(ACTIONS, {
           await q(smt().rpc("set_shipment_stage", {p_id:S.id, p_stage:STAGES[nxt]}));
           EXISTING = await q(smt().rpc("get_shipment", {p_id: S.id}));
           S = fromShipment(EXISTING); guessDueRule(); syncDueLabel();
-          REQ_AT = curStage(); SHOW_ERR = false; renderAll(); setHead();
+          REQ_AT = 0; SHOW_ERR = false; renderAll(); setHead();
           popup({title:`${esc(S.ref)} is ${lbl.toLowerCase()}`, msg:`${who} has been notified.${nxt<2?" Add the container, seal and B/L or AWB once the cargo has left, then mark it as actual.":""}`, primary:"Done"});
         }catch(err){ saveError(err); }
         finally { btns.forEach(b=>{ b.disabled = false; }); }
@@ -2641,7 +2641,7 @@ async function persist(){
   let posted = 0;
   if(wasNew){ try{ posted = await postPendingNotes(res.id); }catch(e){ toast(`Shipment saved, but a note couldn’t be posted: ${errText(e)}`); } }
   EXISTING = await q(smt().rpc("get_shipment", {p_id: res.id}));
-  S = fromShipment(EXISTING); guessDueRule(); syncDueLabel(); SHOW_ERR = false; REQ_AT = curStage();
+  S = fromShipment(EXISTING); guessDueRule(); syncDueLabel(); SHOW_ERR = false; REQ_AT = 0;
   if(wasNew) history.replaceState(null, "", `shipment.html?order=${OREF}&id=${res.id}`);
   OTHERS = await q(smt().from("v_shipment_list").select("id,quantity").eq("master_id", ORDER.id));
   await refreshMixed(); renderAll(); setHead(); refreshNotes();
@@ -2650,7 +2650,7 @@ async function persist(){
 function saveError(err){
   const m = String(err?.message||"");
   if(m.startsWith("DUPLICATE:")) popup({ok:false, title:"Shipment already exists", msg:`<span class="obj">${esc(m.slice(10))}</span> on this master already has customer order ${esc(S.details.custOrder)}, container ${esc(S.lg.sea.container.containerNo)} and seal ${esc(S.lg.sea.container.sealNo)}.`});
-  else if(m.startsWith("STAGE_MISSING:")) popup({ok:false, title:"Some details are still missing", msg:`The ${STAGE_LBL[EXISTING?.stage]?.toLowerCase()||""} stage needs: ${m.slice(14).split("|").map(esc).join(", ")}.`});
+  else if(m.startsWith("STAGE_MISSING:")) popup({ok:false, title:"Not ready for the next stage yet", msg:`Your changes are saved. To move the stage, add: ${m.slice(14).split("|").map(esc).join(", ")}.`});
   else if(m.startsWith("STAGE_ORDER:")) popup({ok:false, title:"Can’t change the stage", msg:esc(m.slice(12))});
   else popup({ok:false, title:"Couldn’t save", msg:esc(errText(err))});
 }
@@ -2730,7 +2730,7 @@ function setHead(){
   $("#pageTitle").textContent = S.id ? "Edit shipment" : "Create shipment notice";
   $$('.side .save .nl').forEach(n=>{ n.textContent = S.id ? "Save shipment" : "Issue notice"; });
   $$('.mobile-save .btn').forEach(b=>{ b.lastChild.textContent = S.id ? "Save shipment" : "Issue notice"; });
-  REQ_AT = S.id ? curStage() : 0;
+  REQ_AT = 0;
   const db = $("#delShipBtn"); if(db) db.hidden = !S.id;
   const cs = $('[data-action="changeSource"]'); if(cs) cs.hidden = !!S.id;
   document.title = S.id ? `${S.ref} · Shipment` : "Create Shipment";
@@ -2750,7 +2750,7 @@ boot(async ()=>{
     if(!EXISTING){ popup({ok:false, title:"Shipment not found", msg:"It may have been deleted.", primary:"Back to master order", onPrimary:()=>location.href=`order.html?order=${OREF}#shipments`}); }
   }
   S = EXISTING ? fromShipment(EXISTING) : buildDefault();
-  REQ_AT = EXISTING ? curStage() : 0;
+  REQ_AT = 0;
   if(EXISTING) guessDueRule(); else recalcDue(); syncDueLabel();
   rememberPrefill();
   OTHERS = await q(smt().from("v_shipment_list").select("id,quantity").eq("master_id", ORDER.id));
