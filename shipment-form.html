@@ -593,7 +593,7 @@
                 <a href="fsma-support.html" class="nav-dropdown-item">FSMA Act 204 <span class="tag-new">New</span></a>
               </div>
             </div>
-            <a href="load-planner.html" class="nav-dropdown-item">Load Planner</a>
+            <a href="load-planner-home.html" class="nav-dropdown-item">Load Planner</a>
             <a href="modules.html#features" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all Features</a>
           </div>
         </div>
@@ -1183,6 +1183,9 @@ function field(label,key,kind,required){
   if(kind==='company')
     return wrap(label,required, picker(v,[],
       (val,row)=>{ S[key]=val;
+        // keep the Organisation module link so notices reach the right company
+        if(key==='exporter_name') S.exporter_org_id = row && row._id ? row._id : null;
+        if(key==='importer_name') S.importer_org_id = row && row._id ? row._id : null;
         // Exporter fills Country of Export
         if(key==='exporter_name' && row && row._country && !S.country_of_export){
           S.country_of_export=row._country; renderFields('headGrid',HEAD);
@@ -1777,6 +1780,9 @@ function collectHeader(){
   out.container_type=S.container_type||null;
   out.exporter_is_processor=!!S.exporter_is_processor;
   out.notes_html=cleanHTML($('rtBox').innerHTML)||null;
+  /* company links (saveTolerant drops them if the columns aren't installed) */
+  out.exporter_org_id=safeUuid(S.exporter_org_id)||null;
+  out.importer_org_id=safeUuid(S.importer_org_id)||null;
   delete out.origin_name_port_id; delete out.destination_name_port_id;
   return out;
 }
@@ -2308,5 +2314,6 @@ async function loadExisting(){
 <script>
 if (typeof window.launchModule !== 'function') { window.launchModule = function(url){ window.location.href = url; }; }
 </script>
+<script src="notifications.js"></script>
 </body>
 </html>

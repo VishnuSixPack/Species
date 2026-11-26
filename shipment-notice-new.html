@@ -300,7 +300,6 @@
             <a href="evidence-list.html" class="nav-dropdown-item">Evidence</a>
             <a href="raw-material-list.html" class="nav-dropdown-item">Raw Materials</a>
             <a href="shipment-list.html" class="nav-dropdown-item">Shipments</a>
-            <a href="shipment-notice.html" class="nav-dropdown-item">Shipment notices <span class="tag-new">New</span></a>
             <a href="organisation.html" class="nav-dropdown-item">Your Company</a>
             <a href="#" class="nav-dropdown-item" onclick="event.preventDefault(); launchModule('carbon-calculator.html','Carbon Footprint Calculator','carbon-icon.png','Carbon','green');">Carbon Calculator</a>
             <a href="modules.html#my-studio" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all My Studio</a>
@@ -388,7 +387,7 @@
         <div id="sumP"></div>
         <ul class="errs" id="errs"></ul>
         <button class="pill-btn primary issue" id="issueBtn" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>Issue notices</button>
-        <p class="sub" style="font-size:12px;margin:10px 0 0">The notice carries the product, quantity, ports and planned dates. Carrier, vessel, container and B/L come later on the shipment page.</p></div>
+        <p class="sub" style="font-size:12px;margin:10px 0 0">Each notice becomes a shipment in the Shipments module with the product, quantity, ports and planned dates. Carrier, vessels, container, B/L and lots come later on that shipment.</p></div>
     </aside>
   </div>
   <div class="cb-pop" id="cbPop" role="listbox" hidden></div>
@@ -459,7 +458,7 @@ async function fetchAll(make){
 function errMsg(e){
   const m = String(e?.message || e || 'Unknown error');
   if(/schema must be one of|PGRST106/i.test(m)) return 'The smartuna schema is not exposed to the API yet (Supabase → Settings → API → Exposed schemas).';
-  if(/does not exist|PGRST20[02]|Could not find/i.test(m)) return 'The shipment notice update has not been run on the database yet (smartuna_patch_shipment_notice.sql).';
+  if(/does not exist|PGRST20[02]|Could not find/i.test(m)) return 'The shipment notice updates have not been run on the database yet (smartuna_patch_notices_on_shipments.sql and the patches before it).';
   if(m.startsWith('OVER:')) return m.slice(5);
   if(m.startsWith('STAGE_MISSING:')) return 'Still missing: ' + m.slice(14).split('|').join(', ');
   return m;
@@ -579,11 +578,11 @@ async function issue(){
   try{
     const rows = ROWS.map(r=>({master_id:r.master, quantity:num(r.qty), departure_port_id:PORT_BY_LABEL.get(r.from).id, arrival_port_id:PORT_BY_LABEL.get(r.to).id,
       departure_planned:r.dep, arrival_planned:r.arr||null, consignee_org_id:ORG_BY_LABEL.get(r.rec).id}));
-    const out = await q(smt().rpc('create_shipment_notices', {p:{rows}}));
+    const out = await q(smt().rpc('create_notices_existing', {p:{rows}}));   /* each notice is a normal shipment in the Shipments module */
     const byId = new Map(ROWS.map((r,i)=>[i, r]));
     $('planner').outerHTML = `<div class="card rv"><div class="card-h"><span class="card-t">${out.length} shipment notice${out.length===1?'':'s'} issued</span>${stagePill('notice')}</div>
-      <div class="sub">${[...recs].map(h).join(', ')} ${recs.size===1?'has':'have'} been notified. Open a shipment to add the carrier and scheduled dates, then mark it scheduled.</div>
-      <div class="done-list">${out.map((o,i)=>{ const r = byId.get(i); return `<a class="done-i" href="shipment-notice.html?id=${encodeURIComponent(o.id)}"><div class="ref">${h(o.reference)}</div><div style="font-size:13px">${h(M(r.master)?.product||'')}</div><div class="muted">${fmtN(r.qty)} ${h(M(r.master)?.quantity_unit||'')} · ${h(shortPort(r.from))} → ${h(shortPort(r.to))}</div></a>`; }).join('')}</div>
+      <div class="sub">${[...recs].map(h).join(', ')} ${recs.size===1?'has':'have'} been notified. Each one is now a shipment in the Shipments module, so EU Catch and the Carbon calculator can use it. Open it to add the carrier, legs and lots, then mark it scheduled.</div>
+      <div class="done-list">${out.map((o,i)=>{ const r = byId.get(i); return `<a class="done-i" href="shipment-notice.html?ship=${encodeURIComponent(o.id)}"><div class="ref">${h(o.reference)}</div><div style="font-size:13px">${h(M(r.master)?.product||'')}</div><div class="muted">${fmtN(r.qty)} ${h(M(r.master)?.quantity_unit||'')} · ${h(shortPort(r.from))} → ${h(shortPort(r.to))}</div></a>`; }).join('')}</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="pill-btn primary" href="shipment-notice.html">See all notices</a><a class="pill-btn" href="shipment-notice-new.html">Plan more shipments</a></div></div>`;
     $('st3').classList.add('on');
     toast('Notices issued', 'ok');

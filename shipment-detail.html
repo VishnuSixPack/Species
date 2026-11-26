@@ -435,6 +435,33 @@
   @media (max-width:980px){ .item-right{gap:12px} .totals{width:100%} }
   @media (max-width:560px){ .pills{grid-template-columns:repeat(2,1fr)!important} .pills .pill:first-child{grid-column:1/-1} .item-right .item-stat{display:none} .leg-date{display:none} .totals{grid-template-columns:repeat(2,1fr)} .tot-cell:nth-child(2){border-right:none} .tot-cell:nth-child(-n+2){border-bottom:1px solid var(--line2)} }
 
+
+  /* ── shipment notice stage ── */
+  .stage-card{display:flex;align-items:center;gap:18px;flex-wrap:wrap;background:var(--white);border:1px solid var(--line);border-radius:18px;padding:14px 18px;margin:0 0 16px;animation:up .4s var(--ease) both}
+  .stage-card[hidden]{display:none}
+  .stage-card.quiet{background:var(--page);border-style:dashed}
+  .sg-steps{display:flex;align-items:center;flex:1 1 420px;min-width:0}
+  .sg-step{display:flex;align-items:center;gap:10px;min-width:0}
+  .sg-dot{width:30px;height:30px;border-radius:50%;flex:none;display:grid;place-items:center;border:1.5px solid var(--line);color:var(--faint);background:var(--white)}
+  .sg-step.done .sg-dot{background:var(--accent);border-color:var(--accent);color:#fff}
+  .sg-step.next .sg-dot{border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+  .sg-t{font-size:13.5px}
+  .sg-s{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .sg-line{flex:1;min-width:16px;height:2px;margin:0 12px;background:var(--line);border-radius:2px;overflow:hidden}
+  .sg-line i{display:block;height:100%;width:0;background:var(--accent);transition:width .6s var(--ease)}
+  .sg-line.done i{width:100%}
+  .sg-act{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto}
+  .sg-need{font-size:12.5px;color:var(--muted);max-width:420px}
+  .sg-need.ready{color:var(--ok)}
+  .sg-ic{width:38px;height:38px;border-radius:12px;background:var(--low-bg);color:var(--accent);display:grid;place-items:center;flex:none}
+  .sg-txt{flex:1;min-width:220px;font-size:13px;color:var(--muted)}
+  .sg-txt b{display:block;color:var(--ink);font-size:14px}
+  .sg-ask{position:fixed;inset:0;background:rgba(20,22,26,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:1200;display:flex;align-items:center;justify-content:center;padding:20px}
+  .sg-ask .box{background:var(--white);border-radius:20px;padding:24px;width:440px;max-width:100%;box-shadow:0 30px 80px rgba(16,24,40,.25);animation:up .3s var(--ease)}
+  .sg-ask h3{margin:0 0 6px;font-size:19px;font-weight:300!important}
+  .sg-ask p{margin:0 0 18px;font-size:13px;color:var(--muted);line-height:1.6}
+  .sg-ask .row{display:flex;justify-content:flex-end;gap:8px}
+  @media (max-width:760px){ .sg-s{display:none} .sg-line{margin:0 6px} .sg-act{margin-left:0;width:100%} }
 </style>
 </head>
 <body>
@@ -491,7 +518,7 @@
                 <a href="fsma-support.html" class="nav-dropdown-item">FSMA Act 204 <span class="tag-new">New</span></a>
               </div>
             </div>
-            <a href="load-planner.html" class="nav-dropdown-item">Load Planner</a>
+            <a href="load-planner-home.html" class="nav-dropdown-item">Load Planner</a>
             <a href="modules.html#features" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all Features</a>
           </div>
         </div>
@@ -539,6 +566,8 @@
       <button class="btn btn-primary" onclick="goEuCatch()">Create EU Catch document</button>
     </div>
   </div>
+
+  <div class="stage-card" id="stageBar" hidden aria-label="Shipment notice stage"></div>
 
   <!-- ============ SUMMARY PILLS ============ -->
   <div class="pills" id="pills"></div>
@@ -1191,6 +1220,7 @@ async function load(){
     SHIPMENT = s;
     ITEMS    = (items||[]).map(it => ({...it, batches: byItem[it.id] || []}));
     render();
+    paintStage();
   }catch(err){
     console.error('Shipment load failed:', err);
     document.querySelector('.wrap').innerHTML =
@@ -1201,6 +1231,82 @@ async function load(){
          <a href="shipment-list.html" class="btn btn-primary" style="text-decoration:none;">Back to shipments</a>
        </div>`;
   }
+}
+
+
+/* =====================================================================
+   SHIPMENT NOTICE STAGE (notice → scheduled → actual)
+   Uses the smartuna notice functions; if they aren't installed the bar
+   simply stays hidden and the page works as before.
+   ===================================================================== */
+const SG = ['notice','scheduled','actual'], SG_LBL = {notice:'Notice', scheduled:'Scheduled', actual:'Actual'};
+const SG_IC = {
+  notice:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><path d="M5 3h14v18H5z"/><path d="M9 8h6M9 12h6M9 16h4"/></svg>',
+  scheduled:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>',
+  actual:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20c2 1.2 4 1.2 6 0s4-1.2 6 0 4 1.2 6 0"/><path d="M4 16.5 5 11h14l1 5.5"/><path d="M9 11V6.5h6V11"/></svg>',
+  done:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'};
+const sgDate = v => { if(!v) return ''; const d = new Date(v); return isNaN(d) ? '' : d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); };
+function sgAsk(title, text, ok){
+  return new Promise(res=>{
+    const o = document.createElement('div'); o.className = 'sg-ask';
+    o.innerHTML = `<div class="box" role="dialog" aria-modal="true"><h3>${esc(title)}</h3><p>${text}</p><div class="row"><button class="btn" data-n>Cancel</button><button class="btn btn-primary" data-y>${esc(ok)}</button></div></div>`;
+    document.body.appendChild(o);
+    const done = v => { o.remove(); document.removeEventListener('keydown', k); res(v); };
+    const k = e => { if(e.key==='Escape') done(false); };
+    o.querySelector('[data-y]').onclick = () => done(true); o.querySelector('[data-n]').onclick = () => done(false);
+    o.addEventListener('mousedown', e => { if(e.target===o) done(false); }); document.addEventListener('keydown', k);
+    setTimeout(()=>o.querySelector('[data-y]').focus(), 30);
+  });
+}
+const sgErr = e => { const m = String(e?.message||e||''); return m.startsWith('STAGE_MISSING:') ? 'Still needed: '+m.slice(14).split('|').join(', ') : m.replace(/^STAGE_ORDER:/,''); };
+async function paintStage(){
+  const bar = $('stageBar'), s = SHIPMENT;
+  if(!bar || !dbClient || !s || !s.id || params().get('demo')==='1'){ if(bar) bar.hidden = true; return; }
+  if(!('stage' in s)){ bar.hidden = true; return; }               /* notice update not installed */
+  const smt = dbClient.schema('smartuna');
+  const importer = esc(s.importer_name || 'the importer');
+  if(!s.stage){
+    let need = [];
+    if(s.importer_org_id){ try{ const {data} = await smt.rpc('ship_stage_missing', {p_id:s.id, p_target:'notice'}); need = (data||[]).filter(x=>!/Importer/.test(x)); }catch(e){} }
+    bar.className = 'stage-card quiet'; bar.hidden = false;
+    bar.innerHTML = `<span class="sg-ic">${SG_IC.notice}</span><div class="sg-txt"><b>Not sent as a shipment notice</b>${s.importer_org_id
+        ? `Send a notice so ${importer} can follow this shipment from notice to scheduled to actual.`
+        : `To send a notice, pick the importer from the company list in Edit shipment, so the right company is notified.`}</div>
+      <div class="sg-act">${!s.importer_org_id ? `<button class="btn" onclick="goEdit()">Edit shipment</button>`
+        : need.length ? `<span class="sg-need">A notice needs: ${need.map(esc).join(', ')}.</span><button class="btn" onclick="goEdit()">Add in Edit shipment</button>`
+        : `<button class="btn btn-primary" id="sgIssue">Send shipment notice</button>`}</div>`;
+    $('sgIssue')?.addEventListener('click', async ()=>{
+      if(!await sgAsk(`Send a notice for ${s.shipment_ref||'this shipment'}?`, `${importer} is notified and can follow it under Shipment notices.`, 'Send notice')) return;
+      try{ const {error} = await smt.rpc('issue_ship_notice', {p_id:s.id}); if(error) throw error; toast('Shipment notice sent'); await reloadStage(); }
+      catch(e){ toast(sgErr(e), true); }
+    });
+    return;
+  }
+  const cur = SG.indexOf(s.stage), stamp = {notice:s.notice_at, scheduled:s.scheduled_at, actual:s.actual_at};
+  const steps = SG.map((k,i)=>`${i?`<span class="sg-line ${i<=cur?'done':''}"><i></i></span>`:''}<div class="sg-step ${i<=cur?'done':i===cur+1?'next':''}"><span class="sg-dot">${i<=cur?SG_IC.done:SG_IC[k]}</span><div><div class="sg-t">${SG_LBL[k]}</div><div class="sg-s">${i<=cur ? esc(sgDate(stamp[k])||'done') : i===cur+1 ? 'next' : 'later'}</div></div></div>`).join('');
+  let act = '';
+  if(cur < 2){
+    const nxt = SG[cur+1];
+    let miss = [];
+    try{ const {data, error} = await smt.rpc('ship_stage_missing', {p_id:s.id, p_target:nxt}); if(error) throw error; miss = data || []; }catch(e){ miss = null; }
+    act = miss === null ? '' : miss.length
+      ? `<span class="sg-need">${SG_LBL[nxt]} needs: ${miss.map(esc).join(', ')}.</span><button class="btn" onclick="goEdit()">Add in Edit shipment</button>`
+      : `<span class="sg-need ready">Ready to mark as ${SG_LBL[nxt].toLowerCase()}.</span><button class="btn btn-primary" id="sgNext">Mark as ${SG_LBL[nxt].toLowerCase()}</button>`;
+  } else act = `<span class="sg-need ready">All stages done.</span>`;
+  act += `<a class="btn" href="shipment-notice.html?ship=${encodeURIComponent(s.id)}">View notice</a>`;
+  bar.className = 'stage-card'; bar.hidden = false;
+  bar.innerHTML = `<div class="sg-steps">${steps}</div><div class="sg-act">${act}</div>`;
+  $('sgNext')?.addEventListener('click', async ()=>{
+    const nxt = SG[cur+1];
+    if(!await sgAsk(`Mark ${s.shipment_ref||'this shipment'} as ${SG_LBL[nxt].toLowerCase()}?`, `${importer} is notified. A shipment can’t go back to an earlier stage.`, `Mark as ${SG_LBL[nxt].toLowerCase()}`)) return;
+    try{ const {error} = await smt.rpc('set_ship_stage', {p_id:s.id, p_stage:nxt}); if(error) throw error; toast(`${s.shipment_ref||'Shipment'} is ${SG_LBL[nxt].toLowerCase()}`); await reloadStage(); }
+    catch(e){ toast(sgErr(e), true); }
+  });
+}
+async function reloadStage(){
+  const {data} = await dbClient.from('shipments').select('*').eq('id', SHIPMENT.id).single();
+  if(data){ SHIPMENT = data; }
+  paintStage();
 }
 
 /* profile avatar — same pattern as home-logged-in.html */
@@ -1250,5 +1356,6 @@ loadProfile();
 <script>
 if (typeof window.launchModule !== 'function') { window.launchModule = function(url){ window.location.href = url; }; }
 </script>
+<script src="notifications.js"></script>
 </body>
 </html>
