@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>NOAA SIMP — SmarTuna concept</title>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;600&family=Lora:ital,wght@0,400;1,400&display=swap" rel="stylesheet" />
   <link rel="icon" type="image/png" href="sc-blue-logo.png" />
   <style>
     @font-face{font-family:'Bitsumis';src:url('BITSUMIS.TTF') format('truetype');font-display:swap;}
@@ -500,9 +500,164 @@
     .unit select{min-width:70px;padding:0 30px 0 14px !important;background-position:right 11px center;}
     .unit.pre select{min-width:78px;}
     .toggle input{display:none !important;}
+
+    /* ── date picker ── */
+    .f input.date-in{cursor:pointer;padding-right:40px;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2'/%3E%3Cpath d='M16 2v4M8 2v4M3 10h18'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;background-position:right 14px center;background-size:16px;}
+    .f input.date-in.dp-open{border-color:var(--primary);background-color:#fff;box-shadow:0 0 0 3px rgba(26,111,219,.12);}
+    .dp-pop{position:fixed;z-index:600;display:none;width:296px;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 40px rgba(11,31,58,.16);padding:12px;user-select:none;}
+    .dp-pop.open{display:block;}
+    .dp-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+    .dp-titles{display:flex;gap:2px;}
+    .dp-title{border:none;background:none;font-family:inherit;font-size:13.5px;font-weight:500;color:var(--text);padding:6px 8px;border-radius:8px;cursor:pointer;}
+    .dp-title:hover{background:var(--field);}
+    .dp-title.static{cursor:default;}
+    .dp-nav{width:30px;height:30px;border:none;background:none;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#475569;cursor:pointer;}
+    .dp-nav:hover{background:var(--field);}
+    .dp-nav .ic{width:15px;height:15px;}
+    .dp-week{display:grid;grid-template-columns:repeat(7,1fr);margin-bottom:2px;}
+    .dp-week span{text-align:center;font-size:10.5px;color:var(--muted);padding:4px 0;letter-spacing:.04em;}
+    .dp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;}
+    .dp-grid.dp-big{grid-template-columns:repeat(3,1fr);gap:6px;padding:4px 0;}
+    .dp-day,.dp-cell{border:none;background:none;font-family:inherit;font-size:12.5px;color:var(--text);height:34px;border-radius:9px;cursor:pointer;position:relative;}
+    .dp-cell{height:46px;font-size:13px;}
+    .dp-day:hover,.dp-cell:hover{background:var(--field);}
+    .dp-day.out{color:#cbd5e1;}
+    .dp-day.today::after{content:'';position:absolute;left:50%;bottom:5px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--primary);}
+    .dp-day.focus{box-shadow:inset 0 0 0 1.5px #9cc3f3;}
+    .dp-day.on,.dp-cell.on{background:var(--primary);color:#fff;}
+    .dp-day.on.today::after{background:#fff;}
+    .dp-foot{display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:10px;border-top:1px solid var(--line);}
+    .dp-link{border:none;background:none;font-family:inherit;font-size:12px;color:var(--primary);cursor:pointer;padding:4px 6px;border-radius:6px;}
+    .dp-link:hover{background:var(--primary-soft);}
+    .dp-sel{font-size:12px;color:var(--muted);}
+
+    /* ── info tips ── */
+    .lbl-tip{display:flex;align-items:center;gap:7px;}
+    .info-tip{flex:none;width:17px;height:17px;border-radius:50%;border:1.3px solid #94a3b8;background:#fff;color:#64748b;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-size:11px;line-height:1;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;transition:.15s;}
+    .info-tip:hover,.info-tip.on{border-color:var(--primary);background:var(--primary);color:#fff;}
+    .info-tip:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(26,111,219,.2);}
+    .tip-pop{position:fixed;z-index:650;display:none;background:var(--ocean);color:#dbe7f7;border-radius:12px;padding:14px 16px;font-size:12.5px;line-height:1.55;box-shadow:0 18px 40px rgba(11,31,58,.28);}
+    .tip-pop.open{display:block;}
+    .tip-pop::before{content:'';position:absolute;top:-6px;left:var(--arrow,20px);width:12px;height:12px;margin-left:-6px;background:var(--ocean);transform:rotate(45deg);border-radius:2px;}
+    .tip-pop.above::before{top:auto;bottom:-6px;}
+    .tip-pop b{display:block;color:#fff;font-weight:500;font-size:13px;margin-bottom:6px;}
+    .tip-pop p b{display:inline;font-size:inherit;margin:0;}
+    .tip-pop p{margin:0 0 8px;}
+    .tip-pop ul{margin:0 0 8px;padding-left:16px;}
+    .tip-pop li{margin:2px 0;}
+    .tip-pop .tip-eg{margin:0;color:#8fb3e6;font-size:11.5px;}
+  </style>
+  <style id="simpLandingCss">
+    /* ── SIMP landing: deep-blue panel, notch for the logo, serif italic accents ── */
+    body.on-landing{background:#f4f3ef;}
+    body.on-landing .topbar{display:none;}
+    .sl{--navy:#0f2747;--navy-2:#163560;--peach:#f2b8a0;--peach-ink:#3b1f14;--ink:#14213d;--mut:#5b6678;--serif:'Lora',Georgia,'Times New Roman',serif;color:var(--ink);padding:14px 14px 0;}
+    .sl em.it,.sl .it{font-family:var(--serif);font-style:italic;font-weight:400;}
+    /* hero panel with the logo notch */
+    .sl-panel{position:relative;background:var(--navy);border-radius:28px;color:#fff;padding:22px 26px 26px;}
+    .sl-tab{position:absolute;left:0;top:0;height:72px;width:250px;background:#f4f3ef;border-bottom-right-radius:28px;display:flex;align-items:center;gap:10px;padding:0 0 8px 6px;}
+    .sl-tab::before,.sl-tab::after{content:'';position:absolute;width:28px;height:28px;background:radial-gradient(circle at 100% 100%,transparent 27.5px,#f4f3ef 28px);}
+    .sl-tab::before{left:100%;top:0;}
+    .sl-tab::after{left:0;top:100%;}
+    .sl-tab img{width:34px;height:34px;object-fit:contain;background:#fff;border-radius:9px;padding:3px;}
+    .sl-tab .wm-top{color:var(--ink);font-size:16px;}
+    .sl-tab .wm-sub{color:var(--mut);}
+    .sl-nav{display:flex;align-items:center;justify-content:flex-end;gap:26px;min-height:46px;padding-left:260px;}
+    .sl-nav a,.sl-nav button.lk{color:rgba(255,255,255,.85);font-size:12.5px;text-decoration:none;background:none;border:none;font-family:inherit;cursor:pointer;padding:0;}
+    .sl-nav a:hover,.sl-nav button.lk:hover{color:#fff;}
+    .sl-nav .sl-links{display:flex;gap:26px;margin-right:auto;margin-left:auto;}
+    .pill{display:inline-flex;align-items:center;gap:10px;border:none;border-radius:999px;background:var(--peach);color:var(--peach-ink);font-family:var(--serif);font-size:14px;padding:11px 20px;cursor:pointer;transition:.15s;white-space:nowrap;}
+    .pill:hover{background:#f6c8b4;} .pill .ic{width:15px;height:15px;}
+    .pill.sm{font-size:13px;padding:8px 16px;}
+    .pill.light{background:#fff;color:var(--navy);}
+    .sl-hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;align-items:center;padding:30px 0 0 22px;}
+    .sl-hero h1{font-size:54px;line-height:1.08;font-weight:400;letter-spacing:-.025em;margin:6px 0 22px;}
+    .sl-hero h1 .it{display:block;font-size:56px;letter-spacing:-.01em;color:#e9eef7;}
+    .sl-hero p{font-size:14px;line-height:1.7;color:rgba(255,255,255,.8);max-width:460px;}
+    .sl-eyebrow{font-size:12px;color:rgba(255,255,255,.65);letter-spacing:.02em;}
+    .sl-cta{display:flex;align-items:center;gap:26px;margin-top:36px;flex-wrap:wrap;}
+    .sl-proof{display:flex;align-items:center;gap:12px;}
+    .sl-avs{display:flex;}
+    .sl-avs span{width:34px;height:34px;border-radius:50%;border:2px solid var(--navy);margin-left:-9px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9.5px;color:#fff;}
+    .sl-avs span:first-child{margin-left:0;}
+    .sl-proof b{display:block;font-weight:400;font-size:12.5px;} .sl-proof small{font-size:11.5px;color:rgba(255,255,255,.7);}
+    .sl-img{position:relative;border-radius:22px;overflow:hidden;aspect-ratio:1.02;min-height:340px;}
+    .sl-img svg{position:absolute;inset:0;width:100%;height:100%;}
+    .sl-glass{position:absolute;left:16px;bottom:16px;display:flex;align-items:center;gap:12px;padding:10px 16px 10px 10px;border-radius:16px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.28);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-size:12px;line-height:1.35;color:#fff;}
+    .sl-glass .disc{width:42px;height:42px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+    .sl-glass .disc img{width:36px;height:36px;object-fit:contain;}
+    .sl-glass.r{left:auto;right:16px;top:16px;bottom:auto;flex-direction:column;align-items:flex-start;gap:2px;padding:12px 16px;}
+    .sl-glass.r b{font-weight:400;font-size:20px;font-family:var(--serif);font-style:italic;}
+    /* sections */
+    .sl-sec{max-width:1160px;margin:0 auto;padding:84px 24px 0;}
+    .sl-label{display:inline-flex;align-items:center;gap:10px;font-family:var(--serif);font-style:italic;font-size:14px;color:var(--ink);}
+    .sl-label::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--ink);}
+    .sl-label .n{font-family:var(--mono);font-style:normal;font-size:11px;color:var(--mut);}
+    .sl-h2{font-size:34px;line-height:1.25;font-weight:400;letter-spacing:-.015em;margin:16px 0 34px;max-width:700px;}
+    .sl-h2 .it{font-size:36px;}
+    .sl-cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+    .sl-cards.two{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .sl-card{position:relative;display:flex;flex-direction:column;text-align:left;background:#fff;border:none;border-radius:20px;padding:12px 12px 22px;font-family:inherit;color:var(--ink);cursor:pointer;transition:background .2s,transform .2s,box-shadow .2s;}
+    .sl-card:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(15,39,71,.08);}
+    .sl-card .art{position:relative;display:block;border-radius:14px;overflow:hidden;aspect-ratio:1.7;}
+    .sl-card .art svg{position:absolute;inset:0;width:100%;height:100%;}
+    .sl-card .ct{font-family:var(--serif);font-style:italic;font-size:19px;margin:18px 10px 8px;}
+    .sl-card small{font-size:12.5px;line-height:1.6;color:var(--mut);margin:0 10px;}
+    .sl-card .tick{position:absolute;top:22px;right:22px;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.92);border:1.5px solid #d7dce4;display:flex;align-items:center;justify-content:center;color:#fff;}
+    .sl-card .tick .ic{width:13px;height:13px;}
+    .sl-card.on{background:var(--navy);color:#fff;}
+    .sl-card.on small{color:rgba(255,255,255,.75);}
+    .sl-card.on .tick{background:var(--peach);border-color:var(--peach);color:var(--peach-ink);}
+    .sl-card .ex{display:inline-block;margin-top:2px;font-style:normal;font-family:Poppins,sans-serif;font-size:10.5px;padding:2px 9px;border-radius:999px;background:#eef1f6;color:var(--mut);vertical-align:middle;}
+    .sl-card.on .ex{background:rgba(255,255,255,.14);color:#fff;}
+    .sl-pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:40px;}
+    .sl-pair .sl-h2{font-size:26px;margin-bottom:24px;} .sl-pair .sl-h2 .it{font-size:28px;}
+    .sl-species{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px;}
+    .sl-sp{background:#fff;border-radius:18px;padding:18px 14px;display:flex;flex-direction:column;gap:12px;}
+    .sl-sp .c{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-family:var(--mono);font-size:11px;}
+    .sl-sp b{font-weight:400;font-size:13.5px;} .sl-sp i{font-family:var(--serif);font-size:12.5px;color:var(--mut);}
+    /* call to action */
+    .sl-band{margin:90px 14px 0;background:var(--navy);border-radius:28px;color:#fff;padding:56px 60px 0;}
+    .sl-band-g{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:40px;align-items:center;padding-bottom:48px;}
+    .sl-band h2{font-size:36px;font-weight:400;letter-spacing:-.02em;line-height:1.2;}
+    .sl-band h2 .it{color:#c9d6ea;font-size:38px;}
+    .sl-sum{display:grid;gap:8px;margin-bottom:22px;}
+    .sl-sum div{display:flex;justify-content:space-between;gap:16px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.14);font-size:12.5px;}
+    .sl-sum span{color:rgba(255,255,255,.6);} .sl-sum b{font-weight:400;text-align:right;}
+    .sl-band small{display:block;font-size:12px;color:rgba(255,255,255,.6);margin-top:14px;}
+    .sl-foot{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:22px 0 26px;border-top:1px solid rgba(255,255,255,.14);font-size:12px;color:rgba(255,255,255,.55);}
+    .sl-foot nav{display:flex;gap:20px;} .sl-foot button{background:none;border:none;color:rgba(255,255,255,.85);font-family:inherit;font-size:12px;cursor:pointer;padding:0;}
+    .sl-burger{display:none;}
+    @media(max-width:1100px){ .sl-species{grid-template-columns:repeat(4,minmax(0,1fr));} .sl-nav .sl-links{display:none;} .sl-hero h1{font-size:44px;} .sl-hero h1 .it{font-size:46px;} }
+    @media(max-width:860px){
+      .sl{padding:10px 10px 0;}
+      .sl-panel{padding:18px 16px 16px;border-radius:24px;}
+      .sl-tab{width:200px;height:62px;}
+      .sl-nav{padding-left:200px;min-height:40px;gap:12px;}
+      .sl-nav .pill{display:none;}
+      .sl-burger{display:flex;width:40px;height:40px;border-radius:12px;border:1px solid rgba(255,255,255,.25);background:none;color:#fff;align-items:center;justify-content:center;cursor:pointer;}
+      .sl-menu{display:none;position:absolute;right:16px;top:64px;z-index:20;background:#fff;color:var(--ink);border-radius:16px;padding:8px;box-shadow:0 18px 40px rgba(0,0,0,.2);min-width:200px;}
+      .sl-menu.open{display:block;}
+      .sl-menu button{display:block;width:100%;text-align:left;background:none;border:none;font-family:inherit;font-size:13px;color:var(--ink);padding:10px 12px;border-radius:10px;cursor:pointer;}
+      .sl-menu button:hover{background:#f4f3ef;}
+      .sl-hero{grid-template-columns:1fr;gap:26px;padding:26px 4px 0;}
+      .sl-hero h1{font-size:34px;} .sl-hero h1 .it{font-size:36px;}
+      .sl-img{min-height:0;aspect-ratio:1.1;}
+      .sl-sec{padding:56px 16px 0;}
+      .sl-h2{font-size:25px;} .sl-h2 .it{font-size:27px;}
+      .sl-cards,.sl-cards.two,.sl-pair{grid-template-columns:1fr;}
+      .sl-pair{gap:56px;}
+      .sl-species{grid-template-columns:repeat(2,minmax(0,1fr));}
+      .sl-band{margin:56px 10px 0;padding:40px 22px 0;border-radius:24px;}
+      .sl-band-g{grid-template-columns:1fr;}
+      .sl-band h2{font-size:28px;} .sl-band h2 .it{font-size:30px;}
+    }
+    @media(min-width:861px){ .sl-menu{display:none !important;} }
   </style>
 </head>
-<body>
+<body class="on-landing">
 
   <!-- ═══════════ TOP BAR ═══════════ -->
   <header class="topbar">
@@ -519,57 +674,106 @@
   </header>
 
   <!-- ═══════════ LANDING ═══════════ -->
-  <div id="viewLanding">
-    <section class="hero">
-      <div class="hero-inner">
-        <div class="hero-copy">
-        <div class="eyebrow">Seafood Import Monitoring Program</div>
-        <h1>Get your tuna entry SIMP-ready before it reaches U.S. customs.</h1>
-        <p>Gather the harvest, landing and chain-of-custody data NOAA requires for each entry, catch the gaps before your broker files, and keep a record ready for audit.</p>
-        <div class="hero-links">
-          <button class="btn btn-ghost-light" onclick="openModal('guideModal')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>How SIMP works</button>
-          <button class="btn btn-ghost-light" onclick="loadDraft()"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 14 1.45-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.55 6a2 2 0 0 1-1.94 1.5H4a2 2 0 0 1-2-2V5c0-1.1.9-2 2-2h3.93a2 2 0 0 1 1.66.9l.82 1.2a2 2 0 0 0 1.66.9H18a2 2 0 0 1 2 2v2"/></svg>Open saved draft</button>
+  <div id="viewLanding" class="sl">
+    <section class="sl-panel">
+      <a class="sl-tab" href="home-logged-in.html" onclick="event.preventDefault(); openModal('exitModal');">
+        <img src="sc-blue-logo.png" alt="SmarTuna"/><span class="wm"><span class="wm-top">SmarTuna</span><span class="wm-sub">concept</span></span>
+      </a>
+      <nav class="sl-nav">
+        <div class="sl-links">
+          <button class="lk" onclick="openModal('guideModal')">How SIMP works</button>
+          <button class="lk" onclick="slGo('slRole')">Your role</button>
+          <button class="lk" onclick="slGo('slCert')">Certificates</button>
+          <button class="lk" onclick="slGo('slSpecies')">Species</button>
+          <button class="lk" onclick="loadDraft()">Open draft</button>
+          <button class="lk" onclick="openModal('exitModal')">Exit</button>
         </div>
-        <div class="hero-stats">
-          <div class="hero-stat"><b>7</b><span>tuna species covered</span></div>
-          <div class="hero-stat"><b>IFTP</b><span>permit needed to import</span></div>
-          <div class="hero-stat"><b>2 years</b><span>records kept for audit</span></div>
+        <button class="pill sm" onclick="proceed()">Start the form <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+        <button class="sl-burger" aria-label="Menu" onclick="event.stopPropagation();$('slMenu').classList.toggle('open')"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <div class="sl-menu" id="slMenu">
+          <button onclick="openModal('guideModal')">How SIMP works</button><button onclick="slGo('slRole')">Your role</button><button onclick="slGo('slCert')">Certificates</button><button onclick="slGo('slSpecies')">Species</button><button onclick="loadDraft()">Open saved draft</button><button onclick="openModal('exitModal')">Exit</button>
         </div>
+      </nav>
+      <div class="sl-hero">
+        <div>
+          <span class="sl-eyebrow">NOAA Seafood Import Monitoring Program</span>
+          <h1>Your tuna entry, <span class="it">ready for NOAA before customs</span></h1>
+          <p>Gather the harvest, landing and chain-of-custody data NOAA requires for each entry, catch the gaps before your broker files, and keep a record ready for audit.</p>
+          <div class="sl-cta">
+            <button class="pill" onclick="proceed()">Start the form <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+            <div class="sl-proof"><div class="sl-avs" id="slAvs"></div><div><b>7 tuna species covered</b><small>IFTP permit needed · 2 years of records</small></div></div>
+          </div>
         </div>
-        <div class="noaa-badge"><div class="disc"><img src="NOAA.png" alt="NOAA"/></div><span>Program run by<br/>NOAA Fisheries</span></div>
+        <div class="sl-img">
+          <svg viewBox="0 0 600 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+            <defs>
+              <linearGradient id="hs" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b3a66"/><stop offset=".45" stop-color="#5b6f95"/><stop offset=".66" stop-color="#e7a58a"/><stop offset=".75" stop-color="#f6c99c"/></linearGradient>
+              <linearGradient id="hw" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2c4a75"/><stop offset="1" stop-color="#0d213f"/></linearGradient>
+              <radialGradient id="hsun" cx="430" cy="440" r="260" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffe2b8" stop-opacity=".9"/><stop offset="1" stop-color="#ffe2b8" stop-opacity="0"/></radialGradient>
+            </defs>
+            <rect width="600" height="600" fill="url(#hs)"/><rect width="600" height="600" fill="url(#hsun)"/>
+            <g fill="#14294a">
+              <path d="M40 445 V230 h10 V445z"/><path d="M20 236 h120 v8 H20z"/><path d="M110 244 v40 h4 v-40z"/><path d="M50 260 l-30 -24 h4 l26 20z"/>
+              <path d="M170 445 V260 h9 V445z"/><path d="M152 266 h100 v7 H152z"/><path d="M230 273 v32 h3 v-32z"/>
+            </g>
+            <rect y="445" width="600" height="155" fill="url(#hw)"/>
+            <g opacity=".35" stroke="#9fb4d6" stroke-width="1.4" fill="none"><path d="M0 480 Q150 472 300 480 T600 480"/><path d="M0 520 Q150 510 300 520 T600 520"/><path d="M0 565 Q150 555 300 565 T600 565"/></g>
+            <g transform="translate(250 0)">
+              <path d="M10 445 L30 470 H330 L350 430 H10z" fill="#0f2240"/>
+              <rect x="270" y="372" width="44" height="58" fill="#0f2240"/><rect x="282" y="352" width="10" height="20" fill="#0f2240"/>
+              <g>
+                <rect x="40" y="406" width="44" height="24" fill="#e07a5f"/><rect x="86" y="406" width="44" height="24" fill="#3d7ab8"/><rect x="132" y="406" width="44" height="24" fill="#f2cc8f"/><rect x="178" y="406" width="44" height="24" fill="#81b29a"/><rect x="224" y="406" width="44" height="24" fill="#e07a5f"/>
+                <rect x="60" y="382" width="44" height="24" fill="#3d7ab8"/><rect x="106" y="382" width="44" height="24" fill="#e07a5f"/><rect x="152" y="382" width="44" height="24" fill="#81b29a"/><rect x="198" y="382" width="44" height="24" fill="#f2cc8f"/>
+                <rect x="96" y="358" width="44" height="24" fill="#f2cc8f"/><rect x="142" y="358" width="44" height="24" fill="#3d7ab8"/>
+              </g>
+              <g fill="#ffe7b8"><circle cx="276" cy="390" r="2"/><circle cx="288" cy="390" r="2"/><circle cx="300" cy="390" r="2"/></g>
+            </g>
+            <path d="M260 476 Q420 486 590 476" stroke="#f6c99c" stroke-opacity=".35" stroke-width="3" fill="none"/>
+          </svg>
+          <div class="sl-glass r"><span>Records kept for audit</span><b>2 years</b></div>
+          <div class="sl-glass"><span class="disc"><img src="NOAA.png" alt="NOAA"/></span><span>Program run by<br/>NOAA Fisheries</span></div>
+        </div>
       </div>
     </section>
 
-    <div class="landing">
-      <div class="panel">
-        <div class="q-label"><span class="q-num">01</span><span class="q-title">Who's filling this in?</span></div>
-        <div class="tiles" id="roleTiles">
-          <button class="tile on" data-v="Importer of record" onclick="pickTile('role',this)"><span class="check"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span class="ico"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/></svg></span><b>Importer of record</b><small>Holds the IFTP and is responsible for the data at entry</small></button>
-          <button class="tile" data-v="Customs broker" onclick="pickTile('role',this)"><span class="check"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span class="ico"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="m9 15 2 2 4-4"/></svg></span><b>Customs broker</b><small>Files in ACE on the importer's behalf</small></button>
-          <button class="tile" data-v="Exporter / supplier" onclick="pickTile('role',this)"><span class="check"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></span><span class="ico"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg></span><b>Exporter / supplier</b><small>Prepares the harvest data for a U.S. buyer</small></button>
+    <section class="sl-sec" id="slRole">
+      <span class="sl-label"><span class="n">01</span>Who's filling this in?</span>
+      <h2 class="sl-h2">Tell us your part in the import, so we ask <span class="it">only what your role needs.</span></h2>
+      <div class="sl-cards" id="roleTiles"></div>
+    </section>
+
+    <section class="sl-sec" id="slCert">
+      <div class="sl-pair">
+        <div>
+          <span class="sl-label"><span class="n">02</span>Harvest method</span>
+          <h2 class="sl-h2">How was the tuna <span class="it">brought in?</span></h2>
+          <div class="sl-cards two" id="methodTiles"></div>
+        </div>
+        <div>
+          <span class="sl-label"><span class="n">03</span>NOAA model certificate</span>
+          <h2 class="sl-h2">One catch, or <span class="it">many small ones?</span></h2>
+          <div class="sl-cards two" id="filingTiles"></div>
         </div>
       </div>
+    </section>
 
-      <div class="panel">
-        <div class="q-label"><span class="q-num">02</span><span class="q-title">Harvest method</span></div>
-        <div class="tiles tiles-2" id="methodTiles"></div>
-      </div>
+    <section class="sl-sec" id="slSpecies">
+      <span class="sl-label"><span class="n">04</span>Species covered by SIMP</span>
+      <h2 class="sl-h2">Seven tuna species need <span class="it">harvest and landing records at entry.</span></h2>
+      <div class="sl-species" id="speciesStrip"></div>
+    </section>
 
-      <div class="panel">
-        <div class="q-label"><span class="q-num">03</span><span class="q-title">Which NOAA model certificate?</span></div>
-        <div class="tiles tiles-2" id="filingTiles"></div>
+    <section class="sl-band">
+      <div class="sl-band-g">
+        <h2>Your answers set up <span class="it">the right certificate.</span></h2>
+        <div>
+          <div class="sl-sum" id="slSum"></div>
+          <button class="pill light" onclick="proceed()">Start the form <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
+          <small>Nothing here is sent to CBP or NOAA. You'll get a checked summary to hand to your filer.</small>
+        </div>
       </div>
-
-      <div class="panel">
-        <div class="q-label"><span class="q-num">04</span><span class="q-title">Species covered by SIMP</span></div>
-        <div class="species-strip" id="speciesStrip"></div>
-      </div>
-
-      <div class="panel landing-cta">
-        <p>Nothing here is sent to CBP or NOAA. You'll get a checked summary to hand to your filer.</p>
-        <button class="btn btn-primary btn-lg" onclick="proceed()">Start the form <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg></button>
-      </div>
-    </div>
+      <div class="sl-foot"><span>SmarTuna Concept · NOAA SIMP</span><nav><button onclick="openModal('guideModal')">How SIMP works</button><button onclick="loadDraft()">Open saved draft</button></nav><span>50 CFR 300.324</span></div>
+    </section>
   </div>
 
   <!-- ═══════════ WORKSPACE ═══════════ -->
@@ -614,7 +818,7 @@
             <div class="grid">
               <div class="f full"><label>Importer of record name<span class="req"></span></label><input type="text" id="iorName" data-f/></div>
               <div class="f"><label>IFTP number<span class="req"></span></label><input type="text" id="iftp" class="mono" data-f placeholder="International Fisheries Trade Permit"/><small>Annual NOAA permit. The holder needs a U.S. address.</small></div>
-              <div class="f"><label>IFTP valid until</label><input type="date" id="iftpExpiry" data-f/></div>
+              <div class="f"><label>IFTP valid until</label><input type="text" class="date-in" id="iftpExpiry" data-f placeholder="Pick a date" autocomplete="off"/></div>
               <div class="f"><label>Importer number (CBP)</label><input type="text" id="iorNumber" class="mono" data-f placeholder="EIN / CBP-assigned no."/></div>
               <div class="f"><label>Filer / customs broker</label><input type="text" id="filer" data-f/></div>
             </div>
@@ -624,7 +828,7 @@
             <div class="card-head"><div class="card-title"><span class="badge"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg></span>Entry</div></div>
             <div class="grid c3">
               <div class="f"><label>Entry number</label><input type="text" id="entryNo" class="mono" data-f placeholder="Assigned by the filer"/></div>
-              <div class="f"><label>Expected entry date</label><input type="date" id="entryDate" data-f/></div>
+              <div class="f"><label>Expected entry date</label><input type="text" class="date-in" id="entryDate" data-f placeholder="Pick a date" autocomplete="off"/></div>
               <div class="f"><label>U.S. port of entry<span class="req"></span></label><input type="text" id="portEntry" data-f placeholder="e.g. Los Angeles, CA"/></div>
               <div class="f"><label>Commercial invoice no.<span class="req"></span></label><input type="text" id="invoiceNo" class="mono" data-f/></div>
               <div class="f"><label>Invoice line</label><input type="text" id="invoiceLine" class="mono" data-f/></div>
@@ -686,8 +890,8 @@
           <div class="card">
             <div class="card-head"><div class="card-title"><span class="badge"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="20" height="5" x="2" y="3" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg></span>Record keeping</div></div>
             <div class="grid">
-              <div class="f"><label>Records held by</label><input type="text" id="recordsHolder" data-f placeholder="Person or team at the importer"/></div>
-              <div class="f"><label>Where records are stored</label><input type="text" id="recordsLocation" data-f placeholder="e.g. SharePoint › SIMP › 2026"/></div>
+              <div class="f"><label class="lbl-tip">Records held by<button type="button" class="info-tip" aria-label="What does this mean?" data-tip="<b>Who looks after these records?</b><p>The person or team at the importer of record who keeps this entry's SIMP paperwork and will answer if NOAA asks for it.</p><p>NOAA sends audit requests to the importer of record, so naming someone avoids a scramble when one arrives.</p><p class='tip-eg'>e.g. Priya Shah, Compliance team</p>">i</button></label><input type="text" id="recordsHolder" data-f placeholder="Person or team at the importer"/></div>
+              <div class="f"><label class="lbl-tip">Where records are stored<button type="button" class="info-tip" aria-label="What does this mean?" data-tip="<b>Where are the records kept?</b><p>SIMP doesn't send your supply-chain paperwork to U.S. Customs. Instead, the importer of record must <b>keep it for at least 2 years</b> and hand it over if NOAA audits this entry.</p><p>This field notes where that paperwork lives, so anyone can find it quickly. It includes:</p><ul><li>Catch certificates and landing reports</li><li>Transshipping and reprocessing certificates</li><li>Invoices, packing lists and bills of lading</li><li>Fishing permits and other authorizations</li></ul><p class='tip-eg'>e.g. SharePoint › Compliance › SIMP › 2026 › INV-88, or a physical file at the Los Angeles office</p>">i</button></label><input type="text" id="recordsLocation" data-f placeholder="e.g. SharePoint › SIMP › 2026"/></div>
               <div class="f full"><label class="toggle" style="font-weight:400;color:var(--text);font-size:12.5px;"><input type="checkbox" id="recordsConfirm" data-f/><span class="sw"></span>Records for this entry will be kept for at least 2 years and supplied on request<span class="req"></span></label></div>
             </div>
           </div>
@@ -1084,24 +1288,36 @@
   // LANDING
   // ══════════════════════════════════════════
   $('htsHeading').innerHTML = htsOptionsHtml();
-  $('speciesStrip').innerHTML = SPECIES.map(s => `<span class="sp-chip"><span class="sp-code" style="background:${s.color}">${s.code}</span>${s.name} <em>${s.sci}</em></span>`).join('');
-  const tileHtml = (key, v, icon, title, sub, extra='') =>
-    `<button class="tile" data-v="${v}" onclick="pickTile('${key}',this)"><span class="check">${ic('check')}</span><span class="ico">${ic(icon)}</span><b>${title}${extra}</b><small>${sub}</small></button>`;
+  const SL_ART = {"importer": "<svg viewBox=\"0 0 400 236\" preserveAspectRatio=\"xMidYMid slice\"><defs><linearGradient id=\"a1\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#dfe9f6\"/><stop offset=\"1\" stop-color=\"#b9cde8\"/></linearGradient></defs><rect width=\"400\" height=\"236\" fill=\"url(#a1)\"/>\n   <rect y=\"170\" width=\"400\" height=\"66\" fill=\"#8aa4c8\"/><g><rect x=\"60\" y=\"120\" width=\"90\" height=\"50\" rx=\"3\" fill=\"#e07a5f\"/><rect x=\"152\" y=\"120\" width=\"90\" height=\"50\" rx=\"3\" fill=\"#3d7ab8\"/><rect x=\"244\" y=\"120\" width=\"90\" height=\"50\" rx=\"3\" fill=\"#f2cc8f\"/><rect x=\"104\" y=\"70\" width=\"90\" height=\"50\" rx=\"3\" fill=\"#81b29a\"/><rect x=\"196\" y=\"70\" width=\"90\" height=\"50\" rx=\"3\" fill=\"#e07a5f\"/></g>\n   <g stroke=\"#ffffff\" stroke-opacity=\".45\" stroke-width=\"2\"><path d=\"M72 126v38\"/><path d=\"M86 126v38\"/><path d=\"M100 126v38\"/><path d=\"M114 126v38\"/><path d=\"M128 126v38\"/><path d=\"M142 126v38\"/><path d=\"M164 126v38\"/><path d=\"M178 126v38\"/><path d=\"M192 126v38\"/><path d=\"M206 126v38\"/><path d=\"M220 126v38\"/><path d=\"M234 126v38\"/><path d=\"M256 126v38\"/><path d=\"M270 126v38\"/><path d=\"M284 126v38\"/><path d=\"M298 126v38\"/><path d=\"M312 126v38\"/><path d=\"M326 126v38\"/><path d=\"M116 76v38\"/><path d=\"M130 76v38\"/><path d=\"M144 76v38\"/><path d=\"M158 76v38\"/><path d=\"M172 76v38\"/><path d=\"M186 76v38\"/><path d=\"M208 76v38\"/><path d=\"M222 76v38\"/><path d=\"M236 76v38\"/><path d=\"M250 76v38\"/><path d=\"M264 76v38\"/><path d=\"M278 76v38\"/></g>\n   <g fill=\"#14294a\"><path d=\"M330 170 V40 h8 V170z\"/><path d=\"M300 44 h90 v7 h-90z\"/><path d=\"M350 51 v26 h3 v-26z\"/></g><rect x=\"335\" y=\"77\" width=\"34\" height=\"8\" fill=\"#14294a\"/></svg>", "broker": "<svg viewBox=\"0 0 400 236\" preserveAspectRatio=\"xMidYMid slice\"><defs><linearGradient id=\"a2\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\"><stop offset=\"0\" stop-color=\"#f3e7dc\"/><stop offset=\"1\" stop-color=\"#e5cdb9\"/></linearGradient></defs><rect width=\"400\" height=\"236\" fill=\"url(#a2)\"/>\n   <rect x=\"96\" y=\"40\" width=\"150\" height=\"190\" rx=\"8\" fill=\"#fff\" transform=\"rotate(-8 170 135)\"/><rect x=\"150\" y=\"30\" width=\"150\" height=\"190\" rx=\"8\" fill=\"#fff\" stroke=\"#e6dccf\"/>\n   <g fill=\"#c9d3e0\"><rect x=\"168\" y=\"56\" width=\"90\" height=\"8\" rx=\"4\"/><rect x=\"168\" y=\"76\" width=\"114\" height=\"6\" rx=\"3\"/><rect x=\"168\" y=\"92\" width=\"100\" height=\"6\" rx=\"3\"/><rect x=\"168\" y=\"108\" width=\"110\" height=\"6\" rx=\"3\"/><rect x=\"168\" y=\"124\" width=\"70\" height=\"6\" rx=\"3\"/></g>\n   <g transform=\"translate(250 170) rotate(-12)\"><circle r=\"30\" fill=\"none\" stroke=\"#c0392b\" stroke-width=\"4\" opacity=\".8\"/><circle r=\"22\" fill=\"none\" stroke=\"#c0392b\" stroke-width=\"2\" opacity=\".8\"/><text x=\"0\" y=\"5\" text-anchor=\"middle\" font-family=\"monospace\" font-size=\"13\" fill=\"#c0392b\" opacity=\".85\">SIMP</text></g>\n   <rect x=\"300\" y=\"150\" width=\"70\" height=\"10\" rx=\"5\" fill=\"#14294a\" transform=\"rotate(-35 335 155)\"/></svg>", "exporter": "<svg viewBox=\"0 0 400 236\" preserveAspectRatio=\"xMidYMid slice\"><defs><linearGradient id=\"a3\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#cfe4ef\"/><stop offset=\".6\" stop-color=\"#f4d9bf\"/></linearGradient></defs><rect width=\"400\" height=\"236\" fill=\"url(#a3)\"/>\n   <rect y=\"150\" width=\"400\" height=\"86\" fill=\"#4a7aa6\"/><rect x=\"0\" y=\"140\" width=\"170\" height=\"16\" fill=\"#7a5a3c\"/><g fill=\"#6a4c31\"><rect x=\"20\" y=\"156\" width=\"8\" height=\"60\"/><rect x=\"80\" y=\"156\" width=\"8\" height=\"60\"/><rect x=\"140\" y=\"156\" width=\"8\" height=\"60\"/></g>\n   <g><rect x=\"24\" y=\"110\" width=\"40\" height=\"30\" fill=\"#d9a066\"/><rect x=\"68\" y=\"110\" width=\"40\" height=\"30\" fill=\"#c98b52\"/><rect x=\"46\" y=\"80\" width=\"40\" height=\"30\" fill=\"#e0b07c\"/></g>\n   <g fill=\"#14294a\"><path d=\"M190 150 L205 172 H360 L374 140 H190z\"/><rect x=\"300\" y=\"104\" width=\"34\" height=\"36\"/><rect x=\"314\" y=\"80\" width=\"4\" height=\"26\"/><path d=\"M240 142 V70 h3 v72z\"/><path d=\"M242 72 L300 128\" stroke=\"#14294a\" stroke-width=\"2\"/></g></svg>", "wild": "<svg viewBox=\"0 0 400 236\" preserveAspectRatio=\"xMidYMid slice\"><defs><linearGradient id=\"a4\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#bcd6ee\"/><stop offset=\".42\" stop-color=\"#e9d2bd\"/><stop offset=\".42\" stop-color=\"#3f74a6\"/><stop offset=\"1\" stop-color=\"#173f6b\"/></linearGradient></defs><rect width=\"400\" height=\"236\" fill=\"url(#a4)\"/>\n   <g fill=\"#14294a\"><path d=\"M110 99 L126 118 H270 L284 92 H110z\"/><rect x=\"220\" y=\"62\" width=\"36\" height=\"30\"/><rect x=\"236\" y=\"40\" width=\"4\" height=\"24\"/><path d=\"M150 92 V30 h3 v62z\"/></g>\n   <path d=\"M152 32 Q200 120 300 200\" stroke=\"#fff\" stroke-opacity=\".5\" stroke-width=\"1.5\" fill=\"none\" stroke-dasharray=\"4 5\"/>\n   <g transform=\"translate(250 168) scale(.2)\"><path d=\"M40 120 C 110 40, 300 20, 420 70 C 450 82, 470 96, 482 110 L 520 72 L 540 70 L 512 120 L 540 172 L 520 170 L 482 130 C 470 144, 450 156, 420 166 C 300 210, 110 196, 40 120 Z\" fill=\"#cfe0ee\"/></g>\n   <g opacity=\".35\" stroke=\"#fff\" fill=\"none\"><path d=\"M0 120 Q100 114 200 120 T400 120\"/></g></svg>", "farm": "<svg viewBox=\"0 0 400 236\" preserveAspectRatio=\"xMidYMid slice\"><defs><linearGradient id=\"a5\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#5b94c4\"/><stop offset=\"1\" stop-color=\"#2a5d8f\"/></linearGradient></defs><rect width=\"400\" height=\"236\" fill=\"url(#a5)\"/>\n   <g transform=\"translate(110 80)\"><ellipse rx=\"62\" ry=\"26\" fill=\"#1d4a78\" opacity=\".55\"/><ellipse rx=\"62\" ry=\"26\" fill=\"none\" stroke=\"#f2cc8f\" stroke-width=\"5\"/><circle cx=\"62.0\" cy=\"0.0\" r=\"4\" fill=\"#fff\"/><circle cx=\"43.9\" cy=\"18.4\" r=\"4\" fill=\"#fff\"/><circle cx=\"0.0\" cy=\"26.0\" r=\"4\" fill=\"#fff\"/><circle cx=\"-43.8\" cy=\"18.4\" r=\"4\" fill=\"#fff\"/><circle cx=\"-62.0\" cy=\"0.0\" r=\"4\" fill=\"#fff\"/><circle cx=\"-43.9\" cy=\"-18.3\" r=\"4\" fill=\"#fff\"/><circle cx=\"-0.1\" cy=\"-26.0\" r=\"4\" fill=\"#fff\"/><circle cx=\"43.7\" cy=\"-18.4\" r=\"4\" fill=\"#fff\"/></g><g transform=\"translate(270 70)\"><ellipse rx=\"62\" ry=\"26\" fill=\"#1d4a78\" opacity=\".55\"/><ellipse rx=\"62\" ry=\"26\" fill=\"none\" stroke=\"#f2cc8f\" stroke-width=\"5\"/><circle cx=\"62.0\" cy=\"0.0\" r=\"4\" fill=\"#fff\"/><circle cx=\"43.9\" cy=\"18.4\" r=\"4\" fill=\"#fff\"/><circle cx=\"0.0\" cy=\"26.0\" r=\"4\" fill=\"#fff\"/><circle cx=\"-43.8\" cy=\"18.4\" r=\"4\" fill=\"#fff\"/><circle cx=\"-62.0\" cy=\"0.0\" r=\"4\" fill=\"#fff\"/><circle cx=\"-43.9\" cy=\"-18.3\" r=\"4\" fill=\"#fff\"/><circle cx=\"-0.1\" cy=\"-26.0\" r=\"4\" fill=\"#fff\"/><circle cx=\"43.7\" cy=\"-18.4\" r=\"4\" fill=\"#fff\"/></g><g transform=\"translate(190 165)\"><ellipse rx=\"62\" ry=\"26\" fill=\"#1d4a78\" opacity=\".55\"/><ellipse rx=\"62\" ry=\"26\" fill=\"none\" stroke=\"#f2cc8f\" stroke-width=\"5\"/><circle cx=\"62.0\" cy=\"0.0\" r=\"4\" fill=\"#fff\"/><circle cx=\"43.9\" cy=\"18.4\" r=\"4\" fill=\"#fff\"/><circle cx=\"0.0\" cy=\"26.0\" r=\"4\" fill=\"#fff\"/><circle cx=\"-43.8\" cy=\"18.4\" r=\"4\" fill=\"#fff\"/><circle cx=\"-62.0\" cy=\"0.0\" r=\"4\" fill=\"#fff\"/><circle cx=\"-43.9\" cy=\"-18.3\" r=\"4\" fill=\"#fff\"/><circle cx=\"-0.1\" cy=\"-26.0\" r=\"4\" fill=\"#fff\"/><circle cx=\"43.7\" cy=\"-18.4\" r=\"4\" fill=\"#fff\"/></g>\n   <g fill=\"#14294a\"><path d=\"M320 170 L328 182 H382 L388 166 H320z\"/><rect x=\"350\" y=\"152\" width=\"18\" height=\"14\"/></g></svg>", "single": "<svg viewBox=\"0 0 400 236\" preserveAspectRatio=\"xMidYMid slice\"><rect width=\"400\" height=\"236\" fill=\"#e8eef7\"/>\n   <rect x=\"120\" y=\"22\" width=\"160\" height=\"200\" rx=\"8\" fill=\"#fff\" stroke=\"#d5dde9\"/><rect x=\"138\" y=\"40\" width=\"80\" height=\"9\" rx=\"4\" fill=\"#14294a\" opacity=\".8\"/>\n   <g fill=\"#c9d3e0\"><rect x=\"138\" y=\"62\" width=\"124\" height=\"6\" rx=\"3\"/><rect x=\"138\" y=\"76\" width=\"110\" height=\"6\" rx=\"3\"/><rect x=\"138\" y=\"90\" width=\"118\" height=\"6\" rx=\"3\"/></g>\n   <rect x=\"138\" y=\"108\" width=\"124\" height=\"54\" rx=\"6\" fill=\"#eef3fa\"/><g fill=\"#14294a\" transform=\"translate(150 118) scale(.9)\"><path d=\"M0 20 L8 30 H70 L78 14 H0z\"/><rect x=\"52\" y=\"0\" width=\"16\" height=\"14\"/></g>\n   <circle cx=\"244\" cy=\"190\" r=\"18\" fill=\"none\" stroke=\"#1a6fdb\" stroke-width=\"3\"/><path d=\"M236 190 l6 6 l10 -12\" stroke=\"#1a6fdb\" stroke-width=\"3\" fill=\"none\" stroke-linecap=\"round\"/></svg>", "agg": "<svg viewBox=\"0 0 400 236\" preserveAspectRatio=\"xMidYMid slice\"><defs><linearGradient id=\"a6\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0\" stop-color=\"#f3dcc7\"/><stop offset=\".38\" stop-color=\"#f3dcc7\"/><stop offset=\".38\" stop-color=\"#5b94c4\"/><stop offset=\"1\" stop-color=\"#2a5d8f\"/></linearGradient></defs><rect width=\"400\" height=\"236\" fill=\"url(#a6)\"/>\n   <rect x=\"150\" y=\"70\" width=\"100\" height=\"24\" fill=\"#7a5a3c\"/><rect x=\"170\" y=\"94\" width=\"6\" height=\"40\" fill=\"#6a4c31\"/><rect x=\"224\" y=\"94\" width=\"6\" height=\"40\" fill=\"#6a4c31\"/>\n   <g transform=\"translate(40 130)\" fill=\"#14294a\"><path d=\"M0 0 L6 9 H38 L44 -4 H0z\"/><rect x=\"24\" y=\"-14\" width=\"10\" height=\"10\"/></g><g transform=\"translate(90 190)\" fill=\"#14294a\"><path d=\"M0 0 L6 9 H38 L44 -4 H0z\"/><rect x=\"24\" y=\"-14\" width=\"10\" height=\"10\"/></g><g transform=\"translate(170 205)\" fill=\"#14294a\"><path d=\"M0 0 L6 9 H38 L44 -4 H0z\"/><rect x=\"24\" y=\"-14\" width=\"10\" height=\"10\"/></g><g transform=\"translate(260 180)\" fill=\"#14294a\"><path d=\"M0 0 L6 9 H38 L44 -4 H0z\"/><rect x=\"24\" y=\"-14\" width=\"10\" height=\"10\"/></g><g transform=\"translate(320 128)\" fill=\"#14294a\"><path d=\"M0 0 L6 9 H38 L44 -4 H0z\"/><rect x=\"24\" y=\"-14\" width=\"10\" height=\"10\"/></g><g transform=\"translate(330 210)\" fill=\"#14294a\"><path d=\"M0 0 L6 9 H38 L44 -4 H0z\"/><rect x=\"24\" y=\"-14\" width=\"10\" height=\"10\"/></g>\n   <g stroke=\"#fff\" stroke-opacity=\".6\" stroke-width=\"1.5\" fill=\"none\" stroke-dasharray=\"3 5\"><path d=\"M82 128 Q140 110 180 98\"/><path d=\"M130 190 Q160 150 190 110\"/><path d=\"M200 200 V112\"/><path d=\"M280 176 Q240 140 214 110\"/><path d=\"M322 124 Q270 104 236 96\"/></g></svg>"};
+  $('speciesStrip').innerHTML = SPECIES.map(s => `<div class="sl-sp"><span class="c" style="background:${s.color}">${s.code}</span><b>${s.name}</b><i>${s.sci}</i></div>`).join('');
+  $('slAvs').innerHTML = SPECIES.slice(0, 4).map(s => `<span style="background:${s.color}">${s.code}</span>`).join('');
+  const card = (key, v, art, title, sub, extra = '') =>
+    `<button type="button" class="sl-card" data-v="${v}" onclick="pickTile('${key}',this)"><span class="art">${SL_ART[art]}</span><span class="tick">${ic('check')}</span><span class="ct">${title}${extra}</span><small>${sub}</small></button>`;
+  $('roleTiles').innerHTML =
+    card('role','Importer of record','importer','Importer of record','You bring the tuna into the U.S. and hold the IFTP permit. You keep the records for 2 years.') +
+    card('role','Customs broker','broker','Customs broker','You file the entry with CBP for the importer and need the harvest data in hand before filing.') +
+    card('role','Exporter / supplier','exporter','Exporter or supplier','You sell to a U.S. importer and gather the catch and chain-of-custody data they will need.');
   $('methodTiles').innerHTML =
-    tileHtml('method','Wild','ship','Wild Capture Fishery','Caught by fishing vessels. You will complete Section 2 of the certificate.') +
-    tileHtml('method','Farm','fish','Farm Raised','From an aquaculture or ranching facility. You will complete Section 3.');
+    card('method','Wild','wild','Wild capture','Caught by fishing vessels. You complete Section 2 of the certificate.') +
+    card('method','Farm','farm','Farm raised','From an aquaculture or ranching facility. You complete Section 3.');
   $('filingTiles').innerHTML =
-    tileHtml('filing','Individual','file','Model Catch Certificate','One harvest event per vessel trip or facility harvest, with vessel or facility details.') +
-    tileHtml('filing','Aggregated','layers','Model Aggregated Catch Certificate','Small-scale only: vessels ≤ 20 gross tons or ≤ 12 m, or aquaculture deliveries ≤ 1,000 kg.');
+    card('filing','Individual','single','Catch certificate','One harvest event per vessel trip or facility harvest, with vessel or facility details.') +
+    card('filing','Aggregated','agg','Aggregated certificate','Small-scale only: vessels of 20 gross tons or 12 m or less, or farm deliveries of 1,000 kg or less.', ' <span class="ex">small-scale</span>');
   function pickTile(key, btn){
     S[key] = btn.dataset.v;
-    btn.parentElement.querySelectorAll('.tile').forEach(t => t.classList.toggle('on', t === btn));
+    btn.parentElement.querySelectorAll('[data-v]').forEach(t => t.classList.toggle('on', t === btn));
+    slSummary();
   }
   function syncTiles(){
-    document.querySelectorAll('#roleTiles .tile').forEach(t => t.classList.toggle('on', t.dataset.v === S.role));
-    document.querySelectorAll('#methodTiles .tile').forEach(t => t.classList.toggle('on', t.dataset.v === S.method));
-    document.querySelectorAll('#filingTiles .tile').forEach(t => t.classList.toggle('on', t.dataset.v === S.filing));
+    [['roleTiles', S.role], ['methodTiles', S.method], ['filingTiles', S.filing]].forEach(([id, v]) => document.querySelectorAll(`#${id} [data-v]`).forEach(t => t.classList.toggle('on', t.dataset.v === v)));
+    slSummary();
   }
+  function slSummary(){
+    $('slSum').innerHTML = [['Filling it in as', S.role], ['Harvest method', S.method === 'Farm' ? 'Farm raised' : 'Wild capture'], ['Certificate', certName()]]
+      .map(([k, v]) => `<div><span>${k}</span><b>${esc(v || '—')}</b></div>`).join('');
+  }
+  function slGo(id){ $('slMenu').classList.remove('open'); $(id).scrollIntoView({ behavior:'smooth', block:'start' }); }
+  document.addEventListener('click', e => { if (!e.target.closest('#slMenu')) $('slMenu')?.classList.remove('open'); });
   syncTiles();
   function proceed(){
     if (!isAgg()){ startForm(); return; }
@@ -1131,6 +1347,7 @@
   }
   function showView(id){
     ['viewLanding','viewForm'].forEach(v => $(v).classList.toggle('hidden', v !== id));
+    document.body.classList.toggle('on-landing', id === 'viewLanding');
     $('tbSave').classList.toggle('hidden', id !== 'viewForm');
     $('tbPdf').classList.toggle('hidden', id !== 'viewForm');
     if (id === 'viewLanding') syncTiles();
@@ -1175,6 +1392,7 @@
   const fld = (i, key, label, req, inner, hint, cls='') =>
     `<div class="f ${cls}" data-h="${i}-${key}"><label>${label}${req ? '<span class="req"></span>' : ''}</label>${inner}${hint ? `<small>${hint}</small>` : ''}</div>`;
   const inp = (i, key, type='text', ph='', mono=false) =>
+    type === 'date' ? `<input type="text" class="date-in" autocomplete="off" value="${esc(S.harvests[i][key])}" placeholder="${esc(ph || 'Pick a date')}" oninput="setH(${i},'${key}',this.value)" onchange="setH(${i},'${key}',this.value)"/>` :
     `<input type="${type}" ${mono ? 'class="mono"' : ''} value="${esc(S.harvests[i][key])}" placeholder="${esc(ph)}" oninput="setH(${i},'${key}',this.value)" onchange="setH(${i},'${key}',this.value)"/>`;
   const inpC = (i, key, combo, ph='') =>
     `<input type="text" value="${esc(S.harvests[i][key])}" placeholder="${esc(ph)}" data-combo="${combo}" data-hi="${i}" data-hk="${key}" autocomplete="off" oninput="setH(${i},'${key}',this.value)" onchange="setH(${i},'${key}',this.value)"/>`;
@@ -2139,6 +2357,155 @@
   ddPop.addEventListener('mousedown', e => { const b = e.target.closest('.dd-opt'); if (b && !b.disabled){ e.preventDefault(); ddChoose(+b.dataset.k); } });
   window.addEventListener('scroll', e => { if (ddSel && !ddPop.contains(e.target)) ddPlace(); }, true);
   window.addEventListener('resize', () => ddClose());
+
+
+  // ══════════════════════════════════════════
+  // DATE PICKER — replaces the browser's calendar on every .date-in field.
+  // Values stay ISO (YYYY-MM-DD), the format ACE and NOAA's forms use.
+  // ══════════════════════════════════════════
+  const dpPop = document.createElement('div'); dpPop.className = 'dp-pop'; document.body.appendChild(dpPop);
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const WEEKDAYS = ['Su','Mo','Tu','We','Th','Fr','Sa'];
+  let dpIn = null, dpView = null, dpMode = 'days', dpFocus = null, dpMoved = false;
+  const pad2 = n => String(n).padStart(2, '0');
+  const isoOfDate = d => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+  const todayIso = () => isoOfDate(new Date());
+  function parseDate(t){
+    t = String(t || '').trim(); if (!t) return null;
+    let m = t.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+    if (m) return mk(+m[1], +m[2], +m[3]);
+    m = t.match(/^(\d{1,2})[\s-/.]+([A-Za-z]{3,})[\s-/.,]+(\d{4})$/);           // 12 Mar 2026
+    if (m){ const mo = MONTHS.findIndex(x => x.toLowerCase().startsWith(m[2].toLowerCase().slice(0, 3))); if (mo >= 0) return mk(+m[3], mo + 1, +m[1]); }
+    m = t.match(/^([A-Za-z]{3,})\s+(\d{1,2}),?\s+(\d{4})$/);                    // Mar 12, 2026
+    if (m){ const mo = MONTHS.findIndex(x => x.toLowerCase().startsWith(m[1].toLowerCase().slice(0, 3))); if (mo >= 0) return mk(+m[3], mo + 1, +m[2]); }
+    m = t.match(/^(\d{1,2})[/.](\d{1,2})[/.](\d{4})$/);                          // 12/03/2026 = day first
+    if (m) return mk(+m[3], +m[2], +m[1]);
+    return null;
+    function mk(y, mo, d){ const x = new Date(y, mo - 1, d); return x.getMonth() === mo - 1 && x.getDate() === d ? x : null; }
+  }
+  const niceDate = iso => { const d = parseDate(iso); return d ? `${d.getDate()} ${MONTHS[d.getMonth()].slice(0, 3)} ${d.getFullYear()}` : ''; };
+
+  function dpOpen(input){
+    if (dpIn === input && dpPop.classList.contains('open')) return;
+    ddClose(); comboClose();
+    dpIn = input; input.classList.add('dp-open');
+    const cur = parseDate(input.value) || new Date();
+    dpView = new Date(cur.getFullYear(), cur.getMonth(), 1); dpFocus = isoOfDate(cur); dpMode = 'days'; dpMoved = false;
+    dpRender(); dpPop.classList.add('open'); dpPlace();
+  }
+  function dpClose(){ dpPop.classList.remove('open'); dpIn?.classList.remove('dp-open'); dpIn = null; }
+  function dpPlace(){
+    if (!dpIn) return;
+    const r = dpIn.getBoundingClientRect();
+    if (r.bottom < 0 || r.top > innerHeight){ dpClose(); return; }
+    const w = 296, h = dpPop.offsetHeight || 330;
+    const below = innerHeight - r.bottom > h + 8 || r.top < h + 8;
+    Object.assign(dpPop.style, { left: Math.max(12, Math.min(r.left, innerWidth - w - 12)) + 'px',
+      top: below ? (r.bottom + 6) + 'px' : 'auto', bottom: below ? 'auto' : (innerHeight - r.top + 6) + 'px' });
+  }
+  function dpSet(iso){
+    const input = dpIn; if (!input) return;
+    dpClose();
+    input.value = iso;
+    input.dispatchEvent(new Event('input', { bubbles:true })); input.dispatchEvent(new Event('change', { bubbles:true }));
+    input.focus({ preventScroll:true });
+  }
+  function dpRender(){
+    const y = dpView.getFullYear(), m = dpView.getMonth(), sel = dpIn && parseDate(dpIn.value) ? isoOfDate(parseDate(dpIn.value)) : '', today = todayIso();
+    let body;
+    if (dpMode === 'days'){
+      const first = new Date(y, m, 1).getDay(), days = new Date(y, m + 1, 0).getDate(), prevDays = new Date(y, m, 0).getDate();
+      let cells = '';
+      for (let k = 0; k < 42; k++){
+        const dnum = k - first + 1;
+        const d = dnum < 1 ? new Date(y, m - 1, prevDays + dnum) : dnum > days ? new Date(y, m + 1, dnum - days) : new Date(y, m, dnum);
+        const iso = isoOfDate(d), out = d.getMonth() !== m;
+        cells += `<button type="button" class="dp-day${out ? ' out' : ''}${iso === sel ? ' on' : ''}${iso === today ? ' today' : ''}${iso === dpFocus ? ' focus' : ''}" data-iso="${iso}">${d.getDate()}</button>`;
+      }
+      body = `<div class="dp-week">${WEEKDAYS.map(w => `<span>${w}</span>`).join('')}</div><div class="dp-grid">${cells}</div>`;
+    } else if (dpMode === 'months'){
+      body = `<div class="dp-grid dp-big">${MONTHS.map((mn, k) => `<button type="button" class="dp-cell${k === m ? ' on' : ''}" data-month="${k}">${mn.slice(0, 3)}</button>`).join('')}</div>`;
+    } else {
+      const start = Math.floor(y / 12) * 12;
+      body = `<div class="dp-grid dp-big">${Array.from({ length: 12 }, (_, k) => start + k).map(yr => `<button type="button" class="dp-cell${yr === y ? ' on' : ''}" data-year="${yr}">${yr}</button>`).join('')}</div>`;
+    }
+    const title = dpMode === 'days' ? `<button type="button" class="dp-title" data-act="months">${MONTHS[m]}</button><button type="button" class="dp-title" data-act="years">${y}</button>`
+      : dpMode === 'months' ? `<button type="button" class="dp-title" data-act="years">${y}</button>`
+      : `<span class="dp-title static">${Math.floor(y / 12) * 12} – ${Math.floor(y / 12) * 12 + 11}</span>`;
+    dpPop.innerHTML = `
+      <div class="dp-head"><button type="button" class="dp-nav" data-act="prev" aria-label="Previous">${ic('left')}</button><div class="dp-titles">${title}</div><button type="button" class="dp-nav" data-act="next" aria-label="Next">${ic('right')}</button></div>
+      ${body}
+      <div class="dp-foot"><button type="button" class="dp-link" data-act="clear">Clear</button><span class="dp-sel">${sel ? niceDate(sel) : 'No date'}</span><button type="button" class="dp-link" data-act="today">Today</button></div>`;
+  }
+  dpPop.addEventListener('mousedown', e => {
+    e.preventDefault(); e.stopPropagation();   // the redraw below detaches the clicked button
+    const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.iso){ dpSet(b.dataset.iso); return; }
+    if (b.dataset.month){ dpView = new Date(dpView.getFullYear(), +b.dataset.month, 1); dpMode = 'days'; }
+    else if (b.dataset.year){ dpView = new Date(+b.dataset.year, dpView.getMonth(), 1); dpMode = 'months'; }
+    else {
+      const a = b.dataset.act, step = dpMode === 'days' ? 1 : dpMode === 'months' ? 12 : 144;
+      if (a === 'prev') dpView = new Date(dpView.getFullYear(), dpView.getMonth() - step, 1);
+      else if (a === 'next') dpView = new Date(dpView.getFullYear(), dpView.getMonth() + step, 1);
+      else if (a === 'months' || a === 'years') dpMode = a;
+      else if (a === 'today'){ dpSet(todayIso()); return; }
+      else if (a === 'clear'){ dpSet(''); return; }
+    }
+    dpRender(); dpPlace();
+  });
+  document.addEventListener('focusin', e => { if (e.target.matches('input.date-in')) dpOpen(e.target); });
+  document.addEventListener('mousedown', e => {
+    if (e.target.matches('input.date-in')){ dpOpen(e.target); return; }
+    if (dpIn && !dpPop.contains(e.target)) dpClose();
+  });
+  document.addEventListener('keydown', e => {
+    if (!dpIn || e.target !== dpIn) return;
+    const move = { ArrowLeft:-1, ArrowRight:1, ArrowUp:-7, ArrowDown:7 }[e.key];
+    if (move && dpMode === 'days'){
+      e.preventDefault();
+      const f = parseDate(dpFocus) || new Date(); f.setDate(f.getDate() + move); dpFocus = isoOfDate(f); dpMoved = true;
+      dpView = new Date(f.getFullYear(), f.getMonth(), 1); dpRender(); dpPlace();
+    } else if (e.key === 'Enter'){ e.preventDefault(); const typed = parseDate(dpIn.value); dpSet(!dpMoved && typed ? isoOfDate(typed) : dpFocus); }
+    else if (e.key === 'Escape' || e.key === 'Tab') dpClose();
+  });
+  // Typed dates (12 Mar 2026, 2026-03-12, 12/03/2026) are tidied to ISO when the field is left.
+  document.addEventListener('blur', e => {
+    const t = e.target; if (!t.matches || !t.matches('input.date-in') || !t.value) return;
+    const d = parseDate(t.value);
+    if (d && isoOfDate(d) !== t.value){ t.value = isoOfDate(d); t.dispatchEvent(new Event('input', { bubbles:true })); t.dispatchEvent(new Event('change', { bubbles:true })); }
+  }, true);
+  document.addEventListener('input', e => { if (dpIn && e.target === dpIn && e.isTrusted){ const d = parseDate(dpIn.value); if (d){ dpView = new Date(d.getFullYear(), d.getMonth(), 1); dpFocus = isoOfDate(d); dpMoved = false; dpRender(); } } });
+  window.addEventListener('scroll', e => { if (dpIn && !dpPop.contains(e.target)) dpPlace(); }, true);
+  window.addEventListener('resize', () => dpClose());
+
+
+  // ══════════════════════════════════════════
+  // INFO TIPS — any button.info-tip shows its data-tip text in a small card.
+  // Click (or tap) to open; click outside or press Escape to close.
+  // ══════════════════════════════════════════
+  const tipPop = document.createElement('div'); tipPop.className = 'tip-pop'; tipPop.setAttribute('role', 'tooltip'); document.body.appendChild(tipPop);
+  let tipBtn = null;
+  function tipPlace(){
+    if (!tipBtn) return;
+    const r = tipBtn.getBoundingClientRect(), w = Math.min(320, innerWidth - 24), h = tipPop.offsetHeight;
+    if (r.bottom < 0 || r.top > innerHeight){ tipClose(); return; }
+    const below = innerHeight - r.bottom > h + 12 || r.top < h + 12;
+    tipPop.style.width = w + 'px';
+    tipPop.style.left = Math.max(12, Math.min(r.left + r.width / 2 - 28, innerWidth - w - 12)) + 'px';
+    tipPop.style.top = (below ? r.bottom + 8 : r.top - h - 8) + 'px';
+    tipPop.classList.toggle('above', !below);
+    tipPop.style.setProperty('--arrow', Math.max(14, Math.min(r.left + r.width / 2 - parseFloat(tipPop.style.left), w - 14)) + 'px');
+  }
+  function tipOpen(btn){ tipBtn = btn; btn.classList.add('on'); tipPop.innerHTML = btn.dataset.tip; tipPop.classList.add('open'); tipPlace(); }
+  function tipClose(){ tipPop.classList.remove('open'); tipBtn?.classList.remove('on'); tipBtn = null; }
+  document.addEventListener('click', e => {
+    const b = e.target.closest('.info-tip');
+    if (b){ e.preventDefault(); if (tipBtn === b) tipClose(); else { tipClose(); tipOpen(b); } return; }
+    if (tipBtn && !tipPop.contains(e.target)) tipClose();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && tipBtn){ const b = tipBtn; tipClose(); b.focus(); } });
+  window.addEventListener('scroll', () => tipPlace(), true);
+  window.addEventListener('resize', () => tipClose());
 
   // ══════════════════════════════════════════
   // SAVE / LOAD / EXPORT
