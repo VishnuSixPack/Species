@@ -537,6 +537,35 @@
   #trashModal .btn-danger{background:var(--crit)!important;border-color:var(--crit)!important;color:#fff!important}
   @media (max-width:900px){ .leg-bar,.item-bar{flex-wrap:wrap} .leg-bar .right{margin-left:0;width:100%;justify-content:space-between} .leg-seg{overflow-x:auto;max-width:calc(100% - 46px)} }
 
+
+  /* ── List / Compact view (same choice as shipment.html, remembered per browser) ── */
+  .vseg{position:relative;display:inline-flex;align-items:center;background:var(--page,#f6f7f9);border:1px solid var(--line);border-radius:999px;padding:3px;height:38px;box-sizing:border-box}
+  .vseg button{position:relative;z-index:1;display:inline-flex;align-items:center;gap:6px;border:0;background:none;font:inherit;font-size:12.5px;color:var(--muted);padding:0 13px;height:100%;border-radius:999px;cursor:pointer;transition:color .25s}
+  .vseg button svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .vseg button[aria-pressed="true"]{color:#fff}
+  .vseg button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .vseg .vpill{position:absolute;top:3px;bottom:3px;left:3px;border-radius:999px;background:var(--accent);box-shadow:0 4px 12px rgba(47,111,237,.25);transition:left .35s var(--ease),width .35s var(--ease)}
+  .cgrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:14px;align-items:start}
+  .ccol{display:flex;flex-direction:column;gap:14px;min-width:0}
+  .wrap.compact .card{margin:0 0 0;padding:16px 18px;container-type:inline-size}
+  .wrap.compact > .card{margin-bottom:14px}
+  .wrap.compact .card-head{margin-bottom:12px}
+  .wrap.compact .card-title{font-size:15px}
+  .wrap.compact .card-sub,.wrap.compact .hint{display:none}
+  .wrap.compact .grid{gap:10px 14px}
+  .wrap.compact > .card .grid{grid-template-columns:repeat(6,minmax(0,1fr))}
+  .wrap.compact{--ctl-h:34px}
+  .wrap.compact .ctl-in{font-size:12.5px}
+  .wrap.compact .fld-label,.wrap.compact label{font-size:11px}
+  .wrap.compact .leg-in{padding:14px}
+  .wrap.compact .leg-bar{padding:10px 14px}
+  .wrap.compact .leg{margin-bottom:10px}
+  .wrap.compact .actionbar{padding-bottom:10px}
+  .wrap.compact .actionbar .h1{font-size:22px}
+  .wrap.compact .rt-box{min-height:110px}
+  @container (max-width:760px){ .wrap.compact .grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
+  @container (min-width:761px) and (max-width:1050px){ .wrap.compact .grid{grid-template-columns:repeat(3,minmax(0,1fr))} }
+  @media (max-width:1100px){ .vseg{display:none} }
 </style>
 </head>
 <body>
@@ -631,6 +660,7 @@
       <div class="h1-sub" id="pageSub">Records what left, where it went, and which lots were in it</div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <div class="vseg" role="group" aria-label="Layout"><span class="vpill"></span><button type="button" data-view="list" aria-pressed="true" title="One card under another"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg>List</button><button type="button" data-view="compact" aria-pressed="false" title="Two columns, denser fields"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="8" height="7" rx="1.5"/><rect x="13" y="4" width="8" height="7" rx="1.5"/><rect x="3" y="13" width="18" height="7" rx="1.5"/></svg>Compact</button></div>
       <button class="btn" id="scanBtn" onclick="openScanner()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         Scan Documents</button>
@@ -2317,6 +2347,52 @@ async function loadExisting(){
 
 <script>
 if (typeof window.launchModule !== 'function') { window.launchModule = function(url){ window.location.href = url; }; }
+</script>
+
+<script>
+/* ===== List / Compact view =====
+   Compact puts Shipment Information across the top and the other cards in two columns.
+   Cards are only moved, never rebuilt, so typing and open sections are kept. Narrow screens always use List. */
+(function(){
+  const KEY = 'ship-view', narrow = matchMedia('(max-width:1100px)');
+  const wrap = document.querySelector('.wrap');
+  const cards = [...wrap.querySelectorAll(':scope > .card')];
+  const order = cards.slice();
+  const byTitle = t => cards.find(c => (c.querySelector('.card-title')||{}).textContent?.trim().toLowerCase().startsWith(t));
+  const info = byTitle('shipment information');
+  const colA = ['journey','products','notes'].map(byTitle).filter(Boolean);
+  const colB = cards.filter(c => c!==info && !colA.includes(c));
+  const anchor = document.getElementById('banners');
+  const get = () => { try{ const v = JSON.parse(localStorage.getItem(KEY)); return v==='compact' ? 'compact' : 'list'; }catch(e){ return 'list'; } };
+  const set = v => { try{ localStorage.setItem(KEY, JSON.stringify(v)); }catch(e){} };
+  function pill(){ const seg = document.querySelector('.vseg'), on = seg && seg.querySelector('[aria-pressed="true"]'), p = seg && seg.querySelector('.vpill');
+    if(on && p && on.offsetWidth){ p.style.left = on.offsetLeft+'px'; p.style.width = on.offsetWidth+'px'; } }
+  function apply(v){
+    const compact = v==='compact' && !narrow.matches;
+    document.querySelectorAll('.vseg [data-view]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.view===v)));
+    requestAnimationFrame(pill);
+    if(compact === wrap.classList.contains('compact')) return;
+    wrap.classList.toggle('compact', compact);
+    const y = window.scrollY;
+    if(compact){
+      const g = document.createElement('div'); g.className = 'cgrid';
+      const a = document.createElement('div'), b = document.createElement('div'); a.className = b.className = 'ccol';
+      colA.forEach(c => a.appendChild(c)); colB.forEach(c => b.appendChild(c));
+      g.append(a, b);
+      if(info) anchor.after(info);
+      (info || anchor).after(g);
+      const add = document.getElementById('addBody'); if(add && add.style.display==='none' && typeof toggleAdd==='function') toggleAdd();
+    } else {
+      let at = anchor; order.forEach(c => { at.after(c); at = c; });
+      wrap.querySelectorAll(':scope > .cgrid').forEach(g => g.remove());
+    }
+    window.scrollTo(0, y);
+  }
+  document.addEventListener('click', e => { const b = e.target.closest('.vseg [data-view]'); if(!b) return; set(b.dataset.view); apply(b.dataset.view); });
+  narrow.addEventListener('change', () => apply(get()));
+  window.addEventListener('resize', pill);
+  apply(get());
+})();
 </script>
 <script src="notifications.js"></script>
 </body>
