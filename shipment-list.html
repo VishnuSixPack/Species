@@ -278,6 +278,33 @@
   .empty h4{font-size:17px}
   @media (max-width:900px){ .toolbar .search{min-width:0;flex-basis:100%} .mseg{overflow-x:auto;max-width:100%} }
 
+  .stg-mini{display:inline-block;margin-left:6px;font-family:var(--mono);font-size:10.5px;padding:1px 8px;border-radius:999px;border:1px solid;vertical-align:1px}
+  /* ── New shipment chooser ── */
+  .ns-bg{position:fixed;inset:0;background:rgba(20,22,26,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:1100;display:none;align-items:center;justify-content:center;padding:20px}
+  .ns-bg.open{display:flex}
+  .ns-box{background:#fff;border-radius:22px;width:760px;max-width:100%;max-height:calc(100vh - 40px);overflow:auto;padding:26px 26px 22px;box-shadow:0 30px 80px rgba(16,24,40,.25);animation:up .3s var(--ease)}
+  .ns-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}
+  .ns-t{font-size:22px;font-weight:300!important;letter-spacing:-.01em;margin:0}
+  .ns-s{font-size:13px;color:var(--muted);margin:4px 0 0}
+  .ns-x{width:34px;height:34px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--muted);display:grid;place-items:center;cursor:pointer;flex:none;transition:color .2s,border-color .2s}
+  .ns-x:hover{color:var(--ink);border-color:var(--faint)}
+  .ns-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .ns-opt{position:relative;display:flex;flex-direction:column;gap:10px;padding:18px;border:1px solid var(--line);border-radius:16px;background:#fff;color:var(--ink);text-decoration:none;
+    transition:border-color .25s,box-shadow .25s,transform .25s var(--ease);animation:up .4s var(--ease) both;animation-delay:calc(var(--i)*60ms)}
+  .ns-opt:hover,.ns-opt:focus-visible{border-color:var(--accent-line);box-shadow:0 10px 28px rgba(47,111,237,.12);transform:translateY(-2px);outline:none}
+  .ns-ic{width:42px;height:42px;border-radius:13px;background:var(--low-bg);color:var(--accent);display:grid;place-items:center}
+  .ns-k{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+  .ns-n{font-size:16px}
+  .ns-d{font-size:12.5px;color:var(--muted);line-height:1.55;flex:1}
+  .ns-f{font-family:var(--mono);font-size:10.5px;color:var(--muted);border-top:1px dashed var(--line);padding-top:10px;line-height:1.6}
+  .ns-go{position:absolute;top:18px;right:18px;color:var(--faint);transition:color .2s,transform .25s var(--ease)}
+  .ns-opt:hover .ns-go{color:var(--accent);transform:translateX(3px)}
+  .ns-foot{display:flex;align-items:center;gap:8px;margin-top:16px;font-size:12px;color:var(--muted)}
+  .ns-foot svg{flex:none;color:var(--faint)}
+  @media (max-width:760px){ .ns-grid{grid-template-columns:1fr} .ns-box{padding:20px} }
+  .stg-mini.notice{color:#7c5cd6;border-color:#ddd2f5;background:#f5f1fd}
+  .stg-mini.scheduled{color:var(--accent);border-color:var(--accent-line);background:var(--low-bg)}
+  .stg-mini.actual{color:var(--ok);border-color:var(--ok-line);background:var(--ok-bg)}
 </style>
 </head>
 <body>
@@ -334,7 +361,7 @@
                 <a href="fsma-support.html" class="nav-dropdown-item">FSMA Act 204 <span class="tag-new">New</span></a>
               </div>
             </div>
-            <a href="load-planner.html" class="nav-dropdown-item">Load Planner</a>
+            <a href="load-planner-home.html" class="nav-dropdown-item">Load Planner</a>
             <a href="modules.html#features" class="nav-dropdown-item" style="border-top:1px solid #e8eaf0;margin-top:4px;color:#1a6fdb;">See all Features</a>
           </div>
         </div>
@@ -374,7 +401,7 @@
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
       <a href="shipment-trash.html" class="btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>Trash</a>
-      <a href="shipment-form.html" class="btn btn-primary"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>New shipment</a>
+      <a href="shipment-form.html" class="btn btn-primary" onclick="openNew(event)" aria-haspopup="dialog"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>New shipment</a>
     </div>
   </div>
 
@@ -462,7 +489,7 @@ function rowHTML(r){
     <td class="num hide-sm">${r.total_net_kg?fmtNum(r.total_net_kg)+' kg':'—'}</td>
     <td><span class="mode ${(r.transport_mode||'').toLowerCase()}">${MODE_ICON[r.transport_mode]||''}${esc(r.transport_mode||'—')}</span></td>
     <td class="hide-sm">${fmtDate(r.shipment_date)||'—'}</td>
-    <td><span class="badge ${cls}">${esc(r.status||'Draft')}</span></td>
+    <td><span class="badge ${cls}">${esc(r.status||'Draft')}</span>${r.stage?`<span class="stg-mini ${esc(r.stage)}" title="Shipment notice stage">${esc({notice:'Notice',scheduled:'Scheduled',actual:'Actual'}[r.stage]||r.stage)}</span>`:''}</td>
   </tr>`;
 }
 
@@ -490,7 +517,7 @@ function applyFilters(){
       : `<div class="empty"><h4>No shipments yet</h4>
            <p>A shipment records what left, where it went and which lots were in it.
               EU Catch documents and carbon footprints both read from it.</p>
-           <a href="shipment-form.html" class="btn btn-primary">Create your first shipment</a></div>`;
+           <a href="shipment-form.html" class="btn btn-primary" onclick="openNew(event)">Create your first shipment</a></div>`;
     return;
   }
 
@@ -516,7 +543,7 @@ async function load(){
     try{
       const {data:s, error} = await dbClient
         .from('shipments')
-        .select('id,shipment_ref,shipment_date,transport_mode,status,exporter_name,origin_name,destination_name,destination_country')
+        .select('*')
         .is('deleted_at', null)
         .order('shipment_date',{ascending:false});
       if(error) throw error;
@@ -596,6 +623,55 @@ loadProfile();
 
 <script>
 if (typeof window.launchModule !== 'function') { window.launchModule = function(url){ window.location.href = url; }; }
+</script>
+<script src="notifications.js"></script>
+
+<!-- New shipment chooser -->
+<div class="ns-bg" id="nsBg" onclick="if(event.target===this)closeNew()" aria-hidden="true">
+  <div class="ns-box" role="dialog" aria-modal="true" aria-labelledby="nsT">
+    <div class="ns-head">
+      <div><h2 class="ns-t" id="nsT">New shipment</h2><p class="ns-s">Pick how far along the shipment is. Every option ends up as a shipment here, with EU Catch and the Carbon calculator available.</p></div>
+      <button class="ns-x" type="button" onclick="closeNew()" aria-label="Close"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="ns-grid">
+      <a class="ns-opt" href="shipment-notice-new.html" style="--i:0">
+        <span class="ns-go"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        <span class="ns-ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg></span>
+        <span class="ns-k">Planned · not shipped yet</span>
+        <span class="ns-n">Shipment notice</span>
+        <span class="ns-d">Plan shipments from a master order and notify the receiver. Add the carrier, then B/L and container, as they come in.</span>
+        <span class="ns-f">Now: product, quantity, ports, planned dates, receiver<br>Later: scheduled, then actual</span>
+      </a>
+      <a class="ns-opt" href="shipment-form.html" style="--i:1">
+        <span class="ns-go"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        <span class="ns-ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20c2 1.2 4 1.2 6 0s4-1.2 6 0 4 1.2 6 0"/><path d="M4 16.5 5 11h14l1 5.5"/><path d="M9 11V6.5h6V11"/></svg></span>
+        <span class="ns-k">Already shipped</span>
+        <span class="ns-n">Actual shipment</span>
+        <span class="ns-d">Enter a shipment that has left, with every detail in one go. You can still send the importer a notice from the shipment afterwards.</span>
+        <span class="ns-f">Now: parties, legs and vessels, container and seal, B/L, products and lots</span>
+      </a>
+      <a class="ns-opt" href="shipment-form.html?scan=1" style="--i:2">
+        <span class="ns-go"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span>
+        <span class="ns-ic"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg></span>
+        <span class="ns-k">Have the paperwork</span>
+        <span class="ns-n">From documents</span>
+        <span class="ns-d">Upload the invoice, B/L or packing list and the form is filled from them. Check the fields, then save.</span>
+        <span class="ns-f">PDF, PNG or JPG · several files at once</span>
+      </a>
+    </div>
+    <div class="ns-foot"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>A notice reaches the importer only when they're picked from the company list.</div>
+  </div>
+</div>
+<script>
+function openNew(e){ if(e){ e.preventDefault(); } const b=document.getElementById('nsBg'); b.classList.add('open'); b.setAttribute('aria-hidden','false'); document.body.style.overflow='hidden'; setTimeout(()=>b.querySelector('.ns-opt').focus(),40); }
+function closeNew(){ const b=document.getElementById('nsBg'); b.classList.remove('open'); b.setAttribute('aria-hidden','true'); document.body.style.overflow=''; }
+document.addEventListener('keydown', e=>{
+  const b=document.getElementById('nsBg'); if(!b.classList.contains('open')) return;
+  if(e.key==='Escape'){ closeNew(); return; }
+  if(e.key==='Tab'){ const f=[...b.querySelectorAll('a,button')]; const i=f.indexOf(document.activeElement);
+    if(e.shiftKey && i<=0){ e.preventDefault(); f[f.length-1].focus(); } else if(!e.shiftKey && i===f.length-1){ e.preventDefault(); f[0].focus(); } }
+});
+if(new URLSearchParams(location.search).get('new')==='1') openNew();
 </script>
 </body>
 </html>
